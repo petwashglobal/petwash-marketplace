@@ -1,18 +1,18 @@
 /**
- * ProviderOS "both roles" bridge — regression pin (2026-07-09).
+ * ProviderOS "Pet Parent side" bridge — regression pin (2026-07-09,
+ * relabelled 2026-08-26 to match the CEO role-model directive:
+ * workspaces are Pet Parent ↔ Provider; "Member" was Prestige framing).
  *
- * Full new-user test (CEO: "want to be both roles, what happens on login"):
- * signup lets you pick Member AND Provider together, and once the provider app
- * is approved, post-login upgrades the role and /whoami returns BOTH worlds
- * (dashboardsAllowed = ['member','provider']). The ExperienceSwitcher renders
- * those worlds — but it was mounted ONLY on /my-account, so a provider landing
- * in the walled provider-os shell had NO on-screen way back to their member
- * world (book, wash, wallet, rewards). And the account avatar in the header was
- * a dead <div> (a real dead-click).
+ * A provider is ALSO a Pet Parent (additive multi-role: they can own
+ * pets, book other providers, use a station, hold a wallet). Before this
+ * pin, a provider landing in the walled provider-os shell had NO
+ * on-screen way back to the Pet Parent side, and the account avatar in
+ * the header was a dead <div>.
  *
- * This pins: (1) a persistent "Switch to Member" control → /prestige/home, and
- * (2) the avatar is now a real button → /my-account (account hub w/ the full
- * ExperienceSwitcher). So a both-roles user is never trapped.
+ * This pins: (1) a persistent "Switch to Pet Parent" control →
+ * /prestige/home (the historical customer home route), and (2) the
+ * avatar is now a real button → /my-account. So a multi-role user is
+ * never trapped.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,15 +23,17 @@ const SRC = fs.readFileSync(
   'utf8',
 );
 
-describe('ProviderOS gives a both-roles user a way back to Member (2026-07-09)', () => {
+describe('ProviderOS gives a multi-role user a way back to Pet Parent (2026-07-09, relabelled 2026-08-26)', () => {
   it('has a router navigate distinct from the module switcher', () => {
     // wouter useLocation destructured as setRoute (module `navigate` is unrelated)
     expect(SRC).toMatch(/const \[, setRoute\] = useLocation\(\)/);
   });
 
-  it('offers a persistent "Switch to Member" control that routes to the member home', () => {
-    expect(SRC).toMatch(/data-testid="switch-to-member"/);
+  it('offers a persistent "Switch to Pet Parent" control that routes to the Pet Parent home', () => {
+    expect(SRC).toMatch(/data-testid="switch-to-pet-parent"/);
     expect(SRC).toMatch(/setRoute\('\/prestige\/home'\)/);
+    // Crown belongs to Prestige — the Pet Parent switcher must not use it.
+    expect(SRC).not.toMatch(/data-testid="switch-to-member"/);
   });
 
   it('the account avatar is a real button (not a dead div) → account hub', () => {

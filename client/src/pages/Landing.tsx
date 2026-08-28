@@ -182,14 +182,31 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                     {smartGreeting(user.displayName?.split(' ')[0], language as GreetLang, greetOpts)}
                   </Button>
                 ) : (
-                  <div className="flex justify-center items-center">
+                  // TWO-CTA HERO (CEO 2026-08-26 audit: "returning user which
+                  // won't need to face hard process to log back in"). Previously
+                  // the single hero CTA sent everyone — returning members
+                  // included — to /signup (JOIN mode), forcing them past a DOB
+                  // wheel + consent checkboxes just to reach a login form. Now
+                  // the returning path is one tap: primary "Sign in" → /signin
+                  // (LOGIN mode, no DOB/consent), secondary "Create account" →
+                  // /signup for genuinely new users.
+                  <div className="flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4">
                     <Button
-                      onClick={() => setLocation('/signup')}
+                      onClick={() => setLocation('/signin')}
                       className="gold-shimmer-btn text-[#0a0a0a] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light w-full sm:w-auto rounded-none"
-                      data-testid="button-signin-or-signup-hero"
+                      data-testid="button-signin-hero"
                     >
-                      {t('landing.signinOrSignup', language)}
+                      {language === 'he' ? 'התחברות' : 'Sign in'}
                     </Button>
+                    <button
+                      type="button"
+                      onClick={() => setLocation('/signup')}
+                      className="text-[#0a0a0a] px-8 py-3 text-[13px] uppercase tracking-[0.18em] font-light w-full sm:w-auto border border-[#0a0a0a] bg-transparent hover:bg-[#0a0a0a] hover:text-white transition-colors rounded-none"
+                      style={{ touchAction: 'manipulation', cursor: 'pointer' }}
+                      data-testid="button-create-account-hero"
+                    >
+                      {language === 'he' ? 'צור חשבון' : 'Create account'}
+                    </button>
                   </div>
                 )}
               </div>

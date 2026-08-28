@@ -18,7 +18,14 @@
 
 import NayaxJobDispatchPaymentService from "./NayaxJobDispatchPaymentService";
 import { NayaxSitterMarketplaceService } from "./NayaxSitterMarketplaceService";
-import { NayaxWalkMarketplaceService } from "./NayaxWalkMarketplaceService";
+// NayaxWalkMarketplaceService import intentionally REMOVED (audit lane C,
+// 2026-08-26). It was the ONLY importer and never referenced the symbol
+// — a pure dead import. The service file itself carries the OLD "VAT on
+// top" money model (18% added to base), which is incompatible with the
+// current 18/118 extraction rule that walkFeeCalculator.ts enforces. If
+// the walk card rail is wired in a follow-up, it MUST go through the
+// current walkFeeCalculator / walletService stack — do NOT restore this
+// import without rewriting the underlying service against those rules.
 import { K9000TransactionService, type K9000TransactionRequest } from "./K9000TransactionService";
 import { db } from "../db";
 import { paymentIntents, bookings, superAppPayouts, users } from "@shared/schema";

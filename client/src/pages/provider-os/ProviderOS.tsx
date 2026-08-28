@@ -11,7 +11,7 @@ import {
   Bell, Settings, FileText, Shield, Bot,
   Menu, X, ChevronRight, Power, LogOut,
   Dog, MapPin, Car, GraduationCap, Star,
-  DollarSign, ClipboardList, ShieldCheck, ThumbsUp, TrendingUp, Crown,
+  DollarSign, ClipboardList, ShieldCheck, ThumbsUp, TrendingUp, PawPrint,
 } from 'lucide-react';
 import POSDashboard from './POSDashboard';
 import POSJobs from './POSJobs';
@@ -206,21 +206,22 @@ export default function ProviderOS() {
             <span className="hidden sm:block">{isAvailable ? 'Available' : 'Offline'}</span>
           </button>
 
-          {/* Switch to Member world — the persistent one-tap bridge back to the
-              customer side (book, wash, wallet, rewards). A PetWash account is a
-              SET of roles (CEO 2026-07-03): a provider is ALWAYS also a member,
-              so this is always offered. Mirrors the full ExperienceSwitcher —
-              which was mounted ONLY on /my-account and so invisible from here —
-              as an Uber-style mode switch so an approved provider is never
-              trapped in provider-os with no way back to their member home. */}
+          {/* Switch to Pet Parent — the persistent one-tap bridge back to
+              the customer side (book another provider, use a station,
+              wallet, rewards). Every human on PetWash is a Pet Parent by
+              default; a provider is ALWAYS also a Pet Parent (additive
+              multi-role model), so this is always offered. Icon + label
+              use "Pet Parent" (not "Member") and PawPrint (not Crown) —
+              Crown belongs to Prestige (a membership, not a mode). CEO
+              2026-08-26 role-model. */}
           <button
             onClick={() => setRoute('/prestige/home')}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#FBF6E7] text-[#9a7d2e] border border-[#ECDFB4] hover:bg-[#F5EAC8] transition-colors"
-            data-testid="switch-to-member"
-            title="Switch to your Member world"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+            data-testid="switch-to-pet-parent"
+            title="Switch to your Pet Parent home"
           >
-            <Crown className="w-3 h-3" />
-            <span className="hidden sm:block">Member</span>
+            <PawPrint className="w-3 h-3" />
+            <span className="hidden sm:block">Pet Parent</span>
           </button>
 
           <button

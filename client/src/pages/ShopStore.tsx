@@ -80,6 +80,18 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const [step, setStep] = useState<'cart' | 'checkout'>('cart');
   const [addresses, setAddresses] = useState<SavedAddress[] | null>(null);
   const [addressId, setAddressId] = useState<number | null>(null);
+  // Payment method — CEO 2026-08-26 directive: the backend already supports
+  // 'wallet' and 'credit_card' (SUMIT hosted). Client used to hard-code
+  // 'wallet' → an empty-wallet customer dead-ended with INSUFFICIENT_FUNDS.
+  // Now: read the wallet balance up front, default to whichever rail can
+  // actually complete the purchase, expose a toggle when the wallet is
+  // present, and never invent mixed tender (the server doesn't support it).
+  const [walletCents, setWalletCents] = useState<number | null>(null);
+  // `payMethodOverride` is null until the customer explicitly picks a
+  // method in the drawer. When null we derive the preferred method from
+  // wallet coverage (see the `payMethod` derivation below `payTotalCents`).
+  // Once they tap the picker, their pick sticks.
+  const [payMethodOverride, setPayMethodOverride] = useState<'wallet' | 'credit_card' | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
   const [addr, setAddr] = useState({ fullName: '', phone: '', street: '', city: '', zipCode: '' });
   // City picker (2026-08-21 CEO plan) — Shop checkout city input backed by
@@ -153,7 +165,28 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const isEngravable = (p: Product) => !!p.tags?.some(t => t === 'engraving' || t === 'personalised');
 
   useEffect(() => { void loadProducts(); }, []);
-  useEffect(() => { if (user) void refreshCart(); }, [user]);
+  useEffect(() => { if (user) { void refreshCart(); void loadWalletBalance(); } }, [user]);
+
+  // Wallet balance load — powers the payment-method picker (renders wallet
+  // as a chip with the current balance so the customer sees exactly what
+  // they can spend). Fail-quiet: on any error we keep walletCents=null,
+  // which the picker treats as "no wallet available" and hides the wallet
+  // chip — the card rail is always offered as fallback so the customer
+  // can never dead-end.
+  async function loadWalletBalance() {
+    try {
+      const r = await fetch(getApiUrl('/api/credit-wallet/summary'), { credentials: 'include' });
+      if (!r.ok) return;
+      const d = await r.json();
+      const cents = d?.wallet?.cashWalletBalanceCents;
+      if (typeof cents === 'number' && Number.isFinite(cents) && cents >= 0) {
+        setWalletCents(cents);
+      }
+    } catch { /* offline or auth blip — no picker chip; card path still works */ }
+  }
+
+  // (payMethod derivation lives just below `payTotalCents` so it can read
+  // the latest total on every render — no stale-closure risk.)
 
   async function loadProducts() {
     try {
@@ -232,6 +265,22 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     ? null
     : (subtotalCents >= estimate.freeThresholdCents ? 0 : estimate.standard.cents);
   const payTotalCents = deliveryCents === null ? null : subtotalCents + deliveryCents;
+
+  // Payment-method derivation — see notes at `walletCents`/`payMethodOverride`.
+  // Rule: prefer wallet iff the balance fully covers the total (mixed
+  // tender is not supported server-side — see /api/shop/checkout comments);
+  // otherwise default to card so tapping Pay always completes. If the
+  // customer has explicitly picked a method in the drawer, honor their
+  // pick — but if they picked wallet and the wallet then dropped below
+  // the total (e.g. balance refreshed), silently fall back to card so
+  // they cannot dead-end.
+  const walletCovers =
+    walletCents !== null && payTotalCents !== null && walletCents >= payTotalCents;
+  const walletAvailable = walletCents !== null && walletCents > 0;
+  const payMethod: 'wallet' | 'credit_card' =
+    payMethodOverride === 'wallet' && walletCovers ? 'wallet'
+    : payMethodOverride === 'credit_card' ? 'credit_card'
+    : walletCovers ? 'wallet' : 'credit_card';
 
   useEffect(() => {
     if (!cart || cart.subtotalCents <= 0) { setEstimate(null); return; }
@@ -329,7 +378,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     try {
       const r = await fetch(getApiUrl('/api/shop/checkout'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ cartId: cart.id, paymentMethod: 'wallet', deliveryMethod: 'delivery', deliveryAddressId: addressId, language }),
+        body: JSON.stringify({ cartId: cart.id, paymentMethod: payMethod, deliveryMethod: 'delivery', deliveryAddressId: addressId, language }),
       });
       const d = await r.json();
       if (d.paymentUrl) { window.location.href = d.paymentUrl; return; }
@@ -755,12 +804,70 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                     </ul>
                   </details>
 
+                  {/* PAYMENT METHOD PICKER — CEO 2026-08-26. The server
+                      supports 'wallet' and 'credit_card' (SUMIT hosted).
+                      Mixed tender is NOT supported, so we don't fake it.
+                      The wallet chip is only offered when the wallet CAN
+                      fully cover the total; otherwise we show why (balance
+                      short) so the customer can top up or use card, not
+                      hit a "insufficient funds" dead-end at pay time. */}
+                  {payTotalCents !== null && (
+                    <div className="mt-4">
+                      <div className="text-[12px] font-semibold text-gray-700 mb-2">
+                        {tr('Pay with', 'שיטת תשלום')}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPayMethodOverride('credit_card')}
+                          className={`text-start rounded-xl border px-3 py-2 text-sm font-medium ${payMethod === 'credit_card' ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-400'}`}
+                          data-testid="shop-pay-method-card"
+                          aria-pressed={payMethod === 'credit_card'}
+                        >
+                          <div className="font-semibold">{tr('Card', 'כרטיס אשראי')}</div>
+                          <div className={`text-[11px] mt-0.5 ${payMethod === 'credit_card' ? 'text-white/75' : 'text-gray-500'}`}>
+                            {tr('Secure hosted checkout', 'תשלום מאובטח בעמוד הסליקה')}
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => walletCovers && setPayMethodOverride('wallet')}
+                          disabled={!walletCovers}
+                          className={`text-start rounded-xl border px-3 py-2 text-sm font-medium ${payMethod === 'wallet' ? 'border-black bg-black text-white' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-400'} disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-200`}
+                          data-testid="shop-pay-method-wallet"
+                          aria-pressed={payMethod === 'wallet'}
+                        >
+                          <div className="font-semibold">{tr('Wallet', 'ארנק')}</div>
+                          <div className={`text-[11px] mt-0.5 ${payMethod === 'wallet' ? 'text-white/75' : walletCovers ? 'text-gray-500' : 'text-amber-700'}`}>
+                            {walletCents === null
+                              ? tr('Loading balance…', 'טוען יתרה…')
+                              : walletCovers
+                                ? tr(`Balance ${shekel(walletCents)}`, `יתרה ${shekel(walletCents)}`)
+                                : walletAvailable
+                                  ? tr(`Balance ${shekel(walletCents)} — short of total`, `יתרה ${shekel(walletCents)} — לא מספיקה`)
+                                  : tr('No wallet balance', 'אין יתרה בארנק')}
+                          </div>
+                        </button>
+                      </div>
+                      {!walletCovers && walletAvailable && (
+                        <div className="mt-2 text-[11px] text-gray-500">
+                          {tr('Split wallet + card is not supported. Pay by card, or top up your wallet first.',
+                              'לא ניתן לפצל בין ארנק לכרטיס. שלמו בכרטיס, או טענו את הארנק תחילה.')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <button onClick={placeOrder} disabled={busy || !addressId || payTotalCents === null}
-                    className="w-full mt-4 rounded-xl px-4 py-3 bg-black text-white text-sm font-medium disabled:opacity-40">
+                    className="w-full mt-4 rounded-xl px-4 py-3 bg-black text-white text-sm font-medium disabled:opacity-40"
+                    data-testid="shop-pay-button">
                     {busy
                       ? <Loader2 className="w-4 h-4 animate-spin inline" />
-                      : tr(`Pay ${payTotalCents !== null ? shekel(payTotalCents) : ''} from wallet`,
-                           `לתשלום ${payTotalCents !== null ? shekel(payTotalCents) : ''} מהארנק`)}
+                      : payMethod === 'wallet'
+                        ? tr(`Pay ${payTotalCents !== null ? shekel(payTotalCents) : ''} from wallet`,
+                             `לתשלום ${payTotalCents !== null ? shekel(payTotalCents) : ''} מהארנק`)
+                        : tr(`Pay ${payTotalCents !== null ? shekel(payTotalCents) : ''} by card`,
+                             `לתשלום ${payTotalCents !== null ? shekel(payTotalCents) : ''} בכרטיס`)}
                   </button>
                 </>
               )}

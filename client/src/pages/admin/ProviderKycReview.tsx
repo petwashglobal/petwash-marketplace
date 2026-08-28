@@ -97,6 +97,12 @@ interface KycApplication {
   declarationSignatureSha256?: string | null;
   // Onboarding-form declarations JSON blob (was hidden — 14 checkboxes)
   internalNotes?: string | null;           // JSON string containing declarations + providerTypes[]
+  // Animal safety (Lane A audit 2026-08-26): pet-first-aid cert row was
+  // persisted at intake but never surfaced. Serial number lives in
+  // internalNotes.petFirstAidNumber because the schema column was
+  // mis-titled pet_first_aid_provider; expiry is a real column below.
+  petFirstAidExpiresAt?: string | null;
+  petFirstAidCertUrl?: string | null;
 }
 
 interface KycDetail {
@@ -177,10 +183,52 @@ function safePretty(raw: string | null | undefined): string {
   }
 }
 
-// Render the 14 role-specific onboarding-form declaration checkboxes from
+// Friendly Hebrew + English labels for the onboarding-form declaration keys
+// stashed inside internal_notes.declarations. Keys come from the wizard's
+// `declarations` object in ProviderOnboarding.tsx (see the FormData block
+// around line 578). This is a display-only map — DeclarationList still
+// passes every key through, mapped or not, so a NEW declaration key added
+// to the wizard shows up here immediately as its raw name (never silently
+// dropped) and only its label is missing until this dictionary catches up.
+// Lane A audit 2026-08-26 — pure UI, no schema change, no key allow-list.
+const DECLARATION_LABELS: Record<string, { he: string; en: string }> = {
+  // Universal
+  declarationAccurateInfo:            { he: 'הפרטים שמסרתי מדויקים ומלאים',              en: 'Information provided is accurate and complete' },
+  declarationAcceptTerms:             { he: 'קראתי ואני מסכים/ה לתנאי השירות',          en: 'I have read and accept the Terms of Service' },
+  // Driver (PetTrek)
+  declarationValidLicense:            { he: 'רישיון נהיגה בתוקף',                        en: 'Valid driving licence' },
+  declarationNoSuspension:            { he: 'רישיון הנהיגה לא הוגבל / הותלה',            en: 'No licence suspension or restriction' },
+  declarationUnderPointsLimit:        { he: 'מספר הנקודות ברישיון מתחת לתקרה',           en: 'Under the demerit-points limit' },
+  declarationNoDrugsAlcohol:          { he: 'לא נהיגה תחת השפעת סמים או אלכוהול',        en: 'No driving under influence of drugs or alcohol' },
+  declarationValidVehicleInsurance:   { he: 'ביטוח רכב בתוקף',                           en: 'Valid vehicle insurance' },
+  declarationVehicleInspection:       { he: 'רכב עם רישוי / טסט בתוקף',                  en: 'Vehicle roadworthy / current inspection' },
+  // Trainer (Academy)
+  declarationTrainingCertification:   { he: 'תעודת מאלף בתוקף',                          en: 'Valid trainer certification' },
+  declarationAccreditedCourses:       { he: 'קורסים מוכרים בלבד',                        en: 'Only accredited courses offered' },
+  declarationLiabilityInsurance:      { he: 'ביטוח אחריות מקצועית בתוקף',                en: 'Valid professional liability insurance' },
+  // Sitter / Walker
+  declarationPhysicallyFit:           { he: 'כשירות גופנית לטיפול בכלבים',               en: 'Physically fit to handle dogs' },
+  declarationAnimalExperience:        { he: 'ניסיון קודם עם בעלי חיים',                  en: 'Prior experience working with animals' },
+  declarationFirstAidTraining:        { he: 'הכשרת עזרה ראשונה לבעלי חיים',              en: 'Pet first-aid training completed' },
+  // Israel-safe self-declaration (some wizards write it into the same blob)
+  selfDeclarationNoRelevantConvictions: { he: 'אין רישום פלילי רלוונטי לתפקיד',          en: 'No relevant criminal convictions' },
+};
+
+// Turn a raw camelCase key into a readable fallback: "declarationValidLicense"
+// -> "Declaration valid license". Keeps unmapped keys visible instead of
+// hiding them; the mapping table above is only for polish.
+function humanizeDeclarationKey(k: string): string {
+  const spaced = k.replace(/([A-Z])/g, ' $1').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+// Render the role-specific onboarding-form declaration checkboxes from
 // `internal_notes` JSON. Server stores them as { declarations: {key: bool} }
-// (with additional keys like providerTypes[] we skip). Displays each key with
-// a ✓ / ✗. Falls back to raw JSON block if the shape isn't what we expect.
+// (with additional keys like providerTypes[] we skip). Displays each key
+// with a ✓ / ✗ and a friendly bilingual label. Unknown keys render with a
+// humanized fallback label so a NEW declaration added to the wizard is
+// never silently dropped from admin review. Falls back to raw JSON block
+// if the shape isn't what we expect.
 function DeclarationList({ raw }: { raw: string }) {
   let parsed: any = null;
   try { parsed = JSON.parse(raw); } catch { /* fall through */ }
@@ -193,13 +241,24 @@ function DeclarationList({ raw }: { raw: string }) {
     return <div className="text-xs text-muted-foreground bg-white rounded px-3 py-2">No declarations captured</div>;
   }
   return (
-    <div className="grid grid-cols-2 gap-2 text-sm">
-      {keys.map((k) => (
-        <div key={k} className="flex items-center justify-between bg-white rounded px-3 py-2">
-          <span className="text-muted-foreground text-xs">{k}</span>
-          {decl[k] ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-400" />}
-        </div>
-      ))}
+    <div className="grid grid-cols-1 gap-2 text-sm">
+      {keys.map((k) => {
+        const mapped = DECLARATION_LABELS[k];
+        const en = mapped?.en ?? humanizeDeclarationKey(k);
+        const he = mapped?.he ?? null;
+        return (
+          <div key={k} className="flex items-center justify-between bg-white rounded px-3 py-2 gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-sm text-slate-800 truncate">{en}</div>
+              {he && <div dir="rtl" className="text-xs text-muted-foreground truncate">{he}</div>}
+              <div className="text-[10px] text-muted-foreground/70 font-mono truncate">{k}</div>
+            </div>
+            {decl[k]
+              ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+              : <XCircle className="h-4 w-4 text-red-400 shrink-0" />}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -595,12 +654,41 @@ export default function ProviderKycReview() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{app.submittedAt ? new Date(app.submittedAt).toLocaleDateString('he-IL') : '—'}</span>
+                      {/* Lane A audit 2026-08-26: date digits in an he-IL string
+                          can flip inside an RTL page (dd/mm/yyyy → yyyy/mm/dd).
+                          Force LTR on the numeric span so the day/month/year
+                          ordering is stable regardless of the page direction.
+                          No shared formatDate helper exists in client/src/lib. */}
+                      <span dir="ltr">{app.submittedAt ? new Date(app.submittedAt).toLocaleDateString('he-IL') : '—'}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
                     <span className="font-medium">Provider type:</span>
                     <Badge variant="outline" className="capitalize">{app.providerType?.replace('_', ' ')}</Badge>
+                    {/* Lane A audit follow-up: applicant may have selected
+                        multiple provider types in Step 5. The scalar
+                        providerType stores ONLY the first one; the full
+                        array lives in internal_notes.providerTypes.
+                        Surface every type so approval knows what capabilities
+                        the applicant claimed — a wizard that picked
+                        {sitter, walker, trainer} but shows only 'sitter'
+                        here has lost information the reviewer needs. */}
+                    {(() => {
+                      try {
+                        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+                        const types: unknown = notes?.providerTypes;
+                        if (!Array.isArray(types) || types.length <= 1) return null;
+                        const extras = types.filter((t) => typeof t === 'string' && t !== app.providerType);
+                        if (extras.length === 0) return null;
+                        return extras.map((t) => (
+                          <Badge key={String(t)} variant="secondary" className="capitalize">
+                            {String(t).replace('_', ' ')}
+                          </Badge>
+                        ));
+                      } catch {
+                        return null;
+                      }
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -688,6 +776,61 @@ export default function ProviderKycReview() {
                       <span className="text-muted-foreground">Country</span>
                       <span className="font-medium">{app.country || '—'}</span>
                     </div>
+                    {/* Lane A audit 2026-08-26: phone-verified visibility.
+                        The status DTO from /api/provider-onboarding/application/status
+                        does NOT carry a `phoneVerified` scalar — that's a
+                        schema-adjacent add. If the wizard stashed the
+                        verified flag inside internal_notes.phoneVerified we
+                        surface it; otherwise render an em-dash so the
+                        reviewer knows it is unknown, not false. Pure UI. */}
+                    {(() => {
+                      let verified: boolean | null = null;
+                      try {
+                        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+                        if (typeof notes?.phoneVerified === 'boolean') verified = notes.phoneVerified;
+                      } catch { /* fall through */ }
+                      return (
+                        <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                          <span className="text-muted-foreground">Phone verified</span>
+                          {verified === true ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : verified === false ? (
+                            <XCircle className="h-4 w-4 text-red-400" />
+                          ) : (
+                            <span className="font-medium">—</span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                    {/* Lane A audit follow-up: pet-first-aid serial (Step 6)
+                        is captured in internal_notes.petFirstAidNumber
+                        because the schema column was mis-titled
+                        pet_first_aid_provider. Surfacing the serial + expiry
+                        here so admin can verify insurer traceability without
+                        opening the raw JSON blob. Schema rename is a
+                        CEO-approval item; UI extraction is safe today. */}
+                    {(() => {
+                      let serial: string | null = null;
+                      try {
+                        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+                        const raw = notes?.petFirstAidNumber;
+                        if (typeof raw === 'string' && raw.trim()) serial = raw.trim();
+                      } catch { /* fall through */ }
+                      return (
+                        <>
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">Pet first-aid serial</span>
+                            <span className="font-medium">{serial || '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">Pet first-aid expires</span>
+                            <span className="font-medium">
+                              {app.petFirstAidExpiresAt ? new Date(app.petFirstAidExpiresAt).toLocaleDateString() : '—'}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -722,7 +865,32 @@ export default function ProviderKycReview() {
                     </div>
                     <div className="flex items-center justify-between bg-white rounded px-3 py-2">
                       <span className="text-muted-foreground">Expires</span>
-                      <span className="font-medium">{app.insuranceExpiresAt ? new Date(app.insuranceExpiresAt).toLocaleDateString() : '—'}</span>
+                      {/* Lane A audit 2026-08-26: countdown badge so a reviewer
+                          sees at a glance whether the applicant's insurance is
+                          still valid — approving a provider whose policy lapses
+                          next week is a payout-eligibility landmine. Pure UI. */}
+                      {(() => {
+                        if (!app.insuranceExpiresAt) {
+                          return <span className="font-medium">—</span>;
+                        }
+                        const expiry = new Date(app.insuranceExpiresAt);
+                        const nowMs = Date.now();
+                        const days = Math.floor((expiry.getTime() - nowMs) / 86_400_000);
+                        const dateLabel = expiry.toLocaleDateString();
+                        let badgeClass = 'bg-green-100 text-green-800 border-green-300';
+                        let label = `${dateLabel} · ${days}d left`;
+                        if (days < 0) {
+                          badgeClass = 'bg-red-100 text-red-800 border-red-300';
+                          label = `${dateLabel} · expired ${Math.abs(days)}d ago`;
+                        } else if (days <= 30) {
+                          badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+                        }
+                        return (
+                          <span dir="ltr" className={`text-xs font-medium border rounded px-2 py-0.5 ${badgeClass}`}>
+                            {label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center justify-between bg-white rounded px-3 py-2">
                       <span className="text-muted-foreground">Coverage</span>

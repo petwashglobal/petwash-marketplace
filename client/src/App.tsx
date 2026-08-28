@@ -71,6 +71,12 @@ const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
 const ChoosePath = lazy(() => import("@/pages/ChoosePath"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
+// Pet Parent ↔ Provider workspace picker for any approved provider (every
+// human is also a Pet Parent — the customer capability is implicit).
+// Post-login decider routes here when no explicit intent was supplied.
+// Prestige is not a mode; enrolled members see a badge inside the Pet
+// Parent tile. CEO 2026-08-26 role-model directive.
+const ChooseMode = lazy(() => import("@/pages/ChooseMode"));
 const BecomeProviderResume = lazy(() => import("@/pages/BecomeProviderResume"));
 const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));
 const StaffPending = lazy(() => import("@/pages/StaffPending"));
@@ -178,6 +184,14 @@ const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxury inbox (Messages + Concierge + Alerts) — replaced the old Inbox.tsx
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetPassport = lazy(() => import("@/pages/PetPassport"));
+const PetPassportPrint = lazy(() => import("@/pages/PetPassportPrint"));
+const MyTransactions = lazy(() => import("@/pages/MyTransactions"));
+const MyTransactionDetail = lazy(() =>
+  import("@/pages/MyTransactions").then((m) => ({ default: m.MyTransactionDetail })),
+);
+const MyJobPassport = lazy(() => import("@/pages/MyJobPassport"));
+const AdminTransactionExplorer = lazy(() => import("@/pages/admin/AdminTransactionExplorer"));
+const AdminEgiftReservationSandbox = lazy(() => import("@/pages/admin/AdminEgiftReservationSandbox"));
 // Pet Owner / Passport / Consent Phase 1 (2026-06-20)
 const PetCareProfile = lazy(() => import("@/pages/PetCareProfile"));
 const PetDocuments = lazy(() => import("@/pages/PetDocuments"));
@@ -986,6 +1000,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RequireAuth>
           )}
         </Route>
+        <Route path="/mode">
+          {() => (
+            <RequireAuth>
+              <ChooseMode />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/provider/rejected">
           {() => (
             <RequireAuth>
@@ -1268,7 +1289,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/shop/orders">
           {() => import.meta.env.VITE_SHOP_LIVE_ENABLED === 'true'
             ? <ShopOrders language={language} onLanguageChange={handleLanguageChange} />
-            : <Shop />}
+            /* When the shop is dormant, a customer with a bookmark to
+               /shop/orders used to land on the marketing waitlist — a
+               sales pitch, not a "your orders" screen. Redirect them
+               to /shop so at least the URL matches the surface they
+               see. */
+            : <Redirect to="/shop" />}
         </Route>
         <Route path="/booking">
           {() => (
@@ -1475,6 +1501,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <PetPassport />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Print / Save-as-PDF cover — same green-marble tokens */}
+        <Route path="/pets/:petId/passport/print">
+          {() => (
+            <RequireAuth>
+              <PetPassportPrint />
             </RequireAuth>
           )}
         </Route>
@@ -3961,6 +3995,52 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/status/uptime" component={StatusDashboard} />
         
         <Route path="/receipt/:transactionId" component={ReceiptPage} />
+        {/* Fiscal transaction passport — customer surface. Consumes
+            /api/fiscal/my/transactions + /api/fiscal/transactions/by-source
+            (see server/routes/fiscal-passport.ts). */}
+        <Route path="/account/transactions">
+          {() => (
+            <RequireAuth>
+              <MyTransactions />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/account/transactions/:source/:sourceId">
+          {() => (
+            <RequireAuth>
+              <MyTransactionDetail />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Admin Transaction Explorer — §16 admin passport across eight
+            axes. Consumes /api/admin/fiscal-transactions/by-source. */}
+        <Route path="/admin/fiscal-transactions/:source/:sourceId">
+          {() => (
+            <RequireAuth>
+              <AdminTransactionExplorer />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* eGift Reservation Sandbox — pre-activation admin tool that
+            exercises the §22-29 reserve → commit → release lifecycle
+            against the real service. Staff-only. */}
+        <Route path="/admin/egift-reservation-sandbox">
+          {() => (
+            <RoleProtectedRoute minRole="staff">
+              <AdminEgiftReservationSandbox />
+            </RoleProtectedRoute>
+          )}
+        </Route>
+        {/* JobPassport — customer + provider surface. Consumes
+            /api/jobs/by-booking/:source/:bookingId (see
+            server/routes/job-passport.ts). */}
+        <Route path="/jobs/by-booking/:source/:bookingId">
+          {() => (
+            <RequireAuth>
+              <MyJobPassport />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/founder-member" component={FounderMember} />
         <Route path="/wash/qr" component={QrActivatePage} />
         <Route path="/buy-gift-card">

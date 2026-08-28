@@ -1,19 +1,25 @@
 /**
- * ChoosePath — the role choice shown AFTER the base account is complete
- * (CEO 2026-08-01). Authentication first → missing base fields → THEN this:
+ * ChoosePath — the intent picker shown AFTER the base account is complete
+ * (CEO 2026-08-01, revised 2026-08-26 role-model: Prestige is NOT a role).
+ * Authentication first → missing base fields → THEN this:
  *
  *   What do you want to do?
- *     [ Pet owner / Prestige ]   → home (member; nothing more required)
- *     [ Become a provider ]      → provider onboarding (KYC + approval)
- *     [ Both ]                    → home now + start provider onboarding
+ *     [ Pet Parent ]           → home (customer workspace; nothing more required)
+ *     [ Become a Provider ]    → provider onboarding (KYC + approval)
  *
- * This is a light, ONE-TIME choice — never a blocking gate. "Pet owner" is the
- * default; a member needs nothing beyond the base profile. Provider paths route
- * to the canonical /provider-onboarding (national ID, address, docs, bank,
- * agreement, approval) — that KYC is NEVER asked of a plain member.
+ * This is a light, ONE-TIME choice — never a blocking gate. "Pet Parent" is
+ * the default; a member needs nothing beyond the base profile. Provider path
+ * routes to the canonical /provider-onboarding (national ID, address, docs,
+ * bank, agreement, approval) — that KYC is NEVER asked of a plain Pet Parent.
+ *
+ * The old "Both" tile was removed — becoming a provider ALREADY leaves the
+ * Pet Parent workspace intact (additive multi-role model). "Both" mislead
+ * as if two identities were being created. Same for the "· Prestige" suffix
+ * on the pet-owner tile — Prestige is a badge that surfaces inside the Pet
+ * Parent home, not an identity choice here.
  */
 import { useLocation } from 'wouter';
-import { PawPrint, Briefcase, Sparkles } from 'lucide-react';
+import { PawPrint, Briefcase } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 
 interface ChoosePathProps {
@@ -26,38 +32,31 @@ export default function ChoosePath({ language }: ChoosePathProps) {
 
   const options = [
     {
-      key: 'member',
+      key: 'pet_parent',
       icon: PawPrint,
-      title: he ? 'בעל/ת חיית מחמד · Prestige' : 'Pet owner · Prestige',
+      title: he ? 'המשך כהורה של חיה' : 'Continue as Pet Parent',
       desc: he
         ? 'הזמנת שירותים, ארנק, שוברי מתנה ותגמולים. הכול מוכן — אין צורך בעוד פרטים.'
         : 'Book services, wallet, gift cards and rewards. You’re all set — nothing more needed.',
-      cta: he ? 'המשך כבעל/ת חיית מחמד' : 'Continue as a pet owner',
+      cta: he ? 'למסך הבית' : 'Go to home',
       onClick: () => navigate('/home'),
       primary: true,
     },
     {
       key: 'provider',
       icon: Briefcase,
-      title: he ? 'הפוך/הפכי לספק/ית' : 'Become a provider',
+      title: he ? 'הפוך/הפכי לספק/ית' : 'Become a Provider',
       desc: he
-        ? 'פט-סיטר, הולכת כלבים או אקדמיה. נבקש מסמכי זיהוי, כתובת ופרטי תשלום — ולאחר אישור תוכל/י לקבל לקוחות.'
-        : 'Pet sitter, dog walker or academy. We’ll ask for ID, address and payout details — after approval you can take clients.',
+        ? 'פט-סיטר, הולכת כלבים או אקדמיה. נבקש מסמכי זיהוי, כתובת ופרטי תשלום — ולאחר אישור תוכל/י לקבל לקוחות. צד הלקוח שלך נשאר כמו שהוא.'
+        : 'Pet sitter, dog walker or academy. We’ll ask for ID, address and payout details — after approval you can take clients. Your Pet Parent side stays intact.',
       cta: he ? 'התחל/י רישום ספק/ית' : 'Start provider signup',
       onClick: () => navigate('/provider-onboarding'),
       primary: false,
     },
-    {
-      key: 'both',
-      icon: Sparkles,
-      title: he ? 'גם וגם' : 'Both',
-      desc: he
-        ? 'תיהנה/י מהחברות עכשיו, ותשלים/י את רישום הספק/ית כשנוח לך.'
-        : 'Enjoy membership now and complete provider signup whenever you’re ready.',
-      cta: he ? 'חבר/ה + ספק/ית' : 'Member + provider',
-      onClick: () => navigate('/provider-onboarding?from=both'),
-      primary: false,
-    },
+    // "Both" tile removed (CEO 2026-08-26 role-model): becoming a Provider
+    // is already additive — the Pet Parent side is preserved automatically.
+    // A separate "Both" tile framed it as a THIRD identity, which is the
+    // exact anti-pattern the role-model directive banned.
   ];
 
   return (

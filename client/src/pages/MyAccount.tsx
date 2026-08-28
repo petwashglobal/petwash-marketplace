@@ -4687,6 +4687,35 @@ export default function MyAccount() {
                   SUMIT customer hasn't been synced yet — no error surface. ── */}
               <MyInvoicesLink language={isHebrew ? 'he' : 'en'} />
 
+              {/* ── PetWash™ transaction passport — one place, all payments.
+                  Consumes /api/fiscal/my/transactions (see
+                  server/routes/fiscal-passport.ts). Wired into MyAccount so
+                  customers can actually reach the fiscal-passport surface. ── */}
+              <button
+                type="button"
+                onClick={() => (window.location.href = '/account/transactions')}
+                className="w-full text-start rounded-2xl p-4 flex items-center gap-3 transition-transform active:scale-[0.995]"
+                style={{ background: '#063B22', color: '#D6B56D', border: '1px solid #063B22' }}
+              >
+                <span
+                  className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg"
+                  style={{ background: 'rgba(214,181,109,0.15)' }}
+                >
+                  🧾
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-extrabold">
+                    {isHebrew ? 'העסקאות שלי — הכל במקום אחד' : 'My transactions — all in one place'}
+                  </span>
+                  <span className="block text-[12px]" style={{ color: 'rgba(255,255,255,0.85)' }}>
+                    {isHebrew
+                      ? 'קבלות, הזמנות, ארנק ורחצות K9000 — תצוגה מאוחדת'
+                      : 'Receipts, orders, wallet, and K9000 washes — unified view'}
+                  </span>
+                </span>
+                <span aria-hidden style={{ color: '#D6B56D' }}>›</span>
+              </button>
+
               {/* ── Tax Invoices (חשבוניות מס) ── */}
               <div className="pw-section-card">
                 <div className="flex items-center justify-between mb-4">

@@ -1,27 +1,38 @@
 /**
- * Legal acceptance endpoints — the ONE server surface every client legal
- * page uses to persist a user's acceptance to the canonical
- * `legal_acceptances` evidence ledger (migration 0127).
+ * Legal acceptance endpoints — the canonical evidence API for the
+ * `legal_acceptances` ledger (migration 0127).
  *
- * Created 2026-08-25 as the wiring layer between the ~30 passive-display
- * legal pages the audit surfaced and the new canonical service.
+ * CORRECTED FRAMING (CEO 2026-08-26 §11): this endpoint is NOT
+ * "the ONE server surface every client legal page uses". Today it is
+ * the CANONICAL EVIDENCE API. Actual write coverage lives in a mix of:
+ *   • This endpoint (direct calls from surfaces already migrated).
+ *   • Migration dual-writes fired from legacy acceptance surfaces
+ *     (see `provider-declarations.ts`, `legal-consent.ts`,
+ *     `consent-center.ts`, and the /api/consent/onboarding handler in
+ *     `routes.ts`). Those dual-writes are BEST-EFFORT SHADOW today,
+ *     not authoritative — reconciliation is a follow-up (§7).
  *
  *   POST /api/legal/accept
- *     body: { documentKey, docVersion, language, snapshotText? }
- *     auth: Firebase Bearer (requireAuth)
+ *     body: { documentKey, versionExpected?, language, snapshotUrl?,
+ *             deviceFingerprint?, metadata? }
+ *     auth: Firebase Bearer (validateFirebaseToken via mount).
+ *     Server RESOLVES the canonical docVersion + snapshotText from
+ *     the shared/lib/legalDocumentRegistry — client's `snapshotText`
+ *     is IGNORED to prevent evidence forgery. Client may send
+ *     `versionExpected` to detect a race with a mid-flight doc bump
+ *     (410 GONE if the version moved on since render).
  *     → 200 { ok, acceptance: { id, docVersion, acceptedAt, ... } }
  *
- *   GET /api/legal/my-acceptances
- *     auth: Firebase Bearer
- *     → 200 { acceptances: LegalAcceptanceRow[] }
- *
- *   GET /api/admin/legal-acceptances/:userId
- *     auth: super_admin (isSuperAdmin(req.firebaseUser.email))
- *     → 200 { userId, acceptances: LegalAcceptanceRow[] }
+ *   GET /api/legal/my-acceptances     — user self
+ *   GET /api/admin/legal-acceptances/:userId — super_admin only
  *
  * The writer service (LegalAcceptanceService) is idempotent per
- * (userId, documentKey, docVersion) so a client that re-submits on
- * refresh does not create duplicate rows.
+ * (userId, documentKey, docVersion) so a re-submit on refresh does
+ * not create duplicate rows. IMPORTANT: idempotency means this ledger
+ * answers "has ever accepted this version" (CEO §10). Lifecycle
+ * (grant/withdraw/re-grant for marketing consent) stays in the
+ * consent_ledger + notification_preferences — this canonical table
+ * is grant-evidence-only.
  */
 
 import { Router, type Request, type Response } from 'express';
@@ -32,57 +43,31 @@ import {
 } from '../services/LegalAcceptanceService';
 import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
+import {
+  LEGAL_DOCUMENT_KEYS,
+  getLegalDocument,
+} from '@shared/lib/legalDocumentRegistry';
 
 const router = Router();
 
-// Whitelisted document keys — matches the docs in the 2026-08-25 legal
-// audit report (short forms). Adding a new legal page requires adding the
-// key here, so an accidental client-side typo can't insert a garbage
-// document_key into the evidence ledger.
-const KNOWN_DOCUMENT_KEYS = new Set<string>([
-  // Customer
-  'customer_tos',
-  'privacy_policy',
-  'cancellation_refund_14g',
-  'marketing_consent',
-  'booking_rules',
-  'pet_owner_responsibility',
-  'emergency_vet_authorisation',
-  'wallet_egift_terms',
-  'reviews_content_policy',
-  'community_guidelines',
-  'home_access_property_authority',
-  // Provider
-  'provider_agreement',
-  'provider_independent_status',
-  'provider_no_franchise_no_agency',
-  'provider_safety_manual',
-  'provider_insurance_disclosure',
-  'provider_tax_business_status',
-  'provider_privacy_data',
-  'provider_off_platform_payment',
-  'provider_incident_reporting',
-  'provider_home_hosting',
-  'provider_owner_home_visit',
-  'provider_dog_walking_safety',
-  'provider_academy_trainer',
-  'provider_pettrek_transport',
-  'provider_self_declaration_no_convictions',
-  'provider_background_check_consent',
-  'provider_reconfirmation',
-  'provider_truth_declaration',
-  'provider_confidentiality',
-  'provider_brand_use',
-  'provider_payout_rules',
-  'provider_cancellation',
-  'provider_no_circumvention',
-]);
+// Whitelisted keys are derived from the canonical registry
+// (shared/lib/legalDocumentRegistry.ts) — no hand-maintained list.
+// A new document is added there and this whitelist updates automatically
+// (CEO 2026-08-26 §1-2).
+const KNOWN_DOCUMENT_KEYS = LEGAL_DOCUMENT_KEYS;
 
+// CEO 2026-08-26 §5: the client is NOT trusted to declare the docVersion
+// or the snapshotText. It sends the key + the language it displayed +
+// (optionally) the version it THOUGHT it was rendering — the server
+// resolves the canonical version from the registry and rejects a stale
+// render with 410 GONE. snapshotText is IGNORED entirely; the server
+// derives evidence from the registry (or leaves it null when the text
+// source is a client-side page not yet available server-side).
 const acceptSchema = z.object({
   documentKey: z.string().min(1).max(80),
-  docVersion: z.string().min(1).max(40),
+  /** Optional stale-render check; server rejects if != currentVersion. */
+  versionExpected: z.string().min(1).max(40).optional(),
   language: z.enum(['he', 'en', 'ar', 'ru', 'fr', 'es']),
-  snapshotText: z.string().max(200_000).optional(),
   snapshotUrl: z.string().url().max(2000).optional(),
   deviceFingerprint: z.string().max(200).optional(),
   metadata: z.record(z.any()).optional(),
@@ -101,36 +86,79 @@ router.post('/accept', async (req: Request, res: Response) => {
       details: parsed.error.flatten(),
     });
   }
-  const { documentKey, docVersion, language, snapshotText, snapshotUrl, deviceFingerprint, metadata } = parsed.data;
+  const { documentKey, versionExpected, language, snapshotUrl, deviceFingerprint, metadata } = parsed.data;
 
-  if (!KNOWN_DOCUMENT_KEYS.has(documentKey)) {
+  const doc = getLegalDocument(documentKey);
+  if (!doc || !KNOWN_DOCUMENT_KEYS.has(documentKey)) {
     logger.warn('[LegalAccept] Rejected unknown documentKey', { userId, documentKey });
-    return res.status(400).json({ ok: false, error: 'Unknown document', hint: 'Add the key to KNOWN_DOCUMENT_KEYS.' });
+    return res.status(400).json({ ok: false, error: 'Unknown document', hint: 'Add the key to shared/lib/legalDocumentRegistry.ts.' });
   }
 
-  const acceptance = await recordLegalAcceptance({
+  // Language sanity: client MUST accept in a language the registry
+  // actually supports for this document. A mismatched language is
+  // dishonest evidence (CEO §3).
+  if (!doc.languages.includes(language)) {
+    return res.status(400).json({
+      ok: false, error: 'Language not available for this document',
+      supportedLanguages: doc.languages,
+    });
+  }
+
+  // Stale-render check: if the client sent versionExpected and it does
+  // not match the registry's currentVersion, the user was looking at
+  // an outdated doc. 410 GONE + newVersion so the client can re-render.
+  if (versionExpected && versionExpected !== doc.currentVersion) {
+    return res.status(410).json({
+      ok: false, error: 'Document version changed since render',
+      code: 'VERSION_STALE',
+      requested: versionExpected,
+      current: doc.currentVersion,
+    });
+  }
+
+  // AUTHORITATIVE policy at this endpoint (CEO §1): this is the user
+  // explicitly accepting via /api/legal/accept — failure must not
+  // silently succeed. Any write error returns 500 and the client is
+  // expected to retry; we never mint a false "you accepted" UI.
+  const writeResult = await recordLegalAcceptance({
     userId,
     documentKey,
-    docVersion,
+    docVersion: doc.currentVersion,
     language,
     // Trust ONLY req.ip (Express + trust proxy). Raw X-Forwarded-For is
     // caller-controlled — same rule as PR #2158 for signed provider IPs.
     ipAddress: req.ip || req.socket?.remoteAddress || null,
     userAgent: req.get('user-agent') || null,
     deviceFingerprint: deviceFingerprint ?? null,
-    snapshotText,
+    // snapshotText intentionally omitted here: the client does not
+    // supply it and static-page documents don't have a server-owned
+    // body yet. When the registry evolves to `consentSnapshot` /
+    // `providerDeclaration` text sources, this writer can derive
+    // snapshotText from the resolved doc.text[language]. Until then
+    // we prefer no evidence over dishonest evidence.
+    snapshotText: undefined,
     snapshotUrl: snapshotUrl ?? null,
     source: 'client',
     actorRole: 'self',
-    metadata,
+    metadata: {
+      ...(metadata || {}),
+      scope: doc.scope,
+      textSourceKind: doc.textSource.kind,
+    },
   });
 
-  if (!acceptance) {
-    return res.status(500).json({ ok: false, error: 'Could not record acceptance' });
+  if (!writeResult.ok) {
+    return res.status(500).json({
+      ok: false,
+      error: 'Could not record acceptance',
+      errorCode: writeResult.errorCode,
+    });
   }
+  const acceptance = writeResult.row;
 
   return res.json({
     ok: true,
+    alreadyAccepted: writeResult.alreadyAccepted,
     acceptance: {
       id: acceptance.id,
       documentKey: acceptance.documentKey,

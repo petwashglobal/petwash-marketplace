@@ -167,6 +167,30 @@ router.post('/verify-otp', async (req, res) => {
       phoneVerifiedAt: new Date(),
     }, { merge: true });
 
+    // Postgres mirror (Lane A audit follow-up): before this write the
+    // provider wizard's "phone verified" boolean lived only in Firestore
+    // and React state. Every server-side rule that gates on
+    // users.phone_verified (activation, sensitive endpoints, admin
+    // review) reads Postgres, so the flag has to land there too.
+    // Best-effort: a failure here MUST NOT undo the Firestore write
+    // the customer already saw succeed — an admin can reconcile from
+    // the PROVIDER_PHONE_MIRROR_FAILED signal below.
+    try {
+      const { db: pg } = await import('../db');
+      const { users } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      await pg
+        .update(users)
+        .set({ phoneVerified: true, phoneE164: otpData.phone })
+        .where(eq(users.id, uid));
+    } catch (pgErr: any) {
+      logger.error('PROVIDER_PHONE_MIRROR_FAILED', {
+        signal: 'PROVIDER_PHONE_MIRROR_FAILED',
+        uid,
+        errorMessage: pgErr?.message ?? String(pgErr),
+      });
+    }
+
     logger.info('[ProviderPhone] Phone verified', { uid, phone: otpData.phone.slice(-4) });
     res.json({ success: true, phone: otpData.phone, message: language === 'he' ? '✅ הטלפון אומת בהצלחה!' : '✅ Phone verified successfully!' });
 

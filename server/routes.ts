@@ -78,8 +78,40 @@ import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
 import saveCardRoutes from "./routes/save-card";
 import egiftGuestRoutes from "./routes/egift-guest";
+import egiftBalanceRoutes from "./routes/egift-balance";
 import legalConsentRoutes from "./routes/legal-consent";
 import legalAcceptancesRoutes from "./routes/legal-acceptances";
+// Thread-scoped chat (chat_threads spine) — send/read/list for every
+// non-booking thread (PAW_FINDER, support, incident, K9000, shop, gift,
+// provider_application, franchise, admin). Booking chats keep using
+// booking-chat.ts.
+import threadChatRoutes from "./routes/thread-chat";
+// Payment-preview composer — the ONE customer-facing endpoint that
+// answers "what does this customer owe RIGHT NOW?" for every surface.
+// READ-ONLY. Never captures, reserves, or mutates.
+import paymentPreviewRoutes from "./routes/payment-preview";
+// Attention feed — the "what needs my attention" projection for each
+// workspace home. READ-ONLY. Actor-scoped: /pet-parent and /provider.
+import attentionRoutes from "./routes/attention";
+// Legal reconciliation — admin-only READ-ONLY report over the
+// v_legacy_missing_canonical / v_canonical_missing_legacy /
+// v_legal_acceptance_duplicates views (migration 0129).
+import legalReconciliationRoutes from "./routes/legal-reconciliation";
+// Approved-but-broken provider recon (CEO §21). READ-ONLY diagnostic.
+// Detects applications marked approved whose per-vertical profile row
+// (sitter_profiles / walker_profiles) is missing — the customer-facing
+// symptom is "approved provider is invisible to search/booking". Repair
+// is a separate CEO-approved dry-run/apply command.
+import adminProviderReconRoutes from "./routes/admin-provider-recon";
+// PetWash JobPassport — CEO 2026-08-27 chain-of-custody workstream.
+// READ-ONLY composer over existing authorities (§60 Phase 1).
+import jobPassportRoutes from "./routes/job-passport";
+// PetWash FiscalTransactionPassport — CEO 2026-08-27 fiscal directive.
+// READ-ONLY composer over existing SUMIT / booking / order authorities.
+import fiscalPassportRoutes from "./routes/fiscal-passport";
+// Provider earnings — canonical expected/pending/available/paid buckets.
+// READ-ONLY. Coexists with /api/provider-dashboard/v2/earnings.
+import providerEarningsTruthRoutes from "./routes/provider-earnings-truth";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
 import adminStaffRoutes from "./routes/admin-staff";
@@ -2193,6 +2225,65 @@ self.addEventListener('notificationclick', (event) => {
         storageBackend: stored ? 'success' : 'failed',
       });
 
+      // SHADOW policy (CEO 2026-08-26 correction pass §1): the Firestore
+      // /  PG consent_snapshots writes above are authoritative for this
+      // path. Structured result — branch on r.ok because the service
+      // catches its own DB errors and returns { ok:false } (a
+      // `.catch()`-only pattern would NEVER fire for a normal DB
+      // failure). emitShadowFailure inside the service is the observable
+      // signal; this log is an additional breadcrumb pairing origin +
+      // errorCode. Version resolved from the registry, not hardcoded.
+      if (firebaseUser?.uid) {
+        const { recordLegalAcceptance } = await import('./services/LegalAcceptanceService');
+        const { getLegalDocument } = await import('@shared/lib/legalDocumentRegistry');
+        const language = 'he' as const;
+        const commonArgs = {
+          userId: firebaseUser.uid,
+          language,
+          ipAddress: ip || null,
+          userAgent: userAgent || null,
+          source: 'client' as const,
+          actorRole: 'self' as const,
+          metadata: { origin: '/api/consent/onboarding', evidenceHash, source: source || 'onboarding' },
+        };
+        const shadowHandle = (docKey: string, docVersion: string, extras: Record<string, unknown> = {}) => (r: any) => {
+          if (!r?.ok) {
+            logger.warn('[Consent] canonical shadow write failed — legacy authority stands', {
+              uid: firebaseUser.uid, docKey, docVersion, errorCode: r?.errorCode, ...extras,
+            });
+          }
+        };
+        // Explicit .catch() on every shadow write (Lane D §D5). The service
+        // is designed to trap its own DB errors and return a structured
+        // { ok:false } result, so this should only ever fire on a truly
+        // unexpected throw (module-load failure, oom, etc.). Without it
+        // such a throw becomes an unhandled rejection and vanishes from
+        // the ops trail while legacy authority still stands.
+        const shadowCatch = (docKey: string, docVersion: string) => (err: any) => {
+          logger.warn('[Consent] canonical shadow write threw — legacy authority stands', {
+            uid: firebaseUser.uid, docKey, docVersion, errorMessage: err?.message ?? String(err),
+          });
+        };
+        if (termsOfService) {
+          const d = getLegalDocument('customer_tos');
+          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'customer_tos', docVersion: d.currentVersion })
+            .then(shadowHandle('customer_tos', d.currentVersion))
+            .catch(shadowCatch('customer_tos', d.currentVersion));
+        }
+        if (privacyPolicy) {
+          const d = getLegalDocument('privacy_policy');
+          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'privacy_policy', docVersion: d.currentVersion })
+            .then(shadowHandle('privacy_policy', d.currentVersion))
+            .catch(shadowCatch('privacy_policy', d.currentVersion));
+        }
+        if (emailCommunication) {
+          const d = getLegalDocument('marketing_consent');
+          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'marketing_consent', docVersion: `${d.currentVersion}-email` })
+            .then(shadowHandle('marketing_consent', `${d.currentVersion}-email`, { channel: 'email' }))
+            .catch(shadowCatch('marketing_consent', `${d.currentVersion}-email`));
+        }
+      }
+
       res.json({ ok: true, evidenceHash });
     } catch (error) {
       logger.error('[Consent] Failed to save onboarding consent:', error);
@@ -2736,10 +2827,22 @@ self.addEventListener('notificationclick', (event) => {
         providerApproved ? 'approved' : providerPending ? 'pending' : 'none';
       const prestigeStatus: 'none' | 'active' =
         (claims.program === 'prestige' || claims.loyaltyMember === true) ? 'active' : 'none';
+      // activeFlow — the surface the account was minted from. Historically
+      // the customer/loyalty value was 'prestige' — that framed Prestige
+      // as a workspace flow, which contradicts the CEO 2026-08-26 role
+      // model (Prestige is a membership entitlement, not a workspace).
+      // The value is now 'customer' for pet-parent-first flows. The old
+      // 'prestige' input is silently mapped to 'customer' so existing DB
+      // rows with the legacy intent continue to route correctly.
       const rawIntent = (pgUser as any)?.signupIntent;
-      const activeFlow: 'prestige' | 'provider' | 'guest' | 'booking' | 'general' =
-        rawIntent === 'prestige' || rawIntent === 'provider' || rawIntent === 'guest' || rawIntent === 'booking'
-          ? rawIntent : 'general';
+      const normalizedIntent =
+        rawIntent === 'prestige' ? 'customer' :
+        rawIntent === 'loyalty'  ? 'customer' :
+        rawIntent;
+      const activeFlow: 'customer' | 'provider' | 'guest' | 'booking' | 'general' =
+        normalizedIntent === 'customer' || normalizedIntent === 'provider' ||
+        normalizedIntent === 'guest' || normalizedIntent === 'booking'
+          ? normalizedIntent : 'general';
 
       // roles[] — ONE IDENTITY across all journeys. Derived from the
       // canonical additive capability aggregator so every true capability
@@ -12803,6 +12906,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/payments', apiLimiter, saveCardRoutes);
   // Guest eGift checkout — PUBLIC (no signup). Gated by PETWASH_EGIFT_PURCHASE_ENABLED (off), pay-then-issue.
   app.use('/api/egift', egiftGuestRoutes);
+  // eGift balance projection — READ-ONLY (CEO 2026-08-27 §21-23, §31).
+  // Available / Reserved / Redeemed / Restored derived from ledger.
+  app.use('/api/egift', validateFirebaseToken, apiLimiter, egiftBalanceRoutes);
   app.use('/api/legal', apiLimiter, legalConsentRoutes);
   // Canonical legal-evidence ledger (CEO directive §11-§12, migration 0127).
   // POST /accept + GET /my-acceptances require Firebase token; the admin
@@ -12810,6 +12916,18 @@ self.addEventListener('notificationclick', (event) => {
   // legal display page will migrate to POST here so we build a real
   // evidence trail (who / what / version / lang / IP / device / snapshot).
   app.use('/api/legal-acceptances', validateFirebaseToken, apiLimiter, legalAcceptancesRoutes);
+  app.use('/api/threads', apiLimiter, threadChatRoutes);
+  app.use('/api/payment-preview', apiLimiter, paymentPreviewRoutes);
+  app.use('/api/attention', validateFirebaseToken, apiLimiter, attentionRoutes);
+  app.use('/api/provider', validateFirebaseToken, apiLimiter, providerEarningsTruthRoutes);
+  app.use('/api/admin', validateFirebaseToken, apiLimiter, legalReconciliationRoutes);
+  // /api/admin/approved-provider-recon — READ-ONLY §21 diagnostic.
+  app.use('/api/admin', validateFirebaseToken, apiLimiter, adminProviderReconRoutes);
+  // /api/jobs/* — READ-ONLY JobPassport composer. Authenticated only;
+  // the composer's per-vertical joins enforce participant scope.
+  app.use('/api/jobs', validateFirebaseToken, apiLimiter, jobPassportRoutes);
+  // /api/fiscal/* — customer + admin fiscal passport read model.
+  app.use('/api/fiscal', validateFirebaseToken, apiLimiter, fiscalPassportRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
   app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);

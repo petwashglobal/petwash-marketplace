@@ -12536,6 +12536,15 @@ export const egiftEventTypeEnum = pgEnum("egift_event_type", [
   "REFUNDED",
   "EXPIRED",
   "VOIDED",
+  // §21 CEO 2026-08-27 — universal stored-value vocabulary
+  // (added by migration 0130).
+  "RESERVED",
+  "RESERVATION_RELEASED",
+  "VALUE_RESTORED",
+  "PURCHASE_REFUNDED",
+  "FROZEN",
+  "UNFROZEN",
+  "ADJUSTMENT",
 ]);
 
 export const egiftEvents = pgTable("egift_events", {
@@ -12568,6 +12577,41 @@ export const egiftEvents = pgTable("egift_events", {
   uniqueIndex("uq_egift_events_idempotency_key").on(table.idempotencyKey).where(sql`idempotency_key IS NOT NULL`),
   index("idx_egift_events_created").on(table.createdAt),
 ]);
+
+// §22 per-egift reservation ledger — CEO 2026-08-27.
+// Enables AVAILABLE → RESERVED → COMMITTED/RELEASED atomic transitions
+// per eGift so concurrent spends can't oversell. NOT wired to money
+// paths yet; the migration lands the schema so future wiring commits
+// don't have to migrate at the same time.
+export const egiftReservations = pgTable("egift_reservations", {
+  id: serial("id").primaryKey(),
+  reservationId: varchar("reservation_id", { length: 64 }).unique().notNull(),
+  egiftId: varchar("egift_id", { length: 64 }).notNull(),
+  userId: varchar("user_id", { length: 255 }),
+  walletId: varchar("wallet_id", { length: 64 }),
+  amountCents: integer("amount_cents").notNull(),
+  currency: varchar("currency", { length: 8 }).notNull().default("ILS"),
+  intendedCommercial: varchar("intended_commercial", { length: 64 }).notNull(),
+  intendedSourceType: varchar("intended_source_type", { length: 64 }),
+  intendedSourceId: varchar("intended_source_id", { length: 128 }),
+  /** RESERVED | COMMITTED | RELEASED | EXPIRED. */
+  status: varchar("status", { length: 24 }).notNull().default("RESERVED"),
+  reservedAt: timestamp("reserved_at").defaultNow().notNull(),
+  committedAt: timestamp("committed_at"),
+  releasedAt: timestamp("released_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 128 }),
+  metadata: jsonb("metadata").default(sql`'{}'::jsonb`),
+}, (table) => [
+  index("idx_egift_reservations_egift").on(table.egiftId, table.status),
+  index("idx_egift_reservations_user").on(table.userId, table.status),
+  index("idx_egift_reservations_expiry").on(table.expiresAt),
+  uniqueIndex("uq_egift_reservations_idempotency_key")
+    .on(table.idempotencyKey)
+    .where(sql`idempotency_key IS NOT NULL`),
+]);
+
+export type EgiftReservation = typeof egiftReservations.$inferSelect;
 
 export const egiftRedeemAttempts = pgTable("egift_redeem_attempts", {
   id: serial("id").primaryKey(),

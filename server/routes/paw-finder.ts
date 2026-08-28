@@ -131,6 +131,11 @@ const createPostSchema = z.object({
     }),
     mimeType: z.string().optional(),
     mediaRole: z.enum(['primary', 'extra']).default('primary'),
+    // Hash returned by /api/paw-finder/upload — pass it back on /posts so
+    // dedupe works on multi-instance Cloud Run (the upload container may
+    // not be the same as the posts container; local-disk lookup then
+    // silently no-ops). 64-hex sha256 shape.
+    hash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   })).min(1).max(8),
 });
 
@@ -398,29 +403,42 @@ router.post('/posts', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
     }
 
-    // Image hash duplicate check
+    // Image hash duplicate check.
+    //
+    // Multi-instance Cloud Run fix (2026-08-25): previously the only
+    // source of the hash was `sha256File(path.join(cwd(), filePath))` —
+    // if the /upload landed on container A and /posts on container B,
+    // container B's disk had no such file, `fs.existsSync` returned
+    // false, and dedupe silently no-oped. Now:
+    //   1. Trust the client-supplied hash if it arrived from /upload
+    //      (which computed it authoritatively while it owned the file).
+    //   2. Fall back to re-hashing from local disk when the file
+    //      happens to be here — keeps old clients working.
     let imageHash: string | null = null;
     const primaryMedia = parsed.data.mediaFiles.find(m => m.mediaRole === 'primary');
     if (primaryMedia) {
-      const diskPath = path.join(process.cwd(), primaryMedia.filePath);
-      // Verify the resolved path is inside UPLOAD_DIR before touching the filesystem
-      const resolvedDiskPath = path.resolve(diskPath);
-      const uploadDirPrefix = UPLOAD_DIR + path.sep;
-      const isSafe = resolvedDiskPath.startsWith(uploadDirPrefix);
-      if (isSafe && fs.existsSync(resolvedDiskPath)) {
-        imageHash = sha256File(resolvedDiskPath);
-        if (imageHash) {
-          const { rows: dupRows } = await pool.query(
-            `SELECT id, post_key FROM paw_finder_posts WHERE image_hash = $1 AND user_id = $2 LIMIT 1`,
-            [imageHash, userId],
-          );
-          if (dupRows.length) {
-            return res.status(409).json({
-              error: 'DUPLICATE_IMAGE',
-              message: 'This image was already used in one of your posts.',
-              existingPostKey: dupRows[0].post_key,
-            });
-          }
+      if (primaryMedia.hash) {
+        imageHash = primaryMedia.hash;
+      } else {
+        const diskPath = path.join(process.cwd(), primaryMedia.filePath);
+        const resolvedDiskPath = path.resolve(diskPath);
+        const uploadDirPrefix = UPLOAD_DIR + path.sep;
+        const isSafe = resolvedDiskPath.startsWith(uploadDirPrefix);
+        if (isSafe && fs.existsSync(resolvedDiskPath)) {
+          imageHash = sha256File(resolvedDiskPath);
+        }
+      }
+      if (imageHash) {
+        const { rows: dupRows } = await pool.query(
+          `SELECT id, post_key FROM paw_finder_posts WHERE image_hash = $1 AND user_id = $2 LIMIT 1`,
+          [imageHash, userId],
+        );
+        if (dupRows.length) {
+          return res.status(409).json({
+            error: 'DUPLICATE_IMAGE',
+            message: 'This image was already used in one of your posts.',
+            existingPostKey: dupRows[0].post_key,
+          });
         }
       }
     }
@@ -608,17 +626,101 @@ router.post('/my/contacts/:id/accept', requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'not_found_or_already_handled' });
 
     const cr = rows[0];
+    // Include the phone in the acceptance notification when the post's
+    // contact_preference actually calls for phone reveal — otherwise the
+    // requester gets "your request was accepted" with no path to follow
+    // up. Default 'inbox_first' posts now get a REAL inbox thread (see
+    // below) so the finder taps into a conversation instead of a dead
+    // toast — no privacy default is weakened.
     const { rows: postRows } = await pool.query(
-      `SELECT pet_name, post_type FROM paw_finder_posts WHERE id = $1`,
+      `SELECT id, pet_name, post_type, contact_preference, contact_phone
+         FROM paw_finder_posts WHERE id = $1`,
       [cr.post_id],
     );
     if (postRows[0]) {
+      const post = postRows[0] as {
+        id: number;
+        pet_name: string | null;
+        post_type: string | null;
+        contact_preference: string | null;
+        contact_phone: string | null;
+      };
+      const willRevealPhone =
+        post.contact_preference === 'reveal_phone_after_accept' ||
+        post.contact_preference === 'public_phone';
+      const phone = willRevealPhone ? (post.contact_phone || null) : null;
+
+      // INBOX-FIRST wiring (CEO 2026-08-26 §22-24): for the default
+      // `inbox_first` preference the owner has explicitly chosen "chat,
+      // don't share my phone". Create a chat_threads spine thread via the
+      // existing service (PAW_FINDER type, caseId = 'PFC-<contactId>'),
+      // seed it with the requester's original message, and pass the
+      // threadId in the push so the finder deep-links into the
+      // conversation. Fail-soft: on any thread-create error we still
+      // deliver the "accepted" push so the flow is not blocked.
+      let threadId: string | null = null;
+      const isInboxMode = !willRevealPhone;
+      if (isInboxMode) {
+        try {
+          const { getOrCreateThread } = await import('../services/chatThreadService');
+          const thread = await getOrCreateThread({
+            threadType: 'PAW_FINDER',
+            caseId: `PFC-${crId}`,
+            petId: String(post.id),
+            customerUserId: userId,               // owner (owner-side of thread)
+            providerUserId: cr.requester_user_id, // finder (peer)
+          });
+          threadId = thread.threadId;
+
+          // Seed the thread with the requester's original message so the
+          // owner sees why the request came in the moment they open the
+          // chat, and the finder sees it as the opening turn.
+          const { rows: firstMsg } = await pool.query(
+            `SELECT message_text FROM paw_finder_contact_requests WHERE id = $1`,
+            [crId],
+          );
+          const openingText = String(firstMsg[0]?.message_text ?? '').trim();
+          if (openingText) {
+            const { db } = await import('../db');
+            const { chatThreadMessages } = await import('@shared/schema-chat');
+            await db.insert(chatThreadMessages).values({
+              threadId: thread.threadId,
+              senderUid: cr.requester_user_id,
+              senderRole: 'user',
+              body: openingText.slice(0, 4000),
+              attachments: [],
+            });
+          }
+        } catch (threadErr: any) {
+          logger.warn('[PawFinder] thread create failed — accept still notified', {
+            crId, err: String(threadErr?.message ?? threadErr),
+          });
+        }
+      }
+
+      const nameForCopy = post.pet_name || 'החיה';
+      const title = phone
+        ? '✅ הבקשה התקבלה — הנה מספר הטלפון'
+        : threadId
+          ? '✅ הבקשה התקבלה — פתחו את הצ׳אט'
+          : '✅ בקשת הקשר שלך התקבלה!';
+      const body = phone
+        ? `בעל/ת ${nameForCopy} שיתפ/ה מספר: ${phone}`
+        : threadId
+          ? `בעל/ת ${nameForCopy} פתח/ה שיחה — פתחו את הצ׳אט להמשך`
+          : `בעל/ת ${nameForCopy} קיבל/ה את הבקשה שלך`;
+
       await pushNotification(
         cr.requester_user_id, cr.post_id,
         'contact_accepted',
-        '✅ בקשת הקשר שלך התקבלה!',
-        `בעל/ת ${postRows[0].pet_name || 'החיה'} קיבל/ה את הבקשה שלך`,
-        { contactRequestId: crId },
+        title,
+        body,
+        {
+          contactRequestId: crId,
+          revealMode: willRevealPhone ? 'phone' : 'inbox',
+          ...(phone ? { revealedPhone: phone } : {}),
+          ...(threadId ? { threadId } : {}),
+        },
       );
     }
     res.json({ ok: true });

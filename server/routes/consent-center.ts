@@ -28,6 +28,7 @@ import { requireAuth, getUserId } from '../middleware/gates';
 import { logAuditEvent } from '../middleware/auditLog';
 import { getClientIP } from '../services/alerts';
 import { logger } from '../lib/logger';
+import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
 
 const router = Router();
 router.use(requireAuth);
@@ -155,6 +156,41 @@ router.post('/marketing', async (req: any, res) => {
       metadata: { channel },
     });
 
+    // Canonical-ledger dual-write (CEO 2026-08-26 §12): record every
+    // marketing consent GRANT in the append-only legal_acceptances
+    // ledger. Withdrawals stay in the marketing-preferences ledger
+    // above (the legal_acceptances shape is grant-only per migration
+    // 0127). Fire-and-forget; idempotent per
+    // (userId, marketing_consent, docVersion) — a re-grant of the
+    // same channel/version is a no-op.
+    if (granted) {
+      // SHADOW policy (CEO §1, §9-10): consent_ledger + notification_prefs
+      // remain authoritative for the marketing state machine (grant /
+      // withdraw / re-grant); the canonical ledger stores GRANT EVIDENCE
+      // ONLY. Structured result — branch on ok.
+      recordLegalAcceptance({
+        userId,
+        documentKey: 'marketing_consent',
+        docVersion: `v${CONSENT_VERSION}-${channel}`,
+        language: (req.body?.locale === 'en' || req.body?.locale === 'ar' || req.body?.locale === 'ru' || req.body?.locale === 'fr' || req.body?.locale === 'es') ? req.body.locale : 'he',
+        ipAddress: ip || null,
+        userAgent: ua || null,
+        source: 'client',
+        actorRole: 'self',
+        metadata: { channel, origin: '/api/consent-center/marketing' },
+      }).then((r) => {
+        if (!r.ok) {
+          logger.warn('[ConsentCenter] canonical shadow write failed — legacy authority stands', {
+            userId, channel, errorCode: r.errorCode,
+          });
+        }
+      }).catch((err: any) => {
+        logger.error('[ConsentCenter] canonical shadow write threw unexpectedly', {
+          userId, channel, err: err?.message,
+        });
+      });
+    }
+
     logger.info('[ConsentCenter] Marketing consent change', { userId, channel, granted });
     res.json({ success: true, channel, granted });
   } catch (error) {
@@ -224,6 +260,11 @@ router.patch('/notification-preferences', async (req: any, res) => {
 
     // Marketing toggles route through the same consent-evidence path.
     const { recordConsent, withdrawConsent } = await import('../services/consentEngine');
+    // Track channels granted in THIS request so the canonical shadow
+    // write below only fires for a genuine grant (never for a
+    // withdrawal — the canonical ledger stores GRANT EVIDENCE ONLY per
+    // CEO §9-10).
+    const grantedChannelsForShadow: MarketingChannel[] = [];
     if (body.marketing) {
       for (const ch of MARKETING_CHANNELS) {
         if (typeof body.marketing[ch] === 'boolean') {
@@ -234,8 +275,47 @@ router.patch('/notification-preferences', async (req: any, res) => {
             locale: (body.locale as string) || 'he', method: 'in_app' as const,
             ip, userAgent: ua, deviceId: body.deviceId || '', traceId: req.traceId || '',
           };
-          if (granted) await recordConsent(args); else await withdrawConsent(args);
+          if (granted) {
+            await recordConsent(args);
+            grantedChannelsForShadow.push(ch);
+          } else {
+            await withdrawConsent(args);
+          }
         }
+      }
+    }
+
+    // Canonical-ledger SHADOW dual-write (Lane D task 5). The sibling
+    // POST /marketing endpoint above already dual-writes; PATCH
+    // /notification-preferences is the OTHER surface that grants
+    // marketing consent, and until now it recorded only the legacy
+    // consent_ledger + notificationPreferences row. Best-effort per
+    // granted channel; MUST NOT fail the preferences update. Same
+    // pattern as consent-center.POST /marketing.
+    if (grantedChannelsForShadow.length > 0) {
+      const shadowLocale: string = (body.locale === 'en' || body.locale === 'ar' || body.locale === 'ru' || body.locale === 'fr' || body.locale === 'es') ? body.locale : 'he';
+      for (const ch of grantedChannelsForShadow) {
+        recordLegalAcceptance({
+          userId,
+          documentKey: 'marketing_consent',
+          docVersion: `v${CONSENT_VERSION}-${ch}`,
+          language: shadowLocale,
+          ipAddress: ip || null,
+          userAgent: ua || null,
+          source: 'client',
+          actorRole: 'self',
+          metadata: { channel: ch, origin: '/api/consent-center/notification-preferences' },
+        }).then((r) => {
+          if (!r.ok) {
+            logger.warn('[NotificationPrefsV2] canonical shadow write failed — legacy authority stands', {
+              userId, channel: ch, errorCode: r.errorCode,
+            });
+          }
+        }).catch((err: any) => {
+          logger.error('[NotificationPrefsV2] canonical shadow write threw unexpectedly', {
+            userId, channel: ch, err: err?.message,
+          });
+        });
       }
     }
 

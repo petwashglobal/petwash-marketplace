@@ -20,8 +20,10 @@ import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
+import { AttentionList } from '@/components/AttentionList';
 import { getTierDisplay } from '@/lib/loyalty';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
@@ -83,6 +85,13 @@ function normalizeSummary(me: any, sum: any): PrestigeSummary {
 export default function PrestigeHome() {
   const [, navigate] = useLocation();
   const { user } = useFirebaseAuth();
+  // Prestige enrollment — CEO 2026-08-26: this page is the Pet Parent
+  // home for every customer, whether or not they've joined Prestige.
+  // The badge, tier chip, and "PRESTIGE" wordmark only render when the
+  // user is actually enrolled; a non-enrolled Pet Parent sees the
+  // clean home + a "Join Prestige" CTA instead of stolen valor.
+  const { whoami } = useWhoami();
+  const prestigeEnrolled = whoami?.prestigeStatus === 'active';
   const { language } = useLanguage();
   const isHe = language === 'he';
   const [copied, setCopied] = useState(false);
@@ -221,7 +230,11 @@ export default function PrestigeHome() {
             <div className="w-20" />
             <div className="flex flex-col items-center">
               <PetWashLogo size={44} priority />
-              <span className="text-[9px] tracking-[0.3em] text-[#9a8a5c] mt-0.5">PRESTIGE</span>
+              {prestigeEnrolled && (
+                <span className="text-[9px] tracking-[0.3em] text-[#9a8a5c] mt-0.5" data-testid="prestige-wordmark">
+                  PRESTIGE
+                </span>
+              )}
             </div>
             <div className="w-20 flex items-center justify-end gap-3">
               <button onClick={() => navigate('/notifications')} className="relative text-gray-700" aria-label="Notifications">
@@ -236,6 +249,12 @@ export default function PrestigeHome() {
             </div>
           </div>
         </header>
+
+        {/* "What's waiting for you" — server-owned attention projection
+            (CEO 2026-08-26 §27). Renders top-of-fold so the Pet Parent
+            sees the next real action (pay, confirm, track, review, ...)
+            before any static tiles. Hides itself when the feed is empty. */}
+        <AttentionList actor="pet_parent" />
 
         {/* Phase 3: campaign offer banner — the user's own code, ready to use */}
         {offer && (
@@ -263,14 +282,28 @@ export default function PrestigeHome() {
           <p className="text-xl text-gray-500">{greeting},</p>
           <h1 className="text-3xl font-semibold text-emerald-800 leading-tight">{firstName} 👋</h1>
           <p className="text-sm text-gray-400 mt-1">{petLine}</p>
-          <button
-            onClick={() => navigate('/prestige-club')}
-            className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#ECDFB4] bg-[#FFFDF7] px-3 py-1.5"
-          >
-            <Crown className="w-4 h-4" style={{ color: GOLD }} />
-            <span className="text-sm font-medium text-[#9a7d2e]">Prestige {getTierDisplay(String(s.tier) as any, isHe ? 'he' : 'en')}</span>
-            <ChevronRight className="w-4 h-4 text-[#c9b88a]" />
-          </button>
+          {prestigeEnrolled ? (
+            <button
+              onClick={() => navigate('/prestige-club')}
+              className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#ECDFB4] bg-[#FFFDF7] px-3 py-1.5"
+              data-testid="prestige-tier-chip"
+            >
+              <Crown className="w-4 h-4" style={{ color: GOLD }} />
+              <span className="text-sm font-medium text-[#9a7d2e]">Prestige {getTierDisplay(String(s.tier) as any, isHe ? 'he' : 'en')}</span>
+              <ChevronRight className="w-4 h-4 text-[#c9b88a]" />
+            </button>
+          ) : (
+            // Non-enrolled Pet Parent — offer to join, don't fake the badge.
+            <button
+              onClick={() => navigate('/loyalty/join')}
+              className="mt-2 inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:border-[#ECDFB4] hover:bg-[#FFFDF7]"
+              data-testid="prestige-join-cta"
+            >
+              <Crown className="w-4 h-4 text-gray-400" />
+              <span className="text-sm font-medium">{isHe ? 'הצטרפו ל-Prestige' : 'Join PetWash Prestige'}</span>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+            </button>
+          )}
 
           {/* Membership card — dark emerald + gold, live QR */}
           <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>

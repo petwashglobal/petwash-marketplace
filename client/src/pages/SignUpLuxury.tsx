@@ -428,6 +428,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // initial view when dob==='' (see DOB input at ~L1533); the gate blocks
   // submit until dobValid && isAdult. (2026-08-16 MASTER AUTH rebuild)
   const [dob, setDob] = useState('');
+  // First + last name — REQUIRED on signup so the users row lands populated
+  // and post-login MEMBER_REQUIRED_FIELDS does not dump the user on
+  // /complete-profile forever. Server /api/auth/phone-session /-email-session
+  // trim + persist these into users.firstName/lastName (audit-fix 2026-08-25:
+  // the POST body referenced these two variables that never existed as state,
+  // silently sending `undefined` and leaving the users row nameless).
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   // Step 2 of dual-verify: after the phone code + account, we verify the email too.
   const [emailStep, setEmailStep] = useState(false);
   // The MIRROR of emailStep: a NEW user who started with email / Google / Apple (which
@@ -665,6 +673,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // (adding a phone onto an already-verified social/email account) skips the DOB +
     // terms gates — both were satisfied at the first step.
     if (authMode !== 'login' && !mobileStep && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
+    // Names required on signup (never on login or when attaching a phone to an
+    // already-verified account). Post-login MEMBER_REQUIRED_FIELDS rejects
+    // rows without firstName/lastName; collecting them here keeps the user out
+    // of the /complete-profile loop.
+    if (authMode !== 'login' && !mobileStep && !namesValid) {
+      fail(he ? 'יש להזין שם פרטי ושם משפחה (לפחות 2 תווים כל אחד)' : 'Please enter first name and last name (at least 2 characters each)');
+      return;
+    }
     if (!mobileStep && !requireTerms()) return;
     setInlineError(null);
     setBusy(true);
@@ -891,6 +907,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     if (!fieldSchemas(language).email.safeParse(email.trim()).success) { fail(vmsg('validation.email.invalid', language)); return; }
     // Real 18+ birthday required for signup (login never needs DOB).
     if (authMode !== 'login' && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
+    // Names required on signup — mirror the phone path (post-login
+    // MEMBER_REQUIRED_FIELDS gate).
+    if (authMode !== 'login' && !namesValid) {
+      fail(he ? 'יש להזין שם פרטי ושם משפחה (לפחות 2 תווים כל אחד)' : 'Please enter first name and last name (at least 2 characters each)');
+      return;
+    }
     if (!requireTerms()) return;
     setInlineError(null);
     setBusy(true);
@@ -1011,7 +1033,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       try {
         s = await fetch(getApiUrl('/api/auth/email-session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ sessionToken, dateOfBirth: dobForContext }),
+          // Send names on signup so the users row is populated at first mint
+          // and MEMBER_REQUIRED_FIELDS does not bounce to /complete-profile.
+          body: JSON.stringify({
+            sessionToken,
+            dateOfBirth: dobForContext,
+            ...(authMode === 'login' ? {} : { firstName, lastName }),
+          }),
         });
       } catch (netErr) {
         logger.error('[signup] email-session network', netErr);
@@ -1436,10 +1464,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // must match. See [[signup-contract-both-plus-password-2026-07-31]].
   const passwordValid = password.length >= 8;
   const bothContacts = phoneValid && emailValid;
+  // Names are required at signup so the users row lands populated. Server
+  // re-enforces at /api/auth/phone-session /-email-session by trimming to
+  // 80 chars and persisting into users.firstName/lastName. A single-char
+  // "name" is still meaningless; require 2+ characters after trim.
+  const firstNameValid = firstName.trim().length >= 2;
+  const lastNameValid = lastName.trim().length >= 2;
+  const namesValid = firstNameValid && lastNameValid;
   // MASTER AUTH rebuild (2026-08-16): join gate includes active consent
   // (agreedTerms) — the previous joinReady let the user submit with a valid
   // DOB but no Terms tick, which the new hard gate no longer permits.
-  const joinReady = !busy && bothContacts && passwordValid && consentOk;
+  const joinReady = !busy && bothContacts && passwordValid && consentOk && namesValid;
   // LOGIN is email + password (returning member). Phone-OTP login still exists via
   // the "use a one-time code" link; social + passkey remain on both modes.
   const loginReady = !busy && emailValid && password.length >= 1;
@@ -1949,6 +1984,46 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       </div>
                     </>
                   )}
+                  {/* FIRST + LAST NAME — REQUIRED at signup. Post-login the
+                      MEMBER_REQUIRED_FIELDS gate rejects users missing
+                      firstName/lastName and dumps them on /complete-profile
+                      forever. Collect them here so /api/auth/phone-session
+                      (and the email path) persist them into the users row on
+                      first mint. Audit-fix 2026-08-25: previously the POST
+                      body sent `firstName`/`lastName` variables that were
+                      never declared as state — silently `undefined`. */}
+                  <div className="sl-field">
+                    <label className="sl-label" htmlFor="signup-first-name">{he ? 'שם פרטי' : 'First name'}</label>
+                    <div className="sl-inputWrap">
+                      <input
+                        id="signup-first-name"
+                        className="sl-input"
+                        type="text"
+                        autoComplete="given-name"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        placeholder={he ? 'למשל: דנה' : 'e.g. Dana'}
+                        maxLength={80}
+                        data-testid="signup-first-name"
+                      />
+                    </div>
+                  </div>
+                  <div className="sl-field">
+                    <label className="sl-label" htmlFor="signup-last-name">{he ? 'שם משפחה' : 'Last name'}</label>
+                    <div className="sl-inputWrap">
+                      <input
+                        id="signup-last-name"
+                        className="sl-input"
+                        type="text"
+                        autoComplete="family-name"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        placeholder={he ? 'למשל: לוי' : 'e.g. Levi'}
+                        maxLength={80}
+                        data-testid="signup-last-name"
+                      />
+                    </div>
+                  </div>
                   {/* DATE OF BIRTH (18+). Rendered so we collect a REAL birthday
                       rather than the old hidden default. maxYear = now-18 means the
                       wheel only offers adult years, so any value is a valid 18+ date.

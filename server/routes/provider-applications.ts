@@ -592,6 +592,11 @@ router.post('/draft', async (req: Request, res: Response) => {
       dateOfBirth:            z.string().optional(),
       streetAddress:          z.string().optional(),
       city:                   z.string().optional(),
+      // Lane A onboarding audit 2026-08-26 — the wizard now debounces a draft
+      // save on Step 1 blur that includes `country`; the previous schema
+      // silently dropped it. Two-letter ISO or a short display code — stored
+      // in provider_applicants.country_code.
+      country:                z.string().min(2).max(3).optional(),
       postalCode:             z.string().optional(),
       serviceTypes:           z.array(z.string()).optional(),
       biography:              z.string().optional(),
@@ -638,6 +643,7 @@ router.post('/draft', async (req: Request, res: Response) => {
           ...(data.dateOfBirth     && { dateOfBirth: data.dateOfBirth as any }),
           ...(data.streetAddress   && { streetAddress: data.streetAddress }),
           ...(data.city            && { city: data.city }),
+          ...(data.country         && { countryCode: data.country.slice(0, 2).toUpperCase() }),
           ...(data.postalCode      && { postalCode: data.postalCode }),
           ...(data.serviceTypes    && { serviceTypes: data.serviceTypes }),
           ...(data.biography       !== undefined && { biography: data.biography }),
@@ -675,6 +681,7 @@ router.post('/draft', async (req: Request, res: Response) => {
       serviceTypes:    data.serviceTypes   || [],
       status:          'draft',
       stage:           'draft',
+      ...(data.country         && { countryCode: data.country.slice(0, 2).toUpperCase() }),
       ...(data.postalCode      && { postalCode: data.postalCode }),
       ...(data.biography       && { biography: data.biography }),
       ...(data.yearsExperience !== undefined && { yearsExperience: data.yearsExperience }),
@@ -693,6 +700,64 @@ router.post('/draft', async (req: Request, res: Response) => {
   } catch (err: any) {
     logger.error('[ProviderApplications] Draft save error', { error: err?.message });
     return res.status(500).json({ error: 'Failed to save draft' });
+  }
+});
+
+// GET /api/provider-applications/draft — hydrate the wizard on mount so a
+// mid-form refresh doesn't erase what the applicant already typed. Returns
+// { draft: null } when the user has no draft or their application has moved
+// past draft (in which case the wizard should not overwrite live data).
+// Only projects the personal fields the wizard actually re-hydrates — same
+// list the POST /draft endpoint accepts. Lane A audit 2026-08-26.
+router.get('/draft', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const [row] = await db.select({
+      id:            providerApplicants.id,
+      status:        providerApplicants.status,
+      firstName:     providerApplicants.firstName,
+      lastName:      providerApplicants.lastName,
+      phoneNumber:   providerApplicants.phoneNumber,
+      dateOfBirth:   providerApplicants.dateOfBirth,
+      streetAddress: providerApplicants.streetAddress,
+      city:          providerApplicants.city,
+      postalCode:    providerApplicants.postalCode,
+      countryCode:   providerApplicants.countryCode,
+      updatedAt:     providerApplicants.lastUpdatedAt,
+    })
+      .from(providerApplicants)
+      .where(eq(providerApplicants.userId, userId))
+      .limit(1);
+
+    // Only return the draft when it is actually still a draft — never let a
+    // GET here echo a submitted/approved row back into the wizard.
+    if (!row || row.status !== 'draft') {
+      return res.json({ draft: null });
+    }
+
+    // The placeholder '0001-01-01' the POST handler writes for a not-yet-set
+    // DOB must not surface as a real date to the client.
+    const dob = row.dateOfBirth ? String(row.dateOfBirth).slice(0, 10) : null;
+    const dobOut = dob && dob !== '0001-01-01' ? dob : null;
+
+    return res.json({
+      draft: {
+        firstName:     row.firstName || null,
+        lastName:      row.lastName || null,
+        phoneNumber:   row.phoneNumber || null,
+        dateOfBirth:   dobOut,
+        streetAddress: row.streetAddress || null,
+        city:          row.city || null,
+        postalCode:    row.postalCode || null,
+        country:       row.countryCode || null,
+        updatedAt:     row.updatedAt,
+      },
+    });
+  } catch (err: any) {
+    logger.error('[ProviderApplications] Draft load error', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to load draft' });
   }
 });
 

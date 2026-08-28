@@ -21,9 +21,8 @@ import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
-import { useToast } from '@/hooks/use-toast';
 import {
-  BriefcaseMedical, Syringe, ShieldCheck, CalendarDays, Stethoscope, MapPin,
+  BriefcaseMedical, Syringe, CalendarDays, Stethoscope,
   ShoppingBag, MoreHorizontal, Home, PawPrint, Heart, FileText, Bell, Pencil, Plus,
 } from 'lucide-react';
 
@@ -116,19 +115,8 @@ export default function PetPassportHome() {
   const [, navigate] = useLocation();
   const { user } = useFirebaseAuth();
   const { language } = useLanguage();
-  const { toast } = useToast();
   const isHe = language === 'he';
   const tr = (he: string, en: string) => (isHe ? he : en);
-
-  // Tiles/quick-actions that have no destination page yet must NOT silently
-  // dump the user onto /pets — that's a bait-and-switch. Surface a real
-  // "coming soon" toast so the owner knows what they clicked isn't wired.
-  const notReady = (labelHe: string, labelEn: string) => {
-    toast({
-      title: tr(labelHe, labelEn),
-      description: tr('בקרוב — עדיין בפיתוח', 'Coming soon — still in development'),
-    });
-  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/pets'],
@@ -216,15 +204,15 @@ export default function PetPassportHome() {
           )}
         </div>
 
-        {/* ── 3 passport tiles ── */}
-        <div className="mt-5 grid grid-cols-3 gap-3">
+        {/* ── Passport tiles ── 2026-08-27 wire-only sweep:
+             Insurance was a dead notReady() toast → removed until the feature
+             ships. Vaccines + Medical records are REAL destinations. */}
+        <div className="mt-5 grid grid-cols-2 gap-3">
           <Tile icon={<BriefcaseMedical />} label={tr('רשומות רפואיות', 'Medical records')} onClick={() => navigate('/documents')} />
           {/* 2026-08-18 COMPETITIVE (WhatIDog gap): Vaccines is REAL — per-pet
               PetHealthPanel on /pets already stores nextVaccineDate + the
-              enableVaccineReminders toggle and reads /api/pets/:id/health-events.
-              Route the tile there instead of showing a coming-soon toast. */}
+              enableVaccineReminders toggle and reads /api/pets/:id/health-events. */}
           <Tile icon={<Syringe />} label={tr('חיסונים', 'Vaccines')} onClick={() => navigate('/pets')} />
-          <Tile icon={<ShieldCheck />} label={tr('ביטוחים', 'Insurance')} onClick={() => notReady('ביטוחים', 'Insurance')} />
         </div>
 
         {/* ── My Pets carousel ── */}
@@ -268,15 +256,15 @@ export default function PetPassportHome() {
           <div className="text-[22px] font-extrabold" style={{ color: '#121212' }}>
             {tr('פעולות מהירות', 'Quick actions')}
           </div>
-          <div className="mt-3 grid grid-cols-5 gap-2">
+          {/* 2026-08-27 wire-only sweep: Clinics was a dead notReady() toast →
+              dropped until the locator ships. All 4 remaining actions route to
+              real screens. */}
+          <div className="mt-3 grid grid-cols-4 gap-2">
             {/* 2026-08-18 COMPETITIVE (WhatIDog gap): Reminders and Vet are REAL —
                 /pets renders per-pet PetHealthPanel with vaccine-reminder,
-                deworming, and vet-visit event flows over /api/pets/:id/health-events.
-                Route to the same feature the user already has. Clinics stays
-                coming-soon until we surface a locator. */}
+                deworming, and vet-visit event flows over /api/pets/:id/health-events. */}
             <Quick icon={<CalendarDays />} label={tr('תזכורות', 'Reminders')} onClick={() => navigate('/pets')} />
             <Quick icon={<Stethoscope />} label={tr('וטרינר', 'Vet')} onClick={() => navigate('/pets')} />
-            <Quick icon={<MapPin />} label={tr('בתי חולים', 'Clinics')} onClick={() => notReady('בתי חולים', 'Clinics')} />
             <Quick icon={<ShoppingBag />} label={tr('חנות', 'Shop')} onClick={() => navigate('/shop')} />
             <Quick icon={<MoreHorizontal />} label={tr('עוד', 'More')} onClick={() => navigate('/pets')} />
           </div>

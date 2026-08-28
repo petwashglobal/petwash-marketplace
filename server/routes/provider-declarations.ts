@@ -25,6 +25,26 @@ import { logAuditEvent } from '../middleware/auditLog';
 import {
   PROVIDER_DECLARATION_BY_KEY,
 } from '@shared/providerProtectionDeclarations';
+import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
+import {
+  LEGAL_DOCUMENTS,
+  getLegalDocument,
+  type LegalDocumentDefinition,
+} from '@shared/lib/legalDocumentRegistry';
+
+/**
+ * Provider-declaration registryKey → canonical documentKey lookup,
+ * derived from the ONE registry (shared/lib/legalDocumentRegistry.ts).
+ * Never hand-maintained. If a new provider declaration is added in
+ * providerProtectionDeclarations.ts, add its canonical mapping in the
+ * registry — this table updates automatically.
+ */
+const CANONICAL_DOC_FOR_REGISTRY_KEY: Map<string, LegalDocumentDefinition> = new Map(
+  LEGAL_DOCUMENTS
+    .filter((d): d is LegalDocumentDefinition & { textSource: { kind: 'providerDeclaration'; registryKey: string } } =>
+      d.textSource.kind === 'providerDeclaration')
+    .map((d) => [d.textSource.registryKey, d]),
+);
 import {
   getProviderDeclarationStatus,
   declarationDocType,
@@ -287,6 +307,83 @@ router.post('/:key/accept', requireAuth, async (req, res) => {
       userAgent: req.headers['user-agent'],
       metadata: { contentHash, signerName },
     });
+
+    // ── CANONICAL LEDGER DUAL-WRITE (CEO 2026-08-26 §3, §5, §12) ─────
+    // Best-effort SHADOW write today (fire-and-forget). Legacy
+    // signing_sessions stays authoritative for the onboarding gate;
+    // reconciliation cron (design note pending) will pair rows and
+    // flag mismatches before this becomes DUAL-WRITE-RECONCILED.
+    //
+    // Language + evidence correctness (§3): the acceptance row's
+    // snapshotText hashes the SAME language body the provider actually
+    // read on screen. Requested language wins; when unavailable we
+    // fall back to Hebrew (the platform default) AND record the
+    // actual language used in metadata so the reconciliation audit
+    // can flag mismatches.
+    //
+    // Version correctness (§4): docVersion comes from the ONE registry,
+    // not from `doc.version`, so a registry bump is the ONE place a
+    // new version starts landing in canonical rows.
+    const canonicalDoc = CANONICAL_DOC_FOR_REGISTRY_KEY.get(doc.key);
+    if (canonicalDoc) {
+      const requestedLang = (['he', 'en', 'ar', 'ru', 'fr', 'es'] as const).includes(language as any)
+        ? language as ('he' | 'en' | 'ar' | 'ru' | 'fr' | 'es')
+        : 'he';
+      // Pick the ACTUAL displayed body for the requested language.
+      // Provider declarations today only exist in he/en; fall back to
+      // Hebrew for any other request and record what we actually used.
+      const actualLang: 'he' | 'en' =
+        (requestedLang === 'en' && doc.bodyEn) ? 'en'
+        : 'he';
+      const displayedTitle = actualLang === 'en' ? doc.titleEn : doc.titleHe;
+      const displayedBody  = actualLang === 'en' ? doc.bodyEn  : doc.bodyHe;
+
+      // SHADOW policy (CEO §1): legacy signing_sessions is authoritative
+      // for the onboarding gate; this write is best-effort. Structured
+      // result — `.catch()` is NOT enough because the service catches
+      // its own DB errors and returns { ok:false } — branch on ok.
+      recordLegalAcceptance({
+        userId: providerUid,
+        documentKey: canonicalDoc.key,
+        docVersion: canonicalDoc.currentVersion,
+        language: actualLang,
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+        snapshotText: `${displayedTitle} — v${canonicalDoc.currentVersion}\n\n${displayedBody}`,
+        source: 'client',
+        actorRole: 'self',
+        metadata: {
+          registryKey: doc.key,
+          signerName,
+          legacyContentHash: contentHash,
+          submissionId,
+          requestedLanguage: requestedLang,
+          actualLanguage: actualLang,
+          migrationStatus: canonicalDoc.migrationStatus,
+        },
+      }).then((r) => {
+        if (!r.ok) {
+          // emitShadowFailure already fired inside the service; this
+          // extra breadcrumb records the LEGACY authority that DID
+          // land so a reconciliation query can pair it up.
+          logger.warn('[ProviderDeclarations] canonical shadow write failed — legacy authority stands', {
+            providerUid, registryKey: doc.key, canonicalKey: canonicalDoc.key,
+            errorCode: r.errorCode, signingSessionId: submissionId,
+          });
+        }
+      }).catch((err: any) => {
+        // Unexpected synchronous throw (should be impossible given
+        // the service's contract). Log so the emitShadowFailure
+        // signal is never the only breadcrumb.
+        logger.error('[ProviderDeclarations] canonical shadow write threw unexpectedly', {
+          providerUid, key: doc.key, err: err?.message,
+        });
+      });
+    } else {
+      logger.warn('[ProviderDeclarations] no canonical registry entry for declaration — canonical ledger skipped', {
+        key: doc.key,
+      });
+    }
 
     logger.info('[ProviderDeclarations] in-app acceptance recorded', {
       providerUid, declarationKey: doc.key, declarationVersion: doc.version,

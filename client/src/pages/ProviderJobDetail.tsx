@@ -172,6 +172,16 @@ export default function ProviderJobDetail() {
                   <div>
                     <p className="text-white text-lg font-semibold leading-tight">{String(b.serviceType ?? '—').replace(/_/g, ' ')}</p>
                     <p className="text-white/70 text-xs mt-0.5 font-mono">{b.requestId ?? requestId}</p>
+                    {/* 2026-08-27 wire-only sweep: link to the composed
+                        JobPassport for this booking. Was orphaned in 55c889975. */}
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/jobs/by-booking/booking_requests/${b.requestId ?? requestId}`)}
+                      className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold underline"
+                      style={{ color: GOLD }}
+                    >
+                      {isHe ? 'צפייה בדרכון העבודה' : 'View Job Passport'}
+                    </button>
                   </div>
                   <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium bg-white" style={{ color: statusTone }}>
                     {statusLabel}

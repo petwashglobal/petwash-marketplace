@@ -986,10 +986,47 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
     // write the decision BACK to the customer-side row, otherwise the customer
     // keeps seeing "waiting for provider" forever. Fail-soft by design.
     if (action === 'accept' || action === 'decline') {
+      let bridgeError: string | undefined;
       try {
         const { applyBridgeDecision } = await import('../services/legacyBookingBridge');
         await applyBridgeDecision(booking.quote_breakdown, action);
-      } catch { /* canonical row already updated */ }
+      } catch (err: any) {
+        // CEO 2026-08-26 correction pass #3 §5: never silently swallow
+        // a legacy-bridge failure. Canonical booking_requests already
+        // flipped above, so the customer-facing success stands; but
+        // an unwritten legacy row is a split-brain we need to surface
+        // via a structured signal (LEGACY_BRIDGE_WRITE_FAILED) so
+        // reconciliation catches it.
+        bridgeError = err?.message ?? String(err);
+      }
+
+      // Shadow-observe the intended dispatch (CEO §23-24 deploy-ready
+      // package Phase 1). Never invokes a pipeline while the feature
+      // flag is off — just records what the new dispatcher WOULD have
+      // done so ops can pair legacy writes with intent and confirm
+      // agreement before the money cut-over. Fail-quiet.
+      try {
+        const { observeIntendedDispatch, emitLegacyBridgeFailure } = await import('../services/booking-response/BookingResponseDispatcher');
+        observeIntendedDispatch({
+          requestId: booking.request_id,
+          providerUid: user.uid,
+          quoteBreakdown: booking.quote_breakdown,
+          decision: action,
+        });
+        // If the legacy write threw, emit the divergence signal — but
+        // only after the shadow observation so both log lines carry
+        // the same requestId and can be paired in the reconciliation
+        // report.
+        if (bridgeError) {
+          emitLegacyBridgeFailure({
+            requestId: booking.request_id,
+            providerUid: user.uid,
+            decision: action,
+            quoteBreakdown: booking.quote_breakdown,
+            errorMessage: bridgeError,
+          });
+        }
+      } catch { /* observability must never break the primary flow */ }
     }
     // COMPLETION sync (2026-07-31): when the provider marks the job complete,
     // write 'completed' back to the legacy customer-side row too — otherwise the

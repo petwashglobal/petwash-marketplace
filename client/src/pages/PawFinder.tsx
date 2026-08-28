@@ -581,6 +581,11 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
 
   // Real file upload state
   const [uploadedFilePath, setUploadedFilePath] = useState('');
+  // The sha256 hash returned by /api/paw-finder/upload — passed back on
+  // /posts so dedupe survives multi-instance Cloud Run (the /posts container
+  // may not be the same as the /upload container, so a disk-only lookup
+  // silently no-ops). Kept in sync with uploadedFilePath.
+  const [uploadedHash, setUploadedHash] = useState('');
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState('');
   const [uploadProgress, setUploadProgress] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -637,6 +642,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       }
 
       setUploadedFilePath(j.filePath);
+      setUploadedHash(j.hash || '');
       setUploadProgress('done');
       toast({ title: '✅ תמונה הועלתה בהצלחה' });
 
@@ -735,7 +741,11 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
         // Include the captured GPS so the post shows on the map + scores proximity
         // (server also accepts these optionally). (2026-07-27)
         ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
-        mediaFiles: [{ filePath: uploadedFilePath, mediaRole: 'primary' }],
+        mediaFiles: [{
+          filePath: uploadedFilePath,
+          mediaRole: 'primary',
+          ...(uploadedHash ? { hash: uploadedHash } : {}),
+        }],
       };
 
       const bt = await getFirebaseBearerToken(); // Bearer → CSRF-exempt
@@ -776,7 +786,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       }
 
       setForm(EMPTY_FORM);
-      setUploadedFilePath('');
+      setUploadedFilePath(''); setUploadedHash('');
       setUploadPreviewUrl('');
       setUploadProgress('idle');
       onSuccess();
@@ -955,7 +965,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setUploadedFilePath('');
+                    setUploadedFilePath(''); setUploadedHash('');
                     setUploadPreviewUrl('');
                     setUploadProgress('idle');
                     if (fileInputRef.current) fileInputRef.current.value = '';

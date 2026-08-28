@@ -18,7 +18,8 @@ import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import { auth } from "@/lib/firebase";
 import { SiGoogle } from "react-icons/si";
 import {
   Crown, Shield, Star, Sparkles, Upload, FileCheck, ArrowRight, ArrowLeft,
@@ -150,8 +151,39 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   // iPhone Safari redirect-return, AuthProvider consumes the result, sets
   // the user, and our observer runs.
 
+  // Wouter navigate — needed for the "already-enrolled short-circuit"
+  // just below. Kept outside the useEffect so re-runs share one instance.
+  const [, navigate] = useLocation();
+
   useEffect(() => {
-    if (user) {
+    if (!user) return;
+
+    // ── ALREADY-ENROLLED SHORT-CIRCUIT (CEO 2026-08-26 audit: "returning
+    //    user which won't need to face hard process to log back in") ────
+    // An enrolled Prestige member should never be shown the 5-step join
+    // form again. Probe /api/me/capabilities; if prestige.enrolled === true
+    // route straight to /prestige/home. Fail-open (show the form) on any
+    // lookup error so a Postgres blip doesn't trap a genuine new user.
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await user.getIdToken().catch(() => undefined);
+        const res = await fetch(getApiUrl('/api/me/capabilities'), {
+          credentials: 'include',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error(`capabilities ${res.status}`);
+        const data = await res.json().catch(() => ({} as any));
+        const enrolled = !!(data?.capabilities?.prestige?.enrolled ?? data?.prestige?.enrolled);
+        if (!cancelled && enrolled) {
+          navigate('/prestige/home');
+          return;
+        }
+      } catch {
+        /* fail-open: fall through to the pre-fill path below */
+      }
+
+      if (cancelled) return;
       const displayName = user.displayName || '';
       const nameParts = displayName.trim().split(' ');
       if (nameParts[0]) setFirstName(nameParts[0]);
@@ -165,8 +197,10 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
           ? `שלום ${nameParts[0] || ''}, פרטיך מולאו אוטומטית`
           : `Hi ${nameParts[0] || ''}, your details have been pre-filled`,
       });
-    }
-  }, [user]);
+    })();
+
+    return () => { cancelled = true; };
+  }, [user, navigate]);
 
   // Removed: the fabricated "10,247 members / 342 providers / 87,500 services" stat
   // animation. The display band was already taken out (2026-06-13); this deletes the

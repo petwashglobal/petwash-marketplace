@@ -1,29 +1,34 @@
 /**
  * WALK MY PET™ - Nayax Marketplace Payment Service
- * 
+ *
+ * ⚠️  STATUS 2026-08-26: ORPHANED / SUPERSEDED.
+ *
+ * Zero active callers (Lane C audit, verified via full-repo grep of
+ * `NayaxWalkMarketplaceService`). The last importer at
+ * server/services/PaymentGatewayService.ts:21 never referenced the
+ * symbol and was removed on 2026-08-26.
+ *
+ * ⚠️  MONEY-MODEL INCOMPATIBILITY: the docstring below describes the
+ * OLD "Base + 18% VAT on top" pricing model (₪100 → owner pays ₪118).
+ * The CURRENT rule enforced by server/utils/walkFeeCalculator.ts is
+ * VAT EXTRACTED FROM THE DISPLAYED PRICE (18/118) — the same rule the
+ * sitter and academy pipelines use. Re-activating this file without
+ * rewriting against walkFeeCalculator would recreate the exact
+ * money-leak the audit flagged.
+ *
+ * ⚠️  If the walk card rail lands (design note:
+ * docs/design/2026-08-26-booking-accept-dispatcher.md §"walk"), it
+ * MUST delegate to walkFeeCalculator + walletService and MUST NOT
+ * restore this service.
+ *
+ * File is retained (not deleted) per CEO safety directive: "Never
+ * delete legacy code without proof no current caller AND a written
+ * replacement". The replacement is scoped in the design note above;
+ * deletion happens once the walk card rail PR lands.
+ *
+ * ── Original docstring (for archaeology only — DO NOT trust as spec) ──
  * Marketplace payment processing using NAYAX ISRAEL (חברה בורסאית יציבה)
- * 
- * Payment Flow:
- * 1. Owner initiates walk booking and pays full amount via Nayax
- * 2. Platform receives payment and holds walker payout in escrow
- * 3. Upon GPS-verified walk completion, walker receives 85% payout
- * 4. Platform keeps 15% commission
- * 
- * Commission Structure (Flat 15% across all platforms):
- * - Walker receives: 85% of base price
- * - Platform keeps: 15% commission
- * - Owner pays: Base + 18% Israeli VAT
- * 
- * Example (₪100 base):
- * - Owner pays: ₪100 + ₪18 (VAT) = ₪118 total
- * - Walker gets: ₪85
- * - Platform keeps: ₪15 (15% commission)
- * 
- * Israeli Compliance:
- * - Currency: ILS (Israeli Shekel)
- * - VAT: 18% automatic calculation
- * - Payment Gateway: Nayax Israel ONLY
- * - Tax Authority: Automatic reporting
+ * Owner pays: Base + 18% VAT (INCORRECT under current rules).
  */
 
 import { calculateWalkFees, validateWalkFeeCalculation, type WalkFeeCalculation } from '../utils/walkFeeCalculator';

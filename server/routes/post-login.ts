@@ -9,6 +9,9 @@ import { isAdminRole } from "@shared/adminRoles";
 import { MEMBER_REQUIRED_FIELDS } from "@shared/memberRequiredFields";
 import { recordLoginEvent } from "../services/AuthEventService";
 import { getClientIP } from "../services/alerts";
+import { db } from "../db";
+import { privilegeMembers } from "@shared/schema";
+import { eq } from "drizzle-orm";
 
 const ADMIN_APPROVER_EMAIL = process.env.ADMIN_APPROVER_EMAIL || '';
 if (!process.env.ADMIN_APPROVER_EMAIL) {
@@ -126,7 +129,19 @@ async function computeUserStatus(user: any, userId: string, cachedProviderApp?: 
   return 'profile_complete';
 }
 
-function buildRoutingResponse(user: any, role: string, userStatus: string, missingFields: string[], providerApp?: any, staffReq?: any, intent?: string | null): PostLoginResponse {
+function buildRoutingResponse(
+  user: any,
+  role: string,
+  userStatus: string,
+  missingFields: string[],
+  providerApp?: any,
+  staffReq?: any,
+  intent?: string | null,
+  // Kept in the signature for callers that still pass it — used ONLY by
+  // downstream tile/badge rendering. Does NOT gate the picker (CEO
+  // 2026-08-26 §1-3: every approved provider is also a Pet Parent).
+  _hasPrestige?: boolean,
+): PostLoginResponse {
   if (user.blocked) {
     return { nextUrl: '/blocked', reason: 'BLOCKED', profileStatus: 'blocked', role, userStatus };
   }
@@ -202,14 +217,36 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
       return { nextUrl: '/provider/rejected', reason: 'PROVIDER_REJECTED', profileStatus: 'rejected', role, userStatus };
     }
     if (providerApp.status === 'approved') {
-      // MULTI-ROLE CONTRACT (2026-08-20): route by CAPABILITY, not by the
-      // mutable users.role scalar. postLoginDecider no longer overwrites
-      // role='customer' → 'provider' on approval (shared/lib/userCapabilities.ts
-      // §4-7). An approved application row IS the provider capability, so
-      // route straight to /provider-os. The client mode switch
-      // (client/src/lib/uiMode.ts) hands the same user back to customer
-      // surfaces without any server-side role rewrite.
-      return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
+      // ROLE-MODE MODEL — CORRECTED (CEO 2026-08-26 §1-7):
+      //
+      // Prestige is NOT a workspace / role — it is an entitlement that
+      // travels with the human account. The two workspaces are:
+      //   • Pet Parent (customer) — always present for every human user
+      //   • Provider (approved provider application)
+      //
+      // Every approved provider is ALSO a Pet Parent (they can own pets,
+      // book other providers, buy from Shop, hold a wallet, redeem a
+      // Prestige benefit if enrolled). So the picker shows for ANY
+      // approved provider — not just provider+prestige. Prestige, when
+      // present, surfaces inside the Pet Parent tile/home as a benefit
+      // badge, never as an identity.
+      //
+      // Explicit intent still wins:
+      //   • intent === 'provider'                           → /provider-os
+      //   • intent === 'customer'|'pet_parent'|'loyalty'|'member'
+      //                                                     → /prestige/home
+      //   • no intent                                       → /mode picker
+      const wantsProvider = intent === 'provider';
+      const wantsCustomer =
+        intent === 'customer' || intent === 'pet_parent' ||
+        intent === 'loyalty' || intent === 'member';
+      if (wantsProvider) {
+        return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
+      }
+      if (wantsCustomer) {
+        return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role, userStatus };
+      }
+      return { nextUrl: '/mode', reason: 'MULTI_ROLE_PICK', profileStatus: 'approved', role, userStatus };
     }
   }
 
@@ -946,7 +983,30 @@ export async function postLoginDecider(req: Request, res: Response) {
     // Falls back to the stored signupIntent for a returning user who set
     // their preference at signup time.
     const routingIntent = (typeof intent === 'string' && intent) || (u as any)?.signupIntent || null;
-    const response = buildRoutingResponse(u, effectiveRole, userStatus, missingFields, providerApp, staffReq, routingIntent);
+
+    // Prestige membership signal — used ONLY for tile/badge rendering
+    // (CEO 2026-08-26 role-model: Prestige is a membership, not a role).
+    // Does NOT gate the picker — every approved provider is also a Pet
+    // Parent, so the picker always fires for approved providers regardless
+    // of Prestige. Fail-soft: a lookup blip treats prestige as absent so
+    // we never render a "Prestige" badge for someone who isn't enrolled.
+    let hasPrestige = false;
+    if ((u as any).email) {
+      try {
+        const [prow] = await db
+          .select({ status: privilegeMembers.status })
+          .from(privilegeMembers)
+          .where(eq(privilegeMembers.email, (u as any).email))
+          .limit(1);
+        hasPrestige = !!prow && (prow.status ?? 'active') === 'active';
+      } catch (prestigeErr: any) {
+        logger.warn('[PostLogin] prestige lookup failed (defaulting false)', {
+          userId, error: String(prestigeErr?.message ?? prestigeErr),
+        });
+      }
+    }
+
+    const response = buildRoutingResponse(u, effectiveRole, userStatus, missingFields, providerApp, staffReq, routingIntent, hasPrestige);
     logger.info(`[PostLogin] User ${userId} → ${response.nextUrl} (role=${effectiveRole}, status=${userStatus}, reason=${response.reason})`);
     return res.json({
       ...response,

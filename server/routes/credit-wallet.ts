@@ -248,6 +248,50 @@ router.post('/topup', topupRateLimiter, auditLogMiddleware('WALLET_TOPUP'), asyn
     }
 
     logger.info('[Credit Wallet] Top-up processed', { userId, amountCents, nayaxTxId });
+
+    // SHADOW dual-write to canonical `legal_acceptances` (Lane D §D9).
+    // A successful wallet top-up implies the customer just re-agreed to
+    // the wallet/eGift terms on the top-up screen; today the acceptance
+    // is only implicit. This shadow write records the acceptance in the
+    // canonical ledger so wallet_egift_terms migrates from LEGACY-ONLY
+    // → DUAL-WRITE-SHADOW without a cutover. Best-effort: MUST NOT
+    // fail the customer-facing top-up (the money already landed). The
+    // recordLegalAcceptance service traps its own DB errors and emits
+    // the LEGAL_ACCEPTANCE_SHADOW_MISSING signal + AlertEngine card.
+    void (async () => {
+      try {
+        const { recordLegalAcceptance } = await import('../services/LegalAcceptanceService');
+        const { getLegalDocument } = await import('@shared/lib/legalDocumentRegistry');
+        const doc = getLegalDocument('wallet_egift_terms');
+        if (!doc) return;
+        const r = await recordLegalAcceptance({
+          userId,
+          documentKey: 'wallet_egift_terms',
+          docVersion: doc.currentVersion,
+          language: 'he',
+          ipAddress: req.ip || (req.socket as any)?.remoteAddress || null,
+          userAgent: req.get('user-agent') || null,
+          source: 'client',
+          actorRole: 'self',
+          metadata: {
+            origin: '/api/credit-wallet/topup',
+            amountCents,
+            nayaxTxId: nayaxTxId ?? null,
+            isAdmin: isAdminUser,
+          },
+        });
+        if (!r.ok) {
+          logger.warn('[Credit Wallet] wallet_egift_terms shadow write failed — legacy authority stands', {
+            userId, errorCode: r.errorCode,
+          });
+        }
+      } catch (shadowErr: any) {
+        logger.warn('[Credit Wallet] wallet_egift_terms shadow write threw — legacy authority stands', {
+          userId, errorMessage: shadowErr?.message ?? String(shadowErr),
+        });
+      }
+    })();
+
     res.json(response);
   } catch (error: any) {
     logger.error('[Credit Wallet] Top-up error', { error: error.message });

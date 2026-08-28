@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { Button } from '@/components/ui/button';
@@ -242,6 +242,92 @@ export default function ProviderOnboarding() {
   const [loading, setLoading] = useState(false);
   const [applicationSubmitted, setApplicationSubmitted] = useState(false);
   const [biometricScore, setBiometricScore] = useState<number | null>(null);
+
+  // ── Draft save (Lane A audit 2026-08-26) ─────────────────────────────
+  // A mid-form refresh on Step 1 lost every field the applicant had typed
+  // because the wizard never called POST /api/provider-applications/draft.
+  // Fire a debounced save whenever a Step 1 field is blurred or a picker
+  // commits a value; show a subtle status so the applicant knows their
+  // typing is safe. The server handler is idempotent (upserts by userId).
+  const [draftStatus, setDraftStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleDraftSave = useCallback(() => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(async () => {
+      if (!user) return;
+      // Nothing worth persisting yet — don't create an empty draft row.
+      if (!firstName && !lastName && !phoneNumber && !city && !dob) return;
+      setDraftStatus('saving');
+      try {
+        const token = await user.getIdToken();
+        const fullPhone = phoneNumber
+          ? `${phoneCountryCode}${phoneNumber.replace(/^0/, '').replace(/\s+/g, '')}`
+          : undefined;
+        const res = await fetch(getApiUrl('/api/provider-applications/draft'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            firstName: firstName || undefined,
+            lastName: lastName || undefined,
+            phoneNumber: fullPhone,
+            dateOfBirth: dob || undefined,
+            city: city || undefined,
+            country: country || undefined,
+          }),
+        });
+        if (!res.ok) throw new Error(`draft save ${res.status}`);
+        setDraftStatus('saved');
+      } catch {
+        // 409 (already submitted) is handled here too — the UI shouldn't
+        // continue prompting "saved" once the applicant has moved past draft.
+        setDraftStatus('error');
+      }
+    }, 800);
+  }, [user, firstName, lastName, phoneNumber, phoneCountryCode, dob, city, country]);
+
+  // Clean up the pending debounce on unmount so a fetch never fires against
+  // a torn-down component.
+  useEffect(() => () => {
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+  }, []);
+
+  // Load an existing draft on mount and hydrate any field the applicant left
+  // empty. Never overwrite typed input — every setter guards on `v || …`.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(getApiUrl('/api/provider-applications/draft'), {
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          credentials: 'include',
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const d = data?.draft;
+        if (cancelled || !d) return;
+        setFirstName((v) => v || d.firstName || '');
+        setLastName((v) => v || d.lastName || '');
+        setCity((v) => v || d.city || '');
+        if (d.dateOfBirth) setDob((v) => v || String(d.dateOfBirth).slice(0, 10));
+        if (d.country) setCountry((v) => v || d.country);
+        if (d.phoneNumber && !phoneNumber) {
+          const raw = String(d.phoneNumber);
+          const code = ['+972', '+1', '+44', '+61', '+49', '+33', '+7', '+91', '+55'].find((c) => raw.startsWith(c));
+          if (code) { setPhoneCountryCode(code); setPhoneNumber(raw.slice(code.length)); }
+          else setPhoneNumber(raw);
+        }
+      } catch { /* best-effort load */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   // Auto-populate and auto-verify phone from Firebase user's already-verified number
   useEffect(() => {
@@ -916,6 +1002,7 @@ export default function ProviderOnboarding() {
                       id="firstName"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
+                      onBlur={scheduleDraftSave}
                       className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                       data-testid="input-first-name"
                     />
@@ -926,11 +1013,30 @@ export default function ProviderOnboarding() {
                       id="lastName"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
+                      onBlur={scheduleDraftSave}
                       className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                       data-testid="input-last-name"
                     />
                   </div>
                 </div>
+
+                {/* Draft-save indicator — silent when idle, subtle everywhere else.
+                    Lane A audit 2026-08-26. */}
+                {draftStatus !== 'idle' && (
+                  <div
+                    className="text-xs text-gray-500 -mt-2"
+                    aria-live="polite"
+                    data-testid="draft-status"
+                  >
+                    {draftStatus === 'saving' && (isHebrew ? 'שומר טיוטה…' : 'Saving draft…')}
+                    {draftStatus === 'saved'  && (isHebrew ? 'הטיוטה נשמרה' : 'Draft saved')}
+                    {draftStatus === 'error'  && (
+                      <span className="text-amber-700">
+                        {isHebrew ? 'שמירת הטיוטה נכשלה — נסה שוב' : 'Draft save failed — try again'}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Phone with country code + OTP verification */}
                 <div className="space-y-2">
@@ -962,6 +1068,7 @@ export default function ProviderOnboarding() {
                         <Input
                           value={phoneNumber}
                           onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d\s\-]/g, ''))}
+                          onBlur={scheduleDraftSave}
                           placeholder={isHebrew ? 'מספר טלפון' : 'Phone number'}
                           disabled={!!phoneOtpId}
                           className="flex-1 h-12 bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
@@ -1123,6 +1230,7 @@ export default function ProviderOnboarding() {
                               : (sel.englishName || sel.hebrewName);
                             setCity(displayCity);
                             setCityPickerOpen(false);
+                            scheduleDraftSave();
                           }}
                         />
                       </>
@@ -1141,6 +1249,7 @@ export default function ProviderOnboarding() {
                           else if (details?.country === 'United Kingdom') setCountry('UK');
                           else if (details?.country === 'Australia') setCountry('AUS');
                           else if (details?.country === 'Canada') setCountry('CAN');
+                          scheduleDraftSave();
                         }}
                         placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city...'}
                         country={
@@ -1156,7 +1265,7 @@ export default function ProviderOnboarding() {
                   </div>
                   <div>
                     <Label htmlFor="country">{t.country}</Label>
-                    <Select value={country} onValueChange={setCountry}>
+                    <Select value={country} onValueChange={(v) => { setCountry(v); scheduleDraftSave(); }}>
                       <SelectTrigger className="w-full h-12 bg-white !text-gray-900 border border-gray-200 rounded-xl" data-testid="select-country">
                         <SelectValue placeholder={isHebrew ? 'בחר מדינה' : 'Select country'} />
                       </SelectTrigger>

@@ -16,6 +16,13 @@ import { db } from '../db';
 import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
+import { getLegalDocument } from '@shared/lib/legalDocumentRegistry';
+
+// CUSTOMER_TOS_VERSION constant intentionally REMOVED (CEO 2026-08-26
+// §4-5): version resolves from the canonical registry every request.
+// Bumping the displayed Terms bumps ONE place — the registry — and
+// this endpoint automatically stamps the new version.
 
 const router = Router();
 
@@ -44,6 +51,49 @@ router.post('/accept-terms', validateFirebaseToken, async (req: Request, res: Re
     const now = new Date();
     await db.update(users).set({ acceptedTermsAt: now }).where(eq(users.id, uid));
     logger.info('[LegalConsent] terms accepted', { uid });
+
+    // Canonical-ledger DUAL-WRITE-SHADOW (CEO 2026-08-26 §6):
+    // legacy users.acceptedTermsAt stays authoritative for the gate;
+    // this best-effort write feeds the canonical evidence ledger.
+    // Version resolves from the registry per §4-5 so a Terms bump
+    // (which lives in ONE place — the registry) automatically starts
+    // stamping the new version here without touching this file.
+    const customerTosDoc = getLegalDocument('customer_tos');
+    if (customerTosDoc) {
+      const requestedLang = (typeof req.body?.language === 'string' && ['he','en','ar','ru','fr','es'].includes(req.body.language))
+        ? req.body.language as 'he' | 'en' | 'ar' | 'ru' | 'fr' | 'es'
+        : 'he';
+      const actualLang = customerTosDoc.languages.includes(requestedLang) ? requestedLang : 'he';
+      // SHADOW policy (CEO §1): legacy users.acceptedTermsAt is
+      // authoritative for the gate. Structured result — branch on ok.
+      recordLegalAcceptance({
+        userId: uid,
+        documentKey: 'customer_tos',
+        docVersion: customerTosDoc.currentVersion,
+        language: actualLang,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
+        source: 'client',
+        actorRole: 'self',
+        metadata: {
+          origin: '/api/legal/accept-terms',
+          requestedLanguage: requestedLang,
+          actualLanguage: actualLang,
+          migrationStatus: customerTosDoc.migrationStatus,
+        },
+      }).then((r) => {
+        if (!r.ok) {
+          logger.warn('[LegalConsent] canonical shadow write failed — legacy authority stands', {
+            uid, errorCode: r.errorCode,
+          });
+        }
+      }).catch((err: any) => {
+        logger.error('[LegalConsent] canonical shadow write threw unexpectedly', {
+          uid, err: err?.message,
+        });
+      });
+    }
+
     return res.json({ acceptedAt: now.toISOString(), alreadyAccepted: false });
   } catch (err: any) {
     logger.error('[LegalConsent] accept failed', { uid, err: err?.message });

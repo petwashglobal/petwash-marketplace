@@ -846,243 +846,76 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
     }
 
     if (action === 'accept') {
-      // ── ATOMIC CLAIM ─────────────────────────────────────────────────────
-      // Before this claim, the read-then-charge pattern above let a walker's
-      // double-click (or web + phone racing) both pass the pending_provider
-      // check and both call confirmBooking → parseFloat(totalCost) escrow
-      // holds placed twice on the same booking. Now flip pending_provider
-      // → payment_processing in ONE UPDATE with a WHERE guard; 0 rows means
-      // another request already claimed it → 409.
-      const claimResult = await db
-        .update(walkBookings)
-        .set({ status: 'payment_pending', updatedAt: new Date() })
-        .where(and(
-          eq(walkBookings.bookingId, bookingId),
-          eq(walkBookings.status, 'pending_provider'),
-        ))
-        .returning({ id: walkBookings.id });
-      if (claimResult.length === 0) {
-        logger.warn('[Walk My Pet] concurrent accept — atomic claim lost', { bookingId, providerUid });
-        return res.status(409).json({
-          error: 'ALREADY_CLAIMED',
-          message: 'This booking is already being processed — please refresh.',
-        });
-      }
-
-      // Confirm booking with luxury engine (escrow + audit trail)
-      try {
-        const pricing = {
-          subtotal: parseFloat(booking.walkerRate || '0'),
-          platformFee: parseFloat(booking.platformFeeOwner || '0') + parseFloat(booking.platformFeeSitter || '0'),
-          providerPayout: parseFloat(booking.walkerPayout || '0'),
-          totalPrice: parseFloat(booking.totalCost || '0'),
-          loyaltyDiscount: 0,
-          currency: booking.currency || 'ILS',
-          breakdown: [],
-          baseRate: parseFloat(booking.walkerRate || '0'),
-        };
-
-        await walkEliteBookingEngine.confirmBooking(
-          booking.bookingId,
-          pricing,
-          booking.ownerId,
-          walker.userId
-        );
-      } catch (escrowErr: any) {
-        // FAIL CLOSED: if the escrow hold can't be placed we must NOT confirm the
-        // booking, write a PAYMENT_CAPTURED ledger, or issue an Israeli tax receipt —
-        // doing so records a paid, confirmed walk with no money actually held (free
-        // service + a real tax document). Stop here and surface the failure.
-        logger.error('[Walk My Pet] Escrow confirmation FAILED — booking NOT confirmed', {
-          bookingId, error: escrowErr?.message,
-        });
-        return res.status(502).json({
-          success: false,
-          error: 'Could not secure the payment hold for this booking. Please try again.',
-          code: 'ESCROW_HOLD_FAILED',
-        });
-      }
-
-      await db
-        .update(walkBookings)
-        .set({
-          status: 'confirmed',
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(walkBookings.bookingId, bookingId),
-          eq(walkBookings.status, 'payment_pending'),
-        ));
-
-      await syncChatToBookingStatus(bookingId, 'confirmed', 'walk_my_pet');
-      
-      logger.info(`[Walk My Pet] Walker ACCEPTED booking ${bookingId}`);
-
-      // Update Octopus Brain: DRAFT → CONFIRMED + payment captured ledger
-      try {
-        const [octopusRecord] = await db.select().from(octopusBookings)
-          .where(eq(octopusBookings.idempotencyKey, booking.bookingId)).limit(1);
-        if (octopusRecord) {
-          await db.update(octopusBookings)
-            .set({ status: 'CONFIRMED', updatedAt: new Date() })
-            .where(eq(octopusBookings.id, octopusRecord.id));
-          // NO PAYMENT_CAPTURED row here (2026-07-30 audit): confirmBooking →
-          // moveToEscrow only writes a Firestore escrow DOC — no card charge, no
-          // wallet debit, no payment rail is invoked anywhere on this path. A
-          // capture ledger entry for money that never moved is a false book
-          // entry. Restore it ONLY when a verified payment rail lands here.
-          logger.info('[Octopus Brain] Walk booking confirmed (no payment captured on this rail)', { octopusId: octopusRecord.id });
-        }
-      } catch (octopusErr) {
-        logger.warn('[Octopus Brain] Failed to update walk booking status (non-blocking)', octopusErr);
-      }
-
-      // NO fiscal receipt here (2026-07-30 audit): this accept path invokes NO
-      // payment rail — confirmBooking/moveToEscrow only writes a Firestore
-      // escrow doc, and the old call stamped 'Nayax Card Payment' on a real
-      // SUMIT/ITA חשבונית מס-קבלה for money that was never collected. A tax
-      // document may only be issued at a verified fiscal event (money-invariants
-      // §2). When a real payment rail lands on this path, restore the receipt
-      // AT THE CAPTURE EVENT with the actual transaction id.
-      logger.error('[Walk My Pet] Booking accepted WITHOUT a payment rail — no money collected, no receipt issued. Wire this path to a verified payment before launch.', {
-        bookingId: booking.bookingId,
-        totalCost: booking.totalCost,
+      // WALKER ACCEPTED — delegated to acceptWalkBookingCore (Lane C).
+      // The core owns every side effect previously inlined here: atomic
+      // status claim, walkEliteBookingEngine.confirmBooking (escrow),
+      // status flip → 'confirmed' (WHERE-guarded), chat sync, octopus
+      // DRAFT → CONFIRMED (no PAYMENT_CAPTURED — the honest gap),
+      // calendar, GCS backup, customer notification. ONE implementation
+      // shared with BookingResponseDispatcher.
+      //
+      // IMPORTANT: the extracted core's ok payload carries
+      // `paymentRail: 'MISSING'` — walk accept confirms a booking
+      // without capturing any payment (no card charge, no wallet
+      // debit, no SUMIT/ITA document). The dispatcher REFUSES to route
+      // walk accepts because of this. The route handler PRESERVES the
+      // current behaviour for now (i.e. still confirms without payment)
+      // so today's flow is unchanged; a follow-up will land a real
+      // payment rail and then the route can drop the MISSING marker.
+      const { acceptWalkBookingCore } = await import(
+        '../services/booking-response/acceptWalkBookingCore'
+      );
+      const coreResult = await acceptWalkBookingCore({
+        bookingId,
+        providerUid,
       });
-
-      // Add calendar event (non-blocking)
-      calendarIntegrationService.createBookingEvent({
-        platform: 'walk-my-pet',
-        bookingId: booking.bookingId,
-        title: `⁦Walk My Pet™⁩ - Dog Walk (${booking.durationMinutes} min)`,
-        description: `Dog walking booking confirmed for ${booking.durationMinutes} minutes`,
-        startTime: new Date(booking.scheduledDate),
-        endTime: new Date(new Date(booking.scheduledDate).getTime() + (booking.durationMinutes || 60) * 60000),
-        providerName: walker.businessName || `Walker ${walker.walkerId}`,
-      }).catch(() => {});
-
-      // Backup financial records to Google Cloud Storage (non-blocking)
-      (async () => {
-        try {
-          await backupFinancialDocument({
-            documentType: 'escrow_record',
-            bookingId: booking.bookingId,
-            platform: 'walk_my_pet',
-            content: JSON.stringify({
-              bookingId: booking.bookingId,
-              ownerId: booking.ownerId,
-              walkerId: booking.walkerId,
-              totalCost: booking.totalCost,
-              walkerPayout: booking.walkerPayout,
-              platformFeeOwner: booking.platformFeeOwner,
-              platformFeeSitter: booking.platformFeeSitter,
-              confirmedAt: new Date().toISOString(),
-              escrowHoldHours: 72,
-              durationMinutes: booking.durationMinutes,
-            }, null, 2),
-          });
-        } catch (gcsErr) {
-          logger.warn('[GCS] Walk financial backup failed (non-blocking)', gcsErr);
+      if (!coreResult.ok) {
+        if (coreResult.errorCode === 'FORBIDDEN') return res.status(403).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_NOT_FOUND') return res.status(404).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_WRONG_STATE') return res.status(400).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'ALREADY_CLAIMED') {
+          return res.status(409).json({ error: 'ALREADY_CLAIMED', message: coreResult.message });
         }
-      })();
-      
-      // NOTIFY THE CUSTOMER (2026-07-31 fix): the response claimed the customer was
-      // notified, but this path sent NOTHING — the owner never learned their walk was
-      // accepted and was never prompted to continue. Dispatch inbox+SMS+push. Fail-soft.
-      try {
-        const { dispatchNotification } = await import('../lib/notificationDispatcher');
-        const { rows: ownerRows } = await pool.query('SELECT email, phone FROM users WHERE id = $1', [booking.ownerId]);
-        const owner = ownerRows[0] || {};
-        const base = process.env.APP_URL || 'https://petwash.co.il';
-        await dispatchNotification({
-          uid: booking.ownerId,
-          email: owner.email ?? undefined,
-          phone: owner.phone ?? undefined,
-          type: 'booking_accepted',
-          title: '✅ הטיול אושר!',
-          bodyHtml: `<p>המטייל/ת אישר/ה את הטיול שלך ב-⁦Walk My Pet™⁩. אפשר לצפות בפרטים באזור ההזמנות שלך.</p>`,
-          bodyText: 'הטיול שלך ב-Walk My Pet אושר! היכנס/י לאזור ההזמנות לפרטים.',
-          ctaText: 'צפייה בהזמנות',
-          // Deeplinks-round-2 (2026-08-22): /my-bookings is a 404 — real route is /bookings.
-          ctaUrl: `${base}/bookings`,
-          channels: ['inbox', 'sms', 'push'],
-          priority: 8,
-          meta: { bookingId: booking.bookingId },
-        });
-      } catch (notifErr: any) {
-        logger.warn('[Walk My Pet] accept customer-notification failed (non-blocking)', { error: notifErr?.message });
+        if (coreResult.errorCode === 'ESCROW_HOLD_FAILED') {
+          return res.status(502).json({
+            success: false,
+            error: coreResult.message,
+            code: 'ESCROW_HOLD_FAILED',
+          });
+        }
+        return res.status(500).json({ error: coreResult.message });
       }
-
       res.json({
         success: true,
         status: 'confirmed',
         message: 'הטיול אושר! הלקוח/ה קיבל/ה הודעה.',
       });
     } else {
-      await db
-        .update(walkBookings)
-        .set({
-          status: 'cancelled',
-          updatedAt: new Date(),
-        })
-        .where(eq(walkBookings.bookingId, bookingId));
-
-      // Free the walker's calendar — the request is dead (P1 fix).
-      await releaseSlotLock(db, bookingId).catch((relErr) =>
-        logger.warn('[Walk My Pet] slot-lock release on decline skipped', { bookingId, error: String(relErr) }),
+      // WALKER DECLINED — delegated to declineWalkBookingCore (Lane C).
+      // The core owns every side effect previously inlined here: status
+      // flip to 'cancelled' (walk semantic — NOT 'declined'), slot-lock
+      // release, chat sync, octopus CANCELLATION ledger, defensive
+      // receipt void. Single implementation shared with the
+      // BookingResponseDispatcher.
+      const { declineWalkBookingCore } = await import(
+        '../services/booking-response/declineWalkBookingCore'
       );
-
-      await syncChatToBookingStatus(bookingId, 'cancelled', 'walk_my_pet');
-
-      // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
-      // Payment has NOT been captured at decline time (capture happens on accept).
-      // We still write a CANCELLATION entry for a complete audit trail.
-      // The octopus_bookings row is found via idempotencyKey = bookingId.
-      try {
-        const [octopusRecord] = await db.select().from(octopusBookings)
-          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
-        if (octopusRecord) {
-          await db.update(octopusBookings)
-            .set({ status: 'CANCELLED', updatedAt: new Date() })
-            .where(eq(octopusBookings.id, octopusRecord.id));
-          await db.insert(octopusLedger).values({
-            id: `OL-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
-            type: 'CANCELLATION',
-            bookingId: octopusRecord.id,
-            amount: 0,
-            platform: 'walk_my_pet',
-            metadata: {
-              reason: declineReason || 'Walker declined',
-              cancelledBy: 'provider',
-              cancelledAt: new Date().toISOString(),
-            },
-          });
-        }
-      } catch (octopusErr) {
-        logger.warn('[Walk My Pet] Octopus cancellation ledger entry failed (non-blocking)', octopusErr);
-      }
-
-      // ── Void any stale receipts for this booking ───────────────────────────
-      try {
-        const existingReceipts = await IsraeliDigitalReceiptService.getReceiptByBookingId(bookingId);
-        for (const r of existingReceipts) {
-          if (!r.isVoided) {
-            await IsraeliDigitalReceiptService.voidReceipt({
-              receiptId: r.id,
-              voidReason: `Walk declined by walker: ${declineReason || 'no reason given'}`,
-            });
-          }
-        }
-      } catch (voidErr) {
-        logger.warn('[Walk My Pet] Receipt void on decline failed (non-blocking)', voidErr);
-      }
-      
-      logger.info(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
-      
-      res.json({
-        success: true,
-        status: 'declined',
-        message: 'הטיול נדחה. הלקוח/ה יקבל/תקבל הודעה.',
+      const coreResult = await declineWalkBookingCore({
+        bookingId,
+        providerUid,
+        declineReason,
       });
+      if (!coreResult.ok) {
+        if (coreResult.errorCode === 'FORBIDDEN') return res.status(403).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_NOT_FOUND') return res.status(404).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_WRONG_STATE') return res.status(400).json({ error: coreResult.message });
+        return res.status(500).json({ error: coreResult.message });
+      }
+      // Response shape preserved: {success:true, status:'declined', message}.
+      // Note the client-facing `status:'declined'` label differs from the
+      // DB `status:'cancelled'` flip — the DB uses walk's semantic, the
+      // client message says "declined" for user clarity. Same as before.
+      res.json({ success: true, status: 'declined', message: coreResult.message });
     }
   } catch (error: any) {
     console.error('[Walk My Pet] Provider respond error:', error);
@@ -1233,31 +1066,62 @@ router.post('/walks/holds', requireAuth, async (req, res) => {
   }
 });
 
-// Get booking details
-router.get('/walks/:bookingId', async (req, res) => {
+// Get booking details.
+// AUTH (P0 audit-fix 2026-08-25): this endpoint powers WalkTracking.tsx —
+// live 5s poll for geofence, walker position, walk state. Before this fix
+// it accepted ANY caller with a bookingId (no requireAuth, no owner check)
+// so a leaked or guessed WALK-YYYY-NNNNNN kept streaming a stranger's live
+// location. Now: Firebase-authed caller MUST be the booking's owner, the
+// assigned walker, or a verified super_admin. Everyone else gets 404 (not
+// 403) so we don't leak whether the id exists.
+router.get('/walks/:bookingId', requireAuth, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    
-    const [booking] = await db
-      .select()
+    const callerUid = (req as any).user?.uid;
+    if (!callerUid) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // Single LEFT-JOIN read — previously two sequential SELECTs. This
+    // endpoint is polled every 5s per open tracking tab (see
+    // WalkTracking.tsx:99-102), so a two-round-trip read = 24 DB
+    // round-trips/min/tab. One join is 12, and the auth check + response
+    // can both be served from the same row.
+    const [row] = await db
+      .select({
+        booking: walkBookings,
+        walker: {
+          walkerId: walkerProfiles.walkerId,
+          userId: walkerProfiles.userId,
+          displayName: walkerProfiles.displayName,
+          profilePhotoUrl: walkerProfiles.profilePhotoUrl,
+          averageRating: walkerProfiles.averageRating,
+          totalWalks: walkerProfiles.totalWalks,
+          hasBodyCamera: walkerProfiles.hasBodyCamera,
+          hasDroneAccess: walkerProfiles.hasDroneAccess,
+        },
+      })
       .from(walkBookings)
+      .leftJoin(walkerProfiles, eq(walkerProfiles.walkerId, walkBookings.walkerId))
       .where(eq(walkBookings.bookingId, bookingId))
       .limit(1);
 
-    if (!booking) {
+    if (!row?.booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+    const { booking, walker } = row;
+
+    const isOwner = booking.ownerId === callerUid;
+    const isWalker = walker?.userId === callerUid;
+    const isAdmin = await isSuperAdminVerified((req as any).user?.email || '').catch(() => false);
+    if (!isOwner && !isWalker && !isAdmin) {
+      logger.warn('[Walk My Pet] Unauthorized booking read', { bookingId, callerUid });
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Get walker details
-    const [walker] = await db
-      .select()
-      .from(walkerProfiles)
-      .where(eq(walkerProfiles.walkerId, booking.walkerId))
-      .limit(1);
-
-    res.json({ 
+    res.json({
       booking,
-      walker: walker ? {
+      walker: walker && walker.walkerId ? {
         walkerId: walker.walkerId,
         displayName: walker.displayName,
         profilePhotoUrl: walker.profilePhotoUrl,
@@ -1268,7 +1132,7 @@ router.get('/walks/:bookingId', async (req, res) => {
       } : null
     });
   } catch (error: any) {
-    console.error('[Walk My Pet] Get booking error:', error);
+    logger.error('[Walk My Pet] Get booking error', { error: error?.message });
     res.status(500).json({ error: 'Failed to fetch booking' });
   }
 });

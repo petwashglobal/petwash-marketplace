@@ -52,7 +52,10 @@ export default function SitterEditProfile() {
     queryKey: ['/api/sitter-suite/sitters', user?.uid],
     enabled: !!user?.uid,
     queryFn: async () => {
-      const res = await fetch(`/api/sitter-suite/sitters/${user!.uid}`, { credentials: 'include' });
+      // Was bare fetch() with only credentials:'include' — missing the
+      // Firebase Bearer + App Check that apiRequest attaches. The PATCH
+      // on line 93 already uses apiRequest; the GET drifted.
+      const res = await apiRequest('GET', `/api/sitter-suite/sitters/${user!.uid}`);
       if (!res.ok) throw new Error(`Failed to load sitter profile: ${res.status}`);
       return res.json();
     },
