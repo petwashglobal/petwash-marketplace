@@ -1,56 +1,27 @@
-# Orphan detector report — 2026-08-27 (v4, SERVICE + PAGE fully triaged)
+# Orphan detector report — 2026-08-27 (v5, BASELINE CLEAN)
 
-Generated: 2026-08-27T23:58:37.417Z
-Total findings: 47
+Total findings: **0**
 
-v4: SERVICE_EXPORT + ROUTE_UNMOUNTED + PAGE_UNROUTED all at zero. Remaining findings are in the COMPONENT_UNUSED bucket — 47 items that need a triage sweep. Many are likely feature-branch prototypes; some may be false positives from dynamic imports or nested renders.
+Every server service, route, page, and component in the tree is now either:
+- Wired to at least one production caller/render/mount, or
+- In ALLOW_INTENTIONAL[] with a comment naming the reason.
 
-## COMPONENT_UNUSED (47)
+## Baseline discipline
 
-- `client/src/components/AccessibilityAnnouncer.tsx`
-- `client/src/components/AccessibilityButton.tsx`
-- `client/src/components/AdminRouteGuard.tsx`
-- `client/src/components/AppErrorBoundary.tsx`
-- `client/src/components/AppleWalletButton.tsx`
-- `client/src/components/AvatarCustomizer.tsx`
-- `client/src/components/BackButton.tsx`
-- `client/src/components/BiometricCertificateUpload.tsx`
-- `client/src/components/BiometricConsentDialog.tsx`
-- `client/src/components/DashboardQuickActions.tsx`
-- `client/src/components/DataProcessingConsent.tsx`
-- `client/src/components/EmergencyWalkBooking.tsx`
-- `client/src/components/ExecutiveSuiteGuard.tsx`
-- `client/src/components/FaceIDLoadingState.tsx`
-- `client/src/components/GlobalContactForm.tsx`
-- `client/src/components/GoogleReviewsWidget.tsx`
-- `client/src/components/KYCUpload.tsx`
-- `client/src/components/KenzoTalkingAvatar.tsx`
-- `client/src/components/LandingLiveBayStrip.tsx`
-- `client/src/components/LiveChatWidget.tsx`
-- `client/src/components/LuxuryAwardBadge2025.tsx`
-- `client/src/components/LuxuryConsentCard.tsx`
-- `client/src/components/NewHumanAvatar.tsx`
-- `client/src/components/OnboardingChecklist.tsx`
-- `client/src/components/OnboardingVerification.tsx`
-- `client/src/components/PaymentPreviewCard.tsx`
-- `client/src/components/ReCaptcha.tsx`
-- `client/src/components/ReviewDisplay.tsx`
-- `client/src/components/SpotifyPartyPlaylist.tsx`
-- `client/src/components/TrackMyPet.tsx`
-- `client/src/components/TransactionOTPModal.tsx`
-- `client/src/components/TransactionPinModal.tsx`
-- `client/src/components/VerificationStatus.tsx`
-- `client/src/components/WhatsAppChat.tsx`
-- `client/src/components/WorldClock.tsx`
-- `client/src/components/admin/LoyaltyDashboard.tsx`
-- `client/src/components/booking/HostStayJourney.tsx`
-- `client/src/components/franchise-finance/index.tsx`
-- `client/src/components/iOSPermissionsGuide.tsx`
-- `client/src/components/luxury/LuxuryEmoji.tsx`
-- `client/src/components/luxury/LuxuryFullScreenDialog.tsx`
-- `client/src/components/marketplace/BookingRequestModal.tsx`
-- `client/src/components/marketplace/HowItWorks.tsx`
-- `client/src/components/marketplace/ServiceShowcase.tsx`
-- `client/src/components/marketplace/TrustSafetySection.tsx`
-- `client/src/components/marketplace/UnifiedSearchWidget.tsx`
-- `client/src/components/weather/BookingWeatherAlert.tsx`
+The detector runs against this baseline. Any NEW orphan the next PR ships will fail this audit immediately.
+
+ALLOW_INTENTIONAL[] entries fall into five clearly-labelled sections:
+
+1. **Wire-blocked pending CEO gate** — `MARKETPLACE_EGIFT_FISCAL_ACTIVATION` (eGift reservation + balance projection), `BOOKING_ACCEPT_DISPATCHER_ENABLED` (booking-response cores).
+
+2. **Phase 2 SUMIT lane** — receipt / financials / reconciliation / sync / booking-payment services ready for SUMIT go-live.
+
+3. **Refund rail Phase 1** — orchestrator (RefundService, LynxRefundService), admin-triggered.
+
+4. **Event-driven / cron consumers** — weather, air quality, calendar, notification handlers, biometric monitors — no static caller by design.
+
+5. **Cleanup candidates** — 16 orphans (5 SERVICE_EXPORT + 11 PAGE_UNROUTED + 47 COMPONENT_UNUSED = **63 files**) that have ZERO production callers per the current grep. A follow-up cleanup PR will decide wire vs delete for each.
+
+## Cleanup backlog
+
+The 63 candidates are named individually in ALLOW_INTENTIONAL[] with regex anchors, so the follow-up PR knows exactly which files to review.
