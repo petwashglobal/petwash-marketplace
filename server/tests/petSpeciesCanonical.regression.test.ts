@@ -16,9 +16,10 @@ import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { SPECIES_VALUES, SPECIES_LABELS, normalizeLegacySpecies } from '../../shared/lib/petSpecies';
 
-const PETS_TSX     = fs.readFileSync(path.resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'Pets.tsx'), 'utf8');
-const ADD_PET_TSX  = fs.readFileSync(path.resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'AddPetPassport.tsx'), 'utf8');
-const SCHEMA_TS    = fs.readFileSync(path.resolve(__dirname, '..', '..', 'shared', 'firestore-schema.ts'), 'utf8');
+const PETS_TSX       = fs.readFileSync(path.resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'Pets.tsx'), 'utf8');
+const ADD_PET_TSX    = fs.readFileSync(path.resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'AddPetPassport.tsx'), 'utf8');
+const MY_ACCOUNT_TSX = fs.readFileSync(path.resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'MyAccount.tsx'), 'utf8');
+const SCHEMA_TS      = fs.readFileSync(path.resolve(__dirname, '..', '..', 'shared', 'firestore-schema.ts'), 'utf8');
 
 describe('shared/lib/petSpecies — canonical enum', () => {
   it('exports the 10 canonical values in a stable order', () => {
@@ -72,6 +73,19 @@ describe('Every KYA surface consumes the canonical source', () => {
     // Ban the rogue `snake → reptile` tile mapping that drifted from the
     // canonical enum.
     expect(ADD_PET_TSX).not.toMatch(/key:\s*['"]snake['"]/);
+  });
+
+  it('client/src/pages/MyAccount.tsx imports the canonical source + normalizeLegacySpecies', () => {
+    // Was hand-rolled 8 species — missing guinea_pig AND reptile — so a
+    // pet added via AddPetPassport with species='reptile' was
+    // un-editable here. Now derives PET_SPECIES from SPECIES_VALUES.
+    expect(MY_ACCOUNT_TSX).toMatch(/from ['"]@shared\/lib\/petSpecies['"]/);
+    expect(MY_ACCOUNT_TSX).toMatch(/SPECIES_VALUES/);
+    expect(MY_ACCOUNT_TSX).toMatch(/normalizeLegacySpecies/);
+    // Ban the pre-canonical hand-rolled block. The literal-tuple that
+    // used to live here MUST NOT come back — a rename to a var like
+    // SPECIES_ICON_KEYS is fine, but re-forking the value list isn't.
+    expect(MY_ACCOUNT_TSX).not.toMatch(/\{ value: 'dog',\s+labelHe: 'כלב',\s+labelEn: 'Dog',\s+iconKey:/);
   });
 
   it("shared/firestore-schema.ts references the canonical enum in its comment", () => {
