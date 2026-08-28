@@ -172,7 +172,12 @@ export async function composeRefundLineage(input: {
     const orClauses: Array<{ sourceType: string; sourceIds: string[] }> = [
       { sourceType, sourceIds: [sourceId] },
     ];
-    if (sourceType === 'booking') {
+    // Fan-out for provider-booking flows funded through super_app_payouts.
+    // sitter maps to 'booking', walk to 'walk', academy to 'academy' — the
+    // source_type in refund_transactions differs by flow, but they ALL
+    // share the same super_app_payouts.booking_id write path, so the
+    // escrow-reversal refund always lands at ('escrow', payoutId).
+    if (ESCROW_FANOUT_KINDS.has(rawKind)) {
       const payoutIds = await lookupPayoutIdsForBooking(sourceId);
       if (payoutIds.length > 0) {
         orClauses.push({ sourceType: 'escrow', sourceIds: payoutIds });
@@ -272,11 +277,24 @@ function correlationKindToSourceType(kind: string): string | null {
     case 'egift-purchase':  return 'egift';
     case 'wallet-topup':    return 'wallet';
     case 'sitter':          return 'booking';
+    case 'walk':            return 'walk';
     case 'academy':         return 'academy';
     case 'pettrek':         return 'pettrek';
     default:                return null;
   }
 }
+
+/**
+ * Correlation kinds whose refunds run through the escrow rail (via
+ * super_app_payouts.booking_id). ProviderPayoutService writes those
+ * refunds as ('escrow', payoutId) — the kinds listed here trigger the
+ * booking→payoutId fan-out inside composeRefundLineage. Anything not
+ * in this set stays on the strict (sourceType, sourceId) lookup.
+ *
+ * Kept as a Set so a new provider-booking flow adds itself in one
+ * place; the fan-out logic never has to grow branches.
+ */
+const ESCROW_FANOUT_KINDS = new Set(['sitter', 'walk', 'academy']);
 
 /**
  * Reverse index: booking id → the payout ids that funded it.

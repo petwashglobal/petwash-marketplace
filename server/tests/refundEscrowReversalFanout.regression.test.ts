@@ -44,11 +44,13 @@ const SRC = fs.readFileSync(
 );
 
 describe('escrow-reversal fan-out on booking-family correlations', () => {
-  it('booking correlations fan out to lookupPayoutIdsForBooking', () => {
-    // The exact wire — sourceType='booking' → payoutId probe → OR clause
-    // for ('escrow', payoutIds). A refactor that unbraids this loop
+  it('sitter/walk/academy correlations fan out to lookupPayoutIdsForBooking', () => {
+    // The exact wire — the correlation kind is checked against the
+    // ESCROW_FANOUT_KINDS set → payoutId probe → OR clause for
+    // ('escrow', payoutIds). A refactor that unbraids this loop
     // silently drops the escrow branch.
-    expect(SRC).toMatch(/if\s*\(sourceType === 'booking'\)[\s\S]*?lookupPayoutIdsForBooking\(sourceId\)/);
+    expect(SRC).toMatch(/const ESCROW_FANOUT_KINDS = new Set\(\[\s*'sitter',\s*'walk',\s*'academy'\s*\]\)/);
+    expect(SRC).toMatch(/if\s*\(ESCROW_FANOUT_KINDS\.has\(rawKind\)\)[\s\S]*?lookupPayoutIdsForBooking\(sourceId\)/);
     expect(SRC).toMatch(/orClauses\.push\(\{\s*sourceType:\s*'escrow',\s*sourceIds:\s*payoutIds\s*\}\)/);
   });
 
@@ -92,16 +94,15 @@ describe('escrow-reversal fan-out on booking-family correlations', () => {
     expect(SRC).toMatch(/if \(err\?\.code === '42P01'\) return \[\]/);
   });
 
-  it('correlationKindToSourceType maps sitter and academy to booking (funnel into the fan-out)', () => {
-    // The escrow-reversal fan-out only activates for source_type='booking',
-    // so every commercial flow whose escrow gets reversed via the
-    // sitter/academy rail must map here. Pinning this loop keeps a
-    // silent misroute from swallowing refunds again.
+  it('correlationKindToSourceType covers every provider-booking flow', () => {
+    // All three provider-booking flows (sitter, walk, academy) create a
+    // super_app_payouts row keyed by booking_id via EnhancedBookingService.
+    // If any of them stops mapping here, refunds tied to that flow
+    // silently drop off the passport. Walk was the exact hole this
+    // commit closed — it wasn't in the map at all, so its refunds
+    // returned an empty lineage regardless of the escrow branch.
     expect(SRC).toMatch(/case 'sitter':\s*return 'booking'/);
+    expect(SRC).toMatch(/case 'walk':\s*return 'walk'/);
     expect(SRC).toMatch(/case 'academy':\s*return 'academy'/);
-    // NOTE academy today maps to its own source_type; if academy ever
-    // starts using the escrow rail the pin above will need a matching
-    // 'academy' → escrow-fanout branch. Documented so a future refactor
-    // reasons about it explicitly.
   });
 });
