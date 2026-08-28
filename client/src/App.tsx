@@ -1145,7 +1145,21 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* Luxury customer (Prestige) home — dark rollout, reachable for preview */}
+        {/* Pet Parent home — the CANONICAL customer landing (CEO 2026-08-28
+            product correction: Pet Parent is the base customer workspace,
+            Prestige is a MEMBERSHIP entitlement that travels inside it, NOT
+            a separate mode). The `/prestige/home` path below is kept as an
+            alias for backward-compat with existing deep links, PWA icons,
+            and flavored native-app root redirects — both routes render the
+            same PrestigeHome component today. Do not send non-Prestige
+            customers to a Prestige-branded URL. */}
+        <Route path="/pet-parent/home">
+          {() => (
+            <RequireAuth>
+              <PrestigeHome />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/prestige/home">
           {() => (
             <RequireAuth>
