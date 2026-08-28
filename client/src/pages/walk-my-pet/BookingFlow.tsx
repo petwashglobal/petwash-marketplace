@@ -263,9 +263,13 @@ export default function WalkBookingFlow() {
         feedingInstructions:    primaryPet?.feedingInstructions ?? '',
         handlingInstructions:   primaryPet?.handlingInstructions ?? '',
         sensitiveSkin:          !!primaryPet?.sensitiveSkin,
-        // Signal whether the medical block is present, so the walker's
-        // Today card can render "medical data withheld — ask owner"
-        // instead of hallucinating empty allergies.
+        // Signal whether the medical block is present. CEO §6 (2026-08-28):
+        // the walker card should render "Medical details were not shared
+        // for this booking" — NEUTRAL fact, NOT the earlier "ask owner"
+        // phrasing which undermines the owner's explicit choice not to
+        // share. If the walker genuinely needs more information they
+        // message the owner through the normal channel; the UI must not
+        // imply pressure to disclose.
         medicalConsented,
         ...(medicalConsented ? {
           allergies:            primaryPet?.allergies ?? '',
