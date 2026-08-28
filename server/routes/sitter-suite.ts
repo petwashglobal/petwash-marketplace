@@ -969,6 +969,18 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
         providerPayoutCents: Math.round(pricing.sitterPayout * 100),
         ownerMessage: specialInstructions ?? null,
         legacyRef: { table: 'sitter_bookings', id: bookingId },
+        // CEO §12: carry the pet display context AND the KYA safety
+        // snapshot onto the mirror so the sitter's provider inbox card
+        // renders the aggression / escape-risk / allergy / medication /
+        // vet-contact flags before the stay begins.
+        petDetails: {
+          petName: pet?.name ?? null,
+          petType: pet?.species ?? null,
+          petBreed: pet?.breed ?? null,
+          petWeight: pet?.weight ?? null,
+          address: resolvedAddressText ?? null,
+          safety: safeSnapshot,
+        },
       });
     } catch { /* bridge is best-effort */ }
 

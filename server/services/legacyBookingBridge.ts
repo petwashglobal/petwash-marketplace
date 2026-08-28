@@ -44,6 +44,15 @@ export interface BridgeInput {
   ownerMessage?: string | null;
   /** The legacy row this mirrors: e.g. { table: 'sitter_bookings', id: 'SIT-…' } */
   legacyRef: { table: string; id: string | number };
+  /**
+   * Pet-shaped display + safety context for the provider inbox card.
+   * When present, gets JSON.stringified into booking_requests.pet_details
+   * so /walker/requests + /walker/active can render pet name, breed and
+   * the CEO §12 safety flags (aggression / escape risk / allergies /
+   * medications / vet contact) that used to end at the sitter_bookings /
+   * walk_bookings row and never reach the walker's Today card.
+   */
+  petDetails?: Record<string, unknown> | null;
 }
 
 /** Mirror a legacy booking into booking_requests so providers can see + accept it. */
@@ -87,6 +96,14 @@ export async function bridgeLegacyBooking(input: BridgeInput): Promise<{ request
       logger.warn('[BookingBridge] address enrichment failed (non-blocking)', { err: addrErr?.message });
     }
 
+    // CEO §12 (2026-08-28): only carry a plain-object petDetails onto the
+    // mirror. Reject arrays / primitives so a malformed caller can't smuggle
+    // an unexpected shape into the provider inbox.
+    const safePetDetails: Record<string, unknown> | null =
+      input.petDetails && typeof input.petDetails === 'object' && !Array.isArray(input.petDetails)
+        ? (input.petDetails as Record<string, unknown>)
+        : null;
+
     await db.insert(bookingRequests).values({
       ...addressSnapshot,
       requestId,
@@ -105,6 +122,10 @@ export async function bridgeLegacyBooking(input: BridgeInput): Promise<{ request
       currency: 'ILS',
       status: 'pending',
       ownerMessage: input.ownerMessage ?? null,
+      // pet_details is the shape /walker/requests + /walker/active read
+      // from — write it so the walker card no longer shows the "Pet" /
+      // "Pet Owner" fallback and can render the KYA safety flags.
+      petDetails: safePetDetails,
       // The back-link: how a provider decision finds the customer's record.
       statusHistory: [
         { status: 'pending', timestamp: new Date().toISOString(), note: `bridged from ${input.legacyRef.table}#${input.legacyRef.id}` },

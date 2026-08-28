@@ -698,6 +698,19 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
         providerPayoutCents: Math.round(pricing.providerPayout * 100),
         ownerMessage: null,
         legacyRef: { table: 'walk_bookings', id: bookingId },
+        // CEO §12: carry the pet display context AND the KYA safety
+        // snapshot onto the mirror so /walker/requests + /walker/active
+        // can render name/breed/type (no more "Pet" fallback) AND the
+        // aggression / escape-risk / allergy warnings the walker MUST
+        // see before grabbing the leash.
+        petDetails: {
+          petName: petName || null,
+          petType: 'dog',
+          petBreed: petBreed || null,
+          petWeight: petWeight || null,
+          address: pickupAddress || null,
+          safety: safeSnapshot,
+        },
       });
     } catch { /* bridge is best-effort */ }
 
@@ -2099,6 +2112,11 @@ router.get('/walker/requests', requireAuth, async (req, res) => {
       earnings: (r.subtotalCents || 0) / 100,
       currency: r.currency || 'ILS',
       specialInstructions: r.ownerMessage || null,
+      // CEO §12: the KYA safety snapshot the owner sent at booking
+      // time — aggression, escape risk, allergies, medications, vet
+      // contact, feeding/handling notes. Client renders these on the
+      // walker's Today card BEFORE the walker grabs the leash.
+      petSafety: (r.petDetails as any)?.safety ?? null,
       distance: 0,
     }));
 
@@ -2144,6 +2162,9 @@ router.get('/walker/active', requireAuth, async (req, res) => {
       earnings: (active.subtotalCents || 0) / 100,
       currency: active.currency || 'ILS',
       specialInstructions: active.ownerMessage || null,
+      // CEO §12: KYA safety flags for the leash-holder — see the
+      // parallel block on /walker/requests above.
+      petSafety: (active.petDetails as any)?.safety ?? null,
       distance: 0,
     });
   } catch (error) {
