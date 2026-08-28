@@ -2067,43 +2067,75 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         trainer: 'academy',
         station_operator: 'k9000',
       };
-      const platformId = providerTypeToPlatformId[application.providerType];
-      if (platformId) {
+      // CEO §73 #17 (2026-08-28): MULTI-SERVICE APPROVAL.
+      //
+      // The queue-insert block on the /apply path (line ~1174) already
+      // fans out to one queue row PER selected service, so a
+      // walker+sitter+trainer applicant lands on all three admin
+      // platform queues. Approve, however, USED to derive platformId
+      // from the primary provider_type SCALAR only — so approving that
+      // applicant inserted a `providers` row on walk_my_pet and left
+      // sitter_suite / academy silently empty. The applicant's sitter
+      // side was pending forever with nothing behind it.
+      //
+      // Fix: read the same providerTypes[] array the /apply block
+      // stashed in internal_notes and fan the insert out over each
+      // selected platform. Primary provider_type is included as a
+      // fallback so pre-multi-service rows (single provider_type,
+      // no internal_notes.providerTypes) still work. Idempotent per
+      // (user_id, platform_id) via ON CONFLICT — safe to re-run and
+      // safe against a partial rerun of an earlier approve.
+      const applicantTypes: string[] = (() => {
         try {
-          await pool.query(
-            `INSERT INTO providers (
-                user_id, platform_id, business_name,
-                verification_status, background_check_status, background_check_date,
-                insurance_provider, insurance_policy_number, insurance_expiry_date,
-                is_available, accepting_new_clients, is_active,
-                created_at, updated_at
-              )
-              VALUES ($1, $2, $3, 'verified', 'passed', NOW(),
-                      $4, $5, $6,
-                      TRUE, TRUE, TRUE,
-                      NOW(), NOW())
-              ON CONFLICT DO NOTHING`,
-            [
-              application.userId,
-              platformId,
-              [application.firstName, application.lastName].filter(Boolean).join(' ') || null,
-              // Drizzle rows are camelCase, not snake_case. Prior code read
-              // insurance_provider/insurance_policy_number/insurance_expires_at
-              // which are always undefined → every approved provider was
-              // stored insurance-less. Read both shapes for safety, prefer
-              // camelCase (the actual Drizzle row shape).
-              (application as any).insuranceProvider ?? (application as any).insurance_provider ?? null,
-              (application as any).insurancePolicyNumber ?? (application as any).insurance_policy_number ?? null,
-              (application as any).insuranceExpiresAt ?? (application as any).insurance_expires_at ?? null,
-            ],
-          );
-          logger.info('[Provider Onboarding] ✅ providers row inserted — provider now searchable', {
-            applicationId, userId: application.userId, platformId,
-          });
-        } catch (insertErr: any) {
-          logger.error('[Provider Onboarding] providers-row INSERT failed — approved provider will NOT be searchable until manual reconcile', {
-            applicationId, userId: application.userId, platformId, error: insertErr?.message,
-          });
+          const notes = (application as any).internalNotes
+            ? JSON.parse((application as any).internalNotes)
+            : null;
+          const arr = Array.isArray(notes?.providerTypes) ? notes.providerTypes : null;
+          const clean = arr?.filter((t: unknown): t is string => typeof t === 'string' && !!providerTypeToPlatformId[t]) ?? [];
+          return clean.length ? clean : [application.providerType];
+        } catch { return [application.providerType]; }
+      })();
+      const platformIds = Array.from(new Set(
+        applicantTypes.map((t) => providerTypeToPlatformId[t]).filter(Boolean),
+      ));
+      if (platformIds.length) {
+        for (const platformId of platformIds) {
+          try {
+            await pool.query(
+              `INSERT INTO providers (
+                  user_id, platform_id, business_name,
+                  verification_status, background_check_status, background_check_date,
+                  insurance_provider, insurance_policy_number, insurance_expiry_date,
+                  is_available, accepting_new_clients, is_active,
+                  created_at, updated_at
+                )
+                VALUES ($1, $2, $3, 'verified', 'passed', NOW(),
+                        $4, $5, $6,
+                        TRUE, TRUE, TRUE,
+                        NOW(), NOW())
+                ON CONFLICT DO NOTHING`,
+              [
+                application.userId,
+                platformId,
+                [application.firstName, application.lastName].filter(Boolean).join(' ') || null,
+                // Drizzle rows are camelCase, not snake_case. Prior code read
+                // insurance_provider/insurance_policy_number/insurance_expires_at
+                // which are always undefined → every approved provider was
+                // stored insurance-less. Read both shapes for safety, prefer
+                // camelCase (the actual Drizzle row shape).
+                (application as any).insuranceProvider ?? (application as any).insurance_provider ?? null,
+                (application as any).insurancePolicyNumber ?? (application as any).insurance_policy_number ?? null,
+                (application as any).insuranceExpiresAt ?? (application as any).insurance_expires_at ?? null,
+              ],
+            );
+            logger.info('[Provider Onboarding] ✅ providers row inserted — provider now searchable', {
+              applicationId, userId: application.userId, platformId,
+            });
+          } catch (insertErr: any) {
+            logger.error('[Provider Onboarding] providers-row INSERT failed — approved provider will NOT be searchable until manual reconcile', {
+              applicationId, userId: application.userId, platformId, error: insertErr?.message,
+            });
+          }
         }
 
         // Multi-role fix (CEO 2026-08-24: "provider vs booker user role to
@@ -2146,8 +2178,8 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
           });
         }
       } else {
-        logger.warn('[Provider Onboarding] No platformId mapping for providerType — providers row NOT inserted', {
-          applicationId, providerType: application.providerType,
+        logger.warn('[Provider Onboarding] No platformId mapping for any selected providerType — providers row NOT inserted', {
+          applicationId, providerType: application.providerType, applicantTypes,
         });
       }
     }
