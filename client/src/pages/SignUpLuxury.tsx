@@ -734,7 +734,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           }
           // Email is disabled too — never leave the user stuck on a dead SMS tab;
           // point them at the social options that ARE available.
-          fail(he ? 'SMS אינו זמין כעת — המשך עם Google או Apple.' : 'SMS is temporarily unavailable — continue with Google or Apple.');
+          // CEO 2026-08-28 Lane A audit — Apple button is gated off by
+          // APPLE_SIGNIN_READY=false (line 106) + signupFlags.appleSignin,
+          // so telling users to "continue with Apple" is a fake CTA on
+          // any surface where the button isn't actually visible. Point
+          // them at Google only until Apple is genuinely configured.
+          fail(he ? 'SMS אינו זמין כעת — המשך עם Google.' : 'SMS is temporarily unavailable — continue with Google.');
           return;
         }
         fail(d.message || (he ? 'SMS אינו זמין כעת — המשך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'));
