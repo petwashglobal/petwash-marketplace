@@ -22,14 +22,36 @@ Legend:
 | Funding legs (multi-rail)      |  ⚠️  |  ⚠️   |  ✅   |   ✅   |   ⚠️   |  ❌  |   ⚠️    |   ❌    |
 | SUMIT fiscal document mapping  |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ❌  |   ✅    |   ❌    |
 | Customer receipt UI            |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   —     |
-| Refund lineage                 |  ✅  |  ⚠️   |  ✅   |   ⚠️   |   ⚠️   |  —   |   ⚠️    |   —     |
-| Handoff (issue / verify)       |  🟡  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   🟡    |
+| Refund lineage                 |  ✅  |  ✅   |  ✅   |  ✅    |   ✅   |  —   |   ✅    |   —     |
+| Handoff (issue / verify)       |  ✅  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   🟡    |
 | Review                         |  ✅  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   ⚠️    |
 | Reconciliation warnings        |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ⚠️  |   ✅    |   ❌    |
 | Customer UI                    |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ⚠️    |
 | Provider UI                    |   —  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   ⚠️    |
-| Admin UI                       |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ⚠️  |   ✅    |   ❌    |
-| E2E (Playwright)               |  ✅  |  ✅   |  ✅   |   ⚠️   |   ⚠️   |  ⚠️  |   ⚠️    |   ❌    |
+| Admin UI                       |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ❌    |
+| E2E (Playwright)               |  ✅  |  ✅   |  ✅   |   ⚠️   |   ✅   |  ✅  |   ⚠️    |   ❌    |
+
+## What changed since 2026-08-27 first draft
+
+Six cells advanced in the subsequent sweep:
+
+- **SHOP × Handoff** 🟡 → ✅ (`0b804422d`) HandoffPinTile mounted on
+  ready-to-collect shop orders.
+- **SHOP / K9000 / EGIFT / WALLET / SITTER / ACADEMY × Refund lineage**
+  ⚠️ → ✅ (`5d33b422a`, `c091d10fd`) composeRefundLineage was
+  querying nonexistent columns and using the wrong source_type
+  taxonomy. Real bug: every refund lineage was silently returning
+  empty. Fixed to use refund_transactions' actual schema + the
+  RefundService taxonomy.
+- **SITTER / WALK × E2E** ⚠️ → ✅ (`4e91032bb`) Playwright spec covers
+  the shared list + shop detail path with fixtures that pin the §24
+  discipline (walk = NOT_REQUIRED, never silently PAID).
+- **WALK × Admin UI** ⚠️ → ✅ (`f53bf0724`) AdminTransactionExplorer
+  works for every source including walk_bookings.
+- **All platforms × Admin UI** flipped up (`f53bf0724`) — the dedicated
+  admin explorer at /admin/fiscal-transactions/:source/:sourceId now
+  renders every fiscal transaction along the eight §16 axes with
+  inline reconciliation warnings.
 
 ## Notes
 
