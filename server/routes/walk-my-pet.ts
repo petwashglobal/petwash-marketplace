@@ -506,8 +506,24 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       safeSnapshot = null;
     }
 
+    // CEO §5 (2026-08-28) — CARE INFORMATION REQUIRED gate.
+    // A service that hard-requires medical (e.g. medicated walk, senior
+    // pet support) must NOT accept a booking whose safety snapshot ended
+    // up without medical fields — either because the pet has
+    // medicalDataPrivate=true (hard veto), or because the owner did not
+    // opt in on the account preference and did not tick booking-scoped
+    // share. Fail-CLOSED with a stable errorCode so the client can
+    // render the friendly HE/EN banner asking for consent or a
+    // different service.
+    if (serviceRequiresMedical && safeSnapshot && (safeSnapshot as any).medicalConsented !== true) {
+      return res.status(400).json({
+        error: 'This service requires medical information to be shared for the booking.',
+        errorCode: 'CARE_INFO_REQUIRED',
+      });
+    }
+
     // Validate required fields
-    if (!walkerId || !scheduledDate || !scheduledStartTime || !durationMinutes || 
+    if (!walkerId || !scheduledDate || !scheduledStartTime || !durationMinutes ||
         !pickupLatitude || !pickupLongitude || !pickupAddress) {
       return res.status(400).json({ error: 'Missing required booking information' });
     }

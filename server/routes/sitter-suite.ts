@@ -832,7 +832,22 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       });
       safeSnapshot = null;
     }
-    
+
+    // CEO §5 (2026-08-28) — CARE INFORMATION REQUIRED gate. Mirrors
+    // walk-my-pet's fail-CLOSED check. A service that hard-requires
+    // medical (medicated stay, senior support, sick-pet day-care) must
+    // NOT accept a booking whose safety snapshot ended up without
+    // medical fields — either because the pet has medicalDataPrivate=
+    // true (hard veto), or because the owner did not opt in on the
+    // account preference and did not tick booking-scoped share. Stable
+    // errorCode so the client can render the friendly HE/EN banner.
+    if (serviceRequiresMedical && safeSnapshot && (safeSnapshot as any).medicalConsented !== true) {
+      return res.status(400).json({
+        error: 'This service requires medical information to be shared for the booking.',
+        errorCode: 'CARE_INFO_REQUIRED',
+      });
+    }
+
     const start = new Date(startDate);
     const end = new Date(endDate);
 
