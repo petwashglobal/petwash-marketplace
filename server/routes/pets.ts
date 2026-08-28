@@ -247,9 +247,23 @@ router.patch('/:petId', validateFirebaseToken, async (req, res) => {
 // ────────────────────────────────────────────────────────────────────────────
 router.post('/:petId/consent', validateFirebaseToken, async (req, res) => {
   const uid = req.firebaseUser!.uid;
-  const petIdNum = Number(req.params.petId);
-  if (!Number.isFinite(petIdNum) || petIdNum <= 0) {
-    return res.status(400).json({ error: 'Invalid petId' });
+  // Accept EITHER shape:
+  //   • numeric petId in the URL (Postgres pets.id) — direct hit
+  //   • Firestore-shaped petId string in the URL AND petName in the body
+  //     (Firestore pets and Postgres pets are separate stores today; the
+  //     client's /api/pets renders Firestore, but booking-time consent
+  //     lives on Postgres. Lookup by (uid, name) so the client can flip
+  //     consent without knowing the Postgres row id).
+  const rawParam = req.params.petId;
+  const petIdNum = Number(rawParam);
+  const isNumericId = Number.isFinite(petIdNum) && petIdNum > 0;
+  const petName = typeof req.body?.petName === 'string' && req.body.petName.trim()
+    ? req.body.petName.trim().slice(0, 120) : null;
+  if (!isNumericId && !petName) {
+    return res.status(400).json({
+      error: 'Provide a numeric petId in the URL OR petName in the body',
+      errorCode: 'PET_LOOKUP_KEY_REQUIRED',
+    });
   }
   const raw = req.body?.medicalShareConsent;
   if (typeof raw !== 'boolean') {
@@ -259,32 +273,43 @@ router.post('/:petId/consent', validateFirebaseToken, async (req, res) => {
     });
   }
   try {
-    // Ownership + row exists — both keyed in the same WHERE so a
-    // cross-user attempt hits the row-count === 0 branch (404).
-    const r = await pool.query(
-      `UPDATE pets
-          SET medical_share_consent = $1,
-              medical_data_private  = $2,
-              medical_consent_updated_at = NOW(),
-              updated_at            = NOW()
-        WHERE id = $3 AND user_id = $4`,
-      [raw, !raw, petIdNum, uid],
-    );
+    const r = isNumericId
+      ? await pool.query(
+          `UPDATE pets
+              SET medical_share_consent = $1,
+                  medical_data_private  = $2,
+                  medical_consent_updated_at = NOW(),
+                  updated_at            = NOW()
+            WHERE id = $3 AND user_id = $4`,
+          [raw, !raw, petIdNum, uid],
+        )
+      : await pool.query(
+          // Cross-store lookup by (user_id, name). Ownership WHERE
+          // clause pins the caller, so a name collision across owners
+          // cannot flip somebody else's pet.
+          `UPDATE pets
+              SET medical_share_consent = $1,
+                  medical_data_private  = $2,
+                  medical_consent_updated_at = NOW(),
+                  updated_at            = NOW()
+            WHERE user_id = $3 AND name = $4`,
+          [raw, !raw, uid, petName],
+        );
     if ((r.rowCount ?? 0) === 0) {
       return res.status(404).json({ error: 'Pet not found', errorCode: 'PET_NOT_FOUND' });
     }
     logger.info('[Pets] medical-share consent updated', {
-      uid, petId: petIdNum, medicalShareConsent: raw,
+      uid, petIdRef: isNumericId ? `id:${petIdNum}` : `name:${petName}`,
+      medicalShareConsent: raw,
     });
     return res.json({
       ok: true,
-      petId: petIdNum,
       medicalShareConsent: raw,
       medicalDataPrivate: !raw,
     });
   } catch (err: any) {
     logger.error('[Pets] consent update FAILED — flag NOT written', {
-      uid, petId: petIdNum, error: err?.message,
+      uid, error: err?.message,
     });
     return res.status(502).json({
       error: 'Failed to update consent — please retry',
