@@ -3005,12 +3005,75 @@ router.get('/my/status', async (req: Request, res: Response) => {
       }
     }
 
+    // CEO §46 (2026-08-28) — per-section readiness DTO. Applicant needs
+    // to know exactly which section is complete / checking / action-
+    // required. Additive field; existing shape { application, ... }
+    // is unchanged. The projection needs a wider read since /my/status
+    // deliberately hides many fields (see the §13 privacy comment
+    // above) — fetch the missing signals with a second lightweight
+    // query so the client can render an accurate checklist without
+    // the DTO exposing raw values.
+    const isDecided = app.status === 'approved' || app.status === 'rejected';
+    const isReviewing = ['pending_review', 'under_review'].includes(app.status);
+    const secStatus = (fieldsComplete: boolean): 'complete' | 'checking' | 'action_required' => {
+      if (!fieldsComplete) return 'action_required';
+      if (app.status === 'approved') return 'complete';
+      if (isReviewing || app.status === 'pending') return 'checking';
+      return 'action_required';
+    };
+    let hasIdentityDocs = false;
+    let hasBank = false;
+    let hasBackgroundConsent = false;
+    let hasDeclarations = false;
+    try {
+      const extra = await pool.query<{
+        selfie_photo_url: string | null;
+        government_id_url: string | null;
+        bank_iban: string | null;
+        bank_account_holder: string | null;
+        criminal_check_consent: boolean | null;
+        internal_notes: string | null;
+      }>(
+        `SELECT selfie_photo_url, government_id_url,
+                bank_iban, bank_account_holder,
+                criminal_check_consent,
+                internal_notes
+           FROM provider_applications
+          WHERE id = $1
+          LIMIT 1`,
+        [app.id],
+      );
+      const r = extra.rows[0];
+      if (r) {
+        hasIdentityDocs = !!(r.selfie_photo_url && r.government_id_url && app.kyc_document_type);
+        hasBank = !!(r.bank_iban && r.bank_account_holder);
+        hasBackgroundConsent = !!(r.criminal_check_consent && app.self_declaration_no_relevant_convictions);
+        try {
+          const notes = r.internal_notes ? JSON.parse(r.internal_notes) : null;
+          hasDeclarations = !!(notes && typeof notes === 'object' && notes.declarations && Object.keys(notes.declarations).length > 0);
+        } catch { /* ignore */ }
+      }
+    } catch { /* section-status is best-effort; missing signals → action_required by design */ }
+    const sectionStatus = {
+      overall:      isDecided ? app.status : (isReviewing ? 'checking' : 'action_required'),
+      applicationId: app.application_id,
+      sections: {
+        profile:      secStatus(!!(app.first_name && app.last_name && app.city)),
+        identity:     secStatus(hasIdentityDocs),
+        insurance:    secStatus(!!(app.insurance_policy_number && app.insurance_provider && app.insurance_expires_at)),
+        background:   secStatus(hasBackgroundConsent),
+        bank:         secStatus(hasBank),
+        declarations: secStatus(hasDeclarations),
+      },
+    };
+
     const appUrl = process.env.APP_URL || 'https://app.petwash.co.il';
     res.json({
       application: {
         ...app,
         kycDecisionFlags: (() => { try { return JSON.parse(app.kyc_decision_flags || '[]'); } catch { return []; } })(),
       },
+      sectionStatus,
       resubmissionToken,
       resubmitUrl: resubmissionToken ? `${appUrl}/provider-application/resubmit?token=${resubmissionToken}` : null,
     });
