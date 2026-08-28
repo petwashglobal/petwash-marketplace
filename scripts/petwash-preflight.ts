@@ -233,17 +233,101 @@ async function checkParallelLayouts(): Promise<GuardResult> {
   };
 }
 
+/**
+ * CEO §73 (2026-08-28): runtime CTA anchors on the signup + onboarding
+ * surfaces. Prior audit history: refactors dropped the data-testid on
+ * the continue buttons, E2E tests started passing against DOM that no
+ * longer existed, and the "wrong OTP silent-continue" bug shipped for
+ * weeks before it was caught by a customer report. Pin the anchors the
+ * signup + provider onboarding + ChooseMode surfaces MUST expose so a
+ * rename trips the scanner.
+ */
+async function checkSignupOnboardingCTAs(): Promise<GuardResult> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  console.log('🎯 Checking signup + onboarding CTA anchors...\n');
+
+  // Pinned surface → list of anchors that MUST exist (as data-testid or
+  // a distinct source-visible constant). Anchor is the raw string; we
+  // grep the file contents.
+  const SURFACES: { path: string; anchors: { key: string; why: string }[] }[] = [
+    {
+      path: './client/src/pages/SignUpLuxury.tsx',
+      anchors: [
+        { key: 'data-testid="button-continue-mobile"',   why: 'mobile-continue CTA (E2E anchor + accessibility)' },
+        { key: 'data-testid="button-continue-email"',    why: 'email-continue CTA (E2E anchor + accessibility)' },
+        { key: 'data-testid="checkbox-ageConfirmed18Plus"', why: 'new-user 18+ consent (PR-AUTH-SIGNUP-2)' },
+        { key: 'data-testid="checkbox-agreedTerms"',     why: 'new-user Terms consent (PR-AUTH-SIGNUP-2)' },
+        { key: 'data-testid="checkbox-acceptedMarketing"', why: 'new-user Marketing consent (must be SEPARATE from Terms)' },
+        { key: 'data-testid="button-resend-code-mobile"', why: 'mobile-OTP resend affordance (dead-end fix)' },
+        { key: 'data-testid="button-change-number-mobile"', why: 'wrong-number affordance on OTP step (CEO §43)' },
+        { key: 'data-testid="button-change-email"',      why: 'wrong-email affordance on OTP step (CEO §43)' },
+      ],
+    },
+    {
+      path: './client/src/pages/ProviderOnboarding.tsx',
+      anchors: [
+        { key: 'data-testid="button-submit-application"', why: 'submit CTA on step 3' },
+        { key: 'data-testid="checkbox-background-consent"', why: 'background-check consent (§73 #10)' },
+        { key: 'data-testid="section-bank-payout"',      why: 'bank / payout section (§73 #12)' },
+        { key: 'data-testid="input-bank-iban"',          why: 'IBAN input (§73 #12)' },
+      ],
+    },
+    {
+      path: './client/src/pages/ChooseMode.tsx',
+      anchors: [
+        // Prestige is an ENTITLEMENT, not a workspace. The customer
+        // fallback MUST NOT be /prestige/home — that regression shipped
+        // and was fixed in commit 3b22621a8+. Pin the correct string.
+        { key: "'/pet-parent/home'", why: 'CUSTOMER_FALLBACK must be /pet-parent/home (CEO product model)' },
+      ],
+    },
+  ];
+
+  for (const surface of SURFACES) {
+    let content: string;
+    try {
+      content = await readFile(surface.path, 'utf8');
+    } catch (err: any) {
+      errors.push(`❌ CTA-SCANNER: could not read ${surface.path.replace('./client/src/', '')} — ${err?.message || err}`);
+      continue;
+    }
+    for (const { key, why } of surface.anchors) {
+      if (!content.includes(key)) {
+        errors.push(
+          `❌ CTA-SCANNER: ${surface.path.replace('./client/src/', '')} MISSING anchor \`${key}\` (${why})`,
+        );
+      }
+    }
+    // Regression on ChooseMode: /prestige/home MUST NOT be the customer
+    // fallback anywhere in the file. A conditional prestige route on
+    // an OWNED prestige member surface is allowed elsewhere.
+    if (surface.path.endsWith('ChooseMode.tsx')) {
+      const badFallback = /CUSTOMER_FALLBACK\s*=\s*['"]\/prestige\/home['"]/;
+      if (badFallback.test(content)) {
+        errors.push(
+          `❌ CTA-SCANNER: ChooseMode.tsx has CUSTOMER_FALLBACK = '/prestige/home' — must be '/pet-parent/home' (Prestige is an entitlement, not a workspace)`,
+        );
+      }
+    }
+  }
+
+  return { passed: errors.length === 0, errors, warnings };
+}
+
 async function runAllGuards(): Promise<void> {
   console.log('🛡️  PETWASH™ PREFLIGHT GUARDIAN v2 - CONTENT SCANNER\n');
   console.log('================================\n');
-  
+
   const results: GuardResult[] = [];
-  
+
   // Run all guards
   results.push(await checkForbiddenFileNames());
   results.push(await checkForbiddenContent());
   results.push(await checkCSSFiles());
   results.push(await checkParallelLayouts());
+  results.push(await checkSignupOnboardingCTAs());
   
   const allErrors = results.flatMap(r => r.errors);
   const allWarnings = results.flatMap(r => r.warnings);
