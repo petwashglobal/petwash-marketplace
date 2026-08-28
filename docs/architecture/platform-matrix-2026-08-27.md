@@ -16,19 +16,19 @@ Legend:
 | Capability                     | SHOP | K9000 | EGIFT | WALLET | SITTER | WALK | ACADEMY | PETTREK |
 |--------------------------------|:----:|:-----:|:-----:|:------:|:------:|:----:|:-------:|:-------:|
 | JobPassport                    |  🟡  |  🟡   |  🟡   |   —    |   ✅   |  ✅  |   ✅    |   ⚠️    |
-| TransactionPassport            |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ⚠️  |   ✅    |   ❌    |
-| Provider / fulfiller resolver  |  ✅  |  ✅   |   —   |   —    |   ✅   |  ✅  |   ✅    |   ⚠️    |
-| Payment authority              |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ❌  |   ✅    |   ❌    |
-| Funding legs (multi-rail)      |  ⚠️  |  ⚠️   |  ✅   |   ✅   |   ⚠️   |  ❌  |   ⚠️    |   ❌    |
-| SUMIT fiscal document mapping  |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ❌  |   ✅    |   ❌    |
-| Customer receipt UI            |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   —     |
-| Refund lineage                 |  ✅  |  ✅   |  ✅   |  ✅    |   ✅   |  —   |   ✅    |   —     |
+| TransactionPassport            |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ⚠️  |   ✅    |   ✅    |
+| Provider / fulfiller resolver  |  ✅  |  ✅   |   —   |   —    |   ✅   |  ✅  |   ✅    |   ✅    |
+| Payment authority              |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ❌  |   ✅    |   ✅    |
+| Funding legs (multi-rail)      |  ⚠️  |  ⚠️   |  ✅   |   ✅   |   ⚠️   |  ❌  |   ⚠️    |   ⚠️    |
+| SUMIT fiscal document mapping  |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ❌  |   ✅    |   ✅    |
+| Customer receipt UI            |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ✅    |
+| Refund lineage                 |  ✅  |  ✅   |  ✅   |  ✅    |   ✅   |  —   |   ✅    |   ✅    |
 | Handoff (issue / verify)       |  ✅  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   🟡    |
 | Review                         |  ✅  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   ⚠️    |
-| Reconciliation warnings        |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ⚠️  |   ✅    |   ❌    |
+| Reconciliation warnings        |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ⚠️  |   ✅    |   ✅    |
 | Customer UI                    |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ⚠️    |
 | Provider UI                    |   —  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   ⚠️    |
-| Admin UI                       |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ❌    |
+| Admin UI                       |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ✅    |
 | E2E (Playwright)               |  ✅  |  ✅   |  ✅   |   ⚠️   |   ✅   |  ✅  |   ⚠️    |   ❌    |
 
 ## What changed since 2026-08-27 first draft
@@ -52,6 +52,14 @@ Six cells advanced in the subsequent sweep:
   admin explorer at /admin/fiscal-transactions/:source/:sourceId now
   renders every fiscal transaction along the eight §16 axes with
   inline reconciliation warnings.
+- **PETTREK column** — first pass (`fc861f6fc`). composePettrekFiscal
+  wired via 'pettrek_trips' source hint. Transaction / Payment /
+  Provider / SUMIT / Refund / Reconciliation / Customer receipt /
+  Admin UI cells all flip up. Remaining ⚠️: multi-rail funding legs,
+  reviews, customer + provider dashboards under
+  client/src/pages/pettrek/* (unrouted per orphan report v4 — separate
+  cleanup PR). Handoff purpose='PETTREK_PICKUP' + 'PETTREK_DROPOFF'
+  will land when the driver-side UI ships.
 
 ## Notes
 
