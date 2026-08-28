@@ -983,14 +983,12 @@ export default function MyAccount() {
     if (!user) return;
     setPetPhotoUploading(true);
     try {
-      const token = await user.getIdToken();
+      // Was bare fetch() with hand-rolled Bearer — apiRequest handles
+      // FormData bodies un-stringified (queryClient.ts:131) and adds
+      // App Check + 401 refresh + cold-start retry.
       const fd = new FormData();
       fd.append('photo', file);
-      const res = await fetch(getApiUrl('/api/pets/photo'), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
+      const res = await apiRequest('POST', '/api/pets/photo', fd);
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Upload failed');
       setPetFormData((p: any) => ({ ...p, photoUrl: data.photoUrl }));
@@ -1021,10 +1019,9 @@ export default function MyAccount() {
     enabled: !!user,
     queryFn: async () => {
       if (!user) return null;
-      const token = await user.getIdToken();
-      const res = await fetch(getApiUrl('/api/user/settings/verification-status'), {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      // Was bare fetch() with hand-rolled Bearer — swapped to
+      // apiRequest for App Check + 401 retry.
+      const res = await apiRequest('GET', '/api/user/settings/verification-status');
       if (!res.ok) throw new Error('Failed to fetch verification status');
       return res.json();
     },
@@ -1034,15 +1031,12 @@ export default function MyAccount() {
     if (!user) return;
     setIsUploadingPhoto(true);
     try {
-      const token = await user.getIdToken();
+      // Was bare fetch() with hand-rolled Bearer — apiRequest handles
+      // FormData bodies un-stringified (queryClient.ts:131).
       const formData = new FormData();
       formData.append('photo', file);
 
-      const res = await fetch(getApiUrl('/api/user/settings/profile/photo'), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
+      const res = await apiRequest('POST', '/api/user/settings/profile/photo', formData);
 
       const data = await res.json();
 
@@ -1081,11 +1075,9 @@ export default function MyAccount() {
     if (!user) return;
     setIsUploadingPhoto(true);
     try {
-      const token = await user.getIdToken();
-      const res = await fetch(getApiUrl('/api/user/settings/profile/photo'), {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      // Was bare fetch() with hand-rolled Bearer — same swap as the
+      // POST above.
+      const res = await apiRequest('DELETE', '/api/user/settings/profile/photo');
 
       if (!res.ok) throw new Error('Delete failed');
 
@@ -1156,8 +1148,12 @@ export default function MyAccount() {
 
   const registerPasskeyMutation = useMutation({
     mutationFn: async () => {
-      const { getApiUrl } = await import('@/lib/apiConfig');
-      const optionsRes = await fetch(getApiUrl('/api/webauthn/register/options'), { method: 'POST', credentials: 'include' });
+      // Was bare fetch() with `credentials: 'include'` and NO Bearer
+      // at all — Firebase-only users (no pw_session cookie) could
+      // never enrol a passkey because the server can't identify them
+      // from cookies alone. The verify call one line down already
+      // used apiRequest correctly; the options call drifted.
+      const optionsRes = await apiRequest('POST', '/api/webauthn/register/options');
       if (!optionsRes.ok) throw new Error('Failed to get registration options');
       const { options, challengeKey } = await optionsRes.json();
       const { startRegistration } = await import('@simplewebauthn/browser');

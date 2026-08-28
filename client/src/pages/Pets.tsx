@@ -117,12 +117,10 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/pets/${petId}/health-events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
-        credentials: 'include',
-        body: JSON.stringify(form),
-      });
+      // Was bare fetch() with hand-rolled Bearer — missed App Check,
+      // 401 token-refresh-retry, and cold-start 503 retry that
+      // apiRequest handles for every other auth'd surface.
+      const res = await apiRequest('POST', `/api/pets/${petId}/health-events`, form);
       if (!res.ok) throw new Error((await res.json()).error || 'Failed');
       return res.json();
     },
@@ -137,11 +135,8 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
 
   const deleteMutation = useMutation({
     mutationFn: async (eventId: string) => {
-      const res = await fetch(`/api/pets/${petId}/health-events/${eventId}`, {
-        method: 'DELETE',
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-        credentials: 'include',
-      });
+      // See addMutation comment — same bare-fetch → apiRequest swap.
+      const res = await apiRequest('DELETE', `/api/pets/${petId}/health-events/${eventId}`);
       if (!res.ok) throw new Error('Failed to delete');
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/pets/${petId}/health-events`] }),
@@ -277,10 +272,10 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                   return;
                 }
                 try {
-                  const res = await fetch(
-                    `/api/pets/${petId}/health-events/${ev.id}/ics`,
-                    { headers: { Authorization: `Bearer ${authToken}` }, credentials: 'include' },
-                  );
+                  // Was bare fetch() with hand-rolled Bearer — swapped
+                  // to apiRequest so the .ics download also gets
+                  // App Check + 401 token-refresh-retry.
+                  const res = await apiRequest('GET', `/api/pets/${petId}/health-events/${ev.id}/ics`);
                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   const blob = await res.blob();
                   const blobUrl = URL.createObjectURL(blob);
@@ -386,11 +381,10 @@ export default function Pets() {
     queryKey: ['/api/pets'],
     enabled: !!authToken,
     queryFn: async () => {
-      const response = await fetch(getApiUrl('/api/pets'), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      });
+      // Was bare fetch() with hand-rolled Bearer + no
+      // Content-Type / no App Check / no retry. Same discipline as
+      // every other /api/... call in this file.
+      const response = await apiRequest('GET', '/api/pets');
       if (!response.ok) throw new Error('Failed to fetch pets');
       const data = await response.json();
       return data.pets || [];
