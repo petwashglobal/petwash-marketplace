@@ -84,6 +84,10 @@ interface Pet {
   lastVaccineDate?: string;
   nextVaccineDate?: string;
   enableVaccineReminders: boolean;
+  // CEO §22 (2026-08-28) — owner-controlled medical share consent.
+  // Optional because Firestore may not yet carry the flag on legacy
+  // pets; the toggle below defaults to the safe (private) state.
+  medicalShareConsent?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -524,6 +528,44 @@ export default function Pets() {
     },
   });
 
+  // CEO §22 (2026-08-28) — owner-controlled medical share consent.
+  // Firestore petId in the URL is not a valid Postgres row id; the
+  // server's /consent endpoint falls through to (userId, name) when
+  // the URL param isn't numeric, so we pass petName in the body.
+  const consentMutation = useMutation({
+    mutationFn: async (input: { pet: Pet; share: boolean }) => {
+      if (!authToken) throw new Error('Not authenticated');
+      return apiRequest('POST', `/api/pets/${input.pet.id}/consent`, {
+        petName: input.pet.name,
+        medicalShareConsent: input.share,
+      });
+    },
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pets'] });
+      toast({
+        title: language === 'he'
+          ? (variables.share ? 'שיתוף מידע רפואי הופעל' : 'שיתוף מידע רפואי בוטל')
+          : (variables.share ? 'Medical sharing enabled' : 'Medical sharing turned off'),
+        description: language === 'he'
+          ? (variables.share
+            ? 'בהזמנות הבאות המטפל יראה אלרגיות, תרופות ופרטי וטרינר.'
+            : 'פרטים רפואיים לא ישותפו בהזמנות הבאות.')
+          : (variables.share
+            ? 'Providers on future bookings can see allergies, medications, vet contact.'
+            : 'Medical details will not be shared on future bookings.'),
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: t('pets.error'),
+        description: error?.message || (language === 'he'
+          ? 'לא הצלחנו לעדכן את העדפת השיתוף. נסו שוב.'
+          : 'Could not update sharing preference. Please retry.'),
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleAddPet = () => {
     setEditingPet(null);
     form.reset({
@@ -720,6 +762,49 @@ export default function Pets() {
                           </span>
                         </div>
                       )}
+                      {/* CEO §22 — owner-controlled medical share consent.
+                          Off by default (fail-safe). Neutral phrasing:
+                          the toggle describes what happens, not what the
+                          owner "should" do. */}
+                      <div
+                        className="flex items-start justify-between gap-3 pt-2 mt-2 border-t border-slate-100"
+                        data-testid={`consent-row-${pet.id}`}
+                      >
+                        <div className="flex-1 text-xs">
+                          <div className="font-semibold text-gray-800">
+                            {language === 'he'
+                              ? 'שיתוף מידע רפואי עם מטפלים'
+                              : 'Share medical details with providers'}
+                          </div>
+                          <div className="text-gray-500 mt-0.5">
+                            {language === 'he'
+                              ? 'כשהאפשרות פעילה, ההזמנות הבאות ישותפו: אלרגיות, תרופות, שם וטלפון וטרינר.'
+                              : 'When on, future bookings share: allergies, medications, vet name & phone.'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={pet.medicalShareConsent === true}
+                          disabled={consentMutation.isPending}
+                          onClick={() =>
+                            consentMutation.mutate({
+                              pet,
+                              share: !(pet.medicalShareConsent === true),
+                            })
+                          }
+                          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                            pet.medicalShareConsent === true ? 'bg-emerald-500' : 'bg-gray-300'
+                          } disabled:opacity-50`}
+                          data-testid={`consent-toggle-${pet.id}`}
+                        >
+                          <span
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                              pet.medicalShareConsent === true ? 'translate-x-5' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </CardContent>
 
                     {/* Health Journal toggle */}
