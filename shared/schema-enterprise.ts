@@ -1754,6 +1754,15 @@ export const providerApplicants = pgTable("provider_applicants", {
   // Cryptographic Integrity (Israeli Privacy Law 2025)
   contentHash: varchar("content_hash"), // SHA-256 of application data
   auditTrailHash: varchar("audit_trail_hash"), // Chain hash for tamper detection
+
+  // Draft-only client-form-state for provider onboarding Step 2 (documents/
+  // insurance/tax/first-aid/driving license) and Step 3 (declarations/
+  // residential-history/consent). NOT the authoritative record of submitted
+  // answers — those live in provider_applications columns after /apply.
+  // Added by migration 0131 (2026-08-28) so a browser close mid-wizard no
+  // longer erases everything past personal details. Purge on status
+  // transition off draft.
+  draftStep2Step3: jsonb("draft_step2_step3"),
 }, (table) => [
   index("idx_provider_applicants_user").on(table.userId),
   index("idx_provider_applicants_email").on(table.email),

@@ -264,6 +264,62 @@ export default function ProviderOnboarding() {
         const fullPhone = phoneNumber
           ? `${phoneCountryCode}${phoneNumber.replace(/^0/, '').replace(/\s+/g, '')}`
           : undefined;
+
+        // CEO §31 — Step 2 + Step 3 state SAVES SERVER-SIDE. Migration 0131
+        // added `draft_step2_step3` jsonb on provider_applicants for exactly
+        // this. File uploads (selfie, ID, insurance cert, first-aid cert,
+        // driving license, business license) stay client-only — a File
+        // object can't be re-hydrated from JSON — so the applicant re-picks
+        // them on resume, but every text/checkbox/select field survives.
+        // idNumber intentionally EXCLUDED from the draft blob: it's raw
+        // Israeli ID and only ever leaves the browser through the /apply
+        // encrypt-at-rest path.
+        // Every field lives under a stable JSON key. The reverse-hydrate
+        // in the mount effect reads by the same key, so a rename here
+        // requires the mirror in the setter block below. Names track the
+        // actual state-var names in this file (verified 2026-08-28).
+        const draftStep2Step3 = {
+          step2: {
+            idDocumentType,
+            idExpiry,
+            providerTypes,
+            taxStatus,
+            insurancePolicyNumber,
+            insuranceProvider,
+            insuranceExpiry,
+            petFirstAidNumber,
+            petFirstAidExpiry,
+            drivingLicenseNumber,
+            drivingLicenseClass,
+            drivingLicenseExpiry,
+            ageConfirmed18Plus,
+          },
+          step3: {
+            residentialHistory,
+            backgroundCheckConsent,
+            selfDeclarationNoConvictions,
+            enhancedReasons,
+            // Six driver declarations
+            declarationValidLicense,
+            declarationNoSuspension,
+            declarationUnderPointsLimit,
+            declarationNoDrugsAlcohol,
+            declarationValidVehicleInsurance,
+            declarationVehicleInspection,
+            // Three trainer declarations
+            declarationTrainingCertification,
+            declarationAccreditedCourses,
+            declarationLiabilityInsurance,
+            // Three walker/sitter declarations
+            declarationPhysicallyFit,
+            declarationAnimalExperience,
+            declarationFirstAidTraining,
+            // Two universal declarations
+            declarationAccurateInfo,
+            declarationAcceptTerms,
+          },
+        };
+
         const res = await fetch(getApiUrl('/api/provider-applications/draft'), {
           method: 'POST',
           headers: {
@@ -278,6 +334,7 @@ export default function ProviderOnboarding() {
             dateOfBirth: dob || undefined,
             city: city || undefined,
             country: country || undefined,
+            draftStep2Step3,
           }),
         });
         if (!res.ok) throw new Error(`draft save ${res.status}`);
@@ -288,7 +345,25 @@ export default function ProviderOnboarding() {
         setDraftStatus('error');
       }
     }, 800);
-  }, [user, firstName, lastName, phoneNumber, phoneCountryCode, dob, city, country]);
+    // Intentional wide dep list — every draft field triggers a debounced
+    // resave. React linter is off here because the array is deliberately
+    // large and hand-maintained to keep parity with the payload above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    user, firstName, lastName, phoneNumber, phoneCountryCode, dob, city, country,
+    idDocumentType, idExpiry, providerTypes, taxStatus,
+    insurancePolicyNumber, insuranceProvider, insuranceExpiry,
+    petFirstAidNumber, petFirstAidExpiry,
+    drivingLicenseNumber, drivingLicenseClass, drivingLicenseExpiry,
+    ageConfirmed18Plus,
+    residentialHistory, backgroundCheckConsent, selfDeclarationNoConvictions,
+    enhancedReasons,
+    declarationValidLicense, declarationNoSuspension, declarationUnderPointsLimit,
+    declarationNoDrugsAlcohol, declarationValidVehicleInsurance, declarationVehicleInspection,
+    declarationTrainingCertification, declarationAccreditedCourses, declarationLiabilityInsurance,
+    declarationPhysicallyFit, declarationAnimalExperience, declarationFirstAidTraining,
+    declarationAccurateInfo, declarationAcceptTerms,
+  ]);
 
   // Clean up the pending debounce on unmount so a fetch never fires against
   // a torn-down component.
@@ -322,6 +397,57 @@ export default function ProviderOnboarding() {
           const code = ['+972', '+1', '+44', '+61', '+49', '+33', '+7', '+91', '+55'].find((c) => raw.startsWith(c));
           if (code) { setPhoneCountryCode(code); setPhoneNumber(raw.slice(code.length)); }
           else setPhoneNumber(raw);
+        }
+        // CEO §31 hydrate — reverse-mirror of the payload assembled in
+        // scheduleDraftSave. Every setter guards on `v || …` so a value
+        // the applicant is CURRENTLY typing is never overwritten by a
+        // late-arriving draft response.
+        const s2 = d.draftStep2Step3?.step2;
+        const s3 = d.draftStep2Step3?.step3;
+        if (s2) {
+          if (s2.idDocumentType) setIdDocumentType((v) => v || s2.idDocumentType);
+          if (s2.idExpiry)       setIdExpiry((v) => v || s2.idExpiry);
+          if (Array.isArray(s2.providerTypes) && s2.providerTypes.length) {
+            setProviderTypes((v) => (v && v.length ? v : s2.providerTypes));
+          }
+          if (s2.taxStatus)              setTaxStatus((v) => v || s2.taxStatus);
+          if (s2.insurancePolicyNumber)  setInsurancePolicyNumber((v) => v || s2.insurancePolicyNumber);
+          if (s2.insuranceProvider)      setInsuranceProvider((v) => v || s2.insuranceProvider);
+          if (s2.insuranceExpiry)        setInsuranceExpiry((v) => v || s2.insuranceExpiry);
+          if (s2.petFirstAidNumber)      setPetFirstAidNumber((v) => v || s2.petFirstAidNumber);
+          if (s2.petFirstAidExpiry)      setPetFirstAidExpiry((v) => v || s2.petFirstAidExpiry);
+          if (s2.drivingLicenseNumber)   setDrivingLicenseNumber((v) => v || s2.drivingLicenseNumber);
+          if (s2.drivingLicenseClass)    setDrivingLicenseClass((v) => v || s2.drivingLicenseClass);
+          if (s2.drivingLicenseExpiry)   setDrivingLicenseExpiry((v) => v || s2.drivingLicenseExpiry);
+          if (s2.ageConfirmed18Plus)     setAgeConfirmed18Plus((v) => v || !!s2.ageConfirmed18Plus);
+        }
+        if (s3) {
+          if (Array.isArray(s3.residentialHistory) && s3.residentialHistory.length) {
+            setResidentialHistory((v) => (v && v.some((x) => x.trim()) ? v : s3.residentialHistory));
+          }
+          if (s3.backgroundCheckConsent)       setBackgroundCheckConsent((v) => v || !!s3.backgroundCheckConsent);
+          if (s3.selfDeclarationNoConvictions) setSelfDeclarationNoConvictions((v) => v || !!s3.selfDeclarationNoConvictions);
+          if (Array.isArray(s3.enhancedReasons) && s3.enhancedReasons.length) {
+            setEnhancedReasons((v) => (v && v.length ? v : s3.enhancedReasons));
+          }
+          // Six driver declarations
+          if (s3.declarationValidLicense)          setDeclarationValidLicense((v) => v || !!s3.declarationValidLicense);
+          if (s3.declarationNoSuspension)          setDeclarationNoSuspension((v) => v || !!s3.declarationNoSuspension);
+          if (s3.declarationUnderPointsLimit)      setDeclarationUnderPointsLimit((v) => v || !!s3.declarationUnderPointsLimit);
+          if (s3.declarationNoDrugsAlcohol)        setDeclarationNoDrugsAlcohol((v) => v || !!s3.declarationNoDrugsAlcohol);
+          if (s3.declarationValidVehicleInsurance) setDeclarationValidVehicleInsurance((v) => v || !!s3.declarationValidVehicleInsurance);
+          if (s3.declarationVehicleInspection)     setDeclarationVehicleInspection((v) => v || !!s3.declarationVehicleInspection);
+          // Three trainer declarations
+          if (s3.declarationTrainingCertification) setDeclarationTrainingCertification((v) => v || !!s3.declarationTrainingCertification);
+          if (s3.declarationAccreditedCourses)     setDeclarationAccreditedCourses((v) => v || !!s3.declarationAccreditedCourses);
+          if (s3.declarationLiabilityInsurance)    setDeclarationLiabilityInsurance((v) => v || !!s3.declarationLiabilityInsurance);
+          // Three walker/sitter declarations
+          if (s3.declarationPhysicallyFit)         setDeclarationPhysicallyFit((v) => v || !!s3.declarationPhysicallyFit);
+          if (s3.declarationAnimalExperience)      setDeclarationAnimalExperience((v) => v || !!s3.declarationAnimalExperience);
+          if (s3.declarationFirstAidTraining)      setDeclarationFirstAidTraining((v) => v || !!s3.declarationFirstAidTraining);
+          // Two universal declarations
+          if (s3.declarationAccurateInfo)          setDeclarationAccurateInfo((v) => v || !!s3.declarationAccurateInfo);
+          if (s3.declarationAcceptTerms)           setDeclarationAcceptTerms((v) => v || !!s3.declarationAcceptTerms);
         }
       } catch { /* best-effort load */ }
     })();

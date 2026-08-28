@@ -610,6 +610,12 @@ router.post('/draft', async (req: Request, res: Response) => {
       emergencyContactName:   z.string().optional(),
       emergencyContactPhone:  z.string().optional(),
       emergencyContactRelation: z.string().optional(),
+      // Step 2 (documents/insurance/tax/first-aid/driving license) + Step 3
+      // (declarations/residential-history/consent) client-form-state, kept
+      // as an opaque blob so the SUBMIT path (which lives on a different
+      // table) stays authoritative and this endpoint stays free of the
+      // dozens of individual field types. Migration 0131.
+      draftStep2Step3: z.record(z.any()).optional(),
     });
 
     const parsed = draftSchema.safeParse(req.body);
@@ -657,6 +663,7 @@ router.post('/draft', async (req: Request, res: Response) => {
           ...(data.emergencyContactName     && { emergencyContactName: data.emergencyContactName }),
           ...(data.emergencyContactPhone    && { emergencyContactPhone: data.emergencyContactPhone }),
           ...(data.emergencyContactRelation && { emergencyContactRelation: data.emergencyContactRelation }),
+          ...(data.draftStep2Step3          !== undefined && { draftStep2Step3: data.draftStep2Step3 }),
           updatedAt: new Date(),
         })
         .where(eq(providerApplicants.userId, userId));
@@ -694,6 +701,7 @@ router.post('/draft', async (req: Request, res: Response) => {
       ...(data.emergencyContactName     && { emergencyContactName: data.emergencyContactName }),
       ...(data.emergencyContactPhone    && { emergencyContactPhone: data.emergencyContactPhone }),
       ...(data.emergencyContactRelation && { emergencyContactRelation: data.emergencyContactRelation }),
+      ...(data.draftStep2Step3          !== undefined && { draftStep2Step3: data.draftStep2Step3 }),
     }).returning({ id: providerApplicants.id });
 
     return res.json({ ok: true, action: 'created', applicationId: draft?.id });
@@ -715,17 +723,18 @@ router.get('/draft', async (req: Request, res: Response) => {
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
 
     const [row] = await db.select({
-      id:            providerApplicants.id,
-      status:        providerApplicants.status,
-      firstName:     providerApplicants.firstName,
-      lastName:      providerApplicants.lastName,
-      phoneNumber:   providerApplicants.phoneNumber,
-      dateOfBirth:   providerApplicants.dateOfBirth,
-      streetAddress: providerApplicants.streetAddress,
-      city:          providerApplicants.city,
-      postalCode:    providerApplicants.postalCode,
-      countryCode:   providerApplicants.countryCode,
-      updatedAt:     providerApplicants.lastUpdatedAt,
+      id:               providerApplicants.id,
+      status:           providerApplicants.status,
+      firstName:        providerApplicants.firstName,
+      lastName:         providerApplicants.lastName,
+      phoneNumber:      providerApplicants.phoneNumber,
+      dateOfBirth:      providerApplicants.dateOfBirth,
+      streetAddress:    providerApplicants.streetAddress,
+      city:             providerApplicants.city,
+      postalCode:       providerApplicants.postalCode,
+      countryCode:      providerApplicants.countryCode,
+      draftStep2Step3:  providerApplicants.draftStep2Step3,
+      updatedAt:        providerApplicants.lastUpdatedAt,
     })
       .from(providerApplicants)
       .where(eq(providerApplicants.userId, userId))
