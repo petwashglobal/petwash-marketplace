@@ -109,7 +109,11 @@ const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
 const ProviderSearchPage = lazy(() => import("@/pages/ProviderSearchPage"));
-const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
+// PrivilegeSignup import removed 2026-08-28 — the /privilege /loyalty/join
+// /vito routes now redirect to /signup?flow=prestige (canonical) per CEO
+// §2. The file remains at client/src/pages/PrivilegeSignup.tsx as archive
+// until the design lane deletes it.
+// const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
 const PrestigeClub = lazy(() => import("@/pages/PrestigeClub"));
 const PrestigeInterestWaitlist = lazy(() => import("@/pages/PrestigeInterestWaitlist"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
@@ -818,8 +822,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       // NEVER show the web marketing Landing / welcome-intent screen — that is
       // the "website wrapper" behavior the two-app spec bans. Straight to the
       // luxury sign-in/sign-up screen (Google/Apple/phone/email — returning
-      // users sign in on the same screen); signed-in members → PrestigeHome.
-      setLocation(user ? '/prestige/home' : '/signup');
+      // users sign in on the same screen); signed-in customers → Pet Parent home.
+      // 2026-08-28 product correction: destination was /prestige/home, sending
+      // every non-Prestige customer to a Prestige-branded URL as if they were
+      // members. /pet-parent/home renders the same PrestigeHome component;
+      // the URL now honors the CEO product model.
+      setLocation(user ? '/pet-parent/home' : '/signup');
     }
   }, [isProviderApp, isCustomerApp, user, loading, role, roleLoading, setLocation]);
 
@@ -849,7 +857,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (isProviderApp && hits(PROVIDER_APP_BLOCKED)) {
       setLocation('/provider/home');
     } else if (isCustomerApp && hits(CUSTOMER_APP_BLOCKED)) {
-      setLocation('/prestige/home');
+      // 2026-08-28 product correction — bounce OOB customer-app URLs to
+      // the Pet Parent home, not the Prestige-branded alias.
+      setLocation('/pet-parent/home');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appPath, isProviderApp, isCustomerApp, loading, setLocation]);
@@ -888,8 +898,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (flavored) {
       if (loading) return <PageLoader />; // brief; the AuthProvider watchdog caps at 8s
       if (isProviderApp) return <Redirect to={user ? '/provider/home' : '/signup'} />;
-      // customer flavor (or a generic native build) → the member experience
-      return <Redirect to={user ? '/prestige/home' : '/signup'} />;
+      // customer flavor (or a generic native build) → the Pet Parent home.
+      // 2026-08-28 product correction — destination was /prestige/home,
+      // sending every non-Prestige customer to a Prestige-branded URL as if
+      // they were members. /pet-parent/home renders the same PrestigeHome
+      // component; the URL now honors the CEO product model.
+      return <Redirect to={user ? '/pet-parent/home' : '/signup'} />;
     }
     // Web browser — marketing Landing for signed-out, Home for signed-in (unchanged).
     if (loading) return <PageLoader />;
@@ -1145,7 +1159,21 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* Luxury customer (Prestige) home — dark rollout, reachable for preview */}
+        {/* Pet Parent home — the CANONICAL customer landing (CEO 2026-08-28
+            product correction: Pet Parent is the base customer workspace,
+            Prestige is a MEMBERSHIP entitlement that travels inside it, NOT
+            a separate mode). The `/prestige/home` path below is kept as an
+            alias for backward-compat with existing deep links, PWA icons,
+            and flavored native-app root redirects — both routes render the
+            same PrestigeHome component today. Do not send non-Prestige
+            customers to a Prestige-branded URL. */}
+        <Route path="/pet-parent/home">
+          {() => (
+            <RequireAuth>
+              <PrestigeHome />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/prestige/home">
           {() => (
             <RequireAuth>
@@ -1170,16 +1198,30 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* PetWash Privilege - Public registration */}
+        {/* CEO 2026-08-28 §2 product correction — no duplicate identity
+            universes. /privilege, /loyalty/join, /vito used to render
+            PrivilegeSignup.tsx: a Google-only signup that asked DOB,
+            gender, national-ID doc, address, and 14 declarations BEFORE
+            OAuth, then POST'd to /api/privilege/register (a parallel
+            privilege_members row alongside the Firebase user). That
+            violated:
+              • "OAuth first, then collect missing" (§3 §57)
+              • "no separate identity systems for provider/Prestige" (§7)
+              • "email must be first-class" (Google-only path was a leak)
+            2026-05-25 design doc (docs/design/…smart-identity-routing.md
+            :72) already flagged PrivilegeSignup for deletion.
+            All three entry paths now redirect to the canonical /signup
+            with a `flow=prestige` hint the SignUpLuxury flow-router
+            understands. The PrivilegeSignup component stays in the
+            repo as reference until the design lane deletes it. */}
         <Route path="/privilege">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
         </Route>
         <Route path="/loyalty/join">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
         </Route>
-        {/* Backward compatibility - old /vito URL redirects */}
         <Route path="/vito">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
         </Route>
 
         {/* Loyalty Program - Public landing + member dashboard */}

@@ -255,9 +255,10 @@ export default function MarketplaceBookingFlow() {
       }
     },
     onError: (error: any) => {
+      // CEO §60 (2026-08-28) — never render error.message verbatim.
       toast({
         title: isHebrew ? 'שגיאה בחישוב מחיר' : 'Pricing Error',
-        description: error.message || (isHebrew ? 'לא ניתן לחשב מחיר' : 'Could not calculate pricing'),
+        description: isHebrew ? 'לא ניתן לחשב מחיר. נסה/י שוב.' : 'Could not calculate pricing. Please try again.',
         variant: 'destructive',
       });
     },
@@ -315,9 +316,18 @@ export default function MarketplaceBookingFlow() {
       }
     },
     onError: (error: any) => {
+      // CEO §60 + §5 (2026-08-28) — map stable errorCode to friendly
+      // HE/EN copy. Never render error.message verbatim. CARE_INFO_
+      // REQUIRED gets its own copy so the customer knows why.
+      const code = String(error?.body?.errorCode || '');
+      const description = code === 'CARE_INFO_REQUIRED'
+        ? (isHebrew
+            ? 'השירות הזה דורש שיתוף פרטים רפואיים. סמן/י שיתוף לשירות זה ונסה/י שוב, או בחר/י שירות אחר.'
+            : 'This service requires medical information sharing — tick the booking-scoped share and try again, or pick another service.')
+        : (isHebrew ? 'לא ניתן ליצור הזמנה. נסה/י שוב.' : 'Could not create booking. Please try again.');
       toast({
         title: isHebrew ? 'שגיאה בהזמנה' : 'Booking Error',
-        description: error.message || (isHebrew ? 'לא ניתן ליצור הזמנה' : 'Could not create booking'),
+        description,
         variant: 'destructive',
       });
       setIsSubmitting(false);

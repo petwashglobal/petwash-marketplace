@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { randomInt, randomBytes } from 'crypto';
 import { db, pool } from '../db';
-import { 
-  walkerProfiles, 
-  walkBookings, 
+import {
+  walkerProfiles,
+  walkBookings,
   walkGpsTracking,
   walkHealthData,
   walkBlockchainAudit,
@@ -17,6 +17,7 @@ import {
   bookingRequests,
   providerApprovalQueue,
   walkSlotHolds,
+  pets,
   type InsertWalkerProfile,
   type InsertWalkBooking,
   type InsertWalkGpsTracking,
@@ -415,10 +416,10 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { 
-      walkerId, 
-      scheduledDate, 
-      scheduledStartTime, 
+    const {
+      walkerId,
+      scheduledDate,
+      scheduledStartTime,
       durationMinutes,
       pickupLatitude,
       pickupLongitude,
@@ -426,11 +427,103 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       petName,
       petBreed,
       petWeight,
-      petSpecialNeeds
+      petSpecialNeeds,
+      // CEO §12 (2026-08-28): structured safety flags from the KYA pet
+      // record — aggression, escape risk, feeding/handling notes plus,
+      // under authoritative consent, allergies / medications / vet
+      // contact. Client sends its view; server enforces authority.
+      petSafetySnapshot: clientSafetySnapshot,
+      petIds: rawPetIds,
+      // CEO §4/§5 booking-scoped consent — owner explicitly opts in
+      // for this one booking, e.g. via a checkbox at checkout. Client
+      // boolean is NEVER authority for medical fields; server checks
+      // medicalDataPrivate=true is not set before honoring it.
+      bookingScopedShare: rawBookingScopedShare,
+      serviceRequiresMedical: rawServiceRequiresMedical,
     } = req.body;
+    const bookingScopedShare      = rawBookingScopedShare === true;
+    const serviceRequiresMedical  = rawServiceRequiresMedical === true;
+
+    // ── CEO §22 SERVER-ENFORCED KYA privacy (2026-08-28) ────────────────
+    // Client `medicalConsented=true` on the snapshot is NEVER authority.
+    // A malicious client can post any medical field regardless of the
+    // owner's real consent. Load the canonical pet, verify ownership,
+    // and let the server compose the snapshot from authoritative pet
+    // data + the DB consent flag. Any client-supplied medical field
+    // is IGNORED.
+    let safeSnapshot: Record<string, unknown> | null = null;
+    try {
+      const petIdCandidate = Array.isArray(rawPetIds) && rawPetIds.length > 0
+        ? Number(rawPetIds[0]) : null;
+      if (Number.isFinite(petIdCandidate) && (petIdCandidate as number) > 0) {
+        const [petRow] = await db
+          .select()
+          .from(pets)
+          .where(and(eq(pets.id, petIdCandidate as number), eq(pets.userId, ownerId)))
+          .limit(1);
+        if (petRow) {
+          // Server-authoritative snapshot — medical fields projected
+          // only under petRow.medicalShareConsent === true.
+          const { buildServerSafetySnapshot } = await import('../lib/petPrivacy');
+          safeSnapshot = buildServerSafetySnapshot(petRow as any, clientSafetySnapshot, {
+            bookingScopedShare,
+            serviceRequiresMedical,
+          }) as unknown as Record<string, unknown>;
+        } else {
+          // Cross-user attempt OR unknown petId. Fall through to a
+          // safety-only projection built from the client's non-medical
+          // fields — never leak medical.
+          const c = (clientSafetySnapshot && typeof clientSafetySnapshot === 'object' && !Array.isArray(clientSafetySnapshot))
+            ? (clientSafetySnapshot as Record<string, unknown>) : {};
+          safeSnapshot = {
+            aggressionWarning:    typeof c.aggressionWarning === 'string' ? c.aggressionWarning : null,
+            escapeRisk:           c.escapeRisk === true,
+            behaviourNotes:       typeof c.behaviourNotes === 'string' ? c.behaviourNotes : '',
+            feedingInstructions:  typeof c.feedingInstructions === 'string' ? c.feedingInstructions : '',
+            handlingInstructions: typeof c.handlingInstructions === 'string' ? c.handlingInstructions : '',
+            sensitiveSkin:        c.sensitiveSkin === true,
+            medicalConsented:     false,
+          };
+        }
+      } else if (clientSafetySnapshot && typeof clientSafetySnapshot === 'object' && !Array.isArray(clientSafetySnapshot)) {
+        // No petId provided — cannot verify ownership. Accept ONLY the
+        // safety subset from the client; strip any medical field.
+        const c = clientSafetySnapshot as Record<string, unknown>;
+        safeSnapshot = {
+          aggressionWarning:    typeof c.aggressionWarning === 'string' ? c.aggressionWarning : null,
+          escapeRisk:           c.escapeRisk === true,
+          behaviourNotes:       typeof c.behaviourNotes === 'string' ? c.behaviourNotes : '',
+          feedingInstructions:  typeof c.feedingInstructions === 'string' ? c.feedingInstructions : '',
+          handlingInstructions: typeof c.handlingInstructions === 'string' ? c.handlingInstructions : '',
+          sensitiveSkin:        c.sensitiveSkin === true,
+          medicalConsented:     false,
+        };
+      }
+    } catch (kyaErr: any) {
+      logger.warn('[Walk My Pet] KYA snapshot build failed — booking continues without medical fields', {
+        error: kyaErr?.message,
+      });
+      safeSnapshot = null;
+    }
+
+    // CEO §5 (2026-08-28) — CARE INFORMATION REQUIRED gate.
+    // A service that hard-requires medical (e.g. medicated walk, senior
+    // pet support) must NOT accept a booking whose safety snapshot ended
+    // up without medical fields — either because the pet has
+    // medicalDataPrivate=true (hard veto), or because the owner did not
+    // opt in on the account preference and did not tick booking-scoped
+    // share. Fail-CLOSED with a stable errorCode so the client can
+    // render the friendly HE/EN banner asking for consent or a
+    // different service.
+    if (serviceRequiresMedical && safeSnapshot && (safeSnapshot as any).medicalConsented !== true) {
+      return res.status(400).json({
+        error: 'This service requires medical information to be shared for the booking.',
+        errorCode: 'CARE_INFO_REQUIRED',
+      });
+    }
 
     // Validate required fields
-    if (!walkerId || !scheduledDate || !scheduledStartTime || !durationMinutes || 
+    if (!walkerId || !scheduledDate || !scheduledStartTime || !durationMinutes ||
         !pickupLatitude || !pickupLongitude || !pickupAddress) {
       return res.status(400).json({ error: 'Missing required booking information' });
     }
@@ -593,6 +686,10 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       petBreed,
       petWeight,
       petSpecialNeeds,
+      // CEO §12 safety summary — see the destructuring block above for why
+      // this must persist. Null when the client didn't send one, so legacy
+      // callers keep working.
+      petSafetySnapshot: safeSnapshot,
       walkerRate: pricing.baseRate.toFixed(2),
       platformFeeOwner: (pricing.platformFee * 0.25).toFixed(2),
       platformFeeSitter: (pricing.platformFee * 0.75).toFixed(2),
@@ -679,6 +776,19 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
         providerPayoutCents: Math.round(pricing.providerPayout * 100),
         ownerMessage: null,
         legacyRef: { table: 'walk_bookings', id: bookingId },
+        // CEO §12: carry the pet display context AND the KYA safety
+        // snapshot onto the mirror so /walker/requests + /walker/active
+        // can render name/breed/type (no more "Pet" fallback) AND the
+        // aggression / escape-risk / allergy warnings the walker MUST
+        // see before grabbing the leash.
+        petDetails: {
+          petName: petName || null,
+          petType: 'dog',
+          petBreed: petBreed || null,
+          petWeight: petWeight || null,
+          address: pickupAddress || null,
+          safety: safeSnapshot,
+        },
       });
     } catch { /* bridge is best-effort */ }
 
@@ -2063,24 +2173,50 @@ router.get('/walker/requests', requireAuth, async (req, res) => {
       .orderBy(desc(bookingRequests.createdAt))
       .limit(50);
 
-    const formatted = requests.map(r => ({
-      id: r.requestId,
-      dbId: r.id,
-      ownerName: (r.petDetails as any)?.ownerName || 'Pet Owner',
-      ownerPhoto: null,
-      ownerPhone: '',
-      petName: (r.petDetails as any)?.petName || 'Pet',
-      petType: (r.petDetails as any)?.petType || 'dog',
-      petBreed: (r.petDetails as any)?.petBreed || '',
-      scheduledTime: r.startDate,
-      duration: Math.round(Number(r.totalHours || 1) * 60),
-      pickupAddress: (r.petDetails as any)?.address || '',
-      dropoffAddress: (r.petDetails as any)?.address || '',
-      status: 'scheduled',
-      earnings: (r.subtotalCents || 0) / 100,
-      currency: r.currency || 'ILS',
-      specialInstructions: r.ownerMessage || null,
-      distance: 0,
+    // CEO §8 (2026-08-28): read-time re-projection of the stored safety
+    // snapshot against CURRENT owner consent. Bookings that persisted
+    // medical fields under an older consent must stop returning them
+    // once the owner withdraws consent. Load the canonical pet row per
+    // owner+name for each request and let projectStoredSafetyForProvider
+    // strip medical when appropriate. Best-effort; a lookup failure
+    // downgrades to safety-only so the walker still sees warnings.
+    const { projectStoredSafetyForProvider } = await import('../lib/petPrivacy');
+    const formatted = await Promise.all(requests.map(async (r) => {
+      const stored = (r.petDetails as any)?.safety ?? null;
+      const ownerId = r.ownerId as string | undefined;
+      const petName = (r.petDetails as any)?.petName as string | undefined;
+      let canonicalPet: any = null;
+      if (ownerId && petName) {
+        try {
+          const [row] = await db.select().from(pets)
+            .where(and(eq(pets.userId, ownerId), eq(pets.name, petName)))
+            .limit(1);
+          canonicalPet = row ?? null;
+        } catch { /* fall through — medical stripped */ }
+      }
+      const petSafety = projectStoredSafetyForProvider(stored, canonicalPet);
+      return {
+        id: r.requestId,
+        dbId: r.id,
+        ownerName: (r.petDetails as any)?.ownerName || 'Pet Owner',
+        ownerPhoto: null,
+        ownerPhone: '',
+        petName: petName || 'Pet',
+        petType: (r.petDetails as any)?.petType || 'dog',
+        petBreed: (r.petDetails as any)?.petBreed || '',
+        scheduledTime: r.startDate,
+        duration: Math.round(Number(r.totalHours || 1) * 60),
+        pickupAddress: (r.petDetails as any)?.address || '',
+        dropoffAddress: (r.petDetails as any)?.address || '',
+        status: 'scheduled',
+        earnings: (r.subtotalCents || 0) / 100,
+        currency: r.currency || 'ILS',
+        specialInstructions: r.ownerMessage || null,
+        // Safety subset always present; medical fields present only if
+        // owner's current consent still allows it (see projection above).
+        petSafety,
+        distance: 0,
+      };
     }));
 
     res.json(formatted);
@@ -2108,13 +2244,28 @@ router.get('/walker/active', requireAuth, async (req, res) => {
 
     if (!active) return res.json(null);
 
+    // CEO §8 read-time re-projection — same rule as /walker/requests.
+    const { projectStoredSafetyForProvider: projActive } = await import('../lib/petPrivacy');
+    const activeOwnerId = active.ownerId as string | undefined;
+    const activePetName = (active.petDetails as any)?.petName as string | undefined;
+    let activeCanonicalPet: any = null;
+    if (activeOwnerId && activePetName) {
+      try {
+        const [row] = await db.select().from(pets)
+          .where(and(eq(pets.userId, activeOwnerId), eq(pets.name, activePetName)))
+          .limit(1);
+        activeCanonicalPet = row ?? null;
+      } catch { /* fall through — medical stripped */ }
+    }
+    const activePetSafety = projActive((active.petDetails as any)?.safety ?? null, activeCanonicalPet);
+
     res.json({
       id: active.requestId,
       dbId: active.id,
       ownerName: (active.petDetails as any)?.ownerName || 'Pet Owner',
       ownerPhoto: null,
       ownerPhone: '',
-      petName: (active.petDetails as any)?.petName || 'Pet',
+      petName: activePetName || 'Pet',
       petType: (active.petDetails as any)?.petType || 'dog',
       petBreed: (active.petDetails as any)?.petBreed || '',
       scheduledTime: active.startDate,
@@ -2125,6 +2276,9 @@ router.get('/walker/active', requireAuth, async (req, res) => {
       earnings: (active.subtotalCents || 0) / 100,
       currency: active.currency || 'ILS',
       specialInstructions: active.ownerMessage || null,
+      // Safety subset always; medical only if owner's CURRENT consent
+      // still allows (see projection above).
+      petSafety: activePetSafety,
       distance: 0,
     });
   } catch (error) {

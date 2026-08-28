@@ -33,7 +33,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { auth } from '@/lib/firebase';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/lib/languageStore';
 import { useUiMode } from '@/lib/uiMode';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -46,7 +46,17 @@ import {
 type Mode = 'petParent' | 'provider';
 
 const PROVIDER_FALLBACK = '/provider-os';
-const CUSTOMER_FALLBACK = '/prestige/home';
+// CEO 2026-08-28 product correction: Pet Parent is the base customer
+// workspace, Prestige is a MEMBERSHIP entitlement that travels inside
+// it — NOT a separate mode. The file's own top-of-file comment (§8)
+// already says this, but the CUSTOMER fallback was still pointing at
+// /prestige/home, sending non-Prestige customers to a Prestige-branded
+// URL that presented itself as their identity universe. The canonical
+// Pet Parent home is /pet-parent/home (App.tsx renders the same
+// PrestigeHome component under it; /prestige/home stays as an alias
+// for backward-compat with existing deep links and native root
+// redirects, but nobody's DEFAULT should land there any more).
+const CUSTOMER_FALLBACK = '/pet-parent/home';
 
 // The intent string the server post-login decider understands. Pet Parent
 // maps to 'customer' — the historical name of the capability — so the

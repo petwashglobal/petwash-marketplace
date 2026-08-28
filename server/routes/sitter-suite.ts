@@ -21,6 +21,7 @@ import {
   octopusInvoices,
   providerApprovalQueue,
   users,
+  pets,
   type SitterProfile,
   type PetProfileForSitting,
   type SitterBooking,
@@ -774,26 +775,79 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       address: addressTextFallback,
       addressLat,
       addressLng,
+      // CEO §12 (2026-08-28): structured KYA safety flags. Client
+      // (sitter-suite/BookingFlow.tsx:241) sends this; server enforces
+      // authority (see the buildServerSafetySnapshot call below).
+      petSafetySnapshot: clientSafetySnapshot,
+      // CEO §4/§5 booking-scoped consent flags.
+      bookingScopedShare: rawBookingScopedShare,
+      serviceRequiresMedical: rawServiceRequiresMedical,
     } = req.body;
+    const bookingScopedShare     = rawBookingScopedShare === true;
+    const serviceRequiresMedical = rawServiceRequiresMedical === true;
     const resolvedAddressText = addressText ?? addressTextFallback ?? null;
-    
+
     // Always derive ownerId from the verified Firebase token — never trust req.body.
     const ownerId = (req as any).user?.uid;
-    
+
     const [sitter] = await db
       .select()
       .from(sitterProfiles)
       .where(eq(sitterProfiles.id, sitterId));
-    
+
     const [pet] = await db
       .select()
       .from(petProfilesForSitting)
       .where(and(eq(petProfilesForSitting.id, petId), eq(petProfilesForSitting.userId, ownerId)));
-    
+
     if (!sitter || !pet) {
       return res.status(404).json({ error: 'Sitter or pet not found' });
     }
-    
+
+    // ── CEO §22 SERVER-ENFORCED KYA privacy (2026-08-28) ────────────────
+    // Client `medicalConsented=true` is NEVER authority. Compose the
+    // snapshot from ownership-verified pet data + the CANONICAL consent
+    // flag off the shared pets table (petProfilesForSitting has no
+    // consent column, so we cross-reference the canonical `pets` row
+    // by owner + name). Fail-safe: unknown → medicalConsented=false.
+    let safeSnapshot: Record<string, unknown> | null = null;
+    try {
+      let canonicalPet: any = pet;
+      try {
+        const [canonical] = await db
+          .select()
+          .from(pets)
+          .where(and(eq(pets.userId, ownerId), eq(pets.name, pet.name)))
+          .limit(1);
+        if (canonical) canonicalPet = { ...pet, ...canonical };
+      } catch { /* fall back to sitter-side pet — medical stripped below */ }
+      const { buildServerSafetySnapshot } = await import('../lib/petPrivacy');
+      safeSnapshot = buildServerSafetySnapshot(canonicalPet, clientSafetySnapshot, {
+        bookingScopedShare,
+        serviceRequiresMedical,
+      }) as unknown as Record<string, unknown>;
+    } catch (kyaErr: any) {
+      logger.warn('[Sitter Suite] KYA snapshot build failed — booking continues without medical fields', {
+        error: kyaErr?.message,
+      });
+      safeSnapshot = null;
+    }
+
+    // CEO §5 (2026-08-28) — CARE INFORMATION REQUIRED gate. Mirrors
+    // walk-my-pet's fail-CLOSED check. A service that hard-requires
+    // medical (medicated stay, senior support, sick-pet day-care) must
+    // NOT accept a booking whose safety snapshot ended up without
+    // medical fields — either because the pet has medicalDataPrivate=
+    // true (hard veto), or because the owner did not opt in on the
+    // account preference and did not tick booking-scoped share. Stable
+    // errorCode so the client can render the friendly HE/EN banner.
+    if (serviceRequiresMedical && safeSnapshot && (safeSnapshot as any).medicalConsented !== true) {
+      return res.status(400).json({
+        error: 'This service requires medical information to be shared for the booking.',
+        errorCode: 'CARE_INFO_REQUIRED',
+      });
+    }
+
     const start = new Date(startDate);
     const end = new Date(endDate);
 
@@ -914,6 +968,8 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
             urgencyScore: triageResult.urgencyScore,
             aiTriageNotes: triageResult.triageNotes,
             specialInstructions,
+            // CEO §12 safety summary — see destructuring block above.
+            petSafetySnapshot: safeSnapshot,
             status: 'pending_provider',
             // Address snapshot — coordinates are the truth, never blocked by missing postcode
             serviceAddressText: resolvedAddressText,
@@ -957,6 +1013,18 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
         providerPayoutCents: Math.round(pricing.sitterPayout * 100),
         ownerMessage: specialInstructions ?? null,
         legacyRef: { table: 'sitter_bookings', id: bookingId },
+        // CEO §12: carry the pet display context AND the KYA safety
+        // snapshot onto the mirror so the sitter's provider inbox card
+        // renders the aggression / escape-risk / allergy / medication /
+        // vet-contact flags before the stay begins.
+        petDetails: {
+          petName: pet?.name ?? null,
+          petType: pet?.species ?? null,
+          petBreed: pet?.breed ?? null,
+          petWeight: pet?.weight ?? null,
+          address: resolvedAddressText ?? null,
+          safety: safeSnapshot,
+        },
       });
     } catch { /* bridge is best-effort */ }
 

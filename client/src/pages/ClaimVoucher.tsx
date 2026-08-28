@@ -66,10 +66,11 @@ export default function ClaimVoucher() {
         variant: 'default'
       });
     },
-    onError: (error: any) => {
+    onError: () => {
+      // CEO §60 (2026-08-28) — never render error.message verbatim.
       toast({
         title: t('claim.error'),
-        description: error.message || t('claim.errorMessage'),
+        description: t('claim.errorMessage'),
         variant: 'destructive'
       });
     }

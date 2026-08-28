@@ -69,9 +69,19 @@ export default function SitterDetail() {
       navigate(`/sitter-suite/owner/dashboard`);
     },
     onError: (error: any) => {
+      // CEO §60 (2026-08-28) — never render error.message verbatim.
+      // ApiError builds it as "<status>: <server msg>" so a raw
+      // string reaches the toast. Switch on the stable errorCode
+      // where we have one; else render neutral copy.
+      const code = String(error?.body?.errorCode || '');
+      const description = code === 'CARE_INFO_REQUIRED'
+        ? (isHebrew
+            ? 'השירות הזה דורש שיתוף פרטים רפואיים. סמן/י שיתוף לשהות זו ונסה/י שוב, או בחר/י שירות אחר.'
+            : 'This service requires medical information sharing — tick the booking-scoped share and try again, or pick another service.')
+        : (isHebrew ? 'לא ניתן ליצור הזמנה' : 'Failed to create booking');
       toast({
         title: isHebrew ? 'שגיאה' : 'Error',
-        description: error.message || (isHebrew ? 'לא ניתן ליצור הזמנה' : 'Failed to create booking'),
+        description,
         variant: 'destructive',
       });
     },

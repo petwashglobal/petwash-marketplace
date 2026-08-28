@@ -118,10 +118,11 @@ export default function GroomingFeedback() {
         description: t("groomingFeedback.successMessage"),
       });
     },
-    onError: (error: any) => {
+    onError: () => {
+      // CEO §60 (2026-08-28) — never render error.message verbatim.
       toast({
         title: t("groomingFeedback.errorTitle"),
-        description: error.message || t("groomingFeedback.errorMessage"),
+        description: t("groomingFeedback.errorMessage"),
         variant: "destructive",
       });
     },

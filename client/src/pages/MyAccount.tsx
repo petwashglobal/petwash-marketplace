@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import sanitizeHtml from 'sanitize-html';
+import { SPECIES_VALUES, SPECIES_LABELS, normalizeLegacySpecies, type PetSpecies } from '@shared/lib/petSpecies';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -934,20 +935,44 @@ export default function MyAccount() {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}&details=${details}&recur=RRULE:FREQ=YEARLY`;
   }
 
-  // Luxury asset icons (never emoji) — Smart Luxury Icon System.
-  const PET_SPECIES: { value: string; labelHe: string; labelEn: string; iconKey: string }[] = [
-    { value: 'dog',     labelHe: 'כלב',      labelEn: 'Dog',      iconKey: 'animal_dog' },
-    { value: 'cat',     labelHe: 'חתול',     labelEn: 'Cat',      iconKey: 'animal_cat' },
-    { value: 'rabbit',  labelHe: 'ארנב',     labelEn: 'Rabbit',   iconKey: 'animal_rabbit' },
-    { value: 'bird',    labelHe: 'ציפור',    labelEn: 'Bird',     iconKey: 'animal_bird' },
-    { value: 'fish',    labelHe: 'דג',       labelEn: 'Fish',     iconKey: 'animal_fish' },
-    { value: 'hamster', labelHe: 'אוגר',     labelEn: 'Hamster',  iconKey: 'animal_hamster' },
-    { value: 'turtle',  labelHe: 'צב',       labelEn: 'Turtle',   iconKey: 'animal_turtle' },
-    { value: 'other',   labelHe: 'אחר',      labelEn: 'Other',    iconKey: 'brand_paw' },
-  ];
+  // CEO §22 (2026-08-28): PET_SPECIES is DERIVED from the canonical
+  // enum (SPECIES_VALUES + SPECIES_LABELS in shared/lib/petSpecies.ts).
+  // Prior code hand-rolled 8 species here — MISSING guinea_pig and
+  // reptile — so a pet added via AddPetPassport with species="reptile"
+  // was un-editable here (the picker had no matching tile). Same trap
+  // for guinea_pig. Now every KYA surface reads from ONE source; a
+  // species addition in petSpecies.ts lands everywhere in one edit.
+  //
+  // The icon key map is presentation-only — luxury asset per species,
+  // never emoji. `brand_paw` is the safe fallback for `other`.
+  const SPECIES_ICON_KEYS: Record<PetSpecies, string> = {
+    dog:        'animal_dog',
+    cat:        'animal_cat',
+    bird:       'animal_bird',
+    rabbit:     'animal_rabbit',
+    guinea_pig: 'animal_guinea_pig',
+    hamster:    'animal_hamster',
+    reptile:    'animal_lizard',    // closest luxury asset for the reptile bucket
+    turtle:     'animal_turtle',
+    fish:       'animal_fish',
+    other:      'brand_paw',
+  };
+  const PET_SPECIES: { value: PetSpecies; labelHe: string; labelEn: string; iconKey: string }[] =
+    (SPECIES_VALUES as readonly PetSpecies[]).map((k) => ({
+      value:   k,
+      labelHe: SPECIES_LABELS[k].he,
+      labelEn: SPECIES_LABELS[k].en,
+      iconKey: SPECIES_ICON_KEYS[k],
+    }));
 
   function getPetIconKey(species: string): string {
-    return PET_SPECIES.find(s => s.value === species)?.iconKey ?? 'brand_paw';
+    // Direct match first — the canonical wire value.
+    const direct = PET_SPECIES.find(s => s.value === species);
+    if (direct) return direct.iconKey;
+    // Legacy string on an older pet doc (e.g. "snake" → reptile,
+    // "canine" → dog). normalizeLegacySpecies maps to canonical so
+    // older records still render with a real icon.
+    return SPECIES_ICON_KEYS[normalizeLegacySpecies(species)] ?? 'brand_paw';
   }
 
   function handleOpenPetForm(pet?: any) {
@@ -983,14 +1008,12 @@ export default function MyAccount() {
     if (!user) return;
     setPetPhotoUploading(true);
     try {
-      const token = await user.getIdToken();
+      // Was bare fetch() with hand-rolled Bearer — apiRequest handles
+      // FormData bodies un-stringified (queryClient.ts:131) and adds
+      // App Check + 401 refresh + cold-start retry.
       const fd = new FormData();
       fd.append('photo', file);
-      const res = await fetch(getApiUrl('/api/pets/photo'), {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
+      const res = await apiRequest('POST', '/api/pets/photo', fd);
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Upload failed');
       setPetFormData((p: any) => ({ ...p, photoUrl: data.photoUrl }));
@@ -1021,10 +1044,9 @@ export default function MyAccount() {
     enabled: !!user,
     queryFn: async () => {
       if (!user) return null;
-      const token = await user.getIdToken();
-      const res = await fetch(getApiUrl('/api/user/settings/verification-status'), {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      // Was bare fetch() with hand-rolled Bearer — swapped to
+      // apiRequest for App Check + 401 retry.
+      const res = await apiRequest('GET', '/api/user/settings/verification-status');
       if (!res.ok) throw new Error('Failed to fetch verification status');
       return res.json();
     },
@@ -1034,15 +1056,12 @@ export default function MyAccount() {
     if (!user) return;
     setIsUploadingPhoto(true);
     try {
-      const token = await user.getIdToken();
+      // Was bare fetch() with hand-rolled Bearer — apiRequest handles
+      // FormData bodies un-stringified (queryClient.ts:131).
       const formData = new FormData();
       formData.append('photo', file);
 
-      const res = await fetch(getApiUrl('/api/user/settings/profile/photo'), {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData,
-      });
+      const res = await apiRequest('POST', '/api/user/settings/profile/photo', formData);
 
       const data = await res.json();
 
@@ -1081,11 +1100,9 @@ export default function MyAccount() {
     if (!user) return;
     setIsUploadingPhoto(true);
     try {
-      const token = await user.getIdToken();
-      const res = await fetch(getApiUrl('/api/user/settings/profile/photo'), {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
+      // Was bare fetch() with hand-rolled Bearer — same swap as the
+      // POST above.
+      const res = await apiRequest('DELETE', '/api/user/settings/profile/photo');
 
       if (!res.ok) throw new Error('Delete failed');
 
@@ -1156,8 +1173,12 @@ export default function MyAccount() {
 
   const registerPasskeyMutation = useMutation({
     mutationFn: async () => {
-      const { getApiUrl } = await import('@/lib/apiConfig');
-      const optionsRes = await fetch(getApiUrl('/api/webauthn/register/options'), { method: 'POST', credentials: 'include' });
+      // Was bare fetch() with `credentials: 'include'` and NO Bearer
+      // at all — Firebase-only users (no pw_session cookie) could
+      // never enrol a passkey because the server can't identify them
+      // from cookies alone. The verify call one line down already
+      // used apiRequest correctly; the options call drifted.
+      const optionsRes = await apiRequest('POST', '/api/webauthn/register/options');
       if (!optionsRes.ok) throw new Error('Failed to get registration options');
       const { options, challengeKey } = await optionsRes.json();
       const { startRegistration } = await import('@simplewebauthn/browser');

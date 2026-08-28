@@ -122,8 +122,17 @@ function destForFlow(flow: Flow): string {
     case 'provider': return '/provider-onboarding';
     case 'guest': return '/egift';
     case 'booking': return '/booking';
+    // Prestige signup ALWAYS lands on the Prestige surface — the customer
+    // just enrolled and expects to see their new benefits.
     case 'prestige': return '/prestige/home';
-    default: return '/prestige/home';
+    // CEO 2026-08-28 product correction: Pet Parent is the base customer
+    // workspace, Prestige is a MEMBERSHIP entitlement — NOT a synonym for
+    // "customer". A plain-customer signup default of /prestige/home
+    // dropped every new user onto a Prestige-branded landing as if they
+    // were already members. Route the base default to /pet-parent/home
+    // (App.tsx renders the same PrestigeHome component under both paths;
+    // the URL now honors the product doctrine).
+    default: return '/pet-parent/home';
   }
 }
 
@@ -630,8 +639,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // if the profile still needs a name (→ /complete-profile), if a provider
     // needs KYC (→ /provider-onboarding), or if a loyalty member is ready for
     // home — so a new user is never dumped on a dashboard that bounces them.
-    // Intent (provider vs loyalty) is passed so the decider routes the right way.
-    const intent = explicitIntent || (flow === 'provider' ? 'provider' : 'loyalty');
+    // Intent tells the server decider WHICH capability is being onboarded —
+    // provider vs prestige-member vs plain customer. CEO 2026-08-28 product
+    // correction: 'loyalty' is Prestige-specific; a plain Pet Parent signup
+    // must NOT be labelled loyalty (that used to route them to /prestige/home
+    // as if they'd enrolled). The `customer` intent — the historical name
+    // the decider allowlist speaks, mirrored in ChooseMode.tsx:55 — is the
+    // correct default for a base Pet Parent account.
+    const intent =
+      explicitIntent
+      || (flow === 'provider' ? 'provider'
+        : flow === 'prestige' ? 'loyalty'
+        : 'customer');
     try {
       const { resolvePostLogin } = await import('@/lib/postLoginCoordinator');
       // Carry the Firebase ID token so /api/auth/post-login authenticates via Bearer
@@ -715,7 +734,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           }
           // Email is disabled too — never leave the user stuck on a dead SMS tab;
           // point them at the social options that ARE available.
-          fail(he ? 'SMS אינו זמין כעת — המשך עם Google או Apple.' : 'SMS is temporarily unavailable — continue with Google or Apple.');
+          // CEO 2026-08-28 Lane A audit — Apple button is gated off by
+          // APPLE_SIGNIN_READY=false (line 106) + signupFlags.appleSignin,
+          // so telling users to "continue with Apple" is a fake CTA on
+          // any surface where the button isn't actually visible. Point
+          // them at Google only until Apple is genuinely configured.
+          fail(he ? 'SMS אינו זמין כעת — המשך עם Google.' : 'SMS is temporarily unavailable — continue with Google.');
           return;
         }
         fail(d.message || (he ? 'SMS אינו זמין כעת — המשך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'));
@@ -2189,6 +2213,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
                   : (he ? 'שלח קוד חדש' : 'Resend code')}
               </button>
+              {/* CEO §16/§17 — "Wrong number?" affordance. Without this a
+                  customer who typed a wrong digit is trapped waiting for an
+                  impossible OTP. Clears the sent flag and returns them to
+                  the phone-entry step so they can retype and re-send.
+                  resendCountdown is left alone (rate-limit still applies to
+                  the new number). */}
+              <button type="button" className="sl-switchLink" disabled={busy}
+                onClick={() => { setSent(false); setInlineError(null); }}
+                data-testid="button-change-number-mobile"
+                style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                {he ? 'מספר לא נכון? שנה מספר' : 'Wrong number? Change number'}
+              </button>
             </>
           )}
 
@@ -2203,6 +2239,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 {resendCountdown > 0
                   ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
                   : (he ? 'שלח קוד חדש' : 'Resend code')}
+              </button>
+              {/* Same "wrong email?" affordance — see the mobile block above. */}
+              <button type="button" className="sl-switchLink" disabled={busy}
+                onClick={() => { setSent(false); setInlineError(null); }}
+                data-testid="button-change-email"
+                style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                {he ? 'כתובת לא נכונה? שנה אימייל' : 'Wrong email? Change email'}
               </button>
             </>
           )}

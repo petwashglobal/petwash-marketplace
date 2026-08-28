@@ -56,6 +56,28 @@ interface WalkBooking {
   petName?: string;
   petBreed?: string;
   ownerId?: string;
+  // CEO §12 (2026-08-28) — KYA safety snapshot the server projects
+  // through booking_requests.pet_details.safety. Client renders on
+  // the walker's Today card BEFORE the walker grabs the leash.
+  //
+  // Medical fields (allergies / medicationNotes / vetName / vetPhone)
+  // appear ONLY when `medicalConsented === true` (server enforces
+  // this — see server/lib/petPrivacy.ts). When false, we render a
+  // NEUTRAL fact per CEO §6, not "ask owner" (which would undermine
+  // the owner's explicit choice not to share).
+  petSafety?: {
+    aggressionWarning?:    string | null;
+    escapeRisk?:           boolean;
+    behaviourNotes?:       string;
+    feedingInstructions?:  string;
+    handlingInstructions?: string;
+    sensitiveSkin?:        boolean;
+    medicalConsented?:     boolean;
+    allergies?:            string;
+    medicationNotes?:      string;
+    vetName?:              string;
+    vetPhone?:             string;
+  } | null;
 }
 
 interface Earnings {
@@ -229,6 +251,80 @@ export default function WalkerDashboard() {
                             <MapPin className="h-4 w-4 text-green-600 dark:text-green-400" />
                           </div>
                           <span className="luxury-text-body">{booking.ownerAddress}</span>
+                        </div>
+                      )}
+
+                      {booking.petSafety && (booking.petSafety.aggressionWarning
+                        || booking.petSafety.escapeRisk
+                        || booking.petSafety.behaviourNotes
+                        || booking.petSafety.handlingInstructions
+                        || booking.petSafety.feedingInstructions
+                        || booking.petSafety.medicalConsented !== undefined) && (
+                        <div
+                          className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 space-y-1.5 text-sm"
+                          data-testid={`kya-safety-${booking.bookingId}`}
+                        >
+                          <div className="font-semibold text-amber-900">
+                            {'לפני שיוצאים / Before you head out'}
+                          </div>
+                          {booking.petSafety.aggressionWarning && (
+                            <div>
+                              <strong>{'תגובתיות / Reactivity: '}</strong>
+                              {booking.petSafety.aggressionWarning}
+                            </div>
+                          )}
+                          {booking.petSafety.escapeRisk && (
+                            <div className="text-red-700 font-semibold">
+                              {'סיכון בריחה / Escape risk'}
+                            </div>
+                          )}
+                          {booking.petSafety.behaviourNotes && (
+                            <div>
+                              <strong>{'התנהגות / Behaviour: '}</strong>
+                              {booking.petSafety.behaviourNotes}
+                            </div>
+                          )}
+                          {booking.petSafety.handlingInstructions && (
+                            <div>
+                              <strong>{'טיפול / Handling: '}</strong>
+                              {booking.petSafety.handlingInstructions}
+                            </div>
+                          )}
+                          {booking.petSafety.feedingInstructions && (
+                            <div>
+                              <strong>{'האכלה / Feeding: '}</strong>
+                              {booking.petSafety.feedingInstructions}
+                            </div>
+                          )}
+                          {/* CEO §22 medical block — server-enforced consent. */}
+                          {booking.petSafety.medicalConsented === true ? (
+                            <>
+                              {booking.petSafety.allergies && (
+                                <div>
+                                  <strong>{'אלרגיות / Allergies: '}</strong>
+                                  {booking.petSafety.allergies}
+                                </div>
+                              )}
+                              {booking.petSafety.medicationNotes && (
+                                <div>
+                                  <strong>{'תרופות / Medication: '}</strong>
+                                  {booking.petSafety.medicationNotes}
+                                </div>
+                              )}
+                              {booking.petSafety.vetName && (
+                                <div>
+                                  <strong>{'וטרינר / Vet: '}</strong>
+                                  {booking.petSafety.vetName}
+                                  {booking.petSafety.vetPhone ? ` · ${booking.petSafety.vetPhone}` : ''}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            // CEO §6: neutral phrasing. NOT "ask owner".
+                            <div className="text-xs text-gray-500 italic pt-1">
+                              {'פרטים רפואיים לא שותפו להזמנה הזו / Medical details were not shared for this booking'}
+                            </div>
+                          )}
                         </div>
                       )}
 

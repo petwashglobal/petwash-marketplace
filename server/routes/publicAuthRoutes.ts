@@ -1028,9 +1028,38 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     // present; we translate that to HTTP 502 { code: 'DB_UNAVAILABLE' } so
     // the client retries deterministically instead of continuing into a
     // silent-broken state (whoami 404, wallet crash, booking blocked).
+    //
+    // CEO 2026-08-28 Lane A audit — orphan-identity roll-back:
+    // when the users row cannot be provisioned AND we JUST created this
+    // Firebase UID a few lines above (existed=false), delete the Firebase
+    // user so the next signup attempt starts clean instead of finding an
+    // orphaned Firebase UID with no downstream row (upsertUser had already
+    // warn-swallowed, markMobileVerified had warn-swallowed, wallet insert
+    // had warn-swallowed — all four failure paths above are best-effort).
+    // Without the roll-back the same phone number tries again, Firebase
+    // says "already exists", the branch above skips new-user setup, and
+    // the account is stuck half-created forever.
     try {
       await ensureUserProvisioned(user.uid, { channel: 'phone', phone: formattedPhone, email: null });
     } catch (bootErr: any) {
+      // CEO §7 (2026-08-28): rollback on ANY bootstrap failure — mirror
+      // of the email-session hardening. Previously an unrelated
+      // exception rethrew and landed on the outer 500, leaving the
+      // just-minted Firebase UID orphaned → permanent lockout on
+      // retry. Now: any failure on a NEWLY created uid deletes it.
+      if (isNewUser) {
+        try {
+          await adminAuth.deleteUser(user.uid);
+          logger.warn('[PhoneAuth] Rolled back orphan Firebase UID after bootstrap failure', {
+            uidTail: user.uid.slice(-6),
+            bootErrClass: bootErr?.constructor?.name, code: bootErr?.code,
+          });
+        } catch (rollbackErr: any) {
+          logger.error('[PhoneAuth] Orphan-UID rollback failed', {
+            uidTail: user.uid.slice(-6), error: rollbackErr?.message,
+          });
+        }
+      }
       if (bootErr instanceof AuthBootstrapUsersRowFailed) {
         logger.error('[PhoneAuth] users row bootstrap HARD-FAILED — returning 502', { uid: user.uid });
         return res.status(502).json({
@@ -1039,7 +1068,14 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
           code: 'DB_UNAVAILABLE',
         });
       }
-      throw bootErr;
+      logger.error('[PhoneAuth] Bootstrap threw an unexpected error — returning 502', {
+        uid: user.uid, bootErrClass: bootErr?.constructor?.name, code: bootErr?.code, error: bootErr?.message,
+      });
+      return res.status(502).json({
+        ok: false,
+        error: 'user_bootstrap_failed',
+        code: 'BOOTSTRAP_UNAVAILABLE',
+      });
     }
 
     const customToken = await adminAuth.createCustomToken(user.uid, {
@@ -1193,15 +1229,26 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
     try {
       await ensureUserProvisioned(user.uid, { channel: 'email', email, phone: null });
     } catch (bootErr: any) {
-      if (bootErr instanceof AuthBootstrapUsersRowFailed) {
-        if (createdNewFirebaseUser) {
-          try {
-            await adminAuth.deleteUser(user.uid);
-            logger.warn('[EmailAuth] rolled back just-created Firebase user after bootstrap fail', { uid: user.uid });
-          } catch (cleanupErr: any) {
-            logger.error('[EmailAuth] Firebase user rollback FAILED — will orphan', { uid: user.uid, error: cleanupErr?.message });
-          }
+      // CEO §7 (2026-08-28): rollback on ANY bootstrap failure, not just
+      // AuthBootstrapUsersRowFailed. Previously an unrelated exception
+      // (network glitch, foreign-key violation, unavailable Firestore)
+      // rethrew and landed on the outer 500 — leaving the just-created
+      // Firebase UID orphaned, so the next retry hit getUserByEmail(),
+      // skipped the create branch (account exists!), and the same
+      // bootstrap threw again → permanent lockout. Now: any bootstrap
+      // failure on a NEWLY-created Firebase user deletes the UID so the
+      // retry starts clean. Existing users are never deleted.
+      if (createdNewFirebaseUser) {
+        try {
+          await adminAuth.deleteUser(user.uid);
+          logger.warn('[EmailAuth] rolled back just-created Firebase user after bootstrap fail', {
+            uid: user.uid, bootErrClass: bootErr?.constructor?.name, code: bootErr?.code,
+          });
+        } catch (cleanupErr: any) {
+          logger.error('[EmailAuth] Firebase user rollback FAILED — will orphan', { uid: user.uid, error: cleanupErr?.message });
         }
+      }
+      if (bootErr instanceof AuthBootstrapUsersRowFailed) {
         logger.error('[EmailAuth] users row bootstrap HARD-FAILED — returning 502', { uid: user.uid });
         return res.status(502).json({
           ok: false,
@@ -1209,7 +1256,16 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
           code: 'DB_UNAVAILABLE',
         });
       }
-      throw bootErr;
+      // Non-users-row failure — still 502 (DB / bootstrap unavailable),
+      // but distinguish the code so the client can log the class.
+      logger.error('[EmailAuth] Bootstrap threw an unexpected error — returning 502', {
+        uid: user.uid, bootErrClass: bootErr?.constructor?.name, code: bootErr?.code, error: bootErr?.message,
+      });
+      return res.status(502).json({
+        ok: false,
+        error: 'user_bootstrap_failed',
+        code: 'BOOTSTRAP_UNAVAILABLE',
+      });
     }
 
     const customToken = await adminAuth.createCustomToken(user.uid, { email, authMethod: 'email' });

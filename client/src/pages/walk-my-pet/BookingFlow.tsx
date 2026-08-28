@@ -40,6 +40,11 @@ export default function WalkBookingFlow() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [duration, setDuration] = useState<number>(60); // minutes
   const [notes, setNotes] = useState("");
+  // CEO §5 (2026-08-28) — booking-scoped medical share. Owner ticks
+  // this at checkout to authorise medical (allergies / medications /
+  // vet contact) for THIS booking only. Server enforces authority.
+  // Default off — never inherit from a previous booking.
+  const [bookingScopedShare, setBookingScopedShare] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
@@ -215,6 +220,70 @@ export default function WalkBookingFlow() {
       const selectedPets = pets.filter((p: any) => selectedPetIds.includes(p.id));
       const primaryPet = selectedPets[0] as any;
 
+      // CEO §12/§48 safety: NEVER invent pet data on a real booking.
+      // Previously the payload defaulted `petName → 'Pet'`, `petBreed
+      // → 'Mixed'`, `petWeight → 10kg` — so a customer whose KYA
+      // record was missing/incomplete silently sent FALSE care info
+      // to the walker. Provider makes handling decisions off that
+      // input; medication doses / size-appropriate handling get set
+      // wrong. Fail-closed here — pull the customer back to KYA
+      // instead of shipping fabricated safety data downstream.
+      const primaryPetName = primaryPet?.name ?? primaryPet?.petName;
+      const primaryPetBreed = primaryPet?.breed ?? primaryPet?.petBreed;
+      const primaryPetWeight = primaryPet?.weight ?? primaryPet?.petWeight;
+      if (!primaryPet || !primaryPetName || !primaryPetBreed || primaryPetWeight == null) {
+        setIsSubmitting(false);
+        toast({
+          variant: 'destructive',
+          title: isHebrew ? 'חסרים פרטי חיה' : "We're missing pet details",
+          description: isHebrew
+            ? 'נא לעדכן שם, גזע ומשקל בפרופיל החיה לפני הזמנה — כך המטפל יידע להתאים את הטיפול.'
+            : "Please add name, breed, and weight to the pet profile before booking — the walker needs this to look after them safely.",
+        });
+        setLocation('/pets');
+        return;
+      }
+
+      // CEO §12 provider safety summary — walker must see aggression /
+      // escape-risk / behaviour notes / feeding & handling instructions
+      // BEFORE the walk. These live on the KYA pet doc but until now the
+      // booking payload only carried petSpecialNeeds free-text; every
+      // safety flag stayed invisible to the person about to hold the
+      // leash. Send a structured petSafetySnapshot alongside the primary
+      // fields so the server writes it into the booking record (and the
+      // provider's Today card can render it).
+      //
+      // PRIVACY GATE (CEO §22 medical share consent): the SAFETY fields —
+      // aggression / escape risk / handling — protect the walker from
+      // physical harm and are ALWAYS sent. The MEDICAL fields —
+      // allergies, medications, vet contact — leave the owner's browser
+      // ONLY when medicalShareConsent === true. Mirrors the pattern
+      // sitter-suite.ts already applies at the availability engine
+      // (line 820: `pet.medicalShareConsent ? pet.specialNeeds : ...`).
+      const medicalConsented = primaryPet?.medicalShareConsent === true;
+      const petSafetySnapshot: Record<string, unknown> = {
+        aggressionWarning:      primaryPet?.aggressionWarning ?? null,
+        escapeRisk:             !!primaryPet?.escapeRisk,
+        behaviourNotes:         primaryPet?.behaviourNotes ?? '',
+        feedingInstructions:    primaryPet?.feedingInstructions ?? '',
+        handlingInstructions:   primaryPet?.handlingInstructions ?? '',
+        sensitiveSkin:          !!primaryPet?.sensitiveSkin,
+        // Signal whether the medical block is present. CEO §6 (2026-08-28):
+        // the walker card should render "Medical details were not shared
+        // for this booking" — NEUTRAL fact, NOT the earlier "ask owner"
+        // phrasing which undermines the owner's explicit choice not to
+        // share. If the walker genuinely needs more information they
+        // message the owner through the normal channel; the UI must not
+        // imply pressure to disclose.
+        medicalConsented,
+        ...(medicalConsented ? {
+          allergies:            primaryPet?.allergies ?? '',
+          medicationNotes:      primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
+          vetName:              primaryPet?.vetName ?? '',
+          vetPhone:             primaryPet?.vetPhone ?? '',
+        } : {}),
+      };
+
       const payload = {
         walkerId: walker.walkerId || `WALKER-${walkerIdNumber}`,
         scheduledDate,
@@ -223,10 +292,13 @@ export default function WalkBookingFlow() {
         pickupLatitude: pickupDetails?.lat ?? walker.latitude ?? 32.0853,
         pickupLongitude: pickupDetails?.lng ?? walker.longitude ?? 34.7818,
         pickupAddress: pickupAddress || walker.serviceArea || '',
-        petName: primaryPet?.name ?? primaryPet?.petName ?? 'Pet',
-        petBreed: primaryPet?.breed ?? primaryPet?.petBreed ?? 'Mixed',
-        petWeight: primaryPet?.weight ?? primaryPet?.petWeight ?? 10,
+        petName: primaryPetName,
+        petBreed: primaryPetBreed,
+        petWeight: primaryPetWeight,
         petSpecialNeeds: primaryPet?.specialNeeds ?? primaryPet?.medicalNotes ?? notes ?? '',
+        petSafetySnapshot,
+        // Booking-scoped medical share — CEO §5. Server IS authority.
+        bookingScopedShare,
         notes,
         petIds: selectedPetIds,
         pricing: {
@@ -303,11 +375,19 @@ export default function WalkBookingFlow() {
         description: "ממתינים לאישור המוליך/ה. תקבל/י התראה כשיהיה התאמה.",
       });
     } catch (error: any) {
-      toast({
-        title: "שגיאה ביצירת הזמנה",
-        description: error.message || "אירעה שגיאה. אין חיוב. נסה/י שוב.",
-        variant: "destructive",
-      });
+      // CEO §60 (2026-08-28) — never render `error.message` verbatim.
+      // Read the stable errorCode from the ApiError body and map to
+      // friendly HE/EN copy. Unknown codes fall back to a neutral
+      // message. CEO §5 CARE_INFO_REQUIRED has its own copy so the
+      // customer knows why the booking couldn't proceed.
+      const code = String(error?.body?.errorCode || '');
+      let title = "שגיאה ביצירת הזמנה";
+      let description = "אירעה שגיאה. אין חיוב. נסה/י שוב.";
+      if (code === 'CARE_INFO_REQUIRED') {
+        title = "נדרש שיתוף מידע רפואי";
+        description = "השירות הזה דורש שיתוף פרטים רפואיים לשם ההליכה. סמן/י \"שיתוף פרטים רפואיים לטיול הזה בלבד\" ונסה/י שוב, או בחר/י שירות אחר. Sharing medical information is required for this service — tick \"Share medical details for this walk only\" and try again, or pick another service.";
+      }
+      toast({ title, description, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -545,6 +625,38 @@ export default function WalkBookingFlow() {
                 placeholder="התנהגות הכלב, רגישויות, מסלול מועדף, וכו׳"
                 data-testid="textarea-notes"
               />
+            </section>
+
+            {/* CEO §5 (2026-08-28) — booking-scoped medical share.
+                Neutral phrasing; no legal-wall UX (§25). Owner
+                explicitly opts in ONLY for this booking. Server is
+                authority — flipping this on doesn't force medical
+                fields; it only ALLOWS the server to include them if
+                the pet has them. */}
+            <section
+              className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6"
+              data-testid="section-booking-scoped-share-walker"
+            >
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bookingScopedShare}
+                  onChange={(e) => setBookingScopedShare(e.target.checked)}
+                  className="mt-1"
+                  data-testid="checkbox-booking-scoped-share-walker"
+                />
+                <span className="text-sm">
+                  <div className="font-semibold text-slate-800">
+                    שיתוף פרטים רפואיים לטיול הזה בלבד
+                    <span className="text-slate-500 font-normal"> / Share medical details for this walk only</span>
+                  </div>
+                  <div className="text-slate-500 text-xs mt-1">
+                    אלרגיות, תרופות, פרטי וטרינר. חל רק להזמנה הנוכחית ולא לטיולים עתידיים.
+                    <br />
+                    Allergies, medications, vet contact. Applies to THIS booking only, not future ones.
+                  </div>
+                </span>
+              </label>
             </section>
 
             {/* Owner Instructions (codes, locations, etc.) */}

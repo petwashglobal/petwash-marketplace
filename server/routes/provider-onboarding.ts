@@ -5,7 +5,16 @@ import { Router, Request, Response } from 'express';
 import { randomBytes, randomInt, createHash } from 'crypto';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
-import { providerInviteCodes, providerApplications, providerApprovalQueue } from '@shared/schema';
+import { providerInviteCodes, providerApplications, providerApprovalQueue, users } from '@shared/schema';
+// Provider onboarding lives across TWO tables (historical split, CEO §36
+// review 2026-08-28): drafts land in `provider_applicants` via
+// /api/provider-applications/draft, submissions land in
+// `provider_applications` here. Once a submission succeeds the draft row
+// is stale — it will re-hydrate the wizard on a second visit with data
+// the applicant has already sent, and (worse) admins reviewing the app
+// would see two conflicting records for one person. Import the draft
+// table so the /apply success path can delete it.
+import { providerApplicants } from '@shared/schema-enterprise';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
@@ -548,11 +557,58 @@ router.post('/apply', wrapUpload(upload.fields([
       taxStatus,
       petFirstAidNumber,
       petFirstAidExpiry,
-      drivingLicenseNumber,
-      drivingLicenseClass,
-      drivingLicenseExpiry,
+      drivingLicenseNumber: rawDrivingLicenseNumber,
+      drivingLicenseClass:  rawDrivingLicenseClass,
+      drivingLicenseExpiry: rawDrivingLicenseExpiry,
+      // CEO §73 #12 (2026-08-28): bank / payout target. Client wizard
+      // section is a follow-up; server accepts the fields now so a
+      // rolling client update can land without a second deploy.
+      bankName: rawBankName,
+      bankBranchCode: rawBankBranchCode,
+      bankIban: rawBankIban,
+      bankAccountHolder: rawBankAccountHolder,
       traceId,
     } = req.body;
+
+    // CEO §35 (2026-08-28) — driving-license fields are relevant ONLY
+    // for driver applicants. Server strips them for anyone else so a
+    // caller manipulating the FormData (or a leftover state on a
+    // multi-role wizard) can't sneak a driving licence onto a
+    // non-driver's application (and thus can't be mistakenly reviewed
+    // as if they were a licensed driver).
+    const isDriverApplicant = (() => {
+      try {
+        const arr = rawProviderTypes
+          ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes)
+          : [rawProviderType];
+        return Array.isArray(arr) && arr.includes('driver');
+      } catch { return rawProviderType === 'driver'; }
+    })();
+    const drivingLicenseNumber = isDriverApplicant ? rawDrivingLicenseNumber : undefined;
+    const drivingLicenseClass  = isDriverApplicant ? rawDrivingLicenseClass  : undefined;
+    const drivingLicenseExpiry = isDriverApplicant ? rawDrivingLicenseExpiry : undefined;
+
+    // ── Bank field normalisation ─────────────────────────────────────────
+    // IBAN: strip spaces + uppercase (canonical wire format is contiguous
+    // uppercase). Israeli IBANs are 23 chars — enforce a soft ceiling of
+    // 40 so a paste with a hidden prefix doesn't blow past the varchar,
+    // but stay lenient about country code (accept EU IBANs for future
+    // cross-border payouts). The 42P01/42703 pattern covers a missing
+    // column on an older deploy.
+    const bankIban: string | null = typeof rawBankIban === 'string' && rawBankIban.trim()
+      ? rawBankIban.replace(/\s+/g, '').toUpperCase().slice(0, 40)
+      : null;
+    const bankName: string | null = typeof rawBankName === 'string' && rawBankName.trim()
+      ? rawBankName.trim().slice(0, 120) : null;
+    const bankBranchCode: string | null = typeof rawBankBranchCode === 'string' && rawBankBranchCode.trim()
+      ? rawBankBranchCode.trim().slice(0, 20) : null;
+    const bankAccountHolder: string | null = typeof rawBankAccountHolder === 'string' && rawBankAccountHolder.trim()
+      ? rawBankAccountHolder.trim().slice(0, 200) : null;
+    // Stamp bankDetailsAt only when at least one bank field arrived —
+    // an empty submission (client not yet updated) leaves the timestamp
+    // null so admin can filter "bank details missing" via IS NULL.
+    const bankDetailsAt: Date | null =
+      (bankIban || bankName || bankBranchCode || bankAccountHolder) ? new Date() : null;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
@@ -583,6 +639,55 @@ router.post('/apply', wrapUpload(upload.fields([
     if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
       logger.warn('[Provider Onboarding] Missing required fields', { traceId, firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, city: !!city, providerType: !!providerType });
       return res.status(400).json({ error: 'Missing required fields: firstName, lastName, phoneNumber, city, and providerType are required', errorCode: 'MISSING_FIELDS' });
+    }
+
+    // CEO 2026-08-28 §19/§43 — SERVER-OWNED phone verification.
+    // Previously provider-onboarding accepted `phoneNumber` from the
+    // FormData and never checked that the caller had actually verified
+    // it. The client tracked `phoneVerified` as React state — trivially
+    // bypassable by any actor who POSTed `phoneNumber=+9720501234567`
+    // with no OTP behind it. Applicants entered the admin review queue
+    // with unverified contact numbers and (on approval) unverified
+    // provider phones on real bookings.
+    //
+    // Server truth: EITHER the Firebase user has firebaseUser.phone_number
+    // set (createUser via OTP OR the /api/auth/phone-session route that
+    // markMobileVerified'd them), OR the Postgres users.mobile_verified_at
+    // timestamp is present. Both paths are set only by the OTP flow —
+    // no client can forge either. Fail-closed with a stable error code
+    // the wizard's status screen can point the applicant back at
+    // /account/security → verify phone.
+    try {
+      const firebaseHasPhone = !!authenticatedUser?.phone_number;
+      let postgresHasPhone = false;
+      if (!firebaseHasPhone) {
+        const [row] = await db
+          .select({ mobileVerifiedAt: users.mobileVerifiedAt })
+          .from(users)
+          .where(eq(users.id, authenticatedUser.uid))
+          .limit(1);
+        postgresHasPhone = !!row?.mobileVerifiedAt;
+      }
+      if (!firebaseHasPhone && !postgresHasPhone) {
+        logger.warn('[Provider Onboarding] Phone not server-verified — rejecting', {
+          traceId, userId: authenticatedUser.uid,
+        });
+        return res.status(400).json({
+          error: 'Please verify your mobile number before submitting your provider application.',
+          errorCode: 'PHONE_NOT_VERIFIED',
+        });
+      }
+    } catch (verifyErr: any) {
+      // A DB read failure here is not the applicant's fault — log and
+      // fail-safe. Do NOT let a swallow-silently path re-open the
+      // bypass; the request stops here with a 502 the client can retry.
+      logger.error('[Provider Onboarding] Phone-verify lookup failed — refusing to proceed', {
+        traceId, userId: authenticatedUser.uid, error: verifyErr?.message,
+      });
+      return res.status(502).json({
+        error: 'We could not verify your account state. Please try again in a moment.',
+        errorCode: 'VERIFY_LOOKUP_FAILED',
+      });
     }
 
     // PROVIDER ID SAFETY (CEO 2026-07-03): do NOT force an ID/passport IMAGE
@@ -1098,6 +1203,40 @@ router.post('/apply', wrapUpload(upload.fields([
       }
     }
 
+    // ── Persist bank / payout target (best-effort, AFTER insert) ──
+    // Migration 0133 adds bank_name / bank_branch_code / bank_iban /
+    // bank_account_holder / bank_details_at to provider_applications.
+    // Same migration-window pattern as the attestation + identity blocks
+    // above: 42703 (undefined_column) → warn (columns will land soon);
+    // anything else → error (real persist failure). If the client
+    // hasn't been updated yet all four fields are null and the write
+    // is a no-op — bankDetailsAt only stamps when at least one field
+    // is present (see the normalisation block above).
+    if (application?.id && (bankIban || bankName || bankBranchCode || bankAccountHolder)) {
+      try {
+        await db
+          .update(providerApplications)
+          .set({
+            bankName,
+            bankBranchCode,
+            bankIban,
+            bankAccountHolder,
+            bankDetailsAt,
+          })
+          .where(eq(providerApplications.id, application.id));
+      } catch (bankPersistErr: any) {
+        if (bankPersistErr?.code === '42703') {
+          logger.warn('[Provider Onboarding] Bank/payout persist skipped — columns not migrated yet', {
+            applicationId, error: bankPersistErr?.message,
+          });
+        } else {
+          logger.error('[Provider Onboarding] Bank/payout persist FAILED (not a migration issue) — payout target NOT saved', {
+            applicationId, code: bankPersistErr?.code, error: bankPersistErr?.message,
+          });
+        }
+      }
+    }
+
     // Increment invite code usage only if a valid code was used
     if (code && inviteCode) {
       await db
@@ -1214,6 +1353,35 @@ router.post('/apply', wrapUpload(upload.fields([
       status: 'pending',
       message: 'Application submitted. Your documents are being reviewed - we will get back to you within 24 hours.',
     });
+
+    // CEO §36 (2026-08-28): the wizard writes drafts to `provider_applicants`
+    // via /api/provider-applications/draft (a DIFFERENT table from the one
+    // we just inserted into). Once the submit lands, that draft row is
+    // stale — a second visit would re-hydrate the wizard with the
+    // already-submitted data and give the applicant a false "there's more
+    // to do" impression, and admins would see two conflicting records for
+    // the same person. Clean up the draft, keyed on Firebase UID so it
+    // only touches THIS user's row. Fire-and-forget (response already
+    // sent) with a code-guarded catch so a missing table on an older
+    // deploy never surfaces as an error.
+    db.delete(providerApplicants)
+      .where(eq(providerApplicants.userId, authenticatedUser.uid))
+      .then(() => {
+        logger.info('[Provider Onboarding] Draft cleaned up after submit', {
+          uid: authenticatedUser.uid, applicationId,
+        });
+      })
+      .catch((cleanupErr: any) => {
+        if (cleanupErr?.code === '42P01') {
+          logger.warn('[Provider Onboarding] Draft cleanup skipped — provider_applicants table absent (older deploy)', {
+            uid: authenticatedUser.uid,
+          });
+        } else {
+          logger.error('[Provider Onboarding] Draft cleanup failed after submit', {
+            uid: authenticatedUser.uid, applicationId, code: cleanupErr?.code, error: cleanupErr?.message,
+          });
+        }
+      });
 
     // ── KYC2026 async verification (fire-and-forget) ──────────────────────────
     // Capture request context before async boundary
@@ -1634,11 +1802,17 @@ router.post('/apply', wrapUpload(upload.fields([
       constraint: error.constraint,
       stack: error.stack?.substring(0, 500),
     });
-    const clientMessage = error.code === '23505' 
+    // CEO §60 (2026-08-28) — never surface error.message. The prior
+    // fallback shipped Postgres/Firebase internals to the applicant
+    // ("connection reset by peer", "insert or update on table \"...\"
+    // violates foreign key constraint", Zod issue summaries). The
+    // client's FRIENDLY errorCode map renders human copy; the server
+    // sends only the code + a fixed neutral message.
+    const clientMessage = error.code === '23505'
       ? 'An application with these details already exists'
       : error.code === '23503'
       ? 'Invalid reference - please check your invite code'
-      : error.message || 'Failed to submit application';
+      : 'Failed to submit application';
     const errorCode = error.code === '23505' ? 'APPLICATION_EXISTS' : error.code === '23503' ? 'INVALID_REFERENCE' : 'APPLICATION_FAILED';
     res.status(error.code === '23505' ? 409 : 500).json({ error: clientMessage, errorCode });
   }
@@ -1667,7 +1841,41 @@ router.get('/application/status', async (req: Request, res: Response) => {
       .orderBy(desc(providerApplications.createdAt))
       .limit(10);
 
-    res.json({ applications });
+    // CEO §46 (2026-08-28) — per-section readiness DTO. Applicants
+    // need to know exactly which section is checked / approved /
+    // action-required so they can go straight to what's missing. The
+    // per-section rules read the SAME fields the admin surface reads,
+    // so a section marked "action_required" here matches the "missing"
+    // reasons the reviewer sees on their queue.
+    const sectionStatus = applications.map((app: any) => {
+      const isDecided = app.status === 'approved' || app.status === 'rejected';
+      const isReviewing = ['pending_review', 'under_review'].includes(app.status);
+      const status = (fieldsComplete: boolean): 'complete' | 'checking' | 'action_required' => {
+        if (!fieldsComplete) return 'action_required';
+        if (app.status === 'approved') return 'complete';
+        if (isReviewing || app.status === 'pending')  return 'checking';
+        return 'action_required';
+      };
+      let declarations: Record<string, unknown> = {};
+      try {
+        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+        declarations = (notes && typeof notes === 'object' && notes.declarations) || {};
+      } catch { /* ignore */ }
+      return {
+        applicationId: app.applicationId,
+        overall: isDecided ? app.status : (isReviewing ? 'checking' : 'action_required'),
+        sections: {
+          profile:      status(!!(app.firstName && app.lastName && app.city)),
+          identity:     status(!!(app.selfiePhotoUrl && app.governmentIdUrl && app.kycDocumentType)),
+          insurance:    status(!!(app.insurancePolicyNumber && app.insuranceProvider && app.insuranceExpiresAt)),
+          background:   status(!!(app.criminalCheckConsent && app.selfDeclarationNoRelevantConvictions)),
+          bank:         status(!!(app.bankIban && app.bankAccountHolder)),
+          declarations: status(Object.keys(declarations).length > 0),
+        },
+      };
+    });
+
+    res.json({ applications, sectionStatus });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Get application status error', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch application status', errorCode: 'STATUS_CHECK_FAILED' });
@@ -1681,12 +1889,57 @@ router.get('/admin/applications/pending', requireSupport, async (req: Request, r
   try {
     const limit = parseInt(req.query.limit as string) || 50;
 
-    const applications = await db
-      .select()
-      .from(providerApplications)
-      .where(eq(providerApplications.status, 'pending'))
-      .orderBy(desc(providerApplications.createdAt))
-      .limit(limit);
+    // CEO §41 (2026-08-28) — do NOT spread the full row. The prior
+    // .select() shipped bank_iban / bank_account_holder / bank_name /
+    // israeli_id_encrypted / date_of_birth / selfie_photo_url /
+    // government_id_url / insurance_cert_url on every list load, on a
+    // route the ops queue re-polls constantly. Move to an explicit
+    // projection matching the pending-review queue below (name / role
+    // / KYC signals — no plaintext bank, no plaintext ID, no doc URLs).
+    // A reviewer who needs bank / ID / selfie details opens the detail
+    // route, which requires an access reason and writes an audit.
+    const { rows } = await pool.query<{
+      id: number; application_id: string; first_name: string; last_name: string;
+      email: string; phone_number: string; provider_type: string; city: string;
+      status: string; biometric_match_score: string | null;
+      kyc_document_type: string | null; kyc_id_last_four: string | null;
+      kyc_ocr_confidence: string | null; kyc_liveness_score: string | null;
+      kyc_decision_flags: string | null; kyc_fraud_risk_level: string | null;
+      submitted_at: string | null; created_at: string;
+    }>(
+      `SELECT id, application_id, first_name, last_name, email,
+              phone_number, provider_type, city, status,
+              biometric_match_score,
+              kyc_document_type, kyc_id_last_four, kyc_ocr_confidence,
+              kyc_liveness_score, kyc_decision_flags, kyc_fraud_risk_level,
+              submitted_at, created_at
+         FROM provider_applications
+        WHERE status = 'pending'
+        ORDER BY created_at DESC
+        LIMIT $1`,
+      [limit],
+    );
+
+    const applications = rows.map(r => ({
+      id: r.id,
+      applicationId: r.application_id,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      email: r.email,
+      phoneNumber: r.phone_number,
+      providerType: r.provider_type,
+      city: r.city,
+      status: r.status,
+      biometricMatchScore: r.biometric_match_score,
+      kycDocumentType: r.kyc_document_type,
+      kycIdLastFour: r.kyc_id_last_four,
+      kycOcrConfidence: r.kyc_ocr_confidence,
+      kycLivenessScore: r.kyc_liveness_score,
+      kycDecisionFlags: r.kyc_decision_flags,
+      kycFraudRiskLevel: r.kyc_fraud_risk_level,
+      submittedAt: r.submitted_at,
+      createdAt: r.created_at,
+    }));
 
     res.json({ applications });
   } catch (error: any) {
@@ -1878,8 +2131,64 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
       }
     } catch { /* non-fatal */ }
 
+    // CEO §37 + §41 (2026-08-28) — bank / payout view is a sensitive
+    // access. The application row carries the applicant's full IBAN,
+    // account holder name, bank name, and branch code (Israeli Privacy
+    // Law adjacent).
+    //
+    // Gate the full values behind an explicit bankAccessReason (same
+    // pattern used above for selfie + ID) so an admin cannot see them
+    // by loading the detail page casually. Without a reason, the row
+    // still returns the presence flags + IBAN last 4 the admin needs to
+    // eyeball the case, but the plaintext IBAN, holder, and full bank
+    // metadata stay behind a documented forensic step.
+    const bankHas = !!((app as any).bankIban || (app as any).bankAccountHolder);
+    const bankAccessReason = typeof req.query.bankAccessReason === 'string'
+      ? req.query.bankAccessReason.trim().slice(0, 500)
+      : '';
+    let bankProjected: Record<string, unknown> = {};
+    if (bankHas) {
+      const ibanFull = (app as any).bankIban as string | null;
+      const ibanLast4 = typeof ibanFull === 'string' ? ibanFull.slice(-4) : null;
+      if (bankAccessReason) {
+        // Reason present — full read + audit. This branch keeps the
+        // raw bank fields on the response as before but pins the
+        // audit that ops needs.
+        writeProviderAudit({
+          applicationId: (app as any).id,
+          eventType: 'bank_details_viewed',
+          actorUserId: (req.body?.adminUid as string) || null,
+          actorRole: (req.body?.adminRole as string) || 'support',
+          payload: {
+            applicationId,
+            bankIbanLast4: ibanLast4,
+            hasAccountHolder: !!((app as any).bankAccountHolder),
+            hasBankName: !!((app as any).bankName),
+            reason: bankAccessReason,
+            actorEmail: (req.body?.adminEmail as string) || null,
+          },
+        }).catch((err) => logger.warn('[Provider Onboarding] bank_details_viewed audit failed', { applicationId, err: err?.message }));
+      } else {
+        // No reason — REDACT before we ship the row. Presence + last4
+        // is enough for eyeballing the case; the plaintext stays in
+        // the DB until the admin gives a reason and reloads.
+        bankProjected = {
+          bankIban:            null,
+          bankAccountHolder:   null,
+          bankName:            null,
+          bankBranchCode:      null,
+          bankIbanLast4:       ibanLast4,
+          bankHasAccountHolder: !!((app as any).bankAccountHolder),
+          bankHasBankName:     !!((app as any).bankName),
+          bankAccessReasonRequired: true,
+        };
+      }
+    }
+
+    // Merge order matters: raw `app` first, then any projected
+    // redactions overwrite the plaintext fields.
     res.json({
-      application: { ...app, selfieSignedUrl, idSignedUrl, ...queueMeta },
+      application: { ...app, selfieSignedUrl, idSignedUrl, ...queueMeta, ...bankProjected },
       kycDetail,
     });
   } catch (error: any) {
@@ -1980,43 +2289,193 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         trainer: 'academy',
         station_operator: 'k9000',
       };
-      const platformId = providerTypeToPlatformId[application.providerType];
-      if (platformId) {
+      // CEO §73 #17 (2026-08-28): MULTI-SERVICE APPROVAL.
+      //
+      // The queue-insert block on the /apply path (line ~1174) already
+      // fans out to one queue row PER selected service, so a
+      // walker+sitter+trainer applicant lands on all three admin
+      // platform queues. Approve, however, USED to derive platformId
+      // from the primary provider_type SCALAR only — so approving that
+      // applicant inserted a `providers` row on walk_my_pet and left
+      // sitter_suite / academy silently empty. The applicant's sitter
+      // side was pending forever with nothing behind it.
+      //
+      // Fix: read the same providerTypes[] array the /apply block
+      // stashed in internal_notes and fan the insert out over each
+      // selected platform. Primary provider_type is included as a
+      // fallback so pre-multi-service rows (single provider_type,
+      // no internal_notes.providerTypes) still work. Idempotent per
+      // (user_id, platform_id) via ON CONFLICT — safe to re-run and
+      // safe against a partial rerun of an earlier approve.
+      const applicantTypes: string[] = (() => {
         try {
-          await pool.query(
-            `INSERT INTO providers (
-                user_id, platform_id, business_name,
-                verification_status, background_check_status, background_check_date,
-                insurance_provider, insurance_policy_number, insurance_expiry_date,
-                is_available, accepting_new_clients, is_active,
-                created_at, updated_at
-              )
-              VALUES ($1, $2, $3, 'verified', 'passed', NOW(),
-                      $4, $5, $6,
-                      TRUE, TRUE, TRUE,
-                      NOW(), NOW())
-              ON CONFLICT DO NOTHING`,
-            [
-              application.userId,
-              platformId,
-              [application.firstName, application.lastName].filter(Boolean).join(' ') || null,
-              // Drizzle rows are camelCase, not snake_case. Prior code read
-              // insurance_provider/insurance_policy_number/insurance_expires_at
-              // which are always undefined → every approved provider was
-              // stored insurance-less. Read both shapes for safety, prefer
-              // camelCase (the actual Drizzle row shape).
-              (application as any).insuranceProvider ?? (application as any).insurance_provider ?? null,
-              (application as any).insurancePolicyNumber ?? (application as any).insurance_policy_number ?? null,
-              (application as any).insuranceExpiresAt ?? (application as any).insurance_expires_at ?? null,
-            ],
-          );
-          logger.info('[Provider Onboarding] ✅ providers row inserted — provider now searchable', {
-            applicationId, userId: application.userId, platformId,
-          });
-        } catch (insertErr: any) {
-          logger.error('[Provider Onboarding] providers-row INSERT failed — approved provider will NOT be searchable until manual reconcile', {
-            applicationId, userId: application.userId, platformId, error: insertErr?.message,
-          });
+          const notes = (application as any).internalNotes
+            ? JSON.parse((application as any).internalNotes)
+            : null;
+          const arr = Array.isArray(notes?.providerTypes) ? notes.providerTypes : null;
+          const clean = arr?.filter((t: unknown): t is string => typeof t === 'string' && !!providerTypeToPlatformId[t]) ?? [];
+          return clean.length ? clean : [application.providerType];
+        } catch { return [application.providerType]; }
+      })();
+      const platformIds = Array.from(new Set(
+        applicantTypes.map((t) => providerTypeToPlatformId[t]).filter(Boolean),
+      ));
+      if (platformIds.length) {
+        // CEO §73 #14 + §73 audit (2026-08-28): SUGGESTED weekly availability.
+        //
+        // ⚠️ SEEDED AS A UI SUGGESTION, NOT AUTHORITATIVE ⚠️
+        // The template below is only what the provider sees pre-filled
+        // on their dashboard's availability picker. It MUST NOT be
+        // treated as the provider's chosen schedule until they
+        // explicitly confirm it — otherwise search would advertise
+        // hours the provider never approved (product + financial risk
+        // per CEO §73 audit 2026-08-28).
+        //
+        // `confirmed: false` and `source: 'admin_default_pending_provider_confirmation'`
+        // are the flags every reader (search, quote, calendar) must
+        // check before treating this as bookable. Provider confirmation
+        // sets confirmed=true via their dashboard.
+        const weeklyAvailabilityDefault = {
+          confirmed: false,
+          source: 'admin_default_pending_provider_confirmation',
+          suggestedAt: new Date().toISOString(),
+          template: {
+            sun: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            mon: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            tue: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            wed: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            thu: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            fri: { morning: true, afternoon: false, evening: false, startHour: 9, endHour: 14 },
+            sat: { morning: false, afternoon: false, evening: false, startHour: 0, endHour: 0 },
+          },
+        };
+        const providerPlatformData = { weeklyAvailability: weeklyAvailabilityDefault };
+        for (const platformId of platformIds) {
+          try {
+            await pool.query(
+              `INSERT INTO providers (
+                  user_id, platform_id, business_name,
+                  verification_status, background_check_status, background_check_date,
+                  insurance_provider, insurance_policy_number, insurance_expiry_date,
+                  is_available, accepting_new_clients, is_active,
+                  platform_data,
+                  created_at, updated_at
+                )
+                VALUES ($1, $2, $3, 'verified', 'passed', NOW(),
+                        $4, $5, $6,
+                        TRUE, TRUE, TRUE,
+                        $7,
+                        NOW(), NOW())
+                ON CONFLICT DO NOTHING`,
+              [
+                application.userId,
+                platformId,
+                [application.firstName, application.lastName].filter(Boolean).join(' ') || null,
+                // Drizzle rows are camelCase, not snake_case. Prior code read
+                // insurance_provider/insurance_policy_number/insurance_expires_at
+                // which are always undefined → every approved provider was
+                // stored insurance-less. Read both shapes for safety, prefer
+                // camelCase (the actual Drizzle row shape).
+                (application as any).insuranceProvider ?? (application as any).insurance_provider ?? null,
+                (application as any).insurancePolicyNumber ?? (application as any).insurance_policy_number ?? null,
+                (application as any).insuranceExpiresAt ?? (application as any).insurance_expires_at ?? null,
+                JSON.stringify(providerPlatformData),
+              ],
+            );
+            logger.info('[Provider Onboarding] ✅ providers row inserted — provider now searchable', {
+              applicationId, userId: application.userId, platformId,
+            });
+          } catch (insertErr: any) {
+            logger.error('[Provider Onboarding] providers-row INSERT failed — approved provider will NOT be searchable until manual reconcile', {
+              applicationId, userId: application.userId, platformId, error: insertErr?.message,
+            });
+          }
+
+          // CEO §73 #13 + audit (2026-08-28): SUGGESTED starter rate card.
+          //
+          // ⚠️ SEEDED AS A UI SUGGESTION, NOT AUTHORITATIVE ⚠️
+          // provider_rate_cards was empty on approval, so admin (or the
+          // provider) had to fill each rate by hand before booking could
+          // quote. We seed a starter row so the provider's dashboard has
+          // something to pre-fill — but the quote engine MUST NOT treat
+          // this rate as authoritative until the provider confirms it
+          // on their dashboard (otherwise search advertises rates the
+          // provider never chose — product + financial risk per audit).
+          //
+          // The row carries `pricing_rules.confirmed = false` +
+          // `pricing_rules.source = 'admin_default_pending_provider_confirmation'`
+          // so downstream readers can gate. Idempotent per
+          // (provider_id, platform, service_type) via WHERE NOT EXISTS.
+          const rateCardDefaults: Record<string, {
+            serviceType: string;
+            baseRatePerHourCents:  number | null;
+            baseRatePerNightCents: number | null;
+            baseRatePerVisitCents: number | null;
+          }> = {
+            walk_my_pet: { serviceType: 'dog_walking', baseRatePerHourCents: 5000,  baseRatePerNightCents: null,   baseRatePerVisitCents: null },
+            sitter_suite:{ serviceType: 'pet_sitting', baseRatePerHourCents: null,  baseRatePerNightCents: 15000,  baseRatePerVisitCents: null },
+            pet_trek:    { serviceType: 'pet_taxi',    baseRatePerHourCents: 6000,  baseRatePerNightCents: null,   baseRatePerVisitCents: null },
+            academy:     { serviceType: 'training',    baseRatePerHourCents: 10000, baseRatePerNightCents: null,   baseRatePerVisitCents: null },
+            k9000:       { serviceType: 'k9000_wash',  baseRatePerHourCents: null,  baseRatePerNightCents: null,   baseRatePerVisitCents: 3000 },
+          };
+          const defaults = rateCardDefaults[platformId];
+          if (defaults) {
+            const rateCardId = `RATE-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+            try {
+              // provider_rate_cards has no unique constraint on
+              // (provider_id, platform, service_type) — the table
+              // shipped before this insert was needed, so ON CONFLICT
+              // by target would require adding an index we don't
+              // control here. Guard with WHERE NOT EXISTS instead:
+              // idempotent per (provider_id, platform, service_type)
+              // and safe on re-approve.
+              const pricingRulesFlag = JSON.stringify({
+                confirmed: false,
+                source: 'admin_default_pending_provider_confirmation',
+                suggestedAt: new Date().toISOString(),
+              });
+              await pool.query(
+                `INSERT INTO provider_rate_cards (
+                    rate_card_id, provider_id, platform, service_type,
+                    base_rate_per_hour_cents, base_rate_per_night_cents, base_rate_per_visit_cents,
+                    pricing_rules,
+                    created_at, updated_at
+                  )
+                  SELECT $1, $2, $3, $4, $5, $6, $7, $8::jsonb, NOW(), NOW()
+                  WHERE NOT EXISTS (
+                    SELECT 1 FROM provider_rate_cards
+                     WHERE provider_id = $2 AND platform = $3 AND service_type = $4
+                  )`,
+                [
+                  rateCardId,
+                  application.userId,
+                  platformId,
+                  defaults.serviceType,
+                  defaults.baseRatePerHourCents,
+                  defaults.baseRatePerNightCents,
+                  defaults.baseRatePerVisitCents,
+                  pricingRulesFlag,
+                ],
+              );
+              logger.info('[Provider Onboarding] ✅ starter rate card inserted (idempotent) — provider now quotable', {
+                applicationId, userId: application.userId, platformId, serviceType: defaults.serviceType,
+              });
+            } catch (rateErr: any) {
+              // 42P01 = table missing on an older deploy — expected during a
+              // rolling deploy window, not an alert. Anything else is a real
+              // failure to make the provider quotable and lands at ERROR.
+              const code = rateErr?.code;
+              if (code === '42P01') {
+                logger.warn('[Provider Onboarding] rate-card insert skipped — provider_rate_cards absent', {
+                  applicationId, userId: application.userId, platformId, code,
+                });
+              } else {
+                logger.error('[Provider Onboarding] rate-card INSERT failed — approved provider is searchable but NOT quotable until manual reconcile', {
+                  applicationId, userId: application.userId, platformId, code, error: rateErr?.message,
+                });
+              }
+            }
+          }
         }
 
         // Multi-role fix (CEO 2026-08-24: "provider vs booker user role to
@@ -2059,8 +2518,8 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
           });
         }
       } else {
-        logger.warn('[Provider Onboarding] No platformId mapping for providerType — providers row NOT inserted', {
-          applicationId, providerType: application.providerType,
+        logger.warn('[Provider Onboarding] No platformId mapping for any selected providerType — providers row NOT inserted', {
+          applicationId, providerType: application.providerType, applicantTypes,
         });
       }
     }
@@ -2629,12 +3088,158 @@ router.get('/my/status', async (req: Request, res: Response) => {
       }
     }
 
+    // CEO §46 (2026-08-28) — per-section readiness DTO. Applicant needs
+    // to know exactly which section is complete / checking / action-
+    // required. Additive field; existing shape { application, ... }
+    // is unchanged. The projection needs a wider read since /my/status
+    // deliberately hides many fields (see the §13 privacy comment
+    // above) — fetch the missing signals with a second lightweight
+    // query so the client can render an accurate checklist without
+    // the DTO exposing raw values.
+    const isDecided = app.status === 'approved' || app.status === 'rejected';
+    const isReviewing = ['pending_review', 'under_review'].includes(app.status);
+    const secStatus = (fieldsComplete: boolean): 'complete' | 'checking' | 'action_required' => {
+      if (!fieldsComplete) return 'action_required';
+      if (app.status === 'approved') return 'complete';
+      if (isReviewing || app.status === 'pending') return 'checking';
+      return 'action_required';
+    };
+    let hasIdentityDocs = false;
+    let hasBank = false;
+    let hasBackgroundConsent = false;
+    let hasDeclarations = false;
+    try {
+      const extra = await pool.query<{
+        selfie_photo_url: string | null;
+        government_id_url: string | null;
+        bank_iban: string | null;
+        bank_account_holder: string | null;
+        criminal_check_consent: boolean | null;
+        internal_notes: string | null;
+      }>(
+        `SELECT selfie_photo_url, government_id_url,
+                bank_iban, bank_account_holder,
+                criminal_check_consent,
+                internal_notes
+           FROM provider_applications
+          WHERE id = $1
+          LIMIT 1`,
+        [app.id],
+      );
+      const r = extra.rows[0];
+      if (r) {
+        hasIdentityDocs = !!(r.selfie_photo_url && r.government_id_url && app.kyc_document_type);
+        hasBank = !!(r.bank_iban && r.bank_account_holder);
+        hasBackgroundConsent = !!(r.criminal_check_consent && app.self_declaration_no_relevant_convictions);
+        try {
+          const notes = r.internal_notes ? JSON.parse(r.internal_notes) : null;
+          hasDeclarations = !!(notes && typeof notes === 'object' && notes.declarations && Object.keys(notes.declarations).length > 0);
+        } catch { /* ignore */ }
+      }
+    } catch { /* section-status is best-effort; missing signals → action_required by design */ }
+    const sectionStatus = {
+      overall:      isDecided ? app.status : (isReviewing ? 'checking' : 'action_required'),
+      applicationId: app.application_id,
+      sections: {
+        profile:      secStatus(!!(app.first_name && app.last_name && app.city)),
+        identity:     secStatus(hasIdentityDocs),
+        insurance:    secStatus(!!(app.insurance_policy_number && app.insurance_provider && app.insurance_expires_at)),
+        background:   secStatus(hasBackgroundConsent),
+        bank:         secStatus(hasBank),
+        declarations: secStatus(hasDeclarations),
+      },
+    };
+
+    // CEO §23 (2026-08-28) — granular provider readiness DTO. sectionStatus
+    // above is UI checklist copy. `readiness` is the machine-readable
+    // eligibility bitmap the search + booking gates read at runtime:
+    //   * identityReady   — KYC docs + document type + not-expired
+    //   * insuranceReady  — policy present + not-expired
+    //   * backgroundReady — consent to check + self-declaration signed
+    //   * payoutReady     — bank IBAN + account holder present
+    //   * agreementsReady — provider-declarations bundle recorded
+    //   * profileReady    — first/last/city minimally present
+    //   * serviceApproved — application decided approved by ops
+    //   * pricingReady    — at least one active provider_services row
+    //                       with bookingEnabled = true
+    //   * availabilityReady — at least one future availability slot
+    //                       (best-effort; missing table → false, never true)
+    //   * searchEligible  — serviceApproved && identityReady &&
+    //                       insuranceReady && backgroundReady &&
+    //                       payoutReady && agreementsReady && profileReady
+    //   * bookingEligible — searchEligible && pricingReady &&
+    //                       availabilityReady
+    // Fail-CLOSED: any lookup error leaves the flag FALSE. Never invents
+    // eligibility from partial state.
+    const nowMs = Date.now();
+    const notExpired = (d: unknown): boolean => {
+      if (!d) return false;
+      const t = new Date(d as any).getTime();
+      return Number.isFinite(t) && t > nowMs;
+    };
+    const identityReady =
+      hasIdentityDocs && (app.kyc_document_expiry ? notExpired(app.kyc_document_expiry) : true);
+    const insuranceReady =
+      !!(app.insurance_policy_number && app.insurance_provider) && notExpired(app.insurance_expires_at);
+    const backgroundReady = hasBackgroundConsent;
+    const payoutReady = hasBank;
+    const agreementsReady = hasDeclarations;
+    const profileReady = !!(app.first_name && app.last_name && app.city);
+    const serviceApproved = app.status === 'approved';
+
+    let pricingReady = false;
+    let availabilityReady = false;
+    if (serviceApproved && app.approved_as_provider_id) {
+      try {
+        const priceRow = await pool.query<{ cnt: string }>(
+          `SELECT COUNT(*)::text AS cnt
+             FROM provider_services
+            WHERE provider_id = $1
+              AND booking_enabled = TRUE
+              AND paused_by_provider = FALSE
+              AND paused_by_admin = FALSE`,
+          [String(app.approved_as_provider_id)],
+        );
+        pricingReady = Number(priceRow.rows[0]?.cnt || '0') > 0;
+      } catch { pricingReady = false; }
+      try {
+        const availRow = await pool.query<{ cnt: string }>(
+          `SELECT COUNT(*)::text AS cnt
+             FROM provider_availability
+            WHERE provider_id = $1
+              AND is_available = TRUE
+              AND date >= CURRENT_DATE`,
+          [String(app.approved_as_provider_id)],
+        );
+        availabilityReady = Number(availRow.rows[0]?.cnt || '0') > 0;
+      } catch { availabilityReady = false; }
+    }
+    const searchEligible =
+      serviceApproved && identityReady && insuranceReady && backgroundReady &&
+      payoutReady && agreementsReady && profileReady;
+    const bookingEligible = searchEligible && pricingReady && availabilityReady;
+    const readiness = {
+      identityReady,
+      insuranceReady,
+      backgroundReady,
+      payoutReady,
+      agreementsReady,
+      profileReady,
+      serviceApproved,
+      pricingReady,
+      availabilityReady,
+      searchEligible,
+      bookingEligible,
+    };
+
     const appUrl = process.env.APP_URL || 'https://app.petwash.co.il';
     res.json({
       application: {
         ...app,
         kycDecisionFlags: (() => { try { return JSON.parse(app.kyc_decision_flags || '[]'); } catch { return []; } })(),
       },
+      sectionStatus,
+      readiness,
       resubmissionToken,
       resubmitUrl: resubmissionToken ? `${appUrl}/provider-application/resubmit?token=${resubmissionToken}` : null,
     });

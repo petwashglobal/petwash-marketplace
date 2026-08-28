@@ -62,6 +62,9 @@ export default function SitterBookingFlow() {
   const [checkOutTime, setCheckOutTime] = useState("10:00");
   const [calendarRange, setCalendarRange] = useState<DateRange | undefined>();
   const [notes, setNotes] = useState("");
+  // CEO §5 (2026-08-28) — booking-scoped medical share. Same rule as
+  // the walk-my-pet flow. Default off; server is authority.
+  const [bookingScopedShare, setBookingScopedShare] = useState(false);
   const [address, setAddress] = useState("");
   const [addressCity, setAddressCity] = useState("");
   const [addressPostal, setAddressPostal] = useState("");
@@ -230,6 +233,37 @@ export default function SitterBookingFlow() {
       // Network connectivity check before committing booking
       await assertConnected('he');
 
+      // CEO §12 provider safety summary — sitter takes the pet into
+      // their home (or the customer's) for hours to days. Aggression,
+      // escape risk, feeding/handling instructions, allergies, and
+      // medication timing MUST reach the sitter's screen before the
+      // stay begins. Until this commit only free-text specialInstructions
+      // travelled; the structured safety flags on the KYA pet doc were
+      // silently invisible. Mirrors the walk-my-pet payload change.
+      const primaryPet: any = pets.find((p: any) => p.id === selectedPetIds[0]);
+      // PRIVACY GATE (CEO §22): SAFETY fields go every time; MEDICAL
+      // fields (allergies / medications / vet contact) leave the
+      // browser only under medicalShareConsent. Same rule as
+      // walk-my-pet/BookingFlow.tsx and as sitter-suite.ts already
+      // applies at the availability engine (medicalShareConsent
+      // === true).
+      const medicalConsented = primaryPet?.medicalShareConsent === true;
+      const petSafetySnapshot: Record<string, unknown> = {
+        aggressionWarning:      primaryPet?.aggressionWarning ?? null,
+        escapeRisk:             !!primaryPet?.escapeRisk,
+        behaviourNotes:         primaryPet?.behaviourNotes ?? '',
+        feedingInstructions:    primaryPet?.feedingInstructions ?? '',
+        handlingInstructions:   primaryPet?.handlingInstructions ?? '',
+        sensitiveSkin:          !!primaryPet?.sensitiveSkin,
+        medicalConsented,
+        ...(medicalConsented ? {
+          allergies:            primaryPet?.allergies ?? '',
+          medicationNotes:      primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
+          vetName:              primaryPet?.vetName ?? '',
+          vetPhone:             primaryPet?.vetPhone ?? '',
+        } : {}),
+      };
+
       const payload = {
         sitterId: sitter.id,
         petId: selectedPetIds[0],
@@ -242,6 +276,9 @@ export default function SitterBookingFlow() {
         addressLat: addressLat ?? undefined,
         addressLng: addressLng ?? undefined,
         petIds: selectedPetIds,
+        petSafetySnapshot,
+        // Booking-scoped medical share — CEO §5.
+        bookingScopedShare,
         pricing: {
           currency: "ILS",
           baseAmount: pricing.baseAmount,
@@ -302,24 +339,36 @@ export default function SitterBookingFlow() {
         description: "השמרטף/ית יקבל/תקבל הודעה. ממתינים לאישור.",
       });
     } catch (error: any) {
-      const errorMsg = error.message || "";
-      if (errorMsg.includes("Authentication") || errorMsg.includes("401") || errorMsg.includes("sign in")) {
+      // CEO §60 (2026-08-28) — read the stable errorCode off the
+      // ApiError body. Never render error.message verbatim (it carries
+      // "400: ..." + the server's copy). CEO §5 CARE_INFO_REQUIRED has
+      // its own friendly HE/EN copy so the customer knows why the
+      // booking couldn't proceed.
+      const status = Number(error?.status || 0);
+      const code = String(error?.body?.errorCode || '');
+      if (status === 401) {
         toast({
           title: "יש להתחבר תחילה",
           description: "כדי לבצע הזמנה, יש להתחבר לחשבון שלך.",
           variant: "destructive",
         });
         setTimeout(() => setLocation("/signin"), 2000);
-      } else if (errorMsg.includes("loyalty") || errorMsg.includes("403")) {
+      } else if (status === 403) {
         toast({
           title: "נדרשת חברות במועדון",
           description: "שירות זה זמין לחברי מועדון ⁦PetWash™⁩. הצטרפו עכשיו!",
           variant: "destructive",
         });
+      } else if (code === 'CARE_INFO_REQUIRED') {
+        toast({
+          title: "נדרש שיתוף מידע רפואי",
+          description: "השירות הזה דורש שיתוף פרטים רפואיים לשם השירות. סמן/י את שיתוף המידע הרפואי לשהות זו ונסה/י שוב, או בחר/י שירות אחר. Sharing medical information is required for this service — tick the booking-scoped share option and try again, or pick another service.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "שגיאה ביצירת הזמנה",
-          description: errorMsg || "אירעה שגיאה. אין חיוב. נסו שוב.",
+          description: "אירעה שגיאה. אין חיוב. נסו שוב.",
           variant: "destructive",
         });
       }
@@ -615,6 +664,36 @@ export default function SitterBookingFlow() {
                 style={{ fontSize: '16px' }}
                 data-testid="textarea-notes"
               />
+            </section>
+
+            {/* CEO §5 (2026-08-28) — booking-scoped medical share for
+                THIS sitting only. Server IS authority — this checkbox
+                only ALLOWS the server to include medical fields if
+                the pet has them. Default off. */}
+            <section
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+              data-testid="section-booking-scoped-share-sitter"
+            >
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bookingScopedShare}
+                  onChange={(e) => setBookingScopedShare(e.target.checked)}
+                  className="mt-1"
+                  data-testid="checkbox-booking-scoped-share-sitter"
+                />
+                <span className="text-sm">
+                  <div className="font-semibold text-slate-800">
+                    שיתוף פרטים רפואיים לשהות הזו בלבד
+                    <span className="text-slate-500 font-normal"> / Share medical details for this stay only</span>
+                  </div>
+                  <div className="text-slate-500 text-xs mt-1">
+                    אלרגיות, תרופות, פרטי וטרינר. חל רק להזמנה הנוכחית ולא לשהיות עתידיות.
+                    <br />
+                    Allergies, medications, vet contact. Applies to THIS booking only, not future ones.
+                  </div>
+                </span>
+              </label>
             </section>
 
             {/* Owner Instructions */}

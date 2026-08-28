@@ -103,6 +103,26 @@ interface KycApplication {
   // mis-titled pet_first_aid_provider; expiry is a real column below.
   petFirstAidExpiresAt?: string | null;
   petFirstAidCertUrl?: string | null;
+  // CEO §73 #16 (2026-08-28): three more blind fields the wizard writes
+  // but the review surface never rendered.
+  //   • ageConfirmed18Plus — legal 18+ attestation (separate from DOB —
+  //     the applicant explicitly ticked it, or refused to);
+  //   • kycDocumentExpiry — a real column, distinct from OCR-detected;
+  //   • drivingRecordNotes — JSON blob with licenseNumber/licenseClass/
+  //     expiryDate (walker + driver approval blocker if the licence is
+  //     absent or lapsed).
+  ageConfirmed18Plus?: boolean | null;
+  kycDocumentExpiry?: string | null;
+  drivingRecordNotes?: string | null;      // JSON string
+  drivingRecordUrl?: string | null;
+  // CEO §73 #12 (2026-08-28): bank / payout target. Migration 0133.
+  // Approvals used to write a payout row with a null IBAN — every
+  // approved provider needed a manual DB touch to become payable.
+  bankName?: string | null;
+  bankBranchCode?: string | null;
+  bankIban?: string | null;
+  bankAccountHolder?: string | null;
+  bankDetailsAt?: string | null;
 }
 
 interface KycDetail {
@@ -738,6 +758,12 @@ export default function ProviderKycReview() {
                     {[
                       { label: 'Document type', value: app.kycDocumentType || '—' },
                       { label: 'ID last four', value: app.kycIdLastFour ? `••••${app.kycIdLastFour}` : '—' },
+                      // CEO §73 #16: kyc_document_expiry is a real column
+                      // populated at intake — distinct from the OCR-inferred
+                      // "expiry detected" boolean. Reviewer needs the actual
+                      // date to know when the ID lapses (approving someone
+                      // whose ID expires in 3 days is a KYC gap).
+                      { label: 'Document expiry', value: app.kycDocumentExpiry ? new Date(app.kycDocumentExpiry).toLocaleDateString() : '—' },
                       { label: 'Name detected', value: kycDetail?.ocr?.nameDetected },
                       { label: 'DOB detected', value: kycDetail?.ocr?.birthDateDetected },
                       { label: 'Expiry detected', value: kycDetail?.ocr?.expiryDateDetected },
@@ -771,6 +797,21 @@ export default function ProviderKycReview() {
                     <div className="flex items-center justify-between bg-white rounded px-3 py-2">
                       <span className="text-muted-foreground">Date of birth</span>
                       <span className="font-medium">{app.dateOfBirth || '—'}</span>
+                    </div>
+                    {/* CEO §73 #16 (2026-08-28): the applicant's explicit 18+
+                        attestation is separate from DOB — an unticked box +
+                        a DOB in the future = fraud smell the reviewer must
+                        see. Column exists on the schema; column-not-migrated
+                        renders as an em-dash, not a crash. */}
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">18+ confirmed</span>
+                      {app.ageConfirmed18Plus === true ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      ) : app.ageConfirmed18Plus === false ? (
+                        <XCircle className="h-4 w-4 text-red-400" />
+                      ) : (
+                        <span className="font-medium">—</span>
+                      )}
                     </div>
                     <div className="flex items-center justify-between bg-white rounded px-3 py-2">
                       <span className="text-muted-foreground">Country</span>
@@ -903,6 +944,116 @@ export default function ProviderKycReview() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* CEO §73 #12 (2026-08-28): Bank / Payout target. Populated
+                  at intake via /apply; super_app_payouts.provider_bank_iban
+                  /provider_bank_name derive from these. Absent-fields show
+                  as em-dashes so reviewers can quickly see who is missing
+                  bank details and cannot yet be paid out. */}
+              {(app.bankIban || app.bankName || app.bankBranchCode || app.bankAccountHolder) && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Bank / Payout</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                        <span className="text-muted-foreground">Bank</span>
+                        <span className="font-medium">{app.bankName || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                        <span className="text-muted-foreground">Branch code</span>
+                        <span className="font-medium">{app.bankBranchCode || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2 col-span-2">
+                        <span className="text-muted-foreground">IBAN</span>
+                        <span dir="ltr" className="font-mono text-xs">{app.bankIban || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2 col-span-2">
+                        <span className="text-muted-foreground">Account holder</span>
+                        <span className="font-medium">{app.bankAccountHolder || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2 col-span-2">
+                        <span className="text-muted-foreground">Submitted</span>
+                        <span className="font-medium">{app.bankDetailsAt ? new Date(app.bankDetailsAt).toLocaleString() : '—'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* CEO §73 #16 (2026-08-28): driving-license card. Blob lives
+                  in driving_record_notes as {licenseNumber, licenseClass,
+                  expiryDate} and drivingRecordUrl points at the scan.
+                  Only render when at least one field is present so the
+                  card doesn't stub out sitter-type applicants who don't
+                  drive. Walker + driver approval blocker if it's empty
+                  or lapsed — the reviewer needs the date, not "detected". */}
+              {(app.drivingRecordNotes || app.drivingRecordUrl) && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Driving License</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {(() => {
+                      let licenseNumber: string | null = null;
+                      let licenseClass: string | null = null;
+                      let expiryDate: string | null = null;
+                      try {
+                        const parsed = app.drivingRecordNotes ? JSON.parse(app.drivingRecordNotes) : null;
+                        if (parsed && typeof parsed === 'object') {
+                          if (typeof parsed.licenseNumber === 'string') licenseNumber = parsed.licenseNumber;
+                          if (typeof parsed.licenseClass  === 'string') licenseClass  = parsed.licenseClass;
+                          if (typeof parsed.expiryDate    === 'string') expiryDate    = parsed.expiryDate;
+                        }
+                      } catch { /* ignore — render em-dashes */ }
+                      const expiryLabel = (() => {
+                        if (!expiryDate) return '—';
+                        const d = new Date(expiryDate);
+                        if (isNaN(d.getTime())) return expiryDate;
+                        const days = Math.floor((d.getTime() - Date.now()) / 86_400_000);
+                        const dateLabel = d.toLocaleDateString();
+                        if (days < 0)      return `${dateLabel} · expired ${Math.abs(days)}d ago`;
+                        if (days <= 30)    return `${dateLabel} · ${days}d left`;
+                        return `${dateLabel} · ${days}d left`;
+                      })();
+                      const expiryClass = (() => {
+                        if (!expiryDate) return '';
+                        const d = new Date(expiryDate);
+                        if (isNaN(d.getTime())) return '';
+                        const days = Math.floor((d.getTime() - Date.now()) / 86_400_000);
+                        if (days < 0)   return 'text-red-700';
+                        if (days <= 30) return 'text-amber-700';
+                        return '';
+                      })();
+                      return (
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">License number</span>
+                            <span className="font-medium font-mono text-xs">{licenseNumber || '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">Class</span>
+                            <span className="font-medium">{licenseClass || '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">Expiry</span>
+                            <span className={`font-medium ${expiryClass}`}>{expiryLabel}</span>
+                          </div>
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">Document</span>
+                            {app.drivingRecordUrl ? (
+                              <Badge variant="outline" className="text-xs">on file</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+              )}
 
               <Card>
                 <CardHeader className="pb-2">

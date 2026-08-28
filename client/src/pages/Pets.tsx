@@ -6,6 +6,7 @@ import { getApiUrl } from "@/lib/apiConfig";
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/lib/languageStore';
 import { trackPetAdded, trackPetUpdated, trackPetDeleted } from '@/lib/analytics';
+import { SPECIES_VALUES } from '@shared/lib/petSpecies';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
@@ -42,7 +43,10 @@ import { he, enUS } from 'date-fns/locale';
 
 const petFormSchema = z.object({
   name: z.string().min(1, 'Pet name is required'),
-  species: z.enum(['dog', 'cat', 'bird', 'rabbit', 'guinea_pig', 'hamster', 'reptile', 'fish', 'other']),
+  // CEO §22 — canonical species enum. Was drifting across 4 surfaces
+  // (this file was missing 'turtle'), letting a pet added on one screen
+  // fail Zod on another. Single source of truth in shared/lib/petSpecies.
+  species: z.enum(SPECIES_VALUES as unknown as [string, ...string[]]),
   breed: z.string().optional(),
   birthdate: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
@@ -80,6 +84,10 @@ interface Pet {
   lastVaccineDate?: string;
   nextVaccineDate?: string;
   enableVaccineReminders: boolean;
+  // CEO §22 (2026-08-28) — owner-controlled medical share consent.
+  // Optional because Firestore may not yet carry the flag on legacy
+  // pets; the toggle below defaults to the safe (private) state.
+  medicalShareConsent?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -117,12 +125,10 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/pets/${petId}/health-events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
-        credentials: 'include',
-        body: JSON.stringify(form),
-      });
+      // Was bare fetch() with hand-rolled Bearer — missed App Check,
+      // 401 token-refresh-retry, and cold-start 503 retry that
+      // apiRequest handles for every other auth'd surface.
+      const res = await apiRequest('POST', `/api/pets/${petId}/health-events`, form);
       if (!res.ok) throw new Error((await res.json()).error || 'Failed');
       return res.json();
     },
@@ -137,11 +143,8 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
 
   const deleteMutation = useMutation({
     mutationFn: async (eventId: string) => {
-      const res = await fetch(`/api/pets/${petId}/health-events/${eventId}`, {
-        method: 'DELETE',
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-        credentials: 'include',
-      });
+      // See addMutation comment — same bare-fetch → apiRequest swap.
+      const res = await apiRequest('DELETE', `/api/pets/${petId}/health-events/${eventId}`);
       if (!res.ok) throw new Error('Failed to delete');
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: [`/api/pets/${petId}/health-events`] }),
@@ -277,10 +280,10 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                   return;
                 }
                 try {
-                  const res = await fetch(
-                    `/api/pets/${petId}/health-events/${ev.id}/ics`,
-                    { headers: { Authorization: `Bearer ${authToken}` }, credentials: 'include' },
-                  );
+                  // Was bare fetch() with hand-rolled Bearer — swapped
+                  // to apiRequest so the .ics download also gets
+                  // App Check + 401 token-refresh-retry.
+                  const res = await apiRequest('GET', `/api/pets/${petId}/health-events/${ev.id}/ics`);
                   if (!res.ok) throw new Error(`HTTP ${res.status}`);
                   const blob = await res.blob();
                   const blobUrl = URL.createObjectURL(blob);
@@ -386,11 +389,10 @@ export default function Pets() {
     queryKey: ['/api/pets'],
     enabled: !!authToken,
     queryFn: async () => {
-      const response = await fetch(getApiUrl('/api/pets'), {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      });
+      // Was bare fetch() with hand-rolled Bearer + no
+      // Content-Type / no App Check / no retry. Same discipline as
+      // every other /api/... call in this file.
+      const response = await apiRequest('GET', '/api/pets');
       if (!response.ok) throw new Error('Failed to fetch pets');
       const data = await response.json();
       return data.pets || [];
@@ -400,16 +402,22 @@ export default function Pets() {
   const createMutation = useMutation({
     mutationFn: async (data: PetFormData) => {
       if (!authToken) throw new Error('Not authenticated');
-      // apiRequest returns a Response, so we must .json() before touching the
-      // body. Reading `response.pet` on the raw Response silently returns
-      // undefined and the trackPetAdded analytics event never fires.
+      // CEO §21 KYA canonical field: server projection at
+      // server/routes/pets.ts:81 reads ONLY `birthday`. Pets.tsx's form
+      // still uses `birthdate` as the field name (legacy AddPet shape),
+      // and the server's Zod union accepts both — but the READ path
+      // returns `birthday: null` for any pet stored with the legacy
+      // key, so every external surface (booking form, provider view)
+      // sees a nameless DOB even after the owner set one. Canonicalize
+      // on the write side.
+      const canonical = { ...data, birthday: data.birthdate, birthdate: undefined };
       const res = await apiRequest('/api/pets', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(canonical),
       });
       return await res.json();
     },
@@ -449,13 +457,15 @@ export default function Pets() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: PetFormData }) => {
       if (!authToken) throw new Error('Not authenticated');
+      // Same canonical fix as createMutation — see the comment there.
+      const canonical = { ...data, birthday: data.birthdate, birthdate: undefined };
       return apiRequest(`/api/pets/${id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(canonical),
       });
     },
     onSuccess: (_response: any, variables: { id: string; data: PetFormData }) => {
@@ -513,6 +523,44 @@ export default function Pets() {
       toast({
         title: t('pets.error'),
         description: error.message || t('pets.errorDeletingPet'),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // CEO §22 (2026-08-28) — owner-controlled medical share consent.
+  // Firestore petId in the URL is not a valid Postgres row id; the
+  // server's /consent endpoint falls through to (userId, name) when
+  // the URL param isn't numeric, so we pass petName in the body.
+  const consentMutation = useMutation({
+    mutationFn: async (input: { pet: Pet; share: boolean }) => {
+      if (!authToken) throw new Error('Not authenticated');
+      return apiRequest('POST', `/api/pets/${input.pet.id}/consent`, {
+        petName: input.pet.name,
+        medicalShareConsent: input.share,
+      });
+    },
+    onSuccess: (_res, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pets'] });
+      toast({
+        title: language === 'he'
+          ? (variables.share ? 'שיתוף מידע רפואי הופעל' : 'שיתוף מידע רפואי בוטל')
+          : (variables.share ? 'Medical sharing enabled' : 'Medical sharing turned off'),
+        description: language === 'he'
+          ? (variables.share
+            ? 'בהזמנות הבאות המטפל יראה אלרגיות, תרופות ופרטי וטרינר.'
+            : 'פרטים רפואיים לא ישותפו בהזמנות הבאות.')
+          : (variables.share
+            ? 'Providers on future bookings can see allergies, medications, vet contact.'
+            : 'Medical details will not be shared on future bookings.'),
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: t('pets.error'),
+        description: error?.message || (language === 'he'
+          ? 'לא הצלחנו לעדכן את העדפת השיתוף. נסו שוב.'
+          : 'Could not update sharing preference. Please retry.'),
         variant: 'destructive',
       });
     },
@@ -714,6 +762,49 @@ export default function Pets() {
                           </span>
                         </div>
                       )}
+                      {/* CEO §22 — owner-controlled medical share consent.
+                          Off by default (fail-safe). Neutral phrasing:
+                          the toggle describes what happens, not what the
+                          owner "should" do. */}
+                      <div
+                        className="flex items-start justify-between gap-3 pt-2 mt-2 border-t border-slate-100"
+                        data-testid={`consent-row-${pet.id}`}
+                      >
+                        <div className="flex-1 text-xs">
+                          <div className="font-semibold text-gray-800">
+                            {language === 'he'
+                              ? 'שיתוף מידע רפואי עם מטפלים'
+                              : 'Share medical details with providers'}
+                          </div>
+                          <div className="text-gray-500 mt-0.5">
+                            {language === 'he'
+                              ? 'כשהאפשרות פעילה, ההזמנות הבאות ישותפו: אלרגיות, תרופות, שם וטלפון וטרינר.'
+                              : 'When on, future bookings share: allergies, medications, vet name & phone.'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={pet.medicalShareConsent === true}
+                          disabled={consentMutation.isPending}
+                          onClick={() =>
+                            consentMutation.mutate({
+                              pet,
+                              share: !(pet.medicalShareConsent === true),
+                            })
+                          }
+                          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                            pet.medicalShareConsent === true ? 'bg-emerald-500' : 'bg-gray-300'
+                          } disabled:opacity-50`}
+                          data-testid={`consent-toggle-${pet.id}`}
+                        >
+                          <span
+                            className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${
+                              pet.medicalShareConsent === true ? 'translate-x-5' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </CardContent>
 
                     {/* Health Journal toggle */}

@@ -12,6 +12,9 @@ import {
   filterPetForProvider,
   filterPetPublic,
 } from '../lib/petPrivacy';
+import { db as pgDb, pool } from '../db';
+import { pets as pgPets } from '@shared/schema';
+import { and, eq } from 'drizzle-orm';
 
 const router = Router();
 
@@ -205,6 +208,27 @@ router.patch('/:petId', validateFirebaseToken, async (req, res) => {
     // pins it), but defence-in-depth: never let a body-supplied uid land.
     delete (parsed as any).uid;
 
+    // CEO §22 (2026-08-28) — the PATCH endpoint must NOT flip consent.
+    // Consent has its own audit-stamped endpoint (POST /:petId/consent
+    // in ee1791644) that records medicalConsentUpdatedAt + mirrors the
+    // Postgres pets row for the booking-time snapshot builder to see.
+    // Allowing consent through the generic PATCH would let a client
+    // flip the flag without the audit stamp and without the Postgres
+    // mirror — a stealth-share bug.
+    const CONSENT_ONLY_ROUTE = new Set([
+      'medicalShareConsent',
+      'medicalDataPrivate',
+      'medicalConsentUpdatedAt',
+    ]);
+    for (const key of CONSENT_ONLY_ROUTE) {
+      if (key in parsed) {
+        delete (parsed as any)[key];
+        logger.warn('[Pets] PATCH stripped consent field — use POST /:petId/consent', {
+          uid, petId, field: key,
+        });
+      }
+    }
+
     const updates = {
       ...parsed,
       updatedAt: new Date(),
@@ -218,6 +242,163 @@ router.patch('/:petId', validateFirebaseToken, async (req, res) => {
   } catch (error) {
     logger.error('Error updating pet', error);
     res.status(500).json({ error: 'Failed to update pet' });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// CEO §22 (2026-08-28) — owner-controlled medical-share consent.
+//
+// buildServerSafetySnapshot / projectStoredSafetyForProvider both gate on the
+// PostgreSQL pets row's medicalShareConsent + medicalDataPrivate columns —
+// but until this endpoint existed no code path let the owner ACTUALLY FLIP
+// those flags with an audit trail. Consent silently stayed at the DB
+// default (false) forever, so bookings could never carry medical fields
+// even when the owner wanted them shared.
+//
+// Contract:
+//   POST /api/pets/:petId/consent { medicalShareConsent: boolean }
+//   • Ownership verified (pets.userId === caller uid). Cross-user returns 404.
+//   • Sets medicalShareConsent, mirrors medicalDataPrivate (private = !share),
+//     stamps medicalConsentUpdatedAt = NOW() for audit.
+//   • Fail-closed: on any DB error the endpoint returns 502 and the flag is
+//     NOT updated. Medical data must never leak because a write half-succeeded.
+//
+// This is CEO §4 architecture — ACCOUNT/PET preference for now. Booking-
+// scoped consent (§4 second half) is a future layer on top of this flag.
+// ────────────────────────────────────────────────────────────────────────────
+router.post('/:petId/consent', validateFirebaseToken, async (req, res) => {
+  const uid = req.firebaseUser!.uid;
+  // Accept EITHER shape:
+  //   • numeric petId in the URL (Postgres pets.id) — direct hit
+  //   • Firestore-shaped petId string in the URL AND petName in the body
+  //     (Firestore pets and Postgres pets are separate stores today; the
+  //     client's /api/pets renders Firestore, but booking-time consent
+  //     lives on Postgres. Lookup by (uid, name) so the client can flip
+  //     consent without knowing the Postgres row id).
+  const rawParam = req.params.petId;
+  const petIdNum = Number(rawParam);
+  const isNumericId = Number.isFinite(petIdNum) && petIdNum > 0;
+  const petName = typeof req.body?.petName === 'string' && req.body.petName.trim()
+    ? req.body.petName.trim().slice(0, 120) : null;
+  if (!isNumericId && !petName) {
+    return res.status(400).json({
+      error: 'Provide a numeric petId in the URL OR petName in the body',
+      errorCode: 'PET_LOOKUP_KEY_REQUIRED',
+    });
+  }
+  const raw = req.body?.medicalShareConsent;
+  if (typeof raw !== 'boolean') {
+    return res.status(400).json({
+      error: 'medicalShareConsent must be a boolean',
+      errorCode: 'CONSENT_MUST_BE_BOOL',
+    });
+  }
+  try {
+    let r = isNumericId
+      ? await pool.query(
+          `UPDATE pets
+              SET medical_share_consent = $1,
+                  medical_data_private  = $2,
+                  medical_consent_updated_at = NOW(),
+                  updated_at            = NOW()
+            WHERE id = $3 AND user_id = $4`,
+          [raw, !raw, petIdNum, uid],
+        )
+      : await pool.query(
+          // Cross-store lookup by (user_id, name). Ownership WHERE
+          // clause pins the caller, so a name collision across owners
+          // cannot flip somebody else's pet.
+          `UPDATE pets
+              SET medical_share_consent = $1,
+                  medical_data_private  = $2,
+                  medical_consent_updated_at = NOW(),
+                  updated_at            = NOW()
+            WHERE user_id = $3 AND name = $4`,
+          [raw, !raw, uid, petName],
+        );
+
+    // CEO §22 Firestore ↔ Postgres bridge (2026-08-28).
+    //
+    // Current architecture stores owner-facing pet data in Firestore
+    // (see /api/pets GET) while booking-time consent + snapshot builder
+    // read from Postgres pets. No sync job exists between the two, so
+    // a rowCount=0 here doesn't mean the pet is missing — it means the
+    // Postgres row was never created. Upsert a minimal Postgres row
+    // from the request (name path) so future booking-create paths can
+    // find it and honour the flag.
+    if ((r.rowCount ?? 0) === 0 && !isNumericId && petName) {
+      try {
+        await pool.query(
+          `INSERT INTO pets (
+              user_id, name, species,
+              medical_share_consent, medical_data_private,
+              medical_consent_updated_at, created_at, updated_at
+            )
+            VALUES ($1, $2, 'other', $3, $4, NOW(), NOW(), NOW())`,
+          [uid, petName, raw, !raw],
+        );
+        r = { rowCount: 1 } as any;
+        logger.info('[Pets] Postgres pets row created from Firestore-only pet', {
+          uid, name: petName,
+        });
+      } catch (insertErr: any) {
+        // 42P07 / 23505 don't apply here (no unique constraint on
+        // user_id+name); 42P01 = table missing on older deploy.
+        if (insertErr?.code === '42P01') {
+          logger.warn('[Pets] Postgres pets table absent — consent write skipped', {
+            uid, name: petName,
+          });
+        } else {
+          throw insertErr;
+        }
+      }
+    }
+    if ((r.rowCount ?? 0) === 0) {
+      return res.status(404).json({ error: 'Pet not found', errorCode: 'PET_NOT_FOUND' });
+    }
+
+    // Dual-write to Firestore when the caller passed the Firestore-shape
+    // petId in the URL. This keeps the owner-facing pet doc consistent
+    // with the Postgres flag; the /api/pets GET reads from Firestore, so
+    // without the mirror the toggle would render OFF on next reload.
+    // Best-effort — a Firestore write failure does NOT undo the Postgres
+    // truth. Log at ERROR so the mismatch is visible.
+    if (!isNumericId) {
+      try {
+        const petRef = firestore.doc(FIRESTORE_PATHS.PETS(uid, rawParam));
+        const doc = await petRef.get();
+        if (doc.exists && !doc.data()?.deletedAt) {
+          await petRef.update({
+            medicalShareConsent: raw,
+            medicalDataPrivate: !raw,
+            medicalConsentUpdatedAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      } catch (fsErr: any) {
+        logger.error('[Pets] Firestore consent mirror FAILED — Postgres is source of truth', {
+          uid, petId: rawParam, error: fsErr?.message,
+        });
+      }
+    }
+
+    logger.info('[Pets] medical-share consent updated', {
+      uid, petIdRef: isNumericId ? `id:${petIdNum}` : `name:${petName}`,
+      medicalShareConsent: raw,
+    });
+    return res.json({
+      ok: true,
+      medicalShareConsent: raw,
+      medicalDataPrivate: !raw,
+    });
+  } catch (err: any) {
+    logger.error('[Pets] consent update FAILED — flag NOT written', {
+      uid, error: err?.message,
+    });
+    return res.status(502).json({
+      error: 'Failed to update consent — please retry',
+      errorCode: 'CONSENT_UPDATE_FAILED',
+    });
   }
 });
 

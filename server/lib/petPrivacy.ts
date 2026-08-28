@@ -205,3 +205,166 @@ export function filterPetPublic(pet: AnyPet): AnyPet {
 export function providerHasMedicalConsent(pet: AnyPet): boolean {
   return pet['medicalShareConsent'] === true && pet['medicalDataPrivate'] !== true;
 }
+
+/**
+ * CEO §22 (2026-08-28) — SERVER-ENFORCED KYA snapshot builder for booking-create.
+ *
+ * The client's `petSafetySnapshot.medicalConsented` flag is NEVER authority.
+ * A modified client can POST allergies/medications/vet contact even with
+ * consent=false. This builder ignores any client-supplied medical fields
+ * and composes the persisted snapshot from AUTHORITATIVE pet data + the
+ * canonical consent flag off the pet row.
+ *
+ * Contract:
+ *   • The provider-visible SAFETY subset (aggression, escape risk,
+ *     behaviour, feeding, handling notes, sensitive-skin flag) is
+ *     always allowed — this protects the person about to hold the leash.
+ *     Where the client supplies a note, it is taken as-is (behaviour
+ *     notes belong to the owner). Where it is absent, we fall back to
+ *     the pet row.
+ *   • The MEDICAL subset (allergies, medications, vet name, vet phone)
+ *     is written ONLY when the pet row's `medicalShareConsent === true`
+ *     AND `medicalDataPrivate !== true`. The client's `medicalConsented`
+ *     boolean is discarded — we always project the DB consent.
+ *   • `medicalConsented` on the persisted snapshot is set FROM THE
+ *     SERVER READ, so downstream readers know whether the medical block
+ *     was intentionally withheld vs empty.
+ *
+ * Terminology: this is "pet medical data" / "sensitive care data". It
+ * is not PHI in the legal sense (US HIPAA covers human health data).
+ * Callers should use the neutral terminology in comments + logs.
+ */
+export interface KyaSafetySnapshot {
+  aggressionWarning:    string | null;
+  escapeRisk:           boolean;
+  behaviourNotes:       string;
+  feedingInstructions:  string;
+  handlingInstructions: string;
+  sensitiveSkin:        boolean;
+  medicalConsented:     boolean;
+  // CEO §4 (2026-08-28) — track WHY medical was allowed, so future
+  // audits can distinguish global consent from booking-scoped one-off
+  // disclosure. Values:
+  //   'account_preference'   → owner's global pets.medicalShareConsent = true
+  //   'booking_scoped'       → owner tapped "share for this booking" at checkout
+  //   'service_requirement'  → medication-required booking; owner accepted
+  //   'none'                 → medical fields withheld
+  // Snapshot stays evidence-immutable per CEO §11 — the value here is
+  // the reason THIS booking's medical fields were allowed at write
+  // time, not necessarily current pet consent.
+  consentScope: 'account_preference' | 'booking_scoped' | 'service_requirement' | 'none';
+  // Present only under authoritative consent.
+  allergies?:      string;
+  medicationNotes?: string;
+  vetName?:        string;
+  vetPhone?:       string;
+}
+
+/**
+ * CEO §8 (2026-08-28) — read-time re-projection of a stored safety
+ * snapshot against CURRENT owner consent.
+ *
+ * A booking created when medicalShareConsent=true may have persisted
+ * allergies / medications / vet contact into booking_requests
+ * .pet_details.safety. If the owner later WITHDRAWS consent, walker
+ * reads must stop returning those fields — the stored blob is
+ * evidence, not a permanent grant.
+ *
+ * This is the pragmatic separation of "stored evidence" (kept for
+ * audit) from "current display permission" (what the walker sees).
+ * Callers pass the stored blob + the CURRENT canonical pet row (or
+ * null if the pet was deleted). Returns a copy with medical fields
+ * removed when consent is now false.
+ */
+export function projectStoredSafetyForProvider(
+  storedSafety: unknown,
+  canonicalPetOrNull: AnyPet | null,
+): Record<string, unknown> | null {
+  if (!storedSafety || typeof storedSafety !== 'object' || Array.isArray(storedSafety)) {
+    return null;
+  }
+  const s = { ...(storedSafety as Record<string, unknown>) };
+  const nowConsented =
+    canonicalPetOrNull != null && providerHasMedicalConsent(canonicalPetOrNull);
+  if (!nowConsented) {
+    delete s.allergies;
+    delete s.medicationNotes;
+    delete s.vetName;
+    delete s.vetPhone;
+    s.medicalConsented = false;
+  }
+  return s;
+}
+
+/**
+ * Compose a server-authoritative safety snapshot.
+ *
+ * @param canonicalPet the pet row loaded from Postgres/Firestore by an
+ *   authenticated + ownership-verified read. Passing an unauthenticated
+ *   or cross-user pet violates the contract.
+ * @param clientSnapshot the shape the client sent. May be null/malformed
+ *   — non-object inputs are treated as empty. Any medical field on the
+ *   input is IGNORED; medical fields always come from the pet row under
+ *   the DB consent flag.
+ */
+export function buildServerSafetySnapshot(
+  canonicalPet: AnyPet,
+  clientSnapshot: unknown,
+  opts?: { bookingScopedShare?: boolean; serviceRequiresMedical?: boolean },
+): KyaSafetySnapshot {
+  const c: Record<string, unknown> =
+    clientSnapshot && typeof clientSnapshot === 'object' && !Array.isArray(clientSnapshot)
+      ? (clientSnapshot as Record<string, unknown>)
+      : {};
+
+  const asStr  = (v: unknown, fallback = ''): string  => (typeof v === 'string' ? v : fallback);
+  const asBool = (v: unknown): boolean                => v === true;
+
+  // CEO §4/§5 consent resolution — three ways medical fields can end up
+  // in this snapshot:
+  //   1. account_preference — pets.medicalShareConsent = true
+  //   2. booking_scoped     — owner explicitly ticked "share for this
+  //                            booking" at checkout (client opt-in flag
+  //                            passed via opts.bookingScopedShare)
+  //   3. service_requirement — the service (e.g. medicated pet-sitting)
+  //                            REQUIRES medication instructions; owner
+  //                            acknowledged before confirmation
+  // Priority is intentional: service_requirement > booking_scoped >
+  // account_preference. A service that hard-requires medical still needs
+  // an explicit owner ack; a booking-scoped share applies only to THIS
+  // booking; the account preference is the ambient default. All three
+  // are AUTHORITATIVE only if the account preference is not explicitly
+  // set to private (medicalDataPrivate=true is a hard veto).
+  const accountAllows = providerHasMedicalConsent(canonicalPet);
+  const bookingScoped = opts?.bookingScopedShare === true && canonicalPet['medicalDataPrivate'] !== true;
+  const serviceRequired = opts?.serviceRequiresMedical === true && canonicalPet['medicalDataPrivate'] !== true;
+
+  let consentScope: KyaSafetySnapshot['consentScope'] = 'none';
+  if (serviceRequired)      consentScope = 'service_requirement';
+  else if (bookingScoped)   consentScope = 'booking_scoped';
+  else if (accountAllows)   consentScope = 'account_preference';
+  const medicalConsented = consentScope !== 'none';
+
+  // Safety subset — always allowed. Owner-authored notes win over the
+  // stale pet-row copy when the owner typed something at booking time.
+  const snapshot: KyaSafetySnapshot = {
+    aggressionWarning:    asStr(c.aggressionWarning,    asStr(canonicalPet['aggressionWarning'], '')) || null,
+    escapeRisk:           asBool(c.escapeRisk) || asBool(canonicalPet['escapeRisk']),
+    behaviourNotes:       asStr(c.behaviourNotes,       asStr(canonicalPet['behaviourNotes'])),
+    feedingInstructions:  asStr(c.feedingInstructions,  asStr(canonicalPet['feedingInstructions'])),
+    handlingInstructions: asStr(c.handlingInstructions, asStr(canonicalPet['handlingInstructions'])),
+    sensitiveSkin:        asBool(c.sensitiveSkin) || (canonicalPet['skinSensitivity'] != null && String(canonicalPet['skinSensitivity']).trim() !== ''),
+    medicalConsented,
+    consentScope,
+  };
+
+  // Medical subset — server-only projection under authoritative consent.
+  if (snapshot.medicalConsented) {
+    snapshot.allergies       = asStr(canonicalPet['allergies']);
+    snapshot.medicationNotes = asStr(canonicalPet['medications']);
+    snapshot.vetName         = asStr(canonicalPet['vetName']);
+    snapshot.vetPhone        = asStr(canonicalPet['vetPhone']);
+  }
+
+  return snapshot;
+}

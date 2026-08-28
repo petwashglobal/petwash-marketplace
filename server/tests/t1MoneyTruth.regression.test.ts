@@ -49,8 +49,22 @@ describe('T1 — money truth invariants', () => {
   });
 
   it('simulated sitter payments (SIM_) are excluded from fiscal receipts', () => {
-    const src = R('server/routes/sitter-suite.ts');
-    expect(src).toMatch(/nayaxTransactionId\?\.startsWith\('SIM_'\)/);
+    // Was pinned in server/routes/sitter-suite.ts; the accept-booking side
+    // effects moved into the shared core (acceptSitterBookingCore.ts) so the
+    // route stays thin. Invariant is unchanged: SIM_ transactions must skip
+    // the fiscal receipt path — a real חשבונית for money that never moved
+    // is a false tax document. Pin the current call site.
+    const src = R('server/services/booking-response/acceptSitterBookingCore.ts');
+    expect(src).toMatch(/paymentResult\.nayaxTransactionId\?\.startsWith\('SIM_'\)/);
+    // And confirm the SIM_ branch does NOT invoke the receipt generator —
+    // the guard is a real short-circuit, not a comment.
+    const simBranch = src.slice(
+      src.indexOf("paymentResult.nayaxTransactionId?.startsWith('SIM_')"),
+    );
+    const elseIdx = simBranch.indexOf('} else {');
+    expect(elseIdx).toBeGreaterThan(0);
+    const simBody = simBranch.slice(0, elseIdx);
+    expect(simBody).not.toMatch(/IsraeliDigitalReceiptService\.generateReceipt/);
   });
 
   it('cancel does not forge refundProcessedAt; only the executing wallet refund stamps it', () => {
