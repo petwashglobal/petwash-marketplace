@@ -635,7 +635,19 @@ export default function ProviderOnboarding() {
       
       formData.append('firstName', firstName);
       formData.append('lastName', lastName);
-      formData.append('phoneNumber', phoneNumber);
+      // CEO product correction — do NOT drop the country code on submit.
+      // The draft-save path at line 265 stores the full E.164 number, but
+      // the /apply path used to send just `phoneNumber` (national digits,
+      // no dial code). Non-IL providers got their number persisted without
+      // the country code — subsequent SMS to that provider failed. Send
+      // the same fully-qualified form as the draft path so the applicants
+      // row and the applications row match. Empty country code (rare) falls
+      // through to the raw phoneNumber for backward-compat.
+      const submitPhone = phoneCountryCode
+        ? `${phoneCountryCode}${phoneNumber.replace(/^0/, '').replace(/\s+/g, '')}`
+        : phoneNumber;
+      formData.append('phoneNumber', submitPhone);
+      formData.append('phoneCountryCode', phoneCountryCode || '+972');
       formData.append('idNumber', idNumber);
       formData.append('kycDocumentType', idDocumentType);
       // identityType tells the server to encrypt-at-rest an Israeli national ID
