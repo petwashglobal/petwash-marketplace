@@ -5,7 +5,7 @@ import { Router, Request, Response } from 'express';
 import { randomBytes, randomInt, createHash } from 'crypto';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
-import { providerInviteCodes, providerApplications, providerApprovalQueue } from '@shared/schema';
+import { providerInviteCodes, providerApplications, providerApprovalQueue, users } from '@shared/schema';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
@@ -583,6 +583,55 @@ router.post('/apply', wrapUpload(upload.fields([
     if (!firstName || !lastName || !phoneNumber || !city || !providerType) {
       logger.warn('[Provider Onboarding] Missing required fields', { traceId, firstName: !!firstName, lastName: !!lastName, phoneNumber: !!phoneNumber, city: !!city, providerType: !!providerType });
       return res.status(400).json({ error: 'Missing required fields: firstName, lastName, phoneNumber, city, and providerType are required', errorCode: 'MISSING_FIELDS' });
+    }
+
+    // CEO 2026-08-28 §19/§43 — SERVER-OWNED phone verification.
+    // Previously provider-onboarding accepted `phoneNumber` from the
+    // FormData and never checked that the caller had actually verified
+    // it. The client tracked `phoneVerified` as React state — trivially
+    // bypassable by any actor who POSTed `phoneNumber=+9720501234567`
+    // with no OTP behind it. Applicants entered the admin review queue
+    // with unverified contact numbers and (on approval) unverified
+    // provider phones on real bookings.
+    //
+    // Server truth: EITHER the Firebase user has firebaseUser.phone_number
+    // set (createUser via OTP OR the /api/auth/phone-session route that
+    // markMobileVerified'd them), OR the Postgres users.mobile_verified_at
+    // timestamp is present. Both paths are set only by the OTP flow —
+    // no client can forge either. Fail-closed with a stable error code
+    // the wizard's status screen can point the applicant back at
+    // /account/security → verify phone.
+    try {
+      const firebaseHasPhone = !!authenticatedUser?.phone_number;
+      let postgresHasPhone = false;
+      if (!firebaseHasPhone) {
+        const [row] = await db
+          .select({ mobileVerifiedAt: users.mobileVerifiedAt })
+          .from(users)
+          .where(eq(users.id, authenticatedUser.uid))
+          .limit(1);
+        postgresHasPhone = !!row?.mobileVerifiedAt;
+      }
+      if (!firebaseHasPhone && !postgresHasPhone) {
+        logger.warn('[Provider Onboarding] Phone not server-verified — rejecting', {
+          traceId, userId: authenticatedUser.uid,
+        });
+        return res.status(400).json({
+          error: 'Please verify your mobile number before submitting your provider application.',
+          errorCode: 'PHONE_NOT_VERIFIED',
+        });
+      }
+    } catch (verifyErr: any) {
+      // A DB read failure here is not the applicant's fault — log and
+      // fail-safe. Do NOT let a swallow-silently path re-open the
+      // bypass; the request stops here with a 502 the client can retry.
+      logger.error('[Provider Onboarding] Phone-verify lookup failed — refusing to proceed', {
+        traceId, userId: authenticatedUser.uid, error: verifyErr?.message,
+      });
+      return res.status(502).json({
+        error: 'We could not verify your account state. Please try again in a moment.',
+        errorCode: 'VERIFY_LOOKUP_FAILED',
+      });
     }
 
     // PROVIDER ID SAFETY (CEO 2026-07-03): do NOT force an ID/passport IMAGE
