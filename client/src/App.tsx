@@ -1289,7 +1289,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/shop/orders">
           {() => import.meta.env.VITE_SHOP_LIVE_ENABLED === 'true'
             ? <ShopOrders language={language} onLanguageChange={handleLanguageChange} />
-            : <Shop />}
+            /* When the shop is dormant, a customer with a bookmark to
+               /shop/orders used to land on the marketing waitlist — a
+               sales pitch, not a "your orders" screen. Redirect them
+               to /shop so at least the URL matches the surface they
+               see. */
+            : <Redirect to="/shop" />}
         </Route>
         <Route path="/booking">
           {() => (

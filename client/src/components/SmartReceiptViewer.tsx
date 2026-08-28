@@ -260,26 +260,23 @@ export function SmartReceiptViewer() {
           </div>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons.
+            The "Rate Your Experience" button used to open /rate/${transactionId} —
+            no such Route exists in App.tsx, so the button was a dead nav.
+            Removed until the rate-a-wash surface is wired.
+            "Wash Now" previously opened /k9000 (the hub); pointed at
+            /k9000/booking (the actual redeem surface) so the label matches. */}
         <div className="space-y-3 luxury-animate-slide-up luxury-delay-5">
-          <Button 
+          <Button
             className="luxury-btn-primary w-full"
-            onClick={() => window.open(`/rate/${receipt.transactionId}`, '_blank')}
-          >
-            <Star className="h-4 w-4 mr-2" />
-            Rate Your Experience
-          </Button>
-
-          <Button 
-            className="luxury-btn-secondary w-full"
-            onClick={() => window.open(`/k9000`, '_blank')}
+            onClick={() => window.open(`/k9000/booking`, '_blank')}
           >
             <Gift className="h-4 w-4 mr-2" />
             Wash Now
           </Button>
 
           {receipt.userId && (
-            <Button 
+            <Button
               className="luxury-btn-secondary w-full"
               onClick={() => window.open(`/?ref=${receipt.userId}`, '_blank')}
             >
