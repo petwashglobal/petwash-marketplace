@@ -738,7 +738,17 @@ export default function SitterBookingFlow() {
               divisionCode="petsitter"
             />
 
-            {user && (
+            {/* CreditWalletCard temporarily hidden — the server route at
+                server/routes/sitter-suite.ts does NOT consume the
+                creditsAppliedCents / walletCreditAppliedCents field the
+                card would send (grep confirms zero references, whereas
+                server/routes/academy.ts:301,364,374 does consume it).
+                Rendering the card promises the customer a wallet-credit
+                discount that the server silently drops — they pay full
+                price after the UI showed a reduction. Hidden until the
+                server-side wallet-hold + release/commit is mirrored from
+                academy.ts. Fail-closed money-safety per §22. */}
+            {false && user && (
               <CreditWalletCard
                 userId={user.uid}
                 platform="sitter"

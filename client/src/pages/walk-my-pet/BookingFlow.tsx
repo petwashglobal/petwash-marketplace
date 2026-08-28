@@ -117,9 +117,10 @@ export default function WalkBookingFlow() {
   const { data: providersData, isLoading: walkerLoading, error: walkerError } = useQuery({
     queryKey: ['/api/platforms/walk_my_pet/providers', walkerIdNumber],
     queryFn: async () => {
-      const res = await fetch(`/api/platforms/walk_my_pet/providers?id=${walkerIdNumber}`, {
-        credentials: 'include',
-      });
+      // Was bare fetch() with only credentials:'include' — missing the
+      // Firebase Bearer + App Check that apiRequest attaches. The
+      // booking POST later in this file already uses apiRequest.
+      const res = await apiRequest('GET', `/api/platforms/walk_my_pet/providers?id=${walkerIdNumber}`);
       if (!res.ok) throw new Error('Failed to fetch walker');
       return res.json();
     },
@@ -648,7 +649,17 @@ export default function WalkBookingFlow() {
               className="mb-6 luxury-stagger-item"
             />
 
-            {user && (
+            {/* CreditWalletCard temporarily hidden — the server route at
+                server/routes/walk-my-pet.ts does NOT consume the
+                creditsAppliedCents / walletCreditAppliedCents field the
+                card would send (grep confirms zero references, whereas
+                server/routes/academy.ts:301,364,374 does consume it).
+                Rendering the card promises the customer a wallet-credit
+                discount that the server silently drops — they pay full
+                price after the UI showed a reduction. Hidden until the
+                server-side wallet-hold + release/commit is mirrored from
+                academy.ts. Fail-closed money-safety per §22. */}
+            {false && user && (
               <div className="mb-6 luxury-stagger-item">
                 <CreditWalletCard
                   userId={user.uid}
