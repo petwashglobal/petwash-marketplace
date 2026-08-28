@@ -125,9 +125,10 @@ export default function BookTrip() {
       setFareEstimate(data);
       setCurrentStep(2);
     } catch (error: any) {
+      // CEO §60 (2026-08-28) — never render error.message verbatim.
       toast({
         title: isHebrew ? 'שגיאה בחישוב מחיר' : 'Failed to estimate fare',
-        description: error.message || (isHebrew ? 'נסה שוב' : 'Please try again'),
+        description: isHebrew ? 'נסה/י שוב.' : 'Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -176,9 +177,10 @@ export default function BookTrip() {
         description: isHebrew ? 'נהג ייצור איתך קשר בקרוב' : 'A driver will contact you soon',
       });
     } catch (error: any) {
+      // CEO §60 (2026-08-28) — never render error.message verbatim.
       toast({
         title: isHebrew ? 'שגיאה בהזמנה' : 'Booking failed',
-        description: error.message || (isHebrew ? 'נסה שוב' : 'Please try again'),
+        description: isHebrew ? 'נסה/י שוב.' : 'Please try again.',
         variant: 'destructive',
       });
     } finally {
