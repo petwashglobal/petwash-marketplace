@@ -18,7 +18,7 @@
 
 import { and, eq, gt, inArray, desc, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests, eVouchers, privilegeMembers, providerApplications } from '@shared/schema';
+import { bookingRequests, eVouchers, pets, privilegeMembers, providerApplications } from '@shared/schema';
 import { logger } from '../lib/logger';
 import type {
   AttentionActor,
@@ -289,6 +289,66 @@ async function petParentEgiftItems(userId: string, he: boolean): Promise<Attenti
 }
 
 /**
+ * CEO §48 Journey Brain — Pet Passport / KYA-stale probe. Reads the
+ * pets the caller owns and surfaces the OLDEST care-profile-stale
+ * signal as ONE informational item ("Bruno's care profile hasn't been
+ * reviewed since May").
+ *
+ * A pet is stale if medical_consent_updated_at is NULL OR older than
+ * 90 days. Consolidating into ONE item (not one per pet) matches CEO
+ * §59 frequency control — the customer's home shows a single "review
+ * pet profiles" nudge, not a stack. The reason copy names the oldest
+ * pet so it feels personal.
+ */
+async function petParentKyaStaleItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const STALE_MS = 90 * 24 * 60 * 60 * 1000;
+    const rows = await db
+      .select({
+        id: pets.id,
+        name: pets.name,
+        medicalConsentUpdatedAt: pets.medicalConsentUpdatedAt,
+      })
+      .from(pets)
+      .where(eq(pets.userId, userId))
+      .limit(20);
+    if (!rows.length) return [];
+    const nowMs = Date.now();
+    // The oldest stale row wins the reason copy. NULL sorts as
+    // maximally stale (never-reviewed treated older than any date).
+    let oldest: { id: number; name: string; ts: number } | null = null;
+    for (const r of rows) {
+      const ts = r.medicalConsentUpdatedAt ? new Date(r.medicalConsentUpdatedAt).getTime() : 0;
+      const stale = !r.medicalConsentUpdatedAt || (nowMs - ts) > STALE_MS;
+      if (!stale) continue;
+      if (!oldest || ts < oldest.ts) {
+        oldest = { id: r.id, name: String(r.name ?? ''), ts };
+      }
+    }
+    if (!oldest) return [];
+    const name = oldest.name || (he ? 'החיות שלך' : 'your pets');
+    return [{
+      id: `pet_passport:kya_stale:${userId}`,
+      actor: 'pet_parent',
+      domain: 'pet_passport',
+      entityId: String(oldest.id),
+      priority: 'informational',
+      title: he
+        ? `סקירת פרופיל טיפול — ${name}`
+        : `Review care profile — ${name}`,
+      reason: he
+        ? 'פרופיל הטיפול לא עודכן ב-90 הימים האחרונים. אשרו שהוא עדיין נכון.'
+        : 'The care profile hasn\'t been reviewed in the last 90 days. Confirm it\'s still accurate.',
+      nextAction: 'view',
+      destination: '/pets',
+    }];
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] pet-parent kya-stale probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+/**
  * CEO §21 + §47 Journey Brain — Prestige benefit-ready probe. Reads
  * canonical privilege_members (firebase_uid = userId, status = active).
  * Emits ONE informational item when the member has positive points OR
@@ -435,6 +495,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
         ...await petParentBookingItems(userId, he),
         ...await petParentEgiftItems(userId, he),
         ...await petParentPrestigeItems(userId, he),
+        ...await petParentKyaStaleItems(userId, he),
       ]
     : [
         ...await providerBookingItems(userId, he),

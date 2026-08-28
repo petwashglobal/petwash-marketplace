@@ -114,4 +114,32 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
     // visibility on the customer home.
     expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),/);
   });
+
+  it('KYA-stale probe treats NULL medical_consent_updated_at as maximally stale', () => {
+    // A pet with a NULL review timestamp has NEVER been reviewed — that
+    // is more urgent than a 100-day-old review, not less. Pin the
+    // ordering rule.
+    expect(SRC).toMatch(/const stale = !r\.medicalConsentUpdatedAt \|\| \(nowMs - ts\) > STALE_MS;/);
+    // NULL → ts=0 → sorts oldest, so it wins the reason copy.
+    expect(SRC).toMatch(/const ts = r\.medicalConsentUpdatedAt \? new Date\(r\.medicalConsentUpdatedAt\)\.getTime\(\) : 0;/);
+  });
+
+  it('KYA-stale probe emits ONE consolidated item (CEO §59 frequency control)', () => {
+    // Regression: an earlier draft emitted one item per pet. A user
+    // with 4 stale pets would then see 4 identical cards. Pin the
+    // single-item shape by asserting the function returns an array
+    // containing exactly one literal object.
+    expect(SRC).toMatch(/return \[\{\s*\n\s*id: `pet_passport:kya_stale:\$\{userId\}`/);
+    // And the domain contract matches AttentionDomain.
+    expect(SRC).toMatch(/domain: 'pet_passport'/);
+  });
+
+  it('KYA-stale probe fails-CLOSED on DB error', () => {
+    expect(SRC).toMatch(/\[AttentionFeed\] pet-parent kya-stale probe failed/);
+    expect(SRC).toMatch(/logger\.warn\('\[AttentionFeed\] pet-parent kya-stale probe failed'[\s\S]*?return \[\];\s*\n\s*\}/);
+  });
+
+  it('composer concatenates the KYA-stale probe on the pet-parent branch', () => {
+    expect(SRC).toMatch(/\.\.\.await petParentPrestigeItems\(userId, he\),\s*\n\s*\.\.\.await petParentKyaStaleItems\(userId, he\),/);
+  });
 });
