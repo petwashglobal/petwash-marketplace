@@ -33,6 +33,12 @@ const ALLOW_INTENTIONAL: Array<string | RegExp> = [
   /egiftReservationService\.ts$/,
   /egiftBalanceProjection\.ts$/,
 
+  // Client-side eGift reservation kit — headless hook + drop-in button.
+  // Ready for K9000 / Shop / marketplace flows to slot in behind their
+  // own feature flags without new UI churn.
+  /hooks\/useEgiftReservation\.ts$/,
+  /components\/egift\/EgiftPayWithButton\.tsx$/,
+
   // Phase 2 SUMIT lane (docs/design/2026-08-16-sumit-transaction-matrix.md).
   // Ship-blocked until CEO clears SUMIT go-live on the primary money paths.
   /SumitReceiptService\.ts$/,
