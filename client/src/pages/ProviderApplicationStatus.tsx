@@ -126,6 +126,22 @@ export default function ProviderApplicationStatus() {
       sections: Record<'profile' | 'identity' | 'insurance' | 'background' | 'bank' | 'declarations',
         'complete' | 'checking' | 'action_required'>;
     };
+    // CEO §23 (2026-08-28) — machine-readable readiness bitmap. Renders
+    // an applicant-facing eligibility summary card that mirrors what the
+    // server's search / booking gates will see. Never invents state.
+    readiness?: {
+      identityReady: boolean;
+      insuranceReady: boolean;
+      backgroundReady: boolean;
+      payoutReady: boolean;
+      agreementsReady: boolean;
+      profileReady: boolean;
+      serviceApproved: boolean;
+      pricingReady: boolean;
+      availabilityReady: boolean;
+      searchEligible: boolean;
+      bookingEligible: boolean;
+    };
   }>({
     queryKey: ['/api/provider-onboarding/my/status'],
     queryFn: async () => {
@@ -281,6 +297,52 @@ export default function ProviderApplicationStatus() {
                   >
                     <span className="text-sm font-medium text-slate-800">{label}</span>
                     <span className={`text-xs font-medium border rounded px-2 py-0.5 ${badgeCls}`}>
+                      {badgeLbl}
+                    </span>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* CEO §23 (2026-08-28) — eligibility summary. Read straight
+            from the server's readiness DTO — no client-side derivation.
+            Reflects exactly what the search + booking gates will see. */}
+        {data?.readiness && (
+          <Card data-testid="readiness-summary">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">
+                {isRtl ? 'זכאות' : 'Eligibility'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {([
+                ['searchEligible',
+                  isRtl ? 'הופעה בחיפוש הלקוחות' : 'Appears in customer search',
+                  isRtl ? 'עדיין לא — יש להשלים את כל המקטעים' : 'Not yet — complete every section above'],
+                ['bookingEligible',
+                  isRtl ? 'ניתן להזמין ממני' : 'Bookable by customers',
+                  isRtl ? 'עדיין לא — יש להוסיף שירותים ומחירים וזמינות' : 'Not yet — add services, pricing and availability'],
+              ] as const).map(([key, yes, no]) => {
+                const on = data.readiness![key];
+                const badgeCls = on
+                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : 'bg-slate-100  text-slate-700  border-slate-300';
+                const badgeLbl = on ? (isRtl ? 'פעיל' : 'Active') : (isRtl ? 'לא פעיל' : 'Not yet');
+                return (
+                  <div
+                    key={key}
+                    className="flex items-start justify-between bg-white rounded px-3 py-2 border border-slate-100"
+                    data-testid={`readiness-row-${key}`}
+                  >
+                    <div className="flex-1 pr-3">
+                      <div className="text-sm font-medium text-slate-800">{yes}</div>
+                      {!on && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{no}</div>
+                      )}
+                    </div>
+                    <span className={`text-xs font-medium border rounded px-2 py-0.5 shrink-0 ${badgeCls}`}>
                       {badgeLbl}
                     </span>
                   </div>
