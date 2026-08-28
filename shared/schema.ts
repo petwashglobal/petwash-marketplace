@@ -14333,6 +14333,37 @@ export const journeyCheckpoints = pgTable("journey_checkpoints", {
 export type JourneyCheckpoint       = typeof journeyCheckpoints.$inferSelect;
 export type InsertJourneyCheckpoint = typeof journeyCheckpoints.$inferInsert;
 
+// ─── Saved Searches + Favourite Providers (CEO MASTER 2026-08-28 §7 §9 §10) ────
+// Migration 0135_saved_searches_favourites_2026_08_28.sql.
+export const savedSearches = pgTable("saved_searches", {
+  id:           serial("id").primaryKey(),
+  searchId:     varchar("search_id",   { length: 64  }).unique().notNull(),
+  userUid:      varchar("user_uid",    { length: 200 }).notNull(),
+  domain:       varchar("domain",      { length: 64  }).notNull(),
+  filters:      jsonb("filters").notNull().default({}),
+  label:        varchar("label",       { length: 200 }),
+  lastUsedAt:   timestamp("last_used_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt:    timestamp("created_at",   { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:    timestamp("updated_at",   { withTimezone: true }).notNull().defaultNow(),
+  expiresAt:    timestamp("expires_at",   { withTimezone: true }),
+}, (table) => [
+  index("saved_searches_user_idx").on(table.userUid, table.lastUsedAt),
+]);
+export type SavedSearch       = typeof savedSearches.$inferSelect;
+export type InsertSavedSearch = typeof savedSearches.$inferInsert;
+
+export const favouriteProviders = pgTable("favourite_providers", {
+  id:          serial("id").primaryKey(),
+  userUid:     varchar("user_uid",    { length: 200 }).notNull(),
+  providerId:  varchar("provider_id", { length: 200 }).notNull(),
+  domain:      varchar("domain",      { length: 64  }).notNull(),
+  addedAt:     timestamp("added_at",  { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("favourite_providers_user_idx").on(table.userUid, table.addedAt),
+]);
+export type FavouriteProvider       = typeof favouriteProviders.$inferSelect;
+export type InsertFavouriteProvider = typeof favouriteProviders.$inferInsert;
+
 // ─── Dispute Cases (Phase 2.9C) ───────────────────────────────────────────────
 // case_ref is server-generated.  notes is an append-only JSONB array.
 // resolve is the ONLY path that sets resolved_at.

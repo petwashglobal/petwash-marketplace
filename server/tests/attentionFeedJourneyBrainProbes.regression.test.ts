@@ -26,7 +26,7 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
     // Regression: a re-ordering that dropped one probe would silently
     // hide a whole domain from the customer's home feed. Pin the full
     // canonical chain so any drop trips CI.
-    expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentJourneyResumeItems\(userId, he\),\s*\n\s*\.\.\.await petParentRefundItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentWalletItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),\s*\n\s*\.\.\.await petParentKyaStaleItems\(userId, he\),/);
+    expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentJourneyResumeItems\(userId, he\),\s*\n\s*\.\.\.await petParentSavedSearchItems\(userId, he\),\s*\n\s*\.\.\.await petParentRefundItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentWalletItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),\s*\n\s*\.\.\.await petParentKyaStaleItems\(userId, he\),/);
   });
 
   it('composer concatenates the booking + payout + doc-expiry probes on the provider path', () => {

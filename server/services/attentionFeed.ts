@@ -291,6 +291,72 @@ async function petParentEgiftItems(userId: string, he: boolean): Promise<Attenti
 }
 
 /**
+ * CEO §7 Journey Brain Phase 3 — saved-search "still looking?" probe.
+ * Reads canonical saved_searches via the service layer and emits one
+ * informational item per active saved search so the customer's home
+ * says "Still looking for a walk for Bruno on Tuesday?" instead of
+ * making them rebuild seven filters.
+ *
+ * OWNERSHIP is enforced by the service — the probe never touches the
+ * table directly, and never surfaces a saved search from another user
+ * even if the DB shape drifted (defence-in-depth).
+ */
+async function petParentSavedSearchItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const { listActiveSavedSearches } = await import('./savedSearches');
+    const rows = await listActiveSavedSearches(userId);
+    if (!rows.length) return [];
+    const items: AttentionItem[] = [];
+    for (const s of rows) {
+      const dest = journeyResumeDestination(searchDomainToJourneyDomain(s.domain), null);
+      if (!dest) continue;
+      const label = String(s.label ?? '').trim();
+      const domainCopy = savedSearchDomainCopy(s.domain, he);
+      items.push({
+        id: `saved-search:${s.searchId}`,
+        actor: 'pet_parent',
+        domain: mapJourneyDomainToAttention(searchDomainToJourneyDomain(s.domain)),
+        entityId: s.searchId,
+        priority: 'informational',
+        title: he
+          ? `עדיין מחפש${domainCopy.he}?`
+          : `Still looking${domainCopy.en}?`,
+        reason: label
+          ? label
+          : (he ? 'המשך מהחיפוש האחרון שלך' : 'Continue from your last search'),
+        nextAction: 'view',
+        destination: dest,
+      });
+    }
+    return items;
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] pet-parent saved-search probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+function searchDomainToJourneyDomain(domain: string): string {
+  switch (domain) {
+    case 'walk':        return 'walk_booking';
+    case 'sitter':      return 'sitter_booking';
+    case 'academy':     return 'academy_booking';
+    case 'marketplace': return 'marketplace_booking';
+    case 'shop':        return 'shop_checkout';
+    default:            return domain;
+  }
+}
+
+function savedSearchDomainCopy(domain: string, he: boolean): { he: string; en: string } {
+  switch (domain) {
+    case 'walk':    return { he: ' אחר טיול', en: ' for a walk' };
+    case 'sitter':  return { he: ' אחר סיטר', en: ' for a sitter' };
+    case 'academy': return { he: ' אחר אקדמיה', en: ' for training' };
+    case 'shop':    return { he: '', en: ' for something in shop' };
+    default:        return { he: '', en: '' };
+  }
+}
+
+/**
  * CEO §11 §12 §13 §34 §70 Journey Brain Phase 2 — abandoned-flow
  * resume probe. Reads the journey_checkpoints store via the service
  * layer and emits one AttentionItem per active checkpoint so the
@@ -782,6 +848,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
     ? [
         ...await petParentBookingItems(userId, he),
         ...await petParentJourneyResumeItems(userId, he),
+        ...await petParentSavedSearchItems(userId, he),
         ...await petParentRefundItems(userId, he),
         ...await petParentEgiftItems(userId, he),
         ...await petParentWalletItems(userId, he),
