@@ -208,6 +208,27 @@ router.patch('/:petId', validateFirebaseToken, async (req, res) => {
     // pins it), but defence-in-depth: never let a body-supplied uid land.
     delete (parsed as any).uid;
 
+    // CEO §22 (2026-08-28) — the PATCH endpoint must NOT flip consent.
+    // Consent has its own audit-stamped endpoint (POST /:petId/consent
+    // in ee1791644) that records medicalConsentUpdatedAt + mirrors the
+    // Postgres pets row for the booking-time snapshot builder to see.
+    // Allowing consent through the generic PATCH would let a client
+    // flip the flag without the audit stamp and without the Postgres
+    // mirror — a stealth-share bug.
+    const CONSENT_ONLY_ROUTE = new Set([
+      'medicalShareConsent',
+      'medicalDataPrivate',
+      'medicalConsentUpdatedAt',
+    ]);
+    for (const key of CONSENT_ONLY_ROUTE) {
+      if (key in parsed) {
+        delete (parsed as any)[key];
+        logger.warn('[Pets] PATCH stripped consent field — use POST /:petId/consent', {
+          uid, petId, field: key,
+        });
+      }
+    }
+
     const updates = {
       ...parsed,
       updatedAt: new Date(),
