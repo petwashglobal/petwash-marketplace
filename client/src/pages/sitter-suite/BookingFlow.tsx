@@ -218,19 +218,11 @@ export default function SitterBookingFlow() {
   async function handleConfirmBooking() {
     if (!sitter || !checkInDate || !checkOutDate) return;
 
-    // Honesty fix (booking audit CRIT #4): the sitter-suite schema stores one
-    // pet per booking (sitterBookings.petId). Multi-select on the pet picker
-    // silently dropped every pet after the first. Warn + block confirmation
-    // so the user books each pet separately (or the picker enforces single-
-    // select — TODO: convert to radio when schema supports multi-pet stays).
-    if (selectedPetIds.length > 1) {
-      toast({
-        title: 'ניתן להזמין רק חיה אחת בכל פעם',
-        description: 'רשת ה-Sitter Suite כרגע תומכת בהזמנת חיה אחת בכל שהות. אנא בטל את הבחירה של החיות הנוספות והזמן אותן בהזמנה נפרדת.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    // Runtime multi-pet guard removed — togglePet() now enforces
+    // single-select at the state level (see line ~339), so this
+    // condition can never fire. The schema still stores one petId
+    // per booking; if a future migration adds a booking_pets junction,
+    // convert togglePet back to a toggle and drop this comment.
 
     try {
       setIsSubmitting(true);
@@ -337,9 +329,12 @@ export default function SitterBookingFlow() {
   }
 
   function togglePet(id: number) {
-    setSelectedPetIds(prev =>
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    );
+    // Single-select. sitterBookings stores one petId per booking, so
+    // the schema hard-blocks a multi-pet stay. Making this a toggle
+    // (was: `prev.includes(id) ? prev.filter(...) : [...prev, id]`)
+    // let the customer pick two pets AND land on a red toast at
+    // confirmation-time. Now the state can't reach the invalid shape.
+    setSelectedPetIds(prev => (prev[0] === id ? [] : [id]));
   }
 
   function handleBack() {
