@@ -26,8 +26,10 @@ import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import {
   ArrowLeft, Receipt, ShoppingBag, Droplets, Gift, Wallet, Dog, Footprints,
   GraduationCap, Loader2, ChevronRight, FileText, ShieldCheck, RefreshCw,
+  Cog,
 } from 'lucide-react';
 import { EgiftBalanceCard } from '@/components/egift/EgiftBalanceCard';
+import { useWhoami } from '@/auth/useWhoami';
 
 const GREEN = '#063B22';
 const GOLD = '#D6B56D';
@@ -304,6 +306,7 @@ const BOOKING_SOURCES = new Set(['sitter_bookings', 'walk_bookings', 'trainer_bo
 export function MyTransactionDetail() {
   const { source, sourceId } = useParams<{ source: string; sourceId: string }>();
   const [, navigate] = useLocation();
+  const { isSuperAdmin } = useWhoami();
   const { language } = useLanguage();
   const isHe = language === 'he';
   const tr = (en: string, he: string) => (isHe ? he : en);
@@ -391,6 +394,25 @@ export function MyTransactionDetail() {
             </div>
           </div>
         </div>
+
+        {/* Admin explorer link — visible only to super-admins. Opens the
+            §16 eight-axis view of the same transaction. */}
+        {isSuperAdmin && source && sourceId && (
+          <button
+            type="button"
+            onClick={() => navigate(`/admin/fiscal-transactions/${source}/${encodeURIComponent(String(sourceId))}`)}
+            className="mt-4 w-full inline-flex items-center justify-between rounded-[16px] px-4 py-3 text-start"
+            style={{ background: GREEN, color: GOLD, border: `1px solid ${GREEN}` }}
+          >
+            <span className="flex items-center gap-2">
+              <Cog className="w-4 h-4" />
+              <span className="text-sm font-bold">
+                {tr('Open admin explorer', 'פתיחת חוקר ניהול')}
+              </span>
+            </span>
+            <span aria-hidden>›</span>
+          </button>
+        )}
 
         {/* Link across to the JobPassport for booking-source transactions.
             Wire-only sweep 2026-08-27: the JobPassport route is real (see

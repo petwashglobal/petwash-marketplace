@@ -190,6 +190,7 @@ const MyTransactionDetail = lazy(() =>
   import("@/pages/MyTransactions").then((m) => ({ default: m.MyTransactionDetail })),
 );
 const MyJobPassport = lazy(() => import("@/pages/MyJobPassport"));
+const AdminTransactionExplorer = lazy(() => import("@/pages/admin/AdminTransactionExplorer"));
 // Pet Owner / Passport / Consent Phase 1 (2026-06-20)
 const PetCareProfile = lazy(() => import("@/pages/PetCareProfile"));
 const PetDocuments = lazy(() => import("@/pages/PetDocuments"));
@@ -4002,6 +4003,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <MyTransactionDetail />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Admin Transaction Explorer — §16 admin passport across eight
+            axes. Consumes /api/admin/fiscal-transactions/by-source. */}
+        <Route path="/admin/fiscal-transactions/:source/:sourceId">
+          {() => (
+            <RequireAuth>
+              <AdminTransactionExplorer />
             </RequireAuth>
           )}
         </Route>
