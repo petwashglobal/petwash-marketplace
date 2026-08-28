@@ -59,7 +59,14 @@ export const petProfileSchema = z.object({
   uid: z.string(), // Owner's Firebase UID
   name: z.string().min(1),
   photoUrl: z.string().optional(), // owner-uploaded pet photo (GCS URL) — powers the Luxury Pet Passport
-  species: z.enum(["dog", "cat", "bird", "rabbit", "guinea_pig", "hamster", "reptile", "turtle", "fish", "other"]).default("dog"),
+  // Canonical species enum lives in shared/lib/petSpecies.ts — every
+  // client/server surface consumes SPECIES_VALUES so a new species
+  // added there flows automatically to Zod + display without four-way
+  // drift (CEO §22 fix, 2026-08-28).
+  species: z.enum([
+    'dog', 'cat', 'bird', 'rabbit', 'guinea_pig', 'hamster',
+    'reptile', 'turtle', 'fish', 'other',
+  ] as const).default('dog'),
   breed: z.string().optional(),
   gender: z.enum(["male", "female", "unknown"]).optional(),
   desexed: z.enum(["yes", "no", "unknown"]).optional(), // neutered / spayed — from the Pet Owner spec

@@ -16,26 +16,20 @@ import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { ArrowRight, ArrowLeft, Camera, Loader2, Check } from 'lucide-react';
+import { SPECIES_VALUES, SPECIES_LABELS, type PetSpecies } from '@shared/lib/petSpecies';
 
 const GREEN = '#063B22';
 const GOLD = '#D6B56D';
 
-// mockup species → API species (the API enum has reptile but no snake — the
-// snake tile is a UX shortcut that maps to reptile server-side). Grid must
-// cover the full canonical 9-species enum used across Pets, PetPassport,
-// PetPassportHome, and PrestigePassWallet — hamster and reptile were missing.
-const SPECIES: { key: string; api: string; he: string; en: string; emoji: string }[] = [
-  { key: 'dog', api: 'dog', he: 'כלב', en: 'Dog', emoji: '🐕' },
-  { key: 'cat', api: 'cat', he: 'חתול', en: 'Cat', emoji: '🐈' },
-  { key: 'fish', api: 'fish', he: 'דג', en: 'Fish', emoji: '🐠' },
-  { key: 'bird', api: 'bird', he: 'ציפור', en: 'Bird', emoji: '🦜' },
-  { key: 'snake', api: 'reptile', he: 'נחש', en: 'Snake', emoji: '🐍' },
-  { key: 'reptile', api: 'reptile', he: 'זוחל', en: 'Reptile', emoji: '🦎' },
-  { key: 'rabbit', api: 'rabbit', he: 'ארנב', en: 'Rabbit', emoji: '🐇' },
-  { key: 'guinea_pig', api: 'guinea_pig', he: 'שרקן', en: 'Guinea Pig', emoji: '🐹' },
-  { key: 'hamster', api: 'hamster', he: 'אוגר', en: 'Hamster', emoji: '🐹' },
-  { key: 'other', api: 'other', he: 'אחר', en: 'Other', emoji: '🐾' },
-];
+// CEO §22 — Grid derived from the canonical species enum. Was previously
+// a hand-rolled list with a `snake → reptile` UX alias that didn't exist
+// on other surfaces. Now every species surface reads from ONE source and
+// stays in lockstep. `api` mirrors `key` (no more per-tile remap).
+const SPECIES: { key: PetSpecies; api: PetSpecies; he: string; en: string; emoji: string }[] =
+  (SPECIES_VALUES as readonly PetSpecies[]).map((k) => ({
+    key: k, api: k,
+    he: SPECIES_LABELS[k].he, en: SPECIES_LABELS[k].en, emoji: SPECIES_LABELS[k].emoji,
+  }));
 
 export default function AddPetPassport() {
   const [, navigate] = useLocation();

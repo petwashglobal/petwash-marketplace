@@ -6,6 +6,7 @@ import { getApiUrl } from "@/lib/apiConfig";
 import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/lib/languageStore';
 import { trackPetAdded, trackPetUpdated, trackPetDeleted } from '@/lib/analytics';
+import { SPECIES_VALUES } from '@shared/lib/petSpecies';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
@@ -42,7 +43,10 @@ import { he, enUS } from 'date-fns/locale';
 
 const petFormSchema = z.object({
   name: z.string().min(1, 'Pet name is required'),
-  species: z.enum(['dog', 'cat', 'bird', 'rabbit', 'guinea_pig', 'hamster', 'reptile', 'fish', 'other']),
+  // CEO §22 — canonical species enum. Was drifting across 4 surfaces
+  // (this file was missing 'turtle'), letting a pet added on one screen
+  // fail Zod on another. Single source of truth in shared/lib/petSpecies.
+  species: z.enum(SPECIES_VALUES as unknown as [string, ...string[]]),
   breed: z.string().optional(),
   birthdate: z.string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format')
