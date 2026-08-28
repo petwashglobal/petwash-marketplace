@@ -191,6 +191,7 @@ const MyTransactionDetail = lazy(() =>
 );
 const MyJobPassport = lazy(() => import("@/pages/MyJobPassport"));
 const AdminTransactionExplorer = lazy(() => import("@/pages/admin/AdminTransactionExplorer"));
+const AdminEgiftReservationSandbox = lazy(() => import("@/pages/admin/AdminEgiftReservationSandbox"));
 // Pet Owner / Passport / Consent Phase 1 (2026-06-20)
 const PetCareProfile = lazy(() => import("@/pages/PetCareProfile"));
 const PetDocuments = lazy(() => import("@/pages/PetDocuments"));
@@ -4013,6 +4014,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <AdminTransactionExplorer />
             </RequireAuth>
+          )}
+        </Route>
+        {/* eGift Reservation Sandbox — pre-activation admin tool that
+            exercises the §22-29 reserve → commit → release lifecycle
+            against the real service. Staff-only. */}
+        <Route path="/admin/egift-reservation-sandbox">
+          {() => (
+            <RoleProtectedRoute minRole="staff">
+              <AdminEgiftReservationSandbox />
+            </RoleProtectedRoute>
           )}
         </Route>
         {/* JobPassport — customer + provider surface. Consumes
