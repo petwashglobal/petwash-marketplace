@@ -779,7 +779,12 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       // (sitter-suite/BookingFlow.tsx:241) sends this; server enforces
       // authority (see the buildServerSafetySnapshot call below).
       petSafetySnapshot: clientSafetySnapshot,
+      // CEO §4/§5 booking-scoped consent flags.
+      bookingScopedShare: rawBookingScopedShare,
+      serviceRequiresMedical: rawServiceRequiresMedical,
     } = req.body;
+    const bookingScopedShare     = rawBookingScopedShare === true;
+    const serviceRequiresMedical = rawServiceRequiresMedical === true;
     const resolvedAddressText = addressText ?? addressTextFallback ?? null;
 
     // Always derive ownerId from the verified Firebase token — never trust req.body.
@@ -817,7 +822,10 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
         if (canonical) canonicalPet = { ...pet, ...canonical };
       } catch { /* fall back to sitter-side pet — medical stripped below */ }
       const { buildServerSafetySnapshot } = await import('../lib/petPrivacy');
-      safeSnapshot = buildServerSafetySnapshot(canonicalPet, clientSafetySnapshot) as unknown as Record<string, unknown>;
+      safeSnapshot = buildServerSafetySnapshot(canonicalPet, clientSafetySnapshot, {
+        bookingScopedShare,
+        serviceRequiresMedical,
+      }) as unknown as Record<string, unknown>;
     } catch (kyaErr: any) {
       logger.warn('[Sitter Suite] KYA snapshot build failed — booking continues without medical fields', {
         error: kyaErr?.message,

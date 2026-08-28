@@ -434,7 +434,15 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       // contact. Client sends its view; server enforces authority.
       petSafetySnapshot: clientSafetySnapshot,
       petIds: rawPetIds,
+      // CEO §4/§5 booking-scoped consent — owner explicitly opts in
+      // for this one booking, e.g. via a checkbox at checkout. Client
+      // boolean is NEVER authority for medical fields; server checks
+      // medicalDataPrivate=true is not set before honoring it.
+      bookingScopedShare: rawBookingScopedShare,
+      serviceRequiresMedical: rawServiceRequiresMedical,
     } = req.body;
+    const bookingScopedShare      = rawBookingScopedShare === true;
+    const serviceRequiresMedical  = rawServiceRequiresMedical === true;
 
     // ── CEO §22 SERVER-ENFORCED KYA privacy (2026-08-28) ────────────────
     // Client `medicalConsented=true` on the snapshot is NEVER authority.
@@ -457,7 +465,10 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
           // Server-authoritative snapshot — medical fields projected
           // only under petRow.medicalShareConsent === true.
           const { buildServerSafetySnapshot } = await import('../lib/petPrivacy');
-          safeSnapshot = buildServerSafetySnapshot(petRow as any, clientSafetySnapshot) as unknown as Record<string, unknown>;
+          safeSnapshot = buildServerSafetySnapshot(petRow as any, clientSafetySnapshot, {
+            bookingScopedShare,
+            serviceRequiresMedical,
+          }) as unknown as Record<string, unknown>;
         } else {
           // Cross-user attempt OR unknown petId. Fall through to a
           // safety-only projection built from the client's non-medical

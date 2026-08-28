@@ -273,7 +273,7 @@ router.post('/:petId/consent', validateFirebaseToken, async (req, res) => {
     });
   }
   try {
-    const r = isNumericId
+    let r = isNumericId
       ? await pool.query(
           `UPDATE pets
               SET medical_share_consent = $1,
@@ -295,9 +295,72 @@ router.post('/:petId/consent', validateFirebaseToken, async (req, res) => {
             WHERE user_id = $3 AND name = $4`,
           [raw, !raw, uid, petName],
         );
+
+    // CEO §22 Firestore ↔ Postgres bridge (2026-08-28).
+    //
+    // Current architecture stores owner-facing pet data in Firestore
+    // (see /api/pets GET) while booking-time consent + snapshot builder
+    // read from Postgres pets. No sync job exists between the two, so
+    // a rowCount=0 here doesn't mean the pet is missing — it means the
+    // Postgres row was never created. Upsert a minimal Postgres row
+    // from the request (name path) so future booking-create paths can
+    // find it and honour the flag.
+    if ((r.rowCount ?? 0) === 0 && !isNumericId && petName) {
+      try {
+        await pool.query(
+          `INSERT INTO pets (
+              user_id, name, species,
+              medical_share_consent, medical_data_private,
+              medical_consent_updated_at, created_at, updated_at
+            )
+            VALUES ($1, $2, 'other', $3, $4, NOW(), NOW(), NOW())`,
+          [uid, petName, raw, !raw],
+        );
+        r = { rowCount: 1 } as any;
+        logger.info('[Pets] Postgres pets row created from Firestore-only pet', {
+          uid, name: petName,
+        });
+      } catch (insertErr: any) {
+        // 42P07 / 23505 don't apply here (no unique constraint on
+        // user_id+name); 42P01 = table missing on older deploy.
+        if (insertErr?.code === '42P01') {
+          logger.warn('[Pets] Postgres pets table absent — consent write skipped', {
+            uid, name: petName,
+          });
+        } else {
+          throw insertErr;
+        }
+      }
+    }
     if ((r.rowCount ?? 0) === 0) {
       return res.status(404).json({ error: 'Pet not found', errorCode: 'PET_NOT_FOUND' });
     }
+
+    // Dual-write to Firestore when the caller passed the Firestore-shape
+    // petId in the URL. This keeps the owner-facing pet doc consistent
+    // with the Postgres flag; the /api/pets GET reads from Firestore, so
+    // without the mirror the toggle would render OFF on next reload.
+    // Best-effort — a Firestore write failure does NOT undo the Postgres
+    // truth. Log at ERROR so the mismatch is visible.
+    if (!isNumericId) {
+      try {
+        const petRef = firestore.doc(FIRESTORE_PATHS.PETS(uid, rawParam));
+        const doc = await petRef.get();
+        if (doc.exists && !doc.data()?.deletedAt) {
+          await petRef.update({
+            medicalShareConsent: raw,
+            medicalDataPrivate: !raw,
+            medicalConsentUpdatedAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      } catch (fsErr: any) {
+        logger.error('[Pets] Firestore consent mirror FAILED — Postgres is source of truth', {
+          uid, petId: rawParam, error: fsErr?.message,
+        });
+      }
+    }
+
     logger.info('[Pets] medical-share consent updated', {
       uid, petIdRef: isNumericId ? `id:${petIdNum}` : `name:${petName}`,
       medicalShareConsent: raw,
