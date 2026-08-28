@@ -1802,11 +1802,17 @@ router.post('/apply', wrapUpload(upload.fields([
       constraint: error.constraint,
       stack: error.stack?.substring(0, 500),
     });
-    const clientMessage = error.code === '23505' 
+    // CEO §60 (2026-08-28) — never surface error.message. The prior
+    // fallback shipped Postgres/Firebase internals to the applicant
+    // ("connection reset by peer", "insert or update on table \"...\"
+    // violates foreign key constraint", Zod issue summaries). The
+    // client's FRIENDLY errorCode map renders human copy; the server
+    // sends only the code + a fixed neutral message.
+    const clientMessage = error.code === '23505'
       ? 'An application with these details already exists'
       : error.code === '23503'
       ? 'Invalid reference - please check your invite code'
-      : error.message || 'Failed to submit application';
+      : 'Failed to submit application';
     const errorCode = error.code === '23505' ? 'APPLICATION_EXISTS' : error.code === '23503' ? 'INVALID_REFERENCE' : 'APPLICATION_FAILED';
     res.status(error.code === '23505' ? 409 : 500).json({ error: clientMessage, errorCode });
   }
