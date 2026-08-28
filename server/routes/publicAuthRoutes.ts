@@ -1028,11 +1028,36 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     // present; we translate that to HTTP 502 { code: 'DB_UNAVAILABLE' } so
     // the client retries deterministically instead of continuing into a
     // silent-broken state (whoami 404, wallet crash, booking blocked).
+    //
+    // CEO 2026-08-28 Lane A audit — orphan-identity roll-back:
+    // when the users row cannot be provisioned AND we JUST created this
+    // Firebase UID a few lines above (existed=false), delete the Firebase
+    // user so the next signup attempt starts clean instead of finding an
+    // orphaned Firebase UID with no downstream row (upsertUser had already
+    // warn-swallowed, markMobileVerified had warn-swallowed, wallet insert
+    // had warn-swallowed — all four failure paths above are best-effort).
+    // Without the roll-back the same phone number tries again, Firebase
+    // says "already exists", the branch above skips new-user setup, and
+    // the account is stuck half-created forever.
     try {
       await ensureUserProvisioned(user.uid, { channel: 'phone', phone: formattedPhone, email: null });
     } catch (bootErr: any) {
       if (bootErr instanceof AuthBootstrapUsersRowFailed) {
         logger.error('[PhoneAuth] users row bootstrap HARD-FAILED — returning 502', { uid: user.uid });
+        if (isNewUser) {
+          try {
+            await adminAuth.deleteUser(user.uid);
+            logger.warn('[PhoneAuth] Rolled back orphan Firebase UID after bootstrap failure', {
+              uidTail: user.uid.slice(-6),
+            });
+          } catch (rollbackErr: any) {
+            // Best-effort — surface the rollback failure but don't mask the 502.
+            logger.error('[PhoneAuth] Orphan-UID rollback failed', {
+              uidTail: user.uid.slice(-6),
+              error: rollbackErr?.message,
+            });
+          }
+        }
         return res.status(502).json({
           ok: false,
           error: 'user_bootstrap_failed',
