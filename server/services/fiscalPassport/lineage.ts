@@ -222,6 +222,7 @@ function correlationKindToSourceType(kind: string): string | null {
     case 'wallet-topup':    return 'wallet';
     case 'sitter':          return 'booking';
     case 'academy':         return 'academy';
+    case 'pettrek':         return 'pettrek';
     default:                return null;
   }
 }

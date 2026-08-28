@@ -38,6 +38,7 @@ const KNOWN_SOURCES: FiscalSourceHint[] = [
   'sitter_bookings',
   'walk_bookings',
   'trainer_bookings',
+  'pettrek_trips',
 ];
 
 function resolveViewer(req: Request): FiscalActor | null {
@@ -99,7 +100,7 @@ router.get('/transactions/by-source/:source/:sourceId', async (req: Request, res
   if (result) return res.json({ ok: true, ...result });
 
   // If viewer is a PROVIDER (booking sources), retry with that kind.
-  if (viewer.kind !== 'PETWASH_STAFF' && ['sitter_bookings', 'walk_bookings', 'trainer_bookings'].includes(source)) {
+  if (viewer.kind !== 'PETWASH_STAFF' && ['sitter_bookings', 'walk_bookings', 'trainer_bookings', 'pettrek_trips'].includes(source)) {
     const asProvider = await composeFiscalPassport({
       sourceHint: source, sourceId, viewer: { ...viewer, kind: 'PROVIDER' },
     });

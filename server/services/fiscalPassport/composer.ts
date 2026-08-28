@@ -25,6 +25,8 @@ import {
   k9000WashEvents,
   egiftGuestOrders,
   users,
+  pettrekTrips,
+  pettrekProviders,
 } from '@shared/schema';
 import { logger } from '../../lib/logger';
 import { getSumitDocumentMapping } from '../sumitDocumentMapping';
@@ -67,7 +69,8 @@ export type FiscalSourceHint =
   | 'wallet_topup'
   | 'sitter_bookings'
   | 'walk_bookings'
-  | 'trainer_bookings';
+  | 'trainer_bookings'
+  | 'pettrek_trips';
 
 export interface ComposeFiscalInput {
   sourceHint: FiscalSourceHint;
@@ -95,6 +98,8 @@ export async function composeFiscalPassport(input: ComposeFiscalInput): Promise<
         return await composeWalkFiscal(input.sourceId, input.viewer);
       case 'trainer_bookings':
         return await composeAcademyFiscal(input.sourceId, input.viewer);
+      case 'pettrek_trips':
+        return await composePettrekFiscal(input.sourceId, input.viewer);
     }
   } catch (err: any) {
     logger.error('[FiscalPassport] compose failed', {
@@ -680,6 +685,74 @@ async function composeAcademyFiscal(bookingId: string, viewer: FiscalActor): Pro
     sourceId: b.bookingId,
     payDate: (b.paidAt ?? b.sessionDate)?.toISOString() ?? null,
     externalTxn: b.paymentIntentId ?? null,
+  });
+}
+
+// ─── PETTREK (§94.16 — marketplace transport) ────────────────────────
+//
+// PetTrek trips are disclosed-agent marketplace bookings, same fiscal
+// treatment as SITTER / WALK / ACADEMY: PROVIDER_BOOKING_COMMISSION,
+// VAT_ON_COMMISSION_ONLY, provider = the driver. The 15/85 split lives
+// on the row itself (`platformCommission` + `driverPayout`), so provider
+// money lineage runs the same shape as the other marketplaces.
+
+async function composePettrekFiscal(tripId: string, viewer: FiscalActor): Promise<FiscalPassportEnvelope | null> {
+  const [t] = await db.select().from(pettrekTrips).where(eq(pettrekTrips.tripId, tripId));
+  if (!t) return null;
+
+  // Provider row for display name + FirebaseUID owner check.
+  const providerId = t.providerId;
+  const [driver] = providerId
+    ? await db.select().from(pettrekProviders).where(eq(pettrekProviders.id, providerId))
+    : [];
+
+  const isOwner = viewer.kind === 'CUSTOMER' && viewer.uid === t.customerId;
+  const isDriver = viewer.kind === 'PROVIDER' && driver && viewer.uid === driver.userId;
+  const isStaff = viewer.kind === 'PETWASH_STAFF';
+  if (!isOwner && !isDriver && !isStaff) return null;
+
+  // Final fare wins over estimated when the trip has completed.
+  const rawTotal = Number(t.finalFare ?? t.estimatedFare ?? 0);
+  const total = Math.round(rawTotal * 100);
+  const providerExpected = Math.round(Number(t.driverPayout ?? 0) * 100);
+  const paid = String(t.paymentStatus ?? '') === 'paid' || !!t.nayaxTransactionId;
+
+  const event: FiscalEventCode = 'PETTREK_BOOKING_PAID';
+  const correlationId = `pettrek:${t.tripId}`;
+  const transactionRef = generateTransactionRef({
+    stableId: correlationId,
+    stableIsoDate: (t.actualDropoffTime ?? t.actualPickupTime ?? t.scheduledPickupTime)?.toISOString() ?? null,
+  });
+
+  return buildBookingFiscal({
+    b: t,
+    correlationId,
+    transactionRef,
+    event,
+    platform: 'PETTREK',
+    serviceType: t.serviceType ?? 'transport',
+    itemCode: 'PETTREK_TRIP',
+    itemQuantity: 1,
+    itemUnitCents: total,
+    fulfillerActor: driver
+      ? {
+          kind: 'PROVIDER',
+          uid: driver.userId,
+          publicId: String(driver.id),
+          displayName: `${driver.firstName ?? ''} ${driver.lastName ?? ''}`.trim() || undefined,
+        }
+      : { kind: 'PROVIDER' },
+    total,
+    providerExpected,
+    paid,
+    viewer,
+    isProvider: !!isDriver,
+    isStaff,
+    sourceType: 'pettrek_trips',
+    sourceId: t.tripId,
+    payDate: (t.actualDropoffTime ?? t.actualPickupTime ?? t.scheduledPickupTime)?.toISOString() ?? null,
+    externalTxn: t.nayaxTransactionId ?? null,
+    nayaxTxId: t.nayaxTransactionId ?? null,
   });
 }
 

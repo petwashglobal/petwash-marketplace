@@ -301,7 +301,7 @@ export default function MyTransactions() {
 
 // ─── Detail view ─────────────────────────────────────────────────────
 
-const BOOKING_SOURCES = new Set(['sitter_bookings', 'walk_bookings', 'trainer_bookings', 'booking_requests']);
+const BOOKING_SOURCES = new Set(['sitter_bookings', 'walk_bookings', 'trainer_bookings', 'booking_requests', 'pettrek_trips']);
 
 export function MyTransactionDetail() {
   const { source, sourceId } = useParams<{ source: string; sourceId: string }>();

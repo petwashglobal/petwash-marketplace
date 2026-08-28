@@ -206,6 +206,6 @@ export interface TransactionLineItem {
   unitAmountCents: number;  // integer cents
   lineAmountCents: number;  // integer cents
   vatTreatment: 'FULL_VAT' | 'NO_VAT_STORED_VALUE' | 'VAT_AT_REDEMPTION' | 'VAT_ON_COMMISSION_ONLY' | 'CREDIT';
-  sourceType?: 'shop_orders' | 'sitter_bookings' | 'walk_bookings' | 'trainer_bookings' | 'k9000_wash_events' | 'egift_guest_orders' | 'booking_requests';
+  sourceType?: 'shop_orders' | 'sitter_bookings' | 'walk_bookings' | 'trainer_bookings' | 'k9000_wash_events' | 'egift_guest_orders' | 'booking_requests' | 'pettrek_trips';
   sourceId?: string;
 }
