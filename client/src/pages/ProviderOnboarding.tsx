@@ -1792,6 +1792,81 @@ export default function ProviderOnboarding() {
                   </p>
 
                   {/* Driver Declarations (PetTrek) */}
+                  {/* CEO §35 (2026-08-28) — Driving-license inputs are
+                      collected ONLY when the applicant selected 'driver'.
+                      Prior state: hooks existed but no UI section rendered,
+                      so drivers submitted empty licence fields. This block
+                      shows number / class / expiry + a file upload
+                      strictly for drivers. Sitter/walker/trainer applicants
+                      never see it. */}
+                  {hasProviderType('driver') && (
+                    <div className="space-y-3 mb-4 p-4 bg-white rounded-lg border border-slate-200" data-testid="section-driving-license">
+                      <h4 className="font-semibold text-[#063B22] flex items-center gap-2">
+                        <Car className="w-4 h-4" aria-hidden="true" />
+                        {isHebrew ? 'פרטי רישיון נהיגה' : 'Driving licence details'}
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label className="block">
+                          <span className="block text-xs font-semibold mb-1">
+                            {isHebrew ? 'מספר רישיון' : 'Licence number'}
+                          </span>
+                          <input
+                            type="text"
+                            value={drivingLicenseNumber}
+                            onChange={(e) => setDrivingLicenseNumber(e.target.value)}
+                            onBlur={scheduleDraftSave}
+                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                            data-testid="input-driving-license-number"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="block text-xs font-semibold mb-1">
+                            {isHebrew ? 'סוג רישיון' : 'Licence class'}
+                          </span>
+                          <input
+                            type="text"
+                            value={drivingLicenseClass}
+                            onChange={(e) => setDrivingLicenseClass(e.target.value)}
+                            onBlur={scheduleDraftSave}
+                            placeholder={isHebrew ? 'לדוגמה: B' : 'e.g. B'}
+                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                            data-testid="input-driving-license-class"
+                          />
+                        </label>
+                        <label className="block md:col-span-2">
+                          <span className="block text-xs font-semibold mb-1">
+                            {isHebrew ? 'תוקף (תאריך)' : 'Expiry date'}
+                          </span>
+                          <input
+                            type="date"
+                            value={drivingLicenseExpiry}
+                            onChange={(e) => setDrivingLicenseExpiry(e.target.value)}
+                            onBlur={scheduleDraftSave}
+                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                            data-testid="input-driving-license-expiry"
+                          />
+                        </label>
+                        <label className="block md:col-span-2 text-xs">
+                          <span className="block font-semibold mb-1">
+                            {isHebrew ? 'צילום רישיון (אופציונלי)' : 'Licence photo (optional)'}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            onChange={(e) => setDrivingLicenseFile(e.target.files?.[0] ?? null)}
+                            className="w-full text-xs"
+                            data-testid="input-driving-license-file"
+                          />
+                          {drivingLicenseFile && (
+                            <span className="mt-1 inline-block text-[11px] text-gray-500">
+                              {drivingLicenseFile.name}
+                            </span>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
                   {hasProviderType('driver') && (
                     <div className="space-y-3 mb-6 p-4 bg-[#D4AF37] dark:bg-white rounded-lg border border-[#D4AF37] dark:border-[#B8932F]">
                       <h4 className="font-semibold text-[#B8932F] dark:text-[#D4AF37] flex items-center gap-2">

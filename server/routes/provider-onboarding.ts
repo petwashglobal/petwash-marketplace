@@ -557,9 +557,9 @@ router.post('/apply', wrapUpload(upload.fields([
       taxStatus,
       petFirstAidNumber,
       petFirstAidExpiry,
-      drivingLicenseNumber,
-      drivingLicenseClass,
-      drivingLicenseExpiry,
+      drivingLicenseNumber: rawDrivingLicenseNumber,
+      drivingLicenseClass:  rawDrivingLicenseClass,
+      drivingLicenseExpiry: rawDrivingLicenseExpiry,
       // CEO §73 #12 (2026-08-28): bank / payout target. Client wizard
       // section is a follow-up; server accepts the fields now so a
       // rolling client update can land without a second deploy.
@@ -569,6 +569,24 @@ router.post('/apply', wrapUpload(upload.fields([
       bankAccountHolder: rawBankAccountHolder,
       traceId,
     } = req.body;
+
+    // CEO §35 (2026-08-28) — driving-license fields are relevant ONLY
+    // for driver applicants. Server strips them for anyone else so a
+    // caller manipulating the FormData (or a leftover state on a
+    // multi-role wizard) can't sneak a driving licence onto a
+    // non-driver's application (and thus can't be mistakenly reviewed
+    // as if they were a licensed driver).
+    const isDriverApplicant = (() => {
+      try {
+        const arr = rawProviderTypes
+          ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes)
+          : [rawProviderType];
+        return Array.isArray(arr) && arr.includes('driver');
+      } catch { return rawProviderType === 'driver'; }
+    })();
+    const drivingLicenseNumber = isDriverApplicant ? rawDrivingLicenseNumber : undefined;
+    const drivingLicenseClass  = isDriverApplicant ? rawDrivingLicenseClass  : undefined;
+    const drivingLicenseExpiry = isDriverApplicant ? rawDrivingLicenseExpiry : undefined;
 
     // ── Bank field normalisation ─────────────────────────────────────────
     // IBAN: strip spaces + uppercase (canonical wire format is contiguous
