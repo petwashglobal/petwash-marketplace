@@ -239,6 +239,27 @@ export default function WalkBookingFlow() {
         return;
       }
 
+      // CEO §12 provider safety summary — walker must see aggression /
+      // escape-risk / behaviour notes / feeding & handling instructions
+      // BEFORE the walk. These live on the KYA pet doc but until now the
+      // booking payload only carried petSpecialNeeds free-text; every
+      // safety flag stayed invisible to the person about to hold the
+      // leash. Send a structured petSafetySnapshot alongside the primary
+      // fields so the server writes it into the booking record (and the
+      // provider's Today card can render it).
+      const petSafetySnapshot = {
+        aggressionWarning:      primaryPet?.aggressionWarning ?? null,
+        escapeRisk:             !!primaryPet?.escapeRisk,
+        behaviourNotes:         primaryPet?.behaviourNotes ?? '',
+        feedingInstructions:    primaryPet?.feedingInstructions ?? '',
+        handlingInstructions:   primaryPet?.handlingInstructions ?? '',
+        sensitiveSkin:          !!primaryPet?.sensitiveSkin,
+        allergies:              primaryPet?.allergies ?? '',
+        medicationNotes:        primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
+        vetName:                primaryPet?.vetName ?? '',
+        vetPhone:               primaryPet?.vetPhone ?? '',
+      };
+
       const payload = {
         walkerId: walker.walkerId || `WALKER-${walkerIdNumber}`,
         scheduledDate,
@@ -251,6 +272,7 @@ export default function WalkBookingFlow() {
         petBreed: primaryPetBreed,
         petWeight: primaryPetWeight,
         petSpecialNeeds: primaryPet?.specialNeeds ?? primaryPet?.medicalNotes ?? notes ?? '',
+        petSafetySnapshot,
         notes,
         petIds: selectedPetIds,
         pricing: {

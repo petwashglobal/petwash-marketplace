@@ -230,6 +230,27 @@ export default function SitterBookingFlow() {
       // Network connectivity check before committing booking
       await assertConnected('he');
 
+      // CEO §12 provider safety summary — sitter takes the pet into
+      // their home (or the customer's) for hours to days. Aggression,
+      // escape risk, feeding/handling instructions, allergies, and
+      // medication timing MUST reach the sitter's screen before the
+      // stay begins. Until this commit only free-text specialInstructions
+      // travelled; the structured safety flags on the KYA pet doc were
+      // silently invisible. Mirrors the walk-my-pet payload change.
+      const primaryPet: any = pets.find((p: any) => p.id === selectedPetIds[0]);
+      const petSafetySnapshot = {
+        aggressionWarning:      primaryPet?.aggressionWarning ?? null,
+        escapeRisk:             !!primaryPet?.escapeRisk,
+        behaviourNotes:         primaryPet?.behaviourNotes ?? '',
+        feedingInstructions:    primaryPet?.feedingInstructions ?? '',
+        handlingInstructions:   primaryPet?.handlingInstructions ?? '',
+        sensitiveSkin:          !!primaryPet?.sensitiveSkin,
+        allergies:              primaryPet?.allergies ?? '',
+        medicationNotes:        primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
+        vetName:                primaryPet?.vetName ?? '',
+        vetPhone:               primaryPet?.vetPhone ?? '',
+      };
+
       const payload = {
         sitterId: sitter.id,
         petId: selectedPetIds[0],
@@ -242,6 +263,7 @@ export default function SitterBookingFlow() {
         addressLat: addressLat ?? undefined,
         addressLng: addressLng ?? undefined,
         petIds: selectedPetIds,
+        petSafetySnapshot,
         pricing: {
           currency: "ILS",
           baseAmount: pricing.baseAmount,
