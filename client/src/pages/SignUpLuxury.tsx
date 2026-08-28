@@ -2213,6 +2213,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
                   : (he ? 'שלח קוד חדש' : 'Resend code')}
               </button>
+              {/* CEO §16/§17 — "Wrong number?" affordance. Without this a
+                  customer who typed a wrong digit is trapped waiting for an
+                  impossible OTP. Clears the sent flag and returns them to
+                  the phone-entry step so they can retype and re-send.
+                  resendCountdown is left alone (rate-limit still applies to
+                  the new number). */}
+              <button type="button" className="sl-switchLink" disabled={busy}
+                onClick={() => { setSent(false); setInlineError(null); }}
+                data-testid="button-change-number-mobile"
+                style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                {he ? 'מספר לא נכון? שנה מספר' : 'Wrong number? Change number'}
+              </button>
             </>
           )}
 
@@ -2227,6 +2239,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 {resendCountdown > 0
                   ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
                   : (he ? 'שלח קוד חדש' : 'Resend code')}
+              </button>
+              {/* Same "wrong email?" affordance — see the mobile block above. */}
+              <button type="button" className="sl-switchLink" disabled={busy}
+                onClick={() => { setSent(false); setInlineError(null); }}
+                data-testid="button-change-email"
+                style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                {he ? 'כתובת לא נכונה? שנה אימייל' : 'Wrong email? Change email'}
               </button>
             </>
           )}

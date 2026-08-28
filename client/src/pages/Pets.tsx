@@ -394,16 +394,22 @@ export default function Pets() {
   const createMutation = useMutation({
     mutationFn: async (data: PetFormData) => {
       if (!authToken) throw new Error('Not authenticated');
-      // apiRequest returns a Response, so we must .json() before touching the
-      // body. Reading `response.pet` on the raw Response silently returns
-      // undefined and the trackPetAdded analytics event never fires.
+      // CEO §21 KYA canonical field: server projection at
+      // server/routes/pets.ts:81 reads ONLY `birthday`. Pets.tsx's form
+      // still uses `birthdate` as the field name (legacy AddPet shape),
+      // and the server's Zod union accepts both — but the READ path
+      // returns `birthday: null` for any pet stored with the legacy
+      // key, so every external surface (booking form, provider view)
+      // sees a nameless DOB even after the owner set one. Canonicalize
+      // on the write side.
+      const canonical = { ...data, birthday: data.birthdate, birthdate: undefined };
       const res = await apiRequest('/api/pets', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(canonical),
       });
       return await res.json();
     },
@@ -443,13 +449,15 @@ export default function Pets() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: PetFormData }) => {
       if (!authToken) throw new Error('Not authenticated');
+      // Same canonical fix as createMutation — see the comment there.
+      const canonical = { ...data, birthday: data.birthdate, birthdate: undefined };
       return apiRequest(`/api/pets/${id}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(canonical),
       });
     },
     onSuccess: (_response: any, variables: { id: string; data: PetFormData }) => {
