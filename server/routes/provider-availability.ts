@@ -646,4 +646,95 @@ async function getBookedDates(providerId: string, startDate: string, endDate: st
   return bookedDates;
 }
 
+// ── CEO §21/§22 (2026-08-28) — provider-confirmed pricing + availability ─────
+//
+// Admin approve seeds SUGGESTED starter values with `confirmed: false`
+// (see server/routes/provider-onboarding.ts — the a1e8efa3f audit
+// hardening). Search / quote engines gate on the readiness helper.
+// These endpoints let the provider flip `confirmed: true` from their
+// dashboard once they've reviewed / edited the seeded values.
+import { requireAuth } from '../customAuth';
+import {
+  confirmProviderPricing,
+  confirmProviderAvailability,
+  getProviderReadiness,
+} from '../lib/providerReadiness';
+
+const PLATFORM_ALLOWLIST = new Set([
+  'walk_my_pet', 'sitter_suite', 'pet_trek', 'academy', 'k9000',
+] as const);
+
+function normalisePlatform(raw: unknown): 'walk_my_pet' | 'sitter_suite' | 'pet_trek' | 'academy' | 'k9000' | null {
+  if (typeof raw !== 'string') return null;
+  return (PLATFORM_ALLOWLIST as unknown as Set<string>).has(raw)
+    ? (raw as 'walk_my_pet' | 'sitter_suite' | 'pet_trek' | 'academy' | 'k9000')
+    : null;
+}
+
+// GET /api/provider/availability/readiness/:platform
+// Read-only: returns whether the provider's pricing + availability are
+// confirmed for a platform + a bookingEligible composite. Dashboard uses
+// this to render the "you can be booked" banner.
+router.get('/readiness/:platform', requireAuth, async (req: any, res) => {
+  const userId = req.user?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const platform = normalisePlatform(req.params.platform);
+  if (!platform) return res.status(400).json({ error: 'Invalid platform', errorCode: 'INVALID_PLATFORM' });
+  const readiness = await getProviderReadiness(userId, platform);
+  res.json({ platform, ...readiness });
+});
+
+// POST /api/provider/availability/pricing/:platform/confirm
+// Provider flips pricing_rules.confirmed = true on their rate card
+// for this platform. Idempotent.
+router.post('/pricing/:platform/confirm', requireAuth, async (req: any, res) => {
+  const userId = req.user?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const platform = normalisePlatform(req.params.platform);
+  if (!platform) return res.status(400).json({ error: 'Invalid platform', errorCode: 'INVALID_PLATFORM' });
+  try {
+    const ok = await confirmProviderPricing(userId, platform);
+    if (!ok) {
+      // No rate card row — provider hasn't been seeded yet. Never
+      // fabricate a rate on the provider's behalf; ask them to
+      // set one via the dashboard's pricing panel.
+      return res.status(404).json({
+        error: 'No rate card found for this platform',
+        errorCode: 'NO_RATE_CARD',
+      });
+    }
+    logger.info('[ProviderAvailability] pricing confirmed', { userId, platform });
+    const readiness = await getProviderReadiness(userId, platform);
+    res.json({ ok: true, platform, ...readiness });
+  } catch (err: any) {
+    logger.error('[ProviderAvailability] pricing confirm failed', { userId, platform, error: err?.message });
+    res.status(500).json({ error: 'Failed to confirm pricing', errorCode: 'CONFIRM_FAILED' });
+  }
+});
+
+// POST /api/provider/availability/schedule/:platform/confirm
+// Provider flips platform_data.weeklyAvailability.confirmed = true on
+// their providers row for this platform. Idempotent.
+router.post('/schedule/:platform/confirm', requireAuth, async (req: any, res) => {
+  const userId = req.user?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+  const platform = normalisePlatform(req.params.platform);
+  if (!platform) return res.status(400).json({ error: 'Invalid platform', errorCode: 'INVALID_PLATFORM' });
+  try {
+    const ok = await confirmProviderAvailability(userId, platform);
+    if (!ok) {
+      return res.status(404).json({
+        error: 'No provider row for this platform',
+        errorCode: 'NO_PROVIDER_ROW',
+      });
+    }
+    logger.info('[ProviderAvailability] availability confirmed', { userId, platform });
+    const readiness = await getProviderReadiness(userId, platform);
+    res.json({ ok: true, platform, ...readiness });
+  } catch (err: any) {
+    logger.error('[ProviderAvailability] availability confirm failed', { userId, platform, error: err?.message });
+    res.status(500).json({ error: 'Failed to confirm availability', errorCode: 'CONFIRM_FAILED' });
+  }
+});
+
 export default router;
