@@ -4503,6 +4503,10 @@ export const sitterBookings = pgTable("sitter_bookings", {
   aiTriageNotes: text("ai_triage_notes"), // Gemini AI analysis
   cancellationReason: text("cancellation_reason"),
   specialInstructions: text("special_instructions"),
+  // CEO §12 (2026-08-28): structured safety summary the sitter MUST see
+  // before the stay — aggression, escape risk, allergies, medications,
+  // vet contact, feeding/handling notes. Migration 0132.
+  petSafetySnapshot: jsonb("pet_safety_snapshot"),
   
   // Timestamps (AGD Stamped)
   createdAt: timestamp("created_at").defaultNow(),
@@ -4896,6 +4900,10 @@ export const walkBookings = pgTable("walk_bookings", {
   petSpecialNeeds: text("pet_special_needs"),
   petMedications: text("pet_medications"),
   petBehaviorNotes: text("pet_behavior_notes"),
+  // CEO §12 (2026-08-28): structured safety summary the walker MUST see
+  // before the walk — aggression, escape risk, allergies, medications,
+  // vet contact, feeding/handling notes. Migration 0132.
+  petSafetySnapshot: jsonb("pet_safety_snapshot"),
   
   // Pricing & Payment
   walkerRate: decimal("walker_rate", { precision: 10, scale: 2 }).notNull(), // What walker charges

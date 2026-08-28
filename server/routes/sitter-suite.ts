@@ -774,8 +774,18 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       address: addressTextFallback,
       addressLat,
       addressLng,
+      // CEO §12 (2026-08-28): structured KYA safety flags. Client
+      // (sitter-suite/BookingFlow.tsx:241) sends this alongside the
+      // primary fields; server used to silently drop it, so the sitter
+      // never saw aggression / escape-risk / allergy warnings before
+      // arrival.
+      petSafetySnapshot,
     } = req.body;
     const resolvedAddressText = addressText ?? addressTextFallback ?? null;
+    const safeSnapshot: Record<string, unknown> | null =
+      petSafetySnapshot && typeof petSafetySnapshot === 'object' && !Array.isArray(petSafetySnapshot)
+        ? (petSafetySnapshot as Record<string, unknown>)
+        : null;
     
     // Always derive ownerId from the verified Firebase token — never trust req.body.
     const ownerId = (req as any).user?.uid;
@@ -914,6 +924,8 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
             urgencyScore: triageResult.urgencyScore,
             aiTriageNotes: triageResult.triageNotes,
             specialInstructions,
+            // CEO §12 safety summary — see destructuring block above.
+            petSafetySnapshot: safeSnapshot,
             status: 'pending_provider',
             // Address snapshot — coordinates are the truth, never blocked by missing postcode
             serviceAddressText: resolvedAddressText,

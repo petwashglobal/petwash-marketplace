@@ -415,10 +415,10 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { 
-      walkerId, 
-      scheduledDate, 
-      scheduledStartTime, 
+    const {
+      walkerId,
+      scheduledDate,
+      scheduledStartTime,
       durationMinutes,
       pickupLatitude,
       pickupLongitude,
@@ -426,8 +426,23 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       petName,
       petBreed,
       petWeight,
-      petSpecialNeeds
+      petSpecialNeeds,
+      // CEO §12 (2026-08-28): structured safety flags from the KYA pet
+      // record — aggression, escape risk, allergies, medications, vet
+      // contact, feeding/handling notes. Was silently dropped: the
+      // walker only ever saw petSpecialNeeds free-text and every safety
+      // flag stayed invisible to the person about to hold the leash.
+      // Client (walk-my-pet/BookingFlow.tsx:250) already sends it —
+      // wire it through so the server actually stores it.
+      petSafetySnapshot,
     } = req.body;
+    // Only store a real object shape. Anything else (string, array,
+    // primitive) is ignored — the column is a structured snapshot, not
+    // a free-form blob.
+    const safeSnapshot: Record<string, unknown> | null =
+      petSafetySnapshot && typeof petSafetySnapshot === 'object' && !Array.isArray(petSafetySnapshot)
+        ? (petSafetySnapshot as Record<string, unknown>)
+        : null;
 
     // Validate required fields
     if (!walkerId || !scheduledDate || !scheduledStartTime || !durationMinutes || 
@@ -593,6 +608,10 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       petBreed,
       petWeight,
       petSpecialNeeds,
+      // CEO §12 safety summary — see the destructuring block above for why
+      // this must persist. Null when the client didn't send one, so legacy
+      // callers keep working.
+      petSafetySnapshot: safeSnapshot,
       walkerRate: pricing.baseRate.toFixed(2),
       platformFeeOwner: (pricing.platformFee * 0.25).toFixed(2),
       platformFeeSitter: (pricing.platformFee * 0.75).toFixed(2),
