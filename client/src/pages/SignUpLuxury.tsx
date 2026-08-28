@@ -122,8 +122,17 @@ function destForFlow(flow: Flow): string {
     case 'provider': return '/provider-onboarding';
     case 'guest': return '/egift';
     case 'booking': return '/booking';
+    // Prestige signup ALWAYS lands on the Prestige surface — the customer
+    // just enrolled and expects to see their new benefits.
     case 'prestige': return '/prestige/home';
-    default: return '/prestige/home';
+    // CEO 2026-08-28 product correction: Pet Parent is the base customer
+    // workspace, Prestige is a MEMBERSHIP entitlement — NOT a synonym for
+    // "customer". A plain-customer signup default of /prestige/home
+    // dropped every new user onto a Prestige-branded landing as if they
+    // were already members. Route the base default to /pet-parent/home
+    // (App.tsx renders the same PrestigeHome component under both paths;
+    // the URL now honors the product doctrine).
+    default: return '/pet-parent/home';
   }
 }
 
@@ -630,8 +639,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // if the profile still needs a name (→ /complete-profile), if a provider
     // needs KYC (→ /provider-onboarding), or if a loyalty member is ready for
     // home — so a new user is never dumped on a dashboard that bounces them.
-    // Intent (provider vs loyalty) is passed so the decider routes the right way.
-    const intent = explicitIntent || (flow === 'provider' ? 'provider' : 'loyalty');
+    // Intent tells the server decider WHICH capability is being onboarded —
+    // provider vs prestige-member vs plain customer. CEO 2026-08-28 product
+    // correction: 'loyalty' is Prestige-specific; a plain Pet Parent signup
+    // must NOT be labelled loyalty (that used to route them to /prestige/home
+    // as if they'd enrolled). The `customer` intent — the historical name
+    // the decider allowlist speaks, mirrored in ChooseMode.tsx:55 — is the
+    // correct default for a base Pet Parent account.
+    const intent =
+      explicitIntent
+      || (flow === 'provider' ? 'provider'
+        : flow === 'prestige' ? 'loyalty'
+        : 'customer');
     try {
       const { resolvePostLogin } = await import('@/lib/postLoginCoordinator');
       // Carry the Firebase ID token so /api/auth/post-login authenticates via Bearer

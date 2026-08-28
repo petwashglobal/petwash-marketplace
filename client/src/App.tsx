@@ -818,8 +818,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       // NEVER show the web marketing Landing / welcome-intent screen — that is
       // the "website wrapper" behavior the two-app spec bans. Straight to the
       // luxury sign-in/sign-up screen (Google/Apple/phone/email — returning
-      // users sign in on the same screen); signed-in members → PrestigeHome.
-      setLocation(user ? '/prestige/home' : '/signup');
+      // users sign in on the same screen); signed-in customers → Pet Parent home.
+      // 2026-08-28 product correction: destination was /prestige/home, sending
+      // every non-Prestige customer to a Prestige-branded URL as if they were
+      // members. /pet-parent/home renders the same PrestigeHome component;
+      // the URL now honors the CEO product model.
+      setLocation(user ? '/pet-parent/home' : '/signup');
     }
   }, [isProviderApp, isCustomerApp, user, loading, role, roleLoading, setLocation]);
 
@@ -849,7 +853,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (isProviderApp && hits(PROVIDER_APP_BLOCKED)) {
       setLocation('/provider/home');
     } else if (isCustomerApp && hits(CUSTOMER_APP_BLOCKED)) {
-      setLocation('/prestige/home');
+      // 2026-08-28 product correction — bounce OOB customer-app URLs to
+      // the Pet Parent home, not the Prestige-branded alias.
+      setLocation('/pet-parent/home');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appPath, isProviderApp, isCustomerApp, loading, setLocation]);
@@ -888,8 +894,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (flavored) {
       if (loading) return <PageLoader />; // brief; the AuthProvider watchdog caps at 8s
       if (isProviderApp) return <Redirect to={user ? '/provider/home' : '/signup'} />;
-      // customer flavor (or a generic native build) → the member experience
-      return <Redirect to={user ? '/prestige/home' : '/signup'} />;
+      // customer flavor (or a generic native build) → the Pet Parent home.
+      // 2026-08-28 product correction — destination was /prestige/home,
+      // sending every non-Prestige customer to a Prestige-branded URL as if
+      // they were members. /pet-parent/home renders the same PrestigeHome
+      // component; the URL now honors the CEO product model.
+      return <Redirect to={user ? '/pet-parent/home' : '/signup'} />;
     }
     // Web browser — marketing Landing for signed-out, Home for signed-in (unchanged).
     if (loading) return <PageLoader />;
