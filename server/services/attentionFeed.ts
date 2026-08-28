@@ -291,6 +291,115 @@ async function petParentEgiftItems(userId: string, he: boolean): Promise<Attenti
 }
 
 /**
+ * CEO §11 §12 §13 §34 §70 Journey Brain Phase 2 — abandoned-flow
+ * resume probe. Reads the journey_checkpoints store via the service
+ * layer and emits one AttentionItem per active checkpoint so the
+ * customer's home says "we saved your booking with Maya" instead of
+ * dumping them into an empty wizard.
+ *
+ * The probe is DELIBERATELY thin — it only maps stage labels to
+ * destinations. The wizard is the resume authority.
+ *
+ * Domain → destination map is scoped narrowly so a rogue checkpoint
+ * cannot silently point the customer at a page that would side-effect
+ * on load. Unknown domains drop from the projection.
+ */
+async function petParentJourneyResumeItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const { listActiveCheckpoints } = await import('./journeyCheckpoints');
+    const rows = await listActiveCheckpoints(userId);
+    if (!rows.length) return [];
+    const items: AttentionItem[] = [];
+    for (const cp of rows) {
+      const dest = journeyResumeDestination(cp.domain, cp.entityRef);
+      if (!dest) continue; // Unknown domain — refuse to route.
+      const { title, reason } = journeyResumeCopy(cp.domain, cp.entityRef, he);
+      items.push({
+        id: `resume:${cp.journeyId}`,
+        actor: 'pet_parent',
+        domain: mapJourneyDomainToAttention(cp.domain),
+        entityId: cp.journeyId,
+        priority: 'due_soon',
+        title,
+        reason,
+        nextAction: 'view',
+        destination: dest,
+      });
+    }
+    return items;
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] pet-parent journey-resume probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+function journeyResumeDestination(domain: string, entityRef: string | null): string | null {
+  switch (domain) {
+    case 'walk_booking':
+      return entityRef ? `/walk-my-pet/book/${entityRef}` : '/walk-my-pet';
+    case 'sitter_booking':
+      return entityRef ? `/sitter-suite/book/${entityRef}` : '/sitter-suite';
+    case 'marketplace_booking':
+      return '/marketplace';
+    case 'shop_checkout':
+      return '/shop';
+    case 'egift_purchase':
+      return '/egift';
+    case 'provider_apply':
+      return '/provider-application/status';
+    default:
+      return null;
+  }
+}
+
+function journeyResumeCopy(domain: string, entityRef: string | null, he: boolean): { title: string; reason: string } {
+  const provider = entityRef ? ` (${entityRef.slice(0, 12)})` : '';
+  switch (domain) {
+    case 'walk_booking':
+      return he
+        ? { title: `שמרנו את הזמנת ההליכה שלך${provider}`, reason: 'המשך מהנקודה שהפסקת בה' }
+        : { title: `We saved your walk booking${provider}`, reason: 'Continue from where you left off' };
+    case 'sitter_booking':
+      return he
+        ? { title: `שמרנו את הזמנת הסיטר שלך${provider}`, reason: 'המשך מהנקודה שהפסקת בה' }
+        : { title: `We saved your sitter booking${provider}`, reason: 'Continue from where you left off' };
+    case 'marketplace_booking':
+      return he
+        ? { title: 'שמרנו את ההזמנה שלך', reason: 'המשך מהנקודה שהפסקת בה' }
+        : { title: 'We saved your booking', reason: 'Continue from where you left off' };
+    case 'shop_checkout':
+      return he
+        ? { title: 'סל הקניות שלך ממתין', reason: 'המשך לתשלום' }
+        : { title: 'Your cart is waiting', reason: 'Continue to checkout' };
+    case 'egift_purchase':
+      return he
+        ? { title: 'שמרנו את רכישת ה-eGift', reason: 'המשך מהנקודה שהפסקת בה' }
+        : { title: 'We saved your eGift purchase', reason: 'Continue from where you left off' };
+    case 'provider_apply':
+      return he
+        ? { title: 'שמרנו את הבקשה שלך להיות ספק', reason: 'המשך והשלם את השדות שנשארו' }
+        : { title: 'We saved your provider application', reason: 'Continue and complete the remaining fields' };
+    default:
+      return he
+        ? { title: 'שמרנו את התהליך שלך', reason: 'המשך מהנקודה שהפסקת בה' }
+        : { title: 'We saved your progress', reason: 'Continue from where you left off' };
+  }
+}
+
+function mapJourneyDomainToAttention(domain: string): AttentionItem['domain'] {
+  switch (domain) {
+    case 'walk_booking':          return 'walk';
+    case 'sitter_booking':        return 'sitting';
+    case 'academy_booking':       return 'academy';
+    case 'marketplace_booking':   return 'booking';
+    case 'shop_checkout':         return 'shop';
+    case 'egift_purchase':        return 'egift';
+    case 'provider_apply':        return 'kyc';
+    default:                      return 'booking';
+  }
+}
+
+/**
  * CEO §16 + §47 + §70 refund-pending probe. Reads canonical
  * refund_transactions WHERE user_id = userId AND status IN (pending,
  * approved, executing). Emits ONE informational item summing the
@@ -672,6 +781,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
   const items = actor === 'pet_parent'
     ? [
         ...await petParentBookingItems(userId, he),
+        ...await petParentJourneyResumeItems(userId, he),
         ...await petParentRefundItems(userId, he),
         ...await petParentEgiftItems(userId, he),
         ...await petParentWalletItems(userId, he),

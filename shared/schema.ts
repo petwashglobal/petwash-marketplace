@@ -14306,6 +14306,33 @@ export const providerPayoutEntries = pgTable("provider_payout_entries", {
 export type ProviderPayoutEntry       = typeof providerPayoutEntries.$inferSelect;
 export type InsertProviderPayoutEntry = typeof providerPayoutEntries.$inferInsert;
 
+// ─── Journey Checkpoints (CEO MASTER DIRECTIVE 2026-08-28 §11 §12 §13 §28 §34) ─
+// Migration 0134_journey_checkpoints_2026_08_28.sql.
+//
+// One row per in-flight customer journey. The wizard writes a
+// checkpoint at each SAFE step; a resume endpoint reads the newest
+// non-expired checkpoint per (user_uid, domain) via UNIQUE index and
+// re-hydrates state. The AI concierge (CEO §36) may READ these to
+// render "still looking at Maya?" — never writes.
+export const journeyCheckpoints = pgTable("journey_checkpoints", {
+  id:            serial("id").primaryKey(),
+  journeyId:     varchar("journey_id",     { length: 64  }).unique().notNull(),
+  userUid:       varchar("user_uid",       { length: 200 }).notNull(),
+  domain:        varchar("domain",         { length: 64  }).notNull(),
+  entityRef:     varchar("entity_ref",     { length: 200 }),
+  state:         varchar("state",          { length: 64  }).notNull(),
+  lastSafeStep:  varchar("last_safe_step", { length: 64  }).notNull(),
+  snapshot:      jsonb("snapshot").notNull().default({}),
+  createdAt:     timestamp("created_at",   { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:     timestamp("updated_at",   { withTimezone: true }).notNull().defaultNow(),
+  expiresAt:     timestamp("expires_at",   { withTimezone: true }).notNull(),
+}, (table) => [
+  index("journey_checkpoints_user_idx").on(table.userUid, table.expiresAt),
+  index("journey_checkpoints_domain_idx").on(table.domain, table.updatedAt),
+]);
+export type JourneyCheckpoint       = typeof journeyCheckpoints.$inferSelect;
+export type InsertJourneyCheckpoint = typeof journeyCheckpoints.$inferInsert;
+
 // ─── Dispute Cases (Phase 2.9C) ───────────────────────────────────────────────
 // case_ref is server-generated.  notes is an append-only JSONB array.
 // resolve is the ONLY path that sets resolved_at.
