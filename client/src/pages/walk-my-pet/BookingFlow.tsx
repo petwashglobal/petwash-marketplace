@@ -215,6 +215,30 @@ export default function WalkBookingFlow() {
       const selectedPets = pets.filter((p: any) => selectedPetIds.includes(p.id));
       const primaryPet = selectedPets[0] as any;
 
+      // CEO §12/§48 safety: NEVER invent pet data on a real booking.
+      // Previously the payload defaulted `petName → 'Pet'`, `petBreed
+      // → 'Mixed'`, `petWeight → 10kg` — so a customer whose KYA
+      // record was missing/incomplete silently sent FALSE care info
+      // to the walker. Provider makes handling decisions off that
+      // input; medication doses / size-appropriate handling get set
+      // wrong. Fail-closed here — pull the customer back to KYA
+      // instead of shipping fabricated safety data downstream.
+      const primaryPetName = primaryPet?.name ?? primaryPet?.petName;
+      const primaryPetBreed = primaryPet?.breed ?? primaryPet?.petBreed;
+      const primaryPetWeight = primaryPet?.weight ?? primaryPet?.petWeight;
+      if (!primaryPet || !primaryPetName || !primaryPetBreed || primaryPetWeight == null) {
+        setIsSubmitting(false);
+        toast({
+          variant: 'destructive',
+          title: isHebrew ? 'חסרים פרטי חיה' : "We're missing pet details",
+          description: isHebrew
+            ? 'נא לעדכן שם, גזע ומשקל בפרופיל החיה לפני הזמנה — כך המטפל יידע להתאים את הטיפול.'
+            : "Please add name, breed, and weight to the pet profile before booking — the walker needs this to look after them safely.",
+        });
+        setLocation('/pets');
+        return;
+      }
+
       const payload = {
         walkerId: walker.walkerId || `WALKER-${walkerIdNumber}`,
         scheduledDate,
@@ -223,9 +247,9 @@ export default function WalkBookingFlow() {
         pickupLatitude: pickupDetails?.lat ?? walker.latitude ?? 32.0853,
         pickupLongitude: pickupDetails?.lng ?? walker.longitude ?? 34.7818,
         pickupAddress: pickupAddress || walker.serviceArea || '',
-        petName: primaryPet?.name ?? primaryPet?.petName ?? 'Pet',
-        petBreed: primaryPet?.breed ?? primaryPet?.petBreed ?? 'Mixed',
-        petWeight: primaryPet?.weight ?? primaryPet?.petWeight ?? 10,
+        petName: primaryPetName,
+        petBreed: primaryPetBreed,
+        petWeight: primaryPetWeight,
         petSpecialNeeds: primaryPet?.specialNeeds ?? primaryPet?.medicalNotes ?? notes ?? '',
         notes,
         petIds: selectedPetIds,
