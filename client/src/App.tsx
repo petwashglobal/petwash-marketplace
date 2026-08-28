@@ -109,7 +109,11 @@ const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
 const BookingSearchPage = lazy(() => import("@/pages/BookingSearchPage"));
 const ProviderSearchPage = lazy(() => import("@/pages/ProviderSearchPage"));
-const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
+// PrivilegeSignup import removed 2026-08-28 — the /privilege /loyalty/join
+// /vito routes now redirect to /signup?flow=prestige (canonical) per CEO
+// §2. The file remains at client/src/pages/PrivilegeSignup.tsx as archive
+// until the design lane deletes it.
+// const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
 const PrestigeClub = lazy(() => import("@/pages/PrestigeClub"));
 const PrestigeInterestWaitlist = lazy(() => import("@/pages/PrestigeInterestWaitlist"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
@@ -1194,16 +1198,30 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* PetWash Privilege - Public registration */}
+        {/* CEO 2026-08-28 §2 product correction — no duplicate identity
+            universes. /privilege, /loyalty/join, /vito used to render
+            PrivilegeSignup.tsx: a Google-only signup that asked DOB,
+            gender, national-ID doc, address, and 14 declarations BEFORE
+            OAuth, then POST'd to /api/privilege/register (a parallel
+            privilege_members row alongside the Firebase user). That
+            violated:
+              • "OAuth first, then collect missing" (§3 §57)
+              • "no separate identity systems for provider/Prestige" (§7)
+              • "email must be first-class" (Google-only path was a leak)
+            2026-05-25 design doc (docs/design/…smart-identity-routing.md
+            :72) already flagged PrivilegeSignup for deletion.
+            All three entry paths now redirect to the canonical /signup
+            with a `flow=prestige` hint the SignUpLuxury flow-router
+            understands. The PrivilegeSignup component stays in the
+            repo as reference until the design lane deletes it. */}
         <Route path="/privilege">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
         </Route>
         <Route path="/loyalty/join">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
         </Route>
-        {/* Backward compatibility - old /vito URL redirects */}
         <Route path="/vito">
-          {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
         </Route>
 
         {/* Loyalty Program - Public landing + member dashboard */}
