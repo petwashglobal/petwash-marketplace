@@ -130,6 +130,10 @@ const ALLOW_INTENTIONAL: Array<string | RegExp> = [
   /pages\/ProviderTimeline\.tsx$/,
   /pages\/StandaloneDivisions\.tsx$/,
   /pages\/forms\/ProviderRegistrationForm\.tsx$/,
+  // PetTrek dashboards — CEO ALL FROZEN gate. Every /pettrek/* route
+  // in App.tsx currently renders PlatformComingSoon (App.tsx:2015-
+  // 2036). The dashboards live in the tree ready for the platform
+  // flip; the orphan is INTENTIONAL until CEO opens PETTREK_LIVE_ENABLED.
   /pages\/pettrek\/CustomerDashboard\.tsx$/,
   /pages\/pettrek\/DriverDashboard\.tsx$/,
   /pages\/pettrek\/DriverDetail\.tsx$/,

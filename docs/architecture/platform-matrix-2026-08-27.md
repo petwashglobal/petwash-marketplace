@@ -29,7 +29,7 @@ Legend:
 | Customer UI                    |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ⚠️    |
 | Provider UI                    |   —  |   —   |   —   |   —    |   ✅   |  ✅  |   ✅    |   ⚠️    |
 | Admin UI                       |  ✅  |  ✅   |  ✅   |   ✅   |   ✅   |  ✅  |   ✅    |   ✅    |
-| E2E (Playwright)               |  ✅  |  ✅   |  ✅   |   ⚠️   |   ✅   |  ✅  |   ⚠️    |   ❌    |
+| E2E (Playwright)               |  ✅  |  ✅   |  ✅   |   ⚠️   |   ✅   |  ✅  |   ⚠️    |   ✅    |
 
 ## What changed since 2026-08-27 first draft
 
