@@ -2080,32 +2080,64 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
       }
     } catch { /* non-fatal */ }
 
-    // CEO §37 (2026-08-28) — bank / payout view is a sensitive access.
-    // The application row carries the applicant's IBAN + account
-    // holder name (Israeli Privacy Law adjacent). Log every read that
-    // actually contained a bank field so ops can prove who saw what.
-    // Best-effort; a logging failure never blocks the admin's response.
-    if ((app as any).bankIban || (app as any).bankAccountHolder) {
-      writeProviderAudit({
-        applicationId: (app as any).id,
-        eventType: 'bank_details_viewed',
-        actorUserId: (req.body?.adminUid as string) || null,
-        actorRole: (req.body?.adminRole as string) || 'support',
-        payload: {
-          applicationId,
-          // Do NOT log the IBAN itself — only its last 4 chars +
-          // presence flags. Full value stays in the DB.
-          bankIbanLast4: typeof (app as any).bankIban === 'string'
-            ? ((app as any).bankIban as string).slice(-4) : null,
-          hasAccountHolder: !!((app as any).bankAccountHolder),
-          hasBankName: !!((app as any).bankName),
-          actorEmail: (req.body?.adminEmail as string) || null,
-        },
-      }).catch((err) => logger.warn('[Provider Onboarding] bank_details_viewed audit failed', { applicationId, err: err?.message }));
+    // CEO §37 + §41 (2026-08-28) — bank / payout view is a sensitive
+    // access. The application row carries the applicant's full IBAN,
+    // account holder name, bank name, and branch code (Israeli Privacy
+    // Law adjacent).
+    //
+    // Gate the full values behind an explicit bankAccessReason (same
+    // pattern used above for selfie + ID) so an admin cannot see them
+    // by loading the detail page casually. Without a reason, the row
+    // still returns the presence flags + IBAN last 4 the admin needs to
+    // eyeball the case, but the plaintext IBAN, holder, and full bank
+    // metadata stay behind a documented forensic step.
+    const bankHas = !!((app as any).bankIban || (app as any).bankAccountHolder);
+    const bankAccessReason = typeof req.query.bankAccessReason === 'string'
+      ? req.query.bankAccessReason.trim().slice(0, 500)
+      : '';
+    let bankProjected: Record<string, unknown> = {};
+    if (bankHas) {
+      const ibanFull = (app as any).bankIban as string | null;
+      const ibanLast4 = typeof ibanFull === 'string' ? ibanFull.slice(-4) : null;
+      if (bankAccessReason) {
+        // Reason present — full read + audit. This branch keeps the
+        // raw bank fields on the response as before but pins the
+        // audit that ops needs.
+        writeProviderAudit({
+          applicationId: (app as any).id,
+          eventType: 'bank_details_viewed',
+          actorUserId: (req.body?.adminUid as string) || null,
+          actorRole: (req.body?.adminRole as string) || 'support',
+          payload: {
+            applicationId,
+            bankIbanLast4: ibanLast4,
+            hasAccountHolder: !!((app as any).bankAccountHolder),
+            hasBankName: !!((app as any).bankName),
+            reason: bankAccessReason,
+            actorEmail: (req.body?.adminEmail as string) || null,
+          },
+        }).catch((err) => logger.warn('[Provider Onboarding] bank_details_viewed audit failed', { applicationId, err: err?.message }));
+      } else {
+        // No reason — REDACT before we ship the row. Presence + last4
+        // is enough for eyeballing the case; the plaintext stays in
+        // the DB until the admin gives a reason and reloads.
+        bankProjected = {
+          bankIban:            null,
+          bankAccountHolder:   null,
+          bankName:            null,
+          bankBranchCode:      null,
+          bankIbanLast4:       ibanLast4,
+          bankHasAccountHolder: !!((app as any).bankAccountHolder),
+          bankHasBankName:     !!((app as any).bankName),
+          bankAccessReasonRequired: true,
+        };
+      }
     }
 
+    // Merge order matters: raw `app` first, then any projected
+    // redactions overwrite the plaintext fields.
     res.json({
-      application: { ...app, selfieSignedUrl, idSignedUrl, ...queueMeta },
+      application: { ...app, selfieSignedUrl, idSignedUrl, ...queueMeta, ...bankProjected },
       kycDetail,
     });
   } catch (error: any) {
