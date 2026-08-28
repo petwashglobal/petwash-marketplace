@@ -118,6 +118,14 @@ export default function ProviderApplicationStatus() {
     application: ApplicationStatus;
     resubmissionToken: string | null;
     resubmitUrl: string | null;
+    // CEO §46 (2026-08-28) — per-section readiness sourced from the
+    // same rules the admin queue uses.
+    sectionStatus?: {
+      overall: string;
+      applicationId: string;
+      sections: Record<'profile' | 'identity' | 'insurance' | 'background' | 'bank' | 'declarations',
+        'complete' | 'checking' | 'action_required'>;
+    };
   }>({
     queryKey: ['/api/provider-onboarding/my/status'],
     queryFn: async () => {
@@ -235,6 +243,52 @@ export default function ProviderApplicationStatus() {
           </div>
           <StatusBadge status={app.status} />
         </div>
+
+        {/* CEO §46 (2026-08-28) — per-section state list. Applicant sees
+            which section is Complete / Checking / Action required so
+            they can go straight to what's missing without hunting
+            through the whole wizard. Rules match the admin queue. */}
+        {data?.sectionStatus && (
+          <Card data-testid="section-status-list">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">
+                {isRtl ? 'סטטוס לפי מקטע' : 'Sections'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {([
+                ['profile',      isRtl ? 'פרופיל'              : 'Profile'],
+                ['identity',     isRtl ? 'זהות ומסמכים'        : 'Identity & Documents'],
+                ['insurance',    isRtl ? 'ביטוח'                : 'Insurance'],
+                ['background',   isRtl ? 'רקע ואישורים'        : 'Background & Consents'],
+                ['bank',         isRtl ? 'חשבון בנק / תשלום'    : 'Bank / Payout'],
+                ['declarations', isRtl ? 'הצהרות אונבורדינג'    : 'Onboarding Declarations'],
+              ] as const).map(([key, label]) => {
+                const state = data.sectionStatus!.sections[key];
+                const badgeCls =
+                  state === 'complete'         ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                  : state === 'checking'       ? 'bg-amber-100  text-amber-800  border-amber-300'
+                  :                              'bg-red-100    text-red-800    border-red-300';
+                const badgeLbl =
+                  state === 'complete' ? (isRtl ? 'הושלם'         : 'Complete')
+                  : state === 'checking' ? (isRtl ? 'בבדיקה'       : 'Checking')
+                  :                        (isRtl ? 'נדרש טיפול'  : 'Action required');
+                return (
+                  <div
+                    key={key}
+                    className="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-100"
+                    data-testid={`section-status-row-${key}`}
+                  >
+                    <span className="text-sm font-medium text-slate-800">{label}</span>
+                    <span className={`text-xs font-medium border rounded px-2 py-0.5 ${badgeCls}`}>
+                      {badgeLbl}
+                    </span>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Status progress (non-terminal) */}
         {!isTerminal && app.status !== 'pending_resubmission' && (
