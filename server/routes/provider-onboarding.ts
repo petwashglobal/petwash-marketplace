@@ -2046,6 +2046,30 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
       }
     } catch { /* non-fatal */ }
 
+    // CEO §37 (2026-08-28) — bank / payout view is a sensitive access.
+    // The application row carries the applicant's IBAN + account
+    // holder name (Israeli Privacy Law adjacent). Log every read that
+    // actually contained a bank field so ops can prove who saw what.
+    // Best-effort; a logging failure never blocks the admin's response.
+    if ((app as any).bankIban || (app as any).bankAccountHolder) {
+      writeProviderAudit({
+        applicationId: (app as any).id,
+        eventType: 'bank_details_viewed',
+        actorUserId: (req.body?.adminUid as string) || null,
+        actorRole: (req.body?.adminRole as string) || 'support',
+        payload: {
+          applicationId,
+          // Do NOT log the IBAN itself — only its last 4 chars +
+          // presence flags. Full value stays in the DB.
+          bankIbanLast4: typeof (app as any).bankIban === 'string'
+            ? ((app as any).bankIban as string).slice(-4) : null,
+          hasAccountHolder: !!((app as any).bankAccountHolder),
+          hasBankName: !!((app as any).bankName),
+          actorEmail: (req.body?.adminEmail as string) || null,
+        },
+      }).catch((err) => logger.warn('[Provider Onboarding] bank_details_viewed audit failed', { applicationId, err: err?.message }));
+    }
+
     res.json({
       application: { ...app, selfieSignedUrl, idSignedUrl, ...queueMeta },
       kycDetail,
