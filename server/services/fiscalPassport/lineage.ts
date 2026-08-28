@@ -159,22 +159,64 @@ export async function composeRefundLineage(input: {
     // Composer only surfaces rows that actually moved (status='succeeded'
     // OR 'approved' when the rail_ref lands) — 'pending' obligations don't
     // count as money-moved yet per §85 discipline.
-    const { rows } = await pool.query(
-      `SELECT refund_id AS id, refund_cents AS amount_cents,
-              rail_ref AS external_refund_ref,
-              sumit_credit_doc_ref AS credit_document_id,
-              instrument, reason, status, created_at
-         FROM refund_transactions
-        WHERE source_type = $1 AND source_id = $2
-          AND status IN ('succeeded', 'approved', 'executing')
-        ORDER BY created_at ASC`,
-      [sourceType, sourceId],
-    );
+    //
+    // Escrow-reversal fan-out: the only production writer of refunds for a
+    // sitter/academy booking is ProviderPayoutService.ts:703, which records
+    //   source_type='escrow', source_id=String(payoutId)
+    // on the super_app_payouts row that funded the booking — NEVER
+    // ('booking', bookingId). Without this fan-out the passport looks up
+    // ('booking', bookingId), finds nothing, and silently omits the
+    // customer's escrow-reversal refund from the §36 REFUND lineage.
+    // For booking-family correlations we ALSO fetch escrow rows keyed by
+    // any payoutId(s) whose super_app_payouts.booking_id matches.
+    const orClauses: Array<{ sourceType: string; sourceIds: string[] }> = [
+      { sourceType, sourceIds: [sourceId] },
+    ];
+    if (sourceType === 'booking') {
+      const payoutIds = await lookupPayoutIdsForBooking(sourceId);
+      if (payoutIds.length > 0) {
+        orClauses.push({ sourceType: 'escrow', sourceIds: payoutIds });
+      }
+    }
+
+    const rows: any[] = [];
+    // Distinct queries so a caller with a small booking-lineage never turns
+    // into a full-table scan; each hits refund_tx_source_idx.
+    for (const clause of orClauses) {
+      const { rows: r } = await pool.query(
+        `SELECT refund_id AS id, refund_cents AS amount_cents,
+                rail_ref AS external_refund_ref,
+                sumit_credit_doc_ref AS credit_document_id,
+                instrument, reason, status, created_at
+           FROM refund_transactions
+          WHERE source_type = $1 AND source_id = ANY($2::text[])
+            AND status IN ('succeeded', 'approved', 'executing')
+          ORDER BY created_at ASC`,
+        [clause.sourceType, clause.sourceIds],
+      );
+      rows.push(...r);
+    }
     if (rows.length === 0) return empty;
+
+    // A refund is uniquely identified by refund_id — dedupe just in case a
+    // payout+booking pair ever surfaced the same row on both branches.
+    const seen = new Set<string>();
+    const dedupedRows: any[] = [];
+    for (const r of rows) {
+      const k = String(r.id);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      dedupedRows.push(r);
+    }
+    dedupedRows.sort((a, b) => {
+      const ta = a.created_at instanceof Date ? a.created_at.getTime() : Date.parse(String(a.created_at));
+      const tb = b.created_at instanceof Date ? b.created_at.getTime() : Date.parse(String(b.created_at));
+      return ta - tb;
+    });
 
     let totalCents = 0;
     let orphan = false;
-    const refunds = rows.map((r: any, idx: number) => {
+    const refunds = dedupedRows.map((r: any, idx: number) => {
       const amount = Number(r.amount_cents ?? 0);
       totalCents += amount;
       if (!r.credit_document_id) orphan = true;
@@ -233,6 +275,32 @@ function correlationKindToSourceType(kind: string): string | null {
     case 'academy':         return 'academy';
     case 'pettrek':         return 'pettrek';
     default:                return null;
+  }
+}
+
+/**
+ * Reverse index: booking id → the payout ids that funded it.
+ *
+ * ProviderPayoutService writes the customer-refund row for a cancelled
+ * escrow with source_type='escrow', source_id=String(super_app_payouts.id).
+ * The passport's caller supplies a bookingId, not a payoutId, so we walk
+ * super_app_payouts here and fan the refund search out. Returns an empty
+ * array on any DB error so a partial-lineage read still renders honestly
+ * — the caller falls back to the strict ('booking', bookingId) match.
+ */
+async function lookupPayoutIdsForBooking(bookingId: string): Promise<string[]> {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id FROM super_app_payouts WHERE booking_id = $1`,
+      [bookingId],
+    );
+    return rows.map((r: any) => String(r.id));
+  } catch (err: any) {
+    if (err?.code === '42P01') return []; // fresh env — table not yet present
+    logger.warn('[FiscalLineage] payoutId lookup failed', {
+      bookingIdTail: bookingId.slice(-6), error: err?.message,
+    });
+    return [];
   }
 }
 
