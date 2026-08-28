@@ -111,8 +111,9 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
 
   it('composer concatenates the Prestige probe on the pet-parent branch', () => {
     // Guard: a re-order that dropped this probe silently kills Prestige
-    // visibility on the customer home.
-    expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),/);
+    // visibility on the customer home. Adjacency check: Wallet lives
+    // directly before Prestige.
+    expect(SRC).toMatch(/\.\.\.await petParentWalletItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),/);
   });
 
   it('KYA-stale probe treats NULL medical_consent_updated_at as maximally stale', () => {
@@ -141,5 +142,32 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
 
   it('composer concatenates the KYA-stale probe on the pet-parent branch', () => {
     expect(SRC).toMatch(/\.\.\.await petParentPrestigeItems\(userId, he\),\s*\n\s*\.\.\.await petParentKyaStaleItems\(userId, he\),/);
+  });
+
+  it('Wallet probe reads canonical wallet_accounts by user_id — never invents balance (CEO §46)', () => {
+    // Ownership: user_id must equal the caller. Balance fields read
+    // DIRECTLY off the row — no arithmetic, no invented value.
+    expect(SRC).toMatch(/eq\(walletAccounts\.userId, userId\)/);
+    expect(SRC).toMatch(/const cashCents = Number\(r\.cashWalletBalanceCents \?\? 0\);/);
+    expect(SRC).toMatch(/const washCredits = Number\(r\.washPackageCredits \?\? 0\);/);
+    // Signal threshold: zero + zero → no item.
+    expect(SRC).toMatch(/if \(!hasCash && !hasPackages\) return \[\];/);
+    // AttentionItem uses the wallet domain contract.
+    expect(SRC).toMatch(/domain: 'wallet'/);
+  });
+
+  it('Wallet probe surfaces cash balance via moneySummary only when cashCents > 0', () => {
+    // The card's moneySummary carries the amount in CENTS. A wallet
+    // with only wash-package credits must not fabricate a cash number.
+    expect(SRC).toMatch(/moneySummary: hasCash\s*\n\s*\? \{ amountCents: cashCents, currency: 'ILS', label:[^}]+\}\s*\n\s*: undefined,/);
+  });
+
+  it('Wallet probe fails-CLOSED on DB error', () => {
+    expect(SRC).toMatch(/\[AttentionFeed\] pet-parent wallet probe failed/);
+    expect(SRC).toMatch(/logger\.warn\('\[AttentionFeed\] pet-parent wallet probe failed'[\s\S]*?return \[\];\s*\n\s*\}/);
+  });
+
+  it('composer concatenates the Wallet probe between eGift and Prestige on the pet-parent branch', () => {
+    expect(SRC).toMatch(/\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentWalletItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),/);
   });
 });

@@ -18,7 +18,7 @@
 
 import { and, eq, gt, inArray, desc, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests, eVouchers, pets, privilegeMembers, providerApplications } from '@shared/schema';
+import { bookingRequests, eVouchers, pets, privilegeMembers, providerApplications, walletAccounts } from '@shared/schema';
 import { logger } from '../lib/logger';
 import type {
   AttentionActor,
@@ -289,6 +289,74 @@ async function petParentEgiftItems(userId: string, he: boolean): Promise<Attenti
 }
 
 /**
+ * CEO §46 + §80 Journey Brain — cash-wallet + wash-package value
+ * probe. Reads canonical wallet_accounts (user_id = userId, one row
+ * per user via UNIQUE constraint). Emits ONE consolidated
+ * informational item when the caller holds usable value the app can
+ * safely nudge them to spend.
+ *
+ * "Usable value" is cash-wallet balance (in cents) OR wash-package
+ * credits. The mapper reads these DIRECTLY off the row — never
+ * arithmetic, never invented balance (CEO §46: AI never edits the
+ * ledger, only projects canonical truth).
+ *
+ * eGift is intentionally a SEPARATE probe (eVouchers) so a customer
+ * with both wallet + eGift sees two distinct value cards, not one
+ * merged number.
+ */
+async function petParentWalletItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const rows = await db
+      .select({
+        walletId: walletAccounts.walletId,
+        cashWalletBalanceCents: walletAccounts.cashWalletBalanceCents,
+        washPackageCredits: walletAccounts.washPackageCredits,
+      })
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+    if (!rows.length) return [];
+    const r = rows[0];
+    const cashCents = Number(r.cashWalletBalanceCents ?? 0);
+    const washCredits = Number(r.washPackageCredits ?? 0);
+    // Signal threshold: any positive balance OR any wash package
+    // credit. Zero + zero → no home nudge.
+    const hasCash = Number.isFinite(cashCents) && cashCents > 0;
+    const hasPackages = Number.isFinite(washCredits) && washCredits > 0;
+    if (!hasCash && !hasPackages) return [];
+    const cashIls = cashCents / 100;
+    const reasonParts: string[] = [];
+    if (hasCash) {
+      reasonParts.push(he
+        ? `₪${cashIls.toFixed(2)} בארנק`
+        : `₪${cashIls.toFixed(2)} in wallet`);
+    }
+    if (hasPackages) {
+      reasonParts.push(he
+        ? `${washCredits} חבילות שטיפה`
+        : `${washCredits} wash package${washCredits === 1 ? '' : 's'}`);
+    }
+    return [{
+      id: `wallet:${r.walletId}`,
+      actor: 'pet_parent',
+      domain: 'wallet',
+      entityId: r.walletId,
+      priority: 'informational',
+      title: he ? 'יש לך יתרה פעילה' : 'You have available balance',
+      reason: reasonParts.join(he ? ' · ' : ' · '),
+      nextAction: 'view',
+      destination: '/my-wallet',
+      moneySummary: hasCash
+        ? { amountCents: cashCents, currency: 'ILS', label: he ? 'יתרת ארנק' : 'Wallet balance' }
+        : undefined,
+    }];
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] pet-parent wallet probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+/**
  * CEO §48 Journey Brain — Pet Passport / KYA-stale probe. Reads the
  * pets the caller owns and surfaces the OLDEST care-profile-stale
  * signal as ONE informational item ("Bruno's care profile hasn't been
@@ -494,6 +562,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
     ? [
         ...await petParentBookingItems(userId, he),
         ...await petParentEgiftItems(userId, he),
+        ...await petParentWalletItems(userId, he),
         ...await petParentPrestigeItems(userId, he),
         ...await petParentKyaStaleItems(userId, he),
       ]
