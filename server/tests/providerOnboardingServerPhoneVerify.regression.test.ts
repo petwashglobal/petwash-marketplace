@@ -72,4 +72,27 @@ describe('provider-onboarding — server-verified phone before /apply', () => {
     expect(idNumberCheckIdx).toBeGreaterThan(0);
     expect(phoneCheckIdx).toBeLessThan(idNumberCheckIdx);
   });
+
+  it('CEO §43 — /apply never reads phoneVerified from the request body (client boolean is not authority)', () => {
+    // Defence-in-depth: a refactor that started trusting the client's
+    // React state (or a body field named phoneVerified) would silently
+    // reopen the bypass the fix at 42483a118 closed. Assert the whole
+    // provider-onboarding.ts source never reads phoneVerified off any
+    // body-shaped identifier.
+    for (const pattern of [
+      /req\.body\.phoneVerified/,
+      /req\.body\?\.phoneVerified/,
+      /\{[^}]*phoneVerified[^}]*\}\s*=\s*req\.body/,
+    ]) {
+      expect(SRC).not.toMatch(pattern);
+    }
+  });
+
+  it('CEO §43 — authority read comes from Firebase user OR Postgres users.mobile_verified_at, both server-owned', () => {
+    // Pin the two authoritative sources. A rename or drop of either
+    // half re-opens the bypass on the surviving path.
+    expect(SRC).toMatch(/firebaseHasPhone = !!authenticatedUser\?\.phone_number/);
+    expect(SRC).toMatch(/users\.mobileVerifiedAt/);
+    expect(SRC).toMatch(/postgresHasPhone = !!row\?\.mobileVerifiedAt/);
+  });
 });
