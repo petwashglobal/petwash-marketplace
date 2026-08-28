@@ -12,6 +12,9 @@ import {
   filterPetForProvider,
   filterPetPublic,
 } from '../lib/petPrivacy';
+import { db as pgDb, pool } from '../db';
+import { pets as pgPets } from '@shared/schema';
+import { and, eq } from 'drizzle-orm';
 
 const router = Router();
 
@@ -218,6 +221,75 @@ router.patch('/:petId', validateFirebaseToken, async (req, res) => {
   } catch (error) {
     logger.error('Error updating pet', error);
     res.status(500).json({ error: 'Failed to update pet' });
+  }
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// CEO §22 (2026-08-28) — owner-controlled medical-share consent.
+//
+// buildServerSafetySnapshot / projectStoredSafetyForProvider both gate on the
+// PostgreSQL pets row's medicalShareConsent + medicalDataPrivate columns —
+// but until this endpoint existed no code path let the owner ACTUALLY FLIP
+// those flags with an audit trail. Consent silently stayed at the DB
+// default (false) forever, so bookings could never carry medical fields
+// even when the owner wanted them shared.
+//
+// Contract:
+//   POST /api/pets/:petId/consent { medicalShareConsent: boolean }
+//   • Ownership verified (pets.userId === caller uid). Cross-user returns 404.
+//   • Sets medicalShareConsent, mirrors medicalDataPrivate (private = !share),
+//     stamps medicalConsentUpdatedAt = NOW() for audit.
+//   • Fail-closed: on any DB error the endpoint returns 502 and the flag is
+//     NOT updated. Medical data must never leak because a write half-succeeded.
+//
+// This is CEO §4 architecture — ACCOUNT/PET preference for now. Booking-
+// scoped consent (§4 second half) is a future layer on top of this flag.
+// ────────────────────────────────────────────────────────────────────────────
+router.post('/:petId/consent', validateFirebaseToken, async (req, res) => {
+  const uid = req.firebaseUser!.uid;
+  const petIdNum = Number(req.params.petId);
+  if (!Number.isFinite(petIdNum) || petIdNum <= 0) {
+    return res.status(400).json({ error: 'Invalid petId' });
+  }
+  const raw = req.body?.medicalShareConsent;
+  if (typeof raw !== 'boolean') {
+    return res.status(400).json({
+      error: 'medicalShareConsent must be a boolean',
+      errorCode: 'CONSENT_MUST_BE_BOOL',
+    });
+  }
+  try {
+    // Ownership + row exists — both keyed in the same WHERE so a
+    // cross-user attempt hits the row-count === 0 branch (404).
+    const r = await pool.query(
+      `UPDATE pets
+          SET medical_share_consent = $1,
+              medical_data_private  = $2,
+              medical_consent_updated_at = NOW(),
+              updated_at            = NOW()
+        WHERE id = $3 AND user_id = $4`,
+      [raw, !raw, petIdNum, uid],
+    );
+    if ((r.rowCount ?? 0) === 0) {
+      return res.status(404).json({ error: 'Pet not found', errorCode: 'PET_NOT_FOUND' });
+    }
+    logger.info('[Pets] medical-share consent updated', {
+      uid, petId: petIdNum, medicalShareConsent: raw,
+    });
+    return res.json({
+      ok: true,
+      petId: petIdNum,
+      medicalShareConsent: raw,
+      medicalDataPrivate: !raw,
+    });
+  } catch (err: any) {
+    logger.error('[Pets] consent update FAILED — flag NOT written', {
+      uid, petId: petIdNum, error: err?.message,
+    });
+    return res.status(502).json({
+      error: 'Failed to update consent — please retry',
+      errorCode: 'CONSENT_UPDATE_FAILED',
+    });
   }
 });
 
