@@ -16,7 +16,8 @@
  * booking-create call sites so the two paths behave identically.
  *
  * A refactor that unconditionally spreads the medical fields into the
- * snapshot leaks PHI to unauthorized walkers and trips this test.
+ * snapshot leaks pet medical data to unauthorized walkers and trips
+ * this test.
  */
 import fs from 'node:fs';
 import path from 'node:path';

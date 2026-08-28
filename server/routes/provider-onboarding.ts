@@ -2162,28 +2162,33 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         applicantTypes.map((t) => providerTypeToPlatformId[t]).filter(Boolean),
       ));
       if (platformIds.length) {
-        // CEO §73 #14 (2026-08-28): starter weekly availability template.
+        // CEO §73 #14 + §73 audit (2026-08-28): SUGGESTED weekly availability.
         //
-        // Providers landed as `is_available = true` at the row level but
-        // had NO weekly template — every reader that wanted "what days
-        // does this provider work" fell back to "always" and let
-        // customers book at 3am. Stash a permissive-by-default template
-        // inside providers.platform_data.weeklyAvailability so the
-        // client dashboard has something to hydrate from and the
-        // provider only has to CLOSE the days they can't work.
+        // ⚠️ SEEDED AS A UI SUGGESTION, NOT AUTHORITATIVE ⚠️
+        // The template below is only what the provider sees pre-filled
+        // on their dashboard's availability picker. It MUST NOT be
+        // treated as the provider's chosen schedule until they
+        // explicitly confirm it — otherwise search would advertise
+        // hours the provider never approved (product + financial risk
+        // per CEO §73 audit 2026-08-28).
         //
-        // Shape mirrors the calendar UI: 7 keys (sun..sat), each an
-        // object of { morning, afternoon, evening, startHour, endHour }.
-        // startHour + endHour bracket the working window (Israel
-        // convention: 09:00-19:00). Providers refine via dashboard.
+        // `confirmed: false` and `source: 'admin_default_pending_provider_confirmation'`
+        // are the flags every reader (search, quote, calendar) must
+        // check before treating this as bookable. Provider confirmation
+        // sets confirmed=true via their dashboard.
         const weeklyAvailabilityDefault = {
-          sun: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
-          mon: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
-          tue: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
-          wed: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
-          thu: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
-          fri: { morning: true, afternoon: false, evening: false, startHour: 9, endHour: 14 },
-          sat: { morning: false, afternoon: false, evening: false, startHour: 0, endHour: 0 },
+          confirmed: false,
+          source: 'admin_default_pending_provider_confirmation',
+          suggestedAt: new Date().toISOString(),
+          template: {
+            sun: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            mon: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            tue: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            wed: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            thu: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+            fri: { morning: true, afternoon: false, evening: false, startHour: 9, endHour: 14 },
+            sat: { morning: false, afternoon: false, evening: false, startHour: 0, endHour: 0 },
+          },
         };
         const providerPlatformData = { weeklyAvailability: weeklyAvailabilityDefault };
         for (const platformId of platformIds) {
@@ -2227,20 +2232,21 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
             });
           }
 
-          // CEO §73 #13 (2026-08-28): starter RATE CARD per approved service.
+          // CEO §73 #13 + audit (2026-08-28): SUGGESTED starter rate card.
           //
-          // Even after the providers row lands, provider_rate_cards was still
-          // empty — customer search returned the provider with no pricing, and
-          // the quote engine had nothing to charge against. Admin (or the
-          // provider on their dashboard) had to fill each rate by hand before
-          // the provider could actually take a booking.
+          // ⚠️ SEEDED AS A UI SUGGESTION, NOT AUTHORITATIVE ⚠️
+          // provider_rate_cards was empty on approval, so admin (or the
+          // provider) had to fill each rate by hand before booking could
+          // quote. We seed a starter row so the provider's dashboard has
+          // something to pre-fill — but the quote engine MUST NOT treat
+          // this rate as authoritative until the provider confirms it
+          // on their dashboard (otherwise search advertises rates the
+          // provider never chose — product + financial risk per audit).
           //
-          // Insert a sensible starter rate per approved platform so the
-          // provider becomes bookable immediately. Values are the marketplace
-          // floor for Israel (ILS agorot); providers raise them via the
-          // dashboard's pricing panel. Idempotent per (provider_id, platform,
-          // service_type) via ON CONFLICT DO NOTHING — safe to re-run and
-          // safe against re-approval.
+          // The row carries `pricing_rules.confirmed = false` +
+          // `pricing_rules.source = 'admin_default_pending_provider_confirmation'`
+          // so downstream readers can gate. Idempotent per
+          // (provider_id, platform, service_type) via WHERE NOT EXISTS.
           const rateCardDefaults: Record<string, {
             serviceType: string;
             baseRatePerHourCents:  number | null;
@@ -2264,13 +2270,19 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
               // control here. Guard with WHERE NOT EXISTS instead:
               // idempotent per (provider_id, platform, service_type)
               // and safe on re-approve.
+              const pricingRulesFlag = JSON.stringify({
+                confirmed: false,
+                source: 'admin_default_pending_provider_confirmation',
+                suggestedAt: new Date().toISOString(),
+              });
               await pool.query(
                 `INSERT INTO provider_rate_cards (
                     rate_card_id, provider_id, platform, service_type,
                     base_rate_per_hour_cents, base_rate_per_night_cents, base_rate_per_visit_cents,
+                    pricing_rules,
                     created_at, updated_at
                   )
-                  SELECT $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
+                  SELECT $1, $2, $3, $4, $5, $6, $7, $8::jsonb, NOW(), NOW()
                   WHERE NOT EXISTS (
                     SELECT 1 FROM provider_rate_cards
                      WHERE provider_id = $2 AND platform = $3 AND service_type = $4
@@ -2283,6 +2295,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
                   defaults.baseRatePerHourCents,
                   defaults.baseRatePerNightCents,
                   defaults.baseRatePerVisitCents,
+                  pricingRulesFlag,
                 ],
               );
               logger.info('[Provider Onboarding] ✅ starter rate card inserted (idempotent) — provider now quotable', {

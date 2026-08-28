@@ -205,3 +205,93 @@ export function filterPetPublic(pet: AnyPet): AnyPet {
 export function providerHasMedicalConsent(pet: AnyPet): boolean {
   return pet['medicalShareConsent'] === true && pet['medicalDataPrivate'] !== true;
 }
+
+/**
+ * CEO §22 (2026-08-28) — SERVER-ENFORCED KYA snapshot builder for booking-create.
+ *
+ * The client's `petSafetySnapshot.medicalConsented` flag is NEVER authority.
+ * A modified client can POST allergies/medications/vet contact even with
+ * consent=false. This builder ignores any client-supplied medical fields
+ * and composes the persisted snapshot from AUTHORITATIVE pet data + the
+ * canonical consent flag off the pet row.
+ *
+ * Contract:
+ *   • The provider-visible SAFETY subset (aggression, escape risk,
+ *     behaviour, feeding, handling notes, sensitive-skin flag) is
+ *     always allowed — this protects the person about to hold the leash.
+ *     Where the client supplies a note, it is taken as-is (behaviour
+ *     notes belong to the owner). Where it is absent, we fall back to
+ *     the pet row.
+ *   • The MEDICAL subset (allergies, medications, vet name, vet phone)
+ *     is written ONLY when the pet row's `medicalShareConsent === true`
+ *     AND `medicalDataPrivate !== true`. The client's `medicalConsented`
+ *     boolean is discarded — we always project the DB consent.
+ *   • `medicalConsented` on the persisted snapshot is set FROM THE
+ *     SERVER READ, so downstream readers know whether the medical block
+ *     was intentionally withheld vs empty.
+ *
+ * Terminology: this is "pet medical data" / "sensitive care data". It
+ * is not PHI in the legal sense (US HIPAA covers human health data).
+ * Callers should use the neutral terminology in comments + logs.
+ */
+export interface KyaSafetySnapshot {
+  aggressionWarning:    string | null;
+  escapeRisk:           boolean;
+  behaviourNotes:       string;
+  feedingInstructions:  string;
+  handlingInstructions: string;
+  sensitiveSkin:        boolean;
+  medicalConsented:     boolean;
+  // Present only under authoritative consent.
+  allergies?:      string;
+  medicationNotes?: string;
+  vetName?:        string;
+  vetPhone?:       string;
+}
+
+/**
+ * Compose a server-authoritative safety snapshot.
+ *
+ * @param canonicalPet the pet row loaded from Postgres/Firestore by an
+ *   authenticated + ownership-verified read. Passing an unauthenticated
+ *   or cross-user pet violates the contract.
+ * @param clientSnapshot the shape the client sent. May be null/malformed
+ *   — non-object inputs are treated as empty. Any medical field on the
+ *   input is IGNORED; medical fields always come from the pet row under
+ *   the DB consent flag.
+ */
+export function buildServerSafetySnapshot(
+  canonicalPet: AnyPet,
+  clientSnapshot: unknown,
+): KyaSafetySnapshot {
+  const c: Record<string, unknown> =
+    clientSnapshot && typeof clientSnapshot === 'object' && !Array.isArray(clientSnapshot)
+      ? (clientSnapshot as Record<string, unknown>)
+      : {};
+
+  const asStr  = (v: unknown, fallback = ''): string  => (typeof v === 'string' ? v : fallback);
+  const asBool = (v: unknown): boolean                => v === true;
+
+  // Safety subset — always allowed. Owner-authored notes win over the
+  // stale pet-row copy when the owner typed something at booking time.
+  const snapshot: KyaSafetySnapshot = {
+    aggressionWarning:    asStr(c.aggressionWarning,    asStr(canonicalPet['aggressionWarning'], '')) || null,
+    escapeRisk:           asBool(c.escapeRisk) || asBool(canonicalPet['escapeRisk']),
+    behaviourNotes:       asStr(c.behaviourNotes,       asStr(canonicalPet['behaviourNotes'])),
+    feedingInstructions:  asStr(c.feedingInstructions,  asStr(canonicalPet['feedingInstructions'])),
+    handlingInstructions: asStr(c.handlingInstructions, asStr(canonicalPet['handlingInstructions'])),
+    sensitiveSkin:        asBool(c.sensitiveSkin) || (canonicalPet['skinSensitivity'] != null && String(canonicalPet['skinSensitivity']).trim() !== ''),
+    // Canonical consent — from the pet row, not from the client.
+    medicalConsented:     providerHasMedicalConsent(canonicalPet),
+  };
+
+  // Medical subset — server-only projection under DB consent.
+  if (snapshot.medicalConsented) {
+    snapshot.allergies       = asStr(canonicalPet['allergies']);
+    snapshot.medicationNotes = asStr(canonicalPet['medications']);
+    snapshot.vetName         = asStr(canonicalPet['vetName']);
+    snapshot.vetPhone        = asStr(canonicalPet['vetPhone']);
+  }
+
+  return snapshot;
+}

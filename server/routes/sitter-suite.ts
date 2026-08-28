@@ -21,6 +21,7 @@ import {
   octopusInvoices,
   providerApprovalQueue,
   users,
+  pets,
   type SitterProfile,
   type PetProfileForSitting,
   type SitterBooking,
@@ -775,33 +776,53 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       addressLat,
       addressLng,
       // CEO §12 (2026-08-28): structured KYA safety flags. Client
-      // (sitter-suite/BookingFlow.tsx:241) sends this alongside the
-      // primary fields; server used to silently drop it, so the sitter
-      // never saw aggression / escape-risk / allergy warnings before
-      // arrival.
-      petSafetySnapshot,
+      // (sitter-suite/BookingFlow.tsx:241) sends this; server enforces
+      // authority (see the buildServerSafetySnapshot call below).
+      petSafetySnapshot: clientSafetySnapshot,
     } = req.body;
     const resolvedAddressText = addressText ?? addressTextFallback ?? null;
-    const safeSnapshot: Record<string, unknown> | null =
-      petSafetySnapshot && typeof petSafetySnapshot === 'object' && !Array.isArray(petSafetySnapshot)
-        ? (petSafetySnapshot as Record<string, unknown>)
-        : null;
-    
+
     // Always derive ownerId from the verified Firebase token — never trust req.body.
     const ownerId = (req as any).user?.uid;
-    
+
     const [sitter] = await db
       .select()
       .from(sitterProfiles)
       .where(eq(sitterProfiles.id, sitterId));
-    
+
     const [pet] = await db
       .select()
       .from(petProfilesForSitting)
       .where(and(eq(petProfilesForSitting.id, petId), eq(petProfilesForSitting.userId, ownerId)));
-    
+
     if (!sitter || !pet) {
       return res.status(404).json({ error: 'Sitter or pet not found' });
+    }
+
+    // ── CEO §22 SERVER-ENFORCED KYA privacy (2026-08-28) ────────────────
+    // Client `medicalConsented=true` is NEVER authority. Compose the
+    // snapshot from ownership-verified pet data + the CANONICAL consent
+    // flag off the shared pets table (petProfilesForSitting has no
+    // consent column, so we cross-reference the canonical `pets` row
+    // by owner + name). Fail-safe: unknown → medicalConsented=false.
+    let safeSnapshot: Record<string, unknown> | null = null;
+    try {
+      let canonicalPet: any = pet;
+      try {
+        const [canonical] = await db
+          .select()
+          .from(pets)
+          .where(and(eq(pets.userId, ownerId), eq(pets.name, pet.name)))
+          .limit(1);
+        if (canonical) canonicalPet = { ...pet, ...canonical };
+      } catch { /* fall back to sitter-side pet — medical stripped below */ }
+      const { buildServerSafetySnapshot } = await import('../lib/petPrivacy');
+      safeSnapshot = buildServerSafetySnapshot(canonicalPet, clientSafetySnapshot) as unknown as Record<string, unknown>;
+    } catch (kyaErr: any) {
+      logger.warn('[Sitter Suite] KYA snapshot build failed — booking continues without medical fields', {
+        error: kyaErr?.message,
+      });
+      safeSnapshot = null;
     }
     
     const start = new Date(startDate);

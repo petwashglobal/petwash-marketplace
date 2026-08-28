@@ -72,6 +72,18 @@ describe('provider approve seeds starter rate card + weekly availability (CEO §
       expect(SRC).toMatch(/rate-card insert skipped — provider_rate_cards absent/);
       expect(SRC).toMatch(/rate-card INSERT failed — approved provider is searchable but NOT quotable/);
     });
+
+    it('the starter rate is written with pricing_rules.confirmed=false so downstream readers can gate', () => {
+      // CEO audit 2026-08-28: search / quote engines must not treat
+      // the seeded rate as authoritative until the provider confirms
+      // on the dashboard.
+      expect(SRC).toMatch(/const pricingRulesFlag = JSON\.stringify\(\{/);
+      expect(SRC).toMatch(/confirmed:\s*false/);
+      expect(SRC).toMatch(/source:\s*'admin_default_pending_provider_confirmation'/);
+      // The INSERT actually writes it into pricing_rules.
+      expect(SRC).toMatch(/pricing_rules,\s*\n\s*created_at, updated_at/);
+      expect(SRC).toMatch(/\$8::jsonb/);
+    });
   });
 
   describe('weekly availability template on providers.platform_data', () => {
@@ -82,6 +94,14 @@ describe('provider approve seeds starter rate card + weekly availability (CEO §
       }
       // Startup + close hours present on each row (not just booleans).
       expect(SRC).toMatch(/startHour:\s*9,\s*endHour:\s*19/);
+    });
+
+    it('the template is marked confirmed:false with source explaining it is not authoritative', () => {
+      // CEO audit 2026-08-28: seeded values must be a SUGGESTION until
+      // the provider confirms. Otherwise search advertises schedules
+      // the provider never chose.
+      expect(SRC).toMatch(/confirmed:\s*false/);
+      expect(SRC).toMatch(/source:\s*'admin_default_pending_provider_confirmation'/);
     });
 
     it('Sat is closed by default (Israel convention: Shabbat)', () => {

@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { randomInt, randomBytes } from 'crypto';
 import { db, pool } from '../db';
-import { 
-  walkerProfiles, 
-  walkBookings, 
+import {
+  walkerProfiles,
+  walkBookings,
   walkGpsTracking,
   walkHealthData,
   walkBlockchainAudit,
@@ -17,6 +17,7 @@ import {
   bookingRequests,
   providerApprovalQueue,
   walkSlotHolds,
+  pets,
   type InsertWalkerProfile,
   type InsertWalkBooking,
   type InsertWalkGpsTracking,
@@ -428,21 +429,71 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       petWeight,
       petSpecialNeeds,
       // CEO §12 (2026-08-28): structured safety flags from the KYA pet
-      // record — aggression, escape risk, allergies, medications, vet
-      // contact, feeding/handling notes. Was silently dropped: the
-      // walker only ever saw petSpecialNeeds free-text and every safety
-      // flag stayed invisible to the person about to hold the leash.
-      // Client (walk-my-pet/BookingFlow.tsx:250) already sends it —
-      // wire it through so the server actually stores it.
-      petSafetySnapshot,
+      // record — aggression, escape risk, feeding/handling notes plus,
+      // under authoritative consent, allergies / medications / vet
+      // contact. Client sends its view; server enforces authority.
+      petSafetySnapshot: clientSafetySnapshot,
+      petIds: rawPetIds,
     } = req.body;
-    // Only store a real object shape. Anything else (string, array,
-    // primitive) is ignored — the column is a structured snapshot, not
-    // a free-form blob.
-    const safeSnapshot: Record<string, unknown> | null =
-      petSafetySnapshot && typeof petSafetySnapshot === 'object' && !Array.isArray(petSafetySnapshot)
-        ? (petSafetySnapshot as Record<string, unknown>)
-        : null;
+
+    // ── CEO §22 SERVER-ENFORCED KYA privacy (2026-08-28) ────────────────
+    // Client `medicalConsented=true` on the snapshot is NEVER authority.
+    // A malicious client can post any medical field regardless of the
+    // owner's real consent. Load the canonical pet, verify ownership,
+    // and let the server compose the snapshot from authoritative pet
+    // data + the DB consent flag. Any client-supplied medical field
+    // is IGNORED.
+    let safeSnapshot: Record<string, unknown> | null = null;
+    try {
+      const petIdCandidate = Array.isArray(rawPetIds) && rawPetIds.length > 0
+        ? Number(rawPetIds[0]) : null;
+      if (Number.isFinite(petIdCandidate) && (petIdCandidate as number) > 0) {
+        const [petRow] = await db
+          .select()
+          .from(pets)
+          .where(and(eq(pets.id, petIdCandidate as number), eq(pets.userId, ownerId)))
+          .limit(1);
+        if (petRow) {
+          // Server-authoritative snapshot — medical fields projected
+          // only under petRow.medicalShareConsent === true.
+          const { buildServerSafetySnapshot } = await import('../lib/petPrivacy');
+          safeSnapshot = buildServerSafetySnapshot(petRow as any, clientSafetySnapshot) as unknown as Record<string, unknown>;
+        } else {
+          // Cross-user attempt OR unknown petId. Fall through to a
+          // safety-only projection built from the client's non-medical
+          // fields — never leak medical.
+          const c = (clientSafetySnapshot && typeof clientSafetySnapshot === 'object' && !Array.isArray(clientSafetySnapshot))
+            ? (clientSafetySnapshot as Record<string, unknown>) : {};
+          safeSnapshot = {
+            aggressionWarning:    typeof c.aggressionWarning === 'string' ? c.aggressionWarning : null,
+            escapeRisk:           c.escapeRisk === true,
+            behaviourNotes:       typeof c.behaviourNotes === 'string' ? c.behaviourNotes : '',
+            feedingInstructions:  typeof c.feedingInstructions === 'string' ? c.feedingInstructions : '',
+            handlingInstructions: typeof c.handlingInstructions === 'string' ? c.handlingInstructions : '',
+            sensitiveSkin:        c.sensitiveSkin === true,
+            medicalConsented:     false,
+          };
+        }
+      } else if (clientSafetySnapshot && typeof clientSafetySnapshot === 'object' && !Array.isArray(clientSafetySnapshot)) {
+        // No petId provided — cannot verify ownership. Accept ONLY the
+        // safety subset from the client; strip any medical field.
+        const c = clientSafetySnapshot as Record<string, unknown>;
+        safeSnapshot = {
+          aggressionWarning:    typeof c.aggressionWarning === 'string' ? c.aggressionWarning : null,
+          escapeRisk:           c.escapeRisk === true,
+          behaviourNotes:       typeof c.behaviourNotes === 'string' ? c.behaviourNotes : '',
+          feedingInstructions:  typeof c.feedingInstructions === 'string' ? c.feedingInstructions : '',
+          handlingInstructions: typeof c.handlingInstructions === 'string' ? c.handlingInstructions : '',
+          sensitiveSkin:        c.sensitiveSkin === true,
+          medicalConsented:     false,
+        };
+      }
+    } catch (kyaErr: any) {
+      logger.warn('[Walk My Pet] KYA snapshot build failed — booking continues without medical fields', {
+        error: kyaErr?.message,
+      });
+      safeSnapshot = null;
+    }
 
     // Validate required fields
     if (!walkerId || !scheduledDate || !scheduledStartTime || !durationMinutes || 
