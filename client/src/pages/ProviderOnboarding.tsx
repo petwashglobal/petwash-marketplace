@@ -927,18 +927,50 @@ export default function ProviderOnboarding() {
         setTimeout(() => navigate('/provider/pending'), 2500);
       } else {
         console.error('[ProviderOnboarding] Submit failed:', { traceId, status: response.status, error: data.error });
+        // CEO §60 (2026-08-28) — map stable server error codes to
+        // friendly HE/EN copy. NEVER surface a raw server .error
+        // string to a human — those carry stack traces, Firebase
+        // internal codes, or Zod issue lists that we don't want
+        // rendered on a customer surface.
+        const FRIENDLY: Record<string, { he: string; en: string }> = {
+          PHONE_NOT_VERIFIED: {
+            he: 'נדרש לאמת את מספר הטלפון שלך לפני שליחת הבקשה. עברו לאזור החשבון → אבטחה כדי לאמת.',
+            en: 'Please verify your mobile number before submitting. Head to Account → Security to verify.',
+          },
+          VERIFY_LOOKUP_FAILED: {
+            he: 'לא הצלחנו לבדוק את מצב האימות שלך כרגע. נסו שוב בעוד רגע.',
+            en: 'We could not check your verification state right now. Please try again in a moment.',
+          },
+          ID_NUMBER_REQUIRED: {
+            he: 'חסר מספר תעודת זהות / דרכון / רישיון נהיגה. חזרו לשלב הזהות והוסיפו אותו.',
+            en: 'A national ID / passport / driver-license number is required. Return to the identity step to add it.',
+          },
+          APPLICATION_ALREADY_PROCESSED: {
+            he: 'בקשה זו כבר עברה בדיקה. אין צורך לשלוח שוב.',
+            en: 'This application has already been reviewed. No need to resubmit.',
+          },
+          APPLICATION_NOT_FOUND: {
+            he: 'לא נמצאה בקשה מתאימה. נא להתחיל את התהליך מחדש.',
+            en: 'No matching application was found. Please start the process again.',
+          },
+        };
+        const friendly = FRIENDLY[String(data?.errorCode || '')];
+        const description = friendly
+          ? (isHebrew ? friendly.he : friendly.en)
+          : (isHebrew ? 'שגיאה בשליחת בקשה' : 'Error submitting application');
         toast({
           variant: 'destructive',
           title: t.error,
-          description: data.error || (isHebrew ? 'שגיאה בשליחת בקשה' : 'Error submitting application')
+          description,
         });
       }
     } catch (error: any) {
       console.error('[ProviderOnboarding] Submit exception:', { traceId, error: error?.message || error });
+      // Network / parse failures never surface the raw error text.
       toast({
         variant: 'destructive',
         title: t.error,
-        description: isHebrew ? 'שגיאה בשליחת בקשה' : 'Error submitting application'
+        description: isHebrew ? 'שגיאה בשליחת בקשה. אנא נסו שוב בעוד רגע.' : 'Error submitting application. Please try again in a moment.',
       });
     } finally {
       setLoading(false);
