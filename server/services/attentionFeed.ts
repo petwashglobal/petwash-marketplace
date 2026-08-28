@@ -18,7 +18,7 @@
 
 import { and, eq, gt, inArray, desc, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests, eVouchers, providerApplications } from '@shared/schema';
+import { bookingRequests, eVouchers, privilegeMembers, providerApplications } from '@shared/schema';
 import { logger } from '../lib/logger';
 import type {
   AttentionActor,
@@ -289,6 +289,72 @@ async function petParentEgiftItems(userId: string, he: boolean): Promise<Attenti
 }
 
 /**
+ * CEO §21 + §47 Journey Brain — Prestige benefit-ready probe. Reads
+ * canonical privilege_members (firebase_uid = userId, status = active).
+ * Emits ONE informational item when the member has positive points OR
+ * a non-bronze tier — the loyalty dashboard is the safe next-best
+ * action.
+ *
+ * IMPORTANT CEO §47 rule: NEVER invent a benefit / discount / voucher.
+ * The item is a nudge to open the dashboard where canonical redemption
+ * authority computes the real available benefits. The mapper reads
+ * tier + points DIRECTLY off the row — no arithmetic.
+ */
+async function petParentPrestigeItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const rows = await db
+      .select({
+        memberId: privilegeMembers.memberId,
+        tier: privilegeMembers.tier,
+        points: privilegeMembers.points,
+        status: privilegeMembers.status,
+      })
+      .from(privilegeMembers)
+      .where(and(
+        eq(privilegeMembers.firebaseUid, userId),
+        eq(privilegeMembers.status, 'active'),
+      ))
+      .limit(1);
+    if (!rows.length) return [];
+    const r = rows[0];
+    const tierRaw = String(r.tier ?? 'bronze').toLowerCase();
+    const points = Number(r.points ?? 0);
+    // Signal threshold: any member above bronze OR any member with
+    // usable points. A member with a bronze tier and zero points has
+    // nothing to act on yet — do not spam their home.
+    const hasSignal = (tierRaw !== 'bronze') || (Number.isFinite(points) && points > 0);
+    if (!hasSignal) return [];
+    // Localized tier label — kept minimal; the real perks copy lives
+    // on the loyalty dashboard where the redemption engine speaks.
+    const tierLabelHe: Record<string, string> = {
+      bronze: 'ברונזה', silver: 'כסף', gold: 'זהב', platinum: 'פלטינה',
+    };
+    const tierLabelEn: Record<string, string> = {
+      bronze: 'Bronze', silver: 'Silver', gold: 'Gold', platinum: 'Platinum',
+    };
+    const tierLabel = (he ? tierLabelHe[tierRaw] : tierLabelEn[tierRaw]) ?? tierRaw;
+    return [{
+      id: `prestige:${r.memberId}`,
+      actor: 'pet_parent',
+      domain: 'prestige',
+      entityId: r.memberId,
+      priority: 'informational',
+      title: he
+        ? `Prestige ${tierLabel} — יש לך הטבות`
+        : `Prestige ${tierLabel} — you have rewards`,
+      reason: he
+        ? `${points.toLocaleString('he-IL')} נקודות פעילות — צפו בהטבות הזמינות`
+        : `${points.toLocaleString('en-US')} points active — see available rewards`,
+      nextAction: 'view',
+      destination: '/loyalty/dashboard',
+    }];
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] pet-parent prestige probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+/**
  * CEO §51 provider document expiry probe. Insurance + KYC doc expiry
  * within 30 days becomes a due_soon item; already expired becomes
  * urgent. Reads provider_applications by user_id and picks the most
@@ -368,6 +434,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
     ? [
         ...await petParentBookingItems(userId, he),
         ...await petParentEgiftItems(userId, he),
+        ...await petParentPrestigeItems(userId, he),
       ]
     : [
         ...await providerBookingItems(userId, he),

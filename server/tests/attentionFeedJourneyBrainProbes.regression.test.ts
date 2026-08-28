@@ -84,8 +84,34 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
     // /provider-application/status which is mounted.
     expect(SRC).toContain("destination: `/egift/balance/${r.id}`");
     expect(SRC).toContain("destination: '/provider-application/status'");
+    expect(SRC).toContain("destination: '/loyalty/dashboard'");
     // Guard against the legacy /provider/application/status typo the
     // destination validator caught during this cycle.
     expect(SRC).not.toMatch(/destination:\s*'\/provider\/application\/status'/);
+  });
+
+  it('Prestige probe reads canonical privilege_members — firebase_uid + status active — never invents a benefit', () => {
+    // CEO §47: NEVER invent a benefit / discount / voucher. The probe
+    // must only nudge to the loyalty dashboard where the redemption
+    // engine speaks. Ownership: firebase_uid must equal userId. Status
+    // filter: only active members surface.
+    expect(SRC).toMatch(/eq\(privilegeMembers\.firebaseUid, userId\)/);
+    expect(SRC).toMatch(/eq\(privilegeMembers\.status, 'active'\)/);
+    // Skip signal: bronze + zero points → no home spam.
+    expect(SRC).toMatch(/const hasSignal = \(tierRaw !== 'bronze'\) \|\| \(Number\.isFinite\(points\) && points > 0\);/);
+    expect(SRC).toMatch(/if \(!hasSignal\) return \[\];/);
+    // AttentionItem uses the prestige domain contract.
+    expect(SRC).toMatch(/domain: 'prestige'/);
+  });
+
+  it('Prestige probe is wrapped in try/catch that returns [] on DB error (fail-CLOSED)', () => {
+    expect(SRC).toMatch(/\[AttentionFeed\] pet-parent prestige probe failed/);
+    expect(SRC).toMatch(/logger\.warn\('\[AttentionFeed\] pet-parent prestige probe failed'[\s\S]*?return \[\];\s*\n\s*\}/);
+  });
+
+  it('composer concatenates the Prestige probe on the pet-parent branch', () => {
+    // Guard: a re-order that dropped this probe silently kills Prestige
+    // visibility on the customer home.
+    expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),/);
   });
 });
