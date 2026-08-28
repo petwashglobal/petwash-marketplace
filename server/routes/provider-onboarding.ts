@@ -1883,12 +1883,57 @@ router.get('/admin/applications/pending', requireSupport, async (req: Request, r
   try {
     const limit = parseInt(req.query.limit as string) || 50;
 
-    const applications = await db
-      .select()
-      .from(providerApplications)
-      .where(eq(providerApplications.status, 'pending'))
-      .orderBy(desc(providerApplications.createdAt))
-      .limit(limit);
+    // CEO §41 (2026-08-28) — do NOT spread the full row. The prior
+    // .select() shipped bank_iban / bank_account_holder / bank_name /
+    // israeli_id_encrypted / date_of_birth / selfie_photo_url /
+    // government_id_url / insurance_cert_url on every list load, on a
+    // route the ops queue re-polls constantly. Move to an explicit
+    // projection matching the pending-review queue below (name / role
+    // / KYC signals — no plaintext bank, no plaintext ID, no doc URLs).
+    // A reviewer who needs bank / ID / selfie details opens the detail
+    // route, which requires an access reason and writes an audit.
+    const { rows } = await pool.query<{
+      id: number; application_id: string; first_name: string; last_name: string;
+      email: string; phone_number: string; provider_type: string; city: string;
+      status: string; biometric_match_score: string | null;
+      kyc_document_type: string | null; kyc_id_last_four: string | null;
+      kyc_ocr_confidence: string | null; kyc_liveness_score: string | null;
+      kyc_decision_flags: string | null; kyc_fraud_risk_level: string | null;
+      submitted_at: string | null; created_at: string;
+    }>(
+      `SELECT id, application_id, first_name, last_name, email,
+              phone_number, provider_type, city, status,
+              biometric_match_score,
+              kyc_document_type, kyc_id_last_four, kyc_ocr_confidence,
+              kyc_liveness_score, kyc_decision_flags, kyc_fraud_risk_level,
+              submitted_at, created_at
+         FROM provider_applications
+        WHERE status = 'pending'
+        ORDER BY created_at DESC
+        LIMIT $1`,
+      [limit],
+    );
+
+    const applications = rows.map(r => ({
+      id: r.id,
+      applicationId: r.application_id,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      email: r.email,
+      phoneNumber: r.phone_number,
+      providerType: r.provider_type,
+      city: r.city,
+      status: r.status,
+      biometricMatchScore: r.biometric_match_score,
+      kycDocumentType: r.kyc_document_type,
+      kycIdLastFour: r.kyc_id_last_four,
+      kycOcrConfidence: r.kyc_ocr_confidence,
+      kycLivenessScore: r.kyc_liveness_score,
+      kycDecisionFlags: r.kyc_decision_flags,
+      kycFraudRiskLevel: r.kyc_fraud_risk_level,
+      submittedAt: r.submitted_at,
+      createdAt: r.created_at,
+    }));
 
     res.json({ applications });
   } catch (error: any) {
