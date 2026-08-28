@@ -18,9 +18,16 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { SmartWashReceipt } from '@shared/schema';
+import { useLanguage } from '@/lib/languageStore';
 
 export function SmartReceiptViewer() {
   const { transactionId } = useParams<{ transactionId: string }>();
+  // HE-parity per §71 — every customer-visible string on the receipt
+  // renders in the viewer's chosen language. Was English-only; a HE
+  // customer landed on 24 unlocalised strings.
+  const { language } = useLanguage();
+  const isHe = language === 'he';
+  const tr = (en: string, he: string) => (isHe ? he : en);
 
   const { data: receipt, isLoading, error } = useQuery<SmartWashReceipt>({
     // param must be IN the URL (queryKey[0]) — the default queryFn fetches queryKey[0]
@@ -34,7 +41,7 @@ export function SmartReceiptViewer() {
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center luxury-animate-scale-in">
           <div className="luxury-spinner"></div>
-          <p className="luxury-text-small mt-4">Loading receipt...</p>
+          <p className="luxury-text-small mt-4">{tr('Loading receipt…', 'טוען קבלה…')}</p>
         </div>
       </div>
     );
@@ -45,8 +52,13 @@ export function SmartReceiptViewer() {
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center luxury-glass-card luxury-shadow-lg p-12 rounded-2xl luxury-animate-slide-up">
           <Receipt className="h-16 w-16 text-amber-300 mx-auto mb-4" />
-          <h2 className="luxury-heading-md mb-2">Receipt Not Found</h2>
-          <p className="luxury-text-small">The receipt you're looking for doesn't exist or has been removed.</p>
+          <h2 className="luxury-heading-md mb-2">{tr('Receipt Not Found', 'הקבלה לא נמצאה')}</h2>
+          <p className="luxury-text-small">
+            {tr(
+              "The receipt you're looking for doesn't exist or has been removed.",
+              'הקבלה שחיפשת אינה קיימת או הוסרה.',
+            )}
+          </p>
         </div>
       </div>
     );
@@ -100,7 +112,7 @@ export function SmartReceiptViewer() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mr-3">
                 <Receipt className="h-6 w-6 text-white" />
               </div>
-              <h1 className="luxury-heading-lg">⁦PetWash™⁩ Receipt</h1>
+              <h1 className="luxury-heading-lg">{tr('⁦PetWash™⁩ Receipt', '⁦PetWash™⁩ · קבלה')}</h1>
             </div>
             <p className="text-lg font-mono luxury-text-gradient">#{receipt.transactionId}</p>
           </div>
@@ -111,20 +123,20 @@ export function SmartReceiptViewer() {
           <div className="luxury-glass-panel px-6 py-4">
             <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <Receipt className="h-5 w-5" />
-              Transaction Details
+              {tr('Transaction Details', 'פרטי העסקה')}
             </h2>
           </div>
           <div className="px-6 py-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="luxury-text-small">Date & Time</p>
+                <p className="luxury-text-small">{tr('Date & Time', 'תאריך ושעה')}</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
                   <Calendar className="h-4 w-4 text-amber-500" />
                   {format(new Date(receipt.washDateTime), 'MMM dd, yyyy HH:mm')}
                 </p>
               </div>
               <div>
-                <p className="luxury-text-small">Location</p>
+                <p className="luxury-text-small">{tr('Location', 'מיקום')}</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
                   <MapPin className="h-4 w-4 text-amber-500" />
                   {receipt.locationName}
@@ -134,25 +146,28 @@ export function SmartReceiptViewer() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="luxury-text-small">Wash Type</p>
+                <p className="luxury-text-small">{tr('Wash Type', 'סוג שטיפה')}</p>
                 <p className="font-semibold text-gray-900">{receipt.washType}</p>
               </div>
               <div>
-                <p className="luxury-text-small">Duration</p>
+                <p className="luxury-text-small">{tr('Duration', 'משך')}</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
                   <Clock className="h-4 w-4 text-amber-500" />
-                  {receipt.washDuration} {receipt.washDuration === 1 ? 'minute' : 'minutes'}
+                  {receipt.washDuration} {tr(
+                    receipt.washDuration === 1 ? 'minute' : 'minutes',
+                    receipt.washDuration === 1 ? 'דקה' : 'דקות',
+                  )}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="luxury-text-small">Customer ID</p>
+                <p className="luxury-text-small">{tr('Customer ID', 'מזהה לקוח')}</p>
                 <p className="font-semibold text-gray-900">{receipt.customerIdMasked}</p>
               </div>
               <div>
-                <p className="luxury-text-small">Payment Method</p>
+                <p className="luxury-text-small">{tr('Payment Method', 'אמצעי תשלום')}</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
                   <CreditCard className="h-4 w-4 text-amber-500" />
                   {receipt.paymentMethod}
@@ -167,25 +182,25 @@ export function SmartReceiptViewer() {
           <div className="luxury-glass-panel px-6 py-4">
             <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Payment Summary
+              {tr('Payment Summary', 'סיכום תשלום')}
             </h2>
           </div>
           <div className="px-6 py-4 space-y-4">
             <div className="flex justify-between">
-              <span className="luxury-text-small">Original Amount:</span>
+              <span className="luxury-text-small">{tr('Original Amount:', 'סכום מקורי:')}</span>
               <span className="font-semibold text-gray-900">{formatCurrency(receipt.originalAmount)}</span>
             </div>
-            
+
             {parseFloat(receipt.discountApplied) > 0 && (
               <div className="flex justify-between text-green-600">
-                <span>Discount Applied:</span>
+                <span>{tr('Discount Applied:', 'הנחה:')}</span>
                 <span className="font-semibold">-{formatCurrency(receipt.discountApplied)}</span>
               </div>
             )}
-            
+
             <div className="border-t border-amber-100 pt-4">
               <div className="flex justify-between text-lg font-bold">
-                <span className="text-gray-900">Final Total:</span>
+                <span className="text-gray-900">{tr('Final Total:', 'סה״כ לתשלום:')}</span>
                 <span className="luxury-text-gradient">{formatCurrency(receipt.finalTotal)}</span>
               </div>
             </div>
@@ -197,19 +212,22 @@ export function SmartReceiptViewer() {
           <div className="luxury-glass-panel px-6 py-4">
             <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <Star className="h-5 w-5" />
-              Loyalty Program
+              {tr('Loyalty Program', 'תכנית נאמנות')}
             </h2>
           </div>
           <div className="px-6 py-4 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="luxury-text-small">Points Earned:</span>
+              <span className="luxury-text-small">{tr('Points Earned:', 'נקודות שנצברו:')}</span>
               <span className="luxury-badge bg-green-100 text-green-700">
-                +{receipt.loyaltyPointsEarned} {receipt.loyaltyPointsEarned === 1 ? 'point' : 'points'}
+                +{receipt.loyaltyPointsEarned} {tr(
+                  receipt.loyaltyPointsEarned === 1 ? 'point' : 'points',
+                  receipt.loyaltyPointsEarned === 1 ? 'נקודה' : 'נקודות',
+                )}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="luxury-text-small">Current Tier:</span>
+              <span className="luxury-text-small">{tr('Current Tier:', 'דרג נוכחי:')}</span>
               <span className={`luxury-badge ${getTierColor(receipt.currentTier)}`}>
                 {getTierIcon(receipt.currentTier)}
                 <span className="ml-1">{receipt.currentTier}</span>
@@ -219,19 +237,24 @@ export function SmartReceiptViewer() {
             {receipt.currentTier !== receipt.nextTier && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="luxury-text-small">Progress to {receipt.nextTier}:</span>
+                  <span className="luxury-text-small">
+                    {tr(`Progress to ${receipt.nextTier}:`, `התקדמות ל-${receipt.nextTier}:`)}
+                  </span>
                   <span className="font-semibold text-gray-900">
-                    {receipt.currentTierPoints} / {receipt.nextTierPoints} pts
+                    {receipt.currentTierPoints} / {receipt.nextTierPoints} {tr('pts', 'נק׳')}
                   </span>
                 </div>
                 <div className="w-full luxury-glass-minimal rounded-full h-2 overflow-hidden">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
                 </div>
                 <p className="luxury-text-small text-center">
-                  {(receipt.nextTierPoints ?? 0) - (receipt.currentTierPoints ?? 0)} points to {receipt.nextTier}
+                  {tr(
+                    `${(receipt.nextTierPoints ?? 0) - (receipt.currentTierPoints ?? 0)} points to ${receipt.nextTier}`,
+                    `${(receipt.nextTierPoints ?? 0) - (receipt.currentTierPoints ?? 0)} נקודות ל-${receipt.nextTier}`,
+                  )}
                 </p>
               </div>
             )}
@@ -243,19 +266,19 @@ export function SmartReceiptViewer() {
           <div className="luxury-glass-panel px-6 py-4">
             <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
               <QrCode className="h-5 w-5" />
-              Receipt QR Code
+              {tr('Receipt QR Code', 'קוד QR לקבלה')}
             </h2>
           </div>
           <div className="px-6 py-6 text-center">
             <div className="luxury-glass-minimal p-4 rounded-xl inline-block">
-              <img 
-                src={receipt.receiptQrCode} 
-                alt="Receipt QR Code" 
+              <img
+                src={receipt.receiptQrCode}
+                alt={tr('Receipt QR Code', 'קוד QR לקבלה')}
                 className="w-32 h-32 mx-auto"
               />
             </div>
             <p className="luxury-text-small mt-2">
-              Scan to view this receipt or share with friends
+              {tr('Scan to view this receipt or share with friends', 'סרקו כדי לראות את הקבלה או לשתף עם חברים')}
             </p>
           </div>
         </div>
@@ -272,7 +295,7 @@ export function SmartReceiptViewer() {
             onClick={() => window.open(`/k9000/booking`, '_blank')}
           >
             <Gift className="h-4 w-4 mr-2" />
-            Wash Now
+            {tr('Wash Now', 'לשטיפה עכשיו')}
           </Button>
 
           {receipt.userId && (
@@ -281,7 +304,7 @@ export function SmartReceiptViewer() {
               onClick={() => window.open(`/?ref=${receipt.userId}`, '_blank')}
             >
               <ExternalLink className="h-4 w-4 mr-2" />
-              Share & Earn Rewards
+              {tr('Share & Earn Rewards', 'שתפו והרוויחו הטבות')}
             </Button>
           )}
         </div>
@@ -289,10 +312,15 @@ export function SmartReceiptViewer() {
         {/* Footer */}
         <div className="text-center mt-8 luxury-text-small luxury-animate-fade-in luxury-delay-6">
           <p>
-            Thank you for choosing ⁦PetWash™⁩ Premium Services
+            {tr(
+              'Thank you for choosing ⁦PetWash™⁩ Premium Services',
+              'תודה שבחרתם ב-⁦PetWash™⁩ Premium',
+            )}
           </p>
           <p className="mt-2">
-            Questions? Contact us at <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient font-semibold">Support@PetWash.co.il</a>
+            {tr('Questions?', 'שאלות?')}{' '}
+            {tr('Contact us at', 'צרו קשר ב-')}{' '}
+            <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient font-semibold">Support@PetWash.co.il</a>
           </p>
         </div>
       </div>
