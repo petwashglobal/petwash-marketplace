@@ -75,6 +75,14 @@ describe('petwash-preflight — CTA scanner (CEO §73)', () => {
     expect(SCANNER).toContain('section-status-row-');
   });
 
+  it('pins the ProviderApplicationStatus eligibility summary anchors (CEO §23)', () => {
+    // readiness-summary + readiness-row-${key} — a rename that drops
+    // either would let the applicant lose sight of their search /
+    // booking eligibility state silently.
+    expect(SCANNER).toContain('readiness-summary');
+    expect(SCANNER).toContain('readiness-row-');
+  });
+
   it('pins the ChooseMode CUSTOMER_FALLBACK guard against a /prestige/home regression', () => {
     // The regex must exist (case sensitive) so a re-introduction of the
     // old string trips the scanner.

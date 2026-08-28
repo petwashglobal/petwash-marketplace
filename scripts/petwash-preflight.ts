@@ -314,6 +314,9 @@ async function checkSignupOnboardingCTAs(): Promise<GuardResult> {
       anchors: [
         { key: 'data-testid="section-status-list"', why: 'per-section state list (§46)' },
         { key: 'data-testid={`section-status-row-${key}`}', why: 'per-row section state anchor (§46)' },
+        // CEO §23 eligibility summary card.
+        { key: 'data-testid="readiness-summary"',                    why: 'readiness eligibility card (§23)' },
+        { key: 'data-testid={`readiness-row-${key}`}',               why: 'per-row eligibility flag anchor (§23)' },
       ],
     },
     {
