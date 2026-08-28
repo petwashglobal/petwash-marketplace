@@ -2162,6 +2162,30 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         applicantTypes.map((t) => providerTypeToPlatformId[t]).filter(Boolean),
       ));
       if (platformIds.length) {
+        // CEO §73 #14 (2026-08-28): starter weekly availability template.
+        //
+        // Providers landed as `is_available = true` at the row level but
+        // had NO weekly template — every reader that wanted "what days
+        // does this provider work" fell back to "always" and let
+        // customers book at 3am. Stash a permissive-by-default template
+        // inside providers.platform_data.weeklyAvailability so the
+        // client dashboard has something to hydrate from and the
+        // provider only has to CLOSE the days they can't work.
+        //
+        // Shape mirrors the calendar UI: 7 keys (sun..sat), each an
+        // object of { morning, afternoon, evening, startHour, endHour }.
+        // startHour + endHour bracket the working window (Israel
+        // convention: 09:00-19:00). Providers refine via dashboard.
+        const weeklyAvailabilityDefault = {
+          sun: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+          mon: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+          tue: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+          wed: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+          thu: { morning: true, afternoon: true, evening: true, startHour: 9, endHour: 19 },
+          fri: { morning: true, afternoon: false, evening: false, startHour: 9, endHour: 14 },
+          sat: { morning: false, afternoon: false, evening: false, startHour: 0, endHour: 0 },
+        };
+        const providerPlatformData = { weeklyAvailability: weeklyAvailabilityDefault };
         for (const platformId of platformIds) {
           try {
             await pool.query(
@@ -2170,11 +2194,13 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
                   verification_status, background_check_status, background_check_date,
                   insurance_provider, insurance_policy_number, insurance_expiry_date,
                   is_available, accepting_new_clients, is_active,
+                  platform_data,
                   created_at, updated_at
                 )
                 VALUES ($1, $2, $3, 'verified', 'passed', NOW(),
                         $4, $5, $6,
                         TRUE, TRUE, TRUE,
+                        $7,
                         NOW(), NOW())
                 ON CONFLICT DO NOTHING`,
               [
@@ -2189,6 +2215,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
                 (application as any).insuranceProvider ?? (application as any).insurance_provider ?? null,
                 (application as any).insurancePolicyNumber ?? (application as any).insurance_policy_number ?? null,
                 (application as any).insuranceExpiresAt ?? (application as any).insurance_expires_at ?? null,
+                JSON.stringify(providerPlatformData),
               ],
             );
             logger.info('[Provider Onboarding] ✅ providers row inserted — provider now searchable', {
@@ -2198,6 +2225,84 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
             logger.error('[Provider Onboarding] providers-row INSERT failed — approved provider will NOT be searchable until manual reconcile', {
               applicationId, userId: application.userId, platformId, error: insertErr?.message,
             });
+          }
+
+          // CEO §73 #13 (2026-08-28): starter RATE CARD per approved service.
+          //
+          // Even after the providers row lands, provider_rate_cards was still
+          // empty — customer search returned the provider with no pricing, and
+          // the quote engine had nothing to charge against. Admin (or the
+          // provider on their dashboard) had to fill each rate by hand before
+          // the provider could actually take a booking.
+          //
+          // Insert a sensible starter rate per approved platform so the
+          // provider becomes bookable immediately. Values are the marketplace
+          // floor for Israel (ILS agorot); providers raise them via the
+          // dashboard's pricing panel. Idempotent per (provider_id, platform,
+          // service_type) via ON CONFLICT DO NOTHING — safe to re-run and
+          // safe against re-approval.
+          const rateCardDefaults: Record<string, {
+            serviceType: string;
+            baseRatePerHourCents:  number | null;
+            baseRatePerNightCents: number | null;
+            baseRatePerVisitCents: number | null;
+          }> = {
+            walk_my_pet: { serviceType: 'dog_walking', baseRatePerHourCents: 5000,  baseRatePerNightCents: null,   baseRatePerVisitCents: null },
+            sitter_suite:{ serviceType: 'pet_sitting', baseRatePerHourCents: null,  baseRatePerNightCents: 15000,  baseRatePerVisitCents: null },
+            pet_trek:    { serviceType: 'pet_taxi',    baseRatePerHourCents: 6000,  baseRatePerNightCents: null,   baseRatePerVisitCents: null },
+            academy:     { serviceType: 'training',    baseRatePerHourCents: 10000, baseRatePerNightCents: null,   baseRatePerVisitCents: null },
+            k9000:       { serviceType: 'k9000_wash',  baseRatePerHourCents: null,  baseRatePerNightCents: null,   baseRatePerVisitCents: 3000 },
+          };
+          const defaults = rateCardDefaults[platformId];
+          if (defaults) {
+            const rateCardId = `RATE-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+            try {
+              // provider_rate_cards has no unique constraint on
+              // (provider_id, platform, service_type) — the table
+              // shipped before this insert was needed, so ON CONFLICT
+              // by target would require adding an index we don't
+              // control here. Guard with WHERE NOT EXISTS instead:
+              // idempotent per (provider_id, platform, service_type)
+              // and safe on re-approve.
+              await pool.query(
+                `INSERT INTO provider_rate_cards (
+                    rate_card_id, provider_id, platform, service_type,
+                    base_rate_per_hour_cents, base_rate_per_night_cents, base_rate_per_visit_cents,
+                    created_at, updated_at
+                  )
+                  SELECT $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
+                  WHERE NOT EXISTS (
+                    SELECT 1 FROM provider_rate_cards
+                     WHERE provider_id = $2 AND platform = $3 AND service_type = $4
+                  )`,
+                [
+                  rateCardId,
+                  application.userId,
+                  platformId,
+                  defaults.serviceType,
+                  defaults.baseRatePerHourCents,
+                  defaults.baseRatePerNightCents,
+                  defaults.baseRatePerVisitCents,
+                ],
+              );
+              logger.info('[Provider Onboarding] ✅ starter rate card inserted (idempotent) — provider now quotable', {
+                applicationId, userId: application.userId, platformId, serviceType: defaults.serviceType,
+              });
+            } catch (rateErr: any) {
+              // 42P01 = table missing on an older deploy — expected during a
+              // rolling deploy window, not an alert. Anything else is a real
+              // failure to make the provider quotable and lands at ERROR.
+              const code = rateErr?.code;
+              if (code === '42P01') {
+                logger.warn('[Provider Onboarding] rate-card insert skipped — provider_rate_cards absent', {
+                  applicationId, userId: application.userId, platformId, code,
+                });
+              } else {
+                logger.error('[Provider Onboarding] rate-card INSERT failed — approved provider is searchable but NOT quotable until manual reconcile', {
+                  applicationId, userId: application.userId, platformId, code, error: rateErr?.message,
+                });
+              }
+            }
           }
         }
 
