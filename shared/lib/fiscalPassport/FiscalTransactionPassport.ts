@@ -162,6 +162,18 @@ export interface RefundLineageEntry {
   externalRefundRef?: string;
   creditDocumentId?: string;
   createdAt: string;
+  /**
+   * §8 CEO example: 'Refund ₪40 = eGift ₪10 restored + Card ₪30 returned'.
+   * The instrument names which original funding leg this refund entry
+   * reversed. Multiple entries for the same original transaction each
+   * carry their own instrument — the composer never invents a single
+   * lump-sum refund when the writer recorded per-leg reversals.
+   */
+  instrument?: 'wallet' | 'egift' | 'loyalty' | 'promo' | 'wash_pack' | 'card' | 'unknown';
+  /** RefundService.status pass-through — 'succeeded' | 'approved' | 'executing' | 'pending'. */
+  status?: string;
+  /** Free-text reason from the writer, if provided. */
+  reason?: string;
 }
 
 export interface RefundLineage {

@@ -88,6 +88,9 @@ interface AdminFiscalPassport {
       externalRefundRef?: string;
       creditDocumentId?: string;
       createdAt: string;
+      instrument?: 'wallet' | 'egift' | 'loyalty' | 'promo' | 'wash_pack' | 'card' | 'unknown';
+      status?: string;
+      reason?: string;
     }>;
     totalRefundedCents: number;
     hasOrphanRefundWarning: boolean;
@@ -332,15 +335,27 @@ export default function AdminTransactionExplorer() {
                   className="rounded-xl px-3 py-2"
                   style={{ background: MARBLE, border: `1px solid ${BORDER}` }}
                 >
-                  <div className="flex items-center justify-between text-[13px] font-mono" dir="ltr">
-                    <span style={{ color: INK }}>{r.refundRef}</span>
-                    <span style={{ color: INK }}>{fmtCents(r.amountCents)}</span>
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span style={{ color: INK, fontWeight: 700 }}>
+                      {r.instrument ? r.instrument.toUpperCase() : 'REFUND'}
+                    </span>
+                    <span dir="ltr" style={{ color: INK, fontWeight: 800 }}>{fmtCents(r.amountCents)}</span>
+                  </div>
+                  <div className="mt-0.5 flex items-center justify-between text-[11px]" style={{ color: MUTED }}>
+                    <span className="font-mono" dir="ltr">{r.refundRef}</span>
+                    <span dir="ltr">{r.status ?? 'succeeded'}</span>
                   </div>
                   <div className="mt-0.5 text-[11px]" style={{ color: MUTED }}>
                     {r.creditDocumentId
                       ? <span className="font-mono" dir="ltr">Doc {r.creditDocumentId}</span>
                       : <span style={{ color: '#8A5A00', fontWeight: 700 }}>{tr('Credit doc pending', 'זיכוי פיסקלי בהמתנה')}</span>}
+                    {r.externalRefundRef && (
+                      <span className="ms-3 font-mono" dir="ltr">{r.externalRefundRef}</span>
+                    )}
                   </div>
+                  {r.reason && (
+                    <div className="mt-0.5 text-[11px] italic" style={{ color: MUTED }}>{r.reason}</div>
+                  )}
                 </li>
               ))}
             </ul>

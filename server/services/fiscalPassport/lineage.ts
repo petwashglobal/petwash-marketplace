@@ -163,7 +163,7 @@ export async function composeRefundLineage(input: {
       `SELECT refund_id AS id, refund_cents AS amount_cents,
               rail_ref AS external_refund_ref,
               sumit_credit_doc_ref AS credit_document_id,
-              status, created_at
+              instrument, reason, status, created_at
          FROM refund_transactions
         WHERE source_type = $1 AND source_id = $2
           AND status IN ('succeeded', 'approved', 'executing')
@@ -178,6 +178,8 @@ export async function composeRefundLineage(input: {
       const amount = Number(r.amount_cents ?? 0);
       totalCents += amount;
       if (!r.credit_document_id) orphan = true;
+      const rawInstrument = String(r.instrument ?? '').toLowerCase();
+      const knownInstruments = ['wallet', 'egift', 'loyalty', 'promo', 'wash_pack', 'card'];
       return {
         refundRef: generateRefundRef({
           originalTransactionRef: input.originalTransactionRef,
@@ -188,6 +190,13 @@ export async function composeRefundLineage(input: {
         externalRefundRef: r.external_refund_ref ?? undefined,
         creditDocumentId: r.credit_document_id ?? undefined,
         createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+        // §8 per-leg breakdown — instrument tells the customer WHERE the
+        // money went back (eGift restored vs card returned). Enforce the
+        // enum shape so an admin free-text field can't leak through.
+        instrument: (knownInstruments.includes(rawInstrument) ? rawInstrument : 'unknown') as
+          RefundLineage['refunds'][number]['instrument'],
+        status: r.status ?? undefined,
+        reason: r.reason ?? undefined,
       };
     });
     return {

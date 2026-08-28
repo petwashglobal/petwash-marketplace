@@ -93,6 +93,9 @@ interface FiscalPassport {
       externalRefundRef?: string;
       creditDocumentId?: string;
       createdAt: string;
+      instrument?: 'wallet' | 'egift' | 'loyalty' | 'promo' | 'wash_pack' | 'card' | 'unknown';
+      status?: string;
+      reason?: string;
     }>;
     totalRefundedCents: number;
     hasOrphanRefundWarning: boolean;
@@ -518,30 +521,52 @@ export function MyTransactionDetail() {
             </div>
             <Kv k={tr('Total refunded', 'סה״כ הוחזר')} v={fmtCents(p.refundLineage.totalRefundedCents, isHe)} bold />
             <div className="mt-3 space-y-2">
-              {p.refundLineage.refunds.map((r) => (
-                <div
-                  key={r.refundRef}
-                  className="rounded-xl px-3 py-2.5"
-                  style={{ background: MARBLE, border: `1px solid ${BORDER}` }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold font-mono" style={{ color: INK }} dir="ltr">
-                      {r.refundRef}
-                    </span>
-                    <span className="text-[14px] font-extrabold" style={{ color: INK }} dir="ltr">
-                      {fmtCents(r.amountCents, isHe)}
-                    </span>
+              {p.refundLineage.refunds.map((r) => {
+                // §8 per-instrument copy — 'eGift ₪10 restored' vs
+                // 'Card ₪30 returned'. Never invents a phrase for an
+                // instrument the writer didn't record.
+                const instrumentCopy = (() => {
+                  switch (r.instrument) {
+                    case 'egift':    return tr('eGift restored', 'שווי eGift הוחזר');
+                    case 'wallet':   return tr('Wallet restored', 'ארנק הוחזר');
+                    case 'loyalty':  return tr('Loyalty points restored', 'נקודות נאמנות הוחזרו');
+                    case 'promo':    return tr('Promo restored', 'שווי קידום הוחזר');
+                    case 'wash_pack': return tr('Wash package restored', 'חבילת רחצה הוחזרה');
+                    case 'card':     return tr('Returned to card', 'הוחזר לכרטיס');
+                    default:         return tr('Refund', 'החזר');
+                  }
+                })();
+                return (
+                  <div
+                    key={r.refundRef}
+                    className="rounded-xl px-3 py-2.5"
+                    style={{ background: MARBLE, border: `1px solid ${BORDER}` }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[13px] font-bold" style={{ color: INK }}>
+                        {instrumentCopy}
+                      </span>
+                      <span className="text-[14px] font-extrabold" style={{ color: INK }} dir="ltr">
+                        {fmtCents(r.amountCents, isHe)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[11px]" style={{ color: MUTED }}>
+                      <span className="font-mono" dir="ltr">{r.refundRef}</span>
+                      <span dir="ltr">{fmtDate(r.createdAt, isHe)}</span>
+                    </div>
+                    <div className="mt-0.5 flex items-center justify-between text-[11px]" style={{ color: MUTED }}>
+                      {r.creditDocumentId
+                        ? <span className="font-mono" dir="ltr">Doc {r.creditDocumentId}</span>
+                        : <span style={{ color: '#8A5A00', fontWeight: 700 }}>
+                            {tr('Credit doc pending', 'זיכוי פיסקלי בהמתנה')}
+                          </span>}
+                      {r.status && r.status !== 'succeeded' && (
+                        <span style={{ color: MUTED }}>{r.status}</span>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px]" style={{ color: MUTED }}>
-                    <span dir="ltr">{fmtDate(r.createdAt, isHe)}</span>
-                    {r.creditDocumentId
-                      ? <span className="font-mono" dir="ltr">Doc {r.creditDocumentId}</span>
-                      : <span style={{ color: '#8A5A00', fontWeight: 700 }}>
-                          {tr('Credit doc pending', 'זיכוי פיסקלי בהמתנה')}
-                        </span>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
