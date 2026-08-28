@@ -21,6 +21,7 @@ import {
   walkBookings,
   trainerBookings,
   k9000WashEvents,
+  pettrekTrips,
 } from '@shared/schema';
 import { logger } from '../../lib/logger';
 import { generateTransactionRef } from '@shared/lib/fiscalPassport/idNamespace';
@@ -50,7 +51,8 @@ export interface CustomerTransactionRow {
     | 'wallet_topup'
     | 'sitter_bookings'
     | 'walk_bookings'
-    | 'trainer_bookings';
+    | 'trainer_bookings'
+    | 'pettrek_trips';
   sourceId: string;
 }
 
@@ -260,6 +262,50 @@ export async function listCustomerTransactions(input: {
       });
     }
   } catch (err) { swallow('trainer_bookings', err); }
+
+  try {
+    // PetTrek trips — the customer sees a transport / sitting / stay trip.
+    // paymentStatus is 'pending' | 'paid' | 'refunded' per the schema.
+    // finalFare wins over estimatedFare once the trip completes, matching
+    // the composer's rule at composer.ts:715.
+    const trekRows = await db
+      .select({
+        id: pettrekTrips.tripId,
+        finalFare: pettrekTrips.finalFare,
+        estimatedFare: pettrekTrips.estimatedFare,
+        paymentStatus: pettrekTrips.paymentStatus,
+        serviceType: pettrekTrips.serviceType,
+        scheduled: pettrekTrips.scheduledPickupTime,
+        actualDropoff: pettrekTrips.actualDropoffTime,
+      })
+      .from(pettrekTrips)
+      .where(eq(pettrekTrips.customerId, input.customerUid))
+      .orderBy(desc(pettrekTrips.scheduledPickupTime))
+      .limit(perSource);
+    for (const t of trekRows) {
+      const paidState = String(t.paymentStatus ?? '');
+      const paid = paidState === 'paid';
+      const refunded = paidState === 'refunded';
+      const event: FiscalEventCode = 'PETTREK_BOOKING_PAID';
+      const rawTotal = Number(t.finalFare ?? t.estimatedFare ?? 0);
+      rows.push({
+        transactionRef: generateTransactionRef({
+          stableId: `pettrek:${t.id}`,
+          stableIsoDate: (t.actualDropoff ?? t.scheduled)?.toISOString() ?? null,
+        }),
+        correlationId: `pettrek:${t.id}`,
+        occurredAt: isoOf(t.actualDropoff ?? t.scheduled),
+        platform: 'PETTREK',
+        label: `PetTrek — ${String(t.serviceType ?? 'trip')}`,
+        totalCents: Math.round(rawTotal * 100),
+        currency: 'ILS',
+        paymentState: paid ? 'PAID' : refunded ? 'REFUNDED' : 'PAYMENT_REQUIRED',
+        documentType: paid || refunded ? docTypeFor(event) : undefined,
+        source: 'pettrek_trips',
+        sourceId: t.id,
+      });
+    }
+  } catch (err) { swallow('pettrek_trips', err); }
 
   // Newest-first across the merged set.
   rows.sort((a, b) => (b.occurredAt < a.occurredAt ? -1 : b.occurredAt > a.occurredAt ? 1 : 0));

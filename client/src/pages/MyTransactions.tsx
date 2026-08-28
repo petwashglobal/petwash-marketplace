@@ -41,7 +41,8 @@ const MUTED = '#6B6E6A';
 type Source =
   | 'shop_orders' | 'k9000_wash_events'
   | 'egift_guest_orders_purchase' | 'egift_guest_orders_redemption'
-  | 'wallet_topup' | 'sitter_bookings' | 'walk_bookings' | 'trainer_bookings';
+  | 'wallet_topup' | 'sitter_bookings' | 'walk_bookings' | 'trainer_bookings'
+  | 'pettrek_trips';
 
 type PaymentState = 'PAYMENT_REQUIRED' | 'PAYMENT_PENDING' | 'PAID' | 'REFUNDED' | 'NOT_REQUIRED';
 
