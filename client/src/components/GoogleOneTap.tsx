@@ -9,6 +9,7 @@ import { useLocation } from 'wouter';
 // CEO §B41 §1.5 (2026-08-29) — Google One Tap shares the same
 // journey-trace + preferred-method wire as the other AUTH_* CTAs.
 import { authJourneyHeader, beginAuthJourney, recordAuthJourneyStage, endAuthJourney, withAuthJourneyHeader as _withAuthJourneyHeader } from '@/lib/authJourney';
+import { claimPostAuthNavigation, releasePostAuthNavigation } from '@/lib/postAuthNavigationOwner';
 import { writePreferredAuthMethod } from '@/lib/preferredAuthMethod';
 
 interface GoogleOneTapProps {
@@ -193,9 +194,14 @@ export function GoogleOneTap({
         // Allowlisted admin emails must not wait for server role sync. If the
         // server post-login decider still sees a new/customer DB row, it can
         // return /home. Client fast-path keeps admin access usable after OAuth.
+        // CEO §1.10 §F3 — race guard: only navigate if THIS surface owns
+        // the post-auth window. SignUpLuxury.routeNow() on /signup /signin
+        // is the canonical owner; if it started first, defer.
         if (adminEmailMatch(userCredential.user.email)) {
+          if (!claimPostAuthNavigation('one-tap-admin')) return;
           clearConsumedSignupIntent();
           navigate('/admin/dashboard');
+          releasePostAuthNavigation();
           return;
         }
 
@@ -214,15 +220,26 @@ export function GoogleOneTap({
             body: intent ? { intent } : undefined,
           });
           recordAuthJourneyStage('POST_LOGIN_SUCCESS');
+          // CEO §1.10 §F3 — race guard. SignUpLuxury.routeNow() is the
+          // canonical owner on /signup /signin; if it's already
+          // driving, this OneTap effect defers silently. On surfaces
+          // where One Tap is the primary auth (e.g. floating widget
+          // on marketing pages), no competitor exists so this claim
+          // wins immediately.
+          if (!claimPostAuthNavigation('one-tap')) return;
           const nextUrl = data.nextUrl || data.redirectTo || '/home';
           clearConsumedSignupIntent();
           navigate(nextUrl);
           recordAuthJourneyStage('NAVIGATION_SUCCESS');
           writePreferredAuthMethod('google');
           endAuthJourney();
+          releasePostAuthNavigation();
         } catch {
           recordAuthJourneyStage('POST_LOGIN_FAILURE');
-          navigate('/home');
+          if (claimPostAuthNavigation('one-tap-fallback')) {
+            navigate('/home');
+            releasePostAuthNavigation();
+          }
         }
       }
     } catch (error: any) {

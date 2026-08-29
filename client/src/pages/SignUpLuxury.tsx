@@ -79,6 +79,7 @@ import {
   withAuthJourneyHeader,
   type AuthJourneyRecord,
 } from '@/lib/authJourney';
+import { claimPostAuthNavigation, releasePostAuthNavigation } from '@/lib/postAuthNavigationOwner';
 import { writePreferredAuthMethod, type PreferredAuthMethod } from '@/lib/preferredAuthMethod';
 import { CtaAction, emitCtaEvent } from '@/lib/ctaActions';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -644,6 +645,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // The actual routing (server post-login decider → nextUrl). Called directly, or
   // deferred by finishAndRoute until the Face ID offer is answered.
   async function routeNow() {
+    // CEO §1.10 §F3 (2026-08-29) — this function is the CANONICAL
+    // post-auth navigator on /signup /signin. Claim the ownership
+    // token EARLY so any competing effect (Google One Tap on the
+    // same page, ProviderOnboarding's blocked-role bounce, etc.)
+    // silently defers.
+    claimPostAuthNavigation('signup-luxury-routeNow');
     try { await fetch(getApiUrl('/api/session/whoami'), { credentials: 'include' }); }
     catch (e) { logger.error('[signup] whoami', e); }
     // SMART ROUTING (2026-07-24): ask the server's post-login decider where to
@@ -691,9 +698,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         if (rec?.method) writePreferredAuthMethod(rec.method as PreferredAuthMethod);
         endAuthJourney();
       } catch { /* observability never breaks nav */ }
+      releasePostAuthNavigation();
     } catch {
       navigate(dest);
       try { recordAuthJourneyStage('POST_LOGIN_FAILURE'); } catch { /* non-fatal */ }
+      releasePostAuthNavigation();
     }
   }
 
