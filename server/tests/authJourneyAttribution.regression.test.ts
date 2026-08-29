@@ -41,6 +41,7 @@ import {
   currentAuthJourney,
   endAuthJourney,
   authJourneyHeader,
+  withAuthJourneyHeader,
   errorReference,
 } from '../../client/src/lib/authJourney';
 
@@ -87,6 +88,29 @@ describe('authJourney — CEO §B41 §1.2 identity + timeline', () => {
     endAuthJourney();
     expect(currentAuthJourneyId()).toBeNull();
     expect(authJourneyHeader()).toBeNull();
+  });
+
+  it('withAuthJourneyHeader — merges X-Auth-Journey-Id if a journey exists', () => {
+    beginAuthJourney('google');
+    const init = withAuthJourneyHeader({ method: 'POST', headers: { 'Content-Type': 'application/json' } });
+    const h = new Headers(init.headers ?? undefined);
+    expect(h.get('X-Auth-Journey-Id')).toMatch(/^[0-9a-f]{16};method=google$/);
+    // Original header preserved
+    expect(h.get('Content-Type')).toBe('application/json');
+  });
+
+  it('withAuthJourneyHeader — no-ops when no journey exists', () => {
+    endAuthJourney();
+    const original: RequestInit = { method: 'POST' };
+    const init = withAuthJourneyHeader(original);
+    expect(init).toBe(original);
+  });
+
+  it('withAuthJourneyHeader — accepts a bare {} and returns a headers-carrying init', () => {
+    beginAuthJourney('apple');
+    const init = withAuthJourneyHeader();
+    const h = new Headers(init.headers ?? undefined);
+    expect(h.get('X-Auth-Journey-Id')).toMatch(/^[0-9a-f]{16};method=apple$/);
   });
 });
 
