@@ -79,6 +79,7 @@ import {
   type AuthJourneyRecord,
 } from '@/lib/authJourney';
 import { writePreferredAuthMethod, type PreferredAuthMethod } from '@/lib/preferredAuthMethod';
+import { CtaAction, emitCtaEvent } from '@/lib/ctaActions';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { useToast } from '@/hooks/use-toast';
@@ -1903,7 +1904,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <button
                     className="sl-soc"
                     disabled={busy}
-                    onClick={() => social('google')}
+                    onClick={() => { emitCtaEvent(CtaAction.AUTH_GOOGLE); social('google'); }}
                     data-action-id="AUTH_GOOGLE"
                     data-testid="button-auth-google"
                   >
@@ -1914,7 +1915,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <button
                     className="sl-soc sl-soc--apple"
                     disabled={busy}
-                    onClick={() => social('apple')}
+                    onClick={() => { emitCtaEvent(CtaAction.AUTH_APPLE); social('apple'); }}
                     data-action-id="AUTH_APPLE"
                     data-testid="button-auth-apple"
                   >
@@ -1934,13 +1935,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {authMode === 'join' && !manualMode && (
                 <>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
-                    onClick={() => { setManualMode(true); setMethod('mobile'); setSent(false); setInlineError(null); }}
+                    onClick={() => { emitCtaEvent(CtaAction.AUTH_PHONE); setManualMode(true); setMethod('mobile'); setSent(false); setInlineError(null); }}
                     data-testid="button-continue-mobile"
                     data-action-id="AUTH_PHONE">
                     <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
                   </button>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
-                    onClick={() => { setManualMode(true); setMethod('email'); setSent(false); setInlineError(null); }}
+                    onClick={() => { emitCtaEvent(CtaAction.AUTH_EMAIL); setManualMode(true); setMethod('email'); setSent(false); setInlineError(null); }}
                     data-testid="button-continue-email"
                     data-action-id="AUTH_EMAIL">
                     <FaEnvelope aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם אימייל' : 'Continue with email'}</span>
@@ -2491,7 +2492,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     type="button"
                     className="sl-bio"
                     disabled={busy}
-                    onClick={handlePasskeyLogin}
+                    onClick={() => { emitCtaEvent(CtaAction.AUTH_PASSKEY); handlePasskeyLogin(); }}
                     data-action-id="AUTH_PASSKEY"
                     data-testid="button-auth-passkey"
                   >
