@@ -76,6 +76,28 @@ function buildApp() {
   return app;
 }
 
+/**
+ * Post raw bytes to a route mounted with express.raw({type:'application/json'}).
+ *
+ * SUPERTEST GOTCHA (CEO FLY MODE II WhatsApp lane, 2026-08-29):
+ * supertest's `.send(Buffer)` with Content-Type: application/json
+ * runs the Buffer through superagent's JSON serializer, which wraps
+ * it as `{"type":"Buffer","data":[...]}`. Those aren't the bytes we
+ * signed, so the handler sees a signature mismatch and 403s — a
+ * false negative that masqueraded as a live bug. The fix is to send
+ * the raw bytes AS-IS, which we do by decoding the Buffer to a UTF-8
+ * string before .send() — supertest passes strings through verbatim,
+ * so the server receives exactly the bytes we signed. This mirrors
+ * production, where Meta POSTs raw JSON bytes.
+ */
+async function postRawJson(app: express.Express, bodyBytes: Buffer, headers: Record<string, string>) {
+  const req = request(app)
+    .post('/api/webhooks/whatsapp')
+    .set('content-type', 'application/json');
+  for (const [k, v] of Object.entries(headers)) req.set(k, v);
+  return req.send(bodyBytes.toString('utf8'));
+}
+
 describe('WhatsApp Meta webhook — signature verification (regression)', () => {
   const originalEnv = { ...process.env };
 
@@ -154,13 +176,62 @@ describe('WhatsApp Meta webhook — signature verification (regression)', () => 
       object: 'whatsapp_business_account',
       entry: [{ id: '0', changes: [{ value: { messaging_product: 'whatsapp' } }] }],
     }));
-    const res = await request(buildApp())
-      .post('/api/webhooks/whatsapp')
-      .set('content-type', 'application/json')
-      .set('x-hub-signature-256', sign(body))
-      .send(body);
+    const res = await postRawJson(buildApp(), body, { 'x-hub-signature-256': sign(body) });
 
     expect(res.status).toBe(200);
+  });
+
+  // ── CEO FLY MODE II (2026-08-29) — WhatsApp lane extras ────────────────
+  //
+  // Root cause of the historic "false-negative" 403 in the accepting
+  // test: `supertest` runs a Buffer through superagent's JSON serializer
+  // when Content-Type is `application/json`, wrapping it as
+  // `{"type":"Buffer","data":[...]}`. Those aren't the signed bytes. The
+  // handler correctly rejected. `postRawJson()` above works around it by
+  // sending the bytes as a string. The four tests below lock in the
+  // signature-verification invariants CEO asked for now that the
+  // harness faithfully replays raw-byte semantics.
+
+  it('CEO §WhatsApp — a one-byte mutation of a valid body rejects (403)', async () => {
+    process.env.META_WEBHOOK_SECRET = SECRET;
+    const body = Buffer.from(JSON.stringify({
+      object: 'whatsapp_business_account',
+      entry: [{ id: '0', changes: [{ value: { messaging_product: 'whatsapp' } }] }],
+    }));
+    const sig = sign(body);
+    const mutated = Buffer.from(body);
+    mutated[mutated.length - 5] = mutated[mutated.length - 5] ^ 0x01;
+    const res = await postRawJson(buildApp(), mutated, { 'x-hub-signature-256': sig });
+    expect(res.status).toBe(403);
+  });
+
+  it('CEO §WhatsApp — a wrong secret rejects (403)', async () => {
+    process.env.META_WEBHOOK_SECRET = SECRET;
+    const body = Buffer.from(JSON.stringify({
+      object: 'whatsapp_business_account',
+      entry: [{ id: '0', changes: [{ value: { messaging_product: 'whatsapp' } }] }],
+    }));
+    const bogusSig = 'sha256=' + crypto.createHmac('sha256', 'not-the-real-secret').update(body).digest('hex');
+    const res = await postRawJson(buildApp(), body, { 'x-hub-signature-256': bogusSig });
+    expect(res.status).toBe(403);
+  });
+
+  it('CEO §WhatsApp — JSON reformatting (property reorder / whitespace) produces a different signature', () => {
+    // Meta signs exact bytes. Two semantically-equal but byte-different
+    // JSON serialisations MUST NOT share a signature.
+    process.env.META_WEBHOOK_SECRET = SECRET;
+    const a = Buffer.from('{"a":1,"b":2}');
+    const b = Buffer.from('{"b":2,"a":1}');
+    const c = Buffer.from('{ "a": 1, "b": 2 }');
+    expect(sign(a)).not.toEqual(sign(b));
+    expect(sign(a)).not.toEqual(sign(c));
+  });
+
+  it('CEO §WhatsApp — an empty x-hub-signature-256 rejects (403, does not crash)', async () => {
+    process.env.META_WEBHOOK_SECRET = SECRET;
+    const body = Buffer.from(JSON.stringify({ object: 'whatsapp_business_account', entry: [] }));
+    const res = await postRawJson(buildApp(), body, { 'x-hub-signature-256': '' });
+    expect(res.status).toBe(403);
   });
 
   it('exported verifyMetaSignature returns false when raw body is a parsed object (defends against future re-parse regressions)', () => {
