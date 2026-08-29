@@ -118,8 +118,11 @@ describe('package.json wiring (CEO §10 §20)', () => {
     // A build without the verify step is exactly how a missing
     // chunk shipped. Coupling them at the npm-script layer means
     // `npm run build` and every deployer that calls it get the
-    // guard automatically.
-    expect(PKG.scripts.postbuild).toBe('tsx scripts/verify-dist-manifest.ts');
+    // guard automatically. The p0Hardening3 suite pins the FULL
+    // postbuild string (verify → stage-sourcemaps) — here we
+    // just prove verify-dist-manifest is in the chain and runs
+    // FIRST.
+    expect(PKG.scripts.postbuild).toMatch(/^tsx scripts\/verify-dist-manifest\.ts\b/);
   });
 
   it('canary script is exposed as npm run canary — one command, no arg guessing', () => {
