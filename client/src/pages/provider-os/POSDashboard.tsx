@@ -10,6 +10,7 @@ import {
   Dog, Scissors, MapPin, GraduationCap, Package, UserCircle,
   Inbox, Bell,
 } from 'lucide-react';
+import { JourneyConcierge } from '@/components/JourneyConcierge';
 
 type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'settings' | 'services' | 'documents' | 'notifications' | 'safety' | 'assistant';
 type Platform = 'all' | 'petsitter' | 'walkpet' | 'academy' | 'pettrek';
@@ -153,6 +154,15 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
 
   return (
     <div className="space-y-5">
+
+      {/* CEO MASTER 2026-08-28 §36 §62 §65 — Journey Brain
+          NextBestAction feed for the provider workspace. Renders top-
+          of-fold so the provider sees "new request waiting", "payout
+          available", "insurance expires soon" before any static
+          tile. Structured code decides WHAT ACTION exists; the LLM
+          never touches this render path. Hides itself when the feed
+          is empty. */}
+      <JourneyConcierge actor="provider" />
 
       {/* ── Summary strip ─────────────────────────────────────────── */}
       {(newCount > 0 || todayJobs.length > 0 || activeJobs.length > 0) && (

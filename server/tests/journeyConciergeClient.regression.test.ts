@@ -31,6 +31,10 @@ const HOME = fs.readFileSync(
   path.resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'PrestigeHome.tsx'),
   'utf8',
 );
+const POS = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'provider-os', 'POSDashboard.tsx'),
+  'utf8',
+);
 
 describe('JourneyConcierge — pure renderer (CEO §36 §65)', () => {
   it('reads useNextBestActionFeed and renders NOTHING when empty', () => {
@@ -152,5 +156,12 @@ describe('mount on PrestigeHome (CEO §61)', () => {
     // Rendered right after AttentionList so the two feeds sit
     // together at the top of the fold.
     expect(HOME).toMatch(/<AttentionList actor="pet_parent" \/>[\s\S]*?<JourneyConcierge actor="pet_parent" \/>/);
+  });
+});
+
+describe('mount on ProviderOS POSDashboard (CEO §62)', () => {
+  it('POSDashboard imports + renders <JourneyConcierge actor="provider" /> top-of-fold', () => {
+    expect(POS).toMatch(/import \{ JourneyConcierge \} from '@\/components\/JourneyConcierge';/);
+    expect(POS).toContain('<JourneyConcierge actor="provider" />');
   });
 });
