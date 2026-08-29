@@ -38,6 +38,36 @@ import { eq, and, gte, lte, sql, desc, asc, or, ilike, notInArray, inArray } fro
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { aliasesForCity } from '@shared/lib/address';
+import { projectPricing } from '../services/marketplace/ProviderServiceOfferService';
+import type { ProviderServiceOfferPricing } from '@shared/marketplace/providerServiceOffer';
+
+// Marketplace Business Doctrine §6 + §18.2 adapter — projects the legacy
+// per-provider-type rate fields into the canonical
+//   { baseRateCents, rateUnit, currency, legacyProjection, legacyNote }
+// shape per ServiceType. Emitted alongside the legacy `pricePerHour` /
+// `pricePerNight` fields so clients can migrate to `pricing.*` without a
+// coordinated flag flip. Legacy fields stay until Round 2 clears callers.
+function pricingForSitterRow(sitter: { pricePerDayCents?: number | null; pricePerHourCents?: number | null }): ProviderServiceOfferPricing | null {
+  return projectPricing({
+    service: 'PET_SITTING',
+    sitter: {
+      pricePerDayCents: sitter.pricePerDayCents ?? null,
+      pricePerHourCents: sitter.pricePerHourCents ?? null,
+    },
+  });
+}
+function pricingForWalkerRow(walker: { baseHourlyRate?: string | number | null }): ProviderServiceOfferPricing | null {
+  return projectPricing({
+    service: 'DOG_WALKING',
+    walker: { baseHourlyRate: walker.baseHourlyRate ?? null },
+  });
+}
+function pricingForTrainerRow(trainer: { hourlyRate?: string | number | null }): ProviderServiceOfferPricing | null {
+  return projectPricing({
+    service: 'TRAINING',
+    trainer: { hourlyRate: trainer.hourlyRate ?? null },
+  });
+}
 
 /**
  * Build a Drizzle SQL OR clause that ilikes the given column against every
@@ -633,6 +663,7 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
           totalBookings: sitter.totalBookings || 0,
           pricePerNight: sitter.pricePerDayCents ? Math.round(sitter.pricePerDayCents / 100) : null,
           pricePerHour: null,
+          pricing: pricingForSitterRow(sitter),
           city: sitter.city || '',
           isVerified: sitter.isVerified || false,
           hasPoliceCheck: sitter.policeCheckVerified === true,
@@ -696,6 +727,7 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
         totalBookings: sitter.totalBookings || 0,
         pricePerNight: sitter.pricePerDayCents ? Math.round(sitter.pricePerDayCents / 100) : null,
         pricePerHour: null,
+        pricing: pricingForSitterRow(sitter),
         city: sitter.city || '',
         isVerified: sitter.isVerified || false,
         hasPoliceCheck: sitter.policeCheckVerified === true,
@@ -838,6 +870,7 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
         totalBookings: walker.totalWalks || 0,
         pricePerNight: null,
         pricePerHour: walker.baseHourlyRate ? parseInt(walker.baseHourlyRate) : null,
+        pricing: pricingForWalkerRow(walker),
         city: walker.city || '',
         isVerified: walker.verificationStatus === 'verified',
         hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
@@ -897,6 +930,7 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
       totalBookings: walker.totalWalks || 0,
       pricePerNight: null,
       pricePerHour: walker.baseHourlyRate ? parseInt(walker.baseHourlyRate) : null,
+      pricing: pricingForWalkerRow(walker),
       city: walker.city || '',
       isVerified: walker.verificationStatus === 'verified',
       hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
@@ -989,6 +1023,7 @@ async function searchGroomers(filters: BookingSearchFilters, searchId: string): 
       totalBookings: trainer.totalSessions || 0,
       pricePerNight: null,
       pricePerHour: trainer.hourlyRate ? parseFloat(trainer.hourlyRate) : null,
+      pricing: pricingForTrainerRow(trainer),
       city: trainer.serviceArea || '',
       isVerified: trainer.verificationStatus === 'approved',
       hasPoliceCheck: false,
@@ -1139,6 +1174,7 @@ async function searchTrainers(filters: BookingSearchFilters, searchId: string): 
       totalBookings: trainer.totalSessions || 0,
       pricePerNight: null,
       pricePerHour: trainer.hourlyRate ? parseFloat(trainer.hourlyRate) : null,
+      pricing: pricingForTrainerRow(trainer),
       city: trainer.serviceArea || '',
       isVerified: trainer.verificationStatus === 'approved',
       hasPoliceCheck: false,
