@@ -2,6 +2,12 @@ import { useLocation } from "wouter";
 import { setProviderSignupIntent } from "@/lib/becomeProvider";
 import { Button } from "@/components/ui/button";
 import {
+  CtaAction,
+  PROVIDER_SERVICE_ACTION_IDS,
+  urlForProviderIntent,
+} from "@/lib/ctaActions";
+import { LEGACY_TO_CODE } from "@shared/lib/providerServiceVocabulary";
+import {
   Sparkles,
   DollarSign,
   Clock,
@@ -35,26 +41,47 @@ export default function ProviderRegistrationBanner({
   const [, setLocation] = useLocation();
   const isRTL = dir === "rtl";
   
-  const dedicatedJoinRoutes: Record<string, string> = {
-    sitter: '/join/sitter',
-    walker: '/join/walker',
-    trainer: '/join/trainer',
-    driver: '/become-provider?type=pet_trek',
-    sitter_suite: '/join/sitter',
-    walk_my_pet: '/join/walker',
-    training_academy: '/join/trainer',
-    pet_trek: '/become-provider?type=pet_trek',
+  // CEO §A11 §A12 (2026-08-29) — every provider CTA routes through
+  // the ONE canonical helper: `urlForProviderIntent(<canonical code>)`
+  // emits `/become-provider?requestedService=<code>` and the resume
+  // gate (BecomeProviderResume) decides anonymous → sign-in-with-
+  // preserved-context vs signed-in → draft/pending/approved. Direct
+  // /provider-onboarding + /join/<alias> deep-links are retired — the
+  // resume gate carries all intent + attribution.
+  //
+  // `specificType` accepts the legacy short-form alias (sitter, walker,
+  // trainer, driver, pet_trek) that the tile map still emits; the
+  // shared vocabulary normalises it to the CEO §A7 canonical code.
+  const navigateToOnboarding = (specificType?: string) => {
+    setProviderSignupIntent();
+    const alias = specificType
+      || (platform !== 'all' ? platform : null)
+      || null;
+    // Normalise legacy alias → canonical code. driver / pet_trek both
+    // map to pet_transport via the shared normaliser (see
+    // shared/lib/providerServiceVocabulary.ts).
+    let code: ReturnType<typeof LEGACY_TO_CODE[keyof typeof LEGACY_TO_CODE]> | null = null;
+    if (alias === 'pet_trek') code = 'pet_transport';
+    else if (alias && (alias in LEGACY_TO_CODE)) code = LEGACY_TO_CODE[alias as keyof typeof LEGACY_TO_CODE];
+    const route = code ? urlForProviderIntent(code) : '/become-provider';
+    setLocation(route);
   };
 
-  const navigateToOnboarding = (specificType?: string) => {
-    // PR-FRES-3: every banner CTA now sets provider intent BEFORE
-    // navigating so post-login coordinator (#182) routes correctly even
-    // if the user lands on /sign-in via the canonical /become-provider
-    // helper or deep-links to /join/walker etc.
-    setProviderSignupIntent();
-    const type = specificType || (platform !== 'all' ? platform : null);
-    const route = type ? (dedicatedJoinRoutes[type] || '/become-provider') : '/become-provider';
-    setLocation(route);
+  /**
+   * Convenience — the data-action-id a tile carries, given its legacy
+   * alias. Falls back to START_PROVIDER_APPLICATION for the generic
+   * "Apply Now" buttons that do not carry a specific service.
+   */
+  const actionIdForTile = (alias?: string): string => {
+    if (!alias) return CtaAction.START_PROVIDER_APPLICATION;
+    if (alias === 'pet_trek' || alias === 'driver') {
+      return PROVIDER_SERVICE_ACTION_IDS.pet_transport.add;
+    }
+    if (alias in LEGACY_TO_CODE) {
+      const code = LEGACY_TO_CODE[alias as keyof typeof LEGACY_TO_CODE];
+      return PROVIDER_SERVICE_ACTION_IDS[code].add;
+    }
+    return CtaAction.START_PROVIDER_APPLICATION;
   };
 
   const providerTypes = [
@@ -138,7 +165,8 @@ export default function ProviderRegistrationBanner({
             </div>
           </div>
           <Button
-            onClick={navigateToOnboarding}
+            onClick={() => navigateToOnboarding()}
+            data-action-id={actionIdForTile(platform !== 'all' ? platform : undefined)}
             className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white font-bold px-6 py-2 rounded-full shadow-lg shadow-[#D4AF37]/25"
           >
             {t("providerBanner.applyNow")}
@@ -187,7 +215,8 @@ export default function ProviderRegistrationBanner({
               </div>
 
               <Button
-                onClick={navigateToOnboarding}
+                onClick={() => navigateToOnboarding()}
+                data-action-id={actionIdForTile(platform !== 'all' ? platform : undefined)}
                 size="lg"
                 className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-8 py-6 text-lg rounded-2xl shadow-2xl shadow-emerald-500/25 hover:shadow-emerald-500/40 transition-all duration-300 hover:scale-105"
               >
@@ -203,13 +232,18 @@ export default function ProviderRegistrationBanner({
                     key={type.id}
                     role="button"
                     tabIndex={type.comingSoon ? -1 : 0}
+                    data-action-id={actionIdForTile(type.id)}
+                    data-testid={`provider-tile-${type.id}`}
                     onClick={() => {
                       if (!type.comingSoon) navigateToOnboarding(type.id);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !type.comingSoon) navigateToOnboarding(type.id);
+                      if ((e.key === 'Enter' || e.key === ' ') && !type.comingSoon) {
+                        e.preventDefault();
+                        navigateToOnboarding(type.id);
+                      }
                     }}
-                    className={`group p-6 rounded-2xl border transition-all duration-300 ${type.comingSoon ? 'cursor-default opacity-60 bg-white border-gray-100' : 'cursor-pointer bg-white border-gray-200 hover:border-emerald-400 hover:scale-105 hover:bg-white active:scale-95'}`}
+                    className={`group p-6 rounded-2xl border transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${type.comingSoon ? 'cursor-default opacity-60 bg-white border-gray-100' : 'cursor-pointer bg-white border-gray-200 hover:border-emerald-400 hover:scale-105 hover:bg-white active:scale-95'}`}
                   >
                     <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${type.color} flex items-center justify-center mb-4 ${type.comingSoon ? '' : 'group-hover:scale-110'} transition-transform`}>
                       <type.icon className="w-7 h-7 text-white" />
@@ -286,7 +320,8 @@ export default function ProviderRegistrationBanner({
           </div>
           
           <Button
-            onClick={navigateToOnboarding}
+            onClick={() => navigateToOnboarding()}
+            data-action-id={actionIdForTile(platform !== 'all' ? platform : undefined)}
             size="lg"
             className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-10 py-6 text-lg rounded-2xl shadow-2xl shadow-emerald-500/25"
           >

@@ -41,6 +41,7 @@ export default function ChoosePath({ language }: ChoosePathProps) {
       cta: he ? 'למסך הבית' : 'Go to home',
       onClick: () => navigate('/home'),
       primary: true,
+      actionId: 'SWITCH_TO_PET_PARENT',
     },
     {
       key: 'provider',
@@ -50,8 +51,10 @@ export default function ChoosePath({ language }: ChoosePathProps) {
         ? 'פט-סיטר, הולכת כלבים או אקדמיה. נבקש מסמכי זיהוי, כתובת ופרטי תשלום — ולאחר אישור תוכל/י לקבל לקוחות. צד הלקוח שלך נשאר כמו שהוא.'
         : 'Pet sitter, dog walker or academy. We’ll ask for ID, address and payout details — after approval you can take clients. Your Pet Parent side stays intact.',
       cta: he ? 'התחל/י רישום ספק/ית' : 'Start provider signup',
-      onClick: () => navigate('/provider-onboarding'),
+      // CEO §1 route through the resume gate, not directly to onboarding.
+      onClick: () => navigate('/become-provider'),
       primary: false,
+      actionId: 'START_PROVIDER_APPLICATION',
     },
     // "Both" tile removed (CEO 2026-08-26 role-model): becoming a Provider
     // is already additive — the Pet Parent side is preserved automatically.
@@ -75,6 +78,7 @@ export default function ChoosePath({ language }: ChoosePathProps) {
             return (
               <button key={o.key} type="button" onClick={o.onClick}
                 data-testid={`choosepath-${o.key}`}
+                data-action-id={o.actionId}
                 style={{
                   display: 'flex', gap: 16, alignItems: 'flex-start', textAlign: he ? 'right' : 'left',
                   background: o.primary ? 'linear-gradient(135deg,#D4AF37,#b8912b)' : 'rgba(255,255,255,0.04)',

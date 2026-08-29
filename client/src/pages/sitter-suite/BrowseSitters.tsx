@@ -551,10 +551,11 @@ export default function BrowseSitters() {
                   }
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Button 
+                  <Button
                     className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white rounded-full px-8 shadow-lg shadow-[#D4AF37]/20"
                     onClick={() => onClickBecomeProvider(setLocation, 'sitter')}
                     data-testid="button-become-sitter"
+                    data-action-id="ADD_PROVIDER_SERVICE_PET_SITTING"
                   >
                     <Users className="h-5 w-5 me-2" />
                     {isHebrew ? 'הפוך לשמרטף' : 'Become a Sitter'}
