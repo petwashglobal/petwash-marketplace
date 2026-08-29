@@ -17192,11 +17192,36 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
+  // /api/release-info — P0 2026-08-28 CEO §4 §18 §20. Cheap read the
+  // client uses to decide whether a lazy-chunk failure is a real
+  // defect on the current build OR a stale-client mismatch. If
+  // clientBuildId !== releaseBuildId, ONE reload is reasonable. If
+  // they match, a reload will not repair anything — render the
+  // safe fallback.
+  app.get('/api/release-info', (_req, res) => {
+    try {
+      const buildId = process.env.APP_BUILD_ID
+        || process.env.K_REVISION            // Cloud Run
+        || process.env.SOURCE_VERSION          // some hosts
+        || 'unknown';
+      const gitSha = process.env.GIT_SHA || process.env.COMMIT_SHA || 'unknown';
+      res.set('Cache-Control', 'no-store');
+      res.json({
+        ok: true,
+        releaseBuildId: String(buildId),
+        gitSha: String(gitSha),
+        serverTime: new Date().toISOString(),
+      });
+    } catch {
+      res.status(200).json({ ok: false, releaseBuildId: 'unknown' });
+    }
+  });
+
   // Error Logging Endpoint
   app.post('/api/errors/log', async (req, res) => {
     try {
       const errorReport = req.body;
-      
+
       // Log error with full context
       logger.error('[Client Error]', {
         message: errorReport.message,
@@ -17208,6 +17233,15 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         timestamp: errorReport.timestamp,
         stack: errorReport.stack,
         metadata: errorReport.metadata,
+        // P0 2026-08-28 (CEO §4 §21): pin the client build + release
+        // + client-error id on EVERY log line so the aggregator can
+        // group by fingerprint and answer "how many users, which
+        // build?" instantly.
+        clientBuildId: errorReport.clientBuildId,
+        clientErrorId: errorReport.clientErrorId,
+        fingerprint: errorReport.fingerprint,
+        route: errorReport.route,
+        chunkUrl: errorReport.chunkUrl,
       });
 
       // SELF-AWARE client faults (2026-06-24): route genuine client crashes into
@@ -17222,7 +17256,15 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       // is ALWAYS actionable — it is a real white screen, not the transient
       // chunk/network blip the noise filter is meant to drop. Never silence it.
       const isBootFailure = errorReport?.source === 'client-boot';
-      const isNoise = !isBootFailure && /ResizeObserver loop|^Script error\.?$|Load failed|Failed to fetch|NetworkError|ChunkLoadError|Loading chunk [\w-]+ failed/i.test(clientMsg);
+      // P0 2026-08-28 CEO §23: the AUTH-boundary catches
+      // "Cannot read properties of undefined (reading 'default')" —
+      // that is the SIGN-IN incident fingerprint. It MUST NOT be
+      // silenced by the noise filter even though it superficially
+      // looks like a chunk-load blip.
+      const isAuthBoundary = errorReport?.source === 'client-auth-boundary';
+      const isLazyDefaultUndefined = /reading ['"]default['"]/i.test(clientMsg);
+      const alwaysActionable = isBootFailure || isAuthBoundary || isLazyDefaultUndefined;
+      const isNoise = !alwaysActionable && /ResizeObserver loop|^Script error\.?$|Load failed|Failed to fetch|NetworkError|ChunkLoadError|Loading chunk [\w-]+ failed/i.test(clientMsg);
       if (clientMsg && !isNoise) {
         const clientErr: any = new Error(clientMsg);
         clientErr.name = 'ClientError';

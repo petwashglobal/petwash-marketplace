@@ -88,7 +88,17 @@ const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const Unsubscribe = lazy(() => import("@/pages/Unsubscribe"));
 // SignIn (the old white "WELCOME BACK" modal) KILLED 2026-06-28 — every login
 // route now renders the premium SignUpLuxury screen. Do NOT reintroduce it.
-const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
+//
+// P0 INCIDENT 2026-08-28 (CEO §12): SignUpLuxury is the SINGLE authentication
+// entry route for the entire app (/signin /sign-in /login /signup + flow=*).
+// A lazy chunk failure here white-screens the customer's ONLY door in — the
+// exact production crash monitoring caught with vendor-react + "undefined
+// (reading 'default')". Reliability > shaving this chunk from initial load.
+// SignUpLuxury is now EAGER on the auth path; downstream role dashboards stay
+// lazy since they gate on an existing session.
+import SignUpLuxuryEager from "@/pages/SignUpLuxury";
+import { AuthRouteErrorBoundary } from "@/components/AuthRouteErrorBoundary";
+const SignUpLuxury = SignUpLuxuryEager;
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
@@ -928,13 +938,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => renderRootForApp()}
         </Route>
         <Route path="/signin">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <AuthRouteErrorBoundary route="/signin"><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></AuthRouteErrorBoundary>}
         </Route>
         <Route path="/sign-in">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <AuthRouteErrorBoundary route="/sign-in"><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></AuthRouteErrorBoundary>}
         </Route>
         <Route path="/login">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <AuthRouteErrorBoundary route="/login"><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></AuthRouteErrorBoundary>}
         </Route>
         <Route path="/booking-chat/inbox">
           {() => (
@@ -958,10 +968,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signin-advanced">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <AuthRouteErrorBoundary route="/signin-advanced"><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></AuthRouteErrorBoundary>}
         </Route>
         <Route path="/signup">
-          {() => <Layout language={language} onLanguageChange={handleLanguageChange}><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></Layout>}
+          {() => <AuthRouteErrorBoundary route="/signup"><Layout language={language} onLanguageChange={handleLanguageChange}><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></Layout></AuthRouteErrorBoundary>}
         </Route>
         {/* /signup is the single canonical door — every alias hard-redirects to it,
             preserving the query string (?flow=provider|prestige|guest|booking). */}
