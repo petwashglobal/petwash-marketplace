@@ -116,6 +116,8 @@ const ProviderSearchPage = lazy(() => import("@/pages/ProviderSearchPage"));
 // const PrivilegeSignup = lazy(() => import("@/pages/PrivilegeSignup"));
 const PrestigeClub = lazy(() => import("@/pages/PrestigeClub"));
 const PrestigeInterestWaitlist = lazy(() => import("@/pages/PrestigeInterestWaitlist"));
+const PrestigeEnroll = lazy(() => import("@/pages/PrestigeEnroll"));
+const LoyaltyJoinRouter = lazy(() => import("@/pages/LoyaltyJoinRouter"));
 const Loyalty = lazy(() => import("@/pages/Loyalty"));
 const LoyaltyDashboard = lazy(() => import("@/pages/LoyaltyDashboard"));
 const LoyaltyTiers = lazy(() => import("@/pages/LoyaltyTiers"));
@@ -1198,30 +1200,44 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
-        {/* CEO 2026-08-28 §2 product correction — no duplicate identity
-            universes. /privilege, /loyalty/join, /vito used to render
-            PrivilegeSignup.tsx: a Google-only signup that asked DOB,
-            gender, national-ID doc, address, and 14 declarations BEFORE
-            OAuth, then POST'd to /api/privilege/register (a parallel
-            privilege_members row alongside the Firebase user). That
-            violated:
-              • "OAuth first, then collect missing" (§3 §57)
-              • "no separate identity systems for provider/Prestige" (§7)
-              • "email must be first-class" (Google-only path was a leak)
-            2026-05-25 design doc (docs/design/…smart-identity-routing.md
-            :72) already flagged PrivilegeSignup for deletion.
-            All three entry paths now redirect to the canonical /signup
-            with a `flow=prestige` hint the SignUpLuxury flow-router
-            understands. The PrivilegeSignup component stays in the
-            repo as reference until the design lane deletes it. */}
+        {/* CEO 2026-08-29 P0 LIVE FIX — Prestige enrollment loop.
+            Before: /privilege, /loyalty/join, /vito unconditionally
+            redirected to /signup?flow=prestige. For an already-signed-in
+            Pet Parent the post-login resolver then bounced them back
+            to /pet-parent/home without enrolling — a loop the live user
+            just experienced.
+            Now: these paths render LoyaltyJoinRouter, which reads the
+            caller's auth state and sends:
+              • authenticated + already Prestige → /prestige-club
+              • authenticated + NOT Prestige     → /prestige/enroll
+              • signed out                       → /signup?flow=prestige
+                                                    &redirect=/prestige/enroll
+            "Join Prestige" is an ENTITLEMENT UPGRADE for an existing
+            PetWash user, NOT a second registration. An authenticated
+            user must NEVER be sent through /signup /signin /login for
+            this journey (CEO §1). */}
         <Route path="/privilege">
-          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
+          {() => <LoyaltyJoinRouter />}
         </Route>
         <Route path="/loyalty/join">
-          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
+          {() => <LoyaltyJoinRouter />}
         </Route>
         <Route path="/vito">
-          {() => <Redirect to={`/signup?flow=prestige${window.location.search ? '&' + window.location.search.slice(1) : ''}`} />}
+          {() => <LoyaltyJoinRouter />}
+        </Route>
+
+        {/* Prestige enrollment surface — authenticated Pet Parent
+            upgrading to Prestige. Reuses the canonical account data
+            (name, email, phone from whoami); asks for ONLY genuinely
+            missing Prestige-specific fields. Posts to the existing
+            server-authoritative POST /api/prestige/join (identity
+            derived from Firebase Bearer, per CEO §7). */}
+        <Route path="/prestige/enroll">
+          {() => (
+            <RequireAuth>
+              <PrestigeEnroll />
+            </RequireAuth>
+          )}
         </Route>
 
         {/* Loyalty Program - Public landing + member dashboard */}
