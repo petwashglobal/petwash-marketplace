@@ -294,8 +294,11 @@ export default function PrestigeHome() {
             </button>
           ) : (
             // Non-enrolled Pet Parent — offer to join, don't fake the badge.
+            // CEO P0 2026-08-29: this CTA goes DIRECTLY to /prestige/enroll,
+            // never to /loyalty/join → /signup. The signed-in user must not
+            // be routed through a second registration for an entitlement.
             <button
-              onClick={() => navigate('/loyalty/join')}
+              onClick={() => navigate('/prestige/enroll')}
               className="mt-2 inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:border-[#ECDFB4] hover:bg-[#FFFDF7]"
               data-testid="prestige-join-cta"
             >
