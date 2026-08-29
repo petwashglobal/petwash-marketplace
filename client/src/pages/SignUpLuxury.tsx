@@ -69,6 +69,16 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useAppFlavor } from '@/lib/appFlavor';
 import { type Language } from '@/lib/i18n';
 import { fieldSchemas, vmsg } from '@/lib/validation';
+// CEO §B41 §1.5 (2026-08-29) — client auth journey trace + per-device
+// preferred method. Both are safe (no PII / token); see the lib docs.
+import {
+  beginAuthJourney,
+  recordAuthJourneyStage,
+  endAuthJourney,
+  currentAuthJourney,
+  type AuthJourneyRecord,
+} from '@/lib/authJourney';
+import { writePreferredAuthMethod, type PreferredAuthMethod } from '@/lib/preferredAuthMethod';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { useToast } from '@/hooks/use-toast';
@@ -667,8 +677,21 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         if (fresh) { const r: any = await resolvePostLogin({ body: { intent }, idToken: fresh }); if (r?.nextUrl) data = r; }
       }
       navigate(data?.nextUrl || data?.redirectTo || dest);
+      // CEO §B41 §1.5 (2026-08-29) — terminal auth-journey stage +
+      // per-device preferred method. writePreferredAuthMethod is
+      // called ONLY here, on a successful destination navigation,
+      // because CEO §1.5 forbids setting the preference on a mid-
+      // flow tap. AuthJourneyRecord.method is set by the tap
+      // handlers (social/phone/email/passkey) via beginAuthJourney.
+      try {
+        recordAuthJourneyStage('NAVIGATION_SUCCESS');
+        const rec: AuthJourneyRecord | null = currentAuthJourney();
+        if (rec?.method) writePreferredAuthMethod(rec.method as PreferredAuthMethod);
+        endAuthJourney();
+      } catch { /* observability never breaks nav */ }
     } catch {
       navigate(dest);
+      try { recordAuthJourneyStage('POST_LOGIN_FAILURE'); } catch { /* non-fatal */ }
     }
   }
 
@@ -1137,6 +1160,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
+    // CEO §B41 §1.2 — start the auth-journey trace on the first tap.
+    // The id survives the OAuth redirect via sessionStorage.
+    // Facebook is not one of the CEO §A3 preferred-method values,
+    // so treat it as method-unknown for authJourney purposes.
+    const journeyMethod = (which === 'facebook' ? undefined : which) as
+      | 'google' | 'apple' | undefined;
+    beginAuthJourney(journeyMethod);
+    recordAuthJourneyStage('AUTH_METHOD_SELECTED', { method: which });
     // Google/Apple is the easy button — the user taps ONE thing and the
     // provider authenticates them. Do NOT gate the tap on DOB / 18+ /
     // Terms checkboxes; we don't know who they are yet. After OAuth

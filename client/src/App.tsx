@@ -32,7 +32,7 @@ import { LanguageProvider, useLanguage } from "@/lib/languageStore";
 import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { captureInitialTouch } from "@/lib/attribution";
 import { setCtaEventSink } from "@/lib/ctaActions";
-import { recordAuthJourneyStage } from "@/lib/authJourney";
+import { beginAuthJourney, recordAuthJourneyStage } from "@/lib/authJourney";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
@@ -4190,13 +4190,20 @@ function App() {
   useEffect(() => {
     captureInitialTouch();
     setCtaEventSink((action) => {
-      // Every CtaAction id maps to itself as an auth-journey stage
-      // when (and only when) it belongs to the AuthJourneyStage union.
-      // No PII is ever forwarded — the sink receives the action id
-      // string only.
-      if (typeof action === 'string' && action.startsWith('AUTH_')) {
-        recordAuthJourneyStage('AUTH_METHOD_SELECTED', { action });
-      }
+      // Map AUTH_* CtaAction ids onto the preferred-method vocabulary
+      // and start (or refresh) the auth-journey trace. Non-auth
+      // actions are silently ignored — the sink cannot spam the
+      // timeline with garbage. No PII is ever forwarded.
+      if (typeof action !== 'string' || !action.startsWith('AUTH_')) return;
+      const method =
+        action === 'AUTH_GOOGLE'  ? 'google'  :
+        action === 'AUTH_APPLE'   ? 'apple'   :
+        action === 'AUTH_PHONE'   ? 'phone'   :
+        action === 'AUTH_EMAIL'   ? 'email'   :
+        action === 'AUTH_PASSKEY' ? 'passkey' :
+        undefined;
+      beginAuthJourney(method);
+      recordAuthJourneyStage('AUTH_METHOD_SELECTED', { action });
     });
     return () => setCtaEventSink(() => { /* no-op on teardown */ });
     // Deliberately empty deps — this MUST run exactly once per mount.
