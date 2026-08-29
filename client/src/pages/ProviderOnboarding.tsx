@@ -1140,13 +1140,17 @@ export default function ProviderOnboarding() {
                       {isHebrew ? 'ניתן לבחור יותר מפלטפורמה אחת' : 'You can select more than one platform'}
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-walker"
+                        data-selected={hasProviderType('walker') ? 'true' : 'false'}
+                        aria-pressed={hasProviderType('walker')}
+                        role="button"
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('walker')}
                       >
                         <div className="flex items-center gap-3">
-                          <Checkbox 
-                            checked={hasProviderType('walker')} 
+                          <Checkbox
+                            checked={hasProviderType('walker')}
                             onCheckedChange={() => toggleProviderType('walker')}
                             id="walker"
                           />
@@ -1156,13 +1160,17 @@ export default function ProviderOnboarding() {
                           </Label>
                         </div>
                       </div>
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-sitter"
+                        data-selected={hasProviderType('sitter') ? 'true' : 'false'}
+                        aria-pressed={hasProviderType('sitter')}
+                        role="button"
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('sitter')}
                       >
                         <div className="flex items-center gap-3">
-                          <Checkbox 
-                            checked={hasProviderType('sitter')} 
+                          <Checkbox
+                            checked={hasProviderType('sitter')}
                             onCheckedChange={() => toggleProviderType('sitter')}
                             id="sitter"
                           />
@@ -1172,13 +1180,17 @@ export default function ProviderOnboarding() {
                           </Label>
                         </div>
                       </div>
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-driver"
+                        data-selected={hasProviderType('driver') ? 'true' : 'false'}
+                        aria-pressed={hasProviderType('driver')}
+                        role="button"
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('driver')}
                       >
                         <div className="flex items-center gap-3">
-                          <Checkbox 
-                            checked={hasProviderType('driver')} 
+                          <Checkbox
+                            checked={hasProviderType('driver')}
                             onCheckedChange={() => toggleProviderType('driver')}
                             id="driver"
                           />
@@ -1188,13 +1200,17 @@ export default function ProviderOnboarding() {
                           </Label>
                         </div>
                       </div>
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-trainer"
+                        data-selected={hasProviderType('trainer') ? 'true' : 'false'}
+                        aria-pressed={hasProviderType('trainer')}
+                        role="button"
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('trainer')}
                       >
                         <div className="flex items-center gap-3">
-                          <Checkbox 
-                            checked={hasProviderType('trainer')} 
+                          <Checkbox
+                            checked={hasProviderType('trainer')}
                             onCheckedChange={() => toggleProviderType('trainer')}
                             id="trainer"
                           />
