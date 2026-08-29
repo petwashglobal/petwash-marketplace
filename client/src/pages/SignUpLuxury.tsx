@@ -1254,6 +1254,33 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         await signInWithRedirect(auth, provider);
         return;
       }
+      // CEO FLY MODE II §7 (2026-08-29) — Firebase test adapter short-circuit.
+      //
+      // In DEV builds, if the Playwright installer has set the shim on
+      // window, skip the real signInWithPopup and hand the synthetic
+      // ID token to /api/auth/session (which Playwright has
+      // route-intercepted to fulfil). The DEV flag is a Vite compile-
+      // time constant, so the whole block — including the dynamic
+      // import — is dead-code-eliminated in production. The postbuild
+      // scanner (scripts/check-no-test-adapter-leak.mjs) catches any
+      // leak. Anonymous → real Firebase everywhere except this seam.
+      if (import.meta.env.DEV) {
+        const { getFirebaseTestAdapter } = await import('@/lib/firebaseTestAdapterClient');
+        const adapter = getFirebaseTestAdapter();
+        if (adapter) {
+          recordAuthJourneyStage('FIREBASE_TEST_ADAPTER_SHORTCUT', { provider: which });
+          const shortcutRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ idToken: adapter.syntheticIdToken }),
+          }));
+          if (!shortcutRes.ok) {
+            fail('Test adapter session exchange failed.');
+            return;
+          }
+          await finishAndRoute();
+          return;
+        }
+      }
       recordAuthJourneyStage('FIREBASE_POPUP_STARTED', { provider: which });
       const cred = await signInWithPopup(auth, provider);
       recordAuthJourneyStage('FIREBASE_POPUP_SUCCEEDED', { provider: which });

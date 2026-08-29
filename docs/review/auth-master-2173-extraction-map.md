@@ -115,6 +115,7 @@ consult the probe) is a follow-up PR.
 | `server/tests/firebaseTestAdapter.regression.test.ts` | new | 10 scaffold pins |
 | `server/tests/firebaseTestAdapterClient.regression.test.ts` | new | 8 probe-guard pins |
 | `server/tests/postbuildLeakGate.regression.test.ts` | new | 6 script + wiring pins |
+| `server/tests/firebaseTestAdapterPhaseF2.regression.test.ts` | new | 7 pins for the SignUpLuxury popup-path adapter shortcut (DEV guard + dynamic import + early-return ordering) |
 
 ---
 

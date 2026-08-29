@@ -10,16 +10,19 @@
  *   • Phase F1 (SHIPPED — commits a7b6c3213 + 4dce10d18):
  *       - tests/e2e/firebaseTestAdapter.ts        — installer + intercepts.
  *       - client/src/lib/firebaseTestAdapterClient.ts — client-side probe.
- *     The scaffold is present. The probe is production-safe. The
- *     shim can be installed. But no auth surface reads the probe
- *     yet, so the sign-in handler still calls real Firebase.
  *
- *   • Phase F2 (FOLLOW-UP PR — not shipped):
- *       - SignUpLuxury / GoogleOneTap / AdminLoginV2 call
- *         getFirebaseTestAdapter() BEFORE createGoogleProvider() +
- *         signInWithPopup(). On non-null, short-circuit to the
- *         synthetic-token /api/auth/session POST (which the
- *         Playwright installer has route()-intercepted).
+ *   • Phase F2 (PARTIALLY SHIPPED — 2026-08-29):
+ *       - SignUpLuxury.tsx Google/Apple/Facebook popup path calls
+ *         getFirebaseTestAdapter() BEFORE signInWithPopup() and
+ *         short-circuits to /api/auth/session with the synthetic
+ *         token when the shim is installed.
+ *       - Not yet wired: signInWithRedirect fallback path, the
+ *         native Capacitor OAuth path, GoogleOneTap, AdminLoginV2.
+ *         The desktop web popup flow is enough for the sitter/
+ *         walker/trainer full-journey E2E to run, but the specs
+ *         stay `test.skip()`'d until wave-2 F2 covers the redirect
+ *         + One-Tap paths so the harness can pick browser strategy
+ *         freely.
  *
  * Every scenario below is `test.skip()`'d with a clear reason so the
  * suite passes as-is. When F2 lands, drop the `.skip` and the specs
