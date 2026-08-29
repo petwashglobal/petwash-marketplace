@@ -165,3 +165,40 @@ describe('mount on ProviderOS POSDashboard (CEO §62)', () => {
     expect(POS).toContain('<JourneyConcierge actor="provider" />');
   });
 });
+
+describe('telemetry wire (CEO §24 §66)', () => {
+  it('postEvent uses /api/journey/events and never blocks render (fire-and-forget)', () => {
+    expect(CONCIERGE).toMatch(/getApiUrl\('\/api\/journey\/events'\)/);
+    // Wrapped in try/catch so a network hiccup can never crash the
+    // render path.
+    expect(CONCIERGE).toMatch(/} catch \{ \/\* silent — telemetry is best-effort \*\/ \}/);
+  });
+
+  it('fires ONE "shown" event per action id per mount', () => {
+    // A useEffect keyed on the joined id list posts the shown event
+    // exactly once per set of ids.
+    expect(CONCIERGE).toMatch(/useEffect\(\(\) => \{[\s\S]*?postEvent\(a, 'shown'\);[\s\S]*?actions\?\.map\(\(a\) => a\.id\)\.join\(','\)/);
+  });
+
+  it('go() records a clicked event before navigating', () => {
+    // The clicked event must fire BEFORE the modal opens / navigate
+    // fires, so a fast tap-then-close still records the interaction.
+    expect(CONCIERGE).toMatch(/const go = \(a: NextBestAction, copy: \{ title: string; why: string \}\) => \{\s*\n\s*postEvent\(a, 'clicked'\);/);
+  });
+
+  it('dismiss() locally hides + posts + refetches after 400ms', () => {
+    // Optimistic UI: card disappears immediately. Server telemetry
+    // POSTs. Refetch after a short delay so the composer's Phase 6
+    // dismissal-demote (§67) has time to observe the row.
+    expect(CONCIERGE).toMatch(/const dismiss = \(a: NextBestAction, mode: 'dismissed' \| 'not_interested'\) => \{/);
+    expect(CONCIERGE).toMatch(/setLocallyHidden\(\(s\) => new Set\(s\)\.add\(a\.id\)\);/);
+    expect(CONCIERGE).toMatch(/postEvent\(a, mode\);/);
+    expect(CONCIERGE).toMatch(/setTimeout\(\(\) => \{ refetch\(\); \}, 400\);/);
+  });
+
+  it('kebab menu offers hide + not-interested — data-testids present', () => {
+    expect(CONCIERGE).toContain('data-testid={`journey-concierge-menu-${a.id}`}');
+    expect(CONCIERGE).toContain('data-testid={`journey-concierge-menu-dismiss-${a.id}`}');
+    expect(CONCIERGE).toContain('data-testid={`journey-concierge-menu-notinterested-${a.id}`}');
+  });
+});

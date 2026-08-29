@@ -20,9 +20,11 @@
  * fabricated money amounts (moneyHintCents is displayed verbatim; if
  * absent it renders as nothing, never as zero).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useLanguage } from '@/lib/languageStore';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useNextBestActionFeed } from '@/hooks/useNextBestActionFeed';
 import type {
   NextBestAction,
@@ -32,7 +34,7 @@ import type {
 import {
   CreditCard, CheckCircle2, Star, Bell, PlayCircle, Flag, Navigation,
   MessageCircle, FileText, Wallet, Gift, Upload, Eye, Repeat, Sparkles,
-  BadgeCheck, CalendarClock, ShieldAlert, Info,
+  BadgeCheck, CalendarClock, ShieldAlert, Info, MoreVertical, X,
 } from 'lucide-react';
 
 interface Props {
@@ -176,21 +178,72 @@ export function JourneyConcierge({ actor, limit = 4 }: Props) {
   const [, navigate] = useLocation();
   const { language } = useLanguage();
   const he = language === 'he';
-  const { actions, isLoading } = useNextBestActionFeed(actor);
+  const { user } = useFirebaseAuth();
+  const { actions, isLoading, refetch } = useNextBestActionFeed(actor);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [whyOpen, setWhyOpen] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [locallyHidden, setLocallyHidden] = useState<Set<string>>(new Set());
+
+  // CEO §66 telemetry: post an `event` per action rendered (once per
+  // set of ids per mount). Fire-and-forget — a network hiccup must
+  // never block the render.
+  async function postEvent(a: NextBestAction, eventType: 'shown' | 'clicked' | 'dismissed' | 'not_interested') {
+    try {
+      const token = await user?.getIdToken().catch(() => undefined);
+      await fetch(getApiUrl('/api/journey/events'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          actor,
+          reasonCode: a.reasonCode,
+          eventType,
+          actionType: a.actionType,
+          source: 'concierge',
+          entityRef: a.entityRef ?? undefined,
+        }),
+      });
+    } catch { /* silent — telemetry is best-effort */ }
+  }
+
+  // Fire ONE `shown` event per action id per mount.
+  useEffect(() => {
+    if (!actions || actions.length === 0) return;
+    for (const a of actions) {
+      if (locallyHidden.has(a.id)) continue;
+      postEvent(a, 'shown');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actions?.map((a) => a.id).join(',')]);
 
   if (isLoading) return null;
   if (!actions || actions.length === 0) return null;
 
-  const visible = actions.slice(0, limit);
+  const visible = actions
+    .filter((a) => !locallyHidden.has(a.id))
+    .slice(0, limit);
 
   const go = (a: NextBestAction, copy: { title: string; why: string }) => {
+    postEvent(a, 'clicked');
     if (a.requiresConfirmation) {
       setConfirm({ action: a, copy });
       return;
     }
     navigate(a.destination);
+  };
+
+  const dismiss = (a: NextBestAction, mode: 'dismissed' | 'not_interested') => {
+    setLocallyHidden((s) => new Set(s).add(a.id));
+    setMenuOpen(null);
+    postEvent(a, mode);
+    // Refetch — the server may promote another item in this slot.
+    // §67 dismissal-demote uses the same POST as its evidence, so
+    // the next compose reflects the user's feedback immediately.
+    setTimeout(() => { refetch(); }, 400);
   };
 
   return (
@@ -247,6 +300,41 @@ export function JourneyConcierge({ actor, limit = 4 }: Props) {
                 >
                   <Info style={{ width: 14, height: 14 }} />
                 </button>
+                {/* CEO §24 dismissal menu — Not interested / Fewer offers */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(menuOpen === a.id ? null : a.id)}
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700"
+                    aria-label={he ? 'אפשרויות' : 'Options'}
+                    data-testid={`journey-concierge-menu-${a.id}`}
+                  >
+                    <MoreVertical style={{ width: 14, height: 14 }} />
+                  </button>
+                  {menuOpen === a.id && (
+                    <div
+                      className="absolute z-40 top-8 end-0 w-48 rounded-xl border border-gray-200 bg-white shadow-lg py-1"
+                      data-testid={`journey-concierge-menu-panel-${a.id}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => dismiss(a, 'dismissed')}
+                        className="w-full text-start px-3 py-2 text-[12px] text-gray-800 hover:bg-gray-50"
+                        data-testid={`journey-concierge-menu-dismiss-${a.id}`}
+                      >
+                        {he ? 'הסתר את הכרטיס הזה' : 'Hide this card'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => dismiss(a, 'not_interested')}
+                        className="w-full text-start px-3 py-2 text-[12px] text-gray-800 hover:bg-gray-50"
+                        data-testid={`journey-concierge-menu-notinterested-${a.id}`}
+                      >
+                        {he ? 'לא מעניין אותי' : 'Not interested'}
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               {whyOpen === a.id && (
                 <div
