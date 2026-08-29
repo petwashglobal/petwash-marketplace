@@ -213,3 +213,177 @@ export function catalogCoverage(): Record<string, number> {
   }
   return out;
 }
+
+// ── Meet & Greet availability (integrity doctrine §4) ─────────────────
+
+export type MeetGreetPhase = 'PROPOSED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+export type MeetGreetParticipant = 'CUSTOMER' | 'PROVIDER' | 'STAFF';
+
+export interface MeetGreetActionContext {
+  participant: MeetGreetParticipant;
+  phase: MeetGreetPhase;
+  bothPartiesAcknowledged: boolean;
+}
+
+export function meetGreetAvailableActions(ctx: MeetGreetActionContext): AvailableAction[] {
+  const list: AvailableAction[] = [];
+  const isProvider = ctx.participant === 'PROVIDER';
+  const isCustomer = ctx.participant === 'CUSTOMER';
+
+  // ACCEPT — provider only, PROPOSED only, AND both parties must have
+  // acknowledged the "keep on PetWash" wording first (integrity §6).
+  if (isProvider && ctx.phase === 'PROPOSED' && ctx.bothPartiesAcknowledged) {
+    const a = build('MEET_GREET_ACCEPT', true, { requiresPreview: true });
+    if (a) list.push(a);
+  }
+
+  // If proposed but acknowledgements missing, surface the ACK action so
+  // both parties can complete the gate without leaving the surface.
+  if (ctx.phase === 'PROPOSED' && !ctx.bothPartiesAcknowledged) {
+    const ack = build('MEET_GREET_ACKNOWLEDGE', true, { requiresPreview: true });
+    if (ack) list.push(ack);
+  }
+
+  // Suggest a different time — provider only, PROPOSED (the counter-proposal
+  // path). Not surfaced after CONFIRMED (use booking reschedule instead).
+  if (isProvider && ctx.phase === 'PROPOSED') {
+    const s = build('MEET_GREET_SUGGEST_TIME', true, { requiresPreview: true });
+    if (s) list.push(s);
+  }
+
+  // Decline — either party, PROPOSED.
+  if (ctx.phase === 'PROPOSED') {
+    const d = build('MEET_GREET_DECLINE', true);
+    if (d) list.push(d);
+  }
+
+  // Complete — either party, CONFIRMED.
+  if (ctx.phase === 'CONFIRMED') {
+    const c = build('MEET_GREET_COMPLETE', true);
+    if (c) list.push(c);
+  }
+
+  // Book — CUSTOMER only, COMPLETED (fast rebook after Meet & Greet).
+  if (isCustomer && ctx.phase === 'COMPLETED') {
+    const b = build('BOOKING_REQUEST_SUBMIT', true, { requiresPreview: true });
+    if (b) list.push(b);
+  }
+
+  // Support / report — always available while thread exists.
+  const s = build('SUPPORT_CONTACT_OPEN', true);
+  if (s) list.push(s);
+
+  return list;
+}
+
+// ── Prestige availability (integrity §14) ─────────────────────────────
+
+export type PrestigeStatus = 'NONE' | 'ACTIVE' | 'CANCELLED';
+
+export interface PrestigeActionContext {
+  status: PrestigeStatus;
+  hasVerifiedEmail: boolean;
+  hasVerifiedMobile: boolean;
+}
+
+export function prestigeAvailableActions(ctx: PrestigeActionContext): AvailableAction[] {
+  const list: AvailableAction[] = [];
+
+  // JOIN — signed-in customer, not-active, base contact verified.
+  // The reason code surfaces WHY when disabled so the UI can explain.
+  if (ctx.status !== 'ACTIVE') {
+    const enabled = ctx.hasVerifiedEmail && ctx.hasVerifiedMobile;
+    const j = build('PRESTIGE_JOIN', enabled, {
+      requiresPreview: true,
+      reasonCode: enabled ? undefined : 'CONSENT_REQUIRED',
+    });
+    if (j) list.push(j);
+  }
+
+  // CANCEL — ACTIVE only.
+  if (ctx.status === 'ACTIVE') {
+    const c = build('PRESTIGE_CANCEL_MEMBERSHIP', true, { requiresPreview: true });
+    if (c) list.push(c);
+  }
+
+  return list;
+}
+
+// ── Provider Application availability (business doctrine §17.7) ───────
+
+export type ProviderApplicationPhase =
+  | 'NOT_STARTED'
+  | 'DRAFT'
+  | 'READY_TO_SUBMIT'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'CHANGES_REQUESTED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'WITHDRAWN';
+
+export interface ProviderApplicationActionContext {
+  participant: 'APPLICANT' | 'STAFF';
+  phase: ProviderApplicationPhase;
+  hasAcceptedActiveAgreement: boolean;
+  missingChecklistItems: number;
+}
+
+export function providerApplicationAvailableActions(
+  ctx: ProviderApplicationActionContext,
+): AvailableAction[] {
+  const list: AvailableAction[] = [];
+  const isApplicant = ctx.participant === 'APPLICANT';
+
+  // Save draft — any pre-submit phase.
+  if (isApplicant && (ctx.phase === 'DRAFT' || ctx.phase === 'NOT_STARTED' || ctx.phase === 'CHANGES_REQUESTED')) {
+    const s = build('PROVIDER_APPLICATION_SAVE_DRAFT', true);
+    if (s) list.push(s);
+  }
+
+  // Add / remove services — pre-submit.
+  if (isApplicant && (ctx.phase === 'DRAFT' || ctx.phase === 'READY_TO_SUBMIT')) {
+    const add = build('PROVIDER_APPLICATION_ADD_SERVICE', true, { requiresPreview: true });
+    if (add) list.push(add);
+    const rm = build('PROVIDER_APPLICATION_REMOVE_SERVICE', true);
+    if (rm) list.push(rm);
+  }
+
+  // Upload ID — always allowed pre-submit + on CHANGES_REQUESTED (reviewer asked for a fix).
+  if (isApplicant && ['DRAFT', 'READY_TO_SUBMIT', 'CHANGES_REQUESTED'].includes(ctx.phase)) {
+    const u = build('PROVIDER_APPLICATION_UPLOAD_ID', true, { requiresPreview: true });
+    if (u) list.push(u);
+  }
+
+  // Accept agreement — before Submit, applicant must accept the ACTIVE version.
+  if (isApplicant && !ctx.hasAcceptedActiveAgreement && ctx.phase !== 'APPROVED') {
+    const ag = build('PROVIDER_AGREEMENT_ACCEPT', true, { requiresPreview: true });
+    if (ag) list.push(ag);
+  }
+
+  // Submit — READY_TO_SUBMIT, no missing items, agreement accepted.
+  if (isApplicant && ctx.phase === 'READY_TO_SUBMIT') {
+    const canSubmit = ctx.hasAcceptedActiveAgreement && ctx.missingChecklistItems === 0;
+    const s = build('PROVIDER_APPLICATION_SUBMIT', canSubmit, {
+      requiresPreview: true,
+      reasonCode: canSubmit
+        ? undefined
+        : ctx.hasAcceptedActiveAgreement
+          ? 'CONSENT_REQUIRED'
+          : 'AGREEMENT_REACCEPTANCE_REQUIRED',
+    });
+    if (s) list.push(s);
+  }
+
+  // Withdraw — any post-submit non-terminal phase.
+  if (isApplicant && ['SUBMITTED', 'UNDER_REVIEW', 'CHANGES_REQUESTED'].includes(ctx.phase)) {
+    const w = build('PROVIDER_APPLICATION_WITHDRAW', true, { requiresPreview: true });
+    if (w) list.push(w);
+  }
+
+  // Support always.
+  const sup = build('SUPPORT_CONTACT_OPEN', true);
+  if (sup) list.push(sup);
+
+  return list;
+}
