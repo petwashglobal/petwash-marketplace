@@ -14364,6 +14364,29 @@ export const favouriteProviders = pgTable("favourite_providers", {
 export type FavouriteProvider       = typeof favouriteProviders.$inferSelect;
 export type InsertFavouriteProvider = typeof favouriteProviders.$inferInsert;
 
+// ─── Journey Action Events (CEO MASTER 2026-08-28 §24 §25 §66 §67 §68) ────────
+// Migration 0136_journey_action_events_2026_08_28.sql. Personalization
+// feedback + adaptive-timing telemetry. Explicitly NOT LLM chain-of-
+// thought — every field is structured and short.
+export const journeyActionEvents = pgTable("journey_action_events", {
+  id:          serial("id").primaryKey(),
+  eventId:     varchar("event_id",    { length: 64  }).unique().notNull(),
+  userUid:     varchar("user_uid",    { length: 200 }).notNull(),
+  actor:       varchar("actor",       { length: 20  }).notNull(),
+  reasonCode:  varchar("reason_code", { length: 64  }).notNull(),
+  eventType:   varchar("event_type",  { length: 32  }).notNull(),
+  actionType:  varchar("action_type", { length: 32  }),
+  source:      varchar("source",      { length: 64  }),
+  entityRef:   varchar("entity_ref",  { length: 200 }),
+  metadata:    jsonb("metadata").notNull().default({}),
+  createdAt:   timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [
+  index("journey_action_events_user_reason_idx").on(table.userUid, table.reasonCode, table.eventType),
+  index("journey_action_events_user_created_idx").on(table.userUid, table.createdAt),
+]);
+export type JourneyActionEvent       = typeof journeyActionEvents.$inferSelect;
+export type InsertJourneyActionEvent = typeof journeyActionEvents.$inferInsert;
+
 // ─── Dispute Cases (Phase 2.9C) ───────────────────────────────────────────────
 // case_ref is server-generated.  notes is an append-only JSONB array.
 // resolve is the ONLY path that sets resolved_at.

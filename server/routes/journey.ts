@@ -31,6 +31,12 @@ import {
   listFavouriteProviders,
   isFavouriteProvider,
 } from '../services/favouriteProviders';
+import {
+  recordJourneyEvent,
+  forgetReason,
+  listRecentJourneyEvents,
+  type JourneyEventType,
+} from '../services/journeyEvents';
 
 const router = Router();
 
@@ -240,6 +246,80 @@ router.get('/favourites/:domain/:providerId', async (req: Request, res: Response
   } catch (err: any) {
     logger.error('[Journey] favourite check error', { err: String(err?.message ?? err) });
     return res.status(500).json({ ok: false, error: 'favourite_check_failed' });
+  }
+});
+
+// ─── Action events (Phase 6) ──────────────────────────────────────────
+
+const EVENT_TYPES: JourneyEventType[] = [
+  'shown', 'clicked', 'dismissed', 'not_interested', 'forget_reason', 'completed',
+];
+
+const EventBodySchema = z.object({
+  actor: z.enum(['pet_parent', 'provider']),
+  reasonCode: z.string().min(1).max(64),
+  eventType: z.enum(EVENT_TYPES as [JourneyEventType, ...JourneyEventType[]]),
+  actionType: z.string().max(32).optional(),
+  source: z.string().max(64).optional(),
+  entityRef: z.string().max(200).optional().nullable(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+router.post('/events', async (req: Request, res: Response) => {
+  const uid = callerUid(req);
+  if (!uid) return res.status(401).json({ ok: false, error: 'auth_required' });
+  const parsed = EventBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: 'invalid_body', errorCode: 'EVENT_BODY_INVALID' });
+  }
+  try {
+    const row = await recordJourneyEvent({
+      userUid: uid,
+      actor: parsed.data.actor,
+      reasonCode: parsed.data.reasonCode,
+      eventType: parsed.data.eventType,
+      actionType: parsed.data.actionType,
+      source: parsed.data.source,
+      entityRef: parsed.data.entityRef ?? null,
+      metadata: parsed.data.metadata,
+    });
+    return res.json({ ok: true, event: row });
+  } catch (err: any) {
+    logger.error('[Journey] event record error', { err: String(err?.message ?? err) });
+    return res.status(500).json({ ok: false, error: 'event_record_failed' });
+  }
+});
+
+router.get('/events', async (req: Request, res: Response) => {
+  const uid = callerUid(req);
+  if (!uid) return res.status(401).json({ ok: false, error: 'auth_required' });
+  try {
+    const rawLimit = typeof req.query.limit === 'string' ? parseInt(req.query.limit, 10) : NaN;
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 25;
+    const rows = await listRecentJourneyEvents(uid, limit);
+    return res.json({ ok: true, events: rows });
+  } catch (err: any) {
+    logger.error('[Journey] event list error', { err: String(err?.message ?? err) });
+    return res.status(500).json({ ok: false, error: 'event_list_failed' });
+  }
+});
+
+/**
+ * CEO §55 "Forget this preference" — deletes every journey_action_event
+ * row for (user, reasonCode). Applies only to preference telemetry —
+ * canonical ledgers / invoices / bookings are untouched (§56).
+ */
+router.delete('/events/:reasonCode', async (req: Request, res: Response) => {
+  const uid = callerUid(req);
+  if (!uid) return res.status(401).json({ ok: false, error: 'auth_required' });
+  const reasonCode = String(req.params.reasonCode ?? '').slice(0, 64);
+  if (!reasonCode) return res.status(400).json({ ok: false, error: 'reason_required' });
+  try {
+    await forgetReason(uid, reasonCode);
+    return res.json({ ok: true });
+  } catch (err: any) {
+    logger.error('[Journey] forget reason error', { err: String(err?.message ?? err) });
+    return res.status(500).json({ ok: false, error: 'forget_reason_failed' });
   }
 });
 
