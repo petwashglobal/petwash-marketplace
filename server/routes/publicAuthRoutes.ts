@@ -8,8 +8,6 @@ import { logger } from "../lib/logger";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
 import { verifyTurnstileToken } from "../lib/verifyTurnstile";
 import { twilioSMSService } from "../services/TwilioSMSService";
-import { isUnifiedVerificationSignupEnabled } from "../lib/feature-flags/unifiedVerification";
-import { UnifiedVerificationError, unifiedVerificationService } from "../services/UnifiedVerificationService";
 import { db as firestoreDb, auth as fbAdminAuth } from '../lib/firebase-admin';
 import { sql, eq } from 'drizzle-orm';
 import { pool, db } from '../db';
@@ -1498,45 +1496,14 @@ publicAuthRouter.post("/api/accessibility-audit", async (req, res) => {
   }
 });
 
-// ─── Phone OTP Verification (3-Class Membership System) ────────────────
-import { registrationOTPService } from '../services/RegistrationOTPService';
-import { assignCustomerMembership } from '../services/MembershipService';
-import { renderWelcomeSMS, getTemplateId } from '../sms/templates/welcome-sms-templates';
-
-const otpSendSchema = z.object({
-  phone: z.string().min(8).max(20),
-  userTypeIntent: z.enum(['PUBLIC', 'PROVIDER', 'STAFF_REQUEST']).default('PUBLIC'),
-  channel: z.enum(['sms', 'whatsapp']).default('sms'),
-  captchaToken: z.string().optional(),
-});
-
-const otpResendSchema = z.object({
-  otpId: z.string().uuid(),
-  channel: z.enum(['sms', 'whatsapp']).default('whatsapp'),
-});
-
-const otpVerifySchema = z.object({
-  otpId: z.string().uuid(),
-  code: z.string().length(6),
-});
-
-function verificationActorForPublicAuth(req: express.Request) {
-  return {
-    userId: (req as any).user?.uid || (req as any).firebaseUser?.uid,
-    ip: req.ip || req.headers['x-forwarded-for']?.toString(),
-    userAgent: req.headers['user-agent'],
-    traceId: (req as any).traceId,
-  };
-}
-
-function unifiedSignupErrorStatus(error: UnifiedVerificationError): number {
-  if (error.reasonCode === 'INVALID_CODE') return 400;
-  if (error.reasonCode === 'CHALLENGE_LOCKED') return 429;
-  if (error.reasonCode === 'CHALLENGE_EXPIRED') return 410;
-  if (error.reasonCode === 'CHALLENGE_COOLDOWN') return 429;
-  if (error.reasonCode === 'SMS_PROVIDER_ERROR') return 503;
-  return error.statusCode;
-}
+// ─── Phone OTP Verification — retired 2026-08-29 (CEO FLY MODE II §21).
+// The three /api/auth/phone/otp/{send,resend,verify} handlers are 410
+// stubs pointing at the canonical /api/auth/sms/{start,verify} surface.
+// The zod schemas, RegistrationOTPService, MembershipService,
+// welcome-SMS templates, verificationActorForPublicAuth, and
+// unifiedSignupErrorStatus were all locally scoped to those handlers
+// and are removed with them. The 410 contract stays enforced by
+// tests/unit/turnstileGuardConsolidation.test.ts.
 
 // Attach the same per-IP send limiter the legacy /send-code path uses
 // (3 SMS sends per IP per 10 min, IPv6-mapped IPv4 normalised). Without
@@ -1550,91 +1517,11 @@ function unifiedSignupErrorStatus(error: UnifiedVerificationError): number {
 // build behind, staging test) sees a loud failure and switches to the
 // canonical surface. Full handler body preserved below the return for a
 // safe rollback if a hidden production caller surfaces.
-publicAuthRouter.post('/api/auth/phone/otp/send', phoneSendRateLimiter, async (req, res) => {
+publicAuthRouter.post('/api/auth/phone/otp/send', phoneSendRateLimiter, (_req, res) => {
   return res.status(410).json({
     error: 'ENDPOINT_RETIRED',
     message: 'Use /api/auth/sms/start (canonical customer SMS surface).',
   });
-  // eslint-disable-next-line no-unreachable
-  try {
-    const parsed = otpSendSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid phone number or intent', details: parsed.error.flatten() });
-    }
-
-    const { phone, userTypeIntent, channel, captchaToken } = parsed.data;
-    const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
-
-    if (!captchaToken) {
-      // Non-blocking: phone OTP itself is the authentication factor.
-      // Security is enforced by rate limiting + phone lockout + daily SMS cap.
-      // Hard-blocking on missing captcha permanently locks out users when
-      // reCAPTCHA credentials are not configured in production.
-      logger.warn('[PublicAuth] OTP send — no captchaToken (reCAPTCHA unavailable), proceeding with rate-limit protection', { phone: phone.slice(-4) });
-    } else {
-      const captchaResult = await verifyCaptchaToken(captchaToken, 'phone_otp');
-      if (!captchaResult.valid) {
-        logger.warn('[PublicAuth] OTP send blocked by reCAPTCHA', { phone: phone.slice(-4), reason: captchaResult.reason });
-        return res.status(403).json({ error: 'CAPTCHA_FAILED', message: language === 'he' ? 'אימות אבטחה נכשל' : 'Security check failed. Please refresh and try again.' });
-      }
-    }
-
-    const result = isUnifiedVerificationSignupEnabled()
-      ? await unifiedVerificationService.startChallenge({
-          purpose: 'signup',
-          channel,
-          destination: phone,
-          payload: { userTypeIntent, language },
-          actor: verificationActorForPublicAuth(req),
-        }).then((unifiedResult) => ({
-          success: true,
-          otpId: unifiedResult.challenge.challengeId,
-          expiresIn: 300,
-          channel: unifiedResult.challenge.channel as 'sms' | 'whatsapp',
-        }))
-      : await registrationOTPService.sendOTP(phone, userTypeIntent, {
-          ip: req.ip || req.headers['x-forwarded-for']?.toString(),
-          userAgent: req.headers['user-agent'],
-          traceId: (req as any).traceId,
-          language,
-          channel,
-        });
-
-    if (!result.success) {
-      const errorMessages: Record<string, { en: string; he: string; status: number }> = {
-        'COOLDOWN_ACTIVE': { en: 'Please wait before requesting a new code', he: 'אנא המתינו לפני שליחת קוד חדש', status: 429 },
-        'PHONE_RATE_LIMIT': { en: 'Too many attempts for this phone, try again later', he: 'יותר מדי ניסיונות לטלפון זה, נסו שוב מאוחר יותר', status: 429 },
-        'IP_RATE_LIMIT': { en: 'Too many attempts, try again later', he: 'יותר מדי ניסיונות, נסו שוב מאוחר יותר', status: 429 },
-        'INTERNAL_ERROR': { en: 'Failed to send verification code', he: 'שליחת קוד האימות נכשלה', status: 500 },
-      };
-      const errInfo = errorMessages[result.error || ''] || errorMessages['INTERNAL_ERROR'];
-      return res.status(errInfo.status).json({
-        error: result.error,
-        cooldownRemaining: result.cooldownRemaining,
-        message: language === 'he' ? errInfo.he : errInfo.en,
-      });
-    }
-
-    res.json({
-      success: true,
-      otpId: result.otpId,
-      expiresIn: result.expiresIn,
-      channel: result.channel,
-      message: language === 'he'
-        ? (channel === 'whatsapp' ? 'קוד אימות נשלח בוואטסאפ' : 'קוד אימות נשלח ב-SMS')
-        : (channel === 'whatsapp' ? 'Verification code sent via WhatsApp' : 'Verification code sent via SMS'),
-    });
-  } catch (err) {
-    if (err instanceof UnifiedVerificationError) {
-      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
-      return res.status(unifiedSignupErrorStatus(err)).json({
-        error: err.reasonCode,
-        message: language === 'he' ? 'שליחת קוד האימות נכשלה' : err.message,
-      });
-    }
-    logger.error('[PublicAuth] Phone send-code error:', err);
-    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to send verification code' });
-  }
 });
 
 // Same per-IP send limiter as /otp/send. Resend was previously gated only
@@ -1642,238 +1529,21 @@ publicAuthRouter.post('/api/auth/phone/otp/send', phoneSendRateLimiter, async (r
 // a single client could sustain ~1 SMS/min/otpId indefinitely. The
 // service layer now also enforces the per-phone hourly cap on resend
 // (see RegistrationOTPService.resendOTP below).
-publicAuthRouter.post('/api/auth/phone/otp/resend', phoneSendRateLimiter, async (req, res) => {
+publicAuthRouter.post('/api/auth/phone/otp/resend', phoneSendRateLimiter, (_req, res) => {
   return res.status(410).json({
     error: 'ENDPOINT_RETIRED',
     message: 'Use /api/auth/sms/start (canonical customer SMS surface).',
   });
-  // eslint-disable-next-line no-unreachable
-  try {
-    const parsed = otpResendSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid request' });
-    }
-
-    const { otpId, channel } = parsed.data;
-    const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
-
-    const result = isUnifiedVerificationSignupEnabled()
-      ? await unifiedVerificationService.resendChallenge({
-          challengeId: otpId,
-          channel,
-          actor: verificationActorForPublicAuth(req),
-        }).then((unifiedResult) => ({
-          success: true,
-          otpId: unifiedResult.challenge.challengeId,
-          expiresIn: Math.max(0, Math.ceil((new Date(unifiedResult.challenge.expiresAt).getTime() - Date.now()) / 1000)),
-          channel: unifiedResult.challenge.channel as 'sms' | 'whatsapp',
-        }))
-      : await registrationOTPService.resendOTP(otpId, channel, {
-          ip: req.ip || req.headers['x-forwarded-for']?.toString(),
-          userAgent: req.headers['user-agent'],
-          traceId: (req as any).traceId,
-          language,
-        });
-
-    if (!result.success) {
-      const statusCode = result.error === 'OTP_EXPIRED' ? 410 : 429;
-      return res.status(statusCode).json({
-        error: result.error,
-        cooldownRemaining: result.cooldownRemaining,
-        message: result.error === 'OTP_EXPIRED'
-          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
-          : (language === 'he' ? 'אנא המתינו לפני שליחת קוד חדש' : 'Please wait before requesting a new code'),
-      });
-    }
-
-    res.json({
-      success: true,
-      otpId: result.otpId,
-      expiresIn: result.expiresIn,
-      channel: result.channel,
-      message: language === 'he'
-        ? (channel === 'whatsapp' ? 'קוד חדש נשלח בוואטסאפ' : 'קוד חדש נשלח ב-SMS')
-        : (channel === 'whatsapp' ? 'New code sent via WhatsApp' : 'New code sent via SMS'),
-    });
-  } catch (err) {
-    if (err instanceof UnifiedVerificationError) {
-      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
-      return res.status(unifiedSignupErrorStatus(err)).json({
-        error: err.reasonCode,
-        message: err.reasonCode === 'CHALLENGE_EXPIRED'
-          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
-          : (language === 'he' ? 'אנא המתינו לפני שליחת קוד חדש' : err.message),
-      });
-    }
-    logger.error('[PublicAuth] Phone resend-code error:', err);
-    res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to resend verification code' });
-  }
 });
 
 // Same per-IP verify limiter the legacy /verify-code path uses (5 verifies
 // per IP per 5 min). The per-otpId attempt counter (max 5 + 15-min lockout)
 // remains the primary brute-force defence; this adds defence-in-depth.
-publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, async (req, res) => {
+publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, (_req, res) => {
   return res.status(410).json({
     error: 'ENDPOINT_RETIRED',
     message: 'Use /api/auth/sms/verify (canonical customer SMS surface).',
   });
-  // eslint-disable-next-line no-unreachable
-  try {
-    const parsed = otpVerifySchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ error: 'VALIDATION_ERROR', message: 'Invalid OTP ID or code' });
-    }
-
-    const { otpId, code } = parsed.data;
-    const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
-
-    const result = isUnifiedVerificationSignupEnabled()
-      ? await unifiedVerificationService.verifyChallenge({
-          challengeId: otpId,
-          code,
-          actor: verificationActorForPublicAuth(req),
-        }).then((unifiedResult) => ({
-          success: true,
-          otpId,
-          metadata: (unifiedResult.action.metadata as any) || undefined,
-        }))
-      : await registrationOTPService.verifyOTP(otpId, code, {
-          ip: req.ip || req.headers['x-forwarded-for']?.toString(),
-          userAgent: req.headers['user-agent'],
-          traceId: (req as any).traceId,
-        });
-
-    if (!result.success) {
-      const statusCode = result.error === 'MAX_ATTEMPTS_EXCEEDED' ? 429 : 400;
-      return res.status(statusCode).json({
-        error: result.error,
-        remainingAttempts: result.remainingAttempts,
-        message: result.error === 'INVALID_CODE'
-          ? (language === 'he' ? 'קוד שגוי, נסו שוב' : 'Invalid code, please try again')
-          : result.error === 'OTP_EXPIRED'
-          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
-          : (language === 'he' ? 'חריגה ממספר הניסיונות' : 'Too many failed attempts'),
-      });
-    }
-
-    const metadata = result.metadata;
-    let membershipId: string | null = null;
-    let isNewUser = false;
-
-    if (metadata) {
-      const firebaseUser = await getFirebaseUserFromRequest(req);
-      if (firebaseUser) {
-        // ── Step 1: Ensure the users row exists before any membership logic ──
-        // New mobile users (phone-only signup) have no users row yet — upsert it
-        // so that the membership UPDATE below actually finds a row.
-        try {
-          const [existing] = await db
-            .select({ id: users.id, membershipNumber: users.membershipNumber })
-            .from(users)
-            .where(eq(users.id, firebaseUser.uid))
-            .limit(1);
-
-          if (!existing) {
-            isNewUser = true;
-            await storage.upsertUser({
-              id: firebaseUser.uid,
-              email: firebaseUser.email || null,
-              phoneE164: metadata.phoneE164 !== 'N/A' ? metadata.phoneE164 : null,
-              phoneVerified: true,
-              authProvider: 'phone',
-              role: 'customer',
-              signupIntent: metadata.userTypeIntent === 'PROVIDER' ? 'provider' : metadata.userTypeIntent === 'STAFF_REQUEST' ? 'staff_request' : 'customer',
-            } as any);
-            logger.info('[PublicAuth] New mobile user row created', { uid: firebaseUser.uid, phone: metadata.phoneE164?.slice(0, 6) + '****' });
-          } else {
-            // Existing user — stamp phone_e164 if changed (phone_verified is set by
-            // markMobileVerified below, which also sets the timestamp + status).
-            if (metadata.phoneE164 !== 'N/A') {
-              await db.update(users).set({ phoneE164: metadata.phoneE164 }).where(eq(users.id, firebaseUser.uid));
-            }
-          }
-          // CRITICAL FIX (verification-drift): record the verification in the columns
-          // the ACTIVATION gate reads — mobile_verified_at + activation_status — not
-          // just the phone_verified boolean. Writing the boolean alone left
-          // mobile_verified_at null → getActivationState().isFullyActive=false → 403
-          // ACCOUNT_NOT_ACTIVATED on wallet/K9000/bookings, even though the user just
-          // verified their phone. markMobileVerified sets boolean+timestamp+status
-          // together (idempotent) and triggers full activation (wallet + loyalty).
-          try {
-            const { markMobileVerified } = await import('../services/ActivationService');
-            await markMobileVerified(firebaseUser.uid);
-          } catch (actErr) {
-            logger.error('[PublicAuth] markMobileVerified failed on OTP verify (non-blocking)', actErr);
-          }
-        } catch (upsertErr) {
-          logger.error('[PublicAuth] User upsert on OTP verify failed (non-blocking)', upsertErr);
-        }
-
-        // ── Step 2: Assign membership (now the row is guaranteed to exist) ──
-        if (metadata.userTypeIntent === 'PUBLIC') {
-          membershipId = await assignCustomerMembership(firebaseUser.uid);
-        }
-      }
-
-      // ── Step 3: Welcome SMS (only for new users) ──
-      try {
-        const firebaseUser2 = firebaseUser ?? await getFirebaseUserFromRequest(req);
-        const firstName = firebaseUser2?.displayName?.split(' ')[0] || '';
-        const smsType = metadata.userTypeIntent === 'PROVIDER' ? 'PROVIDER' as const
-          : metadata.userTypeIntent === 'STAFF_REQUEST' ? 'STAFF' as const
-          : 'CUSTOMER' as const;
-        const displayId = membershipId || 'pending';
-        if (isNewUser && firstName && metadata.phoneE164 && metadata.phoneE164 !== 'N/A') {
-          const smsBody = renderWelcomeSMS(smsType, { firstName, membershipId: displayId, language });
-          const templateId = getTemplateId(smsType);
-          const smsResult = await twilioSMSService.sendSMS(metadata.phoneE164, smsBody);
-
-          await db.insert(smsEvidence).values({
-            userId: firebaseUser2?.uid || null,
-            membershipId: membershipId || null,
-            messageType: 'WELCOME',
-            templateId,
-            templateVersion: '1.0',
-            toPhone: metadata.phoneE164,
-            renderedText: smsBody,
-            contentHash: crypto.createHash('sha256').update(smsBody).digest('hex'),
-            provider: 'twilio',
-            providerMessageId: smsResult.messageId || null,
-            status: smsResult.success ? 'sent' : 'failed',
-            failureReason: smsResult.success ? null : (smsResult.error || 'Unknown'),
-            ip: req.ip || null,
-            userAgent: req.headers['user-agent'] || null,
-            traceId: (req as any).traceId,
-          });
-        }
-      } catch (welcomeErr) {
-        logger.error('[PublicAuth] Welcome SMS failed (non-blocking)', welcomeErr);
-      }
-    }
-
-    res.json({
-      success: true,
-      verified: true,
-      membershipId,
-      isNewUser,
-      message: language === 'he' ? 'הטלפון אומת בהצלחה' : 'Phone verified successfully',
-    });
-  } catch (err) {
-    if (err instanceof UnifiedVerificationError) {
-      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
-      return res.status(unifiedSignupErrorStatus(err)).json({
-        error: err.reasonCode,
-        message: err.reasonCode === 'INVALID_CODE'
-          ? (language === 'he' ? 'קוד שגוי, נסו שוב' : 'Invalid code, please try again')
-          : err.reasonCode === 'CHALLENGE_EXPIRED'
-          ? (language === 'he' ? 'הקוד פג תוקף, בקשו קוד חדש' : 'Code expired, please request a new one')
-          : (language === 'he' ? 'חריגה ממספר הניסיונות' : err.message),
-      });
-    }
-    logger.error('[PublicAuth] Phone verify-code error:', err);
-    res.status(500).json({ error: 'SERVER_ERROR', message: 'Verification failed' });
-  }
 });
 
 // ── Rate limiter for client-side event reports (20 per IP per 5 min) ─────────
