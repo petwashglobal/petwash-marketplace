@@ -8,7 +8,7 @@ import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { useLocation } from 'wouter';
 // CEO §B41 §1.5 (2026-08-29) — Google One Tap shares the same
 // journey-trace + preferred-method wire as the other AUTH_* CTAs.
-import { authJourneyHeader, beginAuthJourney, recordAuthJourneyStage, endAuthJourney } from '@/lib/authJourney';
+import { authJourneyHeader, beginAuthJourney, recordAuthJourneyStage, endAuthJourney, withAuthJourneyHeader as _withAuthJourneyHeader } from '@/lib/authJourney';
 import { writePreferredAuthMethod } from '@/lib/preferredAuthMethod';
 
 interface GoogleOneTapProps {

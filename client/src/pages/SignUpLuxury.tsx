@@ -76,6 +76,7 @@ import {
   recordAuthJourneyStage,
   endAuthJourney,
   currentAuthJourney,
+  withAuthJourneyHeader,
   type AuthJourneyRecord,
 } from '@/lib/authJourney';
 import { writePreferredAuthMethod, type PreferredAuthMethod } from '@/lib/preferredAuthMethod';

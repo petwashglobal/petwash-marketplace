@@ -168,6 +168,26 @@ export function authJourneyHeader(): string | null {
   return rec.method ? `${rec.id};method=${rec.method}` : rec.id;
 }
 
+/**
+ * Merge the X-Auth-Journey-Id header into a fetch init's headers if
+ * a journey is active. Safe to call unconditionally; if there is no
+ * journey the init is returned unchanged.
+ *
+ * Usage:
+ *   const res = await fetch(url, withAuthJourneyHeader({
+ *     method: 'POST',
+ *     headers: { 'Content-Type': 'application/json' },
+ *     body: JSON.stringify(payload),
+ *   }));
+ */
+export function withAuthJourneyHeader(init: RequestInit = {}): RequestInit {
+  const header = authJourneyHeader();
+  if (!header) return init;
+  const headers = new Headers(init.headers ?? undefined);
+  headers.set('X-Auth-Journey-Id', header);
+  return { ...init, headers };
+}
+
 /** User-visible error reference: PW-ERR-<first 8 chars of the id>. */
 export function errorReference(): string {
   const rec = readStore();
