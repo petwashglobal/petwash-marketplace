@@ -83,6 +83,13 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     // Hidden source maps: generated but not referenced in bundle — only for Sentry/error monitoring
     sourcemap: 'hidden',
+    // CEO 2026-08-29 P0-3 (§7 §8): emit the Vite build manifest so
+    // verify-dist-manifest can walk the TRANSITIVE JS chunk graph.
+    // Without this the postbuild gate can only see chunks referenced
+    // directly from index.html — a missing vendor-react-XYZ.js
+    // pulled in by a lazy entry (the /signin incident cause) would
+    // sneak past.
+    manifest: true,
   },
   server: {
     fs: {

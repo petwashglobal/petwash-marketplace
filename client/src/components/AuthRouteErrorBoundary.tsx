@@ -48,29 +48,62 @@ export class AuthRouteErrorBoundary extends Component<Props, State> {
       const buildId = (typeof __APP_BUILD_ID__ !== 'undefined')
         ? String(__APP_BUILD_ID__)
         : 'unknown';
-      const payload = {
-        source: 'client-auth-boundary',
-        message: `AUTH ROUTE CRASH: ${error?.message ?? String(error)}`,
-        stack: error?.stack ?? '',
-        componentStack: info?.componentStack?.slice(0, 4000) ?? '',
-        route: this.props.route ?? (typeof location !== 'undefined' ? location.pathname : ''),
-        url: typeof location !== 'undefined' ? location.href : '',
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
-        clientBuildId: buildId,
-        clientErrorId: this.state.clientErrorId,
-        // Fingerprint the exact class of failure the CEO §21 rule
-        // asked us to group.
-        fingerprint: /reading ['"]default['"]/i.test(String(error?.message ?? ''))
-          ? 'CLIENT_LAZY_MODULE_DEFAULT_UNDEFINED'
-          : 'CLIENT_AUTH_ROUTE_CRASH',
+      const isLazyDefault = /reading ['"]default['"]/i.test(String(error?.message ?? ''));
+      const baseFingerprint = isLazyDefault
+        ? 'CLIENT_LAZY_MODULE_DEFAULT_UNDEFINED'
+        : 'CLIENT_AUTH_ROUTE_CRASH';
+
+      // CEO §12 §18 — classify STALE_CLIENT_RELEASE_MISMATCH vs
+      // CURRENT_RELEASE_RUNTIME_DEFECT by comparing clientBuildId
+      // (baked at build time) with the LIVE server build id.
+      // Fire-and-forget with a short timeout so the report always
+      // ships, even if the classify probe stalls.
+      const classifyAndReport = async () => {
+        let serverBuildId = 'unknown';
+        let gitSha = 'unknown';
+        let classification: 'STALE_CLIENT_RELEASE_MISMATCH' | 'CURRENT_RELEASE_RUNTIME_DEFECT' | 'UNKNOWN_RELEASE' = 'UNKNOWN_RELEASE';
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 2500);
+          const rel = await fetch('/api/release-info', { signal: ctrl.signal, credentials: 'include' });
+          clearTimeout(timer);
+          if (rel.ok) {
+            const body = await rel.json();
+            serverBuildId = String(body?.releaseBuildId ?? 'unknown');
+            gitSha = String(body?.gitSha ?? 'unknown');
+            if (buildId !== 'unknown' && serverBuildId !== 'unknown') {
+              classification = buildId === serverBuildId
+                ? 'CURRENT_RELEASE_RUNTIME_DEFECT'
+                : 'STALE_CLIENT_RELEASE_MISMATCH';
+            }
+          }
+        } catch { /* silent */ }
+        const payload = {
+          source: 'client-auth-boundary',
+          message: `AUTH ROUTE CRASH: ${error?.message ?? String(error)}`,
+          stack: error?.stack ?? '',
+          componentStack: info?.componentStack?.slice(0, 4000) ?? '',
+          route: this.props.route ?? (typeof location !== 'undefined' ? location.pathname : ''),
+          url: typeof location !== 'undefined' ? location.href : '',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+          clientBuildId: buildId,
+          serverBuildId,
+          gitSha,
+          releaseClassification: classification,
+          clientErrorId: this.state.clientErrorId,
+          fingerprint: baseFingerprint,
+        };
+        try {
+          await fetch('/api/errors/log', {
+            method: 'POST',
+            credentials: 'include',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } catch { /* silent */ }
       };
-      void fetch('/api/errors/log', {
-        method: 'POST',
-        credentials: 'include',
-        keepalive: true,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      }).catch(() => { /* silent */ });
+      void classifyAndReport();
     } catch { /* silent — reporter must never break the boundary */ }
   }
 

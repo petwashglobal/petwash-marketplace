@@ -17242,6 +17242,17 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         fingerprint: errorReport.fingerprint,
         route: errorReport.route,
         chunkUrl: errorReport.chunkUrl,
+        // CEO 2026-08-29 §12 — the client compares its clientBuildId
+        // to the live releaseBuildId (via /api/release-info) and
+        // stamps a classification on the crash payload:
+        //   STALE_CLIENT_RELEASE_MISMATCH  → mostly self-heals
+        //   CURRENT_RELEASE_RUNTIME_DEFECT → REAL BUG on the live
+        //                                    build, page CEO
+        //   UNKNOWN_RELEASE                → server or client id
+        //                                    was missing
+        serverBuildId: errorReport.serverBuildId,
+        gitSha: errorReport.gitSha,
+        releaseClassification: errorReport.releaseClassification,
       });
 
       // SELF-AWARE client faults (2026-06-24): route genuine client crashes into
