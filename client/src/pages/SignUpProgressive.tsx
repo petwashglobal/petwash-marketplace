@@ -28,7 +28,7 @@
  *
  * Real Firebase / OTP / /api/auth/account-resolution wiring: commit 4.
  */
-import { useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { useLocation } from 'wouter';
 import {
   reduce,
@@ -38,6 +38,7 @@ import {
   type SignupState,
   type SignupEvent,
   type RequiredAction,
+  type AccountResolution,
 } from '@/lib/progressiveSignupState';
 
 interface ProviderIntent {
@@ -87,6 +88,78 @@ export default function SignUpProgressive({ language = 'en', initialStateOverrid
   const intent = useProviderIntent();
   const [, navigate] = useLocation();
   const [state, dispatch] = useReducer(reduce, initialStateOverride ?? initialState);
+
+  // Lane A — drives the network side of the state machine. The pure
+  // reducer decides WHAT state we're in; this effect reacts to
+  // transitions and fires the corresponding request. The Firebase
+  // test adapter (tests/e2e/firebaseTestAdapter.ts) intercepts both
+  // /api/auth/session and /api/auth/account-resolution so an E2E run
+  // is fully deterministic.
+  useEffect(() => {
+    if (state.name !== 'AUTHENTICATING') return;
+    // Detect the E2E test adapter shim (window.__FIREBASE_TEST_ADAPTER__).
+    // When present, short-circuit real Firebase and mint the session
+    // via the synthetic token — the harness route()-intercepts the
+    // POST /api/auth/session call and returns the persona-shaped body.
+    const shim = (typeof window !== 'undefined') && (window as any).__FIREBASE_TEST_ADAPTER__;
+    const syntheticToken: string | null = shim?.enabled === true ? shim.syntheticIdToken : null;
+    if (!syntheticToken) {
+      // Real Firebase wiring lands in commit 6. For now we bail out
+      // to METHOD_SELECTION on non-harness envs — the legacy /signup
+      // continues to serve those users.
+      dispatch({ kind: 'RESET' });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ idToken: syntheticToken }),
+        });
+        if (!res.ok || cancelled) {
+          dispatch({ kind: 'RESET' });
+          return;
+        }
+        dispatch({ kind: 'AUTH_SUCCESS' });
+      } catch {
+        if (!cancelled) dispatch({ kind: 'RESET' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [state.name]);
+
+  useEffect(() => {
+    if (state.name !== 'ACCOUNT_RESOLUTION') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/account-resolution', {
+          credentials: 'include',
+        });
+        if (!res.ok || cancelled) {
+          dispatch({ kind: 'RESET' });
+          return;
+        }
+        const resolution = (await res.json()) as AccountResolution;
+        if (cancelled) return;
+        dispatch({ kind: 'RESOLVED', resolution });
+      } catch {
+        if (!cancelled) dispatch({ kind: 'RESET' });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [state.name]);
+
+  useEffect(() => {
+    if (state.name !== 'ACTIVATION') return;
+    // No network step required in the shell — the server marked the
+    // account activated during the session exchange. Fire ACTIVATED
+    // synchronously so the harness can watch the POST_LOGIN transition.
+    dispatch({ kind: 'ACTIVATED' });
+  }, [state.name]);
 
   return (
     <div
