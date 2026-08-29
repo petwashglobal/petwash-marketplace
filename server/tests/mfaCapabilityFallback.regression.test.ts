@@ -25,27 +25,13 @@ const SRC = fs.readFileSync(
 );
 
 describe('CEO §D5 — MFA capability fallback', () => {
-  it('imports getUserCapabilities from the aggregator (static or dynamic)', () => {
-    expect(SRC).toMatch(/getUserCapabilities/);
+  it('imports from the userCapabilities aggregator (helper or getter)', () => {
     expect(SRC).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
   });
 
-  it('reads admin.superAdmin as a fallback to the claim check', () => {
-    expect(SRC).toMatch(/caps\.admin\?\.superAdmin/);
-  });
-
-  it('reads admin.admin as a fallback', () => {
-    expect(SRC).toMatch(/caps\.admin\?\.admin/);
-  });
-
-  it('reads staff.approved as a fallback', () => {
-    expect(SRC).toMatch(/caps\.staff\?\.approved/);
-  });
-
-  it('fails CLOSED (requires MFA) on capability lookup error', () => {
-    // The catch block returns true — the SAFE default when we
-    // cannot determine the caller's role.
-    expect(SRC).toMatch(/failing closed:[\s\S]*return true;/);
+  it('uses the shared hasAdminOrStaffCapability helper', () => {
+    expect(SRC).toMatch(/hasAdminOrStaffCapability/);
+    expect(SRC).toMatch(/\{ onError: true \}/);
   });
 
   it('leaves the existing claim path intact — this is ADDITIVE', () => {

@@ -111,26 +111,12 @@ async function doesRoleRequireMfa(uid: string, email: string): Promise<boolean> 
     logger.error('[MFA-Enforcement] Error reading user claims:', error);
   }
 
-  // CEO §D5 §Lane 1 (2026-08-29 E4+E9 audit) — capability fallback.
-  // Claims can lag / not be synced (a provider-admin whose claim
-  // never re-issued after a role change would fall through the
-  // MFA_REQUIRED_ROLES check above with role=''). Read the server-
-  // side capability aggregator as a definitive fallback so a
-  // privileged human without a synced claim STILL requires MFA.
-  // Fail-CLOSED on capability-lookup failure: assume the caller
-  // has the highest role and require MFA. The audit's exact
-  // failure mode ("bypasses MFA on privileged routes when
-  // claims.role not synced") is closed by returning true rather
-  // than false on the error path.
-  try {
-    const { getUserCapabilities } = await import('../lib/userCapabilities');
-    const caps = await getUserCapabilities(uid);
-    if (caps.admin?.superAdmin || caps.admin?.admin) return true;
-    if (caps.staff?.approved) return true;
-  } catch (capsErr) {
-    logger.error('[MFA-Enforcement] capability fallback failed — failing closed:', capsErr);
-    return true;
-  }
+  // CEO §D5 §Lane 1 (2026-08-29 E4+E9 audit) — capability fallback
+  // via the shared helper. Fail-CLOSED with onError:true (require
+  // MFA on aggregator error). Claim-drift used to silently bypass
+  // MFA for a privileged human whose claim never re-issued.
+  const { hasAdminOrStaffCapability } = await import('../lib/userCapabilities');
+  if (await hasAdminOrStaffCapability(uid, { onError: true })) return true;
 
   return false;
 }
