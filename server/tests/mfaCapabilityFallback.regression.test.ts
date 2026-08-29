@@ -79,6 +79,26 @@ describe('CEO §D5 — session-hardening capability fallback', () => {
   });
 });
 
+describe('CEO §D5 — contractor.ts requireAdmin capability fallback', () => {
+  const C = fs.readFileSync(
+    path.resolve(__dirname, '..', 'routes', 'contractor.ts'),
+    'utf8',
+  );
+
+  it('imports getUserCapabilities in requireAdmin', () => {
+    expect(C).toMatch(/getUserCapabilities/);
+    expect(C).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
+  });
+
+  it('checks admin/superAdmin capability after user.role !== "admin"', () => {
+    expect(C).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin/);
+  });
+
+  it('fails CLOSED for the admin gate (deny on aggregator error)', () => {
+    expect(C).toMatch(/isAdmin = false;/);
+  });
+});
+
 describe('CEO §D5 — mfa.ts MFA_MANDATORY_ROLES capability fallback', () => {
   const MFA_ROUTE = fs.readFileSync(
     path.resolve(__dirname, '..', 'routes', 'mfa.ts'),

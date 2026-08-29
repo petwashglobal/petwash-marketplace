@@ -40,15 +40,35 @@ async function requireAuth(req: Request, res: Response, next: Function) {
 // Admin-only middleware
 async function requireAdmin(req: Request, res: Response, next: Function) {
   try {
-    await requireAuth(req, res, () => {
+    await requireAuth(req, res, async () => {
       // If headers were sent by requireAuth, it already responded with 401
       if (res.headersSent) {
         return;
       }
 
       const user = (req as any).user;
-      
-      if (!user || user.role !== 'admin') {
+
+      // CEO §D5 (2026-08-29 E4+E9) — capability fallback. The
+      // requireAuth above sets user.role from `decodedToken.role`
+      // which is NEVER populated by our Firebase-auth middleware,
+      // so `user.role !== 'admin'` denied every legitimate admin
+      // whose claim was never re-issued. Fallback to the canonical
+      // capability aggregator so a real admin is admitted.
+      let isAdmin = user?.role === 'admin';
+      if (!isAdmin && user?.uid) {
+        try {
+          const { getUserCapabilities } = await import('../lib/userCapabilities');
+          const caps = await getUserCapabilities(user.uid);
+          if (caps.admin?.superAdmin || caps.admin?.admin) {
+            isAdmin = true;
+          }
+        } catch {
+          // Fail-CLOSED for admin gates — deny on aggregator error.
+          isAdmin = false;
+        }
+      }
+
+      if (!user || !isAdmin) {
         return res.status(403).json({ error: 'Forbidden - Admin access required' });
       }
       
