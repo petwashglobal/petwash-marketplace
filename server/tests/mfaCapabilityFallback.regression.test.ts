@@ -51,17 +51,9 @@ describe('CEO §D5 — session-hardening capability fallback', () => {
     'utf8',
   );
 
-  it('imports getUserCapabilities', () => {
-    expect(SH).toMatch(/getUserCapabilities/);
-    expect(SH).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
-  });
-
-  it('reads admin/staff capability as a fallback to sensitiveRoles claim check', () => {
-    expect(SH).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin \|\| caps\.staff\?\.approved/);
-  });
-
-  it('fails CLOSED (treats as sensitive) on capability lookup error', () => {
-    expect(SH).toMatch(/\} catch \{[\s\S]*isSensitiveRole = true;[\s\S]*\}/);
+  it('uses the shared hasAdminOrStaffCapability helper with onError:true', () => {
+    expect(SH).toMatch(/hasAdminOrStaffCapability/);
+    expect(SH).toMatch(/\{ onError: true \}/);
   });
 });
 
@@ -94,17 +86,9 @@ describe('CEO §D5 — contractor.ts requireAdmin capability fallback', () => {
     'utf8',
   );
 
-  it('imports getUserCapabilities in requireAdmin', () => {
-    expect(C).toMatch(/getUserCapabilities/);
-    expect(C).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
-  });
-
-  it('checks admin/superAdmin capability after user.role !== "admin"', () => {
-    expect(C).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin/);
-  });
-
-  it('fails CLOSED for the admin gate (deny on aggregator error)', () => {
-    expect(C).toMatch(/isAdmin = false;/);
+  it('uses the shared hasAdminOrStaffCapability helper with onError:false (admin gate)', () => {
+    expect(C).toMatch(/hasAdminOrStaffCapability/);
+    expect(C).toMatch(/\{ onError: false \}/);
   });
 });
 
@@ -114,18 +98,9 @@ describe('CEO §D5 — mfa.ts MFA_MANDATORY_ROLES capability fallback', () => {
     'utf8',
   );
 
-  it('imports getUserCapabilities', () => {
-    expect(MFA_ROUTE).toMatch(/getUserCapabilities/);
-    expect(MFA_ROUTE).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
-  });
-
-  it('reads admin/staff capability after the claim check misses', () => {
-    expect(MFA_ROUTE).toMatch(/mfaRequired = true/);
-    expect(MFA_ROUTE).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin \|\| caps\.staff\?\.approved/);
-  });
-
-  it('fails CLOSED (requires MFA) on capability lookup error', () => {
-    expect(MFA_ROUTE).toMatch(/\} catch \{[\s\S]*mfaRequired = true;[\s\S]*\}/);
+  it('uses the shared hasAdminOrStaffCapability helper with onError:true', () => {
+    expect(MFA_ROUTE).toMatch(/hasAdminOrStaffCapability/);
+    expect(MFA_ROUTE).toMatch(/\{ onError: true \}/);
   });
 
   it('leaves the last-enrollment guard intact', () => {

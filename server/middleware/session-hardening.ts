@@ -92,20 +92,14 @@ export function stepUpMFACheck() {
       const sensitiveRoles = ['admin', 'management', 'super_admin'];
       let isSensitiveRole = sensitiveRoles.includes(role) || claims.kyc_admin === true;
 
-      // CEO §D5 (2026-08-29 E4+E9) — capability fallback. Claim
-      // drift (a promoted admin whose claim was never re-issued)
-      // used to silently bypass the sensitive-role branch. Read the
-      // canonical capability aggregator and treat any admin /
-      // super-admin / approved-staff as sensitive. Fail-CLOSED
-      // (treat as sensitive) on aggregator error.
+      // CEO §D5 (2026-08-29 E4+E9) — capability fallback via the
+      // shared helper. Claim drift used to silently bypass the
+      // sensitive-role branch. onError:true → fail-CLOSED (treat
+      // as sensitive on aggregator error) matches the hardening
+      // gate's contract.
       if (!isSensitiveRole) {
-        try {
-          const { getUserCapabilities } = await import('../lib/userCapabilities');
-          const caps = await getUserCapabilities(decoded.uid);
-          if (caps.admin?.superAdmin || caps.admin?.admin || caps.staff?.approved) {
-            isSensitiveRole = true;
-          }
-        } catch {
+        const { hasAdminOrStaffCapability } = await import('../lib/userCapabilities');
+        if (await hasAdminOrStaffCapability(decoded.uid, { onError: true })) {
           isSensitiveRole = true;
         }
       }

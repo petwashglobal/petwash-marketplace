@@ -48,24 +48,14 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
 
       const user = (req as any).user;
 
-      // CEO §D5 (2026-08-29 E4+E9) — capability fallback. The
-      // requireAuth above sets user.role from `decodedToken.role`
-      // which is NEVER populated by our Firebase-auth middleware,
-      // so `user.role !== 'admin'` denied every legitimate admin
-      // whose claim was never re-issued. Fallback to the canonical
-      // capability aggregator so a real admin is admitted.
+      // CEO §D5 (2026-08-29 E4+E9) — capability fallback via the
+      // shared helper. `decodedToken.role` was never populated so
+      // user.role was 'user' for every caller. onError:false →
+      // deny on aggregator error (admin gate contract).
       let isAdmin = user?.role === 'admin';
       if (!isAdmin && user?.uid) {
-        try {
-          const { getUserCapabilities } = await import('../lib/userCapabilities');
-          const caps = await getUserCapabilities(user.uid);
-          if (caps.admin?.superAdmin || caps.admin?.admin) {
-            isAdmin = true;
-          }
-        } catch {
-          // Fail-CLOSED for admin gates — deny on aggregator error.
-          isAdmin = false;
-        }
+        const { hasAdminOrStaffCapability } = await import('../lib/userCapabilities');
+        isAdmin = await hasAdminOrStaffCapability(user.uid, { onError: false });
       }
 
       if (!user || !isAdmin) {

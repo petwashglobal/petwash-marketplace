@@ -364,22 +364,14 @@ mfaRouter.delete('/enrollment/:id', validateFirebaseToken, async (req: Request, 
     const role = claims.role || '';
 
     const MFA_MANDATORY_ROLES = ['admin', 'super_admin', 'management', 'hr', 'finance'];
-    // CEO §D5 (2026-08-29 E4+E9) — capability fallback. Claim-drift
-    // used to silently let a privileged human remove their last MFA
-    // enrollment. If the claim.role check misses, load the canonical
-    // capability aggregator and treat any admin / super-admin /
-    // approved-staff as MFA-mandatory. Fail-CLOSED on aggregator
-    // error (require MFA).
+    // CEO §D5 (2026-08-29 E4+E9) — capability fallback via the
+    // shared helper. onError:true → require MFA on aggregator
+    // error (contract-safe).
     let mfaRequired = MFA_MANDATORY_ROLES.includes(role)
       || claims.kycStaff || claims.kycAdmin || claims.financeAccess;
     if (!mfaRequired) {
-      try {
-        const { getUserCapabilities } = await import('../lib/userCapabilities');
-        const caps = await getUserCapabilities(uid);
-        if (caps.admin?.superAdmin || caps.admin?.admin || caps.staff?.approved) {
-          mfaRequired = true;
-        }
-      } catch {
+      const { hasAdminOrStaffCapability } = await import('../lib/userCapabilities');
+      if (await hasAdminOrStaffCapability(uid, { onError: true })) {
         mfaRequired = true;
       }
     }
