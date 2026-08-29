@@ -3,6 +3,7 @@ import { bookingService } from '../services/booking-service';
 import { EmailService } from '../emailService';
 import { requireAuth } from '../customAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
+import { projectPricing } from '../services/marketplace/ProviderServiceOfferService';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { FinancialDocumentService } from '../services/FinancialDocumentService';
@@ -542,6 +543,13 @@ router.get(
           rating: w.averageRating ? parseFloat(w.averageRating) : 5.0,
           yearsOfExperience: w.yearsOfExperience,
           hourlyRate: w.baseHourlyRate ? parseFloat(w.baseHourlyRate) : 60,
+          // Marketplace Business Doctrine §6 — canonical pricing shape.
+          // Legacy `hourlyRate` (with its 60-ILS fallback) stays until
+          // BookingFlow.tsx migrates to reading `pricing.*`.
+          pricing: projectPricing({
+            service: 'DOG_WALKING',
+            walker: { baseHourlyRate: w.baseHourlyRate ?? null },
+          }),
           latitude: w.currentLatitude ? parseFloat(w.currentLatitude) : null,
           longitude: w.currentLongitude ? parseFloat(w.currentLongitude) : null,
           isAvailable: w.isAvailable,

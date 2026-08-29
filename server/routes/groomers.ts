@@ -20,6 +20,7 @@ import { db } from '../db';
 import { trainers, contractorReviews } from '@shared/schema';
 import { eq, and, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { projectPricing } from '../services/marketplace/ProviderServiceOfferService';
 
 const router = Router();
 
@@ -66,6 +67,14 @@ router.get('/:id', async (req: Request, res: Response) => {
       yearsOfExperience: t.yearsOfExperience || 0,
       priceRangeMin: hourly,
       priceRangeMax: hourly,
+      // Marketplace Business Doctrine §6 — canonical pricing shape
+      // alongside the legacy priceRangeMin/Max. Grooming is delivered
+      // through a trainers row in this repo; project as TRAINING
+      // (PER_SESSION). Consumers can migrate to `pricing.*` when ready.
+      pricing: projectPricing({
+        service: 'TRAINING',
+        trainer: { hourlyRate: t.hourlyRate ?? null },
+      }),
       hasMobileService: serviceTypes.includes('in_home'),
       profilePhotoUrl: t.profilePhotoUrl || null,
       salonPhotos: [] as string[],
