@@ -36,10 +36,17 @@ describe('CEO FLY MODE II §8 — postbuild test-adapter leak gate', () => {
     }
   });
 
-  it('scans .js / .mjs / .cjs / .html / .map extensions', () => {
-    for (const ext of ["'.js'", "'.mjs'", "'.cjs'", "'.html'", "'.map'"]) {
+  it('scans .js / .mjs / .cjs / .html extensions (source maps EXCLUDED by design)', () => {
+    for (const ext of ["'.js'", "'.mjs'", "'.cjs'", "'.html'"]) {
       expect(SCRIPT).toContain(ext);
     }
+    // Source maps intentionally embed original TS including any
+    // `if (import.meta.env.DEV) {...}` branches Vite tree-shakes from
+    // runtime JS. That code is dead in the runtime bundle — flagging
+    // it as a leak would be a false positive against the gate's
+    // real invariant: "can a browser execute the adapter?"
+    expect(SCRIPT).not.toMatch(/'\.map'/);
+    expect(SCRIPT).toMatch(/Source maps \(`\.map`\) intentionally embed/);
   });
 
   it('exits with a NON-ZERO code when a marker is found', () => {

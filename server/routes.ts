@@ -3499,8 +3499,16 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // GET /api/auth/session/test - Test endpoint to verify cookie settings (requires auth: leaks cookie name)
-  app.get('/api/auth/session/test', requireAuth, async (req, res) => {
+  // GET /api/auth/session/test — INTERNAL ADMIN ONLY.
+  //
+  // CEO FLY MODE II §24 (2026-08-29) — classification pass. The
+  // pre-fix `requireAuth` gate meant any signed-in customer could
+  // enumerate the cookie names their browser was sending (a light
+  // fingerprinting signal + minor recon aid). No customer needs this
+  // probe; it exists only for Ops. Tightened to requireAdmin so the
+  // response is gated behind the same authorization as the other
+  // diagnostic probes on this file.
+  app.get('/api/auth/session/test', requireAdmin, async (req, res) => {
     try {
       const { SESSION_COOKIE_NAME } = await import('./lib/sessionCookies');
       const hasCookie = !!req.cookies?.[SESSION_COOKIE_NAME];

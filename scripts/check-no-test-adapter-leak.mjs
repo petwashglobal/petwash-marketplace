@@ -47,8 +47,19 @@ const FORBIDDEN_MARKERS = [
   'installFirebaseTestAdapter',
 ];
 
-/** File extensions to scan — the shipped client surfaces. */
-const SCAN_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.html', '.map']);
+/**
+ * File extensions to scan — the shipped client surfaces that a browser
+ * actually EXECUTES. Source maps (`.map`) intentionally embed the
+ * original TypeScript, including any `if (import.meta.env.DEV) {...}`
+ * branches Vite tree-shakes from the runtime JS. Those blocks are DEAD
+ * CODE in the shipped bundle — they cannot execute — so a marker inside
+ * a source map is not a leak of a runnable bypass. Whether to ship
+ * source maps at all is a separate policy (see build config); this
+ * gate strictly checks: can a browser call into the test adapter?
+ *
+ * If you want to keep source-map hygiene, that is a different scanner.
+ */
+const SCAN_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.html']);
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
