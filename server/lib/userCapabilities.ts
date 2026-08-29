@@ -293,10 +293,42 @@ export async function getUserCapabilities(
 
   await Promise.all([
     // ── PRESTIGE ─────────────────────────────────────────────────────────
+    // CEO FLY MODE II §19 (2026-08-29) — UID-linked lookup FIRST, legacy
+    // verified-email reconciliation SECOND. Once a legacy row has been
+    // linked (see server/services/prestigeIdentityLink.ts), the UID read
+    // wins; the email fallback preserves entitlement for rows that
+    // have not yet been claimed via /api/privilege/link. Both paths
+    // hit the same "status='active' → enrolled" gate; NEVER derive
+    // Prestige entitlement from age or any other proxy signal.
     (async () => {
-      if (!email) return;
       try {
-        const [row] = await db
+        // 1) Canonical lookup by firebase_uid — hot path once linking
+        //    is live. The partial-unique + btree indexes landed in
+        //    migrations/0134_privilege_members_firebase_uid keep this
+        //    at index-time.
+        const [byUid] = await db
+          .select({
+            memberId: privilegeMembers.memberId,
+            tier: privilegeMembers.tier,
+            status: privilegeMembers.status,
+          })
+          .from(privilegeMembers)
+          .where(eq(privilegeMembers.firebaseUid, userId))
+          .limit(1);
+        if (byUid && (byUid.status ?? 'active') === 'active') {
+          caps.prestige = {
+            enrolled: true,
+            tier: byUid.tier ?? null,
+            memberId: byUid.memberId ?? null,
+          };
+          return;
+        }
+
+        // 2) Legacy verified-email reconciliation — the pre-migration
+        //    path. Kept until §19 shadow-mode reads confirm every
+        //    active member is linked; then the email fallback retires.
+        if (!email) return;
+        const [byEmail] = await db
           .select({
             memberId: privilegeMembers.memberId,
             tier: privilegeMembers.tier,
@@ -305,11 +337,11 @@ export async function getUserCapabilities(
           .from(privilegeMembers)
           .where(eq(privilegeMembers.email, email))
           .limit(1);
-        if (row && (row.status ?? 'active') === 'active') {
+        if (byEmail && (byEmail.status ?? 'active') === 'active') {
           caps.prestige = {
             enrolled: true,
-            tier: row.tier ?? null,
-            memberId: row.memberId ?? null,
+            tier: byEmail.tier ?? null,
+            memberId: byEmail.memberId ?? null,
           };
         }
       } catch (e: any) {
