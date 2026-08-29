@@ -28,7 +28,7 @@
  *
  * Real Firebase / OTP / /api/auth/account-resolution wiring: commit 4.
  */
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { useLocation } from 'wouter';
 import {
   reduce,
@@ -177,8 +177,19 @@ export default function SignUpProgressive({ language = 'en', initialStateOverrid
       {state.name === 'METHOD_SELECTION' && (
         <MethodSelection language={language} dispatch={dispatch} />
       )}
-      {(state.name === 'AUTHENTICATING' || state.name === 'CONTACT_VERIFY' ||
-        state.name === 'ACCOUNT_RESOLUTION' || state.name === 'ACTIVATION') && (
+      {state.name === 'AUTHENTICATING' && state.method === 'mobile' && (
+        <ContactEntryScreen kind="mobile" language={language} dispatch={dispatch} />
+      )}
+      {state.name === 'AUTHENTICATING' && state.method === 'email' && (
+        <ContactEntryScreen kind="email" language={language} dispatch={dispatch} />
+      )}
+      {state.name === 'AUTHENTICATING' && (state.method === 'google' || state.method === 'apple') && (
+        <TransientState language={language} state={state} />
+      )}
+      {state.name === 'CONTACT_VERIFY' && (
+        <OtpVerifyScreen language={language} sentTo={state.sentTo} method={state.method} dispatch={dispatch} />
+      )}
+      {(state.name === 'ACCOUNT_RESOLUTION' || state.name === 'ACTIVATION') && (
         <TransientState language={language} state={state} />
       )}
       {state.name === 'PROFILE_COMPLETION' && (
@@ -253,6 +264,116 @@ function MethodSelection({
           {signIn}
         </a>
       </p>
+    </div>
+  );
+}
+
+function ContactEntryScreen({
+  kind,
+  language,
+  dispatch,
+}: {
+  kind: 'mobile' | 'email';
+  language: 'en' | 'he';
+  dispatch: (e: SignupEvent) => void;
+}) {
+  const he = language === 'he';
+  const [value, setValue] = useState('');
+  const isMobile = kind === 'mobile';
+  const title = isMobile
+    ? (he ? 'המשך עם נייד' : 'Continue with mobile')
+    : (he ? 'המשך עם אימייל' : 'Continue with email');
+  const label = isMobile
+    ? (he ? 'מספר נייד' : 'Mobile number')
+    : (he ? 'כתובת אימייל' : 'Email address');
+  const cta = he ? 'שלח קוד' : 'Send code';
+  // Discipline: the CONTACT_VERIFY input is the ONE field on this
+  // screen. No name / DOB / password / terms here — those are
+  // collected AFTER the server resolves the account (§4/§6).
+  const canSend = isMobile
+    ? /^[+]?[0-9\s\-()]{7,20}$/.test(value.trim())
+    : /^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(value.trim());
+  return (
+    <div
+      className="w-full max-w-md flex flex-col gap-4"
+      data-testid={`signup-progressive-contact-${kind}`}
+    >
+      <h2 className="text-xl font-medium">{title}</h2>
+      <label className="text-sm text-gray-700">{label}</label>
+      <input
+        type={isMobile ? 'tel' : 'email'}
+        inputMode={isMobile ? 'tel' : 'email'}
+        autoComplete={isMobile ? 'tel' : 'email'}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        data-testid={`signup-progressive-input-${kind}`}
+        className="border rounded-lg px-3 py-2"
+      />
+      <button
+        type="button"
+        disabled={!canSend}
+        data-testid="signup-progressive-send-code"
+        onClick={() => {
+          dispatch({
+            kind: 'AUTH_CODE_SENT',
+            method: kind,
+            sentTo: value.trim(),
+          });
+        }}
+        className="w-full py-3 rounded-lg border font-medium mt-2 disabled:opacity-50"
+      >
+        {cta}
+      </button>
+    </div>
+  );
+}
+
+function OtpVerifyScreen({
+  language,
+  sentTo,
+  method,
+  dispatch,
+}: {
+  language: 'en' | 'he';
+  sentTo: string;
+  method: 'mobile' | 'email';
+  dispatch: (e: SignupEvent) => void;
+}) {
+  const he = language === 'he';
+  const [code, setCode] = useState('');
+  const title = he ? 'הזן את הקוד שנשלח' : 'Enter the code we sent';
+  const label = he ? 'קוד אימות' : 'Verification code';
+  const cta = he ? 'אמת' : 'Verify';
+  const canVerify = /^\d{4,8}$/.test(code.trim());
+  return (
+    <div
+      className="w-full max-w-md flex flex-col gap-4"
+      data-testid={`signup-progressive-verify-${method}`}
+      data-sent-to={sentTo}
+    >
+      <h2 className="text-xl font-medium">{title}</h2>
+      <p className="text-sm text-gray-600" data-testid="signup-progressive-sent-to">
+        {sentTo}
+      </p>
+      <label className="text-sm text-gray-700">{label}</label>
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        value={code}
+        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+        data-testid="signup-progressive-input-otp"
+        className="border rounded-lg px-3 py-2 tracking-widest"
+      />
+      <button
+        type="button"
+        disabled={!canVerify}
+        data-testid="signup-progressive-verify"
+        onClick={() => dispatch({ kind: 'AUTH_SUCCESS' })}
+        className="w-full py-3 rounded-lg border font-medium mt-2 disabled:opacity-50"
+      >
+        {cta}
+      </button>
     </div>
   );
 }

@@ -174,6 +174,59 @@ export const personas = {
       ],
     },
   },
+  /**
+   * Lane A — TRUE NEW phone customer. Signup started with a phone
+   * number → OTP verified → account created. Because the phone was
+   * verified during the auth step itself, mobile_verification is
+   * NOT in requiredActions. Because email was never asked for on the
+   * signup surface, email_verification is also absent — the CEO §6
+   * discipline: don't ask to verify something the user didn't type.
+   * What remains is names (phone signup carries none from an OAuth
+   * provider), DOB, and terms.
+   */
+  customerNewPhone: {
+    uid: 'usr_e2e_customer_new_phone',
+    // Server minted a synthetic email for phone-only signups —
+    // matches the SignUpLuxury:1801 `${uid}@firebase.user` pattern.
+    email: 'usr_e2e_customer_new_phone@firebase.user',
+    displayName: '',
+    role: 'customer',
+    status: 'active',
+    canonicalDestination: '/pet-parent/home',
+    newUser: {
+      profileState: 'incomplete',
+      requiredActions: [
+        'first_name',
+        'last_name',
+        'date_of_birth',
+        'terms_acceptance',
+      ],
+    },
+  },
+  /**
+   * Lane A — TRUE NEW email customer. Signup started with an email
+   * address → email OTP verified → account created. Mobile still
+   * missing → mobile_verification. Names, DOB, terms all missing.
+   * Email is already verified so email_verification is NOT here.
+   */
+  customerNewEmail: {
+    uid: 'usr_e2e_customer_new_email',
+    email: 'customer.new.email@e2e.petwash.local',
+    displayName: '',
+    role: 'customer',
+    status: 'active',
+    canonicalDestination: '/pet-parent/home',
+    newUser: {
+      profileState: 'incomplete',
+      requiredActions: [
+        'mobile_verification',
+        'first_name',
+        'last_name',
+        'date_of_birth',
+        'terms_acceptance',
+      ],
+    },
+  },
   providerActive: {
     uid: 'usr_e2e_provider_active',
     email: 'provider.active@e2e.petwash.local',
