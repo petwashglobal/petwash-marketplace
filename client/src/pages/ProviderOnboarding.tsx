@@ -101,11 +101,14 @@ export default function ProviderOnboarding() {
         // OneTap / Account-tap call instead of firing a duplicate request.
         const data = await resolvePostLogin();
         if (cancelled) return;
-        const nextUrl = data.nextUrl || data.redirectTo || '/home';
+        // CEO AUTH MASTER 2026-08-29 — /home renders the MARKETING
+        // page; a signed-in customer must never land there. The
+        // canonical customer workspace is /pet-parent/home.
+        const nextUrl = data.nextUrl || data.redirectTo || '/pet-parent/home';
         navigate(nextUrl);
       } catch {
         if (cancelled) return;
-        navigate('/home');
+        navigate('/pet-parent/home');
       }
     })();
     return () => { cancelled = true; };

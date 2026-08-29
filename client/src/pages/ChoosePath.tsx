@@ -4,7 +4,7 @@
  * Authentication first → missing base fields → THEN this:
  *
  *   What do you want to do?
- *     [ Pet Parent ]           → home (customer workspace; nothing more required)
+ *     [ Pet Parent ]           → /pet-parent/home (customer workspace; nothing more required)
  *     [ Become a Provider ]    → provider onboarding (KYC + approval)
  *
  * This is a light, ONE-TIME choice — never a blocking gate. "Pet Parent" is
@@ -39,7 +39,7 @@ export default function ChoosePath({ language }: ChoosePathProps) {
         ? 'הזמנת שירותים, ארנק, שוברי מתנה ותגמולים. הכול מוכן — אין צורך בעוד פרטים.'
         : 'Book services, wallet, gift cards and rewards. You’re all set — nothing more needed.',
       cta: he ? 'למסך הבית' : 'Go to home',
-      onClick: () => navigate('/home'),
+      onClick: () => navigate('/pet-parent/home'),
       primary: true,
     },
     {
@@ -96,7 +96,8 @@ export default function ChoosePath({ language }: ChoosePathProps) {
           })}
         </div>
 
-        <button type="button" onClick={() => navigate('/home')}
+        <button type="button" onClick={() => navigate('/pet-parent/home')}
+          data-testid="choosepath-decide-later"
           style={{ display: 'block', margin: '22px auto 0', background: 'none', border: 'none', color: 'inherit', opacity: 0.6, fontSize: 13.5, cursor: 'pointer', textDecoration: 'underline' }}>
           {he ? 'אחליט/ה מאוחר יותר' : 'I’ll decide later'}
         </button>

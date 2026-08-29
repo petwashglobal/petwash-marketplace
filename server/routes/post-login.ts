@@ -157,25 +157,26 @@ function buildRoutingResponse(
   // unverified impostor. Checked FIRST so nothing below (email-verify bounce,
   // missing-fields, provider/staff routing) can trap it.
   if (role === 'super_admin') {
-    // MULTI-ROLE (CEO 2026-08-23): a super_admin account is ALSO a real
-    // customer / member / (potential) provider — the CEO logs in from the
-    // same email to test provider flows, loyalty flows, or admin flows,
-    // and the previous unconditional fast-path forced /admin/dashboard
-    // every time with no way to say "this session I want to see the
-    // provider side" without losing the super_admin claim. Now:
+    // MULTI-ROLE (CEO 2026-08-23; corrected CEO AUTH MASTER 2026-08-29):
+    // a super_admin account is ALSO a real customer / (potential)
+    // provider. The CEO logs in from the same email to test provider
+    // flows, customer flows, or admin flows.
     //   intent === 'provider' → /provider-os
-    //   intent === 'loyalty' | 'customer' | 'member' → /prestige/home
+    //   intent === 'loyalty' | 'customer' | 'member' | 'pet_parent'
+    //                          → /pet-parent/home (Pet Parent is THE
+    //                          customer workspace; Prestige is a
+    //                          badge/entitlement inside it, NOT a
+    //                          separate destination)
     //   intent === 'admin' (or absent) → /admin/dashboard (default)
-    // The super_admin CLAIM is untouched — the header mode-switch
-    // (client/src/lib/uiMode.ts) still lets the user jump to any surface
-    // mid-session. This just picks the LANDING surface honestly.
     const wantsProviderView = intent === 'provider';
-    const wantsMemberView = intent === 'loyalty' || intent === 'customer' || intent === 'member';
+    const wantsMemberView =
+      intent === 'loyalty' || intent === 'customer' ||
+      intent === 'member' || intent === 'pet_parent';
     if (wantsProviderView) {
       return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
     }
     if (wantsMemberView) {
-      return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
+      return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
     }
     return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
   }
@@ -197,10 +198,13 @@ function buildRoutingResponse(
   }
 
   if (role === 'loyalty') {
-    // Canonical member home is /prestige/home (the purpose-built member
-    // dashboard). /home renders the MARKETING page for signed-in web users —
-    // a member who logged in used to land on the marketing site (audit 2026-07-24).
-    return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
+    // CEO AUTH MASTER 2026-08-29: the canonical customer workspace is
+    // /pet-parent/home. Prestige is an entitlement, NOT a workspace,
+    // so a loyalty-role user lands on the SAME Pet Parent home with a
+    // Prestige badge inside — never on a separate /prestige/home
+    // destination. /home would render the marketing site (audit
+    // 2026-07-24 regression) so we still keep customers off it.
+    return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
   }
 
   if (providerApp) {
@@ -217,25 +221,23 @@ function buildRoutingResponse(
       return { nextUrl: '/provider/rejected', reason: 'PROVIDER_REJECTED', profileStatus: 'rejected', role, userStatus };
     }
     if (providerApp.status === 'approved') {
-      // ROLE-MODE MODEL — CORRECTED (CEO 2026-08-26 §1-7):
+      // ROLE-MODE MODEL — CORRECTED (CEO 2026-08-26 §1-7; reaffirmed
+      // CEO AUTH MASTER 2026-08-29):
       //
       // Prestige is NOT a workspace / role — it is an entitlement that
       // travels with the human account. The two workspaces are:
       //   • Pet Parent (customer) — always present for every human user
       //   • Provider (approved provider application)
       //
-      // Every approved provider is ALSO a Pet Parent (they can own pets,
-      // book other providers, buy from Shop, hold a wallet, redeem a
-      // Prestige benefit if enrolled). So the picker shows for ANY
-      // approved provider — not just provider+prestige. Prestige, when
-      // present, surfaces inside the Pet Parent tile/home as a benefit
-      // badge, never as an identity.
+      // Every approved provider is ALSO a Pet Parent. Prestige, when
+      // present, surfaces inside the Pet Parent home as a benefit
+      // badge, NEVER as a separate destination. There is NO
+      // /prestige/home in the canonical route table.
       //
       // Explicit intent still wins:
-      //   • intent === 'provider'                           → /provider-os
-      //   • intent === 'customer'|'pet_parent'|'loyalty'|'member'
-      //                                                     → /prestige/home
-      //   • no intent                                       → /mode picker
+      //   • intent === 'provider'                                   → /provider-os
+      //   • intent === 'customer'|'pet_parent'|'loyalty'|'member'   → /pet-parent/home
+      //   • no intent                                               → /mode picker
       const wantsProvider = intent === 'provider';
       const wantsCustomer =
         intent === 'customer' || intent === 'pet_parent' ||
@@ -244,7 +246,7 @@ function buildRoutingResponse(
         return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
       if (wantsCustomer) {
-        return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role, userStatus };
+        return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
       return { nextUrl: '/mode', reason: 'MULTI_ROLE_PICK', profileStatus: 'approved', role, userStatus };
     }
@@ -283,8 +285,11 @@ function buildRoutingResponse(
     return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
   }
 
-  // Default member/customer → the canonical member dashboard (not marketing).
-  return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
+  // Default customer → the canonical customer workspace (CEO AUTH
+  // MASTER 2026-08-29: NOT /prestige/home; NOT /home). Prestige is
+  // an entitlement that renders inside /pet-parent/home when the
+  // user is enrolled.
+  return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
 }
 
 export async function postLoginDecider(req: Request, res: Response) {
