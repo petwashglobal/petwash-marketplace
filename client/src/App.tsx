@@ -89,6 +89,12 @@ const Unsubscribe = lazy(() => import("@/pages/Unsubscribe"));
 // SignIn (the old white "WELCOME BACK" modal) KILLED 2026-06-28 — every login
 // route now renders the premium SignUpLuxury screen. Do NOT reintroduce it.
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
+// Lane A — CEO FLY MODE II AUTH CONVERSION P0. Progressive signup lives
+// at /signup-v2 alongside the legacy SignUpLuxury at /signup until the
+// new surface has full E2E coverage. Redirect-alias will flip after
+// commits 4..11 land the true-new/returning + phone/email + mobile-
+// viewport matrix.
+const SignUpProgressive = lazy(() => import("@/pages/SignUpProgressive"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
@@ -962,6 +968,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/signup">
           {() => <Layout language={language} onLanguageChange={handleLanguageChange}><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></Layout>}
+        </Route>
+        <Route path="/signup-v2">
+          {() => <Layout language={language} onLanguageChange={handleLanguageChange}><SignUpProgressive language={language} /></Layout>}
         </Route>
         {/* /signup is the single canonical door — every alias hard-redirects to it,
             preserving the query string (?flow=provider|prestige|guest|booking). */}
