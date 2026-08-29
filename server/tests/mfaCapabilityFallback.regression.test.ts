@@ -78,3 +78,29 @@ describe('CEO §D5 — session-hardening capability fallback', () => {
     expect(SH).toMatch(/\} catch \{[\s\S]*isSensitiveRole = true;[\s\S]*\}/);
   });
 });
+
+describe('CEO §D5 — mfa.ts MFA_MANDATORY_ROLES capability fallback', () => {
+  const MFA_ROUTE = fs.readFileSync(
+    path.resolve(__dirname, '..', 'routes', 'mfa.ts'),
+    'utf8',
+  );
+
+  it('imports getUserCapabilities', () => {
+    expect(MFA_ROUTE).toMatch(/getUserCapabilities/);
+    expect(MFA_ROUTE).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
+  });
+
+  it('reads admin/staff capability after the claim check misses', () => {
+    expect(MFA_ROUTE).toMatch(/mfaRequired = true/);
+    expect(MFA_ROUTE).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin \|\| caps\.staff\?\.approved/);
+  });
+
+  it('fails CLOSED (requires MFA) on capability lookup error', () => {
+    expect(MFA_ROUTE).toMatch(/\} catch \{[\s\S]*mfaRequired = true;[\s\S]*\}/);
+  });
+
+  it('leaves the last-enrollment guard intact', () => {
+    expect(MFA_ROUTE).toMatch(/MFA_CANNOT_DISABLE/);
+    expect(MFA_ROUTE).toMatch(/at least one active MFA method/);
+  });
+});
