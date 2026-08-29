@@ -52,6 +52,33 @@ const chipSelected = (key: string) => [
   `[data-testid="provider-type-${key}"][aria-pressed="true"]`,
 ].join(', ');
 
+interface Journey {
+  overviewPath: string;
+  serviceCode: 'pet_sitting' | 'dog_walking' | 'training';
+  chipKey: 'sitter' | 'walker' | 'trainer';
+  ctaSelector: string;
+}
+const JOURNEYS: Record<'sitter' | 'walker' | 'trainer', Journey> = {
+  sitter: {
+    overviewPath: '/sitter-suite',
+    serviceCode: 'pet_sitting',
+    chipKey: 'sitter',
+    ctaSelector: '[data-testid="button-become-sitter"], [data-testid="provider-tile-sitter"]',
+  },
+  walker: {
+    overviewPath: '/walk-my-pet',
+    serviceCode: 'dog_walking',
+    chipKey: 'walker',
+    ctaSelector: '[data-testid="button-become-walker"], [data-testid="provider-tile-walker"]',
+  },
+  trainer: {
+    overviewPath: '/academy',
+    serviceCode: 'training',
+    chipKey: 'trainer',
+    ctaSelector: '[data-testid="button-become-trainer"], [data-testid="provider-tile-trainer"]',
+  },
+};
+
 test.describe('AUTH MASTER Lane E — Sitter journey (BROWSER-INTEGRATION-VERIFIED)', () => {
   test('A. anonymous /sitter-suite → Become a Sitter → gate bounces to sign-in with canonical URL preserved', async ({ page }) => {
     await page.goto('/sitter-suite');
@@ -111,3 +138,50 @@ test.describe('AUTH MASTER Lane E — Sitter journey (BROWSER-INTEGRATION-VERIFI
     });
   });
 });
+
+// ─── Walker + Trainer parallels (§3.2 + §3.3) ─────────────────────
+for (const key of ['walker', 'trainer'] as const) {
+  const j = JOURNEYS[key];
+  test.describe(`AUTH MASTER Lane E — ${key} journey (BROWSER-INTEGRATION-VERIFIED)`, () => {
+    test(`A. anonymous ${j.overviewPath} → Become CTA → gate bounces to sign-in with canonical URL preserved`, async ({ page }) => {
+      await page.goto(j.overviewPath);
+      const cta = page.locator(j.ctaSelector).first();
+      await expect(cta).toBeVisible({ timeout: 15_000 });
+      await cta.click();
+      await page.waitForURL((u) => /\/sign-?in/.test(u.pathname), { timeout: 15_000 });
+      const current = new URL(page.url());
+      const redirect = current.searchParams.get('redirect');
+      expect(redirect).toBeTruthy();
+      const decoded = new URL('http://x' + redirect!);
+      expect(decoded.pathname).toBe('/become-provider');
+      expect(decoded.searchParams.get('requestedService')).toBe(j.serviceCode);
+    });
+
+    test.describe('signed-in customer (bypass persona)', () => {
+      test.use({ extraHTTPHeaders: headersForPersona('customer', 'active') });
+
+      test(`B. /become-provider?requestedService=${j.serviceCode} lands on /provider-onboarding with chip preselected`, async ({ page }) => {
+        test.skip(!bypassAvailable(), 'TEST_BYPASS_TOKEN not set — persona-scenarios skipped');
+        await page.goto(`/become-provider?requestedService=${j.serviceCode}`);
+        await page.waitForURL(
+          (u) => u.pathname === '/provider-onboarding' && u.search.includes(`requestedService=${j.serviceCode}`),
+          { timeout: 15_000 },
+        );
+        await expect(page.locator(chipSelected(j.chipKey))).toBeVisible({ timeout: 15_000 });
+      });
+
+      test(`C. ${j.overviewPath} → click Become CTA → onboarding with chip preselected`, async ({ page }) => {
+        test.skip(!bypassAvailable(), 'TEST_BYPASS_TOKEN not set — persona-scenarios skipped');
+        await page.goto(j.overviewPath);
+        const cta = page.locator(j.ctaSelector).first();
+        await expect(cta).toBeVisible({ timeout: 15_000 });
+        await cta.click();
+        await page.waitForURL(
+          (u) => u.pathname === '/provider-onboarding' && u.search.includes(`requestedService=${j.serviceCode}`),
+          { timeout: 15_000 },
+        );
+        await expect(page.locator(chipSelected(j.chipKey))).toBeVisible({ timeout: 15_000 });
+      });
+    });
+  });
+}
