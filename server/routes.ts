@@ -1820,6 +1820,12 @@ self.addEventListener('notificationclick', (event) => {
 
   // GET /api/auth/whoami - Returns current user profile status and required fields
   app.get('/api/auth/whoami', requireAuth, getWhoami);
+
+  // GET /api/auth/account-resolution — Lane A progressive signup
+  // authority. Returns the strict { isNewUser, profileState,
+  // requiredActions, destination } shape the client's state machine
+  // consumes (see client/src/lib/progressiveSignupState.ts).
+  app.use('/api/auth', requireAuth, (await import('./routes/account-resolution')).default);
   
   // POST /api/auth/choose-role - User selects their intent (customer/provider/staff)
   app.post('/api/auth/choose-role', authLimiter, requireAuth, auditLogMiddleware('CHOOSE_ROLE'), chooseRole);
