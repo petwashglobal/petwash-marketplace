@@ -58,3 +58,23 @@ describe('CEO §D5 — MFA capability fallback', () => {
     expect(SRC).toMatch(/claims\.kycStaff \|\| claims\.kycAdmin \|\| claims\.financeAccess/);
   });
 });
+
+describe('CEO §D5 — session-hardening capability fallback', () => {
+  const SH = fs.readFileSync(
+    path.resolve(__dirname, '..', 'middleware', 'session-hardening.ts'),
+    'utf8',
+  );
+
+  it('imports getUserCapabilities', () => {
+    expect(SH).toMatch(/getUserCapabilities/);
+    expect(SH).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
+  });
+
+  it('reads admin/staff capability as a fallback to sensitiveRoles claim check', () => {
+    expect(SH).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin \|\| caps\.staff\?\.approved/);
+  });
+
+  it('fails CLOSED (treats as sensitive) on capability lookup error', () => {
+    expect(SH).toMatch(/\} catch \{[\s\S]*isSensitiveRole = true;[\s\S]*\}/);
+  });
+});
