@@ -18,6 +18,11 @@ const SIGNUP = fs.readFileSync(
   'utf8',
 );
 
+const ONETAP = fs.readFileSync(
+  path.resolve(ROOT, 'client', 'src', 'components', 'GoogleOneTap.tsx'),
+  'utf8',
+);
+
 describe('CEO FLY MODE II §7 — SignUpLuxury Phase F2 adapter shortcut', () => {
   it('the adapter branch sits under a Vite DEV compile-time guard', () => {
     // `if (import.meta.env.DEV)` is what Vite eliminates in production.
@@ -81,5 +86,49 @@ describe('CEO FLY MODE II §7 — SignUpLuxury Phase F2 adapter shortcut', () =>
     // finishAndRoute() branch. Both must be `return;`.
     const returnMatches = block.match(/\breturn;/g) || [];
     expect(returnMatches.length).toBeGreaterThanOrEqual(2);
+  });
+
+  // ── Wave-2 wires ─────────────────────────────────────────────────────────
+
+  it('SignUpLuxury REDIRECT strategy also short-circuits under the DEV guard', () => {
+    // The redirect branch mirrors the popup pattern so the E2E harness
+    // can run under whichever strategy the browser under test chooses.
+    const redirectIdx = SIGNUP.indexOf("getAuthStrategy() === 'redirect'");
+    const redirectStartIdx = SIGNUP.indexOf(
+      "recordAuthJourneyStage('FIREBASE_REDIRECT_STARTED'",
+    );
+    expect(redirectIdx).toBeGreaterThan(0);
+    expect(redirectStartIdx).toBeGreaterThan(redirectIdx);
+    // Between the strategy check and the FIREBASE_REDIRECT_STARTED
+    // stage, the adapter-shortcut block must exist AND live under a
+    // DEV guard.
+    const block = SIGNUP.slice(redirectIdx, redirectStartIdx);
+    expect(block).toMatch(/if \(import\.meta\.env\.DEV\)/);
+    expect(block).toMatch(/await import\('@\/lib\/firebaseTestAdapterClient'\)/);
+    expect(block).toMatch(
+      /FIREBASE_TEST_ADAPTER_SHORTCUT[^\n]*strategy: 'redirect'/,
+    );
+  });
+
+  it('GoogleOneTap short-circuits under the DEV guard before signInWithCredential', () => {
+    expect(ONETAP).toMatch(/if \(import\.meta\.env\.DEV\)/);
+    expect(ONETAP).toMatch(
+      /await import\('@\/lib\/firebaseTestAdapterClient'\)/,
+    );
+    expect(ONETAP).toMatch(
+      /FIREBASE_TEST_ADAPTER_SHORTCUT[^\n]*source: 'one_tap'/,
+    );
+    // Ordering: shortcut sits BEFORE the real signInWithCredential.
+    const shortcutIdx = ONETAP.indexOf('FIREBASE_TEST_ADAPTER_SHORTCUT');
+    const signInIdx = ONETAP.indexOf('await signInWithCredential(auth');
+    expect(shortcutIdx).toBeGreaterThan(0);
+    expect(signInIdx).toBeGreaterThan(0);
+    expect(shortcutIdx).toBeLessThan(signInIdx);
+  });
+
+  it('GoogleOneTap has NO top-level static import of the adapter probe', () => {
+    expect(ONETAP).not.toMatch(
+      /^import \{[^\n]*getFirebaseTestAdapter[^\n]*\} from ['"]@\/lib\/firebaseTestAdapterClient['"]/m,
+    );
   });
 });

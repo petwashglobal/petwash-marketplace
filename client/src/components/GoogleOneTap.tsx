@@ -146,6 +146,31 @@ export function GoogleOneTap({
       recordAuthJourneyStage('AUTH_METHOD_SELECTED', { source: 'one_tap' });
       recordAuthJourneyStage('FIREBASE_STARTED');
 
+      // CEO FLY MODE II §7 wave-2 (2026-08-29) — Firebase test adapter
+      // short-circuit. Same DEV guard + dynamic import discipline as
+      // SignUpLuxury: production bundles never see the adapter chunk.
+      if (import.meta.env.DEV) {
+        const { getFirebaseTestAdapter } = await import('@/lib/firebaseTestAdapterClient');
+        const adapter = getFirebaseTestAdapter();
+        if (adapter) {
+          recordAuthJourneyStage('FIREBASE_TEST_ADAPTER_SHORTCUT', { source: 'one_tap' });
+          const shortcutRes = await fetch(getApiUrl('/api/auth/session'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ idToken: adapter.syntheticIdToken }),
+          });
+          if (!shortcutRes.ok) {
+            recordAuthJourneyStage('SESSION_EXCHANGE_FAILURE');
+            throw new Error('Test adapter session exchange failed');
+          }
+          recordAuthJourneyStage('SESSION_EXCHANGE_SUCCESS');
+          recordAuthJourneyStage('BOOTSTRAP_SUCCESS');
+          endAuthJourney();
+          return;
+        }
+      }
+
       // Create Firebase credential using Google ID token
       const googleCredential = GoogleAuthProvider.credential(idToken);
 

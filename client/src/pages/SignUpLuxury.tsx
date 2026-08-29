@@ -1241,6 +1241,28 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         which === 'apple'  ? createAppleProvider()  :
                              createFacebookProvider();
       if (getAuthStrategy() === 'redirect') {
+        // CEO FLY MODE II §7 wave-2 — mirror the popup-path adapter
+        // shortcut on the redirect strategy. Same DEV guard + dynamic
+        // import discipline; the redirect never happens in the E2E
+        // harness so the sitter/walker/trainer specs can run under
+        // whichever strategy is chosen for the browser under test.
+        if (import.meta.env.DEV) {
+          const { getFirebaseTestAdapter } = await import('@/lib/firebaseTestAdapterClient');
+          const adapter = getFirebaseTestAdapter();
+          if (adapter) {
+            recordAuthJourneyStage('FIREBASE_TEST_ADAPTER_SHORTCUT', { provider: which, strategy: 'redirect' });
+            const shortcutRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+              body: JSON.stringify({ idToken: adapter.syntheticIdToken }),
+            }));
+            if (!shortcutRes.ok) {
+              fail('Test adapter session exchange failed.');
+              return;
+            }
+            await finishAndRoute();
+            return;
+          }
+        }
         // CEO §1.3 — record the redirect-path stages so we can see
         // where iPhone Safari drops signups.
         recordAuthJourneyStage('FIREBASE_REDIRECT_STARTED', { provider: which });
