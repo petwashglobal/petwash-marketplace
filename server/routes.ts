@@ -1837,6 +1837,19 @@ self.addEventListener('notificationclick', (event) => {
   // the existing phone-session/session-cookie chain (no new OTP or session logic).
   // Fault-isolated: a failure to load/mount degrades only /api/auth/sms and never
   // aborts the rest of route registration.
+  // CEO MASTER §B41 (2026-08-29) — client posts safe auth-journey
+  // stage events here so ops can see WHERE Google sign-in dropped
+  // off. The endpoint always ACKs 204; malformed / hostile payloads
+  // are silently dropped. NO PII, NO tokens. Fault-isolated mount
+  // so a load failure never blocks the rest of routing.
+  try {
+    const authTraceRoutes = (await import('./routes/auth-trace')).default;
+    app.use('/api/auth', apiLimiter, authTraceRoutes);
+    logger.info('[routes] Mounted /api/auth/trace-event (client auth-journey stage recorder)');
+  } catch (mountErr) {
+    logger.error('[routes] Failed to mount /api/auth/trace-event — funnel telemetry degraded, server continues', mountErr);
+  }
+
   try {
     const authSmsRoutes = (await import('./routes/auth-sms')).default;
     // SECURITY 2026-05-24 (investigation finding 1.1):

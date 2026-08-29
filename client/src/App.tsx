@@ -30,6 +30,9 @@ import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
 import { LanguageProvider, useLanguage } from "@/lib/languageStore";
 import { initializeInteractionTracking } from "@/lib/interactionTracker";
+import { captureInitialTouch } from "@/lib/attribution";
+import { setCtaEventSink } from "@/lib/ctaActions";
+import { recordAuthJourneyStage } from "@/lib/authJourney";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
@@ -4173,6 +4176,30 @@ function App() {
     const open = () => setIsAIChatOpen(true);
     window.addEventListener('petwash:open-concierge', open);
     return () => window.removeEventListener('petwash:open-concierge', open);
+  }, []);
+
+  // CEO MASTER §A5 §4.1 §4.2 (2026-08-29) — capture first-touch
+  // attribution ONCE on app mount. Immutable if already set; only
+  // lastTouch updates on subsequent visits. Runs client-side only.
+  //
+  // CEO §A12 §B41 — install the CTA event sink so every emitCtaEvent
+  // fires a stage into the auth-journey timeline. Recorded stages are
+  // capped to those authJourney recognises; unknown CTA actions are
+  // silently ignored so a new registry entry never spams the timeline
+  // with garbage.
+  useEffect(() => {
+    captureInitialTouch();
+    setCtaEventSink((action) => {
+      // Every CtaAction id maps to itself as an auth-journey stage
+      // when (and only when) it belongs to the AuthJourneyStage union.
+      // No PII is ever forwarded — the sink receives the action id
+      // string only.
+      if (typeof action === 'string' && action.startsWith('AUTH_')) {
+        recordAuthJourneyStage('AUTH_METHOD_SELECTED', { action });
+      }
+    });
+    return () => setCtaEventSink(() => { /* no-op on teardown */ });
+    // Deliberately empty deps — this MUST run exactly once per mount.
   }, []);
 
   // Route-aware suppression: promo popup and floating FABs must not show on
