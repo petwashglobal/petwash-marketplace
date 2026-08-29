@@ -57,26 +57,45 @@ describe('CEO §D5 — session-hardening capability fallback', () => {
   });
 });
 
-describe('CEO §D5 — hasAdminOrStaffCapability shared helper', () => {
+describe('CEO §D5 + FLY MODE II §1 — hasAdminOrStaffCapability + resolveSecurityCapabilities', () => {
   const LIB = fs.readFileSync(
     path.resolve(__dirname, '..', 'lib', 'userCapabilities.ts'),
     'utf8',
   );
-  it('exports hasAdminOrStaffCapability', () => {
+  it('exports both the tri-state resolver AND the boolean shim', () => {
+    expect(LIB).toMatch(/export async function resolveSecurityCapabilities/);
     expect(LIB).toMatch(/export async function hasAdminOrStaffCapability/);
   });
-  it('reads all three capability flags (superAdmin, admin, staff.approved)', () => {
-    expect(LIB).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin \|\| caps\.staff\?\.approved/);
+  it('tri-state resolver returns SecurityCapabilityResolution (ok:true|ok:false with reason)', () => {
+    expect(LIB).toMatch(/type SecurityCapabilityResolution\s*=/);
+    expect(LIB).toMatch(/\{ ok: true; capabilities: UserCapabilities \}/);
+    expect(LIB).toMatch(/reason: 'LOOKUP_FAILED' \| 'MISSING_UID'/);
+  });
+  it('each security-critical source returns LOOKUP_FAILED on DB error (fail-CLOSED)', () => {
+    // The 3 catch blocks — user row, admin row, staff row — MUST
+    // return the sentinel, NOT swallow-and-default to false.
+    const matches = LIB.match(/return \{ ok: false, reason: 'LOOKUP_FAILED' \};/g) || [];
+    expect(matches.length).toBeGreaterThanOrEqual(3);
+  });
+  it('shim reads capabilities from resolveSecurityCapabilities, not getUserCapabilities', () => {
+    // CEO caught: getUserCapabilities swallows errors → onError branch
+    // never fires. The shim MUST go through the strict resolver.
+    const shimStart = LIB.indexOf('export async function hasAdminOrStaffCapability');
+    const shim = LIB.slice(shimStart, shimStart + 800);
+    expect(shim).toMatch(/resolveSecurityCapabilities\(uid\)/);
+    expect(shim).not.toMatch(/getUserCapabilities\(uid\)/);
+  });
+  it('shim returns opts.onError when resolution is ok:false', () => {
+    const shimStart = LIB.indexOf('export async function hasAdminOrStaffCapability');
+    const shim = LIB.slice(shimStart, shimStart + 800);
+    expect(shim).toMatch(/if \(!res\.ok\)/);
+    expect(shim).toMatch(/return opts\.onError \?\? false;/);
+  });
+  it('reads staff.active (not the nonexistent staff.approved the old code checked)', () => {
+    expect(LIB).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin \|\| caps\.staff\?\.active/);
   });
   it('accepts onError contract-dependent default', () => {
-    expect(LIB).toMatch(/opts: \{ onError\?: boolean \}/);
-    expect(LIB).toMatch(/opts\.onError \?\? false/);
-  });
-  it('handles missing uid safely without throwing', () => {
-    expect(LIB).toMatch(/if \(!uid\) return opts\.onError \?\? false;/);
-  });
-  it('never throws — try/catch around getUserCapabilities', () => {
-    expect(LIB).toMatch(/try \{[\s\S]*getUserCapabilities\(uid\)[\s\S]*\} catch/);
+    expect(LIB).toMatch(/opts: \{ onError\?: boolean \} = \{\}/);
   });
 });
 

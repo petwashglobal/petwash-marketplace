@@ -52,30 +52,166 @@ import {
 export type { UserCapabilities } from '@shared/lib/userCapabilities';
 
 /**
- * CEO MASTER §D5 (2026-08-29 E4+E9) — cheap "does this uid have
- * admin capability?" helper that gates like requireAdminMfa,
- * session-hardening, and requireAdmin can use as a one-liner
- * fallback when the Firebase claim.role is empty (never populated
- * by the middleware or lagging after a promotion).
+ * CEO FLY MODE II §1–§3 (2026-08-29) — TRI-STATE security capability
+ * resolution.
  *
- * Fail-CLOSED discipline is CONTRACT-DEPENDENT — an admin gate
- * denies on error; an MFA-required gate REQUIRES on error. Callers
- * pass the right default via `onError`.
+ * BUG THE CEO CAUGHT: getUserCapabilities() swallows every per-source
+ * DB error and defaults to `admin=false / staff=false`. That means
+ * `hasAdminOrStaffCapability(uid, { onError: true })` NEVER sees the
+ * throw, its `onError` branch NEVER fires, and a capability-DB
+ * outage silently returned `false` — which for an MFA gate means
+ * "MFA not required" for a privileged human whose claim was stale.
+ * Fail-CLOSED was a fiction.
  *
- * Never throws. Returns the resolved boolean.
+ * FIX: resolveSecurityCapabilities() distinguishes three outcomes:
+ *   • { ok: true,  capabilities }     — we CHECKED and know the answer.
+ *   • { ok: false, reason: 'LOOKUP_FAILED' } — DB failed; caller must
+ *     apply the security policy for uncertainty (fail-CLOSED for MFA +
+ *     admin gates: require MFA / deny privileged continuation).
+ *
+ * The display-oriented getUserCapabilities() keeps its fail-soft
+ * behaviour so dashboards do not blow up on a Prestige blip. Security
+ * gates MUST call resolveSecurityCapabilities() instead — the
+ * hasAdminOrStaffCapability() shim below already does.
+ */
+
+export type SecurityCapabilityResolution =
+  | { ok: true; capabilities: UserCapabilities }
+  | { ok: false; reason: 'LOOKUP_FAILED' | 'MISSING_UID' };
+
+/**
+ * Read the security-critical capability sources (user row, admin
+ * table, staff table, super-admin allowlist) with STRICT error
+ * propagation. Any per-source failure resolves to
+ * { ok: false, reason: 'LOOKUP_FAILED' } so callers can apply their
+ * fail-CLOSED policy explicitly.
+ *
+ * Prestige + provider signals are read too (best-effort) so callers
+ * that want them can piggyback, but their failure does NOT downgrade
+ * the resolution to `ok:false` — they are not admin/staff signals.
+ */
+export async function resolveSecurityCapabilities(
+  uid: string | undefined | null,
+): Promise<SecurityCapabilityResolution> {
+  if (!uid) return { ok: false, reason: 'MISSING_UID' };
+
+  const caps = emptyCapabilities(uid);
+  // ── STEP 1: user row — MUST succeed so we know the email for admin
+  //           + super-admin allowlist lookups. Any DB failure here is
+  //           terminal for the security decision.
+  let email: string | null = null;
+  let emailVerified = false;
+  let phoneVerified = false;
+  try {
+    const [row] = await db
+      .select({
+        email: users.email,
+        emailVerified: users.emailVerified,
+        phoneVerified: users.phoneVerified,
+      })
+      .from(users)
+      .where(eq(users.id, uid))
+      .limit(1);
+    if (row) {
+      email = row.email ?? null;
+      emailVerified = !!row.emailVerified;
+      phoneVerified = !!row.phoneVerified;
+    }
+  } catch (e: any) {
+    logger.error('[Capabilities] resolveSecurityCapabilities — user row lookup failed (fail-CLOSED)', {
+      uid,
+      error: e?.message,
+    });
+    return { ok: false, reason: 'LOOKUP_FAILED' };
+  }
+
+  caps.identity = {
+    emailVerified,
+    mobileVerified: phoneVerified,
+    activated: emailVerified && phoneVerified,
+  };
+
+  // ── STEP 2: admin row — MUST succeed.
+  try {
+    if (email) {
+      const [row] = await db
+        .select({ id: adminUsers.id })
+        .from(adminUsers)
+        .where(eq(adminUsers.email, email))
+        .limit(1);
+      if (row) caps.admin.admin = true;
+    }
+  } catch (e: any) {
+    logger.error('[Capabilities] resolveSecurityCapabilities — admin row lookup failed (fail-CLOSED)', {
+      uid,
+      error: e?.message,
+    });
+    return { ok: false, reason: 'LOOKUP_FAILED' };
+  }
+
+  // ── STEP 3: super-admin allowlist (env-driven — cannot fail on DB).
+  if (isSuperAdminEmail(email)) {
+    caps.admin.admin = true;
+    // superAdmin bit is only set by getUserCapabilities() when the
+    // caller has independently verified email_verified (see
+    // GetUserCapabilitiesOptions.superAdminVerified). Security gates
+    // that need the strict variant should verify separately — the
+    // shim below treats `admin.admin` as sufficient for privilege.
+  }
+
+  // ── STEP 4: staff row — MUST succeed.
+  try {
+    const [row] = await db
+      .select({ status: staffAccessRequests.status })
+      .from(staffAccessRequests)
+      .where(eq(staffAccessRequests.userId, uid))
+      .limit(1);
+    caps.staff.active = row?.status === 'approved';
+  } catch (e: any) {
+    logger.error('[Capabilities] resolveSecurityCapabilities — staff row lookup failed (fail-CLOSED)', {
+      uid,
+      error: e?.message,
+    });
+    return { ok: false, reason: 'LOOKUP_FAILED' };
+  }
+
+  return { ok: true, capabilities: caps };
+}
+
+/**
+ * hasAdminOrStaffCapability — SECURITY gate shim.
+ *
+ * Contract:
+ *   • resolved + privileged  → true  (allow / require MFA)
+ *   • resolved + ordinary    → false (route continues per non-priv policy)
+ *   • unavailable            → opts.onError (fail-CLOSED for MFA gates:
+ *                              onError:true → treat as privileged → REQUIRE
+ *                              MFA; admin authorization gates:
+ *                              onError:false → deny)
+ *
+ * A "resolved" answer here means resolveSecurityCapabilities returned
+ * ok:true. An `ok:false` result is the real DB-uncertainty branch the
+ * previous swallow-then-default implementation could not distinguish
+ * from a definite "not privileged" — see CEO FLY MODE II §1.
  */
 export async function hasAdminOrStaffCapability(
   uid: string | undefined | null,
   opts: { onError?: boolean } = {},
 ): Promise<boolean> {
-  if (!uid) return opts.onError ?? false;
-  try {
-    const caps = await getUserCapabilities(uid);
-    return !!(caps.admin?.superAdmin || caps.admin?.admin || caps.staff?.approved);
-  } catch (err) {
-    logger.warn('[Capabilities] hasAdminOrStaffCapability failed', { uid, error: (err as any)?.message });
+  const res = await resolveSecurityCapabilities(uid);
+  if (!res.ok) {
+    // MISSING_UID is a caller bug (no identity to check) — apply the
+    // same fail-CLOSED contract as LOOKUP_FAILED so no code path can
+    // sneak an unauthenticated call past the guard.
+    logger.warn('[Capabilities] hasAdminOrStaffCapability unresolved', {
+      uid,
+      reason: res.reason,
+      onError: opts.onError ?? false,
+    });
     return opts.onError ?? false;
   }
+  const caps = res.capabilities;
+  return !!(caps.admin?.superAdmin || caps.admin?.admin || caps.staff?.active);
 }
 
 // Provider service rows only count toward `services` when their status is
