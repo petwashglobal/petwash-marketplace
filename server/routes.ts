@@ -4029,9 +4029,24 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // TikTok OAuth Routes - Custom OAuth 2.0 flow with PKCE
+  //
+  // CEO FLY MODE II §23 (2026-08-29) — DUPLICATE-CALLBACK observability.
+  // A canonical equivalent exists at /api/auth/social/tiktok/* (see
+  // server/routes/social-oauth.ts, mounted at routes.ts:12169). Which
+  // callback URL TikTok actually delivers to depends on what is
+  // configured in the TikTok Developer console — an EXTERNAL surface
+  // we cannot audit from source. Every hit on THIS legacy path is
+  // beaconed at WARN so we can measure real production usage BEFORE
+  // §23 retires the duplicate. Do not merge a 410 stub on these
+  // handlers until the beacon shows a clean zero across a measured
+  // window AND the TikTok console has been confirmed to point at the
+  // canonical /api/auth/social/tiktok/callback path.
+  //
   // GET /api/auth/tiktok/start - Initiate TikTok OAuth flow
   app.get('/api/auth/tiktok/start', async (req, res) => {
     try {
+      const { recordDeprecationHit } = await import('./lib/deprecationTelemetry');
+      recordDeprecationHit(req, '/api/auth/tiktok/start:legacy-duplicate');
       const { TIKTOK_CLIENT_KEY } = process.env;
       
       if (!TIKTOK_CLIENT_KEY) {
@@ -4101,6 +4116,11 @@ self.addEventListener('notificationclick', (event) => {
   // False positive: no sensitive data persisted or reflected via GET params here.
   app.get('/api/auth/tiktok/callback', async (req, res) => {
     try {
+      // CEO FLY MODE II §23 — beacon EVERY legacy callback hit so we
+      // can tell whether TikTok is still delivering codes here vs the
+      // canonical /api/auth/social/tiktok/callback.
+      const { recordDeprecationHit } = await import('./lib/deprecationTelemetry');
+      recordDeprecationHit(req, '/api/auth/tiktok/callback:legacy-duplicate');
       // OAuth 2.0 requires the authorization code to be delivered via GET query
       // parameter (RFC 6749 §4.1.2). The code is short-lived and one-time-use;
       // do not log its value.

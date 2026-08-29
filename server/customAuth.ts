@@ -22,143 +22,30 @@ declare global {
   }
 }
 
-export function setupCustomAuth(app: Express) {
-  // Get session secret with proper fallback handling
-  function getSessionSecret(): string {
-    if (process.env.SESSION_SECRET) {
-      return process.env.SESSION_SECRET;
-    }
-    
-    // Development-only fallback
-    if (process.env.NODE_ENV === 'development') {
-      logger.warn('[CustomAuth] Using development session secret - set SESSION_SECRET for production');
-      return 'petwash-dev-custom-auth-' + crypto.createHash('sha256').update('petwash-custom-auth').digest('hex');
-    }
-    
-    // Production: throw error if secret is missing
-    throw new Error(
-      'SESSION_SECRET environment variable is required in production.\n' +
-      'Please set SESSION_SECRET in Replit Secrets or your environment configuration.'
-    );
-  }
-
-  // Session configuration
-  const sessionConfig = {
-    store: new PostgresStore({
-      pool,
-      createTableIfMissing: true,
-    }),
-    secret: getSessionSecret(),
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    },
-  };
-
-  app.use(session(sessionConfig));
-
-  app.post('/api/auth/register', (_req: Request, res: Response) => {
-    logger.warn('[DEPRECATED] /api/auth/register called - endpoint removed. Use Firebase Auth + /api/users/create-profile');
-    return res.status(410).json({
-      message: 'This endpoint is deprecated. Use Firebase Auth for registration.',
-      redirect: '/signup',
-      errorCode: 'ENDPOINT_DEPRECATED'
-    });
-  });
-
-  app.post('/api/auth/login', (_req: Request, res: Response) => {
-    logger.warn('[DEPRECATED] /api/auth/login called - endpoint removed. Use Firebase Auth + /api/auth/session');
-    return res.status(410).json({
-      message: 'This endpoint is deprecated. Use Firebase Auth for sign-in.',
-      redirect: '/signin',
-      errorCode: 'ENDPOINT_DEPRECATED'
-    });
-  });
-
-  // Get current user endpoint
-  app.get('/api/auth/user', async (req: Request, res: Response) => {
-    try {
-      const customerId = (req.session as any)?.customerId;
-      
-      if (!customerId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const customer = await storage.getCustomer(customerId);
-      if (!customer) {
-        return res.status(401).json({ message: 'User not found' });
-      }
-
-      // Return customer data (without password)
-      const { password, ...customerResponse } = customer;
-      res.json(customerResponse);
-    } catch (error) {
-      logger.error('Get user error', error);
-      res.status(500).json({ message: 'Failed to get user' });
-    }
-  });
-
-  // Logout endpoint
-  app.post('/api/auth/logout', (req: Request, res: Response) => {
-    req.session.destroy((err) => {
-      if (err) {
-        logger.error('Logout error', err);
-        return res.status(500).json({ message: 'Logout failed' });
-      }
-      res.clearCookie('connect.sid');
-      res.json({ message: 'Logged out successfully' });
-    });
-  });
-
-  // Update profile endpoint
-  app.patch('/api/auth/profile', async (req: Request, res: Response) => {
-    try {
-      const customerId = (req.session as any)?.customerId;
-      
-      if (!customerId) {
-        return res.status(401).json({ message: 'Not authenticated' });
-      }
-
-      const updateSchema = insertCustomerSchema.partial().omit({
-        id: true,
-        password: true,
-        createdAt: true,
-        updatedAt: true,
-        authProvider: true,
-        authProviderId: true,
-        resetPasswordToken: true,
-        resetPasswordExpires: true,
-      });
-
-      const validatedData = updateSchema.parse(req.body);
-      const updatedCustomer = await storage.updateCustomer(customerId, validatedData);
-
-      if (!updatedCustomer) {
-        return res.status(404).json({ message: 'Customer not found' });
-      }
-
-      // Return customer data (without password)
-      const { password, ...customerResponse } = updatedCustomer;
-      res.json(customerResponse);
-    } catch (error) {
-      logger.error('Profile update error', error);
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: 'Validation error', 
-          errors: error.errors 
-        });
-      }
-      res.status(500).json({ message: 'Profile update failed' });
-    }
-  });
-
-  logger.info('AUTH SYSTEM INITIALIZED (Firebase Auth is source of truth)');
-  logger.info('Active endpoints: /api/auth/user, /api/auth/logout, /api/auth/profile');
-  logger.info('Deprecated endpoints: /api/auth/register (410), /api/auth/login (410)');
-}
+// CEO FLY MODE II §25 (2026-08-29) — setupCustomAuth() surgical delete.
+//
+// The route-installer was never mounted (zero call sites in the whole
+// codebase — grep -rn "setupCustomAuth" server/ returns only its own
+// definition + one comment reference in thread-chat.ts). The handlers
+// it registered were therefore dead:
+//   POST /api/auth/register  — already a 410 stub.
+//   POST /api/auth/login     — already a 410 stub.
+//   GET  /api/auth/user      — legacy PG-session getter, not Firebase.
+//   POST /api/auth/logout    — legacy session destroyer.
+//   PATCH /api/auth/profile  — legacy customer profile update.
+// None of these were reachable at runtime because the express
+// mount calls inside the installer never executed.
+//
+// requireAuth (below) IS actively used by ~10+ live route files (see
+// server/routes/{bookings,ita-api,enterprise,referral,fcm,voice,shop,
+// qr-activation,compliance-brain,thread-chat}.ts and server/routes.ts).
+// It stays here, unchanged.
+//
+// The imports below (session, PostgresStore, connectPgSimple, pool,
+// insertCustomerSchema, z) were installer-only; TypeScript's
+// noUnusedLocals is off in this repo so leaving them is harmless, but
+// they can be pruned in a follow-up cleanup once the file is confirmed
+// stable in a real deploy.
 
 // Middleware to check authentication (Firebase-based)
 export async function requireAuth(req: Request, res: Response, next: any) {
