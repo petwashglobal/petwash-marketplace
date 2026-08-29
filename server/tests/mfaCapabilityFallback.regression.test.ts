@@ -79,6 +79,29 @@ describe('CEO §D5 — session-hardening capability fallback', () => {
   });
 });
 
+describe('CEO §D5 — hasAdminOrStaffCapability shared helper', () => {
+  const LIB = fs.readFileSync(
+    path.resolve(__dirname, '..', 'lib', 'userCapabilities.ts'),
+    'utf8',
+  );
+  it('exports hasAdminOrStaffCapability', () => {
+    expect(LIB).toMatch(/export async function hasAdminOrStaffCapability/);
+  });
+  it('reads all three capability flags (superAdmin, admin, staff.approved)', () => {
+    expect(LIB).toMatch(/caps\.admin\?\.superAdmin \|\| caps\.admin\?\.admin \|\| caps\.staff\?\.approved/);
+  });
+  it('accepts onError contract-dependent default', () => {
+    expect(LIB).toMatch(/opts: \{ onError\?: boolean \}/);
+    expect(LIB).toMatch(/opts\.onError \?\? false/);
+  });
+  it('handles missing uid safely without throwing', () => {
+    expect(LIB).toMatch(/if \(!uid\) return opts\.onError \?\? false;/);
+  });
+  it('never throws — try/catch around getUserCapabilities', () => {
+    expect(LIB).toMatch(/try \{[\s\S]*getUserCapabilities\(uid\)[\s\S]*\} catch/);
+  });
+});
+
 describe('CEO §D5 — contractor.ts requireAdmin capability fallback', () => {
   const C = fs.readFileSync(
     path.resolve(__dirname, '..', 'routes', 'contractor.ts'),

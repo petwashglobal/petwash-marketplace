@@ -51,6 +51,33 @@ import {
 // the client uses.
 export type { UserCapabilities } from '@shared/lib/userCapabilities';
 
+/**
+ * CEO MASTER §D5 (2026-08-29 E4+E9) — cheap "does this uid have
+ * admin capability?" helper that gates like requireAdminMfa,
+ * session-hardening, and requireAdmin can use as a one-liner
+ * fallback when the Firebase claim.role is empty (never populated
+ * by the middleware or lagging after a promotion).
+ *
+ * Fail-CLOSED discipline is CONTRACT-DEPENDENT — an admin gate
+ * denies on error; an MFA-required gate REQUIRES on error. Callers
+ * pass the right default via `onError`.
+ *
+ * Never throws. Returns the resolved boolean.
+ */
+export async function hasAdminOrStaffCapability(
+  uid: string | undefined | null,
+  opts: { onError?: boolean } = {},
+): Promise<boolean> {
+  if (!uid) return opts.onError ?? false;
+  try {
+    const caps = await getUserCapabilities(uid);
+    return !!(caps.admin?.superAdmin || caps.admin?.admin || caps.staff?.approved);
+  } catch (err) {
+    logger.warn('[Capabilities] hasAdminOrStaffCapability failed', { uid, error: (err as any)?.message });
+    return opts.onError ?? false;
+  }
+}
+
 // Provider service rows only count toward `services` when their status is
 // in one of the two "approved for real work" buckets (matches me-status.ts).
 const APPROVED_SERVICE_STATUSES = ['approved_for_booking', 'approved_for_payout'] as const;
