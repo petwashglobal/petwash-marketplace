@@ -20,7 +20,11 @@ import type {
   NextBestActionPriority,
 } from '@shared/lib/nextBestAction';
 import { composeAttentionFeed } from './attentionFeed';
+import { countRecentDismisses } from './journeyEvents';
 import { logger } from '../lib/logger';
+import { and, desc, eq } from 'drizzle-orm';
+import { db } from '../db';
+import { favouriteProviders, walkBookings, sitterBookings } from '@shared/schema';
 
 const PRIORITY_ORDER: Record<NextBestActionPriority, number> = {
   critical: 0,
@@ -144,6 +148,99 @@ function actionTypeFor(reason: NextBestActionReasonCode): NextBestAction['action
   }
 }
 
+/**
+ * CEO §10 forward-looking recommender — FAVOURITE_REBOOK. Reads
+ * favourite_providers + the most-recent COMPLETED booking with that
+ * provider on record; emits one NBA per favourite that still has a
+ * matching history record.
+ *
+ * recommendationScore is a simple linear recency signal:
+ *   * booked in the last 60 days  → 0.8
+ *   * booked in the last 180 days → 0.5
+ *   * older                       → 0.25
+ * The composer never invents availability — the customer taps the
+ * card, the wizard checks live availability, then confirms. This is
+ * strictly CEO §22-clean (never bypass eligibility).
+ */
+async function favouriteRebookItems(userId: string, he: boolean): Promise<NextBestAction[]> {
+  try {
+    const stars = await db
+      .select()
+      .from(favouriteProviders)
+      .where(eq(favouriteProviders.userUid, userId))
+      .orderBy(desc(favouriteProviders.addedAt))
+      .limit(10);
+    if (!stars.length) return [];
+    const items: NextBestAction[] = [];
+    const nowMs = Date.now();
+    for (const star of stars) {
+      // Match booking history to the favourite's domain — the walker
+      // history table is walk_bookings; the sitter history is
+      // sitter_bookings. Providers offering multiple services get one
+      // entry per domain.
+      let lastBookedAtMs: number | null = null;
+      let entityRef: string | null = star.providerId;
+      let destination: string;
+      if (star.domain === 'walk' || star.domain === 'walk_booking') {
+        const [row] = await db
+          .select({ id: walkBookings.bookingId, scheduledDate: walkBookings.scheduledDate })
+          .from(walkBookings)
+          .where(and(
+            eq(walkBookings.ownerId, userId),
+            eq(walkBookings.walkerId, star.providerId),
+            eq(walkBookings.status, 'completed'),
+          ))
+          .orderBy(desc(walkBookings.scheduledDate))
+          .limit(1);
+        if (!row) continue;
+        lastBookedAtMs = row.scheduledDate ? new Date(row.scheduledDate).getTime() : null;
+        entityRef = row.id;
+        destination = `/walk-my-pet/book/${star.providerId}`;
+      } else if (star.domain === 'sitter' || star.domain === 'sitter_booking') {
+        const sitterIdNum = Number(star.providerId);
+        if (!Number.isFinite(sitterIdNum)) continue;
+        const [row] = await db
+          .select({ id: sitterBookings.bookingId, endDate: sitterBookings.endDate })
+          .from(sitterBookings)
+          .where(and(
+            eq(sitterBookings.ownerId, userId),
+            eq(sitterBookings.sitterId, sitterIdNum),
+            eq(sitterBookings.paymentStatus, 'captured'),
+          ))
+          .orderBy(desc(sitterBookings.endDate))
+          .limit(1);
+        if (!row) continue;
+        lastBookedAtMs = row.endDate ? new Date(row.endDate).getTime() : null;
+        entityRef = row.id;
+        destination = `/sitter-suite/book/${star.providerId}`;
+      } else {
+        continue;
+      }
+      const daysSince = lastBookedAtMs
+        ? Math.floor((nowMs - lastBookedAtMs) / (24 * 60 * 60 * 1000))
+        : 999;
+      const score = daysSince < 60 ? 0.8 : daysSince < 180 ? 0.5 : 0.25;
+      const priority: NextBestActionPriority = daysSince < 60 ? 'high' : 'normal';
+      items.push({
+        id: `nba:favourite_rebook:${star.domain}:${star.providerId}`,
+        actor: 'pet_parent',
+        domain: star.domain === 'walk' || star.domain === 'walk_booking' ? 'walk' : 'sitting',
+        entityRef,
+        reasonCode: 'FAVOURITE_REBOOK',
+        priority,
+        actionType: 'rebook',
+        destination,
+        recommendationScore: score,
+        requiresConfirmation: true,
+      });
+    }
+    return items;
+  } catch (e: any) {
+    logger.warn('[NextBestAction] favourite-rebook probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
 export async function composeNextBestActionFeed(
   actor: NextBestActionActor,
   userId: string,
@@ -154,7 +251,7 @@ export async function composeNextBestActionFeed(
 
   const actions: NextBestAction[] = [];
 
-  // Phase 4 slice #1: forward every actionable AttentionItem into a
+  // Slice #1: forward every actionable AttentionItem into a
   // NextBestAction whose reasonCode encodes the WHY.
   try {
     const feed = await composeAttentionFeed(actor === 'pet_parent' ? 'pet_parent' : 'provider', userId, he);
@@ -179,6 +276,28 @@ export async function composeNextBestActionFeed(
     logger.warn('[NextBestAction] attention passthrough failed', { userId, err: e?.message });
   }
 
+  // Slice #2: FAVOURITE_REBOOK forward-looking picks (pet-parent only).
+  if (actor === 'pet_parent') {
+    const rebooks = await favouriteRebookItems(userId, he);
+    for (const r of rebooks) actions.push(r);
+  }
+
+  // Slice #3 (CEO §67 feedback loop): if the user has consistently
+  // dismissed a reason in the last 30 days, DEMOTE its priority by one
+  // level. Never DROP the item entirely — that would hide urgent
+  // reasons the user needs to act on; only nudge it down the stack.
+  try {
+    const withCounts = await Promise.all(actions.map(async (a) => {
+      const n = await countRecentDismisses(userId, a.reasonCode);
+      return { a, n };
+    }));
+    for (const { a, n } of withCounts) {
+      if (n >= 3) a.priority = demotePriority(a.priority);
+    }
+  } catch (e: any) {
+    logger.warn('[NextBestAction] dismissal-demote failed', { userId, err: e?.message });
+  }
+
   // Sort: critical → high → normal → low; within a bucket keep the
   // attention-feed order.
   actions.sort((a, b) => {
@@ -191,4 +310,13 @@ export async function composeNextBestActionFeed(
   });
 
   return { actor, actions, composedAt };
+}
+
+function demotePriority(p: NextBestActionPriority): NextBestActionPriority {
+  switch (p) {
+    case 'critical': return 'high';
+    case 'high':     return 'normal';
+    case 'normal':   return 'low';
+    case 'low':      return 'low';
+  }
 }

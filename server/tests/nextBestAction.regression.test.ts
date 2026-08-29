@@ -117,6 +117,42 @@ describe('NextBestAction composer (CEO §65)', () => {
   });
 });
 
+describe('forward-looking picks (CEO §10 §67)', () => {
+  it('composes FAVOURITE_REBOOK from favourite_providers + last-completed booking', () => {
+    // Ownership: favourite_providers WHERE user_uid = userId, then
+    // MOST-RECENT completed walk / captured-sitter booking with same
+    // provider. entityRef is the booking id (used for the "why this?"
+    // debug panel), destination is the wizard prefill URL.
+    expect(SVC).toMatch(/async function favouriteRebookItems\(userId: string, he: boolean\): Promise<NextBestAction\[\]>/);
+    expect(SVC).toMatch(/eq\(favouriteProviders\.userUid, userId\)/);
+    expect(SVC).toMatch(/eq\(walkBookings\.walkerId, star\.providerId\),\s*\n\s*eq\(walkBookings\.status, 'completed'\),/);
+    expect(SVC).toMatch(/eq\(sitterBookings\.sitterId, sitterIdNum\),\s*\n\s*eq\(sitterBookings\.paymentStatus, 'captured'\),/);
+    // Score rungs: <60d → 0.8, <180d → 0.5, else 0.25
+    expect(SVC).toMatch(/const score = daysSince < 60 \? 0\.8 : daysSince < 180 \? 0\.5 : 0\.25;/);
+    // Money path → requiresConfirmation true (§37).
+    expect(SVC).toMatch(/reasonCode: 'FAVOURITE_REBOOK',\s*\n\s*priority,\s*\n\s*actionType: 'rebook',\s*\n\s*destination,\s*\n\s*recommendationScore: score,\s*\n\s*requiresConfirmation: true,/);
+  });
+
+  it('dismissal-demote demotes but never DROPS a reason (CEO §67 nudge, not hide)', () => {
+    // 3+ dismisses in 30 days → priority drops one level. Never
+    // removes the item — a payment-due card must stay visible even
+    // if the user has waved it away.
+    expect(SVC).toMatch(/if \(n >= 3\) a\.priority = demotePriority\(a\.priority\);/);
+    expect(SVC).toMatch(/function demotePriority\(p: NextBestActionPriority\): NextBestActionPriority/);
+    expect(SVC).toMatch(/case 'critical': return 'high';\s*\n\s*case 'high':     return 'normal';\s*\n\s*case 'normal':   return 'low';\s*\n\s*case 'low':      return 'low';/);
+  });
+
+  it('favourite-rebook probe is pet-parent-only (never spams providers)', () => {
+    // The composer path gates the call on actor === 'pet_parent'.
+    expect(SVC).toMatch(/if \(actor === 'pet_parent'\) \{\s*\n\s*const rebooks = await favouriteRebookItems\(userId, he\);/);
+  });
+
+  it('favourite-rebook fails-CLOSED on DB error', () => {
+    expect(SVC).toMatch(/\[NextBestAction\] favourite-rebook probe failed/);
+    expect(SVC).toMatch(/logger\.warn\('\[NextBestAction\] favourite-rebook probe failed'[\s\S]*?return \[\];\s*\n\s*\}/);
+  });
+});
+
 describe('NextBestAction route (CEO §36)', () => {
   it('exposes /pet-parent + /provider — READ-ONLY, Firebase-authed', () => {
     expect(ROUTE).toMatch(/router\.get\('\/pet-parent'/);
