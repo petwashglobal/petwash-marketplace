@@ -8,7 +8,7 @@ import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { useLocation } from 'wouter';
 // CEO §B41 §1.5 (2026-08-29) — Google One Tap shares the same
 // journey-trace + preferred-method wire as the other AUTH_* CTAs.
-import { beginAuthJourney, recordAuthJourneyStage, endAuthJourney } from '@/lib/authJourney';
+import { authJourneyHeader, beginAuthJourney, recordAuthJourneyStage, endAuthJourney } from '@/lib/authJourney';
 import { writePreferredAuthMethod } from '@/lib/preferredAuthMethod';
 
 interface GoogleOneTapProps {
@@ -154,13 +154,17 @@ export function GoogleOneTap({
 
       logger.info('[Google One Tap] Sign-in successful:', userCredential.user.email);
 
-      // Create session cookie
+      // Create session cookie. CEO §B41 — attach the auth-journey
+      // header so the server log line correlates with the client
+      // stage timeline for this attempt.
       const firebaseIdToken = await userCredential.user.getIdToken();
+      const traceHeader = authJourneyHeader();
       const sessionResponse = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${firebaseIdToken}`,
+          ...(traceHeader ? { 'X-Auth-Journey-Id': traceHeader } : {}),
         },
         credentials: 'include',
         body: JSON.stringify({ idToken: firebaseIdToken }),

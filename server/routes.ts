@@ -1221,10 +1221,24 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/auth/session', authLimiter, async (req, res) => {
     try {
       const traceId = req.body?.traceId;
-      logger.debug('[Session] Creating session cookie', { 
+      // CEO §B41 (2026-08-29) — client auth-journey trace id arrives
+      // via the X-Auth-Journey-Id header (see client/src/lib/authJourney).
+      // Format: "<16 hex>[;method=<preferred>]". We keep only the safe
+      // fields on the log line — no PII, no token. If the value is
+      // malformed we drop it silently.
+      const authJourneyHeader = req.headers['x-auth-journey-id'];
+      const authJourneyRaw = Array.isArray(authJourneyHeader) ? authJourneyHeader[0] : authJourneyHeader;
+      const authJourneyMatch = typeof authJourneyRaw === 'string'
+        ? authJourneyRaw.match(/^([0-9a-f]{16})(?:;method=(google|apple|phone|email|passkey))?$/)
+        : null;
+      const authJourneyId = authJourneyMatch?.[1];
+      const authJourneyMethod = authJourneyMatch?.[2];
+      logger.debug('[Session] Creating session cookie', {
         hasIdToken: !!req.body?.idToken,
         expiresInMs: req.body?.expiresInMs,
         traceId,
+        authJourneyId,
+        authJourneyMethod,
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
       const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken, dateOfBirth: bodyDob } = req.body;

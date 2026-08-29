@@ -27,6 +27,10 @@ import { isAdminRole } from "@shared/adminRoles";
 // AuthProvider remains the only consumer of getRedirectResult().
 import { signInWithGoogle as canonicalSignInWithGoogle } from "@/lib/auth-guardian-2025";
 import { getAuthStrategy } from "@/lib/iosAuthHandler";
+// CEO §B41 §1.5 (2026-08-29) — admin sign-in shares the same
+// journey-trace + preferred-method wire as customer sign-in.
+import { CtaAction, emitCtaEvent } from "@/lib/ctaActions";
+import { recordAuthJourneyStage } from "@/lib/authJourney";
 
 const isMobileBrowser = () => {
   // Retained for legacy callers; PR-AUTH-1 replaced the OAuth-init use of
@@ -429,8 +433,9 @@ export default function AdminLoginV2() {
               className="w-full"
             >
               <Button
-                onClick={handleBiometricLogin}
+                onClick={() => { emitCtaEvent(CtaAction.AUTH_PASSKEY); recordAuthJourneyStage('AUTH_METHOD_SELECTED', { surface: 'admin' }); handleBiometricLogin(); }}
                 disabled={!email || biometricStatus === "scanning"}
+                data-action-id="AUTH_PASSKEY"
                 title={!email ? "Type your email below first — Touch ID needs to know which account" : undefined}
                 className={`
                   w-full min-h-[48px] sm:h-12 text-white shadow-lg hover:shadow-xl transition-all text-sm sm:text-base
@@ -487,10 +492,11 @@ export default function AdminLoginV2() {
           >
             <Button
               variant="outline"
-              onClick={handleGoogleLogin}
+              onClick={() => { emitCtaEvent(CtaAction.AUTH_GOOGLE); recordAuthJourneyStage('AUTH_METHOD_SELECTED', { surface: 'admin' }); handleGoogleLogin(); }}
               disabled={isGoogleLoading}
               className="w-full min-h-[48px] sm:h-12 bg-white text-gray-700 hover:bg-gray-50 active:bg-gray-100 border border-gray-200 hover:border-gray-300 shadow-sm transition-all font-medium text-sm sm:text-base"
               data-testid="button-google-login"
+              data-action-id="AUTH_GOOGLE"
             >
               {isGoogleLoading ? (
                 <>

@@ -1231,6 +1231,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         which === 'apple'  ? createAppleProvider()  :
                              createFacebookProvider();
       if (getAuthStrategy() === 'redirect') {
+        // CEO §1.3 — record the redirect-path stages so we can see
+        // where iPhone Safari drops signups.
+        recordAuthJourneyStage('FIREBASE_REDIRECT_STARTED', { provider: which });
         // Mark which provider we're redirecting to so the on-mount handler can
         // recover the result when Safari returns the user to /signup.
         setSignupRedirectMarker(which);
@@ -1241,21 +1244,28 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         await signInWithRedirect(auth, provider);
         return;
       }
+      recordAuthJourneyStage('FIREBASE_POPUP_STARTED', { provider: which });
       const cred = await signInWithPopup(auth, provider);
+      recordAuthJourneyStage('FIREBASE_POPUP_SUCCEEDED', { provider: which });
+      recordAuthJourneyStage('FIREBASE_SUCCESS');
       const idToken = await cred.user.getIdToken(true);
       // Mirror the native-social path — the browser has not yet collected
       // DOB / 18+ / Terms, so send only the id token. The AccountActivation
       // surface finishes the account with the missing mandatory data.
+      recordAuthJourneyStage('SESSION_EXCHANGE_START');
       const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
       if (!sessionRes.ok) {
+        recordAuthJourneyStage('SESSION_EXCHANGE_FAILURE');
         // Don't route into the app on a hollow session (guards would 401-bounce).
         const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
         fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
         return;
       }
+      recordAuthJourneyStage('SESSION_EXCHANGE_SUCCESS');
+      recordAuthJourneyStage('BOOTSTRAP_SUCCESS');
       // NEW social user: Google/Apple gave us a verified email but no phone. Ask them to
       // add + verify their mobile so the account confirms BOTH contacts (CEO 2026-08-08).
       // Returning users route straight in. (isNewUser comes from /api/auth/session.)
@@ -1275,7 +1285,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // (CEO 2026-07-30). Covers the web popup code AND the native plugin's
       // cancel rejections (ASWebAuthenticationSession / Apple sheet dismiss).
       const cancelSignal = `${e?.code ?? ''} ${e?.message ?? ''}`.toLowerCase();
-      if (cancelSignal.includes('popup-closed-by-user') || cancelSignal.includes('cancel')) return;
+      if (cancelSignal.includes('popup-closed-by-user') || cancelSignal.includes('cancel')) {
+        recordAuthJourneyStage('FIREBASE_POPUP_CANCELLED', { code: (e?.code || '').slice(0, 40) });
+        return;
+      }
       // POPUP BLOCKED → fall back to full-page redirect instead of dead-ending.
       // This is the #1 "Google/Apple does nothing and bounces back to the login
       // page" cause: on desktop + non-iOS browsers the popup strategy is chosen,
@@ -1287,6 +1300,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         cancelSignal.includes('popup-blocked') ||
         cancelSignal.includes('cancelled-popup-request') ||
         cancelSignal.includes('operation-not-supported-in-this-environment');
+      if (popupFailed) recordAuthJourneyStage('FIREBASE_POPUP_BLOCKED', { code: (e?.code || '').slice(0, 40) });
       if (popupFailed && (which === 'google' || which === 'apple' || which === 'facebook')) {
         try {
           logger.warn('[signup] social popup blocked — falling back to redirect', { which });
