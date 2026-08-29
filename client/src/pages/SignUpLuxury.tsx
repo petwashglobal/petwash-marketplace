@@ -905,10 +905,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // ── Stage 4: mint server session cookie ──────────────────────────────
       let sessionRes: Response;
       try {
-        sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+        sessionRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ idToken, dateOfBirth: dob, ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
-        });
+        }));
       } catch (netErr) {
         logger.error('[signup] /session network', netErr);
         fail(he ? 'שמירת הכניסה נכשלה. נסה שוב.' : 'Session save failed. Try again.');
@@ -1124,7 +1124,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // ── Stage 4: mint server session cookie ──────────────────────────────
       let sessRes: Response;
       try {
-        sessRes = await fetch(getApiUrl('/api/auth/session'), {
+        sessRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({
             idToken,
@@ -1133,7 +1133,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               ? {}
               : { ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
           }),
-        });
+        }));
       } catch (netErr) {
         logger.error('[signup] /session network', netErr);
         fail(he ? 'שמירת הכניסה נכשלה. נסה שוב.' : 'Session save failed. Try again.');
@@ -1212,10 +1212,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // 18+ / Terms checkboxes are collected AFTER OAuth on the completion
         // surface (AccountActivation for new users). Sending termsAccepted
         // here would fabricate consent the user never ticked.
-        const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+        const sessionRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ idToken }),
-        });
+        }));
         if (!sessionRes.ok) {
           const label = which === 'google' ? 'Google' : 'Apple';
           fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
@@ -1263,10 +1263,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // DOB / 18+ / Terms, so send only the id token. The AccountActivation
       // surface finishes the account with the missing mandatory data.
       recordAuthJourneyStage('SESSION_EXCHANGE_START');
-      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
-      });
+      }));
       if (!sessionRes.ok) {
         recordAuthJourneyStage('SESSION_EXCHANGE_FAILURE');
         // Don't route into the app on a hollow session (guards would 401-bounce).
@@ -1377,10 +1377,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!auth.currentUser) throw new Error('no-user-after-reauth');
       await linkWithCredential(auth.currentUser, linkState.pendingCred);  // attach new provider
       const idToken = await auth.currentUser.getIdToken(true);
-      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
-      });
+      }));
       if (!sessionRes.ok) { fail(he ? 'החיבור נכשל — נסו שוב' : 'Linking failed — please try again.'); return; }
       setLinkState(null); setLinkPassword('');
       await finishAndRoute();
@@ -1467,7 +1467,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         } else { throw e; }
       }
       const idToken = await cred.user.getIdToken(true);
-      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         // On signup send DOB + ageConfirmed + termsAccepted + acceptedMarketing
         // so the server /session handler can validate age + record consent in
@@ -1482,7 +1482,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             ? {}
             : { ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
         }),
-      });
+      }));
       if (!sessionRes.ok) {
         // Surface the real failure instead of dropping the user into the app on a
         // session that will immediately 401-bounce them back here.
@@ -1601,10 +1601,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       } catch { /* fall back to Firebase default (LOCAL) if the module fails to load */ }
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const idToken = await cred.user.getIdToken(true);
-      const r = await fetch(getApiUrl('/api/auth/session'), {
+      const r = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
-      });
+      }));
       if (r.status === 428) {
         // 2-step login is ON for this account — send the SMS code and switch to the
         // code screen. The same idToken proves identity through the challenge.
@@ -1651,10 +1651,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       });
       const vd = await v.json().catch(() => ({} as any));
       if (!vd.ok || !vd.mfaToken) { fail(vd.error || (he ? 'קוד שגוי' : 'Invalid code')); return; }
-      const r = await fetch(getApiUrl('/api/auth/session'), {
+      const r = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken: mfaChallenge.idToken, mfaToken: vd.mfaToken }),
-      });
+      }));
       if (!r.ok) { fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
       mfaLoginInFlight.current = false;
       setMfaChallenge(null);
