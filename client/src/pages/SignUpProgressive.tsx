@@ -96,17 +96,19 @@ export default function SignUpProgressive({ language = 'en', initialStateOverrid
   // /api/auth/session and /api/auth/account-resolution so an E2E run
   // is fully deterministic.
   useEffect(() => {
+    // Session-mint via synthetic token happens for ONE-STEP providers
+    // (google / apple) — a real OAuth handshake is the whole auth
+    // step, and CONTACT_VERIFY does not apply. For mobile/email the
+    // session POST happens on the Verify button click (inside
+    // OtpVerifyScreen) because the user's own input drives it.
     if (state.name !== 'AUTHENTICATING') return;
-    // Detect the E2E test adapter shim (window.__FIREBASE_TEST_ADAPTER__).
-    // When present, short-circuit real Firebase and mint the session
-    // via the synthetic token — the harness route()-intercepts the
-    // POST /api/auth/session call and returns the persona-shaped body.
+    if (state.method !== 'google' && state.method !== 'apple') return;
     const shim = (typeof window !== 'undefined') && (window as any).__FIREBASE_TEST_ADAPTER__;
     const syntheticToken: string | null = shim?.enabled === true ? shim.syntheticIdToken : null;
     if (!syntheticToken) {
-      // Real Firebase wiring lands in commit 6. For now we bail out
-      // to METHOD_SELECTION on non-harness envs — the legacy /signup
-      // continues to serve those users.
+      // Real Firebase wiring lands in a follow-up. On non-harness
+      // envs we bail out — the legacy /signup continues to serve
+      // those users.
       dispatch({ kind: 'RESET' });
       return;
     }
@@ -129,7 +131,7 @@ export default function SignUpProgressive({ language = 'en', initialStateOverrid
       }
     })();
     return () => { cancelled = true; };
-  }, [state.name]);
+  }, [state.name, state.name === 'AUTHENTICATING' ? state.method : null]);
 
   useEffect(() => {
     if (state.name !== 'ACCOUNT_RESOLUTION') return;
@@ -369,7 +371,33 @@ function OtpVerifyScreen({
         type="button"
         disabled={!canVerify}
         data-testid="signup-progressive-verify"
-        onClick={() => dispatch({ kind: 'AUTH_SUCCESS' })}
+        onClick={async () => {
+          // Mobile/email session mint happens HERE (§4 §6) — the
+          // user's OTP submission is the auth step. Uses the same
+          // synthetic-token shim path as google/apple; real backend
+          // wiring plugs in via a follow-up commit.
+          try {
+            const shim = (typeof window !== 'undefined') && (window as any).__FIREBASE_TEST_ADAPTER__;
+            const syntheticToken: string | null = shim?.enabled === true ? shim.syntheticIdToken : null;
+            if (!syntheticToken) {
+              dispatch({ kind: 'RESET' });
+              return;
+            }
+            const res = await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ idToken: syntheticToken, method, code, sentTo }),
+            });
+            if (!res.ok) {
+              dispatch({ kind: 'RESET' });
+              return;
+            }
+            dispatch({ kind: 'AUTH_SUCCESS' });
+          } catch {
+            dispatch({ kind: 'RESET' });
+          }
+        }}
         className="w-full py-3 rounded-lg border font-medium mt-2 disabled:opacity-50"
       >
         {cta}
