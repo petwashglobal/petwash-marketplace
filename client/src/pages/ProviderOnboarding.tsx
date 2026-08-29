@@ -1,5 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import {
+  initialRequestedServices,
+  setRequestedProviderServices,
+  clearRequestedProviderServices,
+  type CanonicalService,
+} from '@/lib/requestedProviderService';
 import { useLanguage } from '@/lib/languageStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,15 +119,30 @@ export default function ProviderOnboarding() {
 
   // Form state
   const [step, setStep] = useState(1);
-  const [providerTypes, setProviderTypes] = useState<Array<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>>([]);
-  
-  // Toggle a provider type in the multi-select list
-  const toggleProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') => {
-    setProviderTypes(prev => 
-      prev.includes(type) 
+  // CEO AUTH MASTER §P0-1 2026-08-29 — read the requestedService
+  // that carried the customer's tap on Sitter / Walk My Pet /
+  // Academy through auth. `initialRequestedServices()` unions the
+  // URL (?requestedService=…, ?type=…, ?role=…) with the
+  // sessionStorage preservation so a mid-flow refresh does not
+  // silently lose the intent. Existing draft rows still take
+  // precedence on the resume path below (line ~440).
+  const [providerTypes, setProviderTypes] = useState<Array<CanonicalService>>(() =>
+    initialRequestedServices(),
+  );
+
+  // Every mutation persists the merged selection into
+  // sessionStorage so an auth redirect / refresh restores it. The
+  // sessionStorage entry is dropped once the applicant submits
+  // (see the submit handler below).
+  const toggleProviderType = (type: CanonicalService) => {
+    setProviderTypes(prev => {
+      const next = prev.includes(type)
         ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
+        : [...prev, type];
+      if (next.length > 0) setRequestedProviderServices(next);
+      else clearRequestedProviderServices();
+      return next;
+    });
   };
   
   // Helper to check if a type is selected
@@ -433,7 +454,18 @@ export default function ProviderOnboarding() {
           if (s2.idDocumentType) setIdDocumentType((v) => v || s2.idDocumentType);
           if (s2.idExpiry)       setIdExpiry((v) => v || s2.idExpiry);
           if (Array.isArray(s2.providerTypes) && s2.providerTypes.length) {
-            setProviderTypes((v) => (v && v.length ? v : s2.providerTypes));
+            // CEO AUTH MASTER §P0-1 — UNION with the URL/session
+            // intent so a returning applicant who tapped Sitter
+            // this session keeps Sitter even if their older draft
+            // was walker-only. Never demote to a single role.
+            setProviderTypes((v) => {
+              const merged = [...(v ?? [])] as CanonicalService[];
+              for (const t of s2.providerTypes as CanonicalService[]) {
+                if (!merged.includes(t)) merged.push(t);
+              }
+              if (merged.length > 0) setRequestedProviderServices(merged);
+              return merged;
+            });
           }
           if (s2.taxStatus)              setTaxStatus((v) => v || s2.taxStatus);
           if (s2.insurancePolicyNumber)  setInsurancePolicyNumber((v) => v || s2.insurancePolicyNumber);
@@ -913,6 +945,11 @@ export default function ProviderOnboarding() {
       if (response.ok) {
         setApplicationSubmitted(true);
         setBiometricScore(data.biometricMatchScore);
+        // CEO AUTH MASTER §P0-1 — the wizard consumed the
+        // requestedService intent; drop the sessionStorage
+        // preservation so a return visit does not re-inject an
+        // already-submitted service into a fresh application.
+        clearRequestedProviderServices();
         toast({
           title: t.applicationSuccess,
           description: t.successMessage
