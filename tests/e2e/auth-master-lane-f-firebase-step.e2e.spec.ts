@@ -77,14 +77,15 @@ const JOURNEYS: Record<'sitter' | 'walker' | 'trainer', Journey> = {
 
 for (const key of ['sitter', 'walker', 'trainer'] as const) {
   const j = JOURNEYS[key];
-  test.describe(`AUTH MASTER Lane F — ${key} full Firebase-step journey (SKIPPED — awaits F2)`, () => {
+  test.describe(`AUTH MASTER Lane F — ${key} full Firebase-step journey`, () => {
     test(`anonymous → ${j.ctaLabel} → sign-in → Firebase (adapter) → gate → onboarding chip preselected`, async ({
       page,
     }) => {
-      test.skip(
-        true,
-        'Phase F2 not shipped: sign-in handlers do not yet consult the Firebase test adapter. Drop this skip when SignUpLuxury/GoogleOneTap call getFirebaseTestAdapter().',
-      );
+      // Phase F2 wave-1..4 (commits d34af8599 → 528e291b5) wired the
+      // adapter shortcut across SignUpLuxury popup + redirect +
+      // native, GoogleOneTap credential, and AdminLoginV2 Google. This
+      // spec now runs against a real dev server whenever
+      // TEST_BYPASS_TOKEN is present and BASE_URL is not production.
       test.skip(
         !firebaseAdapterAvailable(),
         'Firebase test adapter not available in this environment (BASE_URL or TEST_BYPASS_TOKEN missing).',
