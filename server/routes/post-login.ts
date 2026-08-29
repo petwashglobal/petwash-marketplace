@@ -293,6 +293,21 @@ export async function postLoginDecider(req: Request, res: Response) {
     if (!userId) {
       return res.status(401).json({ error: "AUTH_REQUIRED" });
     }
+    // CEO §B41 (2026-08-29) — pick up the client trace id and log it
+    // on the decision so the funnel can correlate destination with the
+    // auth attempt that started on the client. Malformed or missing
+    // header → no-op (telemetry MUST NOT break the decider).
+    try {
+      const raw = req.headers['x-auth-journey-id'];
+      const v = Array.isArray(raw) ? raw[0] : raw;
+      const m = typeof v === 'string'
+        ? v.match(/^([0-9a-f]{16})(?:;method=(google|apple|phone|email|passkey))?$/)
+        : null;
+      if (m) {
+        (req as any).authJourneyId = m[1];
+        (req as any).authJourneyMethod = m[2];
+      }
+    } catch { /* non-fatal */ }
 
     let user = await storage.getUser(userId);
 

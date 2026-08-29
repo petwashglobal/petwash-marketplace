@@ -167,6 +167,16 @@ export async function resolvePostLogin(
       const hasBody = !!body && Object.keys(body).length > 0;
       if (hasBody) headers['Content-Type'] = 'application/json';
       if (idToken) headers.Authorization = `Bearer ${idToken}`;
+      // CEO §B41 — carry the auth-journey trace id through to the
+      // post-login decider so ops can see the full timeline in one
+      // log query. Guarded — module is imported at boot, no dep.
+      try {
+        const { authJourneyHeader } = await import('./authJourney');
+        const traceHeader = authJourneyHeader();
+        if (traceHeader) headers['X-Auth-Journey-Id'] = traceHeader;
+      } catch {
+        /* observability MUST NOT break the post-login round-trip */
+      }
 
       const res = await fetch(getApiUrl('/api/auth/post-login'), {
         method: 'POST',
