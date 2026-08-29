@@ -1869,12 +1869,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   "accept terms + 18+" message above and scrolls it into view. */}
               <div className="sl-social4">
                 {signupFlags.googleSignin && (
-                  <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
+                  <button
+                    className="sl-soc"
+                    disabled={busy}
+                    onClick={() => social('google')}
+                    data-action-id="AUTH_GOOGLE"
+                    data-testid="button-auth-google"
+                  >
                     <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
                   </button>
                 )}
                 {signupFlags.appleSignin && APPLE_SIGNIN_READY && (
-                  <button className="sl-soc sl-soc--apple" disabled={busy} onClick={() => social('apple')}>
+                  <button
+                    className="sl-soc sl-soc--apple"
+                    disabled={busy}
+                    onClick={() => social('apple')}
+                    data-action-id="AUTH_APPLE"
+                    data-testid="button-auth-apple"
+                  >
                     <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
                   </button>
                 )}
@@ -1892,12 +1904,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
                     onClick={() => { setManualMode(true); setMethod('mobile'); setSent(false); setInlineError(null); }}
-                    data-testid="button-continue-mobile">
+                    data-testid="button-continue-mobile"
+                    data-action-id="AUTH_PHONE">
                     <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
                   </button>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
                     onClick={() => { setManualMode(true); setMethod('email'); setSent(false); setInlineError(null); }}
-                    data-testid="button-continue-email">
+                    data-testid="button-continue-email"
+                    data-action-id="AUTH_EMAIL">
                     <FaEnvelope aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם אימייל' : 'Continue with email'}</span>
                   </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setInlineError(null); }}
@@ -2442,7 +2456,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {bioAvailable && (
                 <>
                   <div className="sl-div">{he ? 'כבר חברים? התחברות מהירה' : 'Already a member? Quick sign-in'}</div>
-                  <button type="button" className="sl-bio" disabled={busy} onClick={handlePasskeyLogin}>
+                  <button
+                    type="button"
+                    className="sl-bio"
+                    disabled={busy}
+                    onClick={handlePasskeyLogin}
+                    data-action-id="AUTH_PASSKEY"
+                    data-testid="button-auth-passkey"
+                  >
                     <FaFingerprint aria-hidden /> {he ? `התחברות עם ${bioName}` : `Sign in with ${bioName}`}
                   </button>
                 </>

@@ -18,6 +18,7 @@ const BANNER = R('client/src/components/ProviderRegistrationBanner.tsx');
 const BROWSE_SITTERS = R('client/src/pages/sitter-suite/BrowseSitters.tsx');
 const BROWSE_WALKERS = R('client/src/pages/walk-my-pet/BrowseWalkers.tsx');
 const CHOOSE_PATH = R('client/src/pages/ChoosePath.tsx');
+const SIGN_UP_LUXURY = R('client/src/pages/SignUpLuxury.tsx');
 
 describe('ProviderRegistrationBanner — CEO §A11 §D one URL emitter', () => {
   it('imports urlForProviderIntent from the canonical ctaActions helper', () => {
@@ -80,5 +81,32 @@ describe('ChoosePath — two-tile provider chooser', () => {
 
   it('renders data-action-id from the option definition', () => {
     expect(CHOOSE_PATH).toMatch(/data-action-id=\{o\.actionId\}/);
+  });
+});
+
+describe('SignUpLuxury /signin /signup — CEO §A12 auth funnel identity', () => {
+  it('Google button carries data-action-id="AUTH_GOOGLE"', () => {
+    expect(SIGN_UP_LUXURY).toMatch(/data-action-id="AUTH_GOOGLE"/);
+    expect(SIGN_UP_LUXURY).toMatch(/data-testid="button-auth-google"/);
+  });
+
+  it('Apple button carries data-action-id="AUTH_APPLE"', () => {
+    expect(SIGN_UP_LUXURY).toMatch(/data-action-id="AUTH_APPLE"/);
+    expect(SIGN_UP_LUXURY).toMatch(/data-testid="button-auth-apple"/);
+  });
+
+  it('Continue with mobile carries data-action-id="AUTH_PHONE"', () => {
+    expect(SIGN_UP_LUXURY).toMatch(/data-action-id="AUTH_PHONE"/);
+    expect(SIGN_UP_LUXURY).toMatch(/data-testid="button-continue-mobile"/);
+  });
+
+  it('Continue with email carries data-action-id="AUTH_EMAIL"', () => {
+    expect(SIGN_UP_LUXURY).toMatch(/data-action-id="AUTH_EMAIL"/);
+    expect(SIGN_UP_LUXURY).toMatch(/data-testid="button-continue-email"/);
+  });
+
+  it('Passkey / Face ID button carries data-action-id="AUTH_PASSKEY"', () => {
+    expect(SIGN_UP_LUXURY).toMatch(/data-action-id="AUTH_PASSKEY"/);
+    expect(SIGN_UP_LUXURY).toMatch(/data-testid="button-auth-passkey"/);
   });
 });
