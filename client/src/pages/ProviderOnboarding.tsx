@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, type KeyboardEvent } from 'react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { Button } from '@/components/ui/button';
@@ -125,8 +125,23 @@ export default function ProviderOnboarding() {
   };
   
   // Helper to check if a type is selected
-  const hasProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') => 
+  const hasProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') =>
     providerTypes.includes(type);
+
+  // CEO §11 §12 §13 (2026-08-29) — keyboard activation on the
+  // role="button" card AND single-source event ownership. The card
+  // is the ONLY handler for the toggle. The Checkbox inside is
+  // aria-hidden + pointer-events:none + no onCheckedChange, so a
+  // physical click cannot fire the toggle twice (checkbox + card
+  // both mutating was the double-toggle hazard §11 flagged).
+  const handleProviderCardKey = (
+    type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer',
+  ) => (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleProviderType(type);
+    }
+  };
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -1145,19 +1160,22 @@ export default function ProviderOnboarding() {
                         data-selected={hasProviderType('walker') ? 'true' : 'false'}
                         aria-pressed={hasProviderType('walker')}
                         role="button"
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`}
+                        tabIndex={0}
+                        onKeyDown={handleProviderCardKey('walker')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('walker')}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 pointer-events-none">
                           <Checkbox
                             checked={hasProviderType('walker')}
-                            onCheckedChange={() => toggleProviderType('walker')}
                             id="walker"
+                            tabIndex={-1}
+                            aria-hidden="true"
                           />
-                          <Label htmlFor="walker" className="cursor-pointer flex-1 text-center">
+                          <span className="flex-1 text-center">
                             <Footprints className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{t.walker}</span>
-                          </Label>
+                          </span>
                         </div>
                       </div>
                       <div
@@ -1165,19 +1183,22 @@ export default function ProviderOnboarding() {
                         data-selected={hasProviderType('sitter') ? 'true' : 'false'}
                         aria-pressed={hasProviderType('sitter')}
                         role="button"
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`}
+                        tabIndex={0}
+                        onKeyDown={handleProviderCardKey('sitter')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('sitter')}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 pointer-events-none">
                           <Checkbox
                             checked={hasProviderType('sitter')}
-                            onCheckedChange={() => toggleProviderType('sitter')}
                             id="sitter"
+                            tabIndex={-1}
+                            aria-hidden="true"
                           />
-                          <Label htmlFor="sitter" className="cursor-pointer flex-1 text-center">
+                          <span className="flex-1 text-center">
                             <Home className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{t.sitter}</span>
-                          </Label>
+                          </span>
                         </div>
                       </div>
                       <div
@@ -1185,19 +1206,22 @@ export default function ProviderOnboarding() {
                         data-selected={hasProviderType('driver') ? 'true' : 'false'}
                         aria-pressed={hasProviderType('driver')}
                         role="button"
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`}
+                        tabIndex={0}
+                        onKeyDown={handleProviderCardKey('driver')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('driver')}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 pointer-events-none">
                           <Checkbox
                             checked={hasProviderType('driver')}
-                            onCheckedChange={() => toggleProviderType('driver')}
                             id="driver"
+                            tabIndex={-1}
+                            aria-hidden="true"
                           />
-                          <Label htmlFor="driver" className="cursor-pointer flex-1 text-center">
+                          <span className="flex-1 text-center">
                             <Car className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{isHebrew ? 'נהג PetTrek' : 'PetTrek Driver'}</span>
-                          </Label>
+                          </span>
                         </div>
                       </div>
                       <div
@@ -1205,19 +1229,22 @@ export default function ProviderOnboarding() {
                         data-selected={hasProviderType('trainer') ? 'true' : 'false'}
                         aria-pressed={hasProviderType('trainer')}
                         role="button"
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`}
+                        tabIndex={0}
+                        onKeyDown={handleProviderCardKey('trainer')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-black ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('trainer')}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 pointer-events-none">
                           <Checkbox
                             checked={hasProviderType('trainer')}
-                            onCheckedChange={() => toggleProviderType('trainer')}
                             id="trainer"
+                            tabIndex={-1}
+                            aria-hidden="true"
                           />
-                          <Label htmlFor="trainer" className="cursor-pointer flex-1 text-center">
+                          <span className="flex-1 text-center">
                             <GraduationCap className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
                             <span className="font-semibold block">{isHebrew ? 'מאלף כלבים' : 'Dog Trainer'}</span>
-                          </Label>
+                          </span>
                         </div>
                       </div>
                       {/* Removed 2026-06-18: public "Wash Station Operator (K9000)" provider
