@@ -101,11 +101,21 @@ export default function ProviderOnboarding() {
         // OneTap / Account-tap call instead of firing a duplicate request.
         const data = await resolvePostLogin();
         if (cancelled) return;
+        // CEO §1.10 §F3 — defer to SignUpLuxury.routeNow() if it
+        // already owns the post-auth window.
+        const { claimPostAuthNavigation, releasePostAuthNavigation } =
+          await import('@/lib/postAuthNavigationOwner');
+        if (!claimPostAuthNavigation('provider-onboarding-blocked-role')) return;
         const nextUrl = data.nextUrl || data.redirectTo || '/home';
         navigate(nextUrl);
+        releasePostAuthNavigation();
       } catch {
         if (cancelled) return;
+        const { claimPostAuthNavigation, releasePostAuthNavigation } =
+          await import('@/lib/postAuthNavigationOwner');
+        if (!claimPostAuthNavigation('provider-onboarding-blocked-role-fallback')) return;
         navigate('/home');
+        releasePostAuthNavigation();
       }
     })();
     return () => { cancelled = true; };

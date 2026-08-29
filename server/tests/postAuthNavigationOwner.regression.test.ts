@@ -89,3 +89,22 @@ describe('§1.10 §F3 — GoogleOneTap defers if SignUpLuxury already owns', () 
     expect(ONE_TAP).toMatch(/if \(claimPostAuthNavigation\('one-tap-fallback'\)\) \{[\s\S]*navigate\('\/home'\)[\s\S]*releasePostAuthNavigation/);
   });
 });
+
+describe('§1.10 §F3 — PrivilegeSignup enrolled short-circuit defers', () => {
+  const P = R('client/src/pages/PrivilegeSignup.tsx');
+  it('imports the token helpers', () => {
+    expect(P).toMatch(/from ['"]@\/lib\/postAuthNavigationOwner['"]/);
+  });
+  it('claims before the /prestige/home navigate and releases after', () => {
+    expect(P).toMatch(/claimPostAuthNavigation\('privilege-signup-enrolled-shortcut'\)/);
+    expect(P).toMatch(/navigate\('\/prestige\/home'\);\s*releasePostAuthNavigation/);
+  });
+});
+
+describe('§1.10 §F3 — ProviderOnboarding blocked-role bounce defers', () => {
+  const PO = R('client/src/pages/ProviderOnboarding.tsx');
+  it('claims before the internal-role bounce and releases after', () => {
+    expect(PO).toMatch(/claimPostAuthNavigation\('provider-onboarding-blocked-role'\)/);
+    expect(PO).toMatch(/claimPostAuthNavigation\('provider-onboarding-blocked-role-fallback'\)/);
+  });
+});

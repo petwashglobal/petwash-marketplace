@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 // auth-guardian-2025. getRedirectResult belongs to AuthProvider only —
 // page-level consumers were a race-condition source on iPhone Safari.
 import { signInWithGoogle as canonicalSignInWithGoogle } from "@/lib/auth-guardian-2025";
+import { claimPostAuthNavigation, releasePostAuthNavigation } from "@/lib/postAuthNavigationOwner";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Layout } from "@/components/Layout";
 import { type Language, t } from "@/lib/i18n";
@@ -176,7 +177,12 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
         const data = await res.json().catch(() => ({} as any));
         const enrolled = !!(data?.capabilities?.prestige?.enrolled ?? data?.prestige?.enrolled);
         if (!cancelled && enrolled) {
+          // CEO §1.10 §F3 — defer to SignUpLuxury.routeNow() if it
+          // already owns the post-auth navigation window on the
+          // same page mount.
+          if (!claimPostAuthNavigation('privilege-signup-enrolled-shortcut')) return;
           navigate('/prestige/home');
+          releasePostAuthNavigation();
           return;
         }
       } catch {
