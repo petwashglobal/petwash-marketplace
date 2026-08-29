@@ -17,12 +17,24 @@
  * AFTER:
  *   * ProviderOnboarding calls initialRequestedServices() and
  *     preselects providerTypes.
- *   * setRequestedProviderServices() writes to sessionStorage so a
- *     mid-flow refresh restores the selection.
  *   * Legacy `type=` and `role=` are normalised at the edge; the
  *     canonical key `requestedService` is preferred.
- *   * Additive: existing selections are UNIONED — pressing Sitter
- *     then Walker never demotes to a single role.
+ *
+ * TWO DIFFERENT OPERATIONS — do not conflate (CEO AUTH MASTER §7 §8
+ * 2026-08-29):
+ *   * addRequestedProviderServiceIntent(service) — CTA seed. Additive
+ *     UNION. When the user taps "Become a Sitter" on /sitter-suite,
+ *     then later "Become a Walker" on /walk-my-pet, both intents
+ *     survive through auth. Never demotes.
+ *   * replaceProviderServiceSelection(services) — the wizard's
+ *     current explicit selection. EXACT replacement. When the user
+ *     deselects Sitter in the picker, Sitter is REMOVED. Union would
+ *     resurrect the deselected service on reload — that is the exact
+ *     bug §7 caught.
+ *
+ * The URL / CTA intent is a SEED at flow start. Once the user has
+ * touched the picker, their explicit selection is authority. Do not
+ * keep re-injecting the URL service after they deliberately drop it.
  *
  * Vocabulary is intentionally the LEGACY 5-string set the wizard
  * already uses (walker / sitter / driver / trainer / station_operator)
@@ -110,8 +122,20 @@ export function readPreservedRequestedServices(): CanonicalService[] {
   }
 }
 
-/** Persist the union of the current preservation with `next`. Additive by design. */
-export function setRequestedProviderServices(next: readonly CanonicalService[] | CanonicalService): void {
+/**
+ * INTENT PATH — additive UNION. Use on CTA seed and draft-restore
+ * merge, NEVER for a user picker toggle. Preserves the customer's
+ * tap on "Become a Sitter" then later "Become a Walker" so both
+ * intents survive through auth.
+ *
+ * CEO §7 §8 2026-08-29 — DO NOT call this in response to a
+ * picker toggle. A picker toggle is authority for the current
+ * selection; a union would resurrect a deselected service on
+ * reload. Use replaceProviderServiceSelection() for that.
+ */
+export function addRequestedProviderServiceIntent(
+  next: readonly CanonicalService[] | CanonicalService,
+): void {
   try {
     if (typeof window === 'undefined' || !window.sessionStorage) return;
     const arr = Array.isArray(next) ? next : [next];
@@ -124,6 +148,50 @@ export function setRequestedProviderServices(next: readonly CanonicalService[] |
   } catch {
     /* non-fatal */
   }
+}
+
+/**
+ * SELECTION PATH — EXACT REPLACEMENT. Use for the wizard's current
+ * explicit selection state. When the user deselects a service in the
+ * picker, that service is REMOVED from storage — a reload cannot
+ * resurrect it.
+ *
+ * CEO §7 §8 2026-08-29 — this is the fix for the union bug that
+ * made deselect impossible. Do NOT swap for the intent path.
+ *
+ * An empty array is written as an empty array (not cleared), so the
+ * next reload knows the user has actively touched the picker. Call
+ * clearRequestedProviderServices() when you want the seed key gone
+ * entirely (submit / abandon).
+ */
+export function replaceProviderServiceSelection(
+  next: readonly CanonicalService[],
+): void {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return;
+    const out: CanonicalService[] = [];
+    for (const v of next) {
+      const norm = normaliseServiceAlias(v);
+      if (norm && !out.includes(norm)) out.push(norm);
+    }
+    window.sessionStorage.setItem(REQUESTED_SERVICE_SS_KEY, JSON.stringify(out));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/**
+ * @deprecated Prefer addRequestedProviderServiceIntent (union) or
+ *   replaceProviderServiceSelection (exact). This name obscures
+ *   whether the caller meant intent-add or selection-save.
+ *   Kept as a thin alias to the union path for one release so
+ *   external callers do not break; will be removed after the AUTH
+ *   MASTER migration finishes.
+ */
+export function setRequestedProviderServices(
+  next: readonly CanonicalService[] | CanonicalService,
+): void {
+  addRequestedProviderServiceIntent(next);
 }
 
 /** Drop the preservation once the wizard has consumed it. */

@@ -25,6 +25,8 @@ import {
   readRequestedServiceFromSearch,
   readPreservedRequestedServices,
   setRequestedProviderServices,
+  addRequestedProviderServiceIntent,
+  replaceProviderServiceSelection,
   clearRequestedProviderServices,
   initialRequestedServices,
   CANONICAL_SERVICES,
@@ -112,22 +114,60 @@ describe('requestedProviderService — sessionStorage preservation', () => {
   });
   beforeEach(() => { fakeStorage.clear(); });
 
-  it('set/read round-trip preserves the merged unique union', () => {
-    setRequestedProviderServices('sitter');
-    setRequestedProviderServices(['walker', 'sitter']); // duplicate must dedupe
+  it('addRequestedProviderServiceIntent unions duplicates dedup — CTA seed path', () => {
+    addRequestedProviderServiceIntent('sitter');
+    addRequestedProviderServiceIntent(['walker', 'sitter']); // duplicate must dedupe
     expect(readPreservedRequestedServices().sort()).toEqual(['sitter', 'walker']);
     expect(backing[REQUESTED_SERVICE_SS_KEY]).toBeDefined();
   });
 
-  it('never writes a non-canonical value even if a hostile caller passes one', () => {
-    setRequestedProviderServices(['sitter', 'admin' as any, 'walker']);
+  it('addRequestedProviderServiceIntent drops non-canonical values silently', () => {
+    addRequestedProviderServiceIntent(['sitter', 'admin' as any, 'walker']);
     expect(readPreservedRequestedServices().sort()).toEqual(['sitter', 'walker']);
   });
 
   it('clear() removes the entry', () => {
-    setRequestedProviderServices('sitter');
+    addRequestedProviderServiceIntent('sitter');
     clearRequestedProviderServices();
     expect(readPreservedRequestedServices()).toEqual([]);
+  });
+
+  it('CEO §7 §8 — replaceProviderServiceSelection is EXACT, never a union', () => {
+    // Seed the intent (as if a CTA had done it).
+    addRequestedProviderServiceIntent(['sitter', 'walker']);
+    expect(readPreservedRequestedServices().sort()).toEqual(['sitter', 'walker']);
+    // User deselects sitter in the picker.
+    replaceProviderServiceSelection(['walker']);
+    // Sitter MUST be gone from storage. A subsequent reload must not
+    // resurrect it. This is the exact CEO §7 regression pin.
+    expect(readPreservedRequestedServices()).toEqual(['walker']);
+  });
+
+  it('CEO §7 §8 — deselecting the last service leaves an empty array', () => {
+    replaceProviderServiceSelection(['sitter']);
+    replaceProviderServiceSelection([]);
+    // Empty array means "user actively picked nothing" — the entry
+    // still exists (empty JSON array), so the seed cannot re-inject
+    // itself. The submit / abandon path uses
+    // clearRequestedProviderServices() to remove the key entirely.
+    expect(readPreservedRequestedServices()).toEqual([]);
+    expect(backing[REQUESTED_SERVICE_SS_KEY]).toBe('[]');
+  });
+
+  it('CEO §7 §8 — replace also strips non-canonical values', () => {
+    replaceProviderServiceSelection(['walker', 'admin' as any, 'sitter']);
+    expect(readPreservedRequestedServices().sort()).toEqual(['sitter', 'walker']);
+  });
+
+  it('legacy setRequestedProviderServices remains an alias to intent-add (union)', () => {
+    // Kept for one release to avoid breaking external callers; the
+    // codebase itself should use the two named functions.
+    setRequestedProviderServices(['sitter']);
+    setRequestedProviderServices(['walker']);
+    expect(readPreservedRequestedServices().sort()).toEqual(['sitter', 'walker']);
+    // Clean up the shared backing so the next describe's tests do not
+    // see leftover state via the fake storage.
+    clearRequestedProviderServices();
   });
 });
 
@@ -152,8 +192,10 @@ describe('requestedProviderService — initialRequestedServices', () => {
 });
 
 describe('ProviderOnboarding.tsx — consumes the intent (P0-1 wire)', () => {
-  it('imports initialRequestedServices + setRequestedProviderServices + clearRequestedProviderServices + CanonicalService', () => {
-    expect(ONBOARDING).toMatch(/import \{\s*\n\s*initialRequestedServices,\s*\n\s*setRequestedProviderServices,\s*\n\s*clearRequestedProviderServices,\s*\n\s*type CanonicalService,\s*\n\} from '@\/lib\/requestedProviderService';/);
+  it('imports initialRequestedServices + both add/replace helpers + clearRequestedProviderServices + CanonicalService', () => {
+    expect(ONBOARDING).toMatch(/initialRequestedServices,\s*\n\s*addRequestedProviderServiceIntent,\s*\n\s*replaceProviderServiceSelection,\s*\n\s*clearRequestedProviderServices,\s*\n\s*type CanonicalService,\s*\n\} from '@\/lib\/requestedProviderService';/);
+    // The old ambiguous name must not be called anywhere in this file.
+    expect(ONBOARDING).not.toMatch(/setRequestedProviderServices\s*\(/);
   });
 
   it('initialises providerTypes FROM initialRequestedServices — no more useState([])', () => {
@@ -163,18 +205,26 @@ describe('ProviderOnboarding.tsx — consumes the intent (P0-1 wire)', () => {
     expect(ONBOARDING).not.toMatch(/const \[providerTypes, setProviderTypes\] = useState<Array<[^>]+>>\(\[\]\)/);
   });
 
-  it('toggleProviderType persists the merged selection (survives refresh)', () => {
-    // Every user tap of a service card writes the merged list back
-    // to sessionStorage.
-    expect(ONBOARDING).toMatch(/if \(next\.length > 0\) setRequestedProviderServices\(next\);/);
+  it('CEO §7 §8 — picker toggle uses EXACT REPLACE (never a union)', () => {
+    // Every user tap of a service card writes the CURRENT selection
+    // back to sessionStorage. A union would resurrect a deselected
+    // service on reload — the exact bug §7 caught.
+    expect(ONBOARDING).toMatch(/if \(next\.length > 0\) replaceProviderServiceSelection\(next\);/);
     expect(ONBOARDING).toMatch(/else clearRequestedProviderServices\(\);/);
+    // Belt-and-braces: the picker path must not accidentally call the
+    // intent (union) helper.
+    const togglePathMatch = ONBOARDING.match(/const toggleProviderType[\s\S]*?\n {2}\};/);
+    expect(togglePathMatch).not.toBeNull();
+    expect(togglePathMatch![0]).not.toMatch(/addRequestedProviderServiceIntent/);
   });
 
-  it('draft restore UNIONs with the current selection — never demotes', () => {
+  it('draft-restore path uses intent-add (union with existing selection — never demotes)', () => {
     // A returning applicant who tapped Sitter this session keeps
     // Sitter even if their older draft was walker-only.
     expect(ONBOARDING).toMatch(/UNION with the URL\/session\s*\n\s*\/\/ intent so a returning applicant/);
     expect(ONBOARDING).toMatch(/for \(const t of s2\.providerTypes as CanonicalService\[\]\) \{[\s\S]*?if \(!merged\.includes\(t\)\) merged\.push\(t\);/);
+    // Draft-restore is intent territory, not picker replacement.
+    expect(ONBOARDING).toMatch(/addRequestedProviderServiceIntent\(merged\)/);
   });
 
   it('successful /apply submit clears the sessionStorage entry', () => {

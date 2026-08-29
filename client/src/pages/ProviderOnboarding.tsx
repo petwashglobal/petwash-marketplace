@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import {
   initialRequestedServices,
-  setRequestedProviderServices,
+  addRequestedProviderServiceIntent,
+  replaceProviderServiceSelection,
   clearRequestedProviderServices,
   type CanonicalService,
 } from '@/lib/requestedProviderService';
@@ -130,16 +131,21 @@ export default function ProviderOnboarding() {
     initialRequestedServices(),
   );
 
-  // Every mutation persists the merged selection into
+  // Every picker mutation persists the EXACT current selection into
   // sessionStorage so an auth redirect / refresh restores it. The
   // sessionStorage entry is dropped once the applicant submits
   // (see the submit handler below).
+  //
+  // CEO §7 §8 2026-08-29 — EXACT REPLACEMENT is the discipline here.
+  // Do NOT call the intent path (union) — a union would resurrect a
+  // just-deselected service on reload. Use replace for the user's
+  // explicit selection; use intent-add only for CTA seeds.
   const toggleProviderType = (type: CanonicalService) => {
     setProviderTypes(prev => {
       const next = prev.includes(type)
         ? prev.filter(t => t !== type)
         : [...prev, type];
-      if (next.length > 0) setRequestedProviderServices(next);
+      if (next.length > 0) replaceProviderServiceSelection(next);
       else clearRequestedProviderServices();
       return next;
     });
@@ -463,7 +469,10 @@ export default function ProviderOnboarding() {
               for (const t of s2.providerTypes as CanonicalService[]) {
                 if (!merged.includes(t)) merged.push(t);
               }
-              if (merged.length > 0) setRequestedProviderServices(merged);
+              // Draft-restore merge is intent-seed territory (union with
+              // server draft). Not user picker action — see toggleProviderType
+              // for the exact-replacement path.
+              if (merged.length > 0) addRequestedProviderServiceIntent(merged);
               return merged;
             });
           }
