@@ -1277,6 +1277,21 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).json({ error: 'ID token required', errorCode: 'MISSING_TOKEN' });
       }
 
+      // AUTH MASTER Lane F (§F1 defense-in-depth) — reject the E2E
+      // Firebase test adapter's synthetic marker token explicitly.
+      // The token is only ever supposed to leave the browser when
+      // Playwright's page.route() intercepts the request — if it
+      // reaches this handler it means either a test is
+      // misconfigured (talking to a real server without the
+      // intercept) or the shim leaked into a production bundle.
+      // verifyIdToken() below would reject it anyway with a generic
+      // auth/invalid-id-token, but a specific 400 makes the leak
+      // glaring in logs.
+      if (typeof idToken === 'string' && idToken.startsWith('synthetic-id-token::')) {
+        logger.error('[Session] Refusing synthetic test-adapter token at production /api/auth/session — this MUST NOT happen outside E2E route-intercept', { traceId });
+        return res.status(400).json({ error: 'Invalid token format.', errorCode: 'SYNTHETIC_TEST_TOKEN_REFUSED' });
+      }
+
       // Pre-validate token — used for both privileged-role checks AND reCAPTCHA enforcement.
       // We decode the Firebase ID token first so we can trust sign_in_provider (server-verified, not client-supplied).
       try {
