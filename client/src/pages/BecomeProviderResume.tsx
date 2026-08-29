@@ -20,67 +20,72 @@
  * uses. Server is authority for the application state; the client never
  * invents.
  *
- * This is a REPLACEMENT for the older BecomeProviderRedirect in App.tsx
- * which always sent signed-in users to /provider-onboarding regardless
- * of their existing application state. Wire the /become-provider route
- * to render this component instead.
+ * CEO MASTER §3 §4 (2026-08-29 correction) — this router is the ONE gate
+ * every provider CTA routes through. It reads the CANONICAL vocabulary
+ * (`?requestedService=pet_sitting` — the CEO §A7 code) via the shared
+ * normaliser, and PRESERVES the FULL canonical return-to (query string
+ * intact, UTM/campaign intact) through the anonymous sign-in bounce so a
+ * customer arriving from Google → Sitter → Become a Sitter → sign-up
+ * → Google resumes with the intent still attached, not on generic home.
+ *
+ * Legacy `?type=sitter` and `?role=trainer` are STILL accepted at the
+ * edge — the normaliser handles every alias. New CTAs should emit the
+ * canonical form via `urlForProviderIntent()` in `@/lib/ctaActions`.
  */
 
 import { useEffect, useState } from 'react';
-import { useLocation, Redirect } from 'wouter';
+import { useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { Loader2 } from 'lucide-react';
+import {
+  normaliseToProviderServiceCode,
+  type ProviderServiceCode,
+} from '@shared/lib/providerServiceVocabulary';
+import { safeInternalReturnTo } from '@/lib/ctaActions';
+import {
+  ATTRIBUTION_KEYS,
+  canonicalBecomeProviderUrl,
+  legacyProviderTypeFor,
+  onboardingHref,
+  resumeTargetFromApplication,
+  type ResumeTarget,
+} from './becomeProviderResume.helpers';
 
-type ResumeTarget = string;
+// Re-export the helpers so existing consumers keep resolving.
+export { legacyProviderTypeFor, resumeTargetFromApplication };
 
-/** Provider type whitelist matches becomeProvider.ts. */
-const PROVIDER_TYPE_WHITELIST = new Set([
-  'walker', 'sitter', 'driver', 'trainer', 'station_operator', 'pet_trek',
-]);
-
-function readProviderTypeFromUrl(): string | null {
+/**
+ * Read the requested service intent from the URL. Accepts the canonical
+ * `?requestedService=pet_sitting` (CEO §A7) plus the legacy
+ * `?type=sitter` / `?role=trainer` aliases, using the shared
+ * normaliser — no local whitelist duplication.
+ */
+function readRequestedServiceFromUrl(): ProviderServiceCode | null {
   if (typeof window === 'undefined') return null;
-  const raw = new URLSearchParams(window.location.search).get('type');
-  if (raw && PROVIDER_TYPE_WHITELIST.has(raw)) return raw;
+  const p = new URLSearchParams(window.location.search);
+  for (const key of ['requestedService', 'type', 'role']) {
+    const v = p.get(key);
+    const code = normaliseToProviderServiceCode(v);
+    if (code) return code;
+  }
   return null;
 }
 
-function onboardingHref(type: string | null): ResumeTarget {
-  return type ? `/provider-onboarding?type=${encodeURIComponent(type)}` : '/provider-onboarding';
-}
-
 /**
- * Map a server application record to the correct destination path.
- * Kept side-effect-free + typed narrowly so future callers can reuse it.
+ * Read whitelisted attribution params from the URL. Only the exact
+ * allowlist matches Lane E's `CtaUrlAttribution` — nothing else survives
+ * the round-trip. CEO §A5.
  */
-export function resumeTargetFromApplication(
-  application: { status?: string | null; stage?: string | null } | null,
-  providerType: string | null,
-): ResumeTarget {
-  if (!application) return onboardingHref(providerType);
-  const status = (application.status || '').toString().toLowerCase();
-  // Approved wins over stage — server may mark stage='approved' before
-  // status is finalized, but "approved" as a status is the terminal grant.
-  if (status === 'approved' || application.stage === 'approved') return '/provider/today';
-  if (status === 'rejected' || application.stage === 'rejected') return '/provider/rejected';
-  if (status === 'withdrawn') return onboardingHref(providerType);
-  // Audit fix C5 (2026-08-24): the canonical /apply INSERT (server/routes/
-  // provider-onboarding.ts) writes status='pending'. Missing this branch
-  // meant every applicant who submitted through the canonical flow was
-  // bounced back into the blank onboarding form when they re-opened
-  // /become-provider — the exact "fail to register new providers" the CEO
-  // reported. 'processing' and 'pending_resubmission' are also live
-  // server states the pending page handles.
-  if (
-    status === 'pending' ||
-    status === 'pending_review' ||
-    status === 'under_review' ||
-    status === 'processing' ||
-    status === 'pending_resubmission'
-  ) return '/provider/pending';
-  // draft OR unrecognized status → resume the onboarding flow.
-  return onboardingHref(providerType);
+function readAttributionFromUrl(): URLSearchParams {
+  const out = new URLSearchParams();
+  if (typeof window === 'undefined') return out;
+  const p = new URLSearchParams(window.location.search);
+  for (const k of ATTRIBUTION_KEYS) {
+    const v = p.get(k);
+    if (typeof v === 'string' && v.length > 0 && v.length <= 512) out.set(k, v);
+  }
+  return out;
 }
 
 export default function BecomeProviderResume() {
@@ -93,13 +98,20 @@ export default function BecomeProviderResume() {
 
   useEffect(() => {
     if (loading) return;
-    const providerType = readProviderTypeFromUrl();
 
-    // Anonymous user → sign in, then bounce back through this same route
-    // so the resume decision runs against the newly-authenticated user.
+    const service = readRequestedServiceFromUrl();
+    const attribution = readAttributionFromUrl();
+
+    // Anonymous user → sign in, PRESERVING the FULL canonical
+    // /become-provider URL (service + attribution) as the safe
+    // return-to. CEO §4 — do NOT reduce to `/provider-onboarding`
+    // and lose state. `safeInternalReturnTo` validates the redirect
+    // is an internal path (§5).
     if (!user) {
-      const back = `/become-provider${providerType ? `?type=${encodeURIComponent(providerType)}` : ''}`;
-      setTarget(`/sign-in?redirect=${encodeURIComponent(back)}`);
+      const back = canonicalBecomeProviderUrl(service, attribution);
+      const validated = safeInternalReturnTo(back);
+      const safe = validated ?? '/become-provider';
+      setTarget(`/sign-in?redirect=${encodeURIComponent(safe)}`);
       return;
     }
 
@@ -114,21 +126,19 @@ export default function BecomeProviderResume() {
         if (cancelled) return;
 
         if (res.status === 404) {
-          setTarget(onboardingHref(providerType));
+          setTarget(onboardingHref(service));
           return;
         }
         if (!res.ok) {
-          // Any other failure → send to onboarding rather than dead-end.
-          // The onboarding page will re-read the application itself.
-          setTarget(onboardingHref(providerType));
+          setTarget(onboardingHref(service));
           return;
         }
         const data = await res.json().catch(() => null);
-        setTarget(resumeTargetFromApplication(data, providerType));
+        setTarget(resumeTargetFromApplication(data, service));
       } catch {
         if (!cancelled) {
           setError(isHe ? 'שגיאה זמנית — מנווט להמשך יישום…' : 'Temporary error — redirecting…');
-          setTarget(onboardingHref(providerType));
+          setTarget(onboardingHref(service));
         }
       }
     })();
