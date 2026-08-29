@@ -1,8 +1,38 @@
 import express from "express";
 import { db } from "../lib/firebase-admin";
 import { requireAuth } from "../customAuth";
+import { projectPricing } from "../services/marketplace/ProviderServiceOfferService";
+import type { ProviderServiceOfferPricing } from "@shared/marketplace/providerServiceOffer";
 
 const router = express.Router();
+
+// Marketplace Business Doctrine §6 + §18.2 — project the legacy
+// hourlyRate / dailyRate scalars a Firestore provider doc carries into
+// the canonical { baseRateCents, rateUnit, currency } shape. Emitted
+// alongside the legacy fields; clients migrate at their own pace.
+function pricingForWalkerDoc(data: Record<string, unknown>): ProviderServiceOfferPricing | null {
+  const hourly = data.hourlyRate;
+  return projectPricing({
+    service: "DOG_WALKING",
+    walker: { baseHourlyRate: typeof hourly === "number" || typeof hourly === "string" ? hourly : null },
+  });
+}
+function pricingForSitterDoc(data: Record<string, unknown>): ProviderServiceOfferPricing | null {
+  // Firestore sitter carries nightlyRate + dailyRate as decimals in ILS,
+  // not cents. Convert to cents for the adapter.
+  const nightly = typeof data.nightlyRate === "number" ? data.nightlyRate : parseFloat(String(data.nightlyRate ?? ""));
+  const daily = typeof data.dailyRate === "number" ? data.dailyRate : parseFloat(String(data.dailyRate ?? ""));
+  const pricePerNightCents = Number.isFinite(nightly) && nightly > 0 ? Math.round(nightly * 100) : null;
+  const pricePerDayCents = Number.isFinite(daily) && daily > 0 ? Math.round(daily * 100) : null;
+  return projectPricing({
+    service: "PET_SITTING",
+    sitter: {
+      pricePerNightCents,
+      pricePerDayCents,
+      pricePerHourCents: null,
+    },
+  });
+}
 
 // ─── Safe public field allowlists ─────────────────────────────────────────────
 // SECURITY: Never expose ...doc.data() on public endpoints.
@@ -58,7 +88,13 @@ router.get("/sitters", async (req, res) => {
     // Bound the read — public, viral-target endpoint. Cap at 100 so a large
     // collection can't blow up latency/Firestore cost on a single request.
     const snapshot = await query.limit(100).get();
-    const sitters = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, SITTER_PUBLIC_FIELDS, doc.id));
+    const sitters = snapshot.docs.map((doc) => {
+      const data = doc.data() as Record<string, unknown>;
+      return {
+        ...pickPublic(data, SITTER_PUBLIC_FIELDS, doc.id),
+        pricing: pricingForSitterDoc(data),
+      };
+    });
 
     res.json({ sitters });
   } catch (error: any) {
@@ -77,7 +113,13 @@ router.get("/sitters/:sitterId", async (req, res) => {
       return res.status(404).json({ error: "Sitter not found" });
     }
 
-    res.json({ sitter: pickPublic(doc.data() as Record<string, unknown>, SITTER_PUBLIC_FIELDS, doc.id) });
+    const data = doc.data() as Record<string, unknown>;
+    res.json({
+      sitter: {
+        ...pickPublic(data, SITTER_PUBLIC_FIELDS, doc.id),
+        pricing: pricingForSitterDoc(data),
+      },
+    });
   } catch (error: any) {
     console.error("[Providers] Error fetching sitter:", error);
     res.status(500).json({ error: error.message });
@@ -168,7 +210,13 @@ router.get("/walkers", async (req, res) => {
     }
 
     const snapshot = await query.limit(100).get(); // bound public read (viral-target)
-    const walkers = snapshot.docs.map((doc) => pickPublic(doc.data() as Record<string, unknown>, WALKER_PUBLIC_FIELDS, doc.id));
+    const walkers = snapshot.docs.map((doc) => {
+      const data = doc.data() as Record<string, unknown>;
+      return {
+        ...pickPublic(data, WALKER_PUBLIC_FIELDS, doc.id),
+        pricing: pricingForWalkerDoc(data),
+      };
+    });
 
     res.json({ walkers });
   } catch (error: any) {
@@ -187,7 +235,13 @@ router.get("/walkers/:walkerId", async (req, res) => {
       return res.status(404).json({ error: "Walker not found" });
     }
 
-    res.json({ walker: pickPublic(doc.data() as Record<string, unknown>, WALKER_PUBLIC_FIELDS, doc.id) });
+    const data = doc.data() as Record<string, unknown>;
+    res.json({
+      walker: {
+        ...pickPublic(data, WALKER_PUBLIC_FIELDS, doc.id),
+        pricing: pricingForWalkerDoc(data),
+      },
+    });
   } catch (error: any) {
     console.error("[Providers] Error fetching walker:", error);
     res.status(500).json({ error: error.message });
