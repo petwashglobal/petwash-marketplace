@@ -19,6 +19,11 @@ const BROWSE_SITTERS = R('client/src/pages/sitter-suite/BrowseSitters.tsx');
 const BROWSE_WALKERS = R('client/src/pages/walk-my-pet/BrowseWalkers.tsx');
 const CHOOSE_PATH = R('client/src/pages/ChoosePath.tsx');
 const SIGN_UP_LUXURY = R('client/src/pages/SignUpLuxury.tsx');
+const PLATFORM_HUB = R('client/src/pages/PlatformHub.tsx');
+const MARKETPLACE_TERMS = R('client/src/pages/legal/MarketplaceTerms.tsx');
+const APPLICATION_STATUS = R('client/src/pages/ProviderApplicationStatus.tsx');
+const PROVIDER_PENDING = R('client/src/pages/ProviderPending.tsx');
+const BECOME_PROVIDER_LIB = R('client/src/lib/becomeProvider.ts');
 
 describe('ProviderRegistrationBanner — CEO §A11 §D one URL emitter', () => {
   it('imports urlForProviderIntent from the canonical ctaActions helper', () => {
@@ -108,5 +113,41 @@ describe('SignUpLuxury /signin /signup — CEO §A12 auth funnel identity', () =
   it('Passkey / Face ID button carries data-action-id="AUTH_PASSKEY"', () => {
     expect(SIGN_UP_LUXURY).toMatch(/data-action-id="AUTH_PASSKEY"/);
     expect(SIGN_UP_LUXURY).toMatch(/data-testid="button-auth-passkey"/);
+  });
+});
+
+describe('Additional provider-CTA emitters — CEO §D wiring pass', () => {
+  it('PlatformHub cta-become-provider carries START_PROVIDER_APPLICATION', () => {
+    expect(PLATFORM_HUB).toMatch(/data-testid="cta-become-provider"/);
+    expect(PLATFORM_HUB).toMatch(/data-action-id="START_PROVIDER_APPLICATION"/);
+  });
+
+  it('MarketplaceTerms Join-as-Provider carries START_PROVIDER_APPLICATION', () => {
+    expect(MARKETPLACE_TERMS).toMatch(/data-action-id="START_PROVIDER_APPLICATION"/);
+    expect(MARKETPLACE_TERMS).toMatch(/data-testid="marketplace-terms-join-as-provider"/);
+  });
+
+  it('ProviderApplicationStatus apply + resume CTAs carry the correct action ids', () => {
+    expect(APPLICATION_STATUS).toMatch(/data-action-id="START_PROVIDER_APPLICATION"[\s\S]*data-testid="apply-become-provider"/);
+    expect(APPLICATION_STATUS).toMatch(/data-action-id="RESUME_PROVIDER_APPLICATION"[\s\S]*data-testid="resume-provider-application"/);
+  });
+
+  it('ProviderPending fallback Apply-Now carries START_PROVIDER_APPLICATION', () => {
+    expect(PROVIDER_PENDING).toMatch(/data-action-id="START_PROVIDER_APPLICATION"/);
+    expect(PROVIDER_PENDING).toMatch(/data-testid="provider-pending-apply-now"/);
+  });
+});
+
+describe('becomeProvider.ts library — emits the CANONICAL URL', () => {
+  it('imports urlForProviderIntent + shared normaliser from Lane E vocabulary', () => {
+    expect(BECOME_PROVIDER_LIB).toMatch(/from '@shared\/lib\/providerServiceVocabulary'/);
+    expect(BECOME_PROVIDER_LIB).toMatch(/urlForProviderIntent/);
+  });
+
+  it('does NOT emit the legacy ?type= URL shape any more', () => {
+    // The library used to build `/become-provider?type=<alias>`
+    // directly. It now goes through urlForProviderIntent which emits
+    // `?requestedService=<code>`. This pin prevents a silent regression.
+    expect(BECOME_PROVIDER_LIB).not.toMatch(/\?type=\$\{encodeURIComponent\(type\)\}/);
   });
 });

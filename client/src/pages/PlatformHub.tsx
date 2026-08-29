@@ -760,6 +760,7 @@ export default function PlatformHub() {
                     fontFamily: sans,
                   }}
                   data-testid="cta-become-provider"
+                  data-action-id="START_PROVIDER_APPLICATION"
                 >
                   {isHebrew ? 'הפוך לנותן שירות' : 'Become a Provider'}
                 </Button>

@@ -1,59 +1,38 @@
 /**
- * becomeProvider.ts
+ * becomeProvider.ts — canonical "Become Provider" CTA helper.
  *
- * Canonical "Become Provider / הפוך למטפל" CTA helper.
+ * This module is the ONE place a "generic" Become-Provider CTA goes
+ * through. It:
+ *   1. Emits the canonical URL `/become-provider?requestedService=<code>`
+ *      (CEO MASTER §A7 §D vocabulary — pet_sitting / dog_walking /
+ *      training / pet_transport / station_operator). The `/become-provider`
+ *      resume gate then decides anonymous → sign-in-with-preserved-context
+ *      vs signed-in → draft/pending/approved.
+ *   2. Sets localStorage.signup_intent='provider' so the post-login
+ *      coordinator and the /api/auth/seed-intent HttpOnly cookie see a
+ *      consistent intent across the auth redirect.
  *
- * Issue #153 PR-FRES-3:
- *   Audit found 15+ CTAs scattered across the app, mixing five route
- *   targets (/become-provider, /join/walker, /join/sitter, /join/trainer,
- *   /apply-provider), three element types (Link, Button onClick, raw
- *   <a href>) and ZERO of them set `localStorage.signup_intent='provider'`
- *   before navigation. The provider intent only got set later inside
- *   SignIn.tsx:220 when the user happened to land there with a
- *   ?redirect= containing 'provider-onboarding' — every other path
- *   (already-signed-in users, deep-linked /join/walker, ProviderDashboard
- *   <a> full-reload) silently fell back to intent=customer at post-login,
- *   and the canonical pipeline that #182 stabilised got bypassed.
+ * The public signature — becomeProviderHref(type?) — remains
+ * COMPATIBLE with every existing caller (legacy short-form aliases
+ * `walker` / `sitter` / `trainer` / `driver` / `pet_trek` and even the
+ * canonical codes `pet_sitting` etc. all work). The output URL is
+ * upgraded to canonical form so no NEW emitter shipped downstream
+ * writes the legacy `?type=<alias>` shape. The resume gate still
+ * accepts the legacy shape for old bookmarks + email links.
  *
- * This module is the ONE place every CTA must go through:
- *
- *   becomeProviderHref(type?)
- *     Returns the canonical href: '/become-provider' or
- *     '/become-provider?type=walker' (etc.). Type is whitelisted; any
- *     non-whitelisted value is dropped silently and the bare path is
- *     returned. Use for `<Link href={...}>`.
- *
- *   setProviderSignupIntent()
- *     Sets `localStorage.signup_intent = 'provider'`. Idempotent. Safe in
- *     private mode (try/catch). Use as the onClick handler of a Link, or
- *     call it before navigate() inside a Button onClick.
- *
- *   onClickBecomeProvider(navigate, type?)
- *     One-shot helper for Button onClick handlers — sets the intent and
- *     navigates to the canonical href in one call.
- *
- * The /become-provider route already routes signed-in users straight to
- * /provider-onboarding (PR-FRES-1 BecomeProviderRedirect) and anonymous
- * users to /sign-in?redirect=/provider-onboarding (where SignIn sets
- * intent itself). So routing through /become-provider AND setting
- * signup_intent locally is the belt-and-braces guarantee that the
- * provider intent is visible to:
- *   • the post-login coordinator's body in every subsequent call (#182)
- *   • the /api/auth/seed-intent HttpOnly cookie before iPhone redirect (FRES-2)
- *   • the post-login decider's intentToRole branch (PR-BPV-2 V3)
- *
- * Out of scope (locked):
- *   - no AuthProvider rewrite, no whoami collapse
- *   - no schema, no money/wallet/tax, no BookingEngine
- *   - no K9000/Nayax/Tranzila, no provider approval policy
- *   - the /join/walker, /join/sitter, /join/trainer routes are NOT
- *     retired — those are deep-link sub-pipelines that flow to the same
- *     provider-onboarding eventually. Callers that want walker-specific
- *     onboarding can keep deep-linking; this helper only canonicalises
- *     the generic "become provider" CTA + ensures intent is set
- *     regardless of which route the caller ultimately uses.
+ * Related:
+ *   * shared/lib/providerServiceVocabulary — the ONE vocabulary
+ *   * @/lib/ctaActions — urlForProviderIntent + safeInternalReturnTo
+ *   * @/pages/BecomeProviderResume — the resume gate this URL routes to
  */
 
+import {
+  normaliseToProviderServiceCode,
+  type ProviderServiceCode,
+} from '@shared/lib/providerServiceVocabulary';
+import { urlForProviderIntent, type CtaUrlAttribution } from './ctaActions';
+
+/** Legacy short-form alphabet the wizard + provider_services still use. */
 export const PROVIDER_TYPE_WHITELIST = [
   'walker',
   'sitter',
@@ -72,11 +51,27 @@ export function isProviderType(value: unknown): value is ProviderType {
     && (PROVIDER_TYPE_WHITELIST as readonly string[]).includes(value);
 }
 
-export function becomeProviderHref(type?: string | null): string {
-  if (isProviderType(type)) {
-    return `${BECOME_PROVIDER_PATH}?type=${encodeURIComponent(type)}`;
-  }
-  return BECOME_PROVIDER_PATH;
+/**
+ * The canonical URL a generic Become-Provider CTA should navigate to.
+ * Accepts:
+ *   * any canonical code (pet_sitting / dog_walking / …)
+ *   * any legacy alias (walker / sitter / …)
+ *   * marketing shorthand (walk / sit / train / pet_trek / trek)
+ *   * null / undefined → bare /become-provider (no intent seed)
+ *
+ * Emits `/become-provider?requestedService=<canonical code>` — the
+ * shape the Lane E URL emitter, BecomeProviderResume canonical reader,
+ * and ProviderOnboarding wizard all agree on. Legacy `?type=<alias>`
+ * shape is NO LONGER EMITTED by this helper; the resume gate still
+ * accepts it at the edge for old bookmarks + email links.
+ */
+export function becomeProviderHref(
+  type?: string | null,
+  attribution?: CtaUrlAttribution,
+): string {
+  const code: ProviderServiceCode | null = normaliseToProviderServiceCode(type);
+  if (!code) return BECOME_PROVIDER_PATH;
+  return urlForProviderIntent(code, attribution);
 }
 
 export function setProviderSignupIntent(): void {
@@ -92,7 +87,8 @@ export function setProviderSignupIntent(): void {
 export function onClickBecomeProvider(
   navigate: (path: string) => void,
   type?: string | null,
+  attribution?: CtaUrlAttribution,
 ): void {
   setProviderSignupIntent();
-  navigate(becomeProviderHref(type));
+  navigate(becomeProviderHref(type, attribution));
 }

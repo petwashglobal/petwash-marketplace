@@ -228,7 +228,11 @@ export default function MarketplaceTerms() {
               </Button>
             </Link>
             <Link href={becomeProviderHref()} onClick={setProviderSignupIntent}>
-              <Button className="bg-white text-black hover:bg-white/90">
+              <Button
+                className="bg-white text-black hover:bg-white/90"
+                data-action-id="START_PROVIDER_APPLICATION"
+                data-testid="marketplace-terms-join-as-provider"
+              >
                 {isHebrew ? "הצטרף כספק" : "Join as Provider"}
               </Button>
             </Link>

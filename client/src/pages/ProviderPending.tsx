@@ -184,7 +184,12 @@ export default function ProviderPending() {
             <p className="text-muted-foreground text-sm">
               {he ? "לא נמצאה בקשה. אנא מלא את טופס ההרשמה." : "No application found. Please complete the registration form."}
             </p>
-            <Button onClick={() => onClickBecomeProvider(setLocation)} className="w-full">
+            <Button
+              onClick={() => onClickBecomeProvider(setLocation)}
+              className="w-full"
+              data-action-id="START_PROVIDER_APPLICATION"
+              data-testid="provider-pending-apply-now"
+            >
               {he ? "הגש בקשה" : "Apply Now"}
             </Button>
           </CardContent>

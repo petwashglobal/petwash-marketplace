@@ -229,7 +229,7 @@ export default function ProviderApplicationStatus() {
             <p className="text-muted-foreground">No provider application found for your account.</p>
             {/* PR-FRES-3: legacy target was the nonexistent /provider-application
                 route (404). Now canonical /become-provider via helper. */}
-            <Button asChild>
+            <Button asChild data-action-id="START_PROVIDER_APPLICATION" data-testid="apply-become-provider">
               <Link href={becomeProviderHref()} onClick={setProviderSignupIntent}>
                 Apply to become a provider
               </Link>
@@ -438,7 +438,7 @@ export default function ProviderApplicationStatus() {
               <LogOut className="h-8 w-8 mx-auto mb-2 text-slate-400" />
               <p>You withdrew this application.</p>
               {/* PR-FRES-3: legacy target was the nonexistent /provider-application route (404). Canonical helper. */}
-              <Button asChild className="mt-4">
+              <Button asChild className="mt-4" data-action-id="RESUME_PROVIDER_APPLICATION" data-testid="resume-provider-application">
                 <Link href={becomeProviderHref()} onClick={setProviderSignupIntent}>
                   Submit a new application
                 </Link>
