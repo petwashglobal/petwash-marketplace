@@ -24,6 +24,15 @@ const PKG = JSON.parse(
 );
 
 describe('verify-dist-manifest.ts (CEO §10 §20)', () => {
+  it('runs under Node native ESM — reconstructs __dirname from import.meta.url', () => {
+    // P0 fix 2026-08-29: package.json is "type":"module", so a bare
+    // `__dirname` throws ReferenceError at runtime. Pin the ESM
+    // boilerplate so nobody re-introduces the ReferenceError.
+    expect(VERIFY).toMatch(/import \{ fileURLToPath \} from 'node:url';/);
+    expect(VERIFY).toMatch(/const __filename = fileURLToPath\(import\.meta\.url\);/);
+    expect(VERIFY).toMatch(/const __dirname = path\.dirname\(__filename\);/);
+  });
+
   it('parses both <script src> and <link rel=... href=...> references', () => {
     // Both attribute orderings matter — Vite may emit either.
     expect(VERIFY).toMatch(/const scriptRe = \/<script\[\^>\]\*\\bsrc="\(\[\^"\]\+\)"/);

@@ -22,6 +22,13 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// P0 fix 2026-08-29: package.json is `"type": "module"`, so
+// `__dirname` is undefined in this file. Reconstruct it from
+// import.meta.url so the script runs under Node's native ESM.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const DIST_DIR = path.join(REPO_ROOT, 'dist', 'public');
