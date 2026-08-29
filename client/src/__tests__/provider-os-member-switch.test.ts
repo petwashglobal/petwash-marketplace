@@ -10,9 +10,9 @@
  * the header was a dead <div>.
  *
  * This pins: (1) a persistent "Switch to Pet Parent" control →
- * /prestige/home (the historical customer home route), and (2) the
- * avatar is now a real button → /my-account. So a multi-role user is
- * never trapped.
+ * /pet-parent/home (the canonical customer home per CEO AUTH MASTER
+ * §16 2026-08-29), and (2) the avatar is now a real button →
+ * /my-account. So a multi-role user is never trapped.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,7 +31,7 @@ describe('ProviderOS gives a multi-role user a way back to Pet Parent (2026-07-0
 
   it('offers a persistent "Switch to Pet Parent" control that routes to the Pet Parent home', () => {
     expect(SRC).toMatch(/data-testid="switch-to-pet-parent"/);
-    expect(SRC).toMatch(/setRoute\('\/prestige\/home'\)/);
+    expect(SRC).toMatch(/setRoute\('\/pet-parent\/home'\)/);
     // Crown belongs to Prestige — the Pet Parent switcher must not use it.
     expect(SRC).not.toMatch(/data-testid="switch-to-member"/);
   });

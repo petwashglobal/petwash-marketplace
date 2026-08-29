@@ -276,7 +276,8 @@ export default function PetPassportHome() {
         dir={isHe ? 'rtl' : 'ltr'}
         className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[440px] items-center justify-around border-t border-[#ECE6D8] bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2"
       >
-        <NavItem icon={<Home />} label={tr('דף הבית', 'Home')} onClick={() => navigate('/prestige/home')} />
+        {/* CEO AUTH MASTER §16 (2026-08-29) — canonical customer home. */}
+        <NavItem icon={<Home />} label={tr('דף הבית', 'Home')} onClick={() => navigate('/pet-parent/home')} />
         <NavItem icon={<PawPrint />} label={tr('חיות מחמד', 'Pets')} active onClick={() => navigate('/pet-passport')} />
         <NavItem icon={<Heart />} label={tr('בריאות', 'Health')} onClick={() => navigate('/pets')} />
         <NavItem icon={<FileText />} label={tr('מסמכים', 'Documents')} onClick={() => navigate('/documents')} />

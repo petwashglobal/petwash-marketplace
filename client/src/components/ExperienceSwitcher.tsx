@@ -32,7 +32,11 @@ import { useLanguage } from '@/lib/languageStore';
 // still emits today; only the visible label / icon change from
 // "Member + Crown" (Prestige framing) to "Pet Parent + PawPrint".
 const WORKSPACES: Record<DashboardType, { route: string; en: string; he: string; sub_en: string; sub_he: string; icon: any; tone: string }> = {
-  member:   { route: '/prestige/home',   en: 'Pet Parent', he: 'הורה לחיה', sub_en: 'Book, wash, wallet & rewards', sub_he: 'הזמנות, שטיפה, ארנק והטבות', icon: PawPrint,    tone: '#0e7a54' },
+  // CEO AUTH MASTER §16 (2026-08-29) — the "Pet Parent" workspace
+  // tile routes to the canonical customer destination, matching its
+  // label. The `member` KEY stays because /whoami.dashboardsAllowed
+  // still emits it.
+  member:   { route: '/pet-parent/home', en: 'Pet Parent', he: 'הורה לחיה', sub_en: 'Book, wash, wallet & rewards', sub_he: 'הזמנות, שטיפה, ארנק והטבות', icon: PawPrint,    tone: '#0e7a54' },
   provider: { route: '/provider-os',     en: 'Provider',   he: 'ספק',       sub_en: 'Jobs, calendar & earnings',    sub_he: 'עבודות, יומן והכנסות',        icon: Briefcase,   tone: '#0e7a54' },
   staff:    { route: '/admin/dashboard', en: 'Admin',      he: 'ניהול',     sub_en: 'Operations console',           sub_he: 'קונסולת תפעול',               icon: ShieldCheck, tone: '#334155' },
   admin:    { route: '/admin/dashboard', en: 'Admin',      he: 'ניהול',     sub_en: 'Operations console',           sub_he: 'קונסולת תפעול',               icon: ShieldCheck, tone: '#334155' },

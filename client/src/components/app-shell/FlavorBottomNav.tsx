@@ -77,7 +77,12 @@ export function PrestigeTabsBar() {
         </button>
       }
     >
-      <TabBtn icon={HomeIcon} label={isHe ? 'בית' : 'Home'} active={is('/prestige/home')} onClick={() => navigate('/prestige/home')} />
+      {/* CEO AUTH MASTER §16 (2026-08-29) — Home tab points to the
+          canonical customer destination /pet-parent/home. Prestige
+          here is app-flavor branding, not identity. Active-state
+          matches the legacy /prestige/home alias too during the
+          transition so a bookmarked link still highlights the tab. */}
+      <TabBtn icon={HomeIcon} label={isHe ? 'בית' : 'Home'} active={is('/pet-parent/home') || is('/prestige/home')} onClick={() => navigate('/pet-parent/home')} />
       <TabBtn icon={CalendarDays} label={isHe ? 'הזמנות' : 'Book'} active={is('/bookings') || is('/my-bookings')} onClick={() => navigate('/bookings')} />
       <TabBtn icon={ShoppingBag} label={isHe ? 'חנות' : 'Shop'} active={is('/shop')} onClick={() => navigate('/shop')} />
       <div className="w-14 shrink-0" />

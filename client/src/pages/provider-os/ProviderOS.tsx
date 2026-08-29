@@ -215,7 +215,7 @@ export default function ProviderOS() {
               Crown belongs to Prestige (a membership, not a mode). CEO
               2026-08-26 role-model. */}
           <button
-            onClick={() => setRoute('/prestige/home')}
+            onClick={() => setRoute('/pet-parent/home')}
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
             data-testid="switch-to-pet-parent"
             title="Switch to your Pet Parent home"
