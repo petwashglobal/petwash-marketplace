@@ -5,6 +5,15 @@ import { eq, and } from 'drizzle-orm';
 import { isSuperAdmin, ROLE_HIERARCHY } from './rbac';
 import { logger } from '../lib/logger';
 
+/** Safely tag an email for audit logs without leaking the full address. */
+function userEmailForLog(email: string | undefined): string {
+  if (!email) return '<none>';
+  const [local, domain] = email.split('@');
+  if (!domain) return '<opaque>';
+  const localMasked = local.length <= 2 ? local[0] + '***' : local[0] + '***' + local.slice(-1);
+  return `${localMasked}@${domain}`;
+}
+
 const MFA_REQUIRED_ROLES = ['admin', 'super_admin', 'management', 'hr', 'finance'];
 
 const MFA_REQUIRED_ACCESS_LEVELS = 6;
@@ -22,11 +31,33 @@ export async function requireAdminMfa(
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Programmatic API access via Bearer token (not browser session) — skip MFA
-    // MFA is a browser UX gate; API clients use short-lived signed tokens instead
-    const hasSessionCookie = !!(req as any).cookies?.pw_session;
-    const hasBearerToken = !!(req.headers.authorization?.startsWith('Bearer '));
-    if (hasBearerToken && !hasSessionCookie) {
+    // CEO FLY MODE II §4–§5 (2026-08-29) — Bearer !== trusted machine client.
+    //
+    // Pre-fix, the middleware short-circuited whenever the request had
+    // an Authorization header without the session cookie. That meant
+    // EVERY Firebase ID token presented via Authorization
+    // (mobile app, curl, any web fetch that skipped the cookie)
+    // skipped MFA entirely. That is a HUMAN identity — the token is
+    // issued to a person, verifyIdToken at requireAuth confirms a
+    // Firebase user. Naming the transport does not make the client a
+    // machine.
+    //
+    // FIX: MFA is enforced identically for cookie-based and Bearer-based
+    // human sessions. Only a caller whose Firebase UID matches the
+    // explicitly-configured SERVICE_PRINCIPAL_UIDS allowlist is granted
+    // machine exemption — and every bypass is logged at INFO for audit.
+    // The allowlist is env-driven, comma-separated, and defaults to
+    // EMPTY so a misconfigured env cannot silently open the door.
+    const servicePrincipalAllowlist = (process.env.SERVICE_PRINCIPAL_UIDS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (servicePrincipalAllowlist.length > 0 && servicePrincipalAllowlist.includes(uid)) {
+      logger.info('[MFA-Enforcement] service_principal bypass', {
+        uid,
+        email: userEmailForLog(email),
+        allowlistSize: servicePrincipalAllowlist.length,
+      });
       return next();
     }
 

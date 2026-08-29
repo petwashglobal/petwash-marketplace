@@ -24,6 +24,39 @@ const SRC = fs.readFileSync(
   'utf8',
 );
 
+describe('CEO FLY MODE II §4–§5 — Bearer !== trusted machine client', () => {
+  it('the blanket Bearer bypass (hasBearerToken && !hasSessionCookie) is DELETED', () => {
+    // The pre-fix line was:
+    //   if (hasBearerToken && !hasSessionCookie) return next();
+    // Any refactor that re-introduces a shape like this reopens the SEV-1.
+    expect(SRC).not.toMatch(/hasBearerToken && !hasSessionCookie/);
+    expect(SRC).not.toMatch(/!hasSessionCookie[\s\S]{0,50}return next\(\)/);
+  });
+
+  it('service_principal exemption is env-driven via SERVICE_PRINCIPAL_UIDS', () => {
+    expect(SRC).toMatch(/process\.env\.SERVICE_PRINCIPAL_UIDS/);
+    // Must be comma-parsed with a filter(Boolean) so blank env is empty list.
+    expect(SRC).toMatch(/\.split\(','\)/);
+    expect(SRC).toMatch(/\.filter\(Boolean\)/);
+  });
+
+  it('empty allowlist NEVER short-circuits (defaults to enforce MFA)', () => {
+    // The guard must check `.length > 0` — a bare `.includes(uid)` on an
+    // empty array happens to return false too but the length check is
+    // the audit-visible statement of "no allowlist ⇒ no bypass".
+    expect(SRC).toMatch(/servicePrincipalAllowlist\.length > 0/);
+    expect(SRC).toMatch(/servicePrincipalAllowlist\.includes\(uid\)/);
+  });
+
+  it('every service_principal bypass is logged at INFO for audit', () => {
+    expect(SRC).toMatch(/logger\.info\([^\n]*service_principal bypass/);
+  });
+
+  it('email in the audit log is masked, not leaked', () => {
+    expect(SRC).toMatch(/userEmailForLog/);
+  });
+});
+
 describe('CEO §D5 — MFA capability fallback', () => {
   it('imports from the userCapabilities aggregator (helper or getter)', () => {
     expect(SRC).toMatch(/['"]\.\.\/lib\/userCapabilities['"]/);
