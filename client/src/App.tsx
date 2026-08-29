@@ -1826,14 +1826,21 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             generic 400 errors. Inbound links (social, banner CTAs, business
             cards) keep working; canonical surface handles all roles via
             multi-select provider type. */}
+        {/* CEO §1 §2.3 (2026-08-29): legacy /join/<alias> deep-links now
+            redirect through the CANONICAL resume gate with the CEO §A7
+            code (pet_sitting / dog_walking / training). BecomeProviderResume
+            handles anonymous vs draft vs pending vs approved next-steps
+            and preserves attribution through the sign-in bounce. Direct
+            /provider-onboarding?role=<alias> would lose the query on the
+            anonymous sign-in redirect. */}
         <Route path="/join/walker">
-          {() => <Redirect to="/provider-onboarding?role=walker" />}
+          {() => <Redirect to="/become-provider?requestedService=dog_walking" />}
         </Route>
         <Route path="/join/sitter">
-          {() => <Redirect to="/provider-onboarding?role=sitter" />}
+          {() => <Redirect to="/become-provider?requestedService=pet_sitting" />}
         </Route>
         <Route path="/join/trainer">
-          {() => <Redirect to="/provider-onboarding?role=trainer" />}
+          {() => <Redirect to="/become-provider?requestedService=training" />}
         </Route>
 
         {/* Provider Matching Flow — luxury real-time matching experience.
