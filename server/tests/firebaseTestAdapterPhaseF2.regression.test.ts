@@ -23,6 +23,11 @@ const ONETAP = fs.readFileSync(
   'utf8',
 );
 
+const ADMIN = fs.readFileSync(
+  path.resolve(ROOT, 'client', 'src', 'pages', 'admin', 'AdminLoginV2.tsx'),
+  'utf8',
+);
+
 describe('CEO FLY MODE II §7 — SignUpLuxury Phase F2 adapter shortcut', () => {
   it('the adapter branch sits under a Vite DEV compile-time guard', () => {
     // `if (import.meta.env.DEV)` is what Vite eliminates in production.
@@ -130,5 +135,40 @@ describe('CEO FLY MODE II §7 — SignUpLuxury Phase F2 adapter shortcut', () =>
     expect(ONETAP).not.toMatch(
       /^import \{[^\n]*getFirebaseTestAdapter[^\n]*\} from ['"]@\/lib\/firebaseTestAdapterClient['"]/m,
     );
+  });
+
+  // ── Wave-3 ────────────────────────────────────────────────────────────
+
+  it('AdminLoginV2 handleGoogleLogin short-circuits under the DEV guard', () => {
+    expect(ADMIN).toMatch(/if \(import\.meta\.env\.DEV\)/);
+    expect(ADMIN).toMatch(
+      /await import\('@\/lib\/firebaseTestAdapterClient'\)/,
+    );
+    expect(ADMIN).toMatch(
+      /FIREBASE_TEST_ADAPTER_SHORTCUT[^\n]*surface: 'admin'/,
+    );
+    // The shortcut sits BEFORE the canonical hook call — the whole
+    // point is to skip Firebase entirely on the harness.
+    const shortcutIdx = ADMIN.indexOf('FIREBASE_TEST_ADAPTER_SHORTCUT');
+    const canonicalIdx = ADMIN.indexOf('await canonicalSignInWithGoogle()');
+    expect(shortcutIdx).toBeGreaterThan(0);
+    expect(canonicalIdx).toBeGreaterThan(0);
+    expect(shortcutIdx).toBeLessThan(canonicalIdx);
+  });
+
+  it('AdminLoginV2 has NO top-level static import of the adapter probe', () => {
+    expect(ADMIN).not.toMatch(
+      /^import \{[^\n]*getFirebaseTestAdapter[^\n]*\} from ['"]@\/lib\/firebaseTestAdapterClient['"]/m,
+    );
+  });
+
+  it('AdminLoginV2 shortcut claims the SAME nav-owner slot the real popup path uses', () => {
+    // Both branches share admin-login-v2-popup — if a race lands
+    // between them, ownership token cooperation still holds.
+    const shortcutIdx = ADMIN.indexOf('FIREBASE_TEST_ADAPTER_SHORTCUT');
+    const nextCanonicalIdx = ADMIN.indexOf('await canonicalSignInWithGoogle()', shortcutIdx);
+    const block = ADMIN.slice(shortcutIdx, nextCanonicalIdx);
+    expect(block).toMatch(/claimPostAuthNavigation\('admin-login-v2-popup'\)/);
+    expect(block).toMatch(/releasePostAuthNavigation\(\)/);
   });
 });

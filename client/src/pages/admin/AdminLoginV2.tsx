@@ -355,6 +355,28 @@ export default function AdminLoginV2() {
     setIsGoogleLoading(true);
 
     try {
+      // CEO FLY MODE II §7 wave-3 (2026-08-29) — Firebase test adapter
+      // short-circuit for AdminLoginV2. Same DEV guard + dynamic import
+      // + strict null check + FIREBASE_TEST_ADAPTER_SHORTCUT stage. On
+      // hit we POST the synthetic token to /api/auth/session (Playwright
+      // intercepts), assertAdminAccess reads a synthetic admin persona
+      // (customer/admin from headersForPersona in the E2E harness), and
+      // we route through the same admin-login-v2-popup nav owner claim
+      // the real flow uses. Vite eliminates this block in production.
+      if (import.meta.env.DEV) {
+        const { getFirebaseTestAdapter } = await import('@/lib/firebaseTestAdapterClient');
+        const adapter = getFirebaseTestAdapter();
+        if (adapter) {
+          recordAuthJourneyStage('FIREBASE_TEST_ADAPTER_SHORTCUT', { surface: 'admin', method: 'google' });
+          await createServerSession(adapter.syntheticIdToken);
+          await assertAdminAccess();
+          toast({ title: 'Welcome back', description: 'Successfully logged in with Google' });
+          if (!claimPostAuthNavigation('admin-login-v2-popup')) return;
+          setLocation('/admin/octopus');
+          releasePostAuthNavigation();
+          return;
+        }
+      }
       // PR-AUTH-1: delegate the OAuth call itself to the canonical hook
       // (auth-guardian-2025.signInWithGoogle). It calls getAuthStrategy()
       // internally to decide popup vs redirect, preserves provider intent,
