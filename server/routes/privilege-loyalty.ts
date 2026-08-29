@@ -38,6 +38,29 @@ const upload = multer({
 const _tableReady: Promise<void> = Promise.resolve();
 
 router.post('/register', upload.single('idDocument'), async (req: Request, res: Response) => {
+  // CEO FLY MODE II §17 (2026-08-29) — deprecation observability on
+  // the unauthenticated identity-creation path. This endpoint used to
+  // be the ONLY Prestige enrolment surface, hit anonymously with an
+  // email + phone. The canonical direction (§16) is:
+  //   authenticated PetWash human → server derives UID → collect only
+  //   the Prestige-specific fields → membership linked to UID.
+  //
+  // We do NOT retire /register today (§17 forbids immediate kill —
+  // measure first). Instead, every hit without a resolvable Firebase
+  // identity is beaconed at WARN so on-call can watch the fade curve
+  // as the canonical /api/privilege/link surface rolls out.
+  const authHeader = req.headers.authorization;
+  const hasBearer = typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
+  const hasSessionCookie = !!(req as any).cookies?.pw_session;
+  if (!hasBearer && !hasSessionCookie) {
+    try {
+      const { recordDeprecationHit } = await import('../lib/deprecationTelemetry');
+      recordDeprecationHit(req, '/api/privilege/register:anonymous');
+    } catch {
+      // Never break the handler because telemetry choked.
+    }
+  }
+
   // Task 23 — atomic business-idempotency guard around Prestige enrolment.
   // Two simultaneous /register submits with the same email cannot both
   // create a privilege_members row.
@@ -366,6 +389,97 @@ router.get('/check/:email', async (req: Request, res: Response) => {
     res.json({ exists: !!(result.rows && result.rows.length > 0) });
   } catch (error) {
     res.status(500).json({ error: 'Check failed', errorCode: 'CHECK_FAILED' });
+  }
+});
+
+/**
+ * CEO FLY MODE II §14 + §17 (2026-08-29) — canonical Prestige linking.
+ *
+ * POST /api/privilege/link
+ *   Requires: Firebase session cookie OR Bearer ID token.
+ *   Effect: attempts the §14 safe-legacy-claim on the caller's
+ *     verified email; on success stamps privilege_members.firebase_uid.
+ *   Body: none required — the identity comes from the auth context.
+ *
+ * Success (200): { ok: true, outcome, memberId, firebaseUid }.
+ * Conflicts (409): { ok: false, reason } — never auto-merge, never
+ *   force. A conflict here means a human operator has to reconcile.
+ * Not linked (404): { ok: false, reason: 'NO_LEGACY_MEMBER' } — the
+ *   caller can proceed to canonical /register with their UID stamped
+ *   from the auth context.
+ * Unauth (401): body-supplied email/UID is refused (§15).
+ * Unavailable (503): LOOKUP_FAILED — fail-CLOSED.
+ *
+ * This surface intentionally does NOT create a new membership. It
+ * ONLY links an existing legacy row to the authenticated caller. New
+ * enrolment continues to go through /register today; a follow-up
+ * consolidates the two surfaces once §17 telemetry confirms the
+ * anonymous path is dead.
+ */
+router.post('/link', async (req: Request, res: Response) => {
+  try {
+    const { verifySessionCookie, SESSION_COOKIE_NAME } = await import('../lib/sessionCookies');
+    const fbAdminAuth = admin.auth();
+    const sessionCookie = (req as any).cookies?.[SESSION_COOKIE_NAME];
+    const authHeader = req.headers.authorization;
+    const bearerToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+      ? authHeader.slice(7).trim()
+      : null;
+
+    let decoded: any = null;
+    if (sessionCookie) {
+      try { decoded = await verifySessionCookie(sessionCookie, false); } catch { /* fall through */ }
+    }
+    if (!decoded && bearerToken) {
+      try { decoded = await fbAdminAuth.verifyIdToken(bearerToken, true); } catch { /* fall through */ }
+    }
+    if (!decoded?.uid) {
+      return res.status(401).json({ ok: false, error: 'AUTHENTICATION_REQUIRED' });
+    }
+
+    // BOTH email + email_verified are read from the decoded auth
+    // context — NEVER from the request body. §15 forbids body-supplied
+    // identity.
+    const emailFromAuthContext = (decoded.email ?? null) as string | null;
+    const emailVerified = decoded.email_verified === true;
+
+    const { linkPrestigeMembershipToFirebaseUid } = await import('../services/prestigeIdentityLink');
+    const result = await linkPrestigeMembershipToFirebaseUid({
+      firebaseUid: decoded.uid,
+      emailFromAuthContext,
+      emailVerified,
+    });
+
+    if (result.ok) {
+      return res.status(200).json({
+        ok: true,
+        outcome: result.outcome,
+        memberId: result.memberId,
+        firebaseUid: result.firebaseUid,
+      });
+    }
+
+    // Map refusal reasons to sensible HTTP statuses.
+    switch (result.reason) {
+      case 'NO_LEGACY_MEMBER':
+        return res.status(404).json({ ok: false, reason: result.reason });
+      case 'EMAIL_NOT_VERIFIED':
+      case 'MISSING_EMAIL':
+        return res.status(400).json({ ok: false, reason: result.reason });
+      case 'UID_ALREADY_LINKED_TO_DIFFERENT_MEMBER':
+      case 'MEMBER_ALREADY_LINKED_TO_DIFFERENT_UID':
+        return res.status(409).json({ ok: false, reason: result.reason });
+      case 'RACE_ON_LINK':
+        return res.status(409).json({ ok: false, reason: result.reason, retryable: true });
+      case 'MISSING_UID':
+        return res.status(401).json({ ok: false, reason: result.reason });
+      case 'LOOKUP_FAILED':
+      default:
+        return res.status(503).json({ ok: false, reason: result.reason });
+    }
+  } catch (err: any) {
+    logger.error('[PrestigeLink] /link handler crashed', { error: err?.message });
+    return res.status(500).json({ ok: false, error: 'INTERNAL_ERROR' });
   }
 });
 
