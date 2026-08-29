@@ -1204,6 +1204,30 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         return;
       }
       if (isNativePlatform() && (which === 'google' || which === 'apple')) {
+        // CEO FLY MODE II §7 wave-4 (2026-08-29) — native OAuth path.
+        // On the Capacitor app the real native handler drives the OS
+        // consent sheet. When the E2E harness (running the app via a
+        // web preview during E2E) installs the shim, short-circuit to
+        // the synthetic-token /api/auth/session POST. Same DEV +
+        // dynamic-import discipline as the other waves.
+        if (import.meta.env.DEV) {
+          const { getFirebaseTestAdapter } = await import('@/lib/firebaseTestAdapterClient');
+          const adapter = getFirebaseTestAdapter();
+          if (adapter) {
+            recordAuthJourneyStage('FIREBASE_TEST_ADAPTER_SHORTCUT', { provider: which, strategy: 'native' });
+            const shortcutRes = await fetch(getApiUrl('/api/auth/session'), withAuthJourneyHeader({
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+              body: JSON.stringify({ idToken: adapter.syntheticIdToken }),
+            }));
+            if (!shortcutRes.ok) {
+              const label = which === 'google' ? 'Google' : 'Apple';
+              fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
+              return;
+            }
+            await finishAndRoute();
+            return;
+          }
+        }
         const cred = which === 'google'
           ? await signInWithGoogleNative(auth)
           : await signInWithAppleNative(auth);

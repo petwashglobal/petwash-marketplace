@@ -162,6 +162,21 @@ describe('CEO FLY MODE II §7 — SignUpLuxury Phase F2 adapter shortcut', () =>
     );
   });
 
+  it('SignUpLuxury NATIVE strategy also short-circuits under the DEV guard', () => {
+    const nativeIdx = SIGNUP.indexOf("isNativePlatform() && (which === 'google'");
+    expect(nativeIdx).toBeGreaterThan(0);
+    // Between the native branch entry and the real
+    // signInWithGoogleNative call, the adapter shortcut must sit
+    // under a DEV guard with strategy:'native'.
+    const nativeCallIdx = SIGNUP.indexOf('await signInWithGoogleNative(auth)', nativeIdx);
+    const block = SIGNUP.slice(nativeIdx, nativeCallIdx);
+    expect(block).toMatch(/if \(import\.meta\.env\.DEV\)/);
+    expect(block).toMatch(/await import\('@\/lib\/firebaseTestAdapterClient'\)/);
+    expect(block).toMatch(
+      /FIREBASE_TEST_ADAPTER_SHORTCUT[^\n]*strategy: 'native'/,
+    );
+  });
+
   it('AdminLoginV2 shortcut claims the SAME nav-owner slot the real popup path uses', () => {
     // Both branches share admin-login-v2-popup — if a race lands
     // between them, ownership token cooperation still holds.
