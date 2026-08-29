@@ -6,6 +6,10 @@ import { logger } from '@/lib/logger';
 import { getApiUrl } from '@/lib/apiConfig';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { useLocation } from 'wouter';
+// CEO §B41 §1.5 (2026-08-29) — Google One Tap shares the same
+// journey-trace + preferred-method wire as the other AUTH_* CTAs.
+import { beginAuthJourney, recordAuthJourneyStage, endAuthJourney } from '@/lib/authJourney';
+import { writePreferredAuthMethod } from '@/lib/preferredAuthMethod';
 
 interface GoogleOneTapProps {
   enabled?: boolean;
@@ -137,11 +141,16 @@ export function GoogleOneTap({
       
       const idToken = response.credential;
       
+      beginAuthJourney('google');
+      recordAuthJourneyStage('AUTH_METHOD_SELECTED', { source: 'one_tap' });
+      recordAuthJourneyStage('FIREBASE_STARTED');
+
       // Create Firebase credential using Google ID token
       const googleCredential = GoogleAuthProvider.credential(idToken);
 
       // Sign in to Firebase
       const userCredential = await signInWithCredential(auth, googleCredential);
+      recordAuthJourneyStage('FIREBASE_SUCCESS');
 
       logger.info('[Google One Tap] Sign-in successful:', userCredential.user.email);
 
@@ -157,9 +166,13 @@ export function GoogleOneTap({
         body: JSON.stringify({ idToken: firebaseIdToken }),
       });
 
+      recordAuthJourneyStage('SESSION_EXCHANGE_START');
       if (!sessionResponse.ok) {
+        recordAuthJourneyStage('SESSION_EXCHANGE_FAILURE');
         throw new Error('Failed to create session');
       }
+      recordAuthJourneyStage('SESSION_EXCHANGE_SUCCESS');
+      recordAuthJourneyStage('BOOTSTRAP_SUCCESS');
 
       toast({
         title: '🎉 Welcome!',
@@ -196,16 +209,24 @@ export function GoogleOneTap({
             idToken: firebaseIdToken,
             body: intent ? { intent } : undefined,
           });
+          recordAuthJourneyStage('POST_LOGIN_SUCCESS');
           const nextUrl = data.nextUrl || data.redirectTo || '/home';
           clearConsumedSignupIntent();
           navigate(nextUrl);
+          recordAuthJourneyStage('NAVIGATION_SUCCESS');
+          writePreferredAuthMethod('google');
+          endAuthJourney();
         } catch {
+          recordAuthJourneyStage('POST_LOGIN_FAILURE');
           navigate('/home');
         }
       }
     } catch (error: any) {
       logger.error('[Google One Tap] Sign-in failed:', error);
-      
+      recordAuthJourneyStage('FIREBASE_FAILURE', {
+        errorClass: error?.code || error?.name || 'unknown',
+      });
+
       toast({
         variant: 'destructive',
         title: 'Sign-in failed',
