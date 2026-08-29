@@ -31,6 +31,7 @@ import { getAuthStrategy } from "@/lib/iosAuthHandler";
 // journey-trace + preferred-method wire as customer sign-in.
 import { CtaAction, emitCtaEvent } from "@/lib/ctaActions";
 import { recordAuthJourneyStage } from "@/lib/authJourney";
+import { claimPostAuthNavigation, releasePostAuthNavigation } from "@/lib/postAuthNavigationOwner";
 
 const isMobileBrowser = () => {
   // Retained for legacy callers; PR-AUTH-1 replaced the OAuth-init use of
@@ -184,7 +185,10 @@ export default function AdminLoginV2() {
           await createServerSession(idToken);
           await assertAdminAccess();
           toast({ title: "Welcome back", description: "Successfully logged in with Google" });
+          // CEO §1.10 §F3 — race guard for the redirect-return branch.
+          if (!claimPostAuthNavigation('admin-login-v2-redirect')) return;
           setLocation("/admin/octopus");
+          releasePostAuthNavigation();
         } catch (err: any) {
           trackAuthError(err, 'admin_google_redirect').catch(() => {});
           toast({
@@ -327,7 +331,9 @@ export default function AdminLoginV2() {
         });
         
         setTimeout(() => {
+          if (!claimPostAuthNavigation('admin-login-v2-passkey')) return;
           setLocation("/admin/octopus");
+          releasePostAuthNavigation();
         }, 800);
       }
     } catch (error: any) {
@@ -378,7 +384,9 @@ export default function AdminLoginV2() {
       await assertAdminAccess();
 
       toast({ title: "Welcome back", description: "Successfully logged in with Google" });
+      if (!claimPostAuthNavigation('admin-login-v2-popup')) return;
       setLocation("/admin/octopus");
+      releasePostAuthNavigation();
     } catch (error: any) {
       if (error?.code === "auth/popup-closed-by-user" || error?.code === "auth/cancelled-popup-request") {
         setIsGoogleLoading(false);

@@ -5,6 +5,7 @@ import { useFCMNotifications } from '@/hooks/useFCMNotifications';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
+import { claimPostAuthNavigation, releasePostAuthNavigation } from '@/lib/postAuthNavigationOwner';
 import type { Language } from '@/lib/i18n';
 
 interface NotificationConsentProps {
@@ -21,18 +22,26 @@ export default function NotificationConsent({ language = 'he' }: NotificationCon
 
   const goNext = async () => {
     localStorage.setItem('petwash_notification_consent_shown', 'true');
+    // CEO §1.10 §F3 — defer to SignUpLuxury.routeNow() if it's
+    // still holding the post-auth window.
     // Route providers to their workspace, others to home
     if (serverRole === 'provider') {
+      if (!claimPostAuthNavigation('notification-consent-provider')) return;
       navigate('/provider-os');
+      releasePostAuthNavigation();
       return;
     }
     // PR-FRES-B: route through postLoginCoordinator so the consent gate's
     // post-login does not race against a concurrent SignUp/SignIn/OneTap call.
     try {
       const data = await resolvePostLogin();
+      if (!claimPostAuthNavigation('notification-consent-post-login')) return;
       navigate(data.nextUrl || data.redirectTo || '/home');
+      releasePostAuthNavigation();
     } catch {
+      if (!claimPostAuthNavigation('notification-consent-fallback')) return;
       navigate('/home');
+      releasePostAuthNavigation();
     }
   };
   const isRTL = language === 'he' || language === 'ar';

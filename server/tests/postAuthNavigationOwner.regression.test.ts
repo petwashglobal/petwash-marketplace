@@ -108,3 +108,46 @@ describe('§1.10 §F3 — ProviderOnboarding blocked-role bounce defers', () => 
     expect(PO).toMatch(/claimPostAuthNavigation\('provider-onboarding-blocked-role-fallback'\)/);
   });
 });
+
+describe('§1.10 §F3 — ChooseMode defers on all three navigate branches', () => {
+  const CM = R('client/src/pages/ChooseMode.tsx');
+  it('imports the token helpers', () => {
+    expect(CM).toMatch(/from '@\/lib\/postAuthNavigationOwner'/);
+  });
+  it('claims on customer-fallback, provider-deeplink, customer-deeplink', () => {
+    expect(CM).toMatch(/claimPostAuthNavigation\('choose-mode-customer-fallback'\)/);
+    expect(CM).toMatch(/claimPostAuthNavigation\('choose-mode-provider-deeplink'\)/);
+    expect(CM).toMatch(/claimPostAuthNavigation\('choose-mode-customer-deeplink'\)/);
+  });
+});
+
+describe('§1.10 §F3 — NotificationConsent defers on all three navigate branches', () => {
+  const NC = R('client/src/pages/NotificationConsent.tsx');
+  it('imports the token helpers', () => {
+    expect(NC).toMatch(/from '@\/lib\/postAuthNavigationOwner'/);
+  });
+  it('claims on provider, post-login, fallback', () => {
+    expect(NC).toMatch(/claimPostAuthNavigation\('notification-consent-provider'\)/);
+    expect(NC).toMatch(/claimPostAuthNavigation\('notification-consent-post-login'\)/);
+    expect(NC).toMatch(/claimPostAuthNavigation\('notification-consent-fallback'\)/);
+  });
+});
+
+describe('§1.10 §F3 — AccountActivation poll transition defers', () => {
+  const AA = R('client/src/pages/AccountActivation.tsx');
+  it('claims before setLocation("/dashboard")', () => {
+    expect(AA).toMatch(/claimPostAuthNavigation\('account-activation-transition'\)/);
+  });
+});
+
+describe('§1.10 §F3 — AdminLoginV2 defers on all three navigate branches', () => {
+  const AL = R('client/src/pages/admin/AdminLoginV2.tsx');
+  it('imports the token helpers', () => {
+    expect(AL).toMatch(/from "@\/lib\/postAuthNavigationOwner"/);
+  });
+  it('claims on the redirect-return, passkey, and popup branches', () => {
+    expect(AL).toMatch(/claimPostAuthNavigation\('admin-login-v2-redirect'\)/);
+    expect(AL).toMatch(/claimPostAuthNavigation\('admin-login-v2-passkey'\)/);
+    expect(AL).toMatch(/claimPostAuthNavigation\('admin-login-v2-popup'\)/);
+  });
+});

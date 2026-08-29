@@ -36,6 +36,7 @@ import { auth } from '@/lib/firebase';
 import { useLanguage } from '@/lib/languageStore';
 import { useUiMode } from '@/lib/uiMode';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
+import { claimPostAuthNavigation, releasePostAuthNavigation } from '@/lib/postAuthNavigationOwner';
 import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
 import {
@@ -97,7 +98,13 @@ export default function ChooseMode() {
         setProviderServices(Array.isArray(caps?.provider?.services) ? caps.provider.services : []);
         // NO provider capability → nothing to pick. Every human has Pet
         // Parent — send them straight there.
-        if (!providerActive) { navigate(CUSTOMER_FALLBACK); return; }
+        // CEO §1.10 §F3 — defer to SignUpLuxury.routeNow() if already owning.
+        if (!providerActive) {
+          if (!claimPostAuthNavigation('choose-mode-customer-fallback')) return;
+          navigate(CUSTOMER_FALLBACK);
+          releasePostAuthNavigation();
+          return;
+        }
 
         // DEEP LINK OVERRIDE (CEO 2026-08-26 §41): if the caller
         // landed on /mode with a returnTo=... query pointing at a
@@ -109,13 +116,17 @@ export default function ChooseMode() {
         const returnTo = readReturnToFromLocation();
         const implied = workspaceFromPath(returnTo);
         if (implied === 'provider' && providerActive) {
+          if (!claimPostAuthNavigation('choose-mode-provider-deeplink')) return;
           setUiMode('provider');
           navigate(returnTo || PROVIDER_FALLBACK);
+          releasePostAuthNavigation();
           return;
         }
         if (implied === 'petParent') {
+          if (!claimPostAuthNavigation('choose-mode-customer-deeplink')) return;
           setUiMode('customer');
           navigate(returnTo || CUSTOMER_FALLBACK);
+          releasePostAuthNavigation();
           return;
         }
       } catch (err: any) {

@@ -245,7 +245,15 @@ export default function AccountActivation() {
         title: t.activated,
         description: t.activatedDesc,
       });
-      setLocation("/dashboard");
+      // CEO §1.10 §F3 — defer to SignUpLuxury.routeNow() if it's
+      // still driving the post-auth window.
+      (async () => {
+        const { claimPostAuthNavigation, releasePostAuthNavigation } =
+          await import('@/lib/postAuthNavigationOwner');
+        if (!claimPostAuthNavigation('account-activation-transition')) return;
+        setLocation("/dashboard");
+        releasePostAuthNavigation();
+      })();
     }
     // t is derived from lang which is stable per render; safe to omit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
