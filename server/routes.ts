@@ -18172,7 +18172,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const { adminAuth } = await import('./lib/firebase-admin');
       const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
-      
+      const { recordDeprecationHit } = await import('./lib/deprecationTelemetry');
+      recordDeprecationHit(req, '/api/auth/2fa/send', { uid });
+
       const { method, phone, email, firstName, language, deviceId, meta } = req.body;
       if (!method || !['sms', 'email', 'both'].includes(method)) {
         return res.status(400).json({ success: false, error: 'Method must be sms, email, or both' });
@@ -18205,6 +18207,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const { adminAuth } = await import('./lib/firebase-admin');
       const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
+      const { recordDeprecationHit } = await import('./lib/deprecationTelemetry');
+      recordDeprecationHit(req, '/api/auth/2fa/request', { uid });
 
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
       const { method, phone, email, firstName, locale, deviceId, meta } = req.body;
@@ -18243,6 +18247,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const { adminAuth } = await import('./lib/firebase-admin');
       const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
+      const { recordDeprecationHit } = await import('./lib/deprecationTelemetry');
+      recordDeprecationHit(req, '/api/auth/2fa/verify', { uid });
 
       const { code, channel, phone, language, sessionId, trustThisDevice, deviceId } = req.body;
 
@@ -18291,6 +18297,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const { adminAuth } = await import('./lib/firebase-admin');
       const decoded = await adminAuth.verifyIdToken(token, true);
       const uid = decoded.uid;
+      const { recordDeprecationHit } = await import('./lib/deprecationTelemetry');
+      recordDeprecationHit(req, '/api/auth/2fa/status', { uid });
 
       const sessionId = req.query.sessionId as string;
       const { twoFactorAuth } = await import('./services/TwoFactorAuthService');
