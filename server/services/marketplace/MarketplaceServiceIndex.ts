@@ -121,6 +121,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'ProfileCompletenessService.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'profileState / missingFields / requiredActions from users snapshot' },
   { path: 'ContactChangeStateMachine.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'Change-mobile / change-email OTP handshake state machine' },
   { path: 'UpdateProfileService.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'Atomic canonical write + Firebase-claim fan-out + split-brain guard' },
+  { path: 'PrestigeMirrorRefreshService.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'Refresh privilege_members MIRROR on canonical identity change' },
 ];
 
 /** Small guards used by regression pins. */
