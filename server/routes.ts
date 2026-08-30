@@ -12978,10 +12978,38 @@ self.addEventListener('notificationclick', (event) => {
   //
   // First-pass loaders return null (safe 404); read-only endpoint is
   // safe to expose incrementally.
+  // Prestige loader — Vertical 1 (CEO §36). Real DB read against the
+  // users row + Firebase custom claims. This is a READ projection; the
+  // mutation surface (POST execute) remains gated by feature flag +
+  // durable store until a real Prestige handler is registered.
+  const loadPrestigeContext = async (actorUid: string) => {
+    try {
+      const { storage: pgStorage } = await import('./storage');
+      const user = await pgStorage.getUser(actorUid).catch(() => null);
+      if (!user) return null;
+      // Firebase custom claims are the same source whoami uses (§2835).
+      const { auth: fbAdminAuth } = await import('./lib/firebase-admin');
+      const claims = (await fbAdminAuth.getUser(actorUid).catch(() => null))?.customClaims ?? {};
+      const prestigeActive =
+        (user as any).isClubMember === true ||
+        claims.program === 'prestige' ||
+        claims.loyaltyMember === true;
+      return {
+        status: prestigeActive ? ('ACTIVE' as const) : ('NONE' as const),
+        hasVerifiedEmail: !!(user as any).emailVerified,
+        hasVerifiedMobile: !!(user as any).phoneVerified,
+      };
+    } catch {
+      // Loader failures return null → the endpoint responds 404 rather
+      // than 500. UI treats it as "no actions available right now".
+      return null;
+    }
+  };
+
   const availableActionsRouter = buildAvailableActionsRouter({
     async loadBookingContext() { return null; },
     async loadMeetGreetContext() { return null; },
-    async loadPrestigeContext() { return null; },
+    loadPrestigeContext,
     async loadProviderApplicationContext() { return null; },
   });
   app.use('/api/actions', validateFirebaseToken, apiLimiter, availableActionsRouter);
@@ -12995,6 +13023,26 @@ self.addEventListener('notificationclick', (event) => {
     process.env.ACTION_BRAIN_MUTATIONS_ENABLED === '1' && durableStoreAvailable;
   const actionBrainHandlers = new Map<string, ActionHandler>();
   const actionBrainImpactResolvers = new Map<string, ImpactResolver>();
+
+  // Vertical 1 — PRESTIGE_JOIN impact resolver. Server-side, per §CEO §1.
+  // Prestige enrollment is an entitlement upgrade with 100 welcome
+  // points on a fresh join and no direct card charge here (the wallet
+  // top-up flow is a separate action). Impact: affectsOtherParty:false,
+  // moneyCents:0, legalEffect:true (membership agreement acceptance).
+  actionBrainImpactResolvers.set('PRESTIGE_JOIN', async () => ({
+    moneyCents: 0,
+    affectsOtherParty: false,
+    legalEffect: true,
+    privacyEffect: false,
+    safetyEffect: false,
+  }));
+  // Handler intentionally NOT registered (CEO §7): the mutation surface
+  // stays 501 until the existing /api/prestige/join authority (which is
+  // already correct — reads uid from firebaseUser, atomic loyalty +
+  // privilege_members + Firestore write) is wrapped as a callable
+  // service function AND a durable idempotency adapter is registered.
+  // Client can call GET /api/actions/prestige/actions today; POST
+  // execute remains 501 (no handler) OR 503 (mutations disabled).
   const actionExecutionRouter = buildActionExecutionRouter({
     store: actionBrainStore,
     handlers: actionBrainHandlers,

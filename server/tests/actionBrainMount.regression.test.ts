@@ -65,14 +65,18 @@ describe('CEO §2 — auth context is server-derived from Firebase token', () =>
   });
 });
 
-describe('CEO §6 — READ endpoint stays safe with stubbed loaders', () => {
-  it('first-pass loaders all return null — no DB calls at boot', () => {
+describe('CEO §6, §36 — READ endpoint safety + Vertical 1 Prestige loader wired', () => {
+  it('booking / meet-greet / provider-application loaders return null; Prestige is REAL', () => {
+    // Vertical 1 landed: loadPrestigeContext reads the real user row +
+    // Firebase claims. The other three loaders remain stubbed until
+    // their verticals land.
     const idx = SRC.indexOf('buildAvailableActionsRouter({');
     const end = SRC.indexOf('});', idx);
     const body = SRC.slice(idx, end);
+    // Three stubbed loaders — one for each entity that has not shipped.
     const nullReturns = body.match(/return null;/g) ?? [];
-    expect(nullReturns.length).toBeGreaterThanOrEqual(4);
-    expect(body).not.toMatch(/\bdb\./);
-    expect(body).not.toMatch(/drizzle/);
+    expect(nullReturns.length).toBeGreaterThanOrEqual(3);
+    // The Prestige loader is passed by reference (defined above the block).
+    expect(body).toMatch(/loadPrestigeContext,?/);
   });
 });
