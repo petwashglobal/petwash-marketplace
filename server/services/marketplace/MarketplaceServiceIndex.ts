@@ -96,6 +96,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'PolicyStatusService.ts', kind: 'EVALUATOR', programCode: 'DOCTRINE_21_22', summary: 'BusinessDecisionRegistry status by domain' },
   { path: 'StartJobPreflightService.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_24', summary: 'Start-job preconditions per-service' },
   { path: 'OfflineDraftGuard.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_48', summary: 'Offline / bad-network action verdict' },
+  { path: 'HouseholdCompositionService.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_5', summary: 'Household composition + equivalence' },
 ];
 
 /** Small guards used by regression pins. */
