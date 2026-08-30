@@ -52,6 +52,10 @@ import {
   verifyWarningToken,
   buildAllowNoticePayload,
 } from '../services/marketplace/moderationDecisions';
+import {
+  classifyAttachmentUrl,
+  sanitiseAttachmentName,
+} from '../services/marketplace/attachmentPolicy';
 
 const router = Router();
 
@@ -107,6 +111,7 @@ const sendSchema = z.object({
     sizeBytes: z.number().int().nonnegative().max(50_000_000),
     name: z.string().max(200).optional(),
   })).max(4).optional(),
+  moderationDecisionId: z.string().max(4096).optional(),
 });
 
 // POST /api/threads/:threadId/send
@@ -129,6 +134,30 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
   }
   const trimmedBody = parsed.data.body.trim().slice(0, 4000);
   if (!trimmedBody) return res.status(400).json({ error: 'empty_body' });
+
+  // CEO DEEP-LOGIC §19 — attachment gate. Any attachment URL must
+  // resolve to a PetWash-owned origin; filenames are sanitised of
+  // phone-number-shaped runs and @handles so a "call me: 050-...png"
+  // file cannot smuggle contact info past the text moderator. Server
+  // NEVER dereferences attacker URLs — rejection is by URL shape.
+  const rawAttachments = parsed.data.attachments ?? [];
+  const rejected: string[] = [];
+  const gatedAttachments: typeof rawAttachments = [];
+  for (const att of rawAttachments) {
+    const verdict = classifyAttachmentUrl(att.url);
+    if (verdict !== 'ok') {
+      rejected.push(verdict);
+      continue;
+    }
+    gatedAttachments.push({ ...att, name: sanitiseAttachmentName(att.name) });
+  }
+  if (rejected.length > 0) {
+    return res.status(400).json({
+      error: 'attachment_rejected',
+      reasonCode: 'ATTACHMENT_NOT_PETWASH_OWNED',
+      rejectedCount: rejected.length,
+    });
+  }
 
   // CEO Integrity §13, §14, §15, §23, §24 — MessagePolicyEngine BEFORE
   // insert. Server is authority; the client cannot bypass this.
@@ -264,7 +293,7 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
         senderUid: uid,
         senderRole: 'user',
         body: trimmedBody,
-        attachments: parsed.data.attachments ?? [],
+        attachments: gatedAttachments,
       })
       .returning();
     await tx.update(chatThreads).set({
