@@ -42,6 +42,7 @@ import {
   evaluateMessage,
   CURRENT_POLICY_VERSION,
   type ThreadType as PolicyThreadType,
+  normalizePolicyThreadType,
 } from '@shared/marketplace/policyEngine';
 import { integritySignalFor } from '@shared/marketplace/moderationAudit';
 import { recordModerationDecision } from '../services/marketplace/moderationEvidence';
@@ -141,10 +142,13 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
     senderRole === 'BOOKER' ? (t.providerUserId ? 'PROVIDER' : 'STAFF')
       : senderRole === 'PROVIDER' ? 'BOOKER'
       : 'BOOKER';
-  // chat_threads carries a threadType slug that already matches the
-  // policy engine's ThreadType — pass it through with a fallback.
-  const policyThreadType: PolicyThreadType =
-    (t.threadType as PolicyThreadType) ?? 'SUPPORT';
+  // CEO DEEP-LOGIC §21 — runtime normalizer. The prior `as`-cast was
+  // a compile-time hint that let INCIDENT / FRANCHISE (and any future
+  // schema string) reach evaluateMessage as an unknown ThreadType.
+  // normalizePolicyThreadType collapses those to the closed policy
+  // vocabulary explicitly (INCIDENT → SUPPORT, FRANCHISE → ADMIN,
+  // anything else → SUPPORT).
+  const policyThreadType: PolicyThreadType = normalizePolicyThreadType(t.threadType);
   const policyResult = evaluateMessage({
     text: trimmedBody,
     threadType: policyThreadType,

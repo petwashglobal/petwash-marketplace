@@ -52,10 +52,32 @@ function displayNameFor(u: { firstName: string | null; lastName: string | null }
   return lastInitial ? `${first} ${lastInitial}.` : first;
 }
 
+// CEO DEEP-LOGIC §15 — closed reasons that are safe to display to
+// the customer. Anything else (internal compliance text, admin
+// notes, undocumented values) collapses to a generic "Closed" — the
+// raw column value NEVER reaches the UI. The schema comment lists
+// completed/cancelled/refunded/disputed/expired but a compliance
+// closure may write free text; we cannot let that surface.
+const CUSTOMER_SAFE_CLOSED_REASONS: Record<string, string> = {
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  refunded: 'Refunded',
+  expired: 'Expired',
+};
+
 function statusBadgeFor(chatStatus: string, closedReason: string | null): string | undefined {
   if (chatStatus === 'active') return undefined;
-  if (chatStatus === 'read_only') return closedReason ? `Closed · ${closedReason}` : 'Closed';
   if (chatStatus === 'archived') return 'Archived';
+  if (chatStatus === 'read_only') {
+    if (!closedReason) return 'Closed';
+    const key = closedReason.toLowerCase();
+    // "disputed" is documented but sensitive — surface it as a
+    // neutral "Under review" so a customer-facing card doesn't broadcast
+    // an open dispute state.
+    if (key === 'disputed') return 'Under review';
+    const safe = CUSTOMER_SAFE_CLOSED_REASONS[key];
+    return safe ? `Closed · ${safe}` : 'Closed';
+  }
   return undefined;
 }
 

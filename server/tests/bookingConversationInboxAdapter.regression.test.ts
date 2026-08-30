@@ -82,6 +82,25 @@ describe('CEO §10.2, §80 — masked identity + fallback labels', () => {
   });
 });
 
+describe('CEO DEEP-LOGIC §15 — customer-safe closedReason mapping', () => {
+  it('closed reasons come from a closed allowlist, never raw column text', () => {
+    // The safe-map exists.
+    expect(SRC).toMatch(/const CUSTOMER_SAFE_CLOSED_REASONS: Record<string, string> = \{/);
+    // The badge helper looks up the value against the safe-map — a
+    // raw column value that is not in the allowlist collapses to a
+    // generic "Closed" so the UI never surfaces internal / compliance
+    // text.
+    expect(SRC).toMatch(/const safe = CUSTOMER_SAFE_CLOSED_REASONS\[key\]/);
+    expect(SRC).toMatch(/return safe \? `Closed · \$\{safe\}` : 'Closed'/);
+  });
+
+  it("'disputed' is surfaced as a neutral 'Under review', never the raw word", () => {
+    // A dispute is sensitive; a customer inbox card must not broadcast
+    // it verbatim.
+    expect(SRC).toMatch(/if \(key === 'disputed'\) return 'Under review'/);
+  });
+});
+
 describe('CEO §92 — chat status is surfaced, not hidden', () => {
   it('closed / archived threads still appear; status is surfaced via statusBadge', () => {
     // A "read_only" or "archived" conversation is history — the inbox

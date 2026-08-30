@@ -253,6 +253,41 @@ const SEVERITY: Record<PolicyOutcome, number> = {
 };
 
 /**
+ * CEO DEEP-LOGIC §21 — runtime normalizer for the policy thread type.
+ * The prior wire cast a DB string with `as PolicyThreadType`, which is
+ * a compile-time hint that does nothing at runtime. Values the schema
+ * carries but the policy vocabulary does NOT (INCIDENT, FRANCHISE)
+ * would silently reach evaluateMessage() as unknown strings and the
+ * outcome would depend on rule identity rather than a validated
+ * threadType.
+ *
+ * This normalizer is a CLOSED switch. Anything unknown collapses to
+ * SUPPORT — the most conservative policy context (§22 support/incident
+ * moderation is stricter about generic phone numbers and looser about
+ * vet/police contacts, but never LOOSER on off-platform payment).
+ */
+const KNOWN_POLICY_THREAD_TYPES = new Set<ThreadType>([
+  'BOOKING',
+  'MEET_AND_GREET',
+  'SUPPORT',
+  'K9000',
+  'PAW_FINDER',
+  'SHOP_ORDER',
+  'GIFT',
+  'PROVIDER_APPLICATION',
+  'ADMIN',
+]);
+export function normalizePolicyThreadType(raw: unknown): ThreadType {
+  if (typeof raw !== 'string') return 'SUPPORT';
+  if (KNOWN_POLICY_THREAD_TYPES.has(raw as ThreadType)) return raw as ThreadType;
+  // INCIDENT collapses to SUPPORT; FRANCHISE collapses to ADMIN. Every
+  // other unknown string → SUPPORT (§22 conservative default).
+  if (raw === 'INCIDENT') return 'SUPPORT';
+  if (raw === 'FRANCHISE') return 'ADMIN';
+  return 'SUPPORT';
+}
+
+/**
  * Evaluate a message. Pure — same input, same output. Callers persist the
  * result via a MessageModerationAudit row and decide UX.
  */
