@@ -25,14 +25,20 @@ describe('CEO §92 — read-model, not a new storage universe', () => {
     expect(SRC).not.toMatch(/CREATE TABLE/i);
   });
 
-  it('resolves counterparty display names through the users table by id, never by email', () => {
+  it('resolves counterparty display names in ONE query — never N+1 (§12)', () => {
     expect(SRC).toMatch(/from\(users\)/);
-    expect(SRC).toMatch(/eq\(users\.id, uid\)/);
+    // CEO DEEP-LOGIC §12: single WHERE id IN (...) query. The old
+    // Promise.all over per-uid selects is banned.
+    expect(SRC).toMatch(/inArray\(users\.id, list\)/);
+    const fetchIdx = SRC.indexOf('async function fetchOtherDisplayNames');
+    const end = SRC.indexOf('\n}\n', fetchIdx);
+    const body = SRC.slice(fetchIdx, end);
+    expect(body).not.toMatch(/Promise\.all\(/);
     // The batched name lookup MUST NOT pull an email or phone column.
-    const selectIdx = SRC.indexOf('.select({ id: users.id,');
+    const selectIdx = body.indexOf('.select({ id: users.id,');
     expect(selectIdx).toBeGreaterThan(0);
-    const end = SRC.indexOf('})', selectIdx);
-    const projection = SRC.slice(selectIdx, end);
+    const selEnd = body.indexOf('})', selectIdx);
+    const projection = body.slice(selectIdx, selEnd);
     expect(projection).not.toMatch(/email|phone/i);
   });
 });

@@ -22,7 +22,7 @@
  *     giftId / caseId / applicationId / stationId — first non-null wins
  *     in that priority.
  */
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../../db';
 import { chatThreads } from '@shared/schema-chat';
 import { users } from '@shared/schema';
@@ -129,29 +129,24 @@ async function fetchRowsForWorkspace(uid: string, workspace: InboxWorkspace): Pr
 }
 
 async function fetchOtherDisplayNames(rows: Row[], workspace: InboxWorkspace): Promise<Map<string, { firstName: string | null; lastName: string | null }>> {
-  // Resolve the OPPOSITE participant per row. Projection is id + first
-  // name + last name only — never email or phone (§10.2).
+  // CEO DEEP-LOGIC §12 — ONE query with `WHERE id IN (...)`. Previous
+  // implementation ran Promise.all over per-uid selects (N round-trips
+  // for N correspondents). Projection stays (id, firstName, lastName)
+  // only — no email or phone (§10.2).
   const otherUids = new Set<string>();
   for (const r of rows) {
     const other = workspace === 'PET_PARENT' ? r.providerUserId : r.customerUserId;
     if (other) otherUids.add(other);
   }
   if (otherUids.size === 0) return new Map();
-
   const list = Array.from(otherUids);
-  const results = await Promise.all(
-    list.map((uid) =>
-      db
-        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
-        .from(users)
-        .where(eq(users.id, uid))
-        .limit(1),
-    ),
-  );
+  const found = await db
+    .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+    .from(users)
+    .where(inArray(users.id, list));
   const map = new Map<string, { firstName: string | null; lastName: string | null }>();
-  for (let i = 0; i < list.length; i += 1) {
-    const row = results[i]?.[0];
-    if (row) map.set(list[i], { firstName: row.firstName, lastName: row.lastName });
+  for (const row of found) {
+    map.set(row.id, { firstName: row.firstName, lastName: row.lastName });
   }
   return map;
 }

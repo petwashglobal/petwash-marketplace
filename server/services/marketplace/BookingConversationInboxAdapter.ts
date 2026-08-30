@@ -22,7 +22,7 @@
  *     from the users table. It is NEVER the raw booking counterparty
  *     email or phone.
  */
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../../db';
 import { bookingConversations, users } from '@shared/schema';
 import type {
@@ -89,28 +89,25 @@ async function fetchRowsForWorkspace(uid: string, workspace: InboxWorkspace): Pr
 }
 
 async function fetchOtherDisplayNames(rows: Row[], workspace: InboxWorkspace): Promise<Map<string, { firstName: string | null; lastName: string | null }>> {
-  // Batch-resolve the counterparty display names in ONE users query.
-  // Never fetch email / phone — the inbox card only needs the masked name.
+  // CEO DEEP-LOGIC §12 — ONE query with `WHERE id IN (...)`. The prior
+  // implementation ran Promise.all over per-uid selects, which is N
+  // round-trips for N unique correspondents (up to a full page of the
+  // Inbox). Never fetch email / phone — the inbox card only needs the
+  // masked name, so the projection stays (id, firstName, lastName)
+  // only per §10.2.
   const otherUids = new Set<string>();
   for (const r of rows) {
     otherUids.add(workspace === 'PET_PARENT' ? r.providerId : r.customerId);
   }
   if (otherUids.size === 0) return new Map();
-
   const list = Array.from(otherUids);
-  const results = await Promise.all(
-    list.map((uid) =>
-      db
-        .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
-        .from(users)
-        .where(eq(users.id, uid))
-        .limit(1),
-    ),
-  );
+  const found = await db
+    .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+    .from(users)
+    .where(inArray(users.id, list));
   const map = new Map<string, { firstName: string | null; lastName: string | null }>();
-  for (let i = 0; i < list.length; i += 1) {
-    const row = results[i]?.[0];
-    if (row) map.set(list[i], { firstName: row.firstName, lastName: row.lastName });
+  for (const row of found) {
+    map.set(row.id, { firstName: row.firstName, lastName: row.lastName });
   }
   return map;
 }

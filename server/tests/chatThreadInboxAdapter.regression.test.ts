@@ -31,6 +31,16 @@ describe('CEO §92 — read-model over chat_threads (no new universe)', () => {
     const projection = SRC.slice(idx, end);
     expect(projection).not.toMatch(/email|phone/i);
   });
+
+  it('resolves display names in ONE query — never N+1 (§12)', () => {
+    // CEO DEEP-LOGIC §12: single WHERE id IN (...) query. Promise.all
+    // over per-uid selects is banned.
+    expect(SRC).toMatch(/inArray\(users\.id, list\)/);
+    const fetchIdx = SRC.indexOf('async function fetchOtherDisplayNames');
+    const end = SRC.indexOf('\n}\n', fetchIdx);
+    const body = SRC.slice(fetchIdx, end);
+    expect(body).not.toMatch(/Promise\.all\(/);
+  });
 });
 
 describe('CEO §37 — per-workspace unread + WHERE split (no cross-role leak)', () => {
