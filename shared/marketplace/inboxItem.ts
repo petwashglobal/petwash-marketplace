@@ -46,11 +46,48 @@ export interface InboxAction {
   destructive?: boolean;
 }
 
+/**
+ * CEO DEEP-LOGIC §22 — a card is not always a conversation. The
+ * doctrine's Inbox mixes CONVERSATIONs, ATTENTION nudges, PROVIDER
+ * REQUESTs, BOOKING/ORDER/PAYMENT events, DOCUMENTs, SUPPORT_CASEs,
+ * and EARNINGS events. `itemKind` names WHAT the card is; `domain`
+ * names the business area. ThreadType is only meaningful when the
+ * card is a CONVERSATION. Both fields are OPTIONAL for backward
+ * compatibility with existing InboxItem consumers.
+ */
+export type InboxItemKind =
+  | 'CONVERSATION'
+  | 'ATTENTION'
+  | 'PROVIDER_REQUEST'
+  | 'BOOKING_EVENT'
+  | 'ORDER_EVENT'
+  | 'PAYMENT_EVENT'
+  | 'DOCUMENT'
+  | 'SUPPORT_CASE'
+  | 'EARNINGS_EVENT';
+
+export type InboxDomain =
+  | 'BOOKING'
+  | 'PET'
+  | 'PROVIDER'
+  | 'PRESTIGE'
+  | 'SHOP'
+  | 'K9000'
+  | 'EGIFT'
+  | 'WALLET'
+  | 'PAYOUT'
+  | 'SUPPORT'
+  | 'PAW_FINDER';
+
 export interface InboxItem {
   threadId: string;
   threadType: ThreadType;
   entityId: string;                     // bookingId / orderId / giftId / caseId
   workspaceContext: InboxWorkspace;
+
+  // CEO DEEP-LOGIC §22 — optional richer identity.
+  itemKind?: InboxItemKind;
+  domain?: InboxDomain;
 
   title: string;
   subtitle: string;
@@ -112,6 +149,44 @@ export function categoryForProvider(threadType: ThreadType): InboxCategory {
  * Filter an InboxItem[] to a category. `ALL` returns everything for
  * that workspace unchanged; specific categories filter down.
  */
+/**
+ * CEO DEEP-LOGIC §23-§27 — richer category mapping when itemKind /
+ * domain are present. Falls back to the legacy ThreadType mapping
+ * when a caller hasn't set them yet.
+ *
+ *   MESSAGES              → itemKind === 'CONVERSATION'.
+ *   BOOKINGS              → domain === 'BOOKING' (any kind).
+ *   ORDERS                → domain === 'SHOP' | 'EGIFT'.
+ *   PAYMENTS_AND_DOCUMENTS → itemKind in {PAYMENT_EVENT, DOCUMENT}.
+ *   SUPPORT               → itemKind === 'SUPPORT_CASE' or
+ *                           domain === 'SUPPORT'.
+ *   REQUESTS              → itemKind === 'PROVIDER_REQUEST'.
+ *   ACTIVE_JOBS           → domain === 'BOOKING' AND
+ *                           itemKind in {CONVERSATION, BOOKING_EVENT}
+ *                           (NOT PROVIDER_REQUEST).
+ *   EARNINGS              → itemKind === 'EARNINGS_EVENT' or
+ *                           domain === 'PAYOUT'.
+ *   COMPLIANCE            → domain === 'PROVIDER' (provider
+ *                           application / KYC).
+ */
+function categoryMatchesRich(item: InboxItem, category: InboxCategory): boolean {
+  const kind = item.itemKind;
+  const dom = item.domain;
+  switch (category) {
+    case 'MESSAGES':               return kind === 'CONVERSATION';
+    case 'BOOKINGS':               return dom === 'BOOKING';
+    case 'ORDERS':                 return dom === 'SHOP' || dom === 'EGIFT';
+    case 'PAYMENTS_AND_DOCUMENTS': return kind === 'PAYMENT_EVENT' || kind === 'DOCUMENT';
+    case 'SUPPORT':                return kind === 'SUPPORT_CASE' || dom === 'SUPPORT';
+    case 'REQUESTS':               return kind === 'PROVIDER_REQUEST';
+    case 'ACTIVE_JOBS':            return dom === 'BOOKING' && kind !== 'PROVIDER_REQUEST';
+    case 'EARNINGS':               return kind === 'EARNINGS_EVENT' || dom === 'PAYOUT';
+    case 'COMPLIANCE':             return dom === 'PROVIDER';
+    case 'ALL':                    return true;
+    default:                       return true;
+  }
+}
+
 export function filterByCategory(
   items: InboxItem[],
   workspace: InboxWorkspace,
@@ -120,6 +195,10 @@ export function filterByCategory(
   const scoped = items.filter((i) => i.workspaceContext === workspace);
   if (category === 'ALL') return scoped;
   return scoped.filter((i) => {
+    // If the item carries the richer identity (itemKind / domain),
+    // use it. Otherwise fall back to the legacy ThreadType mapping so
+    // adapters that have not been migrated still filter correctly.
+    if (i.itemKind || i.domain) return categoryMatchesRich(i, category);
     const c =
       workspace === 'PET_PARENT'
         ? categoryForPetParent(i.threadType)

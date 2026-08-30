@@ -29,6 +29,8 @@ import { users } from '@shared/schema';
 import type {
   InboxItem,
   InboxWorkspace,
+  InboxDomain,
+  InboxItemKind,
 } from '@shared/marketplace/inboxItem';
 import type { ThreadType } from '@shared/marketplace/policyEngine';
 
@@ -71,6 +73,25 @@ function mapThreadType(t: string): ThreadType {
       return 'ADMIN';
     default:
       return 'SUPPORT';
+  }
+}
+
+function itemKindAndDomainFor(t: ThreadType): [InboxItemKind, InboxDomain] {
+  // Every chat_threads row is a CONVERSATION; the domain follows the
+  // mapped policy ThreadType. K9000 / PAW_FINDER / GIFT / SHOP_ORDER
+  // get their own domain so category filtering does not lump them
+  // together under SUPPORT.
+  switch (t) {
+    case 'BOOKING':
+    case 'MEET_AND_GREET':       return ['CONVERSATION', 'BOOKING'];
+    case 'K9000':                return ['CONVERSATION', 'K9000'];
+    case 'PAW_FINDER':           return ['CONVERSATION', 'PAW_FINDER'];
+    case 'SHOP_ORDER':           return ['CONVERSATION', 'SHOP'];
+    case 'GIFT':                 return ['CONVERSATION', 'EGIFT'];
+    case 'PROVIDER_APPLICATION': return ['CONVERSATION', 'PROVIDER'];
+    case 'SUPPORT':
+    case 'ADMIN':
+    default:                     return ['CONVERSATION', 'SUPPORT'];
   }
 }
 
@@ -168,12 +189,17 @@ export async function listChatThreadInboxItems(
     const otherName = displayNameFor(otherRow, otherFallback);
     const lastAt = r.lastMessageAt ? new Date(r.lastMessageAt).toISOString() : new Date(0).toISOString();
     const mappedType = mapThreadType(r.threadType);
+    const [kind, dom] = itemKindAndDomainFor(mappedType);
 
     return {
       threadId: r.threadId,
       threadType: mappedType,
       entityId: pickEntityId(r),
       workspaceContext: workspace,
+      // CEO DEEP-LOGIC §22 — chat_threads carries conversations for
+      // many domains; the map below assigns the correct (kind, domain).
+      itemKind: kind,
+      domain: dom,
       title: otherName,
       subtitle: mappedType.replace(/_/g, ' ').toLowerCase(),
       otherParticipant: {

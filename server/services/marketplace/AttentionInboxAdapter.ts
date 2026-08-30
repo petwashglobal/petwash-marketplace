@@ -28,6 +28,7 @@ import { composeAttentionFeed } from '../attentionFeed';
 import type {
   InboxItem,
   InboxWorkspace,
+  InboxDomain,
 } from '@shared/marketplace/inboxItem';
 import type { ThreadType } from '@shared/marketplace/policyEngine';
 import type {
@@ -39,6 +40,24 @@ import type {
 // Map an AttentionDomain to the inbox ThreadType so the "Bookings",
 // "Orders", "Compliance", etc. tabs pick the item up correctly.
 // Anything unknown falls back to SUPPORT — never raw DB text.
+function inboxDomainForAttention(d: AttentionDomain): InboxDomain {
+  switch (d) {
+    case 'booking':
+    case 'walk':
+    case 'sitting':
+    case 'academy':      return 'BOOKING';
+    case 'shop':         return 'SHOP';
+    case 'egift':        return 'EGIFT';
+    case 'wallet':       return 'WALLET';
+    case 'prestige':     return 'PRESTIGE';
+    case 'paw_finder':   return 'PAW_FINDER';
+    case 'kyc':          return 'PROVIDER';
+    case 'pet_passport':
+    case 'profile':      return 'PET';
+    default:             return 'SUPPORT';
+  }
+}
+
 function threadTypeForDomain(d: AttentionDomain): ThreadType {
   switch (d) {
     case 'booking':
@@ -90,6 +109,13 @@ export async function listAttentionInboxItems(
     threadType: threadTypeForDomain(it.domain),
     entityId: it.entityId,
     workspaceContext: workspace,
+    // CEO DEEP-LOGIC §22, §28 — attention is NOT a conversation. It
+    // gets itemKind ATTENTION and its own domain. The MESSAGES filter
+    // never picks it up; the BOOKINGS / ORDERS / etc. filters pick it
+    // up by domain so a "Bruno needs review" card lands in the
+    // right tab.
+    itemKind: 'ATTENTION',
+    domain: inboxDomainForAttention(it.domain),
     title: it.title,
     subtitle: it.reason,
     lastMessage: it.reason,

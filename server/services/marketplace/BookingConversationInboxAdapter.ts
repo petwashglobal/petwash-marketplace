@@ -156,6 +156,11 @@ export async function listBookingConversationInboxItems(
       threadType: 'BOOKING',
       entityId: r.bookingId,
       workspaceContext: workspace,
+      // CEO DEEP-LOGIC §22 — a booking-chat card is a CONVERSATION
+      // in the BOOKING domain. The MESSAGES filter picks it up
+      // regardless of workspace; BOOKINGS filter also picks it up.
+      itemKind: 'CONVERSATION',
+      domain: 'BOOKING',
       title: otherName,
       subtitle: r.platform,
       otherParticipant: {
