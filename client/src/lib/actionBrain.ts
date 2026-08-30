@@ -18,7 +18,6 @@ import type {
   ActionResult,
   AvailableAction,
   IdempotencyKey,
-  ImpactSignals,
   ReasonCode,
 } from '@shared/marketplace/action';
 
@@ -69,12 +68,18 @@ export async function listAvailableActions(
 
 // ── executeAction ─────────────────────────────────────────────────────
 
+/**
+ * Client body — deliberately NARROW. Client MUST NOT send impact,
+ * reauthProven, riskLevel, or confirmationLevel — the server derives
+ * all four from its own state + Firebase auth claims (CEO 2026-08-30
+ * §1, §2). Sending them is IGNORED by the route; they are removed
+ * from this type to prevent accidental client-side claims.
+ */
 export interface ExecuteActionBody {
   entityId: string;
   previewVersion: string;
   idempotencyKey: IdempotencyKey;
-  impact?: ImpactSignals;
-  reauthProven?: boolean;
+  /** Free-form domain command payload (dates, notes, etc). No security fields. */
   command?: unknown;
 }
 

@@ -74,7 +74,11 @@ import prestigePassRoutes from "./routes/prestige-pass";
 import prestigeJoinRoutes from "./routes/prestige-join";
 import { buildAvailableActionsRouter } from "./routes/available-actions";
 import { buildActionExecutionRouter, type ActionHandler } from "./routes/action-execution";
-import { createInMemoryStore } from "@shared/marketplace/actionExecution";
+import {
+  createInMemoryTestOnlyStore,
+  type ImpactResolver,
+  type ServerAuthContext,
+} from "@shared/marketplace/actionExecution";
 import meGreetingRoutes from "./routes/me-greeting";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
@@ -12955,30 +12959,69 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/prestige', validateFirebaseToken, apiLimiter, prestigeJoinRoutes);
   logger.info('[Routes] ✅ Prestige Join coordinator registered at /api/prestige/join');
 
-  // ── CEO Action + Confirmation Brain — canonical action framework ───
-  // GET  /api/actions/:entity/:id/actions → available actions per entity
+  // ── CEO Action + Confirmation Brain (framework mount) ───────────────
+  // GET  /api/actions/:entity/:id/actions → available actions per entity.
   // POST /api/actions/:actionType/execute  → runs an action through the
   //   pipeline (idempotency + stale-preview + reauth + reason codes).
   //
-  // First-pass loaders + handlers are stubs (return null / not registered)
-  // so the endpoints reach production with a well-formed 404/501 response
-  // and callers migrate incrementally. Domain loaders + handlers land per
-  // action-type in follow-up PRs — the framework itself is stable.
-  const actionBrainStore = createInMemoryStore();
-  const actionBrainHandlers = new Map<string, ActionHandler>();
+  // SECURITY (CEO 2026-08-30 §1–§7):
+  //   • Client body NEVER supplies impact / reauthProven / riskLevel /
+  //     confirmationLevel. The route reads risk + confirmation from the
+  //     ACTION_CATALOG; impact from a per-actionType ImpactResolver;
+  //     reauth from Firebase auth_time / recentReauthAt.
+  //   • The MUTATION endpoint is disabled unless
+  //     ACTION_BRAIN_MUTATIONS_ENABLED=1. Half-real command bus is
+  //     worse than none.
+  //   • The in-memory store is TEST-ONLY. Production mutation requires
+  //     durable atomic idempotency; the mount refuses to enable
+  //     mutations without it, even if the env flag is on.
+  //
+  // First-pass loaders return null (safe 404); read-only endpoint is
+  // safe to expose incrementally.
   const availableActionsRouter = buildAvailableActionsRouter({
     async loadBookingContext() { return null; },
     async loadMeetGreetContext() { return null; },
     async loadPrestigeContext() { return null; },
     async loadProviderApplicationContext() { return null; },
   });
+  app.use('/api/actions', validateFirebaseToken, apiLimiter, availableActionsRouter);
+
+  // MUTATION router. The `isMutationEnabled` gate returns false unless
+  // BOTH: (a) ACTION_BRAIN_MUTATIONS_ENABLED=1 AND (b) a durable store
+  // is registered (in-memory is refused). Until then, requests get 503.
+  const actionBrainStore = createInMemoryTestOnlyStore();
+  const durableStoreAvailable = false; // flip when a durable adapter registers
+  const mutationsEnabled = () =>
+    process.env.ACTION_BRAIN_MUTATIONS_ENABLED === '1' && durableStoreAvailable;
+  const actionBrainHandlers = new Map<string, ActionHandler>();
+  const actionBrainImpactResolvers = new Map<string, ImpactResolver>();
   const actionExecutionRouter = buildActionExecutionRouter({
     store: actionBrainStore,
     handlers: actionBrainHandlers,
+    impactResolvers: actionBrainImpactResolvers,
+    isMutationEnabled: mutationsEnabled,
+    authContextFor: (req: any): ServerAuthContext | null => {
+      const uid = req?.firebaseUser?.uid;
+      if (!uid) return null;
+      // auth_time is the Firebase token claim (seconds since epoch); we
+      // do not currently issue a separate reauth challenge, so
+      // recentReauthAt is only set by future auth-refresh flows.
+      const authTimeSec = req?.firebaseUser?.auth_time;
+      const recentAuthAt =
+        typeof authTimeSec === 'number' ? new Date(authTimeSec * 1000).toISOString() : undefined;
+      return {
+        actorUid: uid,
+        recentAuthAt,
+        // recentReauthAt intentionally omitted — a real reauth challenge
+        // must set it. Until then, L4 actions land REAUTH_REQUIRED.
+      };
+    },
   });
-  app.use('/api/actions', validateFirebaseToken, apiLimiter, availableActionsRouter);
   app.use('/api/actions', validateFirebaseToken, apiLimiter, actionExecutionRouter);
-  logger.info('[Routes] ✅ Action Brain registered at /api/actions (framework-only; loaders + handlers land per action-type)');
+  logger.info(
+    `[Routes] ✅ Action Brain registered at /api/actions ` +
+      `(READ enabled; MUTATIONS ${mutationsEnabled() ? 'ENABLED' : 'DISABLED — awaiting durable store + handlers'})`,
+  );
 
   // Smart-greeting context — owner birthday + pets' birthdays for the homepage
   // greeting. optionalFirebaseToken: returns an empty context (not 401) when

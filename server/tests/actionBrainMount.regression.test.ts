@@ -1,9 +1,10 @@
 /**
  * server/routes.ts — Action Brain mount regression pin.
  *
- * Locks that both Action Brain routers are mounted at /api/actions
- * behind validateFirebaseToken + apiLimiter, matching the pattern
- * every other authed feature uses.
+ * Locks BOTH routers mount at /api/actions AND the CEO §1–§7 security
+ * invariants for the mutation surface. A regression that reintroduces
+ * client-supplied impact / reauth, or enables mutations without a
+ * durable store, trips these pins before it ships.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,16 +15,16 @@ const SRC = fs.readFileSync(
   'utf8',
 );
 
-describe('Action Brain mount (doctrine §41)', () => {
-  it('imports both router factories + the shared in-memory store', () => {
+describe('Action Brain mount — doctrine §41', () => {
+  it('imports both router factories + the test-only store + shared types', () => {
     expect(SRC).toMatch(/buildAvailableActionsRouter[\s\S]{0,120}from ["']\.\/routes\/available-actions["']/);
     expect(SRC).toMatch(/buildActionExecutionRouter[\s\S]{0,180}from ["']\.\/routes\/action-execution["']/);
-    expect(SRC).toMatch(/createInMemoryStore[\s\S]{0,120}from ["']@shared\/marketplace\/actionExecution["']/);
+    expect(SRC).toMatch(/createInMemoryTestOnlyStore/);
+    expect(SRC).toMatch(/ImpactResolver/);
+    expect(SRC).toMatch(/ServerAuthContext/);
   });
 
   it('mounts both routers at /api/actions behind validateFirebaseToken + apiLimiter', () => {
-    // Both routers must run through the same auth + rate-limiter chain
-    // that every other authed endpoint uses — no bypass.
     expect(SRC).toMatch(
       /app\.use\(['"]\/api\/actions['"], validateFirebaseToken, apiLimiter, availableActionsRouter\)/,
     );
@@ -32,24 +33,46 @@ describe('Action Brain mount (doctrine §41)', () => {
     );
   });
 
-  it('startup log surfaces the framework mount so ops can grep boot logs', () => {
+  it('boot log surfaces framework mount + mutation state', () => {
     expect(SRC).toMatch(/Action Brain registered at \/api\/actions/);
+    expect(SRC).toMatch(/MUTATIONS \$\{mutationsEnabled\(\) \? 'ENABLED' : 'DISABLED/);
   });
+});
 
-  it('first-pass loaders return null (stub) — do NOT reach the DB during boot', () => {
-    // The stubs return null so the endpoints reach production with a
-    // well-formed 404 while loaders land incrementally. Real loaders
-    // land per action-type; if a naive edit inlined a DB call, this
-    // pin catches it before it ships.
+describe('CEO §7 — MUTATIONS off by default (feature flag + durable-store gate)', () => {
+  it('isMutationEnabled requires BOTH env flag AND durable store availability', () => {
+    // The gate must NOT be `process.env.X === '1'` alone — that would
+    // enable mutations against the in-memory store in prod.
+    expect(SRC).toMatch(
+      /process\.env\.ACTION_BRAIN_MUTATIONS_ENABLED === '1'[\s\S]{0,120}durableStoreAvailable/,
+    );
+    expect(SRC).toMatch(/const durableStoreAvailable = false/);
+  });
+});
+
+describe('CEO §2 — auth context is server-derived from Firebase token', () => {
+  it('authContextFor reads req.firebaseUser.uid + auth_time; never touches req.body', () => {
+    const idx = SRC.indexOf('authContextFor: (req');
+    expect(idx).toBeGreaterThan(0);
+    const end = SRC.indexOf('},', idx);
+    const body = SRC.slice(idx, end);
+    expect(body).toMatch(/req\?\.firebaseUser\?\.uid/);
+    expect(body).toMatch(/auth_time/);
+    // Body never contributes to auth.
+    expect(body).not.toMatch(/req\.body/);
+    // recentReauthAt is NOT sourced from the request body.
+    expect(body).not.toMatch(/reauthProven/);
+  });
+});
+
+describe('CEO §6 — READ endpoint stays safe with stubbed loaders', () => {
+  it('first-pass loaders all return null — no DB calls at boot', () => {
     const idx = SRC.indexOf('buildAvailableActionsRouter({');
     const end = SRC.indexOf('});', idx);
     const body = SRC.slice(idx, end);
-    // Zero references to db / storage / drizzle inside the stub block.
-    expect(body).not.toMatch(/\bdb\./);
-    expect(body).not.toMatch(/\bstorage\./);
-    expect(body).not.toMatch(/drizzle/);
-    // Every loader returns null.
     const nullReturns = body.match(/return null;/g) ?? [];
     expect(nullReturns.length).toBeGreaterThanOrEqual(4);
+    expect(body).not.toMatch(/\bdb\./);
+    expect(body).not.toMatch(/drizzle/);
   });
 });

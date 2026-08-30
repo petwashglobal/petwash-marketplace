@@ -38,6 +38,18 @@ describe('client actionBrain helpers (doctrine §41, §78, §98)', () => {
     expect(SRC).toMatch(/scope:\s*['"]per-intent['"]/);
   });
 
+  it('ExecuteActionBody does NOT contain impact / reauthProven / riskLevel / confirmationLevel (CEO §1, §2)', () => {
+    // Client CANNOT declare its own security. If a refactor reintroduces
+    // any of these fields, the server security model collapses.
+    const idx = SRC.indexOf('interface ExecuteActionBody');
+    const end = SRC.indexOf('}', idx);
+    const body = SRC.slice(idx, end);
+    expect(body).not.toMatch(/impact/);
+    expect(body).not.toMatch(/reauthProven/);
+    expect(body).not.toMatch(/riskLevel/);
+    expect(body).not.toMatch(/confirmationLevel/);
+  });
+
   it('rendering aids honour the doctrine: isProcessing, isRecoverableFailure, isStale', () => {
     expect(SRC).toMatch(/export function isTerminalSuccess/);
     expect(SRC).toMatch(/export function isProcessing/);

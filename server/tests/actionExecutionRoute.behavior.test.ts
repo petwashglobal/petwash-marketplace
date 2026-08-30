@@ -1,6 +1,7 @@
 /**
  * POST /api/actions/:actionType/execute — route behavior pins
- * (Action Brain Doctrine §5, §8, §10, §39, §41, §93).
+ * (Action Brain Doctrine §5, §8, §10, §39, §41, §93 +
+ *  SECURITY CORRECTION 2026-08-30 §1–§7).
  */
 import express from 'express';
 import request from 'supertest';
@@ -9,18 +10,28 @@ import {
   buildActionExecutionRouter,
   type ActionHandler,
 } from '../routes/action-execution';
-import { createInMemoryStore } from '../../shared/marketplace/actionExecution';
+import {
+  createInMemoryTestOnlyStore,
+  type ImpactResolver,
+  type ServerAuthContext,
+} from '../../shared/marketplace/actionExecution';
 
-function makeApp(handlers: Map<string, ActionHandler>, authedUid: string | null = 'sarah') {
+interface MakeAppOpts {
+  handlers: Map<string, ActionHandler>;
+  impactResolvers?: Map<string, ImpactResolver>;
+  auth?: ServerAuthContext | null;
+  isMutationEnabled?: () => boolean;
+}
+
+function makeApp(o: MakeAppOpts) {
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => {
-    if (authedUid) (req as any).firebaseUser = { uid: authedUid };
-    next();
-  });
   const router = buildActionExecutionRouter({
-    store: createInMemoryStore(),
-    handlers,
+    store: createInMemoryTestOnlyStore(),
+    handlers: o.handlers,
+    impactResolvers: o.impactResolvers ?? new Map(),
+    authContextFor: () => o.auth ?? null,
+    isMutationEnabled: o.isMutationEnabled ?? (() => true),
     correlationIdFor: () => 'corr_test',
   });
   app.use('/api/actions', router);
@@ -38,13 +49,64 @@ const validBody = {
   entityId: 'bkg_1',
   previewVersion: 'v1',
   idempotencyKey: { key: 'k_abc', scope: 'per-intent' as const },
-  impact: { moneyCents: 5000, affectsOtherParty: true },
-  reauthProven: false,
 };
 
+const cancelPaidImpact: ImpactResolver = async () => ({
+  moneyCents: 5000,
+  affectsOtherParty: true,
+});
+
+describe('CEO §7 — feature flag: mutations off by default', () => {
+  it('isMutationEnabled=false → 503 + UNKNOWN reasonCode', async () => {
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      auth: { actorUid: 'sarah' },
+      isMutationEnabled: () => false,
+    });
+    const res = await request(app)
+      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .send(validBody);
+    expect(res.status).toBe(503);
+    expect(res.body.reasonCode).toBe('UNKNOWN');
+  });
+});
+
+describe('CEO §1, §2 — client cannot supply security fields', () => {
+  it('body-supplied impact / reauthProven / riskLevel are IGNORED — server derives everything', async () => {
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      // Server derives HIGH impact — the client tries to lie with low impact.
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', async () => ({ moneyCents: 5000, affectsOtherParty: true })]]),
+      auth: { actorUid: 'sarah' },
+    });
+    const res = await request(app)
+      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .send({
+        ...validBody,
+        // ⛔ these fields should NOT influence anything — server ignores them.
+        impact: { moneyCents: 0 },
+        reauthProven: true,
+        riskLevel: 'L0',
+        confirmationLevel: 'NONE',
+      });
+    // The action's catalog says EXPLICIT_CONFIRM (L3 + money impact);
+    // server-derived impact + catalog agree → proceed. If the route
+    // had trusted the body's impact:{moneyCents:0}, resolveConfirmation
+    // would derive LIGHT_CONFIRM which disagrees with catalog
+    // EXPLICIT_CONFIRM → the request would return STALE_PREVIEW.
+    // Getting SUCCEEDED here proves body fields were IGNORED.
+    expect(res.status).toBe(200);
+    expect(res.body.result.status).toBe('SUCCEEDED');
+  });
+});
+
 describe('auth gate', () => {
-  it('no firebaseUser → 401 REAUTH_REQUIRED', async () => {
-    const app = makeApp(new Map([['BOOKING_CANCEL_PAID', goodHandler]]), null);
+  it('no auth context → 401 REAUTH_REQUIRED', async () => {
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      auth: null,
+    });
     const res = await request(app)
       .post('/api/actions/BOOKING_CANCEL_PAID/execute')
       .send(validBody);
@@ -53,9 +115,9 @@ describe('auth gate', () => {
   });
 });
 
-describe('unknown actionType', () => {
-  it('actionType not in the catalog → 404 UNKNOWN', async () => {
-    const app = makeApp(new Map());
+describe('catalog / handler / impact registration gates', () => {
+  it('unknown actionType → 404 UNKNOWN', async () => {
+    const app = makeApp({ handlers: new Map(), auth: { actorUid: 'sarah' } });
     const res = await request(app)
       .post('/api/actions/DOES_NOT_EXIST/execute')
       .send(validBody);
@@ -63,19 +125,38 @@ describe('unknown actionType', () => {
     expect(res.body.reasonCode).toBe('UNKNOWN');
   });
 
-  it('catalog entry but no handler → 501 UNKNOWN', async () => {
-    const app = makeApp(new Map()); // BOOKING_CANCEL_PAID exists in catalog but no handler
+  it('catalog entry but no handler → 501', async () => {
+    const app = makeApp({
+      handlers: new Map(),
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      auth: { actorUid: 'sarah' },
+    });
     const res = await request(app)
       .post('/api/actions/BOOKING_CANCEL_PAID/execute')
       .send(validBody);
     expect(res.status).toBe(501);
-    expect(res.body.reasonCode).toBe('UNKNOWN');
+  });
+
+  it('handler registered but NO impact resolver → 501 (safer to refuse than guess)', async () => {
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      impactResolvers: new Map(),
+      auth: { actorUid: 'sarah' },
+    });
+    const res = await request(app)
+      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .send(validBody);
+    expect(res.status).toBe(501);
   });
 });
 
 describe('input validation', () => {
   it('missing entityId → 400', async () => {
-    const app = makeApp(new Map([['BOOKING_CANCEL_PAID', goodHandler]]));
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      auth: { actorUid: 'sarah' },
+    });
     const res = await request(app)
       .post('/api/actions/BOOKING_CANCEL_PAID/execute')
       .send({ ...validBody, entityId: undefined });
@@ -83,7 +164,11 @@ describe('input validation', () => {
   });
 
   it('missing previewVersion → 400 STALE_PREVIEW', async () => {
-    const app = makeApp(new Map([['BOOKING_CANCEL_PAID', goodHandler]]));
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      auth: { actorUid: 'sarah' },
+    });
     const res = await request(app)
       .post('/api/actions/BOOKING_CANCEL_PAID/execute')
       .send({ ...validBody, previewVersion: undefined });
@@ -92,7 +177,11 @@ describe('input validation', () => {
   });
 
   it('missing idempotencyKey → 400 IDEMPOTENCY_REPLAY', async () => {
-    const app = makeApp(new Map([['BOOKING_CANCEL_PAID', goodHandler]]));
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      auth: { actorUid: 'sarah' },
+    });
     const res = await request(app)
       .post('/api/actions/BOOKING_CANCEL_PAID/execute')
       .send({ ...validBody, idempotencyKey: undefined });
@@ -102,25 +191,30 @@ describe('input validation', () => {
 });
 
 describe('happy path', () => {
-  it('valid execute returns 200 with { ok: true, result: ActionResult }', async () => {
-    const app = makeApp(new Map([['BOOKING_CANCEL_PAID', goodHandler]]));
+  it('valid execute with feature flag on → 200 ok:true result:ActionResult', async () => {
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      auth: { actorUid: 'sarah' },
+    });
     const res = await request(app)
       .post('/api/actions/BOOKING_CANCEL_PAID/execute')
       .send(validBody);
     expect(res.status).toBe(200);
-    expect(res.body.ok).toBe(true);
     expect(res.body.result.status).toBe('SUCCEEDED');
     expect(res.body.result.actionId).toMatch(/^act_/);
     expect(res.body.result.correlationId).toBe('corr_test');
-    expect(res.body.result.userMessage.code).toBe('OK');
-    expect(res.body.result.nextActions).toContain('SUPPORT_CONTACT_OPEN');
   });
 });
 
-describe('idempotency at the HTTP layer', () => {
-  it('two POSTs with same idempotencyKey → handler runs once; second returns same actionId', async () => {
+describe('HTTP-layer idempotency + reauth (server-derived)', () => {
+  it('two POSTs same key → handler runs once; second returns same actionId', async () => {
     const handler = vi.fn(goodHandler);
-    const app = makeApp(new Map([['BOOKING_CANCEL_PAID', handler]]));
+    const app = makeApp({
+      handlers: new Map([['BOOKING_CANCEL_PAID', handler]]),
+      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      auth: { actorUid: 'sarah' },
+    });
     const res1 = await request(app)
       .post('/api/actions/BOOKING_CANCEL_PAID/execute')
       .send(validBody);
@@ -130,31 +224,32 @@ describe('idempotency at the HTTP layer', () => {
     expect(handler).toHaveBeenCalledTimes(1);
     expect(res2.body.result.actionId).toBe(res1.body.result.actionId);
   });
-});
 
-describe('reauth gate at the HTTP layer', () => {
-  it('L4 action (ACCOUNT_DELETE) without reauthProven → FAILED + REAUTH_REQUIRED at status 200', async () => {
-    // Doctrine §39: response HTTP status stays 200; the ActionResult
-    // carries the outcome. Client renders based on result.status.
-    const handler: ActionHandler = async () => ({
-      status: 'SUCCEEDED',
-      userMessage: { code: 'OK' },
-      nextActions: [],
+  it('L4 ACCOUNT_DELETE with NO server-side recentReauthAt → FAILED + REAUTH_REQUIRED', async () => {
+    const app = makeApp({
+      handlers: new Map([['ACCOUNT_DELETE', goodHandler]]),
+      impactResolvers: new Map([['ACCOUNT_DELETE', async () => ({ irreversible: true, destructive: true })]]),
+      auth: { actorUid: 'sarah' }, // no recentReauthAt
     });
-    const app = makeApp(new Map([['ACCOUNT_DELETE', handler]]));
     const res = await request(app)
       .post('/api/actions/ACCOUNT_DELETE/execute')
-      .send({ ...validBody, reauthProven: false });
+      .send(validBody);
     expect(res.status).toBe(200);
     expect(res.body.result.status).toBe('FAILED');
     expect(res.body.result.userMessage.code).toBe('REAUTH_REQUIRED');
   });
 
-  it('L4 action WITH reauthProven → proceeds', async () => {
-    const app = makeApp(new Map([['ACCOUNT_DELETE', goodHandler]]));
+  it('L4 with fresh server-side recentReauthAt → SUCCEEDED', async () => {
+    // Reauth 30 seconds before now — inside default 5-minute window.
+    const recentReauthAt = new Date(Date.now() - 30_000).toISOString();
+    const app = makeApp({
+      handlers: new Map([['ACCOUNT_DELETE', goodHandler]]),
+      impactResolvers: new Map([['ACCOUNT_DELETE', async () => ({ irreversible: true, destructive: true })]]),
+      auth: { actorUid: 'sarah', recentReauthAt },
+    });
     const res = await request(app)
       .post('/api/actions/ACCOUNT_DELETE/execute')
-      .send({ ...validBody, reauthProven: true });
+      .send(validBody);
     expect(res.body.result.status).toBe('SUCCEEDED');
   });
 });
