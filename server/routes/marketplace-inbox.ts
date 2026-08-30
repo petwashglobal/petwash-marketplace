@@ -30,6 +30,7 @@ import {
   listForUser,
   createProductionHubSource,
 } from '../services/marketplace/CommunicationHubService';
+import { loadUnreadTotals } from '../services/marketplace/UnreadCountsService';
 import type {
   InboxCategory,
   InboxWorkspace,
@@ -85,11 +86,26 @@ router.get('/inbox', async (req: Request, res: Response) => {
     const localeRaw = String(req.query.locale ?? 'he').toLowerCase();
     const locale = (localeRaw === 'en' ? 'en' : 'he') as 'he' | 'en';
 
-    const result = await listForUser(uid, getSource(), { workspace, category, limit, locale });
-    // The result already carries sourceHealth + partial per §8/§9 so
-    // the client can render "Some messages couldn't be loaded" instead
-    // of showing an empty inbox.
-    return res.json(result);
+    const [result, totals] = await Promise.all([
+      listForUser(uid, getSource(), { workspace, category, limit, locale }),
+      loadUnreadTotals(uid),
+    ]);
+    // CEO DEEP-LOGIC §19 — global unread is REAL now: per-workspace
+    // SUMs computed independently over booking_conversations +
+    // chat_threads so a workspace=PET_PARENT call returns an honest
+    // provider count instead of 0.
+    const currentWorkspace = workspace === 'PET_PARENT' ? totals.petParent : totals.provider;
+    const enriched = {
+      ...result,
+      unread: {
+        currentWorkspace,
+        petParent: totals.petParent,
+        provider: totals.provider,
+        global: totals.global,
+      },
+      unreadDegraded: totals.degraded,
+    };
+    return res.json(enriched);
   } catch (err: any) {
     logger.error('[MarketplaceInbox] Unhandled error', { error: err?.message });
     // Fail-CLOSED: never leak internals; the projection is a
