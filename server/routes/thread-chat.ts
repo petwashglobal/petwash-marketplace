@@ -195,19 +195,16 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
   // sink only when shouldRetainBody() is true. Detection rule ids stay
   // out of the standard log per §29.
   const integritySignal = integritySignalFor(policyResult.primaryCategory);
-  recordModerationDecision(
-    {
-      route: '[ThreadChat.policy]',
-      threadId: req.params.threadId,
-      senderUid: uid,
-      policyVersion: policyResult.policyVersion,
-      primaryCategory: policyResult.primaryCategory,
-      integritySignal,
-      outcome: policyResult.outcome,
-      matches: policyResult.matches,
-    },
-    trimmedBody,
-  );
+  recordModerationDecision({
+    route: '[ThreadChat.policy]',
+    threadId: req.params.threadId,
+    senderUid: uid,
+    policyVersion: policyResult.policyVersion,
+    primaryCategory: policyResult.primaryCategory,
+    integritySignal,
+    outcome: policyResult.outcome,
+    matches: policyResult.matches,
+  });
 
   // §6.10 refuse-with-neutral-copy on BLOCK / BLOCK_AND_REVIEW /
   // SAFETY_ESCALATION. Sender sees a policy-neutral message + reason

@@ -1,32 +1,33 @@
 /**
- * moderationEvidence — CEO DEEP-LOGIC §20 + Integrity §6.12.
+ * moderationEvidence — CEO DEEP-LOGIC §1-§3 (FLY MODE III correction).
  *
- * The general application `logger.info` is the WRONG surface for raw
- * blocked-message bodies. Those messages can contain sexual content,
- * threats, PII, or payment details — putting them into logs that any
- * on-call engineer can grep is a privacy defect, not a safety win.
+ * PRIOR IMPLEMENTATION WAS FALSELY REPORTED AS PASS.
  *
- * This module owns the dedicated retention surface for raw moderation
- * evidence:
+ * The prior module tried to route raw blocked-message bodies to a
+ * named child-logger channel. But server/lib/logger.ts's ServerLogger
+ * has no .child() method, so the fallback executed logger.warn with
+ * the raw body — the same stdout / Cloud Logging transport as every
+ * other application log. A named metadata field inside the same sink
+ * is NOT a separate secure store.
  *
- *   • `logModerationDecision(...)` writes ONLY the stable, safe
- *     metadata (messageAttemptId, thread + sender tail, category,
- *     confidence, decision, policyVersion) to `logger.info`. The raw
- *     body never reaches this channel.
+ * Correction (CEO §1):
+ *   RAW BODY NEVER TOUCHES ANY LOG. For BLOCK / BLOCK_AND_REVIEW /
+ *   SAFETY_ESCALATION we persist only the following metadata to
+ *   ordinary logs:
  *
- *   • `retainModerationEvidence(...)` is called ONLY when
- *     `shouldRetainBody(decision) === true`. It routes the raw body to
- *     a dedicated evidence sink whose durable backing (Postgres table
- *     with row-level access controls, dispute-case linkage, retention
- *     policy) is a CEO-gated schema decision and lands in a later
- *     commit. Until then, the evidence sink is a SEPARATE named
- *     `moderation-evidence` logger channel; nothing about the sink is
- *     shared with the general application log, and callers cannot
- *     reach it directly.
+ *     messageAttemptId, threadId, bookingId, senderUidTail,
+ *     policyVersion, decision, primaryCategory, confidence,
+ *     integritySignal, matchCount, timestamp.
  *
- * Callers must never build their own `retainedBody` payload again.
- * That drifted the retention policy across three routes; this module
- * is the single sink.
+ *   Not: rawBody, email, phone, payment numbers, sexual message
+ *   text, threat text.
+ *
+ * Retention state (CEO §3):
+ *   `evidenceRetention` is an explicit state. Production default is
+ *   METADATA_ONLY. RESTRICTED_EVIDENCE is reserved for a later
+ *   separately-designed evidence store with a different sink,
+ *   different permissions, retention policy, access audit, and case
+ *   linkage. Until that ships, we do not silently upgrade.
  */
 import { logger } from '../../lib/logger';
 import type {
@@ -34,8 +35,17 @@ import type {
   PolicyCategory,
 } from '@shared/marketplace/policyEngine';
 import type { IntegritySignalType } from '@shared/marketplace/moderationAudit';
-import { shouldRetainBody } from '@shared/marketplace/moderationAudit';
 import crypto from 'crypto';
+
+export type EvidenceRetentionState = 'METADATA_ONLY' | 'RESTRICTED_EVIDENCE';
+
+/**
+ * Production default. Only `METADATA_ONLY` is implemented today; the
+ * `RESTRICTED_EVIDENCE` mode is intentionally not reachable and MUST
+ * NOT be enabled until a genuinely separate secure evidence store
+ * lands (different sink, ACLs, retention, case linkage, encryption).
+ */
+export const CURRENT_EVIDENCE_RETENTION: EvidenceRetentionState = 'METADATA_ONLY';
 
 export interface ModerationLogContext {
   route: string;                // '[BookingChat.policy]' / '[ThreadChat.policy]'
@@ -59,9 +69,9 @@ function tail(uid: string): string {
 }
 
 /**
- * Highest confidence across matches — a single number the audit line
+ * Highest confidence across matches. A single number the audit line
  * can carry instead of the full match array (which contains rule
- * source labels).
+ * source labels — §29 discipline).
  */
 function maxConfidence(matches: PolicyResult['matches']): number {
   let max = 0;
@@ -72,9 +82,9 @@ function maxConfidence(matches: PolicyResult['matches']): number {
 /**
  * Log the moderation decision to the general application logger with
  * ONLY safe, stable metadata. No raw text. No detection rule labels.
- * No full UIDs.
+ * No full UIDs. No email / phone / payment / threat wording.
  */
-export function logModerationDecision(ctx: ModerationLogContext): void {
+export function logModerationDecision(ctx: ModerationLogContext): { messageAttemptId: string } {
   const messageAttemptId = ctx.messageAttemptId ?? crypto.randomBytes(6).toString('hex');
   logger.info(`${ctx.route} message evaluated`, {
     messageAttemptId,
@@ -86,60 +96,22 @@ export function logModerationDecision(ctx: ModerationLogContext): void {
     primaryCategory: ctx.primaryCategory,
     confidence: Number(maxConfidence(ctx.matches).toFixed(3)),
     integritySignal: ctx.integritySignal ?? undefined,
-    // matchCount instead of matches[]: rule identifiers must never
-    // reach the general log per §29.
     matchCount: ctx.matches.length,
+    evidenceRetention: CURRENT_EVIDENCE_RETENTION,
+    timestamp: new Date().toISOString(),
   });
+  return { messageAttemptId };
 }
 
 /**
- * Route the raw body to the dedicated moderation-evidence sink IFF the
- * doctrine's retention policy says so. Callers pass the raw body
- * directly — this function is the ONE place the retention gate is
- * consulted. Nothing happens when retention is not required.
- *
- * The evidence sink is a SEPARATE named logger channel (child logger
- * `moderation-evidence`). It does NOT flow into the standard
- * application log stream. A durable Postgres evidence store with
- * row-level ACLs is the follow-up (CEO-gated schema change).
- */
-export function retainModerationEvidence(
-  ctx: ModerationLogContext,
-  rawBody: string,
-): void {
-  if (!shouldRetainBody(ctx.outcome)) return;
-  // The evidence stream is intentionally NOT the standard logger —
-  // callers of `logger.info` must not see this data. We use a child
-  // logger name so the transport layer can bind a different sink /
-  // access policy to `moderation-evidence`.
-  const evidenceLogger =
-    typeof (logger as any).child === 'function'
-      ? (logger as any).child({ channel: 'moderation-evidence' })
-      : logger;
-  evidenceLogger.warn?.('[moderation-evidence] retained', {
-    messageAttemptId: ctx.messageAttemptId,
-    threadId: ctx.threadId,
-    bookingId: ctx.bookingId,
-    senderUidTail: tail(ctx.senderUid),
-    policyVersion: ctx.policyVersion,
-    decision: ctx.outcome,
-    primaryCategory: ctx.primaryCategory,
-    rawBody,
-  });
-}
-
-/**
- * One-shot helper: log the decision AND retain evidence when required.
- * The single call site both routes use — no more inlining the
- * retention gate at every send handler.
+ * The ONE call site both send routes use. No `rawBody` parameter —
+ * the module intentionally provides no path to log the raw message.
+ * If a caller passes a body it is IGNORED here; a future
+ * RESTRICTED_EVIDENCE retention mode would take an evidence writer as
+ * a dependency, never the plain logger.
  */
 export function recordModerationDecision(
   ctx: ModerationLogContext,
-  rawBody: string,
 ): { messageAttemptId: string } {
-  const messageAttemptId = ctx.messageAttemptId ?? crypto.randomBytes(6).toString('hex');
-  const withId = { ...ctx, messageAttemptId };
-  logModerationDecision(withId);
-  retainModerationEvidence(withId, rawBody);
-  return { messageAttemptId };
+  return logModerationDecision(ctx);
 }
