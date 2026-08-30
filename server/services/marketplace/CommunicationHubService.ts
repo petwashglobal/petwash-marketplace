@@ -113,3 +113,45 @@ export function createStubHubSource(): HubSource {
     async listAttentionInboxItems() { return []; },
   };
 }
+
+/**
+ * Production HubSource wired to the three real adapters that landed in
+ * CEO NEXT-AUTO §14, §15, §16. Every entry is a live DB read; each
+ * adapter is independently fail-CLOSED (an adapter error becomes []
+ * for its lane so a partial outage never nukes the whole Inbox).
+ *
+ * The imports are LAZY (dynamic import()) for two reasons:
+ *   • Boot-time cycles: the adapter modules touch shared/schema, which
+ *     itself imports through this service in test setups. Lazy loading
+ *     breaks any circular startup order.
+ *   • Cloud Run cold-start: an unused adapter never pays its module-load
+ *     cost until the first real Inbox request.
+ */
+export function createProductionHubSource(): HubSource {
+  return {
+    async listBookingConversationInboxItems(uid, workspace) {
+      try {
+        const { listBookingConversationInboxItems } = await import('./BookingConversationInboxAdapter');
+        return await listBookingConversationInboxItems(uid, workspace);
+      } catch {
+        return [];
+      }
+    },
+    async listChatThreadInboxItems(uid, workspace) {
+      try {
+        const { listChatThreadInboxItems } = await import('./ChatThreadInboxAdapter');
+        return await listChatThreadInboxItems(uid, workspace);
+      } catch {
+        return [];
+      }
+    },
+    async listAttentionInboxItems(uid, workspace) {
+      try {
+        const { listAttentionInboxItems } = await import('./AttentionInboxAdapter');
+        return await listAttentionInboxItems(uid, workspace);
+      } catch {
+        return [];
+      }
+    },
+  };
+}
