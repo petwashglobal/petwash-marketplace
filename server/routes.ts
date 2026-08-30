@@ -329,6 +329,7 @@ import petwashOrchestratorRoutes from "./routes/petwatch-orchestrator";
 import inboxRoutes from "./routes/inbox";
 import marketplaceInboxRoutes from "./routes/marketplace-inbox";
 import marketplaceJourneyRoutes from "./routes/marketplace-journey";
+import { registerJourneyLoaders } from "./services/marketplace/registerJourneyLoaders";
 import integrationsRoutes from "./routes/integrations";
 import messagesRoutes from "./routes/messages";
 import messagingRoutes from "./routes/messaging";
@@ -13536,6 +13537,13 @@ self.addEventListener('notificationclick', (event) => {
   // surface as "empty" (§72 discipline).
   app.use('/api/marketplace', validateFirebaseToken, apiLimiter, marketplaceJourneyRoutes);
   logger.info('[Routes] ✅ Marketplace Journey dispatch registered at /api/marketplace/journey/:kind/:id');
+
+  // Register the per-kind loaders that have durable snapshots today.
+  // Kinds without a registered loader deliberately return 501
+  // NOT_IMPLEMENTED so the client shows an honest subdued placeholder
+  // (§72) instead of a fabricated OK badge.
+  registerJourneyLoaders();
+  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member)');
 
   // Smart-greeting context — owner birthday + pets' birthdays for the homepage
   // greeting. optionalFirebaseToken: returns an empty context (not 401) when
