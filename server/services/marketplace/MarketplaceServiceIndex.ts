@@ -94,6 +94,8 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'AdminSearchDescriptor.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_50', summary: 'Admin search channel routing' },
   { path: 'OffPlatformEscalationAuditor.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_7', summary: 'Pair-level circumvention/abuse/threat roll-up' },
   { path: 'PolicyStatusService.ts', kind: 'EVALUATOR', programCode: 'DOCTRINE_21_22', summary: 'BusinessDecisionRegistry status by domain' },
+  { path: 'StartJobPreflightService.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_24', summary: 'Start-job preconditions per-service' },
+  { path: 'OfflineDraftGuard.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_48', summary: 'Offline / bad-network action verdict' },
 ];
 
 /** Small guards used by regression pins. */
