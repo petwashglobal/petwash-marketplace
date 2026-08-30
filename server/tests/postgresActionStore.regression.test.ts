@@ -67,10 +67,26 @@ describe('claim() is atomic — INSERT ... ON CONFLICT, never SELECT-then-INSERT
     expect(SRC).toMatch(/if \(wonRows\.length > 0\) return \{ claimed: true \}/);
   });
 
-  it('pending sibling → PROCESSING stub with IDEMPOTENCY_REPLAY reason', () => {
-    expect(SRC).toMatch(/body === PENDING_MARKER/);
+  it('pending sibling → PROCESSING stub with IDEMPOTENCY_REPLAY reason (fresh lease)', () => {
+    // §41 envelope OR legacy string both surface as PROCESSING.
+    expect(SRC).toMatch(/if \(pending \|\| body === PENDING_MARKER\)/);
+    // Both fresh and expired leases surface PROCESSING; the caller
+    // distinguishes via the userMessage.code (IDEMPOTENCY_REPLAY vs
+    // LEASE_EXPIRED_RECONCILE_REQUIRED). PROCESSING is the stable
+    // ActionStatus until the shared shape carries UNKNOWN_OUTCOME.
     expect(SRC).toMatch(/status:\s*'PROCESSING'/);
     expect(SRC).toMatch(/code:\s*['"]IDEMPOTENCY_REPLAY['"]/);
+  });
+
+  it('CEO DEEP-LOGIC §41-§42 — expired lease surfaces as LEASE_EXPIRED_RECONCILE_REQUIRED', () => {
+    // The pending envelope carries executionId + leaseUntil; an
+    // expired lease surfaces distinctly so the caller (which knows
+    // the domain) can reconcile before deciding to reclaim.
+    expect(SRC).toMatch(/LEASE_EXPIRED_RECONCILE_REQUIRED/);
+    expect(SRC).toMatch(/const leaseExpired = !!pending && pending\.leaseUntil < now/);
+    expect(SRC).toMatch(/PENDING_ENVELOPE_MARKER = 'pending_v2'/);
+    expect(SRC).toMatch(/interface PendingEnvelope/);
+    expect(SRC).toMatch(/executionId: crypto\.randomBytes\(8\)\.toString\('hex'\)/);
   });
 
   it('finalized sibling deserialises stored ActionResult', () => {

@@ -47,7 +47,57 @@ import type {
 } from '../../../shared/marketplace/actionExecution';
 import type { ActionPreview, ActionResult } from '../../../shared/marketplace/action';
 
+/**
+ * Legacy pending marker written by the initial FLY MODE II landing.
+ * Rows carrying this exact string are still recognised on read — but
+ * every NEW write goes through `buildPendingEnvelope()` (below) so
+ * lease metadata travels with the row.
+ */
 const PENDING_MARKER = 'pending';
+
+/**
+ * CEO DEEP-LOGIC §41-§42 lease semantics.
+ *
+ * Prior behaviour: a claim wrote the literal string 'pending' and had
+ * no way to notice that the owning process crashed. Subsequent
+ * callers saw PROCESSING forever (until the shared 24h TTL cleaned up
+ * the row), and there was no distinct signal to trigger domain
+ * reconciliation.
+ *
+ * New behaviour: the response_hash payload for a pending claim is a
+ * JSON envelope carrying `executionId` + `leaseUntil`. Reads
+ * recognise the envelope, and an EXPIRED lease surfaces as its own
+ * outcome so the caller can consult the domain (§42) before deciding
+ * whether the mutation actually happened.
+ */
+const PENDING_ENVELOPE_MARKER = 'pending_v2';
+const DEFAULT_LEASE_MS = 5 * 60 * 1000; // 5 minutes — CEO §32 leaves the concrete value to callers; 5m is safe for the current handler set.
+
+interface PendingEnvelope {
+  marker: typeof PENDING_ENVELOPE_MARKER;
+  executionId: string;
+  leaseUntil: number; // epoch ms
+}
+
+function buildPendingEnvelope(now: number, leaseMs: number = DEFAULT_LEASE_MS): PendingEnvelope {
+  return {
+    marker: PENDING_ENVELOPE_MARKER,
+    executionId: crypto.randomBytes(8).toString('hex'),
+    leaseUntil: now + leaseMs,
+  };
+}
+
+function parsePendingEnvelope(body: string): PendingEnvelope | null {
+  try {
+    const parsed = JSON.parse(body);
+    if (parsed && typeof parsed === 'object' && parsed.marker === PENDING_ENVELOPE_MARKER && typeof parsed.executionId === 'string' && typeof parsed.leaseUntil === 'number') {
+      return parsed as PendingEnvelope;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 // Namespace prefix keeps Action Brain rows visibly separate from any
 // other consumer of the shared idempotency_keys table (booking/checkout
@@ -95,12 +145,15 @@ export function createPostgresActionStore(
   return {
     async claim(idempotencyKey, actorUid, actionType, at) {
       const composite = composeKey(idempotencyKey, actorUid, actionType);
-      // Atomic claim (CEO §6). The single worker whose RETURNING is
-      // non-empty owns this execution; every other request receives
-      // the prior canonical result via the read below.
+      const now = new Date(at).getTime();
+      // CEO DEEP-LOGIC §41 — pending envelope carries executionId +
+      // leaseUntil. Legacy 'pending' rows are still recognised on
+      // read for backward compatibility.
+      const envelope = buildPendingEnvelope(now);
+      const envelopeJson = JSON.stringify(envelope);
       const inserted = await db.execute(
         sql`INSERT INTO idempotency_keys (key, endpoint, response_hash, created_at)
-            VALUES (${composite}, ${actionType}, ${PENDING_MARKER}, ${new Date(at)})
+            VALUES (${composite}, ${actionType}, ${envelopeJson}, ${new Date(at)})
             ON CONFLICT (key) DO NOTHING
             RETURNING key`,
       );
@@ -121,9 +174,16 @@ export function createPostgresActionStore(
         return { claimed: true };
       }
       const body: string = String(row.response_hash ?? '');
-      if (body === PENDING_MARKER) {
-        // Another worker is still executing. Return the PROCESSING stub
-        // — the same shape the in-memory store returns for inflight.
+      const pending = parsePendingEnvelope(body);
+      if (pending || body === PENDING_MARKER) {
+        // §42 — an EXPIRED lease surfaces distinctly. The caller
+        // knows the domain and must reconcile before deciding whether
+        // to reclaim; the store cannot safely re-run the handler on
+        // its own.
+        const leaseExpired = !!pending && pending.leaseUntil < now;
+        const code = leaseExpired
+          ? 'LEASE_EXPIRED_RECONCILE_REQUIRED'
+          : 'IDEMPOTENCY_REPLAY';
         return {
           claimed: false,
           prior: {
@@ -132,12 +192,16 @@ export function createPostgresActionStore(
             actionType,
             at,
             result: {
-              actionId: 'act_inflight',
+              actionId: leaseExpired ? 'act_lease_expired' : 'act_inflight',
               actionType,
+              // The doctrine's ActionStatus set does not yet carry a
+              // dedicated UNKNOWN_OUTCOME slot; PROCESSING with the
+              // LEASE_EXPIRED_RECONCILE_REQUIRED reasonCode is the
+              // stable signal until the shared shape adds one.
               status: 'PROCESSING',
-              userMessage: { code: 'IDEMPOTENCY_REPLAY' },
+              userMessage: { code },
               nextActions: [],
-              correlationId: 'inflight',
+              correlationId: pending?.executionId ?? 'inflight',
             },
           },
         };
