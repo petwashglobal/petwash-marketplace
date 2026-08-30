@@ -327,6 +327,7 @@ import globalFormsRoutes from "./routes/globalForms";
 import globalServicesRoutes from "./routes/globalServices";
 import petwashOrchestratorRoutes from "./routes/petwatch-orchestrator";
 import inboxRoutes from "./routes/inbox";
+import marketplaceInboxRoutes from "./routes/marketplace-inbox";
 import integrationsRoutes from "./routes/integrations";
 import messagesRoutes from "./routes/messages";
 import messagingRoutes from "./routes/messaging";
@@ -13075,6 +13076,15 @@ self.addEventListener('notificationclick', (event) => {
     `[Routes] ✅ Action Brain registered at /api/actions ` +
       `(READ enabled; MUTATIONS ${mutationsEnabled() ? 'ENABLED' : 'DISABLED — awaiting durable store + handlers'})`,
   );
+
+  // CEO NEXT-AUTO §21 — Unified Marketplace Inbox mounted at
+  // /api/marketplace/inbox. The route uses CommunicationHubService with
+  // createProductionHubSource() (§14 booking-conversation + §15
+  // chat_threads + §16 attention adapters) so this endpoint returns
+  // real data on day one. Read-only surface; auth is enforced by
+  // validateFirebaseToken and the handler double-checks req.firebaseUser.
+  app.use('/api/marketplace', validateFirebaseToken, apiLimiter, marketplaceInboxRoutes);
+  logger.info('[Routes] ✅ Marketplace Inbox registered at /api/marketplace/inbox');
 
   // Smart-greeting context — owner birthday + pets' birthdays for the homepage
   // greeting. optionalFirebaseToken: returns an empty context (not 401) when
