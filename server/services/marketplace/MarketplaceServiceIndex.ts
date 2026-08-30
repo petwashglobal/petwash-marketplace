@@ -101,6 +101,8 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'IdempotencyKeyComposer.ts', kind: 'EVALUATOR', programCode: 'DOCTRINE_IDEMPOTENCY', summary: 'Canonical idempotency key from (action, actor, entity, salt)' },
   { path: 'InboxFirstLoadBudget.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_49', summary: 'First-load / follow-page bounded inbox budget' },
   { path: 'AttachmentOwnershipGuard.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_41', summary: 'Attachment read allow list — owner, party, explicit share' },
+  { path: 'ProviderPayoutDestinationValidator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_41', summary: 'IL bank account shape validation + masked projection' },
+  { path: 'BookAgainPrefillEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_29', summary: 'Book Again prefill + revalidation checklist' },
 ];
 
 /** Small guards used by regression pins. */
