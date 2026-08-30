@@ -41,12 +41,17 @@ describe('Action Brain mount — doctrine §41', () => {
 
 describe('CEO §7 — MUTATIONS off by default (feature flag + durable-store gate)', () => {
   it('isMutationEnabled requires BOTH env flag AND durable store availability', () => {
-    // The gate must NOT be `process.env.X === '1'` alone — that would
-    // enable mutations against the in-memory store in prod.
     expect(SRC).toMatch(
       /process\.env\.ACTION_BRAIN_MUTATIONS_ENABLED === '1'[\s\S]{0,120}durableStoreAvailable/,
     );
-    expect(SRC).toMatch(/const durableStoreAvailable = false/);
+  });
+
+  it('CEO §6 — durable Postgres store is registered (in-memory refused in prod)', () => {
+    // The store is the Postgres adapter backed by idempotency_keys —
+    // NOT the createInMemoryTestOnlyStore.
+    expect(SRC).toMatch(/createPostgresActionStore\(\)/);
+    expect(SRC).not.toMatch(/const actionBrainStore = createInMemoryTestOnlyStore/);
+    expect(SRC).toMatch(/const durableStoreAvailable = true/);
   });
 });
 

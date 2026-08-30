@@ -79,6 +79,7 @@ import {
   type ImpactResolver,
   type ServerAuthContext,
 } from "@shared/marketplace/actionExecution";
+import { createPostgresActionStore } from "./services/marketplace/PostgresActionStore";
 import meGreetingRoutes from "./routes/me-greeting";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
@@ -13014,11 +13015,15 @@ self.addEventListener('notificationclick', (event) => {
   });
   app.use('/api/actions', validateFirebaseToken, apiLimiter, availableActionsRouter);
 
-  // MUTATION router. The `isMutationEnabled` gate returns false unless
-  // BOTH: (a) ACTION_BRAIN_MUTATIONS_ENABLED=1 AND (b) a durable store
-  // is registered (in-memory is refused). Until then, requests get 503.
-  const actionBrainStore = createInMemoryTestOnlyStore();
-  const durableStoreAvailable = false; // flip when a durable adapter registers
+  // MUTATION router. The `isMutationEnabled` gate requires BOTH:
+  //   (a) ACTION_BRAIN_MUTATIONS_ENABLED=1
+  //   (b) a durable action store (Postgres, using the existing
+  //       idempotency_keys table — CEO §6 reuse discipline).
+  // The Postgres store lands here — durableStoreAvailable is true.
+  // The env flag stays default-off so the mutation surface is
+  // silent in prod until CEO enables it per environment.
+  const actionBrainStore = createPostgresActionStore();
+  const durableStoreAvailable = true;
   const mutationsEnabled = () =>
     process.env.ACTION_BRAIN_MUTATIONS_ENABLED === '1' && durableStoreAvailable;
   const actionBrainHandlers = new Map<string, ActionHandler>();
