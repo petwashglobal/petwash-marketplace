@@ -16,6 +16,7 @@ import { prestigeJourneyLoader } from './loaders/PrestigeJourneyLoader';
 import { refundJourneyLoader } from './loaders/RefundJourneyLoader';
 import { petKyaJourneyLoader } from './loaders/PetKyaJourneyLoader';
 import { supportCaseJourneyLoader } from './loaders/SupportCaseJourneyLoader';
+import { bookingJourneyLoader } from './loaders/BookingJourneyLoader';
 
 let alreadyRegistered = false;
 
@@ -27,6 +28,7 @@ export function registerJourneyLoaders(): void {
   svc.registerLoader('refund', refundJourneyLoader);
   svc.registerLoader('pet', petKyaJourneyLoader);
   svc.registerLoader('support_case', supportCaseJourneyLoader);
+  svc.registerLoader('booking', bookingJourneyLoader);
 }
 
 /** Tests only — allow re-registration after resetting the default service. */

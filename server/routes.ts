@@ -13544,7 +13544,7 @@ self.addEventListener('notificationclick', (event) => {
   // NOT_IMPLEMENTED so the client shows an honest subdued placeholder
   // (§72) instead of a fabricated OK badge.
   registerJourneyLoaders();
-  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member, refund, pet, support_case)');
+  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member, refund, pet, support_case, booking)');
 
   // Document Center detail endpoint (§11).
   app.use('/api/marketplace', validateFirebaseToken, apiLimiter, marketplaceDocumentsRoutes);
