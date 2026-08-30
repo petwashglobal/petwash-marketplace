@@ -13121,6 +13121,256 @@ self.addEventListener('notificationclick', (event) => {
     return providerResponseToAction('BOOKING_ACCEPT_PROPOSED_CHANGE', r);
   });
 
+  // ─────────────────────────────────────────────────────────────
+  // CEO SPEED-MODE — remaining marketplace vertical handlers.
+  // Every handler delegates to its shared service; NO inline SQL,
+  // NO status literals. Impact resolvers stamp moneyCents:0 for
+  // the non-financial verbs (M&G, handoff, add-pet proposal, extend
+  // proposal, book-again read, call gate) — money moves at the
+  // domain authority under acceptance, not at the proposal.
+  // ─────────────────────────────────────────────────────────────
+  const zeroMoneyImpact = async () => ({
+    moneyCents: 0, affectsOtherParty: true, legalEffect: false, privacyEffect: false, safetyEffect: false,
+  });
+  for (const t of [
+    'MEET_GREET_REQUEST', 'MEET_GREET_ACCEPT', 'MEET_GREET_DECLINE', 'MEET_GREET_ACKNOWLEDGE', 'MEET_GREET_COMPLETE',
+    'HANDOFF_ISSUE_CODE', 'HANDOFF_VERIFY_CODE',
+    'CUSTOMER_REQUEST_ADD_PET', 'PROVIDER_PROPOSE_ADD_PET', 'ACCEPT_ADD_PET_PROPOSAL', 'DECLINE_ADD_PET_PROPOSAL',
+    'CUSTOMER_REQUEST_EXTENSION', 'PROVIDER_PROPOSE_EXTENSION', 'ACCEPT_EXTENSION_PROPOSAL', 'DECLINE_EXTENSION_PROPOSAL',
+    'BOOKING_START_JOB', 'BOOKING_COMPLETE_JOB',
+    'CALL_PROVIDER', 'CALL_OWNER',
+  ]) actionBrainImpactResolvers.set(t, zeroMoneyImpact);
+
+  // Meet & Greet
+  actionBrainHandlers.set('MEET_GREET_REQUEST', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { proposeMeetGreet } = await import('./services/marketplace/MeetAndGreetService');
+    const r = proposeMeetGreet({
+      bookingId: entityId,
+      customerUid: String(c.customerUid ?? actorUid),
+      providerUid: String(c.providerUid ?? ''),
+      serviceType: c.serviceType,
+      petIds: Array.isArray(c.petIds) ? c.petIds : [],
+      scheduledAt: String(c.scheduledAt ?? new Date().toISOString()),
+      location: c.location ?? { kind: 'PROVIDER_HOME' },
+    });
+    return mgOutcomeToAction('MEET_GREET_REQUEST', r);
+  });
+  actionBrainHandlers.set('MEET_GREET_ACCEPT', async ({ actorUid, command }) => {
+    const c = (command ?? {}) as any;
+    const { confirmMeetGreet } = await import('./services/marketplace/MeetAndGreetService');
+    if (!c.mg) return { actionType: 'MEET_GREET_ACCEPT', status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] } as any;
+    return mgOutcomeToAction('MEET_GREET_ACCEPT', confirmMeetGreet({ mg: c.mg, actorUid }));
+  });
+  actionBrainHandlers.set('MEET_GREET_DECLINE', async ({ actorUid, command }) => {
+    const c = (command ?? {}) as any;
+    const { cancelMeetGreet } = await import('./services/marketplace/MeetAndGreetService');
+    if (!c.mg) return { actionType: 'MEET_GREET_DECLINE', status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] } as any;
+    return mgOutcomeToAction('MEET_GREET_DECLINE', cancelMeetGreet({ mg: c.mg, actorUid, reasonCode: c.reasonCode }));
+  });
+  actionBrainHandlers.set('MEET_GREET_ACKNOWLEDGE', async ({ actorUid, command }) => {
+    const c = (command ?? {}) as any;
+    const { acknowledgeMeetGreet } = await import('./services/marketplace/MeetAndGreetService');
+    if (!c.mg) return { actionType: 'MEET_GREET_ACKNOWLEDGE', status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] } as any;
+    return mgOutcomeToAction('MEET_GREET_ACKNOWLEDGE', acknowledgeMeetGreet({
+      mg: c.mg, actorUid, wordingVersion: String(c.wordingVersion ?? 'v1'),
+    }));
+  });
+
+  // Handoff
+  actionBrainHandlers.set('HANDOFF_ISSUE_CODE', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { issueHandoffCode } = await import('./services/marketplace/HandoffService');
+    const r = issueHandoffCode({
+      bookingId: entityId,
+      phase: c.phase === 'RETURN' ? 'RETURN' : 'PICKUP',
+      issuerUid: actorUid,
+      verifierUid: String(c.verifierUid ?? ''),
+    });
+    return handoffOutcomeToAction('HANDOFF_ISSUE_CODE', r);
+  });
+  actionBrainHandlers.set('HANDOFF_VERIFY_CODE', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { verifyHandoffCode } = await import('./services/marketplace/HandoffService');
+    const r = verifyHandoffCode({
+      bookingId: entityId,
+      phase: c.phase === 'RETURN' ? 'RETURN' : 'PICKUP',
+      actorUid,
+      code: String(c.code ?? ''),
+    });
+    return handoffOutcomeToAction('HANDOFF_VERIFY_CODE', r);
+  });
+
+  // Add-Pet / Extension proposals — same shape, different kind
+  const wireModPropose = (actionType: string, kind: 'ADD_PET' | 'EXTEND', proposedBy: 'CUSTOMER' | 'PROVIDER') => {
+    actionBrainHandlers.set(actionType, async ({ actorUid, entityId, command }) => {
+      const c = (command ?? {}) as any;
+      const svc = await import('./services/marketplace/BookingModificationService');
+      const shared = {
+        bookingId: entityId,
+        proposerUid: actorUid,
+        counterpartyUid: String(c.counterpartyUid ?? ''),
+        proposedBy,
+        proposedPriceDeltaCents: typeof c.proposedPriceDeltaCents === 'number' ? c.proposedPriceDeltaCents : undefined,
+        reasonCode: c.reasonCode,
+      };
+      const r = kind === 'ADD_PET'
+        ? svc.proposeAddPet({ ...shared, petIds: Array.isArray(c.petIds) ? c.petIds : [] })
+        : svc.proposeExtend({ ...shared, extraNights: typeof c.extraNights === 'number' ? c.extraNights : undefined, extendUntilAt: c.extendUntilAt });
+      return modOutcomeToAction(actionType, r);
+    });
+  };
+  wireModPropose('CUSTOMER_REQUEST_ADD_PET',    'ADD_PET', 'CUSTOMER');
+  wireModPropose('PROVIDER_PROPOSE_ADD_PET',    'ADD_PET', 'PROVIDER');
+  wireModPropose('CUSTOMER_REQUEST_EXTENSION',  'EXTEND',  'CUSTOMER');
+  wireModPropose('PROVIDER_PROPOSE_EXTENSION',  'EXTEND',  'PROVIDER');
+
+  const wireModRespond = (actionType: string, decision: 'ACCEPT' | 'DECLINE') => {
+    actionBrainHandlers.set(actionType, async ({ actorUid, command }) => {
+      const c = (command ?? {}) as any;
+      const svc = await import('./services/marketplace/BookingModificationService');
+      const r = decision === 'ACCEPT'
+        ? svc.acceptModificationProposal({ proposalId: String(c.proposalId ?? ''), actorUid })
+        : svc.declineModificationProposal({ proposalId: String(c.proposalId ?? ''), actorUid });
+      return modOutcomeToAction(actionType, r);
+    });
+  };
+  wireModRespond('ACCEPT_ADD_PET_PROPOSAL',     'ACCEPT');
+  wireModRespond('DECLINE_ADD_PET_PROPOSAL',    'DECLINE');
+  wireModRespond('ACCEPT_EXTENSION_PROPOSAL',   'ACCEPT');
+  wireModRespond('DECLINE_EXTENSION_PROPOSAL',  'DECLINE');
+
+  // Job lifecycle (start / complete)
+  actionBrainHandlers.set('BOOKING_START_JOB', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { startJob } = await import('./services/marketplace/JobLifecycleService');
+    const r = startJob({ actorUid, snapshot: buildJobSnapshot(entityId, c) });
+    return jobOutcomeToAction('BOOKING_START_JOB', r);
+  });
+  actionBrainHandlers.set('BOOKING_COMPLETE_JOB', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { completeJob } = await import('./services/marketplace/JobLifecycleService');
+    const r = completeJob({ actorUid, snapshot: buildJobSnapshot(entityId, c) });
+    return jobOutcomeToAction('BOOKING_COMPLETE_JOB', r);
+  });
+
+  // Masked-phone call
+  const wireCall = (actionType: string) => {
+    actionBrainHandlers.set(actionType, async ({ actorUid, entityId, command }) => {
+      const c = (command ?? {}) as any;
+      const { evaluateMaskedCall } = await import('./services/marketplace/MaskedPhoneCallService');
+      const r = evaluateMaskedCall({
+        bookingId: entityId,
+        actorUid,
+        customerUid: String(c.customerUid ?? ''),
+        providerUid: String(c.providerUid ?? ''),
+        bookingStatus: String(c.bookingStatus ?? ''),
+        bookingCompletedAt: c.bookingCompletedAt,
+      });
+      switch (r.code) {
+        case 'CALL_AUTHORIZED':
+          return { actionType, status: 'COMPLETED', userMessage: { code: 'CALL_AUTHORIZED' }, nextActions: [] } as any;
+        case 'POLICY_NOT_CONFIGURED':
+          return { actionType, status: 'FAILED', userMessage: { code: 'POLICY_NOT_CONFIGURED' }, nextActions: [] } as any;
+        case 'ACTOR_NOT_PARTY':
+          return { actionType, status: 'FAILED', userMessage: { code: 'INSUFFICIENT_PERMISSIONS' }, nextActions: [] } as any;
+        case 'MASK_WINDOW_EXPIRED':
+        case 'BOOKING_NOT_ACTIVE':
+        default:
+          return { actionType, status: 'FAILED', userMessage: { code: 'OFFLINE_ACTION_UNAVAILABLE' }, nextActions: [] } as any;
+      }
+    });
+  };
+  wireCall('CALL_PROVIDER');
+  wireCall('CALL_OWNER');
+
+  // ─── Outcome mappers ────────────────────────────────────────
+  function mgOutcomeToAction(actionType: string, r: { code: string }): any {
+    switch (r.code) {
+      case 'PROPOSED':
+      case 'CONFIRMED':
+      case 'ACKNOWLEDGED':
+      case 'BOTH_ACKNOWLEDGED':
+      case 'CANCELLED':
+        return { actionType, status: 'COMPLETED', userMessage: { code: r.code }, nextActions: [] };
+      case 'SELF_MEET_GREET_BLOCKED':
+        return { actionType, status: 'FAILED', userMessage: { code: 'SELF_BOOKING_BLOCKED' }, nextActions: [] };
+      case 'ACTOR_NOT_PARTICIPANT':
+        return { actionType, status: 'FAILED', userMessage: { code: 'INSUFFICIENT_PERMISSIONS' }, nextActions: [] };
+      case 'ILLEGAL_STATUS_TRANSITION':
+      case 'ALREADY_ACKNOWLEDGED':
+        return { actionType, status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      default:
+        return { actionType, status: 'PROCESSING', userMessage: { code: 'LEASE_EXPIRED_RECONCILE_REQUIRED' }, nextActions: [] };
+    }
+  }
+  function handoffOutcomeToAction(actionType: string, r: { code: string; handoffCode?: string }): any {
+    switch (r.code) {
+      case 'CODE_ISSUED':
+        return { actionType, status: 'COMPLETED', userMessage: { code: 'HANDOFF_CODE_ISSUED' }, nextActions: [], detail: { handoffCode: r.handoffCode } };
+      case 'CODE_VERIFIED':
+        return { actionType, status: 'COMPLETED', userMessage: { code: 'HANDOFF_VERIFIED' }, nextActions: [] };
+      case 'SELF_HANDOFF_BLOCKED':
+        return { actionType, status: 'FAILED', userMessage: { code: 'SELF_BOOKING_BLOCKED' }, nextActions: [] };
+      case 'ACTOR_NOT_VERIFIER':
+        return { actionType, status: 'FAILED', userMessage: { code: 'INSUFFICIENT_PERMISSIONS' }, nextActions: [] };
+      case 'CODE_INVALID':
+      case 'CODE_EXPIRED':
+      case 'CODE_ALREADY_USED':
+      case 'NO_CODE_ISSUED':
+        return { actionType, status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      default:
+        return { actionType, status: 'PROCESSING', userMessage: { code: 'LEASE_EXPIRED_RECONCILE_REQUIRED' }, nextActions: [] };
+    }
+  }
+  function modOutcomeToAction(actionType: string, r: { code: string; proposalId?: string }): any {
+    switch (r.code) {
+      case 'PROPOSED':
+      case 'ACCEPTED_BY_OTHER_PARTY':
+      case 'DECLINED_BY_OTHER_PARTY':
+      case 'CANCELLED_BY_PROPOSER':
+        return { actionType, status: 'COMPLETED', userMessage: { code: r.code }, nextActions: [], detail: { proposalId: r.proposalId } };
+      case 'ILLEGAL_STATE':
+        return { actionType, status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      case 'PROPOSER_CANNOT_ALSO_ACCEPT':
+      case 'ACTOR_NOT_COUNTERPARTY':
+        return { actionType, status: 'FAILED', userMessage: { code: 'INSUFFICIENT_PERMISSIONS' }, nextActions: [] };
+      case 'NOT_FOUND':
+      case 'EXPIRED':
+        return { actionType, status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      default:
+        return { actionType, status: 'PROCESSING', userMessage: { code: 'LEASE_EXPIRED_RECONCILE_REQUIRED' }, nextActions: [] };
+    }
+  }
+  function jobOutcomeToAction(actionType: string, r: { code: string }): any {
+    switch (r.code) {
+      case 'STARTED':
+      case 'COMPLETED':
+        return { actionType, status: 'COMPLETED', userMessage: { code: r.code === 'STARTED' ? 'JOB_STARTED' : 'JOB_COMPLETED' }, nextActions: [] };
+      case 'HANDOFF_NOT_VERIFIED':
+        return { actionType, status: 'REQUIRES_ACTION', userMessage: { code: 'HANDOFF_REQUIRED' }, nextActions: [{ actionType: 'HANDOFF_VERIFY_CODE' }] };
+      case 'ACTOR_NOT_PROVIDER':
+      case 'ACTOR_NOT_CUSTOMER':
+        return { actionType, status: 'FAILED', userMessage: { code: 'INSUFFICIENT_PERMISSIONS' }, nextActions: [] };
+      case 'BOOKING_NOT_STARTABLE':
+      case 'BOOKING_NOT_COMPLETABLE':
+      case 'BOOKING_NOT_RATEABLE':
+        return { actionType, status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      default:
+        return { actionType, status: 'PROCESSING', userMessage: { code: 'LEASE_EXPIRED_RECONCILE_REQUIRED' }, nextActions: [] };
+    }
+  }
+  function buildJobSnapshot(bookingId: string, c: any) {
+    return {
+      bookingId,
+      status: String(c.status ?? ''),
+      providerUid: String(c.providerUid ?? ''),
+      customerUid: String(c.customerUid ?? ''),
+      handoffs: c.handoffs ?? {},
+      hasCustomerRating: !!c.hasCustomerRating,
+    };
+  }
+
   // Customer unpaid cancel handler. The service is a pure evaluator;
   // the caller must supply the server-derived snapshot (bookerUid,
   // status, hasMoneyCaptured). The Action Brain surface currently
