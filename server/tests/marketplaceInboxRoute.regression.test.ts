@@ -91,6 +91,42 @@ describe('CEO §29 + §37 — server-derived UID, closed workspace enum', () => 
   });
 });
 
+describe('CEO DEEP-LOGIC §21 — capability-aware workspace refusal', () => {
+  it('imports getUserCapabilities from the shared lib', () => {
+    expect(ROUTE).toMatch(
+      /import \{ getUserCapabilities \} from '\.\.\/lib\/userCapabilities'/,
+    );
+  });
+
+  it('rejects workspace=PROVIDER when the actor has neither active nor applicant provider capability (§21)', () => {
+    expect(ROUTE).toMatch(
+      /if \(workspace === 'PROVIDER'\)[\s\S]{0,300}getUserCapabilities\(uid\)/,
+    );
+    expect(ROUTE).toMatch(/status\(403\)[\s\S]{0,200}WORKSPACE_CAPABILITY_MISSING/);
+    // The rejection returns a workspace_unavailable code, never a
+    // silent empty inbox.
+    expect(ROUTE).toMatch(/workspace_unavailable/);
+  });
+});
+
+describe('CEO DEEP-LOGIC §36 — degraded lane observability metric', () => {
+  it('emits INBOX_SOURCE_DEGRADED with the lane names when partial=true', () => {
+    expect(ROUTE).toMatch(/if \(result\.partial\)/);
+    expect(ROUTE).toMatch(/metric:\s*'INBOX_SOURCE_DEGRADED'/);
+    // The metric payload lists the actual degraded lanes.
+    expect(ROUTE).toMatch(
+      /degradedLanes = \(\['bookingChat', 'threadChat', 'attention'\] as const\)[\s\S]{0,200}=== 'degraded'/,
+    );
+    // No message content or full uid enters the metric.
+    const metricIdx = ROUTE.indexOf('INBOX_SOURCE_DEGRADED');
+    const metricEnd = ROUTE.indexOf('});', metricIdx);
+    const metricBlock = ROUTE.slice(metricIdx, metricEnd);
+    expect(metricBlock).toMatch(/uidTail: uid\.slice\(-6\)/);
+    expect(metricBlock).not.toMatch(/lastMessage/);
+    expect(metricBlock).not.toMatch(/email/);
+  });
+});
+
 describe('error discipline — fail-CLOSED, no internals in body', () => {
   it("unhandled error returns 500 with a stable code, never req internals", () => {
     const catchIdx = ROUTE.indexOf('} catch (err: any) {');

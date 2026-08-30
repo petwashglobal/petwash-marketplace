@@ -31,6 +31,7 @@ import {
   createProductionHubSource,
 } from '../services/marketplace/CommunicationHubService';
 import { loadUnreadTotals } from '../services/marketplace/UnreadCountsService';
+import { getUserCapabilities } from '../lib/userCapabilities';
 import type {
   InboxCategory,
   InboxWorkspace,
@@ -72,6 +73,23 @@ router.get('/inbox', async (req: Request, res: Response) => {
     }
     const workspace = workspaceRaw as InboxWorkspace;
 
+    // CEO DEEP-LOGIC §21 — capability-aware workspace refusal. A
+    // customer-only account that requests workspace=PROVIDER must NOT
+    // silently receive an empty inbox and think it "worked but there
+    // are no jobs" — it doesn't have the workspace at all. Same for
+    // PET_PARENT: everyone has it by default. Provider requires
+    // provider.active (or provider.applicant during onboarding).
+    if (workspace === 'PROVIDER') {
+      const caps = await getUserCapabilities(uid);
+      if (!caps.provider.active && !caps.provider.applicant) {
+        return res.status(403).json({
+          error: 'workspace_unavailable',
+          reasonCode: 'WORKSPACE_CAPABILITY_MISSING',
+          workspace,
+        });
+      }
+    }
+
     const categoryRaw = req.query.category ? String(req.query.category).toUpperCase() : 'ALL';
     const category = (VALID_CATEGORIES.includes(categoryRaw as InboxCategory)
       ? (categoryRaw as InboxCategory)
@@ -105,6 +123,19 @@ router.get('/inbox', async (req: Request, res: Response) => {
       },
       unreadDegraded: totals.degraded,
     };
+    // CEO DEEP-LOGIC §36 — emit an OBSERVABILITY metric line for any
+    // degraded lane so a source falling over does not silently rot for
+    // weeks. Payload carries no message content — just the lane names.
+    if (result.partial) {
+      const degradedLanes = (['bookingChat', 'threadChat', 'attention'] as const)
+        .filter((k) => result.sourceHealth[k] === 'degraded');
+      logger.warn('[MarketplaceInbox] INBOX_SOURCE_DEGRADED', {
+        metric: 'INBOX_SOURCE_DEGRADED',
+        workspace,
+        degradedLanes,
+        uidTail: uid.slice(-6),
+      });
+    }
     return res.json(enriched);
   } catch (err: any) {
     logger.error('[MarketplaceInbox] Unhandled error', { error: err?.message });
