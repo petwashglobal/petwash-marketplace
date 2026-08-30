@@ -108,6 +108,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'HandoffCodeSpec.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_26', summary: 'Handoff code shape / hash / timing-safe verify / TTL' },
   { path: 'HouseholdPetEligibilitySynthesizer.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_46', summary: 'Household × capability → book-all / subset / decline hint' },
   { path: 'PolicyGateBundle.ts', kind: 'EVALUATOR', programCode: 'DOCTRINE_21_22', summary: 'Aggregate multi-policy gate for critical actions' },
+  { path: 'ContactMaskingService.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_41', summary: 'PII masking: email, IL phone, account, national id' },
 ];
 
 /** Small guards used by regression pins. */
