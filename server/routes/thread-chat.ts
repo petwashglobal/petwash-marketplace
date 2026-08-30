@@ -225,31 +225,53 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
     // Verified — fall through to insert.
   }
 
-  // Insert + bump last_message_at + increment recipient unread. All in
-  // one round trip using a CTE-style batch so a concurrent reader sees
-  // a consistent thread head.
-  const [inserted] = await db
-    .insert(chatThreadMessages)
-    .values({
-      threadId: req.params.threadId,
-      senderUid: uid,
-      senderRole: 'user',
-      body: trimmedBody,
-      attachments: parsed.data.attachments ?? [],
-    })
-    .returning();
-
-  // Bump the thread head + increment the OTHER side's unread counter.
-  // `t` was already resolved above for the policy engine.
+  // CEO DEEP-LOGIC §23 — atomic send. Message row + thread head +
+  // recipient unread bump must all commit together, or none of them.
+  // The prior two-statement flow could leave a ghost message with a
+  // stale head timestamp and un-incremented unread when the second
+  // UPDATE failed. db.transaction() gives us the required boundary.
+  //
+  // §24-§25 — support/admin unread routing. chatThreads carries THREE
+  // counters (customer / provider / admin). A support-owned thread
+  // routes the target-side increment through unreadAdminCount when
+  // the recipient is the support owner; a support user replying to
+  // a customer/provider still increments the target side's user
+  // counter. The counter that is bumped is derived from the ROLE of
+  // the *other* participant on this thread, never from a workspace
+  // heuristic.
   const now = new Date();
-  const otherSideCustomer = t.customerUserId && t.customerUserId !== uid;
-  const otherSideProvider = t.providerUserId && t.providerUserId !== uid;
-  await db.update(chatThreads).set({
-    lastMessageAt: now,
-    updatedAt: now,
-    unreadCustomerCount: otherSideCustomer ? dsql`${chatThreads.unreadCustomerCount} + 1` : chatThreads.unreadCustomerCount,
-    unreadProviderCount: otherSideProvider ? dsql`${chatThreads.unreadProviderCount} + 1` : chatThreads.unreadProviderCount,
-  }).where(eq(chatThreads.threadId, req.params.threadId));
+  const isSenderCustomer = t.customerUserId === uid;
+  const isSenderProvider = t.providerUserId === uid;
+  const isSenderSupport = t.supportOwnerId === uid;
+  // The set of "other" party roles receiving the message. Multi-role
+  // threads (e.g. support owner replying to a customer) may bump
+  // more than one counter — the customer sees the ping AND the
+  // provider (if present) sees it too. Sender's own side is never
+  // bumped.
+  const bumpCustomer = !!(t.customerUserId && !isSenderCustomer);
+  const bumpProvider = !!(t.providerUserId && !isSenderProvider);
+  const bumpAdmin = !!(t.supportOwnerId && !isSenderSupport);
+
+  const inserted = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(chatThreadMessages)
+      .values({
+        threadId: req.params.threadId,
+        senderUid: uid,
+        senderRole: 'user',
+        body: trimmedBody,
+        attachments: parsed.data.attachments ?? [],
+      })
+      .returning();
+    await tx.update(chatThreads).set({
+      lastMessageAt: now,
+      updatedAt: now,
+      unreadCustomerCount: bumpCustomer ? dsql`${chatThreads.unreadCustomerCount} + 1` : chatThreads.unreadCustomerCount,
+      unreadProviderCount: bumpProvider ? dsql`${chatThreads.unreadProviderCount} + 1` : chatThreads.unreadProviderCount,
+      unreadAdminCount: bumpAdmin ? dsql`${chatThreads.unreadAdminCount} + 1` : chatThreads.unreadAdminCount,
+    }).where(eq(chatThreads.threadId, req.params.threadId));
+    return row;
+  });
 
   logger.info('[ThreadChat] message sent', {
     threadId: req.params.threadId, threadType: t.threadType, senderUid: uid,
@@ -275,8 +297,13 @@ router.put('/:threadId/read', async (req: Request, res: Response) => {
   const t = loaded.thread;
   const now = new Date();
   const patch: Record<string, unknown> = { updatedAt: now };
+  // CEO DEEP-LOGIC §25 — reset the counter that matches the caller's
+  // ACTUAL participant role on this thread. The prior code only knew
+  // about customer / provider; a support owner reading a thread never
+  // cleared unreadAdminCount, so support badges stayed sticky.
   if (t.customerUserId === uid) patch.unreadCustomerCount = 0;
   if (t.providerUserId === uid) patch.unreadProviderCount = 0;
+  if (t.supportOwnerId === uid) patch.unreadAdminCount = 0;
   await db.update(chatThreads).set(patch as any).where(eq(chatThreads.threadId, req.params.threadId));
 
   // Stamp read_at on unread messages sent by the OTHER side. We only mark

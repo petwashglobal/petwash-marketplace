@@ -36,7 +36,10 @@ describe('CEO §23, §24 — MessagePolicyEngine runs BEFORE db.insert', () => {
 
   it('evaluateMessage() call precedes db.insert(chatThreadMessages) — never the reverse', () => {
     const evalIdx = SRC.indexOf('evaluateMessage({');
-    const insertIdx = SRC.indexOf('db\n    .insert(chatThreadMessages)');
+    // Now that §23 wraps the write in db.transaction(...), the actual
+    // insert call is `tx.insert(chatThreadMessages)`; either shape
+    // preserves the ordering invariant so we accept both.
+    const insertIdx = SRC.indexOf('.insert(chatThreadMessages)');
     expect(evalIdx).toBeGreaterThan(0);
     expect(insertIdx).toBeGreaterThan(evalIdx);
   });
