@@ -62,15 +62,38 @@ describe('CEO §1 — PRESTIGE_JOIN impact is server-derived', () => {
   });
 });
 
-describe('CEO §7 — mutation handler NOT registered until durable store lands', () => {
-  it('actionBrainHandlers does NOT have a PRESTIGE_JOIN entry', () => {
-    // The handler must not be registered while the store is in-memory.
-    // A future PR wraps /api/prestige/join as a callable service +
-    // registers a durable adapter; only THEN does the handler slot fill.
-    expect(SRC).not.toMatch(/actionBrainHandlers\.set\(['"]PRESTIGE_JOIN['"]/);
+describe('CEO DEEP-LOGIC §50 — mutation handler now bound to the shared service', () => {
+  it('actionBrainHandlers.set("PRESTIGE_JOIN", ...) exists', () => {
+    // The extraction landed — both surfaces call enrollPrestige.
+    expect(SRC).toMatch(/actionBrainHandlers\.set\('PRESTIGE_JOIN', async \(\{ actorUid, command \}\)/);
   });
 
-  it('the wire is documented as intentional in an inline comment', () => {
-    expect(SRC).toMatch(/Handler intentionally NOT registered/);
+  it('the handler imports and delegates to enrollPrestige — no inline SQL', () => {
+    const idx = SRC.indexOf("actionBrainHandlers.set('PRESTIGE_JOIN'");
+    const end = SRC.indexOf('});', idx);
+    const body = SRC.slice(idx, end);
+    expect(body).toMatch(
+      /await import\('\.\/services\/marketplace\/PrestigeEnrollmentService'\)/,
+    );
+    expect(body).toMatch(/await enrollPrestige\(actorUid, input\)/);
+    expect(body).not.toMatch(/INSERT INTO privilege_members/);
+    expect(body).not.toMatch(/db\.insert\(loyaltyProfiles\)/);
+  });
+
+  it('ENROLLED and ALREADY_ACTIVE both surface as COMPLETED with distinct message codes', () => {
+    const idx = SRC.indexOf("actionBrainHandlers.set('PRESTIGE_JOIN'");
+    const end = SRC.indexOf('});', idx);
+    const body = SRC.slice(idx, end);
+    expect(body).toMatch(/PRESTIGE_ALREADY_ACTIVE/);
+    expect(body).toMatch(/PRESTIGE_ENROLLED/);
+    expect(body).toMatch(/status: 'COMPLETED'/);
+  });
+
+  it('MISSING_REQUIRED_PROFILE and IDENTITY_CONFLICT surface as FAILED with stable codes', () => {
+    const idx = SRC.indexOf("actionBrainHandlers.set('PRESTIGE_JOIN'");
+    const end = SRC.indexOf('});', idx);
+    const body = SRC.slice(idx, end);
+    expect(body).toMatch(/PRESTIGE_MISSING_REQUIRED_PROFILE/);
+    expect(body).toMatch(/PRESTIGE_IDENTITY_RECONCILIATION_REQUIRED/);
   });
 });

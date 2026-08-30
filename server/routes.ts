@@ -13042,13 +13042,62 @@ self.addEventListener('notificationclick', (event) => {
     privacyEffect: false,
     safetyEffect: false,
   }));
-  // Handler intentionally NOT registered (CEO §7): the mutation surface
-  // stays 501 until the existing /api/prestige/join authority (which is
-  // already correct — reads uid from firebaseUser, atomic loyalty +
-  // privilege_members + Firestore write) is wrapped as a callable
-  // service function AND a durable idempotency adapter is registered.
-  // Client can call GET /api/actions/prestige/actions today; POST
-  // execute remains 501 (no handler) OR 503 (mutations disabled).
+  // CEO DEEP-LOGIC §50 — Action Brain PRESTIGE_JOIN handler binds to
+  // the SAME `enrollPrestige` service the /api/prestige/join HTTP
+  // route calls. One authority; no duplicated inline SQL.
+  //
+  // The command shape follows the HTTP schema exactly so the two
+  // surfaces can share client payload validation later; the handler
+  // narrows unknown → the strong PrestigeEnrollmentInput shape
+  // itself.
+  actionBrainHandlers.set('PRESTIGE_JOIN', async ({ actorUid, command }) => {
+    const { enrollPrestige } = await import('./services/marketplace/PrestigeEnrollmentService');
+    const c = (command ?? {}) as any;
+    const input = {
+      firstName: String(c.firstName ?? ''),
+      lastName:  String(c.lastName ?? ''),
+      email:     String(c.email ?? ''),
+      phone:     String(c.phone ?? ''),
+      tier:      (c.tier === 'black' || c.tier === 'platinum') ? c.tier : 'pearl' as const,
+      language:  c.language === 'en' ? 'en' as const : 'he' as const,
+    };
+    const result = await enrollPrestige(actorUid, input);
+    if (result.status === 'ENROLLED' || result.status === 'ALREADY_ACTIVE') {
+      return {
+        actionType: 'PRESTIGE_JOIN',
+        status: 'COMPLETED',
+        userMessage: {
+          code: result.status === 'ALREADY_ACTIVE' ? 'PRESTIGE_ALREADY_ACTIVE' : 'PRESTIGE_ENROLLED',
+        },
+        nextActions: [
+          { actionType: 'VIEW_PRESTIGE_BENEFITS' },
+          { actionType: 'RETURN_PET_PARENT_HOME' },
+        ],
+      } as any;
+    }
+    if (result.status === 'MISSING_REQUIRED_PROFILE') {
+      return {
+        actionType: 'PRESTIGE_JOIN',
+        status: 'FAILED',
+        userMessage: { code: 'PRESTIGE_MISSING_REQUIRED_PROFILE' },
+        nextActions: [],
+      } as any;
+    }
+    if (result.status === 'IDENTITY_CONFLICT') {
+      return {
+        actionType: 'PRESTIGE_JOIN',
+        status: 'FAILED',
+        userMessage: { code: 'PRESTIGE_IDENTITY_RECONCILIATION_REQUIRED' },
+        nextActions: [{ actionType: 'CONTACT_SUPPORT' }],
+      } as any;
+    }
+    return {
+      actionType: 'PRESTIGE_JOIN',
+      status: 'FAILED',
+      userMessage: { code: 'PRESTIGE_JOIN_UNAVAILABLE' },
+      nextActions: [],
+    } as any;
+  });
   const actionExecutionRouter = buildActionExecutionRouter({
     store: actionBrainStore,
     handlers: actionBrainHandlers,
