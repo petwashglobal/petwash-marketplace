@@ -119,6 +119,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'PetParentHomeSectionsEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_2', summary: 'Ordered section list for /pet-parent/home rendering' },
   { path: 'ProfileFieldAuthorityMap.ts', kind: 'POLICY', programCode: 'P0_MY_ACCOUNT', summary: 'Canonical authority classification per personal profile field' },
   { path: 'ProfileCompletenessService.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'profileState / missingFields / requiredActions from users snapshot' },
+  { path: 'ContactChangeStateMachine.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'Change-mobile / change-email OTP handshake state machine' },
 ];
 
 /** Small guards used by regression pins. */
