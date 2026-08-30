@@ -82,6 +82,13 @@ describe('CEO §29 + §37 — server-derived UID, closed workspace enum', () => 
   it('limit is clamped to [1, 100] — never trusts client value blindly', () => {
     expect(ROUTE).toMatch(/Math\.min\(Math\.max\(1, Math\.floor\(limitRaw\)\), 100\)/);
   });
+
+  it('CEO DEEP-LOGIC §7 — locale is validated to a closed set (he | en)', () => {
+    expect(ROUTE).toMatch(/const locale = \(localeRaw === 'en' \? 'en' : 'he'\)/);
+    expect(ROUTE).toMatch(/locale/);
+    // The listForUser call must forward the validated locale.
+    expect(ROUTE).toMatch(/listForUser\(uid, getSource\(\), \{ workspace, category, limit, locale \}\)/);
+  });
 });
 
 describe('error discipline — fail-CLOSED, no internals in body', () => {

@@ -1,18 +1,27 @@
 /**
- * CommunicationHubService — CEO Business Doctrine §22, §23, §89, §92.
+ * CommunicationHubService — CEO Business Doctrine §22, §23, §89, §92,
+ * plus DEEP-LOGIC §7 (localization) and §8/§9 (degraded ≠ empty).
  *
  * ONE projection over booking chat + chat_threads + attention events
  * that returns `InboxItem[]` for the customer + provider Inbox
  * screens. NOT a new storage universe (§92); a read-model.
  *
- * Sources are INJECTED so the service stays pure of DB deps:
- *   • bookingConversations — legacy booking-side messages
- *   • chatThreads          — canonical chat_threads spine
- *   • attention             — attention feed events surfaced as inbox items
- *
  * The doctrine forbids destructive rewrite of the sources (§23). This
  * service lets the render layer see one consistent Inbox while the
  * two storages remain in place.
+ *
+ * Health-aware contract (§8/§9):
+ *   Every source method returns `{ items, degraded? }`. A degraded
+ *   lane surfaces as `sourceHealth.<lane> = 'degraded'` on the result;
+ *   the client can render "Some messages couldn't be loaded" instead
+ *   of showing an empty inbox. "Fail-CLOSED" was the wrong label for
+ *   a read projection error — this is a "degraded / partial" outcome.
+ *
+ * Locale (§7):
+ *   `listForUser` accepts `locale` and passes it to every source. The
+ *   attention source uses it to server-render Hebrew or English
+ *   strings; the chat sources ignore it (chat messages travel in the
+ *   author's language).
  */
 import type {
   InboxItem,
@@ -25,10 +34,36 @@ import {
   filterByCategory,
 } from '../../../shared/marketplace/inboxItem';
 
+export type InboxLocale = 'he' | 'en';
+
+export interface HubSourceOptions {
+  locale: InboxLocale;
+}
+
+export type HubSourceLane = 'bookingChat' | 'threadChat' | 'attention';
+export type SourceHealth = 'ok' | 'degraded';
+
+export interface HubSourceResult {
+  items: InboxItem[];
+  degraded?: boolean;
+}
+
 export interface HubSource {
-  listBookingConversationInboxItems(uid: string, workspace: InboxWorkspace): Promise<InboxItem[]>;
-  listChatThreadInboxItems(uid: string, workspace: InboxWorkspace): Promise<InboxItem[]>;
-  listAttentionInboxItems(uid: string, workspace: InboxWorkspace): Promise<InboxItem[]>;
+  listBookingConversationInboxItems(
+    uid: string,
+    workspace: InboxWorkspace,
+    opts: HubSourceOptions,
+  ): Promise<HubSourceResult>;
+  listChatThreadInboxItems(
+    uid: string,
+    workspace: InboxWorkspace,
+    opts: HubSourceOptions,
+  ): Promise<HubSourceResult>;
+  listAttentionInboxItems(
+    uid: string,
+    workspace: InboxWorkspace,
+    opts: HubSourceOptions,
+  ): Promise<HubSourceResult>;
 }
 
 export interface ListForUserOptions {
@@ -36,11 +71,14 @@ export interface ListForUserOptions {
   category?: InboxCategory;             // default 'ALL'
   limit?: number;                        // default 50
   since?: string;                        // ISO — for incremental refresh
+  locale?: InboxLocale;                  // default 'he'
 }
 
 export interface HubListResult {
   items: InboxItem[];
   unread: InboxUnreadCounts;
+  sourceHealth: Record<HubSourceLane, SourceHealth>;
+  partial: boolean;
 }
 
 /**
@@ -78,15 +116,26 @@ export async function listForUser(
   source: HubSource,
   opts: ListForUserOptions,
 ): Promise<HubListResult> {
-  const { workspace, category = 'ALL', limit = 50, since } = opts;
+  const { workspace, category = 'ALL', limit = 50, since, locale = 'he' } = opts;
+  const sourceOpts: HubSourceOptions = { locale };
 
-  const [bookingItems, threadItems, attentionItems] = await Promise.all([
-    source.listBookingConversationInboxItems(uid, workspace),
-    source.listChatThreadInboxItems(uid, workspace),
-    source.listAttentionInboxItems(uid, workspace),
+  const [bookingRes, threadRes, attentionRes] = await Promise.all([
+    source.listBookingConversationInboxItems(uid, workspace, sourceOpts),
+    source.listChatThreadInboxItems(uid, workspace, sourceOpts),
+    source.listAttentionInboxItems(uid, workspace, sourceOpts),
   ]);
 
-  let merged = [...bookingItems, ...threadItems, ...attentionItems];
+  const sourceHealth: Record<HubSourceLane, SourceHealth> = {
+    bookingChat: bookingRes.degraded ? 'degraded' : 'ok',
+    threadChat: threadRes.degraded ? 'degraded' : 'ok',
+    attention: attentionRes.degraded ? 'degraded' : 'ok',
+  };
+  const partial =
+    sourceHealth.bookingChat === 'degraded' ||
+    sourceHealth.threadChat === 'degraded' ||
+    sourceHealth.attention === 'degraded';
+
+  let merged = [...bookingRes.items, ...threadRes.items, ...attentionRes.items];
   merged = dedupeByThreadId(merged);
 
   if (since) {
@@ -98,27 +147,29 @@ export async function listForUser(
   const capped = sorted.slice(0, limit);
   const unread = computeUnreadCounts(merged); // count against the FULL set, not the filtered slice
 
-  return { items: capped, unread };
+  return { items: capped, unread, sourceHealth, partial };
 }
 
 /**
- * Empty-source implementation for boot / tests. Returns [] for every
- * source — the endpoint reaches production with a well-formed empty
- * Inbox while adapters land.
+ * Empty-source implementation for boot / tests. Returns { items: [] }
+ * with `degraded` unset for every source — the endpoint reaches
+ * production with a well-formed empty Inbox while adapters land.
  */
 export function createStubHubSource(): HubSource {
   return {
-    async listBookingConversationInboxItems() { return []; },
-    async listChatThreadInboxItems() { return []; },
-    async listAttentionInboxItems() { return []; },
+    async listBookingConversationInboxItems() { return { items: [] }; },
+    async listChatThreadInboxItems() { return { items: [] }; },
+    async listAttentionInboxItems() { return { items: [] }; },
   };
 }
 
 /**
  * Production HubSource wired to the three real adapters that landed in
  * CEO NEXT-AUTO §14, §15, §16. Every entry is a live DB read; each
- * adapter is independently fail-CLOSED (an adapter error becomes []
- * for its lane so a partial outage never nukes the whole Inbox).
+ * adapter is independently DEGRADED-aware — an adapter throw becomes
+ * `{ items: [], degraded: true }` for its lane so a partial outage
+ * surfaces on `sourceHealth.<lane>` instead of being hidden as an
+ * empty inbox (CEO DEEP-LOGIC §8/§9).
  *
  * The imports are LAZY (dynamic import()) for two reasons:
  *   • Boot-time cycles: the adapter modules touch shared/schema, which
@@ -129,28 +180,31 @@ export function createStubHubSource(): HubSource {
  */
 export function createProductionHubSource(): HubSource {
   return {
-    async listBookingConversationInboxItems(uid, workspace) {
+    async listBookingConversationInboxItems(uid, workspace, opts) {
       try {
         const { listBookingConversationInboxItems } = await import('./BookingConversationInboxAdapter');
-        return await listBookingConversationInboxItems(uid, workspace);
+        const items = await listBookingConversationInboxItems(uid, workspace);
+        return { items };
       } catch {
-        return [];
+        return { items: [], degraded: true };
       }
     },
-    async listChatThreadInboxItems(uid, workspace) {
+    async listChatThreadInboxItems(uid, workspace, opts) {
       try {
         const { listChatThreadInboxItems } = await import('./ChatThreadInboxAdapter');
-        return await listChatThreadInboxItems(uid, workspace);
+        const items = await listChatThreadInboxItems(uid, workspace);
+        return { items };
       } catch {
-        return [];
+        return { items: [], degraded: true };
       }
     },
-    async listAttentionInboxItems(uid, workspace) {
+    async listAttentionInboxItems(uid, workspace, opts) {
       try {
         const { listAttentionInboxItems } = await import('./AttentionInboxAdapter');
-        return await listAttentionInboxItems(uid, workspace);
+        const items = await listAttentionInboxItems(uid, workspace, opts.locale);
+        return { items };
       } catch {
-        return [];
+        return { items: [], degraded: true };
       }
     },
   };

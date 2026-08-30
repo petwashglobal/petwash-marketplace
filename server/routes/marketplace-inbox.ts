@@ -79,7 +79,16 @@ router.get('/inbox', async (req: Request, res: Response) => {
     const limitRaw = Number(req.query.limit ?? 50);
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(1, Math.floor(limitRaw)), 100) : 50;
 
-    const result = await listForUser(uid, getSource(), { workspace, category, limit });
+    // CEO DEEP-LOGIC §7 — accept a locale so Attention items render in
+    // Hebrew or English. Default to Hebrew — the doctrine's default UI
+    // language — and never trust an unknown value.
+    const localeRaw = String(req.query.locale ?? 'he').toLowerCase();
+    const locale = (localeRaw === 'en' ? 'en' : 'he') as 'he' | 'en';
+
+    const result = await listForUser(uid, getSource(), { workspace, category, limit, locale });
+    // The result already carries sourceHealth + partial per §8/§9 so
+    // the client can render "Some messages couldn't be loaded" instead
+    // of showing an empty inbox.
     return res.json(result);
   } catch (err: any) {
     logger.error('[MarketplaceInbox] Unhandled error', { error: err?.message });

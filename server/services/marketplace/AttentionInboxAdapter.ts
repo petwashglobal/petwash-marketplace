@@ -73,11 +73,16 @@ function badgeForPriority(p: AttentionPriority): string | undefined {
 export async function listAttentionInboxItems(
   uid: string,
   workspace: InboxWorkspace,
+  locale: 'he' | 'en' = 'he',
 ): Promise<InboxItem[]> {
   const actor = workspace === 'PET_PARENT' ? 'pet_parent' : 'provider';
-  // English strings — the Inbox render layer picks the right locale;
-  // stable slugs still travel via each item's domain + nextAction.
-  const feed = await composeAttentionFeed(actor, uid, /* he */ false);
+  // CEO DEEP-LOGIC §7 — composeAttentionFeed already server-renders
+  // title/subtitle strings; we forward the caller's locale so the
+  // Inbox does not silently return English. The doctrine's next step
+  // (§9) is to move InboxItem to `messageKey` + `messageParams` so the
+  // client owns translation for system-generated items; that requires
+  // a shared InboxItem shape change and is tracked as a follow-up.
+  const feed = await composeAttentionFeed(actor, uid, /* he */ locale === 'he');
   if (feed.items.length === 0) return [];
 
   return feed.items.map<InboxItem>((it: AttentionItem) => ({

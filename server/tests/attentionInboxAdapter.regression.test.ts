@@ -78,9 +78,9 @@ describe('threadId + entityId isolation', () => {
 });
 
 describe('adapter matches the HubSource contract', () => {
-  it('exports listAttentionInboxItems with (uid, workspace) signature', () => {
+  it('exports listAttentionInboxItems with (uid, workspace, locale?) signature', () => {
     expect(SRC).toMatch(
-      /export async function listAttentionInboxItems\(\s*uid: string,\s*workspace: InboxWorkspace,\s*\): Promise<InboxItem\[\]>/,
+      /export async function listAttentionInboxItems\(\s*uid: string,\s*workspace: InboxWorkspace,\s*locale: 'he' \| 'en' = 'he',\s*\): Promise<InboxItem\[\]>/,
     );
   });
 });

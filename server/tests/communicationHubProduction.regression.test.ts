@@ -30,33 +30,40 @@ describe('createProductionHubSource — wires all three real adapters', () => {
 
   it('binds the booking-conversation adapter (§14)', () => {
     expect(SRC).toMatch(
-      /async listBookingConversationInboxItems\(uid, workspace\)[\s\S]{0,300}import\('\.\/BookingConversationInboxAdapter'\)/,
+      /async listBookingConversationInboxItems\(uid, workspace, opts\)[\s\S]{0,300}import\('\.\/BookingConversationInboxAdapter'\)/,
     );
   });
 
   it('binds the chat_threads adapter (§15)', () => {
     expect(SRC).toMatch(
-      /async listChatThreadInboxItems\(uid, workspace\)[\s\S]{0,300}import\('\.\/ChatThreadInboxAdapter'\)/,
+      /async listChatThreadInboxItems\(uid, workspace, opts\)[\s\S]{0,300}import\('\.\/ChatThreadInboxAdapter'\)/,
     );
   });
 
-  it('binds the attention adapter (§16)', () => {
+  it('binds the attention adapter (§16) and forwards the locale', () => {
     expect(SRC).toMatch(
-      /async listAttentionInboxItems\(uid, workspace\)[\s\S]{0,300}import\('\.\/AttentionInboxAdapter'\)/,
+      /async listAttentionInboxItems\(uid, workspace, opts\)[\s\S]{0,300}import\('\.\/AttentionInboxAdapter'\)/,
+    );
+    // CEO DEEP-LOGIC §7 — locale must be forwarded (only Attention
+    // uses it today; the chat lanes pass through the tuple).
+    expect(SRC).toMatch(
+      /listAttentionInboxItems\(uid, workspace, opts\.locale\)/,
     );
   });
 });
 
-describe('lane-level fail-closed discipline', () => {
-  it('each lane wraps its adapter call in try / return []', () => {
-    // A thrown adapter must never take down the other two lanes' data.
-    // The doctrine's Inbox is a projection — when a source fails, the
-    // caller gets an empty list for that lane, never a 500.
+describe('CEO DEEP-LOGIC §8/§9 — degraded lane surfaces, never hides as empty', () => {
+  it('each lane wraps its adapter call in try / catch → { items: [], degraded: true }', () => {
     const factoryIdx = SRC.indexOf('createProductionHubSource(): HubSource');
     expect(factoryIdx).toBeGreaterThan(0);
     const factoryBody = SRC.slice(factoryIdx, SRC.length);
-    const catchCount = (factoryBody.match(/} catch {\s*return \[\]/g) ?? []).length;
-    expect(catchCount).toBeGreaterThanOrEqual(3);
+    // The old `return []` fail-hidden path is banned — a degraded
+    // lane must be observable via sourceHealth.<lane>=degraded on the
+    // aggregated result.
+    const oldPattern = (factoryBody.match(/} catch {\s*return \[\];/g) ?? []).length;
+    expect(oldPattern).toBe(0);
+    const degradedCount = (factoryBody.match(/} catch {\s*return \{ items: \[\], degraded: true \}/g) ?? []).length;
+    expect(degradedCount).toBeGreaterThanOrEqual(3);
   });
 });
 
