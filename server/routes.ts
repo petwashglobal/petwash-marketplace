@@ -329,6 +329,7 @@ import petwashOrchestratorRoutes from "./routes/petwatch-orchestrator";
 import inboxRoutes from "./routes/inbox";
 import marketplaceInboxRoutes from "./routes/marketplace-inbox";
 import marketplaceJourneyRoutes from "./routes/marketplace-journey";
+import marketplaceDocumentsRoutes from "./routes/marketplace-documents";
 import { registerJourneyLoaders } from "./services/marketplace/registerJourneyLoaders";
 import integrationsRoutes from "./routes/integrations";
 import messagesRoutes from "./routes/messages";
@@ -13543,7 +13544,11 @@ self.addEventListener('notificationclick', (event) => {
   // NOT_IMPLEMENTED so the client shows an honest subdued placeholder
   // (§72) instead of a fabricated OK badge.
   registerJourneyLoaders();
-  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member, refund)');
+  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member, refund, pet, support_case)');
+
+  // Document Center detail endpoint (§11).
+  app.use('/api/marketplace', validateFirebaseToken, apiLimiter, marketplaceDocumentsRoutes);
+  logger.info('[Routes] ✅ Marketplace Documents detail registered at /api/marketplace/documents/:id');
 
   // Smart-greeting context — owner birthday + pets' birthdays for the homepage
   // greeting. optionalFirebaseToken: returns an empty context (not 401) when

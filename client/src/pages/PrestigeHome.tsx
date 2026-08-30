@@ -24,6 +24,7 @@ import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
+import { JourneyStateBadge } from '@/components/marketplace/JourneyStateBadge';
 import { getTierDisplay } from '@/lib/loyalty';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
@@ -307,6 +308,15 @@ export default function PrestigeHome() {
               <ChevronRight className="w-4 h-4 text-gray-400" />
             </button>
           )}
+
+          {/* CEO DEEP-LOGIC §84 — doctrine JourneyState projection for
+              Prestige, read directly from the server. The badge
+              renders nothing when NOT_A_PARTY / NOT_FOUND, and a
+              subdued placeholder when the loader is not yet wired
+              (§72 discipline). */}
+          <div className="mt-2" data-testid="prestige-journey-badge-slot">
+            <JourneyStateBadge kind="prestige_member" id="me" />
+          </div>
 
           {/* Membership card — dark emerald + gold, live QR */}
           <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
