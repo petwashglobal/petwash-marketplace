@@ -34,6 +34,16 @@ import { chatThreads, chatThreadMessages } from '@shared/schema-chat';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { isSuperAdminVerified } from '../middleware/rbac';
+// CEO Integrity Doctrine §13, §14, §15 + CEO SECURITY §23, §24 —
+// every user message runs through the MarketplaceMessagePolicyEngine
+// BEFORE delivery. Server is the enforcement authority; the client
+// cannot bypass with a "trust me" header.
+import {
+  evaluateMessage,
+  CURRENT_POLICY_VERSION,
+  type ThreadType as PolicyThreadType,
+} from '@shared/marketplace/policyEngine';
+import { shouldRetainBody, integritySignalFor } from '@shared/marketplace/moderationAudit';
 
 const router = Router();
 
@@ -112,6 +122,72 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
   const trimmedBody = parsed.data.body.trim().slice(0, 4000);
   if (!trimmedBody) return res.status(400).json({ error: 'empty_body' });
 
+  // CEO Integrity §13, §14, §15, §23, §24 — MessagePolicyEngine BEFORE
+  // insert. Server is authority; the client cannot bypass this.
+  const t = loaded.thread;
+  const senderRole: 'BOOKER' | 'PROVIDER' | 'STAFF' | 'SYSTEM' =
+    t.customerUserId === uid ? 'BOOKER'
+      : t.providerUserId === uid ? 'PROVIDER'
+      : t.supportOwnerId === uid ? 'STAFF'
+      : 'SYSTEM';
+  const recipientRole: 'BOOKER' | 'PROVIDER' | 'STAFF' | 'SYSTEM' =
+    senderRole === 'BOOKER' ? (t.providerUserId ? 'PROVIDER' : 'STAFF')
+      : senderRole === 'PROVIDER' ? 'BOOKER'
+      : 'BOOKER';
+  // chat_threads carries a threadType slug that already matches the
+  // policy engine's ThreadType — pass it through with a fallback.
+  const policyThreadType: PolicyThreadType =
+    (t.threadType as PolicyThreadType) ?? 'SUPPORT';
+  const policyResult = evaluateMessage({
+    text: trimmedBody,
+    threadType: policyThreadType,
+    // bookingPhase intentionally undefined — chat_threads is non-booking
+    // (booking chat lives in booking-chat.ts). If a caller migrates a
+    // booking thread here later, pass the phase for context-aware allow.
+    senderRole,
+    recipientRole,
+    policyVersion: CURRENT_POLICY_VERSION,
+  });
+
+  // §6.12 audit log. Body retained only for BLOCK_AND_REVIEW /
+  // SAFETY_ESCALATION per shouldRetainBody().
+  const auditPayload: Record<string, unknown> = {
+    threadId: req.params.threadId,
+    threadType: t.threadType,
+    senderUid: uid,
+    policyVersion: policyResult.policyVersion,
+    decision: policyResult.outcome,
+    primaryCategory: policyResult.primaryCategory,
+    matches: policyResult.matches.map((m) => ({
+      category: m.category,
+      confidence: m.confidence,
+      source: m.source,
+    })),
+  };
+  if (shouldRetainBody(policyResult.outcome)) {
+    auditPayload.retainedBody = trimmedBody;
+  }
+  const integritySignal = integritySignalFor(policyResult.primaryCategory);
+  if (integritySignal) auditPayload.integritySignal = integritySignal;
+  logger.info('[ThreadChat.policy] message evaluated', auditPayload);
+
+  // §6.10 refuse-with-neutral-copy on BLOCK / BLOCK_AND_REVIEW /
+  // SAFETY_ESCALATION. Sender sees a policy-neutral message + reason
+  // code the UI translates. §29 discipline: detection rules are NOT
+  // exposed to the client.
+  if (
+    policyResult.outcome === 'BLOCK' ||
+    policyResult.outcome === 'BLOCK_AND_REVIEW' ||
+    policyResult.outcome === 'SAFETY_ESCALATION'
+  ) {
+    return res.status(403).json({
+      error: 'moderation_block',
+      reasonCode: 'MODERATION_BLOCK',
+      category: policyResult.primaryCategory ?? null,
+      // Do NOT include a raw explanation of what pattern matched.
+    });
+  }
+
   // Insert + bump last_message_at + increment recipient unread. All in
   // one round trip using a CTE-style batch so a concurrent reader sees
   // a consistent thread head.
@@ -127,7 +203,7 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
     .returning();
 
   // Bump the thread head + increment the OTHER side's unread counter.
-  const t = loaded.thread;
+  // `t` was already resolved above for the policy engine.
   const now = new Date();
   const otherSideCustomer = t.customerUserId && t.customerUserId !== uid;
   const otherSideProvider = t.providerUserId && t.providerUserId !== uid;
