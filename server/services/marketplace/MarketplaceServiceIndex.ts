@@ -105,6 +105,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'BookAgainPrefillEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_29', summary: 'Book Again prefill + revalidation checklist' },
   { path: 'CallAuthorizationEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_9', summary: 'Call surface authorization + masking discipline' },
   { path: 'CategoryFilterEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_10', summary: 'Inbox item → category tab (Pet Parent vs Provider)' },
+  { path: 'HandoffCodeSpec.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_26', summary: 'Handoff code shape / hash / timing-safe verify / TTL' },
 ];
 
 /** Small guards used by regression pins. */
