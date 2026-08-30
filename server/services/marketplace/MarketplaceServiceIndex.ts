@@ -110,6 +110,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'PolicyGateBundle.ts', kind: 'EVALUATOR', programCode: 'DOCTRINE_21_22', summary: 'Aggregate multi-policy gate for critical actions' },
   { path: 'ContactMaskingService.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_41', summary: 'PII masking: email, IL phone, account, national id' },
   { path: 'DisputeEvidenceRequirementEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_15', summary: 'Dispute kind → required + recommended evidence codes' },
+  { path: 'RebookingSpanEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_29', summary: 'Book-Again cadence → next N future candidate starts' },
 ];
 
 /** Small guards used by regression pins. */
