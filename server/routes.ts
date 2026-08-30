@@ -13042,6 +13042,109 @@ self.addEventListener('notificationclick', (event) => {
     privacyEffect: false,
     safetyEffect: false,
   }));
+
+  // ─────────────────────────────────────────────────────────────
+  // CEO SPEED MODE — Provider response vertical.
+  // ACCEPT / DECLINE / PROPOSE_CHANGE + customer-side accept/decline.
+  // Handlers delegate to ProviderBookingResponseService which itself
+  // wraps the existing BookingResponseDispatcher for real accept/decline
+  // money moves (§60-§67).
+  // ─────────────────────────────────────────────────────────────
+  actionBrainImpactResolvers.set('BOOKING_ACCEPT', async () => ({
+    moneyCents: 0, affectsOtherParty: true, legalEffect: true, privacyEffect: false, safetyEffect: false,
+  }));
+  actionBrainImpactResolvers.set('BOOKING_DECLINE', async () => ({
+    moneyCents: 0, affectsOtherParty: true, legalEffect: false, privacyEffect: false, safetyEffect: false,
+  }));
+  actionBrainImpactResolvers.set('BOOKING_PROPOSE_CHANGE', async () => ({
+    moneyCents: 0, affectsOtherParty: true, legalEffect: false, privacyEffect: false, safetyEffect: false,
+  }));
+  actionBrainImpactResolvers.set('BOOKING_ACCEPT_PROPOSED_CHANGE', async () => ({
+    moneyCents: 0, affectsOtherParty: true, legalEffect: true, privacyEffect: false, safetyEffect: false,
+  }));
+
+  actionBrainHandlers.set('BOOKING_ACCEPT', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { providerAcceptBooking } = await import('./services/marketplace/ProviderBookingResponseService');
+    const r = await providerAcceptBooking({
+      requestId: entityId,
+      providerUid: actorUid,
+      bookerUid: String(c.bookerUid ?? ''),
+      quoteBreakdown: c.quoteBreakdown ?? {},
+    });
+    return providerResponseToAction('BOOKING_ACCEPT', r);
+  });
+
+  actionBrainHandlers.set('BOOKING_DECLINE', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { providerDeclineBooking } = await import('./services/marketplace/ProviderBookingResponseService');
+    const r = await providerDeclineBooking({
+      requestId: entityId,
+      providerUid: actorUid,
+      bookerUid: String(c.bookerUid ?? ''),
+      quoteBreakdown: c.quoteBreakdown ?? {},
+      reasonCode: c.reasonCode,
+    });
+    return providerResponseToAction('BOOKING_DECLINE', r);
+  });
+
+  actionBrainHandlers.set('BOOKING_PROPOSE_CHANGE', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { providerProposeChange } = await import('./services/marketplace/ProviderBookingResponseService');
+    const r = providerProposeChange({
+      bookingId: entityId,
+      providerUid: actorUid,
+      bookerUid: String(c.bookerUid ?? ''),
+      proposedSchedule: c.proposedSchedule,
+      proposedIncludedPetIds: c.proposedIncludedPetIds,
+      proposedExcludedPetIds: c.proposedExcludedPetIds,
+      proposedCareNotes: c.proposedCareNotes,
+      proposedPriceCents: typeof c.proposedPriceCents === 'number' ? c.proposedPriceCents : undefined,
+      reasonCode: c.reasonCode,
+    });
+    return providerResponseToAction('BOOKING_PROPOSE_CHANGE', r);
+  });
+
+  actionBrainHandlers.set('BOOKING_ACCEPT_PROPOSED_CHANGE', async ({ actorUid, command }) => {
+    const c = (command ?? {}) as any;
+    const { customerAcceptProposal } = await import('./services/marketplace/ProviderBookingResponseService');
+    const r = await customerAcceptProposal({
+      proposalId: String(c.proposalId ?? ''),
+      actorUid,
+    });
+    return providerResponseToAction('BOOKING_ACCEPT_PROPOSED_CHANGE', r);
+  });
+
+  // helper (closes over `actionBrainHandlers`)
+  function providerResponseToAction(actionType: string, r: { code: string; bookingId?: string; proposalId?: string }): any {
+    switch (r.code) {
+      case 'ACCEPTED':
+        return { actionType, status: 'COMPLETED', userMessage: { code: 'BOOKING_ACCEPTED' }, nextActions: [ { actionType: 'MESSAGE_CUSTOMER' }, { actionType: 'VIEW_BOOKING' } ] };
+      case 'DECLINED':
+        return { actionType, status: 'COMPLETED', userMessage: { code: 'BOOKING_DECLINED' }, nextActions: [] };
+      case 'CHANGE_PROPOSED':
+        return { actionType, status: 'COMPLETED', userMessage: { code: 'CHANGE_PROPOSED' }, nextActions: [ { actionType: 'MESSAGE_CUSTOMER' } ] };
+      case 'CUSTOMER_APPLIED_PROPOSAL':
+        return { actionType, status: 'COMPLETED', userMessage: { code: 'CHANGE_ACCEPTED' }, nextActions: [ { actionType: 'VIEW_BOOKING' } ] };
+      case 'CUSTOMER_DECLINED_PROPOSAL':
+        return { actionType, status: 'COMPLETED', userMessage: { code: 'CHANGE_DECLINED' }, nextActions: [] };
+      case 'SELF_BOOKING_BLOCKED':
+        return { actionType, status: 'FAILED', userMessage: { code: 'SELF_BOOKING_BLOCKED' }, nextActions: [] };
+      case 'STALE_STATE':
+        return { actionType, status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      case 'PROPOSAL_NOT_FOUND':
+      case 'PROPOSAL_EXPIRED':
+      case 'PROPOSAL_ACTOR_MISMATCH':
+        return { actionType, status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      case 'DISPATCHER_NOT_ENABLED':
+        // Feature-flag surface — mutation gate returns to caller with a stable code.
+        return { actionType, status: 'FAILED', userMessage: { code: 'OFFLINE_ACTION_UNAVAILABLE' }, nextActions: [] };
+      case 'BOOKING_SOURCE_UNRESOLVED':
+      case 'UNKNOWN_OUTCOME':
+      default:
+        return { actionType, status: 'PROCESSING', userMessage: { code: 'LEASE_EXPIRED_RECONCILE_REQUIRED' }, nextActions: [] };
+    }
+  }
   // CEO DEEP-LOGIC §50 — Action Brain PRESTIGE_JOIN handler binds to
   // the SAME `enrollPrestige` service the /api/prestige/join HTTP
   // route calls. One authority; no duplicated inline SQL.
