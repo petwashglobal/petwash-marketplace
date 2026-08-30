@@ -11,10 +11,13 @@ import {
 import type { InboxItem } from '../../shared/marketplace/inboxItem';
 
 function item(over: Partial<InboxItem> = {}): InboxItem {
+  // Default `entityId` matches threadId so unrelated fixtures do not
+  // dedupe under the new canonical (threadType, entityId) key.
+  const tid = over.threadId ?? 't1';
   return {
-    threadId: 't1',
+    threadId: tid,
     threadType: 'BOOKING',
-    entityId: 'e1',
+    entityId: `entity_${tid}`,
     workspaceContext: 'PET_PARENT',
     title: '',
     subtitle: '',
@@ -53,13 +56,15 @@ describe('merging + dedup (§92 read-model)', () => {
     expect(res.items.map((i) => i.threadId)).toEqual(['ct-1', 'bc-1', 'at-1']);
   });
 
-  it('dedupes by threadId — same thread from two sources projected ONCE', async () => {
+  it('dedupes by canonical (threadType, entityId) — same booking from two lanes projected ONCE', async () => {
+    // §10 — bookingConversations and chat_threads carry different
+    // threadIds for the same booking; the canonical key collapses them.
     const source: HubSource = {
       async listBookingConversationInboxItems() {
-        return { items: [item({ threadId: 't-shared', lastMessage: 'from booking chat' })] };
+        return { items: [item({ threadId: 'BC-abc', threadType: 'BOOKING', entityId: 'booking_42', lastMessage: 'from booking chat' })] };
       },
       async listChatThreadInboxItems() {
-        return { items: [item({ threadId: 't-shared', lastMessage: 'from chat_threads' })] };
+        return { items: [item({ threadId: 'uuid-xyz', threadType: 'BOOKING', entityId: 'booking_42', lastMessage: 'from chat_threads' })] };
       },
       async listAttentionInboxItems() {
         return { items: [] };
@@ -67,6 +72,37 @@ describe('merging + dedup (§92 read-model)', () => {
     };
     const res = await listForUser('nir', source, { workspace: 'PET_PARENT' });
     expect(res.items).toHaveLength(1);
+  });
+
+  it('§11 — attention item and chat card for the SAME booking BOTH appear', async () => {
+    // Attention items must not dedupe with a chat card even when
+    // entityId matches — they are structurally different products.
+    const source: HubSource = {
+      async listBookingConversationInboxItems() {
+        return { items: [item({ threadId: 'BC-abc', threadType: 'BOOKING', entityId: 'booking_42' })] };
+      },
+      async listChatThreadInboxItems() { return { items: [] }; },
+      async listAttentionInboxItems() {
+        return { items: [item({ threadId: 'attention:xyz', threadType: 'BOOKING', entityId: 'booking_42' })] };
+      },
+    };
+    const res = await listForUser('nir', source, { workspace: 'PET_PARENT' });
+    expect(res.items).toHaveLength(2);
+  });
+
+  it('SUPPORT case that references the same bookingId does NOT merge into BOOKING', async () => {
+    // Canonical key is (threadType, entityId), not entityId alone.
+    const source: HubSource = {
+      async listBookingConversationInboxItems() {
+        return { items: [item({ threadId: 'BC-a', threadType: 'BOOKING', entityId: 'booking_42' })] };
+      },
+      async listChatThreadInboxItems() {
+        return { items: [item({ threadId: 'uuid-b', threadType: 'SUPPORT', entityId: 'booking_42' })] };
+      },
+      async listAttentionInboxItems() { return { items: [] }; },
+    };
+    const res = await listForUser('nir', source, { workspace: 'PET_PARENT' });
+    expect(res.items).toHaveLength(2);
   });
 });
 

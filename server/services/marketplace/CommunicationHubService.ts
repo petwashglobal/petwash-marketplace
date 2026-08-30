@@ -93,16 +93,45 @@ function sortNewestFirst(items: InboxItem[]): InboxItem[] {
 }
 
 /**
- * Deduplicate by threadId. Same thread that shows up in both booking
- * conversation and chat_threads is projected once. This is the read-
- * model's job — the sources themselves stay independent.
+ * CEO DEEP-LOGIC §10, §11 — canonical dedupe key.
+ *
+ * The prior dedupeByCanonicalIdentity(...) collapsed items when their raw
+ * threadId strings matched. In practice each lane produces
+ * structurally distinct threadIds (BC-{nanoid} for booking-
+ * conversations, UUIDs for chat_threads, `attention:{itemId}` for
+ * Attention). The real risk the doctrine calls out is the opposite:
+ * when the SAME business booking has both a bookingConversation row
+ * AND a chat_threads spine row, the two lanes produce different
+ * threadIds and the projection surfaces the booking TWICE.
+ *
+ * The canonical key resolves that:
+ *   • Attention items keep their own namespace (their threadId
+ *     already starts with `attention:`), so they NEVER dedupe with a
+ *     chat card — §11 discipline: "Booking has a human conversation.
+ *     Attention says: `Maya proposed a change.` Both may appear."
+ *   • Every other item uses `${threadType}:${entityId}` as its
+ *     canonical key. Two BOOKING chats for the same booking (one
+ *     bookingConversations, one chat_threads) collapse; a SUPPORT
+ *     case that happens to reference the same booking DOES NOT
+ *     merge because its threadType is SUPPORT.
+ *
+ * Order-preserving: the FIRST occurrence in the merged list wins.
+ * Callers control that order by passing lanes to the hub in the
+ * priority order they want dedupe to prefer (chat_threads first
+ * today since it is the spine of newer traffic).
  */
-function dedupeByThreadId(items: InboxItem[]): InboxItem[] {
+function canonicalKey(i: InboxItem): string {
+  if (i.threadId.startsWith('attention:')) return i.threadId;
+  return `${i.threadType}:${i.entityId}`;
+}
+
+function dedupeByCanonicalIdentity(items: InboxItem[]): InboxItem[] {
   const seen = new Set<string>();
   const out: InboxItem[] = [];
   for (const i of items) {
-    if (seen.has(i.threadId)) continue;
-    seen.add(i.threadId);
+    const key = canonicalKey(i);
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(i);
   }
   return out;
@@ -136,7 +165,7 @@ export async function listForUser(
     sourceHealth.attention === 'degraded';
 
   let merged = [...bookingRes.items, ...threadRes.items, ...attentionRes.items];
-  merged = dedupeByThreadId(merged);
+  merged = dedupeByCanonicalIdentity(merged);
 
   if (since) {
     merged = merged.filter((i) => i.lastMessageAt > since);
