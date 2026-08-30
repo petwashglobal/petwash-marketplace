@@ -113,6 +113,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'RebookingSpanEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_29', summary: 'Book-Again cadence → next N future candidate starts' },
   { path: 'CalendarConflictReleaseEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_14', summary: 'Trigger → release slot / keep blocked verdict' },
   { path: 'ReviewSubmissionValidator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_28', summary: 'Review payload shape + safety validation' },
+  { path: 'SupportCaseAutoCloseEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_13', summary: 'Support case auto-close after RESOLVED window' },
 ];
 
 /** Small guards used by regression pins. */
