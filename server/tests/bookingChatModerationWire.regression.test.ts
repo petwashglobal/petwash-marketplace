@@ -1,11 +1,15 @@
 /**
- * booking-chat send path — moderation wire regression pin (§23).
+ * booking-chat send path — moderation wire regression pin (§23 + DEEP-LOGIC §20).
  *
- * CEO NEXT-AUTO §23 + Integrity §13, §14, §15, §23, §29 + Security §23.
- * The MessagePolicyEngine now runs BEFORE persistence on the real
+ * CEO NEXT-AUTO §23 + Integrity §13, §14, §15, §23, §29 + DEEP-LOGIC §20.
+ * The MessagePolicyEngine runs BEFORE persistence on the real
  * booking chat send path — the existing scanChatRisk stays as
  * ADVISORY escalation, but the doctrine engine is the layer that
  * can BLOCK (403).
+ *
+ * Retention discipline is now centralized in the dedicated
+ * moderationEvidence sink — raw bodies never touch the general
+ * application logger.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,9 +28,12 @@ describe('CEO §23 — MessagePolicyEngine wired into booking-chat send', () => 
     expect(SRC).toMatch(/CURRENT_POLICY_VERSION/);
   });
 
-  it('imports shouldRetainBody + integritySignalFor', () => {
+  it('imports integritySignalFor + the moderationEvidence sink', () => {
     expect(SRC).toMatch(
-      /shouldRetainBody[\s\S]{0,120}integritySignalFor[\s\S]{0,120}from ['"]@shared\/marketplace\/moderationAudit['"]/,
+      /integritySignalFor[\s\S]{0,120}from ['"]@shared\/marketplace\/moderationAudit['"]/,
+    );
+    expect(SRC).toMatch(
+      /recordModerationDecision[\s\S]{0,120}from ['"]\.\.\/services\/marketplace\/moderationEvidence['"]/,
     );
   });
 
@@ -62,25 +69,32 @@ describe('§29 — response body never leaks detection rules or raw text', () =>
   });
 });
 
-describe('§6.12 — audit + retention discipline', () => {
-  it('shouldRetainBody gates the retainedBody payload field', () => {
-    expect(SRC).toMatch(/if \(shouldRetainBody\(policyResult\.outcome\)\)/);
-    // The retainedBody line lives INSIDE the guard.
-    const guardIdx = SRC.indexOf('if (shouldRetainBody(policyResult.outcome))');
-    const guardEnd = SRC.indexOf('}', guardIdx);
-    expect(SRC.slice(guardIdx, guardEnd)).toMatch(/retainedBody\s*=\s*safeContent/);
+describe('CEO DEEP-LOGIC §20 — no raw body in general logger.info', () => {
+  it('route delegates to recordModerationDecision — never inlines retention', () => {
+    expect(SRC).toMatch(/recordModerationDecision\(/);
+    // The old inlined pattern is banned.
+    expect(SRC).not.toMatch(/auditPayload\.retainedBody/);
+    expect(SRC).not.toMatch(/logger\.info\('\[BookingChat\.policy\]'/);
   });
 
-  it('integritySignal added only when the mapping returns a slug (§7.1)', () => {
+  it('the raw safeContent is handed ONLY to recordModerationDecision, not to any logger call', () => {
+    const loggerLines = SRC.match(/logger\.(info|warn|error)\([\s\S]{0,400}?\)/g) ?? [];
+    for (const line of loggerLines) {
+      // safeContent is the sanitized body — retention still means it
+      // must not travel through the general application logger.
+      expect(line).not.toMatch(/safeContent/);
+    }
+  });
+
+  it('integritySignal is passed through the sink ctx', () => {
     expect(SRC).toMatch(/integritySignalFor\(policyResult\.primaryCategory\)/);
-    expect(SRC).toMatch(/if \(integritySignal\)/);
+    expect(SRC).toMatch(/integritySignal,[\s\S]{0,120}outcome: policyResult\.outcome/);
   });
 });
 
 describe('existing scanChatRisk stays as ADVISORY escalation (not removed)', () => {
   it('scanChatRisk still runs after the doctrine policy layer', () => {
     expect(SRC).toMatch(/scanChatRisk\(/);
-    // The doctrine block precedes step 7 (the scanChatRisk section).
     const policyIdx = SRC.indexOf('// 5b. CEO Integrity §13');
     const riskIdx = SRC.indexOf('// 7. Contact info');
     expect(policyIdx).toBeGreaterThan(0);

@@ -1,10 +1,12 @@
 /**
  * thread-chat send path — moderation wire regression pin.
  *
- * CEO Integrity §13, §14, §15, §23, §24, §29 + SECURITY §23, §24.
+ * CEO Integrity §13, §14, §15, §23, §24, §29 + DEEP-LOGIC §20.
  * Every user message MUST run through the MarketplaceMessagePolicyEngine
  * BEFORE persistence. Server is authority. Detection rules NEVER leak
- * to the client. Body retained only per §6.12 discipline.
+ * to the client. Raw blocked-message BODY never touches the general
+ * application logger — retention is centralized in the dedicated
+ * moderation-evidence sink.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,16 +25,18 @@ describe('CEO §23, §24 — MessagePolicyEngine runs BEFORE db.insert', () => {
     expect(SRC).toMatch(/CURRENT_POLICY_VERSION/);
   });
 
-  it('imports shouldRetainBody + integritySignalFor from shared moderationAudit', () => {
+  it('imports integritySignalFor + the moderationEvidence sink', () => {
     expect(SRC).toMatch(
-      /shouldRetainBody[\s\S]{0,120}integritySignalFor[\s\S]{0,120}from ['"]@shared\/marketplace\/moderationAudit['"]/,
+      /integritySignalFor[\s\S]{0,120}from ['"]@shared\/marketplace\/moderationAudit['"]/,
+    );
+    expect(SRC).toMatch(
+      /recordModerationDecision[\s\S]{0,120}from ['"]\.\.\/services\/marketplace\/moderationEvidence['"]/,
     );
   });
 
   it('evaluateMessage() call precedes db.insert(chatThreadMessages) — never the reverse', () => {
     const evalIdx = SRC.indexOf('evaluateMessage({');
     const insertIdx = SRC.indexOf('db\n    .insert(chatThreadMessages)');
-    // Both must exist and eval must precede insert in file order.
     expect(evalIdx).toBeGreaterThan(0);
     expect(insertIdx).toBeGreaterThan(evalIdx);
   });
@@ -48,8 +52,6 @@ describe('CEO §6.10, §29 — blocked message returns policy-neutral response',
   });
 
   it('response body does NOT include the raw text or match details (§29 detection rules never exposed)', () => {
-    // Zoom into the res.status(403).json({...}) call itself, not the
-    // surrounding comment block.
     const jsonIdx = SRC.indexOf('res.status(403).json({');
     const braceEnd = SRC.indexOf('});', jsonIdx);
     const jsonBody = SRC.slice(jsonIdx, braceEnd);
@@ -59,36 +61,38 @@ describe('CEO §6.10, §29 — blocked message returns policy-neutral response',
   });
 });
 
-describe('CEO §6.12 — audit log respects retention discipline', () => {
-  it('shouldRetainBody gates whether trimmedBody appears in the audit payload', () => {
-    expect(SRC).toMatch(/if \(shouldRetainBody\(policyResult\.outcome\)\)/);
-    // The audit payload otherwise carries only decision + category
-    // metadata — never the raw text unless retention is warranted.
-    const idx = SRC.indexOf('const auditPayload');
-    const end = SRC.indexOf('logger.info', idx);
-    const payload = SRC.slice(idx, end);
-    expect(payload).toMatch(/policyVersion/);
-    expect(payload).toMatch(/decision/);
-    expect(payload).toMatch(/primaryCategory/);
-    // Body is added ONLY inside the shouldRetainBody branch — not
-    // unconditionally.
-    const retainBranchIdx = SRC.indexOf('shouldRetainBody(policyResult.outcome)');
-    const retainBranchEnd = SRC.indexOf('}', retainBranchIdx);
-    expect(SRC.slice(retainBranchIdx, retainBranchEnd)).toMatch(/retainedBody/);
+describe('CEO DEEP-LOGIC §20 — no raw body in general logger.info', () => {
+  it('the route delegates to recordModerationDecision — never inlines the retention gate', () => {
+    expect(SRC).toMatch(/recordModerationDecision\(/);
+    // The route MUST NOT build a `retainedBody` payload directly —
+    // that is what the sink is for. And it must not call
+    // logger.info('[ThreadChat.policy]', ...) with any body.
+    expect(SRC).not.toMatch(/auditPayload\.retainedBody/);
+    expect(SRC).not.toMatch(/logger\.info\('\[ThreadChat\.policy\]'/);
   });
 
-  it('integritySignal is added only for marketplace-integrity categories (§7.1)', () => {
+  it('the raw trimmedBody is handed ONLY to recordModerationDecision, not to logger', () => {
+    // trimmedBody appears in the evaluateMessage call, in the insert,
+    // and in the sink call — but never as a value in a logger.info /
+    // logger.warn / logger.error payload.
+    const loggerLines = SRC.match(/logger\.(info|warn|error)\([\s\S]{0,400}?\)/g) ?? [];
+    for (const line of loggerLines) {
+      expect(line).not.toMatch(/trimmedBody/);
+    }
+  });
+
+  it('integritySignal is passed through the sink, not the standard logger', () => {
     expect(SRC).toMatch(/integritySignalFor\(policyResult\.primaryCategory\)/);
-    expect(SRC).toMatch(/if \(integritySignal\)/);
+    // The sink call carries integritySignal as part of the ctx.
+    expect(SRC).toMatch(/integritySignal,[\s\S]{0,120}outcome: policyResult\.outcome/);
   });
 });
 
 describe('sender + recipient roles derived from server-side thread parties', () => {
-  it('senderRole derived from customerUserId / providerUserId / supportOwnerId — never from body', () => {
+  it('senderRole derived from customerUserId / providerUserId — never from body', () => {
     expect(SRC).toMatch(
       /t\.customerUserId === uid[\s\S]{0,80}'BOOKER'[\s\S]{0,120}t\.providerUserId === uid[\s\S]{0,80}'PROVIDER'/,
     );
-    // Body never contributes to role decision.
     const roleIdx = SRC.indexOf('const senderRole');
     const roleEnd = SRC.indexOf(';', roleIdx);
     const roleBlock = SRC.slice(roleIdx, roleEnd);

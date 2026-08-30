@@ -43,7 +43,8 @@ import {
   CURRENT_POLICY_VERSION,
   type ThreadType as PolicyThreadType,
 } from '@shared/marketplace/policyEngine';
-import { shouldRetainBody, integritySignalFor } from '@shared/marketplace/moderationAudit';
+import { integritySignalFor } from '@shared/marketplace/moderationAudit';
+import { recordModerationDecision } from '../services/marketplace/moderationEvidence';
 
 const router = Router();
 
@@ -149,27 +150,25 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
     policyVersion: CURRENT_POLICY_VERSION,
   });
 
-  // §6.12 audit log. Body retained only for BLOCK_AND_REVIEW /
-  // SAFETY_ESCALATION per shouldRetainBody().
-  const auditPayload: Record<string, unknown> = {
-    threadId: req.params.threadId,
-    threadType: t.threadType,
-    senderUid: uid,
-    policyVersion: policyResult.policyVersion,
-    decision: policyResult.outcome,
-    primaryCategory: policyResult.primaryCategory,
-    matches: policyResult.matches.map((m) => ({
-      category: m.category,
-      confidence: m.confidence,
-      source: m.source,
-    })),
-  };
-  if (shouldRetainBody(policyResult.outcome)) {
-    auditPayload.retainedBody = trimmedBody;
-  }
+  // CEO DEEP-LOGIC §20 — raw body NEVER goes to general logger.info.
+  // recordModerationDecision writes only safe metadata to the standard
+  // log and routes the raw body to the dedicated moderation-evidence
+  // sink only when shouldRetainBody() is true. Detection rule ids stay
+  // out of the standard log per §29.
   const integritySignal = integritySignalFor(policyResult.primaryCategory);
-  if (integritySignal) auditPayload.integritySignal = integritySignal;
-  logger.info('[ThreadChat.policy] message evaluated', auditPayload);
+  recordModerationDecision(
+    {
+      route: '[ThreadChat.policy]',
+      threadId: req.params.threadId,
+      senderUid: uid,
+      policyVersion: policyResult.policyVersion,
+      primaryCategory: policyResult.primaryCategory,
+      integritySignal,
+      outcome: policyResult.outcome,
+      matches: policyResult.matches,
+    },
+    trimmedBody,
+  );
 
   // §6.10 refuse-with-neutral-copy on BLOCK / BLOCK_AND_REVIEW /
   // SAFETY_ESCALATION. Sender sees a policy-neutral message + reason
