@@ -57,6 +57,10 @@ import {
   classifyAttachmentUrl,
   sanitiseAttachmentName,
 } from '../services/marketplace/attachmentPolicy';
+import {
+  findPriorSend,
+  recordSendResolution,
+} from '../services/marketplace/messageSendIdempotency';
 
 const router = Router();
 
@@ -113,6 +117,9 @@ const sendSchema = z.object({
     name: z.string().max(200).optional(),
   })).max(4).optional(),
   moderationDecisionId: z.string().max(4096).optional(),
+  // CEO DEEP-LOGIC §9 — client generates a UUID/nanoid per compose
+  // intent so a lost-response retry does not create a duplicate.
+  clientMessageId: z.string().min(4).max(128).optional(),
 });
 
 // POST /api/threads/:threadId/send
@@ -135,6 +142,19 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
   }
   const trimmedBody = parsed.data.body.trim().slice(0, 4000);
   if (!trimmedBody) return res.status(400).json({ error: 'empty_body' });
+
+  // CEO DEEP-LOGIC §9 — send idempotency. If the same (senderUid,
+  // threadId, clientMessageId) triple already resolved to a message
+  // in this instance, replay the resolved id without another insert /
+  // unread bump / notification. See messageSendIdempotency.ts on the
+  // per-process / horizontal-scaling caveat.
+  const clientMessageId = parsed.data.clientMessageId;
+  if (clientMessageId) {
+    const prior = findPriorSend(uid, req.params.threadId, clientMessageId);
+    if (prior) {
+      return res.json({ ok: true, deduplicated: true, messageId: prior });
+    }
+  }
 
   // CEO DEEP-LOGIC §19 — attachment gate. Any attachment URL must
   // resolve to a PetWash-owned origin; filenames are sanitised of
@@ -320,6 +340,12 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
     }).where(eq(chatThreads.threadId, req.params.threadId));
     return row;
   });
+
+  // Record the resolved message id AFTER commit so a mid-flight abort
+  // never registers a phantom entry.
+  if (clientMessageId && inserted?.id != null) {
+    recordSendResolution(uid, req.params.threadId, clientMessageId, String(inserted.id));
+  }
 
   logger.info('[ThreadChat] message sent', {
     threadId: req.params.threadId, threadType: t.threadType, senderUid: uid,
