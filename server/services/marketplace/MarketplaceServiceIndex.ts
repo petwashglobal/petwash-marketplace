@@ -103,6 +103,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'AttachmentOwnershipGuard.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_41', summary: 'Attachment read allow list — owner, party, explicit share' },
   { path: 'ProviderPayoutDestinationValidator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_41', summary: 'IL bank account shape validation + masked projection' },
   { path: 'BookAgainPrefillEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_29', summary: 'Book Again prefill + revalidation checklist' },
+  { path: 'CallAuthorizationEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_9', summary: 'Call surface authorization + masking discipline' },
 ];
 
 /** Small guards used by regression pins. */
