@@ -117,6 +117,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'ProviderApplicationCompletenessEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_21', summary: 'Provider application readiness — sections + doc completeness' },
   { path: 'ProviderHomeSectionsEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_3', summary: 'Ordered section list for /provider/today rendering' },
   { path: 'PetParentHomeSectionsEvaluator.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_2', summary: 'Ordered section list for /pet-parent/home rendering' },
+  { path: 'ProfileFieldAuthorityMap.ts', kind: 'POLICY', programCode: 'P0_MY_ACCOUNT', summary: 'Canonical authority classification per personal profile field' },
 ];
 
 /** Small guards used by regression pins. */
