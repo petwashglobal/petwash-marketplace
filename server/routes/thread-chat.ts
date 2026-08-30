@@ -50,6 +50,7 @@ import {
   hashSafeContent,
   issueWarningToken,
   verifyWarningToken,
+  consumeJti,
   buildAllowNoticePayload,
 } from '../services/marketplace/moderationDecisions';
 import {
@@ -230,19 +231,32 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
   // category). A second POST with the same body + the token proceeds.
   // Any mismatch → fresh warning.
   if (policyResult.outcome === 'WARN_BEFORE_SEND') {
+    // CEO DEEP-LOGIC §7 — no fabricated category. WARN outcomes MUST
+    // carry a primaryCategory; if the engine ever returns WARN with
+    // null we surface POLICY_ENGINE_INVALID_RESULT rather than mint
+    // a fake OFF_PLATFORM_BOOKING binding to keep the flow moving.
+    if (!policyResult.primaryCategory) {
+      return res.status(500).json({
+        error: 'policy_engine_invalid',
+        reasonCode: 'POLICY_ENGINE_INVALID_RESULT',
+      });
+    }
     const bodyHash = hashSafeContent(trimmedBody);
     const bindings = {
       senderUid: uid,
       threadId: req.params.threadId,
       safeContentHash: bodyHash,
       policyVersion: policyResult.policyVersion,
-      category: policyResult.primaryCategory ?? 'OFF_PLATFORM_BOOKING' as any,
+      category: policyResult.primaryCategory,
     };
     const incoming = typeof (req.body as any).moderationDecisionId === 'string'
       ? (req.body as any).moderationDecisionId as string
       : undefined;
     const verified = verifyWarningToken(incoming, bindings);
-    if (!verified.ok) {
+    // CEO DEEP-LOGIC §6 — a warning is one-shot. Consume the JTI so
+    // the same token can't be replayed 50 times before expiry.
+    const consumed = verified.ok ? consumeJti(verified.jti) : false;
+    if (!verified.ok || !consumed) {
       const moderationDecisionId = issueWarningToken(bindings);
       return res.status(409).json({
         status: 'WARNING_REQUIRED',
@@ -252,7 +266,11 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
         overridable: true,
       });
     }
-    // Verified — fall through to insert.
+    // §8 — policy was RE-EVALUATED at the top of the handler with the
+    // CURRENT policy version and content; we only reach this branch
+    // when the fresh outcome is still WARN and matches the token's
+    // category. If policy hardened WARN → BLOCK, the block branch
+    // above already returned 403.
   }
 
   // CEO DEEP-LOGIC §23 — atomic send. Message row + thread head +
