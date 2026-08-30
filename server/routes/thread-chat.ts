@@ -45,6 +45,12 @@ import {
 } from '@shared/marketplace/policyEngine';
 import { integritySignalFor } from '@shared/marketplace/moderationAudit';
 import { recordModerationDecision } from '../services/marketplace/moderationEvidence';
+import {
+  hashSafeContent,
+  issueWarningToken,
+  verifyWarningToken,
+  buildAllowNoticePayload,
+} from '../services/marketplace/moderationDecisions';
 
 const router = Router();
 
@@ -187,6 +193,38 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
     });
   }
 
+  // CEO DEEP-LOGIC §16 — WARN_BEFORE_SEND two-stage handshake. The
+  // prior wire silently sent WARN_BEFORE_SEND messages, contradicting
+  // the outcome name. Server now issues a signed moderationDecisionId
+  // bound to (sender, thread, exact body hash, policy version,
+  // category). A second POST with the same body + the token proceeds.
+  // Any mismatch → fresh warning.
+  if (policyResult.outcome === 'WARN_BEFORE_SEND') {
+    const bodyHash = hashSafeContent(trimmedBody);
+    const bindings = {
+      senderUid: uid,
+      threadId: req.params.threadId,
+      safeContentHash: bodyHash,
+      policyVersion: policyResult.policyVersion,
+      category: policyResult.primaryCategory ?? 'OFF_PLATFORM_BOOKING' as any,
+    };
+    const incoming = typeof (req.body as any).moderationDecisionId === 'string'
+      ? (req.body as any).moderationDecisionId as string
+      : undefined;
+    const verified = verifyWarningToken(incoming, bindings);
+    if (!verified.ok) {
+      const moderationDecisionId = issueWarningToken(bindings);
+      return res.status(409).json({
+        status: 'WARNING_REQUIRED',
+        reasonCode: 'MODERATION_WARN',
+        category: bindings.category,
+        moderationDecisionId,
+        overridable: true,
+      });
+    }
+    // Verified — fall through to insert.
+  }
+
   // Insert + bump last_message_at + increment recipient unread. All in
   // one round trip using a CTE-style batch so a concurrent reader sees
   // a consistent thread head.
@@ -217,7 +255,13 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
     threadId: req.params.threadId, threadType: t.threadType, senderUid: uid,
   });
 
-  return res.json({ ok: true, message: inserted });
+  // CEO DEEP-LOGIC §18 — ALLOW_WITH_NOTICE surfaces an educational
+  // notice to the UI ("For safety, keep payments on PetWash.") so
+  // the notice outcome isn't silently ignored.
+  const notice = policyResult.outcome === 'ALLOW_WITH_NOTICE'
+    ? buildAllowNoticePayload(policyResult.primaryCategory)
+    : undefined;
+  return res.json({ ok: true, message: inserted, ...(notice ? { notice } : {}) });
 });
 
 // PUT /api/threads/:threadId/read — marks the caller's side read.

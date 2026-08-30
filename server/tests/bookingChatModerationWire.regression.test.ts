@@ -92,6 +92,22 @@ describe('CEO DEEP-LOGIC §20 — no raw body in general logger.info', () => {
   });
 });
 
+describe('CEO DEEP-LOGIC §16 — WARN_BEFORE_SEND two-stage handshake', () => {
+  it('imports the handshake helpers from moderationDecisions', () => {
+    expect(SRC).toMatch(
+      /issueWarningToken[\s\S]{0,120}verifyWarningToken[\s\S]{0,120}from '\.\.\/services\/marketplace\/moderationDecisions'/,
+    );
+  });
+
+  it('WARN_BEFORE_SEND → 409 WARNING_REQUIRED unless a valid token proves the second send', () => {
+    expect(SRC).toMatch(/policyResult\.outcome === 'WARN_BEFORE_SEND'/);
+    expect(SRC).toMatch(/res\.status\(409\)\.json\(\{[\s\S]{0,200}status: 'WARNING_REQUIRED'/);
+    expect(SRC).toMatch(/reasonCode: 'MODERATION_WARN'/);
+    expect(SRC).toMatch(/hashSafeContent\(safeContent\)/);
+    expect(SRC).toMatch(/verifyWarningToken\(incoming, bindings\)/);
+  });
+});
+
 describe('existing scanChatRisk stays as ADVISORY escalation (not removed)', () => {
   it('scanChatRisk still runs after the doctrine policy layer', () => {
     expect(SRC).toMatch(/scanChatRisk\(/);

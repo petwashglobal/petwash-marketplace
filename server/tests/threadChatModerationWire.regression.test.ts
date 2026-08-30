@@ -88,6 +88,31 @@ describe('CEO DEEP-LOGIC §20 — no raw body in general logger.info', () => {
   });
 });
 
+describe('CEO DEEP-LOGIC §16 — WARN_BEFORE_SEND two-stage handshake', () => {
+  it('imports the handshake helpers from moderationDecisions', () => {
+    expect(SRC).toMatch(
+      /issueWarningToken[\s\S]{0,120}verifyWarningToken[\s\S]{0,120}from '\.\.\/services\/marketplace\/moderationDecisions'/,
+    );
+  });
+
+  it('WARN_BEFORE_SEND → 409 WARNING_REQUIRED unless a valid token proves the second send', () => {
+    expect(SRC).toMatch(/policyResult\.outcome === 'WARN_BEFORE_SEND'/);
+    expect(SRC).toMatch(/res\.status\(409\)\.json\(\{[\s\S]{0,200}status: 'WARNING_REQUIRED'/);
+    expect(SRC).toMatch(/reasonCode: 'MODERATION_WARN'/);
+    // The token bindings must include the sanitized body hash — a
+    // client cannot ride a token for a different message.
+    expect(SRC).toMatch(/hashSafeContent\(trimmedBody\)/);
+    expect(SRC).toMatch(/verifyWarningToken\(incoming, bindings\)/);
+  });
+});
+
+describe('CEO DEEP-LOGIC §18 — ALLOW_WITH_NOTICE surfaces a notice', () => {
+  it('sends the message AND returns a notice payload the UI can render', () => {
+    expect(SRC).toMatch(/policyResult\.outcome === 'ALLOW_WITH_NOTICE'/);
+    expect(SRC).toMatch(/buildAllowNoticePayload\(policyResult\.primaryCategory\)/);
+  });
+});
+
 describe('sender + recipient roles derived from server-side thread parties', () => {
   it('senderRole derived from customerUserId / providerUserId — never from body', () => {
     expect(SRC).toMatch(
