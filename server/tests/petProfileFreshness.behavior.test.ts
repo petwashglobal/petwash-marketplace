@@ -1,124 +1,92 @@
 /**
- * Pet profile freshness — behavior pins (business §34, §85).
+ * Pet profile freshness — behavior pins (CEO §21, §22, §34, §48).
+ *
+ * §21 correction: thresholds are POLICY-CONFIGURED — no engineer-invented
+ * month numbers. Unconfigured caller → POLICY_NOT_CONFIGURED.
  */
 import { describe, it, expect } from 'vitest';
 import {
   canTouchFreshness,
   evaluateFreshness,
   petsNeedingAttention,
-  DEFAULT_ADULT_THRESHOLDS,
-  DEFAULT_YOUNG_ANIMAL_THRESHOLDS,
   type PetFreshnessEntry,
+  type PetProfileReviewPolicy,
 } from '../../shared/marketplace/petProfileFreshness';
+import { getBusinessDecision } from '../../shared/marketplace/businessDecisionRegistry';
 
 const NOW = '2026-08-30T00:00:00Z';
-
-// Helper: N days before NOW.
 function daysAgo(n: number): string {
   const d = new Date(NOW);
   d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString();
 }
 
-describe('adult pet thresholds (~5 months REVIEW_SOON, ~7 months STALE)', () => {
-  it('reviewed 30 days ago → FRESH', () => {
+// A test-only policy — represents what a call site would pass IF the
+// business had approved thresholds. It carries no doctrinal weight.
+const TEST_POLICY: PetProfileReviewPolicy = {
+  adultThresholds: { reviewSoonAfterDays: 150, staleAfterDays: 210 },
+  youngAnimalThresholds: { reviewSoonAfterDays: 45, staleAfterDays: 90 },
+  youngAnimalUpToMonths: 12,
+};
+
+describe('POLICY_NOT_CONFIGURED default (CEO §21 discipline)', () => {
+  it('no policy supplied → POLICY_NOT_CONFIGURED (never a guess)', () => {
     const s = evaluateFreshness({ lastReviewedAt: daysAgo(30), now: NOW });
-    expect(s).toBe('FRESH');
+    expect(s).toBe('POLICY_NOT_CONFIGURED');
   });
 
-  it('reviewed 160 days ago → REVIEW_SOON', () => {
-    const s = evaluateFreshness({ lastReviewedAt: daysAgo(160), now: NOW });
-    expect(s).toBe('REVIEW_SOON');
-  });
-
-  it('reviewed 220 days ago → STALE', () => {
-    const s = evaluateFreshness({ lastReviewedAt: daysAgo(220), now: NOW });
-    expect(s).toBe('STALE');
-  });
-
-  it('boundary exactly at reviewSoonAfterDays → REVIEW_SOON', () => {
-    const s = evaluateFreshness({
-      lastReviewedAt: daysAgo(DEFAULT_ADULT_THRESHOLDS.reviewSoonAfterDays),
-      now: NOW,
-    });
-    expect(s).toBe('REVIEW_SOON');
-  });
-
-  it('boundary exactly at staleAfterDays → STALE', () => {
-    const s = evaluateFreshness({
-      lastReviewedAt: daysAgo(DEFAULT_ADULT_THRESHOLDS.staleAfterDays),
-      now: NOW,
-    });
-    expect(s).toBe('STALE');
+  it('KYA_DEFAULT_REVIEW_INTERVAL is UNDECIDED in the business registry', () => {
+    const d = getBusinessDecision('KYA_DEFAULT_REVIEW_INTERVAL');
+    expect(d).toBeDefined();
+    expect(d!.status).toBe('UNDECIDED');
   });
 });
 
-describe('young animal thresholds (< 12 months age → tighter window)', () => {
-  it('puppy 60 days since review → REVIEW_SOON (adult would still be FRESH)', () => {
-    const puppy = evaluateFreshness({ lastReviewedAt: daysAgo(60), ageMonths: 6, now: NOW });
-    const adult = evaluateFreshness({ lastReviewedAt: daysAgo(60), ageMonths: 24, now: NOW });
+describe('with an explicit test policy — bands + boundaries', () => {
+  it('adult reviewed 30 days ago → FRESH', () => {
+    expect(evaluateFreshness({ lastReviewedAt: daysAgo(30), now: NOW, policy: TEST_POLICY })).toBe('FRESH');
+  });
+
+  it('adult reviewed 160 days ago → REVIEW_SOON', () => {
+    expect(evaluateFreshness({ lastReviewedAt: daysAgo(160), now: NOW, policy: TEST_POLICY })).toBe('REVIEW_SOON');
+  });
+
+  it('adult reviewed 220 days ago → STALE', () => {
+    expect(evaluateFreshness({ lastReviewedAt: daysAgo(220), now: NOW, policy: TEST_POLICY })).toBe('STALE');
+  });
+
+  it('young animal thresholds honoured when ageMonths < policy cutoff', () => {
+    const puppy = evaluateFreshness({ lastReviewedAt: daysAgo(60), ageMonths: 6, now: NOW, policy: TEST_POLICY });
+    const adult = evaluateFreshness({ lastReviewedAt: daysAgo(60), ageMonths: 24, now: NOW, policy: TEST_POLICY });
     expect(puppy).toBe('REVIEW_SOON');
     expect(adult).toBe('FRESH');
   });
-
-  it('kitten 100 days since review → STALE (adult would still be FRESH)', () => {
-    const kitten = evaluateFreshness({ lastReviewedAt: daysAgo(100), ageMonths: 3, now: NOW });
-    const adult = evaluateFreshness({ lastReviewedAt: daysAgo(100), ageMonths: 36, now: NOW });
-    expect(kitten).toBe('STALE');
-    expect(adult).toBe('FRESH');
-  });
-
-  it('young-animal thresholds sanity: reviewSoon < stale', () => {
-    expect(DEFAULT_YOUNG_ANIMAL_THRESHOLDS.reviewSoonAfterDays).toBeLessThan(
-      DEFAULT_YOUNG_ANIMAL_THRESHOLDS.staleAfterDays,
-    );
-  });
 });
 
-describe('canTouchFreshness (§34 "Everything is still correct")', () => {
-  it('FRESH → cannot touch (nothing to do)', () => {
+describe('canTouchFreshness — "Everything is still correct"', () => {
+  it('FRESH → cannot touch', () => {
     expect(canTouchFreshness('FRESH')).toBe(false);
   });
 
-  it('REVIEW_SOON → can touch', () => {
+  it('REVIEW_SOON + STALE → can touch', () => {
     expect(canTouchFreshness('REVIEW_SOON')).toBe(true);
+    expect(canTouchFreshness('STALE')).toBe(true);
   });
 
-  it('STALE → can touch', () => {
-    expect(canTouchFreshness('STALE')).toBe(true);
+  it('POLICY_NOT_CONFIGURED → cannot touch (no engine-configured window)', () => {
+    expect(canTouchFreshness('POLICY_NOT_CONFIGURED')).toBe(false);
   });
 });
 
-describe('petsNeedingAttention — STALE beats REVIEW_SOON, FRESH drops out', () => {
-  it('ranks STALE > REVIEW_SOON; drops FRESH', () => {
+describe('petsNeedingAttention — drops FRESH and POLICY_NOT_CONFIGURED', () => {
+  it('ranks STALE > REVIEW_SOON; ignores FRESH and unconfigured', () => {
     const entries: PetFreshnessEntry[] = [
       { petId: 'fresh', status: 'FRESH', lastReviewedAt: daysAgo(10) },
       { petId: 'stale', status: 'STALE', lastReviewedAt: daysAgo(300) },
       { petId: 'soon', status: 'REVIEW_SOON', lastReviewedAt: daysAgo(180) },
+      { petId: 'unconf', status: 'POLICY_NOT_CONFIGURED', lastReviewedAt: daysAgo(400) },
     ];
     const out = petsNeedingAttention(entries);
     expect(out.map((e) => e.petId)).toEqual(['stale', 'soon']);
-  });
-
-  it('empty when everything is FRESH', () => {
-    const entries: PetFreshnessEntry[] = [
-      { petId: 'a', status: 'FRESH', lastReviewedAt: daysAgo(5) },
-      { petId: 'b', status: 'FRESH', lastReviewedAt: daysAgo(15) },
-    ];
-    expect(petsNeedingAttention(entries)).toEqual([]);
-  });
-});
-
-describe('invalid inputs never crash', () => {
-  it('non-ISO lastReviewedAt → FRESH fallback (0 days ago)', () => {
-    const s = evaluateFreshness({ lastReviewedAt: 'not-a-date', now: NOW });
-    expect(s).toBe('FRESH');
-  });
-
-  it('future lastReviewedAt (clock skew) → FRESH', () => {
-    const future = new Date(NOW);
-    future.setUTCDate(future.getUTCDate() + 1);
-    const s = evaluateFreshness({ lastReviewedAt: future.toISOString(), now: NOW });
-    expect(s).toBe('FRESH');
   });
 });

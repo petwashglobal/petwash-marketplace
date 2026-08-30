@@ -32,12 +32,14 @@ export interface CatalogEntry {
  *   • Button labels are specific verbs — no bare "Continue" / "OK".
  */
 export const ACTION_CATALOG: CatalogEntry[] = [
-  // AUTH + PROFILE
-  { actionType: 'AUTH_SIGN_IN', domain: 'AUTH', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Sign in', visualKind: 'primary' },
+  // AUTH + PROFILE — confirmation audit (CEO §16–§18):
+  //   AUTH_SIGN_IN: NONE — the auth flow itself is the explicit action.
+  //   Marketing preference: TOAST_UNDO — user-friendly reversal, not a modal.
+  { actionType: 'AUTH_SIGN_IN', domain: 'AUTH', riskLevel: 'L2', confirmationLevel: 'NONE', label: 'Sign in', visualKind: 'primary' },
   { actionType: 'AUTH_SIGN_OUT', domain: 'AUTH', riskLevel: 'L1', confirmationLevel: 'LIGHT_CONFIRM', label: 'Sign out' },
   { actionType: 'PROFILE_UPDATE_NAME', domain: 'PROFILE', riskLevel: 'L1', confirmationLevel: 'NONE', label: 'Save name' },
   { actionType: 'PROFILE_UPDATE_LANGUAGE', domain: 'PROFILE', riskLevel: 'L1', confirmationLevel: 'NONE', label: 'Save language' },
-  { actionType: 'PROFILE_UPDATE_MARKETING_CONSENT', domain: 'PROFILE', riskLevel: 'L1', confirmationLevel: 'LIGHT_CONFIRM', label: 'Save marketing preference' },
+  { actionType: 'PROFILE_UPDATE_MARKETING_CONSENT', domain: 'PROFILE', riskLevel: 'L1', confirmationLevel: 'TOAST_UNDO', label: 'Save marketing preference' },
   { actionType: 'ACCOUNT_DELETE', domain: 'PROFILE', riskLevel: 'L4', confirmationLevel: 'REAUTH_AND_CONFIRM', label: 'Delete account', visualKind: 'destructive' },
 
   // PET / KYA
@@ -48,24 +50,53 @@ export const ACTION_CATALOG: CatalogEntry[] = [
   { actionType: 'KYA_SHARE_MEDICAL_FOR_BOOKING', domain: 'PET', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Share for this booking' },
   { actionType: 'KYA_REVIEW_TIMESTAMP_TOUCH', domain: 'PET', riskLevel: 'L1', confirmationLevel: 'NONE', label: 'Everything is still correct' },
 
-  // PRESTIGE
+  // PRESTIGE — CANCEL is POLICY_NOT_CONFIGURED (CEO §19, §20). Points,
+  // tier, wallet, benefits, marketing consequences are unresolved.
+  // Do NOT ship a cancel action that invents behavior. See
+  // shared/marketplace/businessDecisionRegistry.ts.
   { actionType: 'PRESTIGE_JOIN', domain: 'PRESTIGE', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Join Prestige', visualKind: 'primary' },
-  { actionType: 'PRESTIGE_CANCEL_MEMBERSHIP', domain: 'PRESTIGE', riskLevel: 'L3', confirmationLevel: 'EXPLICIT_CONFIRM', label: 'Cancel Prestige membership', visualKind: 'destructive' },
 
-  // BOOKING lifecycle
+  // BOOKING lifecycle — actor-specific intent (CEO SECURITY §8, §9, §10)
   { actionType: 'BOOKING_REQUEST_SUBMIT', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Send booking request', visualKind: 'primary' },
   { actionType: 'BOOKING_ACCEPT', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Accept booking', visualKind: 'primary' },
   { actionType: 'BOOKING_DECLINE', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Decline booking' },
   { actionType: 'BOOKING_PROPOSE_CHANGE', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Propose changes' },
   { actionType: 'BOOKING_ACCEPT_PROPOSED_CHANGE', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Accept changes' },
-  { actionType: 'BOOKING_ADD_PET', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Add pet to booking' },
-  { actionType: 'BOOKING_EXTEND', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Extend booking' },
-  { actionType: 'BOOKING_CANCEL_UNPAID', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Cancel request' },
-  { actionType: 'BOOKING_CANCEL_PAID', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'EXPLICIT_CONFIRM', label: 'Cancel booking', visualKind: 'destructive' },
+
+  // CANCEL — actor-specific intents. §CEO §8: consequences differ per
+  // actor (customer refund vs provider trust vs admin remediation), and
+  // the doctrine forbids one boolean handling both.
+  { actionType: 'CUSTOMER_CANCEL_BOOKING_UNPAID', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Cancel request' },
+  { actionType: 'CUSTOMER_CANCEL_BOOKING_PAID', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'EXPLICIT_CONFIRM', label: 'Cancel booking', visualKind: 'destructive' },
+  { actionType: 'PROVIDER_CANCEL_BOOKING', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'EXPLICIT_CONFIRM', label: 'Cancel this booking', visualKind: 'destructive' },
+  { actionType: 'ADMIN_CANCEL_BOOKING', domain: 'ADMIN', riskLevel: 'L4', confirmationLevel: 'REAUTH_AND_CONFIRM', label: 'Admin-cancel booking', visualKind: 'destructive' },
+
+  // ADD PET — request/propose split (§CEO §9). Customer REQUESTS; the
+  // other party ACCEPTS/DECLINES. Provider PROPOSES when they discover
+  // additional care on-site. Neither can silently mutate the booking.
+  { actionType: 'CUSTOMER_REQUEST_ADD_PET', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Add pet to booking' },
+  { actionType: 'PROVIDER_PROPOSE_ADD_PET', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Propose extra pet care' },
+  { actionType: 'ACCEPT_ADD_PET_PROPOSAL', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Accept pet + fee' },
+  { actionType: 'DECLINE_ADD_PET_PROPOSAL', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Decline pet addition' },
+
+  // EXTEND — request/propose split (§CEO §10). Same two-sided pattern
+  // as ADD_PET. Never mutates endTime unilaterally.
+  { actionType: 'CUSTOMER_REQUEST_EXTENSION', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Request extension' },
+  { actionType: 'PROVIDER_PROPOSE_EXTENSION', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'REVIEW_SCREEN', label: 'Propose extension' },
+  { actionType: 'ACCEPT_EXTENSION_PROPOSAL', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Accept extension + charge' },
+  { actionType: 'DECLINE_EXTENSION_PROPOSAL', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Decline extension' },
+
   { actionType: 'BOOKING_START_JOB', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Start job', visualKind: 'primary' },
   { actionType: 'BOOKING_COMPLETE_JOB', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Complete job', visualKind: 'primary' },
-  { actionType: 'BOOKING_PET_HANDOFF', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Confirm handoff', visualKind: 'safety' },
-  { actionType: 'BOOKING_PET_RETURN', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Confirm return', visualKind: 'safety' },
+
+  // HANDOFF/RETURN — verified handshake (§CEO §11). No boolean click.
+  // The provider ISSUES a code; the owner VERIFIES with the code. Same
+  // pattern for return (owner issues; provider verifies).
+  { actionType: 'HANDOFF_ISSUE_CODE', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Issue handoff code', visualKind: 'safety' },
+  { actionType: 'HANDOFF_VERIFY_CODE', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Verify handoff', visualKind: 'safety' },
+  { actionType: 'RETURN_ISSUE_CODE', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Issue return code', visualKind: 'safety' },
+  { actionType: 'RETURN_VERIFY_CODE', domain: 'BOOKING', riskLevel: 'L3', confirmationLevel: 'REVIEW_SCREEN', label: 'Verify return', visualKind: 'safety' },
+
   { actionType: 'BOOKING_REVIEW_SUBMIT', domain: 'BOOKING', riskLevel: 'L2', confirmationLevel: 'NONE', label: 'Publish review' },
 
   // MEET & GREET
@@ -81,8 +112,11 @@ export const ACTION_CATALOG: CatalogEntry[] = [
   { actionType: 'MESSAGE_KEEP_ON_PETWASH_REPLY', domain: 'COMMUNICATION', riskLevel: 'L1', confirmationLevel: 'NONE', label: 'Keep on PetWash' },
   { actionType: 'MESSAGE_REPORT', domain: 'COMMUNICATION', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Report message', visualKind: 'safety' },
   { actionType: 'THREAD_BLOCK_USER', domain: 'COMMUNICATION', riskLevel: 'L3', confirmationLevel: 'EXPLICIT_CONFIRM', label: 'Block user', visualKind: 'destructive' },
-  { actionType: 'CALL_PROVIDER', domain: 'COMMUNICATION', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Call provider' },
-  { actionType: 'CALL_OWNER', domain: 'COMMUNICATION', riskLevel: 'L2', confirmationLevel: 'LIGHT_CONFIRM', label: 'Call owner' },
+  // Call: NONE (CEO §16). Tap Call → call — no "Are you sure?".
+  // Permission progression is enforced by AvailableActionsResolver;
+  // once it surfaces the action, the tap is the intent.
+  { actionType: 'CALL_PROVIDER', domain: 'COMMUNICATION', riskLevel: 'L2', confirmationLevel: 'NONE', label: 'Call provider' },
+  { actionType: 'CALL_OWNER', domain: 'COMMUNICATION', riskLevel: 'L2', confirmationLevel: 'NONE', label: 'Call owner' },
 
   // PROVIDER surface
   { actionType: 'PROVIDER_APPLICATION_SAVE_DRAFT', domain: 'PROVIDER', riskLevel: 'L1', confirmationLevel: 'NONE', label: 'Save draft' },

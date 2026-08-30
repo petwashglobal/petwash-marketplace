@@ -246,7 +246,7 @@ describe('§14.6 — Cancellation preview shows itemised refund + provider impac
       'v1',
       '2026-08-30T13:00:00Z',
     );
-    expect(preview.actionType).toBe('BOOKING_CANCEL_PAID');
+    expect(preview.actionType).toBe('CUSTOMER_CANCEL_BOOKING_PAID');
     expect(preview.summary).toMatch(/Partial refund/);
     expect(preview.warnings.some((w) => /provider.{0,10}payout/i.test(w))).toBe(true);
     expect(preview.affectedEntities[0].label).toBe('PW-BKG-XYZ1');

@@ -11,6 +11,8 @@ import {
 import {
   canTransition,
   bothPartiesAcknowledged,
+  acknowledgementEvidence,
+  acknowledgementRequiredForNewCommercial,
   fastRebookAllowed,
   type MeetAndGreet,
 } from '../../shared/marketplace/meetAndGreet';
@@ -145,6 +147,46 @@ describe('MeetAndGreet — dual-acknowledgement gate (integrity §6)', () => {
         meet([
           { actorUid: 'sarah', acknowledgedAt: 'x', wordingVersion: 'mpe-2026-08-29' },
           { actorUid: 'sarah', acknowledgedAt: 'x2', wordingVersion: 'mpe-2026-08-29' },
+        ]),
+      ),
+    ).toBe(false);
+  });
+});
+
+describe('MeetAndGreet — per-party acknowledgement evidence (CEO §14)', () => {
+  const meet = (acks: MeetAndGreet['acknowledgements']): MeetAndGreet => ({
+    meetId: 'mg1',
+    customerUid: 'sarah',
+    providerUid: 'maya',
+    serviceType: 'PET_SITTING',
+    petIds: ['bruno'],
+    scheduledAt: '2026-09-05T10:00:00Z',
+    location: { kind: 'CUSTOMER_HOME' },
+    status: 'PROPOSED',
+    acknowledgements: acks,
+    createdAt: '',
+    updatedAt: '',
+  });
+
+  it('acknowledgementEvidence returns per-party records — never a boolean', () => {
+    const e = acknowledgementEvidence(
+      meet([
+        { actorUid: 'sarah', acknowledgedAt: 'a', wordingVersion: 'v1' },
+      ]),
+    );
+    expect(e.customer?.actorUid).toBe('sarah');
+    expect(e.provider).toBeNull();
+  });
+
+  it('acknowledgementRequiredForNewCommercial mirrors the gate (§15 — gates COMMERCIAL, not safety)', () => {
+    // Missing acknowledgements → commercial actions gated.
+    expect(acknowledgementRequiredForNewCommercial(meet([]))).toBe(true);
+    // Both acknowledged → gate opens.
+    expect(
+      acknowledgementRequiredForNewCommercial(
+        meet([
+          { actorUid: 'sarah', acknowledgedAt: 'a', wordingVersion: 'v1' },
+          { actorUid: 'maya', acknowledgedAt: 'b', wordingVersion: 'v1' },
         ]),
       ),
     ).toBe(false);

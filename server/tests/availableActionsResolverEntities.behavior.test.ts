@@ -104,16 +104,18 @@ describe('Prestige availability (integrity §14)', () => {
     expect(j2.enabled).toBe(false);
   });
 
-  it('ACTIVE → JOIN hidden, CANCEL_MEMBERSHIP surfaced', () => {
+  it('ACTIVE → JOIN hidden; cancel is POLICY_NOT_CONFIGURED (CEO §19, §20)', () => {
+    // The catalog does NOT ship PRESTIGE_CANCEL_MEMBERSHIP — points/tier/
+    // wallet/marketing consequences are unresolved. Resolver must not
+    // invent one.
     const list = prestigeAvailableActions(pCtx({ status: 'ACTIVE' }));
     expect(has(list, 'PRESTIGE_JOIN')).toBe(false);
-    expect(has(list, 'PRESTIGE_CANCEL_MEMBERSHIP')).toBe(true);
+    expect(has(list, 'PRESTIGE_CANCEL_MEMBERSHIP')).toBe(false);
   });
 
   it('CANCELLED → JOIN surfaced (re-join path)', () => {
     const list = prestigeAvailableActions(pCtx({ status: 'CANCELLED' }));
     expect(has(list, 'PRESTIGE_JOIN')).toBe(true);
-    expect(has(list, 'PRESTIGE_CANCEL_MEMBERSHIP')).toBe(false);
   });
 });
 

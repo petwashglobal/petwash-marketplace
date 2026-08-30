@@ -59,13 +59,13 @@ const cancelPaidImpact: ImpactResolver = async () => ({
 describe('CEO §7 — feature flag: mutations off by default', () => {
   it('isMutationEnabled=false → 503 + UNKNOWN reasonCode', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', cancelPaidImpact]]),
       auth: { actorUid: 'sarah' },
       isMutationEnabled: () => false,
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send(validBody);
     expect(res.status).toBe(503);
     expect(res.body.reasonCode).toBe('UNKNOWN');
@@ -75,13 +75,13 @@ describe('CEO §7 — feature flag: mutations off by default', () => {
 describe('CEO §1, §2 — client cannot supply security fields', () => {
   it('body-supplied impact / reauthProven / riskLevel are IGNORED — server derives everything', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
       // Server derives HIGH impact — the client tries to lie with low impact.
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', async () => ({ moneyCents: 5000, affectsOtherParty: true })]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', async () => ({ moneyCents: 5000, affectsOtherParty: true })]]),
       auth: { actorUid: 'sarah' },
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send({
         ...validBody,
         // ⛔ these fields should NOT influence anything — server ignores them.
@@ -104,11 +104,11 @@ describe('CEO §1, §2 — client cannot supply security fields', () => {
 describe('auth gate', () => {
   it('no auth context → 401 REAUTH_REQUIRED', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
       auth: null,
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send(validBody);
     expect(res.status).toBe(401);
     expect(res.body.reasonCode).toBe('REAUTH_REQUIRED');
@@ -128,23 +128,23 @@ describe('catalog / handler / impact registration gates', () => {
   it('catalog entry but no handler → 501', async () => {
     const app = makeApp({
       handlers: new Map(),
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', cancelPaidImpact]]),
       auth: { actorUid: 'sarah' },
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send(validBody);
     expect(res.status).toBe(501);
   });
 
   it('handler registered but NO impact resolver → 501 (safer to refuse than guess)', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
       impactResolvers: new Map(),
       auth: { actorUid: 'sarah' },
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send(validBody);
     expect(res.status).toBe(501);
   });
@@ -153,24 +153,24 @@ describe('catalog / handler / impact registration gates', () => {
 describe('input validation', () => {
   it('missing entityId → 400', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', cancelPaidImpact]]),
       auth: { actorUid: 'sarah' },
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send({ ...validBody, entityId: undefined });
     expect(res.status).toBe(400);
   });
 
   it('missing previewVersion → 400 STALE_PREVIEW', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', cancelPaidImpact]]),
       auth: { actorUid: 'sarah' },
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send({ ...validBody, previewVersion: undefined });
     expect(res.status).toBe(400);
     expect(res.body.reasonCode).toBe('STALE_PREVIEW');
@@ -178,12 +178,12 @@ describe('input validation', () => {
 
   it('missing idempotencyKey → 400 IDEMPOTENCY_REPLAY', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', cancelPaidImpact]]),
       auth: { actorUid: 'sarah' },
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send({ ...validBody, idempotencyKey: undefined });
     expect(res.status).toBe(400);
     expect(res.body.reasonCode).toBe('IDEMPOTENCY_REPLAY');
@@ -193,12 +193,12 @@ describe('input validation', () => {
 describe('happy path', () => {
   it('valid execute with feature flag on → 200 ok:true result:ActionResult', async () => {
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', goodHandler]]),
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', goodHandler]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', cancelPaidImpact]]),
       auth: { actorUid: 'sarah' },
     });
     const res = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send(validBody);
     expect(res.status).toBe(200);
     expect(res.body.result.status).toBe('SUCCEEDED');
@@ -211,15 +211,15 @@ describe('HTTP-layer idempotency + reauth (server-derived)', () => {
   it('two POSTs same key → handler runs once; second returns same actionId', async () => {
     const handler = vi.fn(goodHandler);
     const app = makeApp({
-      handlers: new Map([['BOOKING_CANCEL_PAID', handler]]),
-      impactResolvers: new Map([['BOOKING_CANCEL_PAID', cancelPaidImpact]]),
+      handlers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', handler]]),
+      impactResolvers: new Map([['CUSTOMER_CANCEL_BOOKING_PAID', cancelPaidImpact]]),
       auth: { actorUid: 'sarah' },
     });
     const res1 = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send(validBody);
     const res2 = await request(app)
-      .post('/api/actions/BOOKING_CANCEL_PAID/execute')
+      .post('/api/actions/CUSTOMER_CANCEL_BOOKING_PAID/execute')
       .send(validBody);
     expect(handler).toHaveBeenCalledTimes(1);
     expect(res2.body.result.actionId).toBe(res1.body.result.actionId);

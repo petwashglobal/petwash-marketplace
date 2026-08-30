@@ -59,7 +59,11 @@ export interface CancellationPreviewData {
  * envelope so the client can render the standard preview UI.
  */
 export interface CancellationPreview extends ActionPreview {
-  actionType: 'BOOKING_CANCEL_PAID' | 'BOOKING_CANCEL_UNPAID';
+  actionType:
+    | 'CUSTOMER_CANCEL_BOOKING_PAID'
+    | 'CUSTOMER_CANCEL_BOOKING_UNPAID'
+    | 'PROVIDER_CANCEL_BOOKING'
+    | 'ADMIN_CANCEL_BOOKING';
   cancellation: CancellationPreviewData;
 }
 
@@ -74,8 +78,17 @@ export function buildCancellationPreview(
   previewVersion: string,
   expiresAt: string,
 ): CancellationPreview {
+  // Actor-specific action slug (§CEO §8). Admin and provider variants
+  // are stamped by the initiator; customer variants further branch by
+  // originalTotalCents (paid vs unpaid).
   const actionType: CancellationPreview['actionType'] =
-    data.originalTotalCents > 0 ? 'BOOKING_CANCEL_PAID' : 'BOOKING_CANCEL_UNPAID';
+    data.initiator === 'STAFF'
+      ? 'ADMIN_CANCEL_BOOKING'
+      : data.initiator === 'PROVIDER'
+        ? 'PROVIDER_CANCEL_BOOKING'
+        : data.originalTotalCents > 0
+          ? 'CUSTOMER_CANCEL_BOOKING_PAID'
+          : 'CUSTOMER_CANCEL_BOOKING_UNPAID';
 
   const financial: MoneyEffect = {
     // Customer perspective: negative = refund back to them.

@@ -31,7 +31,7 @@ describe('buildCancellationPreview — full refund case', () => {
       '2026-08-30T13:00:00Z',
     );
     expect(p.summary).toMatch(/Full refund/i);
-    expect(p.actionType).toBe('BOOKING_CANCEL_PAID');
+    expect(p.actionType).toBe('CUSTOMER_CANCEL_BOOKING_PAID');
   });
 });
 
@@ -83,11 +83,15 @@ describe('framework envelope', () => {
     expect(p.affectedEntities).toEqual([{ kind: 'BOOKING', id: 'bkg_1', label: 'PW-BKG-ABCD' }]);
   });
 
-  it('CANCEL_PAID chosen when originalTotalCents > 0; CANCEL_UNPAID when 0', () => {
-    const paid = buildCancellationPreview(base({ originalTotalCents: 10000 }), 'v', 'x');
-    const unpaid = buildCancellationPreview(base({ originalTotalCents: 0, refundCents: 0, feeCents: 0, refundDestination: { cardCents: 0, eGiftCents: 0, walletCents: 0 } }), 'v', 'x');
-    expect(paid.actionType).toBe('BOOKING_CANCEL_PAID');
-    expect(unpaid.actionType).toBe('BOOKING_CANCEL_UNPAID');
+  it('actor-specific action slug (§CEO §8): customer paid/unpaid; provider; admin', () => {
+    const custPaid = buildCancellationPreview(base({ originalTotalCents: 10000 }), 'v', 'x');
+    const custUnpaid = buildCancellationPreview(base({ originalTotalCents: 0, refundCents: 0, feeCents: 0, refundDestination: { cardCents: 0, eGiftCents: 0, walletCents: 0 } }), 'v', 'x');
+    const provider = buildCancellationPreview(base({ initiator: 'PROVIDER', originalTotalCents: 5000 }), 'v', 'x');
+    const admin = buildCancellationPreview(base({ initiator: 'STAFF', originalTotalCents: 5000 }), 'v', 'x');
+    expect(custPaid.actionType).toBe('CUSTOMER_CANCEL_BOOKING_PAID');
+    expect(custUnpaid.actionType).toBe('CUSTOMER_CANCEL_BOOKING_UNPAID');
+    expect(provider.actionType).toBe('PROVIDER_CANCEL_BOOKING');
+    expect(admin.actionType).toBe('ADMIN_CANCEL_BOOKING');
   });
 });
 

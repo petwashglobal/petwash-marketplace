@@ -123,17 +123,35 @@ export function bookingAvailableActions(ctx: BookingActionContext): AvailableAct
     if (a) results.push(a);
   }
 
-  // ADD PET / EXTEND — either party, during CONFIRMED or IN_PROGRESS
-  // (structured change per doctrine §32–§34, both catalogued as REVIEW_SCREEN).
+  // ADD PET — actor-specific split (§CEO §9). Customer REQUESTS,
+  // provider PROPOSES (from on-site discovery). The OTHER party
+  // accepts/declines the resulting proposal — neither side ever
+  // mutates the booking party directly.
   if (ctx.bookingPhase === 'CONFIRMED' || ctx.bookingPhase === 'IN_PROGRESS') {
-    const addPet = build('BOOKING_ADD_PET', true, { requiresPreview: true });
-    if (addPet) results.push(addPet);
-    const extend = build('BOOKING_EXTEND', true, { requiresPreview: true });
-    if (extend) results.push(extend);
+    if (isBooker) {
+      const req = build('CUSTOMER_REQUEST_ADD_PET', true, { requiresPreview: true });
+      if (req) results.push(req);
+    }
+    if (isProvider) {
+      const prop = build('PROVIDER_PROPOSE_ADD_PET', true, { requiresPreview: true });
+      if (prop) results.push(prop);
+    }
   }
 
-  // CANCEL — either party, active phases only. UNPAID vs PAID variants
-  // differ in the catalog by risk + confirmation.
+  // EXTEND — actor-specific split (§CEO §10). Same pattern.
+  if (ctx.bookingPhase === 'CONFIRMED' || ctx.bookingPhase === 'IN_PROGRESS') {
+    if (isBooker) {
+      const req = build('CUSTOMER_REQUEST_EXTENSION', true, { requiresPreview: true });
+      if (req) results.push(req);
+    }
+    if (isProvider) {
+      const prop = build('PROVIDER_PROPOSE_EXTENSION', true, { requiresPreview: true });
+      if (prop) results.push(prop);
+    }
+  }
+
+  // CANCEL — actor-specific intent (§CEO §8). Consequences differ per
+  // actor; the doctrine forbids one boolean handling both.
   const cancelable =
     ctx.bookingPhase === 'REQUESTED' ||
     ctx.bookingPhase === 'QUOTED' ||
@@ -141,13 +159,19 @@ export function bookingAvailableActions(ctx: BookingActionContext): AvailableAct
     ctx.bookingPhase === 'CONFIRMED' ||
     ctx.bookingPhase === 'IN_PROGRESS';
   if (cancelable) {
-    const paid =
-      ctx.paymentPhase === 'AUTHORIZED' ||
-      ctx.paymentPhase === 'PAID' ||
-      ctx.paymentPhase === 'PARTIAL_REFUND';
-    const cancelType = paid ? 'BOOKING_CANCEL_PAID' : 'BOOKING_CANCEL_UNPAID';
-    const c = build(cancelType, true, { requiresPreview: paid });
-    if (c) results.push(c);
+    if (isBooker) {
+      const paid =
+        ctx.paymentPhase === 'AUTHORIZED' ||
+        ctx.paymentPhase === 'PAID' ||
+        ctx.paymentPhase === 'PARTIAL_REFUND';
+      const cancelType = paid ? 'CUSTOMER_CANCEL_BOOKING_PAID' : 'CUSTOMER_CANCEL_BOOKING_UNPAID';
+      const c = build(cancelType, true, { requiresPreview: paid });
+      if (c) results.push(c);
+    }
+    if (isProvider) {
+      const c = build('PROVIDER_CANCEL_BOOKING', true, { requiresPreview: true });
+      if (c) results.push(c);
+    }
   }
 
   // START JOB — provider only, only CONFIRMED (not ACCEPTED — payment
@@ -163,14 +187,29 @@ export function bookingAvailableActions(ctx: BookingActionContext): AvailableAct
     if (c) results.push(c);
   }
 
-  // HANDOFF / RETURN — either party during the appropriate window.
+  // HANDOFF / RETURN — verified-code handshake (§CEO §11).
+  // Provider ISSUES the handoff code; owner VERIFIES with it.
+  // At return, owner ISSUES the return code; provider VERIFIES.
+  // No boolean "I got the dog" click.
   if (ctx.bookingPhase === 'CONFIRMED' || ctx.bookingPhase === 'IN_PROGRESS') {
-    const h = build('BOOKING_PET_HANDOFF', true, { requiresPreview: true });
-    if (h) results.push(h);
+    if (isProvider) {
+      const h = build('HANDOFF_ISSUE_CODE', true, { requiresPreview: true });
+      if (h) results.push(h);
+    }
+    if (isBooker) {
+      const h = build('HANDOFF_VERIFY_CODE', true, { requiresPreview: true });
+      if (h) results.push(h);
+    }
   }
   if (ctx.bookingPhase === 'IN_PROGRESS') {
-    const r = build('BOOKING_PET_RETURN', true, { requiresPreview: true });
-    if (r) results.push(r);
+    if (isBooker) {
+      const r = build('RETURN_ISSUE_CODE', true, { requiresPreview: true });
+      if (r) results.push(r);
+    }
+    if (isProvider) {
+      const r = build('RETURN_VERIFY_CODE', true, { requiresPreview: true });
+      if (r) results.push(r);
+    }
   }
 
   // REVIEW — booker only, COMPLETED, no existing review.
@@ -300,11 +339,9 @@ export function prestigeAvailableActions(ctx: PrestigeActionContext): AvailableA
     if (j) list.push(j);
   }
 
-  // CANCEL — ACTIVE only.
-  if (ctx.status === 'ACTIVE') {
-    const c = build('PRESTIGE_CANCEL_MEMBERSHIP', true, { requiresPreview: true });
-    if (c) list.push(c);
-  }
+  // Prestige cancel is POLICY_NOT_CONFIGURED (CEO §19, §20). Do NOT
+  // surface an invented cancel action until points/tier/wallet/marketing
+  // consequences are approved. See businessDecisionRegistry.
 
   return list;
 }

@@ -59,12 +59,49 @@ export function canTransition(from: MeetAndGreetStatus, to: MeetAndGreetStatus):
 /**
  * Business rule: BOTH sides must acknowledge the counsel-approved wording
  * before the provider is allowed to accept a M&G that reveals any masked
- * contact information (integrity doctrine §6). Callers check this before
- * transitioning PROPOSED → CONFIRMED and before revealing masked contact.
+ * contact information (integrity doctrine §6 + CEO §14 correction).
+ *
+ * §14 discipline: acknowledgement is per-party EVIDENCE — a boolean
+ * "both acknowledged" is forbidden because one side would be able to
+ * set the flag on the other's behalf. This helper derives the truth
+ * from the append-only acknowledgement records.
+ *
+ * The record for one party MUST carry that party's actorUid + the
+ * policyVersion they saw. A record where actorUid is the other party
+ * cannot count as evidence for the first — that's an impersonation
+ * gap the boolean model created.
  */
 export function bothPartiesAcknowledged(mg: MeetAndGreet): boolean {
   const uids = new Set(mg.acknowledgements.map((a) => a.actorUid));
   return uids.has(mg.customerUid) && uids.has(mg.providerUid);
+}
+
+/**
+ * Return the per-party acknowledgement evidence, if any. Useful for
+ * the M&G surface to render "waiting for provider to acknowledge" vs
+ * "waiting for you to acknowledge" — never a shared boolean.
+ */
+export function acknowledgementEvidence(
+  mg: MeetAndGreet,
+): {
+  customer: MeetAndGreetAcknowledgement | null;
+  provider: MeetAndGreetAcknowledgement | null;
+} {
+  const customer = mg.acknowledgements.find((a) => a.actorUid === mg.customerUid) ?? null;
+  const provider = mg.acknowledgements.find((a) => a.actorUid === mg.providerUid) ?? null;
+  return { customer, provider };
+}
+
+/**
+ * §15 discipline: acknowledgement gating a NEW commercial arrangement
+ * is fine. Acknowledgement gating SAFETY communication / active-booking
+ * chat / incident report / emergency contact is FORBIDDEN.
+ *
+ * Callers use `acknowledgementRequiredForNewCommercial(mg)` to decide
+ * whether the accept path opens; safety paths never consult this.
+ */
+export function acknowledgementRequiredForNewCommercial(mg: MeetAndGreet): boolean {
+  return !bothPartiesAcknowledged(mg);
 }
 
 /**

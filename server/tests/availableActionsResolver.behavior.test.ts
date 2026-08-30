@@ -71,15 +71,15 @@ describe('booking availability — proposed change hand-off', () => {
 });
 
 describe('booking availability — cancel by payment phase', () => {
-  it('unpaid CONFIRMED → BOOKING_CANCEL_UNPAID', () => {
+  it('unpaid CONFIRMED → CUSTOMER_CANCEL_BOOKING_UNPAID', () => {
     const list = bookingAvailableActions(bookerCtx({ paymentPhase: 'UNPAID' }));
-    expect(has(list, 'BOOKING_CANCEL_UNPAID')).toBe(true);
-    expect(has(list, 'BOOKING_CANCEL_PAID')).toBe(false);
+    expect(has(list, 'CUSTOMER_CANCEL_BOOKING_UNPAID')).toBe(true);
+    expect(has(list, 'CUSTOMER_CANCEL_BOOKING_PAID')).toBe(false);
   });
 
-  it('paid CONFIRMED → BOOKING_CANCEL_PAID with requiresPreview: true', () => {
+  it('paid CONFIRMED → CUSTOMER_CANCEL_BOOKING_PAID with requiresPreview: true', () => {
     const list = bookingAvailableActions(bookerCtx({ paymentPhase: 'PAID' }));
-    const cancel = list.find((a) => a.type === 'BOOKING_CANCEL_PAID');
+    const cancel = list.find((a) => a.type === 'CUSTOMER_CANCEL_BOOKING_PAID');
     expect(cancel).toBeDefined();
     expect(cancel?.requiresPreview).toBe(true);
   });
@@ -87,8 +87,8 @@ describe('booking availability — cancel by payment phase', () => {
   it('COMPLETED / CANCELLED / DISPUTED bookings never surface CANCEL', () => {
     for (const phase of ['COMPLETED', 'CANCELLED', 'DISPUTED'] as const) {
       const list = bookingAvailableActions(bookerCtx({ bookingPhase: phase }));
-      expect(has(list, 'BOOKING_CANCEL_UNPAID')).toBe(false);
-      expect(has(list, 'BOOKING_CANCEL_PAID')).toBe(false);
+      expect(has(list, 'CUSTOMER_CANCEL_BOOKING_UNPAID')).toBe(false);
+      expect(has(list, 'CUSTOMER_CANCEL_BOOKING_PAID')).toBe(false);
     }
   });
 });
@@ -105,10 +105,12 @@ describe('booking availability — job lifecycle', () => {
     expect(has(list, 'BOOKING_START_JOB')).toBe(false);
   });
 
-  it('provider on IN_PROGRESS sees COMPLETE + RETURN', () => {
+  it('provider on IN_PROGRESS sees COMPLETE + VERIFY_RETURN (CEO §11 handshake)', () => {
     const list = bookingAvailableActions(providerCtx({ bookingPhase: 'IN_PROGRESS' }));
     expect(has(list, 'BOOKING_COMPLETE_JOB')).toBe(true);
-    expect(has(list, 'BOOKING_PET_RETURN')).toBe(true);
+    // Return is a two-sided handshake: booker ISSUES the code, provider VERIFIES.
+    expect(has(list, 'RETURN_VERIFY_CODE')).toBe(true);
+    expect(has(list, 'RETURN_ISSUE_CODE')).toBe(false); // that's the booker's action
   });
 
   it('booker on COMPLETED (no review yet) sees REVIEW_SUBMIT', () => {
@@ -127,18 +129,22 @@ describe('booking availability — structured changes', () => {
     for (const phase of ['CONFIRMED', 'IN_PROGRESS'] as const) {
       const b = bookingAvailableActions(bookerCtx({ bookingPhase: phase }));
       const p = bookingAvailableActions(providerCtx({ bookingPhase: phase }));
-      expect(has(b, 'BOOKING_ADD_PET')).toBe(true);
-      expect(has(b, 'BOOKING_EXTEND')).toBe(true);
-      expect(has(p, 'BOOKING_ADD_PET')).toBe(true);
-      expect(has(p, 'BOOKING_EXTEND')).toBe(true);
+      // CEO §9, §10 — actor-split intent.
+      // Customer REQUESTS; provider PROPOSES. Never one boolean.
+      expect(has(b, 'CUSTOMER_REQUEST_ADD_PET')).toBe(true);
+      expect(has(b, 'CUSTOMER_REQUEST_EXTENSION')).toBe(true);
+      expect(has(b, 'PROVIDER_PROPOSE_ADD_PET')).toBe(false);
+      expect(has(p, 'PROVIDER_PROPOSE_ADD_PET')).toBe(true);
+      expect(has(p, 'PROVIDER_PROPOSE_EXTENSION')).toBe(true);
+      expect(has(p, 'CUSTOMER_REQUEST_ADD_PET')).toBe(false);
     }
   });
 
   it('REQUESTED / COMPLETED do NOT surface ADD_PET / EXTEND', () => {
     for (const phase of ['REQUESTED', 'COMPLETED'] as const) {
       const list = bookingAvailableActions(bookerCtx({ bookingPhase: phase }));
-      expect(has(list, 'BOOKING_ADD_PET')).toBe(false);
-      expect(has(list, 'BOOKING_EXTEND')).toBe(false);
+      expect(has(list, 'CUSTOMER_REQUEST_ADD_PET')).toBe(false);
+      expect(has(list, 'CUSTOMER_REQUEST_EXTENSION')).toBe(false);
     }
   });
 });

@@ -188,7 +188,8 @@ describe('ACTION_CATALOG invariants (doctrine §71, §75, §79)', () => {
       'BOOKING_REQUEST_SUBMIT',
       'BOOKING_ACCEPT',
       'BOOKING_PROPOSE_CHANGE',
-      'BOOKING_EXTEND',
+      'CUSTOMER_REQUEST_EXTENSION',
+      'PROVIDER_PROPOSE_EXTENSION',
       'BOOKING_COMPLETE_JOB',
       'PROVIDER_APPLICATION_SUBMIT',
       'PRESTIGE_JOIN',
@@ -197,10 +198,72 @@ describe('ACTION_CATALOG invariants (doctrine §71, §75, §79)', () => {
     }
   });
 
+  it('CEO §8 — cancel is actor-specific, not one boolean', () => {
+    // Old BOOKING_CANCEL_PAID / _UNPAID are GONE. Actor-specific
+    // intents replace them.
+    expect(getCatalogEntry('BOOKING_CANCEL_PAID')).toBeUndefined();
+    expect(getCatalogEntry('BOOKING_CANCEL_UNPAID')).toBeUndefined();
+    expect(getCatalogEntry('CUSTOMER_CANCEL_BOOKING_UNPAID')?.confirmationLevel).toBe('LIGHT_CONFIRM');
+    expect(getCatalogEntry('CUSTOMER_CANCEL_BOOKING_PAID')?.confirmationLevel).toBe('EXPLICIT_CONFIRM');
+    expect(getCatalogEntry('PROVIDER_CANCEL_BOOKING')?.confirmationLevel).toBe('EXPLICIT_CONFIRM');
+    expect(getCatalogEntry('ADMIN_CANCEL_BOOKING')?.confirmationLevel).toBe('REAUTH_AND_CONFIRM');
+  });
+
+  it('CEO §9, §10 — add-pet / extend are request-vs-propose splits', () => {
+    // Old BOOKING_ADD_PET / BOOKING_EXTEND are GONE (silent-mutation
+    // vector). Split by initiator + a separate ACCEPT step.
+    expect(getCatalogEntry('BOOKING_ADD_PET')).toBeUndefined();
+    expect(getCatalogEntry('BOOKING_EXTEND')).toBeUndefined();
+    for (const t of [
+      'CUSTOMER_REQUEST_ADD_PET',
+      'PROVIDER_PROPOSE_ADD_PET',
+      'ACCEPT_ADD_PET_PROPOSAL',
+      'DECLINE_ADD_PET_PROPOSAL',
+      'CUSTOMER_REQUEST_EXTENSION',
+      'PROVIDER_PROPOSE_EXTENSION',
+      'ACCEPT_EXTENSION_PROPOSAL',
+      'DECLINE_EXTENSION_PROPOSAL',
+    ]) {
+      expect(getCatalogEntry(t)).toBeDefined();
+    }
+  });
+
+  it('CEO §11 — handoff/return are verified-code handshakes, not booleans', () => {
+    expect(getCatalogEntry('BOOKING_PET_HANDOFF')).toBeUndefined();
+    expect(getCatalogEntry('BOOKING_PET_RETURN')).toBeUndefined();
+    for (const t of [
+      'HANDOFF_ISSUE_CODE',
+      'HANDOFF_VERIFY_CODE',
+      'RETURN_ISSUE_CODE',
+      'RETURN_VERIFY_CODE',
+    ]) {
+      expect(getCatalogEntry(t)?.visualKind).toBe('safety');
+      expect(getCatalogEntry(t)?.confirmationLevel).toBe('REVIEW_SCREEN');
+    }
+  });
+
+  it('CEO §16-§18 — confirmation fatigue audit', () => {
+    // AUTH_SIGN_IN: auth itself is the explicit action; no modal.
+    expect(getCatalogEntry('AUTH_SIGN_IN')?.confirmationLevel).toBe('NONE');
+    // Call: tap Call → call. No "Are you sure?".
+    expect(getCatalogEntry('CALL_PROVIDER')?.confirmationLevel).toBe('NONE');
+    expect(getCatalogEntry('CALL_OWNER')?.confirmationLevel).toBe('NONE');
+    // Marketing preference: undo-able, not a modal.
+    expect(getCatalogEntry('PROFILE_UPDATE_MARKETING_CONSENT')?.confirmationLevel).toBe('TOAST_UNDO');
+  });
+
+  it('CEO §19, §20 — PRESTIGE_CANCEL_MEMBERSHIP is POLICY_NOT_CONFIGURED (absent from catalog)', () => {
+    // The catalog does NOT ship a Prestige cancel action until points/
+    // tier/wallet/marketing consequences are approved.
+    expect(getCatalogEntry('PRESTIGE_CANCEL_MEMBERSHIP')).toBeUndefined();
+  });
+
   it('safety-critical actions carry visualKind: safety', () => {
     for (const t of [
-      'BOOKING_PET_HANDOFF',
-      'BOOKING_PET_RETURN',
+      'HANDOFF_ISSUE_CODE',
+      'HANDOFF_VERIFY_CODE',
+      'RETURN_ISSUE_CODE',
+      'RETURN_VERIFY_CODE',
       'MESSAGE_REPORT',
       'SAFETY_REPORT_SUBMIT',
       'INCIDENT_REPORT_ACTIVE_JOB',
