@@ -1,50 +1,39 @@
 /**
  * POST /api/prestige/join
  *
- * Atomic Prestige join coordinator.
+ * CEO DEEP-LOGIC §49-§50 — thin HTTP shell over the canonical
+ * PrestigeEnrollmentService. The enrollment logic is no longer
+ * inlined here; both the HTTP surface and the Action Brain's
+ * PRESTIGE_JOIN handler call `enrollPrestige(...)` so the two paths
+ * cannot drift.
  *
- * Before this route existed, a new user had to:
- *   1. Call POST /api/loyalty/auto-enroll         → creates loyalty_profiles row
- *   2. Call POST /api/privilege-loyalty/register  → creates privilege_members row (with form + file)
- *   3. Call POST /api/prestige-pass/activate      → upserts Firestore pass doc + sends wallet email
- *
- * Those three calls were independent, had no transaction boundary, and could leave the user
- * partially enrolled if any step failed.  This route wraps the minimum required logic for
- * each system in a single endpoint so the frontend can do one call and get a fully enrolled
- * member with:
- *   - loyalty_profiles row (tier bronze, 100 welcome points)
- *   - privilege_members row (pending_verification status)
- *   - Firestore prestige_passes doc
- *   - Wallet email dispatched
- *
- * Authentication: Firebase Bearer token (requireAuth middleware in routes.ts mount).
+ * Authentication: Firebase Bearer token (requireAuth middleware in
+ * routes.ts mount). This handler does NOT accept an actorUid from
+ * the body — the identity is server-derived from the Firebase user
+ * on the request.
  *
  * Request body (JSON):
- *   { firstName, lastName, email, phone, tier?: 'pearl'|'black'|'platinum', language?: 'he'|'en' }
+ *   { firstName, lastName, email, phone, tier?: 'pearl'|'black'|'platinum',
+ *     language?: 'he'|'en' }
  *
- * Response:
- *   { ok, memberId, cardNumber, tier, loyaltyProfile, emailSent, alreadyEnrolled }
+ * Response (success):
+ *   { ok, status, memberId, cardNumber, tier, tierDisplay,
+ *     loyaltyProfile, alreadyEnrolled, emailSent }
+ *
+ * Response (failure):
+ *   { ok:false, status, ... }
  */
-
 import { Router, type Request, type Response } from 'express';
-import crypto from 'crypto';
-import { db } from '../db';
-import { eq, sql } from 'drizzle-orm';
-import { users } from '@shared/schema';
-import { logger } from '../lib/logger';
 import { z } from 'zod';
-import { auth as fbAdminAuth, db as firestoreDb } from '../lib/firebase-admin';
-import { authService } from '../services/AuthService';
+import { logger } from '../lib/logger';
 import { EmailService } from '../emailService';
+import { authService } from '../services/AuthService';
+import { db as firestoreDb } from '../lib/firebase-admin';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
+import { enrollPrestige } from '../services/marketplace/PrestigeEnrollmentService';
 
 const router = Router();
 
-// Welcome points granted on a fresh Prestige enrollment. Kept at module scope so
-// the loyalty_profiles insert and the canonical users-row sync stay in agreement.
-const WELCOME_POINTS = 100;
-
-// ── Input schema ─────────────────────────────────────────────────────────────
 const joinSchema = z.object({
   firstName: z.string().min(1).max(80),
   lastName:  z.string().min(1).max(80),
@@ -53,14 +42,6 @@ const joinSchema = z.object({
   tier:      z.enum(['pearl', 'black', 'platinum']).default('pearl'),
   language:  z.enum(['he', 'en']).default('he'),
 });
-
-const TIER_DISPLAY: Record<string, { he: string; en: string }> = {
-  pearl:    { he: 'פנינה', en: 'Prestige Pearl' },
-  black:    { he: 'שחור', en: 'Prestige Black' },
-  platinum: { he: 'פלטינום', en: 'Prestige Platinum' },
-};
-
-const FREE_WASHES: Record<string, number> = { black: 5, platinum: 3, pearl: 1 };
 
 router.post('/join', async (req: Request, res: Response) => {
   try {
@@ -71,168 +52,36 @@ router.post('/join', async (req: Request, res: Response) => {
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
     }
-    const { firstName, lastName, email, phone, tier, language } = parsed.data;
-    const tierKey = tier.toLowerCase();
-    const tierDisplay = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
 
-    // ── Step 1: loyalty_profiles (via schema-loyalty dynamic import) ─────────
-    let loyaltyProfile: any = null;
-    let alreadyEnrolled = false;
-    try {
-      const { loyaltyProfiles, pointsTransactions } = await import('../../shared/schema-loyalty');
+    // CEO §50 — one authority. This route no longer inlines the
+    // enrollment steps; the shared service handles loyalty_profiles,
+    // privilege_members, Firestore prestige_passes, and the users
+    // row sync. Additive Firebase claims (§59) preserve
+    // accountType / role for Provider or admin accounts.
+    const result = await enrollPrestige(userId, parsed.data);
 
-      const [existing] = await db
-        .select()
-        .from(loyaltyProfiles)
-        .where(eq(loyaltyProfiles.userId, userId))
-        .limit(1);
-
-      if (existing) {
-        loyaltyProfile = existing;
-        alreadyEnrolled = true;
-      } else {
-        const [profile] = await db
-          .insert(loyaltyProfiles)
-          .values({
-            userId,
-            tier: 'bronze',
-            tierSince: new Date(),
-            tierProgress: 0,
-            tierThreshold: 1000,
-            points: WELCOME_POINTS,
-            lifetimePoints: WELCOME_POINTS,
-            xp: 0,
-            level: 1,
-            totalWashes: 0,
-            currentStreak: 0,
-            longestStreak: 0,
-            averageWashInterval: 21,
-            isVip: false,
-            conciergeAccess: false,
-            prioritySupport: false,
-          })
-          .returning();
-
-        loyaltyProfile = profile;
-
-        // Welcome points transaction
-        await db.insert(pointsTransactions).values({
-          userId,
-          type: 'earned',
-          amount: WELCOME_POINTS,
-          balance: WELCOME_POINTS,
-          source: 'signup',
-          description: `Welcome bonus — Prestige join (${tierDisplay})`,
-        }).catch((e: any) => logger.warn('[PrestigeJoin] Points tx failed (non-fatal)', { error: e?.message }));
-
-        // Firebase custom claims
-        // ROLE-CLOBBER-FIX (2026-08-23 auth-audit item #2): same pattern as
-        // loyalty.ts:220. accountType/role live at the same key level, so
-        // spreading existingClaims and then re-writing them wiped any
-        // super_admin / admin / provider claim on the account. Preserve
-        // whatever was there; only default when unset. Loyalty claims
-        // (loyaltyTier / loyaltyMember / program) stay additive.
-        try {
-          const existingClaims = (await fbAdminAuth.getUser(userId)).customClaims || {};
-          const preservedAccountType = existingClaims.accountType || 'pet_parent';
-          const preservedRole = existingClaims.role || 'public';
-          await fbAdminAuth.setCustomUserClaims(userId, {
-            ...existingClaims,
-            accountType: preservedAccountType,
-            role: preservedRole,
-            loyaltyTier: existingClaims.loyaltyTier || 'bronze',
-            loyaltyMember: true,
-            program: 'PetWash Privilege',
-          });
-        } catch (e: any) {
-          logger.warn('[PrestigeJoin] Custom claims failed (non-fatal)', { error: e?.message });
-        }
-      }
-    } catch (loyaltyErr: any) {
-      // For a NEW enrollment the loyalty profile IS the Prestige experience —
-      // points, tier, home-screen balances. Returning ok without it reports a
-      // join that materially didn't happen (board item: "/join ok-over-dropped-
-      // row"). Fail loud so the user retries. A returning member (profile
-      // already exists) keeps the old non-fatal behaviour.
-      if (!alreadyEnrolled) {
-        logger.error('[PrestigeJoin] Loyalty profile creation FAILED — join incomplete, failing loud', { error: loyaltyErr?.message, userId });
-        return res.status(500).json({ ok: false, error: 'Could not complete your membership — please try again', code: 'PRESTIGE_JOIN_LOYALTY_FAILED' });
-      }
-      logger.error('[PrestigeJoin] Loyalty step failed (existing member — continuing)', { error: loyaltyErr?.message, userId });
-    }
-
-    // ── Step 2: privilege_members ────────────────────────────────────────────
-    let memberId: string | null = null;
-    try {
-      // Raw SQL is used here intentionally: privilege-loyalty.ts performs a
-      // runtime CREATE TABLE IF NOT EXISTS before the table is used, so we
-      // cannot safely import the Drizzle table object at module load time.
-      // The query is parameterised ($1/$2/…) so there is no injection risk.
-      const existing = await db.execute(
-        { text: `SELECT member_id FROM privilege_members WHERE email = $1 LIMIT 1`, values: [email.trim().toLowerCase()] } as any
+    // Map service outcomes to HTTP responses.
+    if (result.status === 'ENROLLED' || result.status === 'ALREADY_ACTIVE') {
+      // Wallet ensure + welcome email are HTTP-shell concerns (§37).
+      // The service is pure of email dispatch so the Action Brain
+      // handler can decide whether to fire the notification via its
+      // own outbox.
+      authService.ensureWalletAccount(userId).catch((e: any) =>
+        logger.warn('[PrestigeJoin] ensureWalletAccount failed (non-fatal)', { error: e?.message }),
       );
-      if ((existing as any).rows?.length > 0) {
-        memberId = (existing as any).rows[0].member_id;
-      } else {
-        memberId = `PWP-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
-        await db.execute({
-          text: `
-            INSERT INTO privilege_members
-              (member_id, first_name, last_name, email, phone, language, terms_consent, status)
-            VALUES ($1, $2, $3, $4, $5, $6, TRUE, 'pending_verification')
-            ON CONFLICT (email) DO NOTHING
-          `,
-          values: [memberId, firstName.trim(), lastName.trim(), email.trim().toLowerCase(), phone.trim(), language],
-        } as any);
-      }
-    } catch (privilegeErr: any) {
-      // FATAL: the privilege_members row IS the membership record. If it fails to
-      // save we must NOT continue and return ok:true with a JS-generated memberId
-      // that was never persisted — that reports a join that never happened (same
-      // silent-data-loss class as the provider-onboarding 42703 bug). Fail loud so
-      // the user sees an error and can retry, instead of a phantom membership.
-      logger.error('[PrestigeJoin] Privilege member insert FAILED — membership NOT saved', { error: privilegeErr?.message, userId });
-      return res.status(500).json({ ok: false, error: 'Could not complete your membership — please try again', code: 'PRESTIGE_JOIN_FAILED' });
-    }
 
-    // ── Step 3: Firestore prestige_passes doc ────────────────────────────────
-    const passCardNumber = `${userId.slice(0, 4).toUpperCase()}${Date.now().toString().slice(-8)}`;
-    try {
-      const passRef = firestoreDb.collection('prestige_passes').doc(userId);
-      const existing = await passRef.get();
-      if (!existing.exists) {
-        await passRef.set({
-          userId,
-          tier: tierKey,
-          cardNumber: passCardNumber,
-          cashWalletCents: 0,
-          freeWashesRemaining: FREE_WASHES[tierKey] ?? 1,
-          issuedAt: new Date().toISOString(),
-          emailSentAt: null,
-        });
-      }
-    } catch (passErr: any) {
-      logger.error('[PrestigeJoin] Firestore pass step failed', { error: passErr?.message, userId });
-    }
-
-    // ── Step 4: Wallet account ensure ────────────────────────────────────────
-    authService.ensureWalletAccount(userId).catch((e: any) =>
-      logger.warn('[PrestigeJoin] ensureWalletAccount failed (non-fatal)', { error: e?.message })
-    );
-
-    // ── Step 5: Wallet email (simple inline template) ───────────────────────
-    let emailSent = false;
-    try {
-      const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
-      const memberNumber = memberId || `PW-${userId.slice(-8).toUpperCase()}`;
-      const html = `<!DOCTYPE html><html lang="he"><body style="font-family:Arial,Helvetica,sans-serif;direction:rtl;text-align:right;padding:24px;background:#fff;">
+      let emailSent = false;
+      try {
+        const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
+        const memberNumber = result.memberId;
+        const html = `<!DOCTYPE html><html lang="he"><body style="font-family:Arial,Helvetica,sans-serif;direction:rtl;text-align:right;padding:24px;background:#fff;">
 <div style="max-width:520px;margin:auto;">
 <h2 style="color:#111;font-size:22px;margin-bottom:8px;">🐾 ברוך הבא ל-PetWash™ Prestige</h2>
 <p style="color:#555;margin-bottom:20px;">הכרטיס שלך מוכן. ניתן לנהל את הארנק שלך מהאפליקציה.</p>
 <table style="border-collapse:collapse;width:100%;border:1px solid #eee;border-radius:8px;overflow:hidden;">
-  <tr style="background:#f9f9f9;"><td style="padding:12px 16px;color:#777;font-size:14px;">שם</td><td style="padding:12px 16px;font-weight:600;">${firstName} ${lastName}</td></tr>
-  <tr><td style="padding:12px 16px;color:#777;font-size:14px;">מספר כרטיס</td><td style="padding:12px 16px;font-weight:600;letter-spacing:2px;">${passCardNumber}</td></tr>
-  <tr style="background:#f9f9f9;"><td style="padding:12px 16px;color:#777;font-size:14px;">רמה</td><td style="padding:12px 16px;font-weight:600;">${tierDisplay}</td></tr>
+  <tr style="background:#f9f9f9;"><td style="padding:12px 16px;color:#777;font-size:14px;">שם</td><td style="padding:12px 16px;font-weight:600;">${parsed.data.firstName} ${parsed.data.lastName}</td></tr>
+  <tr><td style="padding:12px 16px;color:#777;font-size:14px;">מספר כרטיס</td><td style="padding:12px 16px;font-weight:600;letter-spacing:2px;">${result.cardNumber}</td></tr>
+  <tr style="background:#f9f9f9;"><td style="padding:12px 16px;color:#777;font-size:14px;">רמה</td><td style="padding:12px 16px;font-weight:600;">${result.tierDisplay}</td></tr>
   <tr><td style="padding:12px 16px;color:#777;font-size:14px;">מספר חבר</td><td style="padding:12px 16px;font-weight:600;">${memberNumber}</td></tr>
 </table>
 <div style="margin-top:24px;text-align:center;">
@@ -240,73 +89,45 @@ router.post('/join', async (req: Request, res: Response) => {
 </div>
 <p style="margin-top:32px;font-size:12px;color:#aaa;text-align:center;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | ${appBaseUrl}</p>
 </div></body></html>`;
-
-      emailSent = await EmailService.send({
-        to: email,
-        subject: `הפאס ה-Prestige שלך מוכן — ${tierDisplay} 🐾`,
-        html,
-      });
-
-      if (emailSent) {
-        await firestoreDb
-          .collection('prestige_passes')
-          .doc(userId)
-          .update({ emailSentAt: new Date().toISOString() })
-          .catch(() => {});
+        emailSent = await EmailService.send({
+          to: parsed.data.email,
+          subject: `הפאס ה-Prestige שלך מוכן — ${result.tierDisplay} 🐾`,
+          html,
+        });
+        if (emailSent) {
+          await firestoreDb.collection('prestige_passes').doc(userId).update({ emailSentAt: new Date().toISOString() }).catch(() => {});
+        }
+      } catch (emailErr: any) {
+        logger.error('[PrestigeJoin] Email step failed (non-fatal)', { error: emailErr?.message });
       }
-    } catch (emailErr: any) {
-      logger.error('[PrestigeJoin] Email step failed (non-fatal)', { error: emailErr?.message, userId });
-    }
 
-    // ── Reflect the membership on the CANONICAL users row (2026-07-25) ────────
-    // Before this, a Prestige join wrote only loyalty_profiles + privilege_members
-    // + a Firebase claim. But the primary loyalty status (getLoyaltyStatus) and
-    // benefit gates read the USERS row — users.is_club_member stayed false and
-    // users.loyalty_points stayed 0, so the 100 welcome points were invisible and
-    // the member wasn't recognized as a club member (the "unreconciled stores"
-    // gap). Sync the users row so what the customer gave us is actually reflected:
-    //   • is_club_member = true
-    //   • loyalty_tier   = bronze only if not already set to a higher tier
-    //   • loyalty_points += welcome points, on a FRESH enrollment only
-    //
-    // Additive capabilities (PR-AUTH-MULTIROLE-5): Prestige enrollment does
-    // NOT touch users.role. Loyalty is a CAPABILITY the account carries in
-    // addition to customer/provider/staff — writing role='loyalty' here
-    // would replace an existing customer or provider identity. The
-    // membership of record lives in loyalty_profiles + privilege_members
-    // (created above), and server/lib/userCapabilities.ts reads those to
-    // derive the loyalty capability without going through users.role.
-    try {
-      const [current] = await db
-        .select({ tier: users.loyaltyTier })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-      const tierPatch = (!current?.tier || current.tier === 'bronze') ? { loyaltyTier: 'bronze' } : {};
-      await db.update(users).set({
-        isClubMember: true,
-        ...tierPatch,
-        ...(alreadyEnrolled ? {} : { loyaltyPoints: sql`${users.loyaltyPoints} + ${WELCOME_POINTS}` }),
-        updatedAt: new Date(),
-      }).where(eq(users.id, userId));
-    } catch (userSyncErr: any) {
-      // Non-fatal — the loyalty_profiles + privilege_members rows above are the
-      // membership of record; this only keeps the users row in agreement.
-      logger.warn('[PrestigeJoin] users-row loyalty sync failed (non-fatal)', {
-        userId, error: userSyncErr?.message,
+      return res.json({
+        ok: true,
+        status: result.status,
+        memberId: result.memberId,
+        cardNumber: result.cardNumber,
+        tier: result.tier,
+        tierDisplay: result.tierDisplay,
+        loyaltyProfile: result.loyaltyProfile,
+        alreadyEnrolled: result.status === 'ALREADY_ACTIVE',
+        emailSent,
       });
     }
 
-    return res.json({
-      ok:            true,
-      memberId,
-      cardNumber:    passCardNumber,
-      tier:          tierKey,
-      tierDisplay,
-      loyaltyProfile,
-      alreadyEnrolled,
-      emailSent,
-    });
+    // Failure surfaces from the service.
+    if (result.status === 'MISSING_REQUIRED_PROFILE') {
+      return res.status(400).json({ ok: false, error: 'Missing required profile', status: result.status, missing: result.missing });
+    }
+    if (result.status === 'IDENTITY_CONFLICT') {
+      return res.status(409).json({ ok: false, error: 'Identity conflict', status: result.status });
+    }
+    if (result.status === 'LOYALTY_STORE_FAILED') {
+      return res.status(500).json({ ok: false, error: 'Could not complete your membership — please try again', code: 'PRESTIGE_JOIN_LOYALTY_FAILED' });
+    }
+    if (result.status === 'PRIVILEGE_STORE_FAILED') {
+      return res.status(500).json({ ok: false, error: 'Could not complete your membership — please try again', code: 'PRESTIGE_JOIN_FAILED' });
+    }
+    return res.status(500).json({ ok: false, error: 'Unknown enrollment outcome' });
   } catch (err: any) {
     logger.error('[PrestigeJoin] Unhandled error', { error: err?.message });
     return res.status(500).json({ ok: false, error: 'Internal error' });
