@@ -13062,6 +13062,12 @@ self.addEventListener('notificationclick', (event) => {
   actionBrainImpactResolvers.set('BOOKING_ACCEPT_PROPOSED_CHANGE', async () => ({
     moneyCents: 0, affectsOtherParty: true, legalEffect: true, privacyEffect: false, safetyEffect: false,
   }));
+  // Customer unpaid cancel — no money movement per definition; the
+  // paid path (CUSTOMER_CANCEL_BOOKING_PAID) has its own resolver +
+  // policy engine follow-up.
+  actionBrainImpactResolvers.set('CUSTOMER_CANCEL_BOOKING_UNPAID', async () => ({
+    moneyCents: 0, affectsOtherParty: true, legalEffect: false, privacyEffect: false, safetyEffect: false,
+  }));
 
   actionBrainHandlers.set('BOOKING_ACCEPT', async ({ actorUid, entityId, command }) => {
     const c = (command ?? {}) as any;
@@ -13113,6 +13119,40 @@ self.addEventListener('notificationclick', (event) => {
       actorUid,
     });
     return providerResponseToAction('BOOKING_ACCEPT_PROPOSED_CHANGE', r);
+  });
+
+  // Customer unpaid cancel handler. The service is a pure evaluator;
+  // the caller must supply the server-derived snapshot (bookerUid,
+  // status, hasMoneyCaptured). The Action Brain surface currently
+  // takes the snapshot from command; a follow-up wires a domain
+  // fetcher so a client cannot ever spoof `hasMoneyCaptured=false` to
+  // route around the paid path.
+  actionBrainHandlers.set('CUSTOMER_CANCEL_BOOKING_UNPAID', async ({ actorUid, entityId, command }) => {
+    const c = (command ?? {}) as any;
+    const { evaluateCustomerCancelUnpaid } = await import('./services/marketplace/CustomerBookingCancelService');
+    const outcome = evaluateCustomerCancelUnpaid({
+      bookingId: entityId,
+      actorUid,
+      snapshot: {
+        bookerUid: String(c.bookerUid ?? ''),
+        status: String(c.status ?? ''),
+        hasMoneyCaptured: !!c.hasMoneyCaptured,
+      },
+      reasonCode: c.reasonCode,
+    });
+    switch (outcome.code) {
+      case 'CANCELLED_UNPAID':
+        return { actionType: 'CUSTOMER_CANCEL_BOOKING_UNPAID', status: 'COMPLETED', userMessage: { code: 'BOOKING_CANCELLED_UNPAID' }, nextActions: [ { actionType: 'FIND_PROVIDER' }, { actionType: 'RETURN_PET_PARENT_HOME' } ] };
+      case 'PAID_MUST_USE_PAID_CANCEL':
+        return { actionType: 'CUSTOMER_CANCEL_BOOKING_UNPAID', status: 'REQUIRES_ACTION', userMessage: { code: 'USE_PAID_CANCEL_FLOW' }, nextActions: [ { actionType: 'CUSTOMER_CANCEL_BOOKING_PAID' } ] };
+      case 'BOOKING_NOT_FOUND':
+      case 'ACTOR_NOT_BOOKER':
+        return { actionType: 'CUSTOMER_CANCEL_BOOKING_UNPAID', status: 'FAILED', userMessage: { code: 'INSUFFICIENT_PERMISSIONS' }, nextActions: [] };
+      case 'BOOKING_NOT_CANCELLABLE':
+        return { actionType: 'CUSTOMER_CANCEL_BOOKING_UNPAID', status: 'FAILED', userMessage: { code: 'STALE_PREVIEW' }, nextActions: [] };
+      default:
+        return { actionType: 'CUSTOMER_CANCEL_BOOKING_UNPAID', status: 'PROCESSING', userMessage: { code: 'LEASE_EXPIRED_RECONCILE_REQUIRED' }, nextActions: [] };
+    }
   });
 
   // helper (closes over `actionBrainHandlers`)
