@@ -26,10 +26,33 @@ describe('CEO §6 — reuse existing idempotency_keys table (no new universe)', 
     expect(SRC).not.toMatch(/action_execution_log|action_store/);
   });
 
-  it('composite key layout is `<key>::<uid>::<actionType>`', () => {
+  it('composite key layout is bounded — namespace prefix + label + sha256 hash', () => {
+    // CEO DEEP-LOGIC §27 — plain concatenation of the tuple gave up to
+    // 172 chars, which overflowed the middleware's 128 cap. The store
+    // now hashes the tuple to a fixed-width form ≤ 85 chars.
     expect(SRC).toMatch(
-      /function composeKey[\s\S]{0,300}\$\{idempotencyKey\}::\$\{actorUid\}::\$\{actionType\}/,
+      /function composeKey[\s\S]{0,500}crypto\.createHash\('sha256'\)\.update\(canonical\)\.digest\('hex'\)\.slice\(0, 40\)/,
     );
+    // Namespace prefix is 'act:' so a grep on the shared
+    // idempotency_keys table can identify Action Brain rows without
+    // needing schema help.
+    expect(SRC).toMatch(/ACTION_BRAIN_KEY_PREFIX = 'act:'/);
+  });
+
+  it('bounded to ≤85 chars for ANY input tuple (§27 arithmetic fix)', () => {
+    // Force-check the compose formula: prefix + label(≤40) + ':' + hash(40)
+    // = at most 4 + 40 + 1 + 40 = 85. The pin locks the shape so a
+    // later "just add the raw values back for debugging" cannot pass
+    // review.
+    expect(SRC).toMatch(/const label = actionType\.slice\(0, 40\)/);
+    expect(SRC).toMatch(
+      /return `\$\{ACTION_BRAIN_KEY_PREFIX\}\$\{label\}:\$\{hash\}`/,
+    );
+    // Old plain-concat form must NOT reappear in the composer.
+    const composeIdx = SRC.indexOf('function composeKey');
+    const composeEnd = SRC.indexOf('\n}\n', composeIdx);
+    const composerBody = SRC.slice(composeIdx, composeEnd);
+    expect(composerBody).not.toMatch(/\$\{idempotencyKey\}::\$\{actorUid\}::\$\{actionType\}/);
   });
 });
 

@@ -15,10 +15,14 @@
  *   )
  *
  * Composite key layout — the primary key is a single TEXT column, so
- * we compose actor + actionType + intent-key into one string:
- *   `<idempotencyKey>::<actorUid>::<actionType>`
- * That composition is bounded (key ≤ 64, uid ≤ 64, actionType ≤ 40)
- * so it fits under the existing 128-char cap the middleware enforces.
+ * we compose actor + actionType + intent-key into ONE deterministic
+ * string via a bounded SHA-256 hash. See composeKey() below for the
+ * §27 rationale — plain concatenation gave 172 chars worst case and
+ * blew the middleware's 128-char cap, so the store now uses:
+ *   `act:<actionTypeLabel>:<40 hex chars of sha256(canonical)>`
+ * which is ≤ 85 chars for ANY input, and carries a namespace prefix
+ * (`act:`) so a doctrine reader can grep this store's rows out of the
+ * shared idempotency_keys table.
  *
  * Atomic contract:
  *   claim() → `INSERT ... ON CONFLICT (key) DO NOTHING RETURNING key`.
@@ -34,6 +38,7 @@
  * store follows the same lease. Callers do NOT need to garbage-collect
  * separately.
  */
+import crypto from 'crypto';
 import { db } from '../../db';
 import { sql } from 'drizzle-orm';
 import type {
@@ -44,8 +49,36 @@ import type { ActionPreview, ActionResult } from '../../../shared/marketplace/ac
 
 const PENDING_MARKER = 'pending';
 
+// Namespace prefix keeps Action Brain rows visibly separate from any
+// other consumer of the shared idempotency_keys table (booking/checkout
+// money flows use their own key shapes). A grep on `WHERE key LIKE
+// 'act:%'` returns only rows this store owns — §28 audit discipline.
+const ACTION_BRAIN_KEY_PREFIX = 'act:';
+
+/**
+ * Compose a bounded, deterministic key for the composite
+ * (idempotencyKey, actorUid, actionType) tuple.
+ *
+ * CEO DEEP-LOGIC §27 — the old plain-concat comment claimed
+ * 64+64+40 ≤ 128, which is arithmetically wrong (172). Concatenation
+ * length depended on the inputs, and a caller passing an oversized
+ * value would overflow the middleware's 128-char cap and produce a
+ * runtime SQL error at claim time.
+ *
+ * Fix: canonicalize the tuple into a JSON array, SHA-256 it, take the
+ * first 40 hex chars (160 bits of entropy — collision resistance for
+ * the low-billions of keys the table will ever hold). Prefix with the
+ * namespace + an actionType label bounded to 40 chars, so a doctrine
+ * reader can still eyeball the key shape.
+ *
+ * Total length: 4 (prefix) + up to 40 (label) + 1 (":") + 40 (hash) =
+ * ≤ 85 chars for ANY tuple input. Well under the 128 cap.
+ */
 function composeKey(idempotencyKey: string, actorUid: string, actionType: string): string {
-  return `${idempotencyKey}::${actorUid}::${actionType}`;
+  const canonical = JSON.stringify([idempotencyKey, actorUid, actionType]);
+  const hash = crypto.createHash('sha256').update(canonical).digest('hex').slice(0, 40);
+  const label = actionType.slice(0, 40);
+  return `${ACTION_BRAIN_KEY_PREFIX}${label}:${hash}`;
 }
 
 /**
