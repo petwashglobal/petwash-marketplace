@@ -40,7 +40,7 @@ export interface HubSourceOptions {
   locale: InboxLocale;
 }
 
-export type HubSourceLane = 'bookingChat' | 'threadChat' | 'attention';
+export type HubSourceLane = 'bookingChat' | 'threadChat' | 'attention' | 'documents';
 export type SourceHealth = 'ok' | 'degraded';
 
 export interface HubSourceResult {
@@ -60,6 +60,16 @@ export interface HubSource {
     opts: HubSourceOptions,
   ): Promise<HubSourceResult>;
   listAttentionInboxItems(
+    uid: string,
+    workspace: InboxWorkspace,
+    opts: HubSourceOptions,
+  ): Promise<HubSourceResult>;
+  /**
+   * CEO NEXT-AUTO §11 Lane A — Documents. Optional so a caller can
+   * still bind only the chat + attention lanes; the aggregator
+   * skips this lane when not implemented.
+   */
+  listDocumentInboxItems?(
     uid: string,
     workspace: InboxWorkspace,
     opts: HubSourceOptions,
@@ -148,23 +158,26 @@ export async function listForUser(
   const { workspace, category = 'ALL', limit = 50, since, locale = 'he' } = opts;
   const sourceOpts: HubSourceOptions = { locale };
 
-  const [bookingRes, threadRes, attentionRes] = await Promise.all([
+  const [bookingRes, threadRes, attentionRes, documentRes] = await Promise.all([
     source.listBookingConversationInboxItems(uid, workspace, sourceOpts),
     source.listChatThreadInboxItems(uid, workspace, sourceOpts),
     source.listAttentionInboxItems(uid, workspace, sourceOpts),
+    source.listDocumentInboxItems ? source.listDocumentInboxItems(uid, workspace, sourceOpts) : Promise.resolve<HubSourceResult>({ items: [] }),
   ]);
 
   const sourceHealth: Record<HubSourceLane, SourceHealth> = {
     bookingChat: bookingRes.degraded ? 'degraded' : 'ok',
     threadChat: threadRes.degraded ? 'degraded' : 'ok',
     attention: attentionRes.degraded ? 'degraded' : 'ok',
+    documents: documentRes.degraded ? 'degraded' : 'ok',
   };
   const partial =
     sourceHealth.bookingChat === 'degraded' ||
     sourceHealth.threadChat === 'degraded' ||
-    sourceHealth.attention === 'degraded';
+    sourceHealth.attention === 'degraded' ||
+    sourceHealth.documents === 'degraded';
 
-  let merged = [...bookingRes.items, ...threadRes.items, ...attentionRes.items];
+  let merged = [...bookingRes.items, ...threadRes.items, ...attentionRes.items, ...documentRes.items];
   merged = dedupeByCanonicalIdentity(merged);
 
   if (since) {
@@ -189,6 +202,7 @@ export function createStubHubSource(): HubSource {
     async listBookingConversationInboxItems() { return { items: [] }; },
     async listChatThreadInboxItems() { return { items: [] }; },
     async listAttentionInboxItems() { return { items: [] }; },
+    async listDocumentInboxItems() { return { items: [] }; },
   };
 }
 
@@ -231,6 +245,19 @@ export function createProductionHubSource(): HubSource {
       try {
         const { listAttentionInboxItems } = await import('./AttentionInboxAdapter');
         const items = await listAttentionInboxItems(uid, workspace, opts.locale);
+        return { items };
+      } catch {
+        return { items: [], degraded: true };
+      }
+    },
+    async listDocumentInboxItems(uid, workspace) {
+      // CEO NEXT-AUTO §11 Lane A — real Documents projected via
+      // PostgresDocumentSource + DocumentInboxService. Fail-soft: a
+      // receipts outage marks the lane degraded, other lanes carry on.
+      try {
+        const { createPostgresDocumentSource } = await import('./PostgresDocumentSource');
+        const { listDocumentInboxItems } = await import('./DocumentInboxService');
+        const items = await listDocumentInboxItems(uid, workspace, createPostgresDocumentSource());
         return { items };
       } catch {
         return { items: [], degraded: true };

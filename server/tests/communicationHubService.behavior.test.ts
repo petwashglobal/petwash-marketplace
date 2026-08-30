@@ -34,7 +34,7 @@ describe('stub source', () => {
     const res = await listForUser('nir', createStubHubSource(), { workspace: 'PET_PARENT' });
     expect(res.items).toEqual([]);
     expect(res.unread).toEqual({ global: 0, petParent: 0, provider: 0 });
-    expect(res.sourceHealth).toEqual({ bookingChat: 'ok', threadChat: 'ok', attention: 'ok' });
+    expect(res.sourceHealth).toEqual({ bookingChat: 'ok', threadChat: 'ok', attention: 'ok', documents: 'ok' });
     expect(res.partial).toBe(false);
   });
 });
@@ -262,6 +262,7 @@ describe('CEO DEEP-LOGIC §8/§9 — degraded lane surfaces, never hides as empt
       bookingChat: 'degraded',
       threadChat: 'ok',
       attention: 'ok',
+      documents: 'ok',
     });
     expect(res.partial).toBe(true);
   });
