@@ -81,6 +81,7 @@ import {
 } from "@shared/marketplace/actionExecution";
 import { createPostgresActionStore } from "./services/marketplace/PostgresActionStore";
 import meGreetingRoutes from "./routes/me-greeting";
+import meProfileRoutes from "./routes/me-profile";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
@@ -13554,6 +13555,13 @@ self.addEventListener('notificationclick', (event) => {
   // greeting. optionalFirebaseToken: returns an empty context (not 401) when
   // signed out, so the client falls back to the time-of-day greeting.
   app.use('/api/me/greeting-context', optionalFirebaseToken, apiLimiter, meGreetingRoutes);
+
+  // CEO P0-MY-ACCOUNT — canonical profile GET/PATCH + contact-change
+  // handshake. Auth required. Handlers return 501 until the DB
+  // effects layer lands (task #160 scaffolds shipped, effects wire
+  // in follow-up). §72 discipline: 501 rather than a fake success.
+  app.use('/api/me', validateFirebaseToken, apiLimiter, meProfileRoutes);
+  logger.info('[Routes] ✅ Me Profile routes registered at /api/me/profile + /api/me/contact-change');
 
   // Universal Pass Distribution — UA-aware link + Apple update web service
   // Mounts at /api/pass (universal link) and /api/pass/apple/v1/* (Apple wallet update service)
