@@ -13,6 +13,7 @@
  */
 import { getDefaultJourneyStateService } from './JourneyStateService';
 import { prestigeJourneyLoader } from './loaders/PrestigeJourneyLoader';
+import { refundJourneyLoader } from './loaders/RefundJourneyLoader';
 
 let alreadyRegistered = false;
 
@@ -21,6 +22,7 @@ export function registerJourneyLoaders(): void {
   alreadyRegistered = true;
   const svc = getDefaultJourneyStateService();
   svc.registerLoader('prestige_member', prestigeJourneyLoader);
+  svc.registerLoader('refund', refundJourneyLoader);
 }
 
 /** Tests only — allow re-registration after resetting the default service. */

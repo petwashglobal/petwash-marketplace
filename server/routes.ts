@@ -13543,7 +13543,7 @@ self.addEventListener('notificationclick', (event) => {
   // NOT_IMPLEMENTED so the client shows an honest subdued placeholder
   // (§72) instead of a fabricated OK badge.
   registerJourneyLoaders();
-  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member)');
+  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member, refund)');
 
   // Smart-greeting context — owner birthday + pets' birthdays for the homepage
   // greeting. optionalFirebaseToken: returns an empty context (not 401) when
