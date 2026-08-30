@@ -328,6 +328,7 @@ import globalServicesRoutes from "./routes/globalServices";
 import petwashOrchestratorRoutes from "./routes/petwatch-orchestrator";
 import inboxRoutes from "./routes/inbox";
 import marketplaceInboxRoutes from "./routes/marketplace-inbox";
+import marketplaceJourneyRoutes from "./routes/marketplace-journey";
 import integrationsRoutes from "./routes/integrations";
 import messagesRoutes from "./routes/messages";
 import messagingRoutes from "./routes/messaging";
@@ -13527,6 +13528,14 @@ self.addEventListener('notificationclick', (event) => {
   // validateFirebaseToken and the handler double-checks req.firebaseUser.
   app.use('/api/marketplace', validateFirebaseToken, apiLimiter, marketplaceInboxRoutes);
   logger.info('[Routes] ✅ Marketplace Inbox registered at /api/marketplace/inbox');
+
+  // CEO DEEP-LOGIC §84-§87 — JourneyState dispatch endpoint. Routes
+  // /api/marketplace/journey/:kind/:id to the correct resolver through
+  // the JourneyStateService registry. Kinds with no registered loader
+  // return 501 NOT_IMPLEMENTED so the client never treats an unwired
+  // surface as "empty" (§72 discipline).
+  app.use('/api/marketplace', validateFirebaseToken, apiLimiter, marketplaceJourneyRoutes);
+  logger.info('[Routes] ✅ Marketplace Journey dispatch registered at /api/marketplace/journey/:kind/:id');
 
   // Smart-greeting context — owner birthday + pets' birthdays for the homepage
   // greeting. optionalFirebaseToken: returns an empty context (not 401) when
