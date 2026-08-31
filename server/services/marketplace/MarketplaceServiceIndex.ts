@@ -126,6 +126,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../client/src/pages/MyAccountCanonical.tsx', kind: 'ROUTER', programCode: 'P0_MY_ACCOUNT', summary: 'Slug-only canonical MyAccount scaffold at /my-account/canonical' },
   { path: 'NayaxFiscalDocumentGuard.ts', kind: 'EVALUATOR', programCode: 'P0_NAYAX', summary: 'Refuses assuming Nayax auto-issued a fiscal document while module/engine unresolved' },
   { path: '../../../shared/auth/otpPurposeRegistry.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Purpose-scoped OTP consumption verdict — no cross-purpose reuse (CEO Batch §4)' },
+  { path: '../../../shared/marketplace/pushPermissionValueGate.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Never-ask-first-launch push prompt verdict — value + OS + cooldown (CEO Batch §5)' },
 ];
 
 /** Small guards used by regression pins. */
