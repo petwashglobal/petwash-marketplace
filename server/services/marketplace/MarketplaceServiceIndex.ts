@@ -135,6 +135,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../shared/auth/otpMessageTemplateCatalog.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'Per-purpose × per-locale OTP SMS/email renderer — brand + code + TTL + safety warning (CEO OTP brief §2)' },
   { path: '../../../shared/auth/otpChannelChoice.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'Email-preferred OTP channel picker — SMS only for mobile-verification, sensitive purposes, elevated risk (CEO OTP brief §3)' },
   { path: '../../../shared/auth/otpAutofillFormat.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'iOS AutoFill + Android SMS Retriever compliance check on rendered OTP SMS body (CEO OTP brief §7)' },
+  { path: '../../../shared/auth/otpScreenSpec.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'OTP-screen view-model — purpose-scoped title + masked destination + mm:ss resend countdown + change-destination CTA (CEO OTP brief §8)' },
 ];
 
 /** Small guards used by regression pins. */
