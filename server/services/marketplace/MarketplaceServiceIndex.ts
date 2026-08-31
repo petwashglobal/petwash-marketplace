@@ -52,6 +52,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'loaders/PetKyaJourneyLoader.ts', kind: 'LOADER', programCode: 'DOCTRINE_84', summary: 'pets → resolvePetKyaJourney' },
   { path: 'loaders/SupportCaseJourneyLoader.ts', kind: 'LOADER', programCode: 'DOCTRINE_84', summary: 'SupportCaseStore → resolveSupportCaseJourney' },
   { path: 'loaders/BookingJourneyLoader.ts', kind: 'LOADER', programCode: 'DOCTRINE_84', summary: 'bookings → resolveBookingJourney' },
+  { path: 'loaders/K9000JourneyLoader.ts', kind: 'LOADER', programCode: 'DOCTRINE_84', summary: 'k9000_wash_events → resolveK9000Journey' },
 
   // Endpoints.
   { path: '../../routes/marketplace-journey.ts', kind: 'ROUTER', programCode: 'DOCTRINE_84', summary: 'GET /api/marketplace/journey/:kind/:id' },
