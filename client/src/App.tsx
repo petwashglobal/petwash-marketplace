@@ -3081,8 +3081,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RequireAuth>
               <RouteErrorBoundary routeName="/my-account">
                 <Suspense fallback={<PageLoader />}>
-                  {/* ProfileV2 (luxury account hub) behind a flag; legacy MyAccount is the default + deep-edit target. */}
-                  {import.meta.env.VITE_PROFILE_V2_ENABLED === 'true' ? <ProfileV2 /> : <MyAccount />}
+                  {/*
+                   * CEO P0-MY-ACCOUNT: the canonical doctrine-clean page is
+                   * live at /my-account/canonical and can also take the
+                   * primary /my-account slot when
+                   * VITE_MY_ACCOUNT_CANONICAL_ENABLED='true' — enabling this
+                   * flag routes every real user through the wired
+                   * /api/me/profile GET+PATCH path (tasks #161 + P0 wire).
+                   *
+                   * Fall-back order:
+                   *   canonical flag ON → MyAccountCanonical
+                   *   ProfileV2 flag ON → ProfileV2 (luxury hub)
+                   *   otherwise → legacy MyAccount (deep-edit target)
+                   */}
+                  {import.meta.env.VITE_MY_ACCOUNT_CANONICAL_ENABLED === 'true'
+                    ? <MyAccountCanonical />
+                    : import.meta.env.VITE_PROFILE_V2_ENABLED === 'true'
+                      ? <ProfileV2 />
+                      : <MyAccount />}
                 </Suspense>
               </RouteErrorBoundary>
             </RequireAuth>

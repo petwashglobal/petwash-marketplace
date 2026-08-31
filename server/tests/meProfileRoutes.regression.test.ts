@@ -1,8 +1,10 @@
 /**
  * Regression pin — /api/me/profile mount + contract shape.
  *
- * The effects layer arrives in a follow-up commit; this pin catches
- * accidental unmount or drift of the contract's canonical URLs.
+ * GET + PATCH are wired end-to-end (users row read + UpdateProfileService
+ * write + Firebase displayName fan-out). The four contact-change
+ * endpoints are still 501 pending the OTP + Redis wire; the pin
+ * asserts both realities.
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
@@ -40,9 +42,23 @@ describe('MeProfile — mount + contract shape', () => {
     expect(authGuards.length).toBeGreaterThanOrEqual(6);
   });
 
-  it('handlers return 501 with reason (honest surface until effects wire lands)', () => {
-    expect(ROUTER).toMatch(/status\(501\)/);
+  it('GET and PATCH are wired to real DB + UpdateProfileService (no 501 on the primary paths)', () => {
+    // GET reads users via drizzle.
+    expect(ROUTER).toContain('db.select().from(users)');
+    // PATCH calls the pure UpdateProfileService with real WriteEffects.
+    expect(ROUTER).toContain('updateProfile(');
+    expect(ROUTER).toContain('makeEffects(uid)');
+    // Firebase displayName fan-out uses the admin SDK.
+    expect(ROUTER).toContain("admin.auth().updateUser");
+  });
+
+  it('contact-change initiate / verify / commit are still 501 with reason (awaiting OTP + Redis wire)', () => {
+    // 3 out of 4 contact-change endpoints still 501. Cancel is a
+    // real 200 already (idempotent).
+    const notImplementedCount = (ROUTER.match(/status\(501\)/g) ?? []).length;
+    expect(notImplementedCount).toBeGreaterThanOrEqual(3);
     expect(ROUTER).toContain("'not_implemented'");
+    expect(ROUTER).toContain('awaiting_otp_wire');
   });
 
   it('cancel endpoint always succeeds with state=CANCELLED (idempotent)', () => {
