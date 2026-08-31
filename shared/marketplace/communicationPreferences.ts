@@ -62,7 +62,7 @@ export type CommsPurpose = (typeof COMMS_PURPOSES)[number];
  * pref-related grounds. Non-pref reasons (quiet hours, channel
  * unavailable) may still apply per business decision.
  */
-export const TRANSACTIONAL_MANDATORY: ReadonlySet<CommsPurpose> = new Set([
+export const TRANSACTIONAL_MANDATORY: ReadonlySet<CommsPurpose> = new Set<CommsPurpose>([
   'BOOKING_CONFIRMATION',
   'PAYMENT_RECEIPT',
   'FISCAL_DOCUMENT',
@@ -76,7 +76,7 @@ export const TRANSACTIONAL_MANDATORY: ReadonlySet<CommsPurpose> = new Set([
  * Marketing purposes must be opt-IN: absent an explicit YES the
  * gate suppresses.
  */
-export const MARKETING_PURPOSES: ReadonlySet<CommsPurpose> = new Set(['MARKETING']);
+export const MARKETING_PURPOSES: ReadonlySet<CommsPurpose> = new Set<CommsPurpose>(['MARKETING']);
 
 /**
  * User preference snapshot: one boolean per (channel, purpose)

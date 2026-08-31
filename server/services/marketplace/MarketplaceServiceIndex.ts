@@ -130,6 +130,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../shared/marketplace/eventEnvelope.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'EventEnvelope + outbox-row state transitions — outbox pattern shape (CEO Batch §16/§17)' },
   { path: '../../../shared/marketplace/notificationInboxSpec.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Authoritative in-app inbox item shape + user-driven state transitions (CEO Batch §12)' },
   { path: '../../../shared/marketplace/communicationPreferences.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Per-channel per-purpose delivery gate — transactional bypass + marketing opt-in + quiet hours (CEO Batch §13)' },
+  { path: '../../../shared/marketplace/anonymousProfileReconciler.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Anonymous device → identified UID merge verdict — carry context, refuse cross-account bleed (CEO Batch §1)' },
 ];
 
 /** Small guards used by regression pins. */
