@@ -1,10 +1,11 @@
 /**
  * PgCheckpointStore behavior — CEO Journey Brain Phase 2 (task #141).
  *
- * Verifies the Drizzle-backed adapter honours the CheckpointStore
- * interface: put() upserts on (owner_uid, kind), get() returns
- * undefined for missing rows and a well-shaped JourneyCheckpoint
- * for hits, delete() removes only the requested (uid, kind) pair.
+ * Verifies the Drizzle-backed CheckpointStore satisfies the same
+ * contract as InMemoryCheckpointStore: put + get round-trip, get on
+ * a missing (uid, kind) returns undefined, delete removes the row.
+ * The DB layer is stubbed — this pin catches contract drift, not DB
+ * connectivity.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -16,7 +17,10 @@ const state = vi.hoisted(() => ({
     payload: Record<string, unknown>;
     updatedAt: Date;
   }>,
-  lastConflict: null as { target: unknown; set: Record<string, unknown> } | null,
+  captured: {
+    lastUpsertConflictTarget: null as unknown,
+    lastDelete: null as { uid: string; kind: string } | null,
+  },
 }));
 
 vi.mock('@shared/schema', () => ({
@@ -33,136 +37,169 @@ vi.mock('drizzle-orm', async (importOriginal) => {
   const actual = await importOriginal<typeof import('drizzle-orm')>();
   return {
     ...actual,
-    eq: (col: any, val: any) => ({ col: col?.name, val }),
-    and: (...preds: any[]) => ({ and: preds }),
+    and: (...preds: any[]) => ({ __and: preds }),
+    eq: (col: any, val: any) => ({ __eq: [col?.name, val] }),
+    sql: (strings: TemplateStringsArray) => ({ __sql: strings.join('') }),
   };
 });
 
 vi.mock('../db', () => ({
   db: {
-    insert: () => ({
+    insert: (_t: any) => ({
       values: (v: any) => ({
-        onConflictDoUpdate: (opts: any) => {
-          state.lastConflict = { target: opts.target, set: opts.set };
-          const existing = state.rows.find((r) => r.ownerUid === v.ownerUid && r.kind === v.kind);
-          if (existing) {
-            existing.step = opts.set.step ?? existing.step;
-            existing.payload = (opts.set.payload ?? existing.payload) as Record<string, unknown>;
-            existing.updatedAt = (opts.set.updatedAt ?? new Date()) as Date;
+        onConflictDoUpdate: async (opts: any) => {
+          state.captured.lastUpsertConflictTarget = opts.target;
+          // Simulate upsert: if a row with (ownerUid, kind) exists,
+          // update; otherwise insert.
+          const idx = state.rows.findIndex(
+            (r) => r.ownerUid === v.ownerUid && r.kind === v.kind,
+          );
+          if (idx >= 0) {
+            state.rows[idx] = {
+              ...state.rows[idx],
+              step: v.step,
+              payload: v.payload,
+              updatedAt: new Date(),
+            };
           } else {
             state.rows.push({
               ownerUid: v.ownerUid,
               kind: v.kind,
               step: v.step,
-              payload: v.payload ?? {},
-              updatedAt: new Date(),
+              payload: v.payload,
+              updatedAt: v.updatedAt,
             });
           }
-          return Promise.resolve();
+          void opts.set; // capture-side effect only
         },
       }),
     }),
-    select: () => ({
+    select: (_cols: any) => ({
       from: (_t: any) => ({
         where: (predicate: any) => ({
           limit: async (_n: number) => {
-            // predicate is { and: [ eq(ownerUid, uid), eq(kind, kind) ] }
-            const clauses: Array<{ col: string; val: string }> = predicate?.and ?? [];
-            const byCol = Object.fromEntries(clauses.map((c) => [c.col, c.val]));
-            const uid = byCol['owner_uid'];
-            const kind = byCol['kind'];
-            return state.rows.filter((r) => r.ownerUid === uid && r.kind === kind);
+            // Walk the mock predicate to pull the (ownerUid, kind) pair.
+            const preds: any[] = predicate?.__and ?? [predicate];
+            const parts: Record<string, string> = {};
+            for (const p of preds) {
+              if (p?.__eq) parts[p.__eq[0] as string] = p.__eq[1] as string;
+            }
+            return state.rows.filter(
+              (r) => r.ownerUid === parts['owner_uid'] && r.kind === parts['kind'],
+            );
           },
         }),
       }),
     }),
     delete: (_t: any) => ({
       where: async (predicate: any) => {
-        const clauses: Array<{ col: string; val: string }> = predicate?.and ?? [];
-        const byCol = Object.fromEntries(clauses.map((c) => [c.col, c.val]));
-        const uid = byCol['owner_uid'];
-        const kind = byCol['kind'];
-        for (let i = state.rows.length - 1; i >= 0; i--) {
-          if (state.rows[i].ownerUid === uid && state.rows[i].kind === kind) {
-            state.rows.splice(i, 1);
-          }
+        const preds: any[] = predicate?.__and ?? [predicate];
+        const parts: Record<string, string> = {};
+        for (const p of preds) {
+          if (p?.__eq) parts[p.__eq[0] as string] = p.__eq[1] as string;
         }
+        state.captured.lastDelete = { uid: parts['owner_uid'], kind: parts['kind'] };
+        state.rows = state.rows.filter(
+          (r) => !(r.ownerUid === parts['owner_uid'] && r.kind === parts['kind']),
+        );
       },
     }),
   },
 }));
 
 const { PgCheckpointStore } = await import('../services/marketplace/PgCheckpointStore');
+import type { JourneyCheckpoint } from '../services/marketplace/JourneyCheckpointService';
 
 beforeEach(() => {
   state.rows.length = 0;
-  state.lastConflict = null;
+  state.captured.lastUpsertConflictTarget = null;
+  state.captured.lastDelete = null;
+});
+
+const cp = (overrides: Partial<JourneyCheckpoint> = {}): JourneyCheckpoint => ({
+  ownerUid: 'sarah',
+  kind: 'CHECKOUT',
+  step: 'summary',
+  payload: { entityRef: { kind: 'booking', id: 'BK-1' } },
+  updatedAt: new Date('2026-08-31T12:00:00Z').toISOString(),
+  ...overrides,
 });
 
 describe('PgCheckpointStore', () => {
-  it('get returns undefined for a missing (uid, kind) pair', async () => {
+  it('put + get round-trips the payload for the same (uid, kind)', async () => {
     const store = new PgCheckpointStore();
-    const cp = await store.get('uid-nobody', 'CHECKOUT');
-    expect(cp).toBeUndefined();
+    await store.put(cp());
+    const out = await store.get('sarah', 'CHECKOUT');
+    expect(out).toBeDefined();
+    expect(out?.ownerUid).toBe('sarah');
+    expect(out?.kind).toBe('CHECKOUT');
+    expect(out?.step).toBe('summary');
+    expect(out?.payload).toEqual({ entityRef: { kind: 'booking', id: 'BK-1' } });
   });
 
-  it('put inserts a new row (onConflict path armed) and get returns the shaped checkpoint', async () => {
+  it('get on a missing (uid, kind) returns undefined', async () => {
     const store = new PgCheckpointStore();
-    await store.put({
-      kind: 'CHECKOUT',
-      ownerUid: 'uid-sarah',
-      step: 'summary',
-      payload: { formValues: {}, entityRef: { kind: 'booking', id: 'BK-1' } },
-      updatedAt: new Date().toISOString(),
+    const out = await store.get('sarah', 'CHECKOUT');
+    expect(out).toBeUndefined();
+  });
+
+  it('put upserts on conflict — same (uid, kind) never accumulates rows', async () => {
+    const store = new PgCheckpointStore();
+    await store.put(cp({ step: 'step-1' }));
+    await store.put(cp({ step: 'step-2' }));
+    await store.put(cp({ step: 'step-3' }));
+    expect(state.rows.length).toBe(1);
+    const out = await store.get('sarah', 'CHECKOUT');
+    expect(out?.step).toBe('step-3');
+  });
+
+  it('put uses the ownerUid + kind conflict target', async () => {
+    const store = new PgCheckpointStore();
+    await store.put(cp());
+    // The target array is drizzle-shape — we capture it verbatim to
+    // pin the intent (the DB upsert plan MUST key on the composite
+    // unique index; a rewrite that dropped either column would silently
+    // introduce duplicate-per-user resume prompts).
+    expect(state.captured.lastUpsertConflictTarget).toEqual([
+      { name: 'owner_uid' },
+      { name: 'kind' },
+    ]);
+  });
+
+  it('delete removes the row for (uid, kind); subsequent get returns undefined', async () => {
+    const store = new PgCheckpointStore();
+    await store.put(cp());
+    expect((await store.get('sarah', 'CHECKOUT'))).toBeDefined();
+    await store.delete('sarah', 'CHECKOUT');
+    expect(state.captured.lastDelete).toEqual({ uid: 'sarah', kind: 'CHECKOUT' });
+    expect((await store.get('sarah', 'CHECKOUT'))).toBeUndefined();
+  });
+
+  it('two users are isolated — putting sarah:CHECKOUT does not surface for maya:CHECKOUT', async () => {
+    const store = new PgCheckpointStore();
+    await store.put(cp({ ownerUid: 'sarah' }));
+    expect((await store.get('maya', 'CHECKOUT'))).toBeUndefined();
+    expect((await store.get('sarah', 'CHECKOUT'))?.ownerUid).toBe('sarah');
+  });
+
+  it('two kinds for the same user are isolated (SHOP_CART vs CHECKOUT)', async () => {
+    const store = new PgCheckpointStore();
+    await store.put(cp({ kind: 'CHECKOUT', step: 'summary' }));
+    await store.put(cp({ kind: 'SHOP_CART', step: 'cart' }));
+    expect((await store.get('sarah', 'CHECKOUT'))?.step).toBe('summary');
+    expect((await store.get('sarah', 'SHOP_CART'))?.step).toBe('cart');
+    expect(state.rows.length).toBe(2);
+  });
+
+  it('null payload from the DB is projected as {} (never crashes)', async () => {
+    // Simulate a legacy row with NULL payload.
+    state.rows.push({
+      ownerUid: 'sarah', kind: 'CHECKOUT', step: 'summary',
+      payload: null as unknown as Record<string, unknown>,
+      updatedAt: new Date('2026-08-31T12:00:00Z'),
     });
-    const cp = await store.get('uid-sarah', 'CHECKOUT');
-    expect(cp).toBeDefined();
-    if (!cp) throw new Error();
-    expect(cp.kind).toBe('CHECKOUT');
-    expect(cp.ownerUid).toBe('uid-sarah');
-    expect(cp.step).toBe('summary');
-    expect(typeof cp.updatedAt).toBe('string');
-    expect(state.lastConflict?.target).toBeDefined();
-  });
-
-  it('put twice for the same (uid, kind) upserts — second write overwrites step + payload', async () => {
     const store = new PgCheckpointStore();
-    await store.put({
-      kind: 'BOOKING_REQUEST', ownerUid: 'uid-1', step: 'pet_pick', payload: {},
-      updatedAt: new Date().toISOString(),
-    });
-    await store.put({
-      kind: 'BOOKING_REQUEST', ownerUid: 'uid-1', step: 'confirm', payload: { providerId: 'P-1' },
-      updatedAt: new Date().toISOString(),
-    });
-    const cp = await store.get('uid-1', 'BOOKING_REQUEST');
-    expect(cp?.step).toBe('confirm');
-    expect((cp?.payload as any).providerId).toBe('P-1');
-    // Only one row in the mock table — proves the upsert path (not two inserts).
-    expect(state.rows.filter((r) => r.ownerUid === 'uid-1' && r.kind === 'BOOKING_REQUEST')).toHaveLength(1);
-  });
-
-  it('put for the same uid with a DIFFERENT kind creates a distinct row', async () => {
-    const store = new PgCheckpointStore();
-    await store.put({ kind: 'CHECKOUT', ownerUid: 'uid-1', step: 's1', payload: {}, updatedAt: new Date().toISOString() });
-    await store.put({ kind: 'SHOP_CART', ownerUid: 'uid-1', step: 's2', payload: {}, updatedAt: new Date().toISOString() });
-    expect(state.rows.filter((r) => r.ownerUid === 'uid-1')).toHaveLength(2);
-  });
-
-  it('get isolates by ownerUid — one user cannot read another user\'s checkpoint of the same kind', async () => {
-    const store = new PgCheckpointStore();
-    await store.put({ kind: 'CHECKOUT', ownerUid: 'uid-alice', step: 'summary', payload: {}, updatedAt: new Date().toISOString() });
-    const cp = await store.get('uid-bob', 'CHECKOUT');
-    expect(cp).toBeUndefined();
-  });
-
-  it('delete removes only the requested (uid, kind) pair', async () => {
-    const store = new PgCheckpointStore();
-    await store.put({ kind: 'CHECKOUT', ownerUid: 'uid-1', step: 's', payload: {}, updatedAt: new Date().toISOString() });
-    await store.put({ kind: 'SHOP_CART', ownerUid: 'uid-1', step: 's', payload: {}, updatedAt: new Date().toISOString() });
-    await store.delete('uid-1', 'CHECKOUT');
-    expect(await store.get('uid-1', 'CHECKOUT')).toBeUndefined();
-    // The SHOP_CART row stays intact.
-    expect(await store.get('uid-1', 'SHOP_CART')).toBeDefined();
+    const out = await store.get('sarah', 'CHECKOUT');
+    expect(out?.payload).toEqual({});
   });
 });

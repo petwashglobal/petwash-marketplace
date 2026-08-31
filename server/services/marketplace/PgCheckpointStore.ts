@@ -1,73 +1,81 @@
 /**
- * PgCheckpointStore — CEO Journey Brain Phase 2 (task #141).
+ * PgCheckpointStore — CEO Journey Brain Phase 2 (task #141 wire).
  *
- * Drizzle-backed persistence for JourneyCheckpoint. Implements the
- * CheckpointStore interface (server/services/marketplace/JourneyCheckpointService.ts)
- * so callers stay interface-agnostic and boot code can pick either
- * this store or the in-memory default via setDefaultCheckpointStore.
+ * Drizzle-backed implementation of CheckpointStore. Persists to the
+ * journey_checkpoints table (shared/schema.ts) which is keyed by
+ * UNIQUE(owner_uid, kind) so PUT is an upsert-on-conflict, GET is a
+ * simple index lookup, DELETE is a targeted row remove.
  *
- * The row shape lives in shared/schema.ts::journeyCheckpoints and
- * carries a UNIQUE (owner_uid, kind) constraint — put() is an
- * upsert-on-conflict so a wizard that writes twice for the same
- * (uid, kind) overwrites without a duplicate-key error.
- *
- * Never throws on a not-found — get() returns undefined and the
- * caller (typically evaluateResume) handles NO_CHECKPOINT.
+ * Called via the module-level getDefaultCheckpointStore() singleton
+ * that ships in JourneyCheckpointService.ts. Boot code calls
+ * setDefaultCheckpointStore(new PgCheckpointStore()) once the DB
+ * pool is ready; every wizard and every AttentionFeed probe
+ * transparently reads persistent state from then on.
  */
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../../db';
-import { journeyCheckpoints, type JourneyCheckpointRow } from '@shared/schema';
+import { journeyCheckpoints } from '@shared/schema';
 import type {
   CheckpointKind,
   CheckpointStore,
   JourneyCheckpoint,
 } from './JourneyCheckpointService';
 
-function rowToCheckpoint(row: JourneyCheckpointRow): JourneyCheckpoint {
-  return {
-    kind: row.kind as CheckpointKind,
-    ownerUid: row.ownerUid,
-    step: row.step,
-    payload: (row.payload ?? {}) as Record<string, unknown>,
-    updatedAt: row.updatedAt.toISOString(),
-  };
-}
-
 export class PgCheckpointStore implements CheckpointStore {
   async put(cp: JourneyCheckpoint): Promise<void> {
-    // ON CONFLICT (owner_uid, kind) DO UPDATE — matches the unique
-    // index shipped in shared/schema.ts.
-    await db
-      .insert(journeyCheckpoints)
-      .values({
-        ownerUid: cp.ownerUid,
-        kind: cp.kind,
+    // Upsert on the UNIQUE(owner_uid, kind) index so a resume-in-flight
+    // that PUTs twice for the same wizard step never accumulates rows.
+    await db.insert(journeyCheckpoints).values({
+      ownerUid: cp.ownerUid,
+      kind: cp.kind,
+      step: cp.step,
+      payload: cp.payload,
+      updatedAt: new Date(cp.updatedAt),
+    }).onConflictDoUpdate({
+      target: [journeyCheckpoints.ownerUid, journeyCheckpoints.kind],
+      set: {
         step: cp.step,
         payload: cp.payload,
-      })
-      .onConflictDoUpdate({
-        target: [journeyCheckpoints.ownerUid, journeyCheckpoints.kind],
-        set: {
-          step: cp.step,
-          payload: cp.payload,
-          updatedAt: new Date(),
-        },
-      });
+        updatedAt: sql`NOW()`,
+      },
+    });
   }
 
   async get(uid: string, kind: CheckpointKind): Promise<JourneyCheckpoint | undefined> {
-    const [row] = await db
-      .select()
+    const rows = await db
+      .select({
+        ownerUid: journeyCheckpoints.ownerUid,
+        kind: journeyCheckpoints.kind,
+        step: journeyCheckpoints.step,
+        payload: journeyCheckpoints.payload,
+        updatedAt: journeyCheckpoints.updatedAt,
+      })
       .from(journeyCheckpoints)
-      .where(and(eq(journeyCheckpoints.ownerUid, uid), eq(journeyCheckpoints.kind, kind)))
+      .where(and(
+        eq(journeyCheckpoints.ownerUid, uid),
+        eq(journeyCheckpoints.kind, kind),
+      ))
       .limit(1);
+    const row = rows[0];
     if (!row) return undefined;
-    return rowToCheckpoint(row);
+    return {
+      ownerUid: row.ownerUid,
+      // Row.kind is DB varchar; narrow to CheckpointKind. If a legacy
+      // row carries an unknown kind the caller's dispatch will treat
+      // it as unknown — the store itself does not validate the value.
+      kind: row.kind as CheckpointKind,
+      step: row.step,
+      payload: (row.payload as Record<string, unknown>) ?? {},
+      updatedAt: row.updatedAt.toISOString(),
+    };
   }
 
   async delete(uid: string, kind: CheckpointKind): Promise<void> {
     await db
       .delete(journeyCheckpoints)
-      .where(and(eq(journeyCheckpoints.ownerUid, uid), eq(journeyCheckpoints.kind, kind)));
+      .where(and(
+        eq(journeyCheckpoints.ownerUid, uid),
+        eq(journeyCheckpoints.kind, kind),
+      ));
   }
 }
