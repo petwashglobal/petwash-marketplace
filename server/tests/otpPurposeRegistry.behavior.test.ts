@@ -57,6 +57,12 @@ describe('OTPPurposeRegistry', () => {
         expect((OTP_PURPOSES as readonly string[]).includes(required)).toBe(true);
       }
     });
+
+    it('contains the CEO OTP brief §1 named purposes verbatim (GIFT_PURCHASE + SENSITIVE_ACCOUNT_CHANGE)', () => {
+      for (const required of ['GIFT_PURCHASE', 'SENSITIVE_ACCOUNT_CHANGE']) {
+        expect((OTP_PURPOSES as readonly string[]).includes(required)).toBe(true);
+      }
+    });
   });
 
   describe('isOtpPurpose', () => {

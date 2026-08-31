@@ -39,9 +39,11 @@ export const OTP_PURPOSES = [
   'PASSWORD_RECOVERY',         // "forgot password" flow
   'PROVIDER_SECURITY_STEPUP',  // sensitive provider action (payout account, etc.)
   'BOOKING_CONFIRMATION',      // guest-checkout / anonymous booking confirmation
-  'PURCHASE_CONFIRMATION',     // guest-checkout Shop / eGift purchase confirmation
+  'PURCHASE_CONFIRMATION',     // guest-checkout Shop purchase confirmation
+  'GIFT_PURCHASE',             // eGift purchase confirmation (CEO OTP brief §1 — distinct from Shop)
   'CLOSE_ACCOUNT',             // irreversible destructive action
   'CHANGE_PAYOUT_DESTINATION', // provider bank-account rebinding
+  'SENSITIVE_ACCOUNT_CHANGE',  // catch-all for sensitive changes not covered above (CEO OTP brief §1)
 ] as const;
 
 export type OtpPurpose = (typeof OTP_PURPOSES)[number];
