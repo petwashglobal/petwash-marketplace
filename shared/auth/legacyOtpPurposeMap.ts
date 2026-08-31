@@ -161,3 +161,40 @@ export function canonicalFor(legacy: string): OtpPurpose | undefined {
   if (entry.certainty !== 'ONE_TO_ONE') return undefined;
   return entry.canonical;
 }
+
+/**
+ * Reverse lookup — for a canonical purpose, return the legacy
+ * lowercase string IF a ONE_TO_ONE mapping exists. Used by dual-
+ * accept readers (UnifiedVerificationService.getPurposeDefinition)
+ * so a row persisted as canonical still resolves to its legacy
+ * PurposeDefinition entry without a full runtime re-key.
+ *
+ * Returns undefined when the canonical is not the target of any
+ * ONE_TO_ONE mapping — the caller should treat that as "no legacy
+ * translation available; look up canonical directly if the registry
+ * supports it".
+ */
+export function legacyFor(canonical: string): LegacyOtpPurpose | undefined {
+  const entry = LEGACY_OTP_PURPOSE_MAP.find(
+    (e) => e.certainty === 'ONE_TO_ONE' && e.canonical === canonical,
+  );
+  return entry?.legacy;
+}
+
+/**
+ * Normalise any purpose input (legacy OR canonical) to the CANONICAL
+ * form when a ONE_TO_ONE mapping exists. Pass-through for anything
+ * else — unknown strings AND legacy strings whose mapping is not
+ * ONE_TO_ONE stay unchanged so the caller's downstream logic still
+ * sees the original.
+ *
+ * Callers on the WRITE side use this to persist the canonical form
+ * for new rows without a DB migration; callers on the READ side use
+ * it symmetrically so a canonical row and a legacy row map to the
+ * same equality check.
+ */
+export function canonicalizePurposeInput(input: string): string {
+  const asCanonical = canonicalFor(input);
+  if (asCanonical) return asCanonical;
+  return input;
+}

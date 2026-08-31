@@ -1,8 +1,12 @@
 import crypto from "crypto";
 import { generateOtpCode } from "@shared/auth/otpCodeGeneration";
-import { canonicalFor } from "@shared/auth/legacyOtpPurposeMap";
+import {
+  canonicalFor,
+  legacyFor,
+  canonicalizePurposeInput,
+} from "@shared/auth/legacyOtpPurposeMap";
 import jwt from "jsonwebtoken";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "../db";
 import { logger } from "../lib/logger";
 import { isUnifiedVerificationPurposeEnabled } from "../lib/feature-flags/unifiedVerification";
@@ -215,11 +219,19 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
 };
 
 export function getPurposeDefinition(purpose: string): PurposeDefinition {
-  const definition = unifiedVerificationPurposeRegistry[purpose as VerificationPurpose];
-  if (!definition) {
-    throw new UnifiedVerificationError("UNKNOWN_PURPOSE", "Unknown verification purpose.", 400);
+  // Direct hit: the input is a registry key (legacy lowercase form).
+  const direct = unifiedVerificationPurposeRegistry[purpose as VerificationPurpose];
+  if (direct) return direct;
+  // Canonical hit: input is SCREAMING_SNAKE_CASE (e.g. 'LOGIN'). Reverse-
+  // translate through legacyOtpPurposeMap so a row persisted with the
+  // canonical form still resolves to its legacy PurposeDefinition
+  // entry — dual-accept read (task #193). ONE_TO_ONE only.
+  const asLegacy = legacyFor(purpose);
+  if (asLegacy) {
+    const viaLegacy = unifiedVerificationPurposeRegistry[asLegacy as VerificationPurpose];
+    if (viaLegacy) return viaLegacy;
   }
-  return definition;
+  throw new UnifiedVerificationError("UNKNOWN_PURPOSE", "Unknown verification purpose.", 400);
 }
 
 /**
@@ -546,11 +558,18 @@ export class UnifiedVerificationService {
       || definition.purpose === "disable_2fa"
       || definition.purpose === "payout"
     ) {
+      // task #193 dual-accept cool-down: rows written before the
+      // canonical flip carry the legacy lowercase purpose; rows
+      // written after carry the canonical form. Match on EITHER so
+      // the 60-second window applies across the migration.
+      const cooldownPurposes: string[] = [definition.purpose];
+      const asCanonical = canonicalFor(definition.purpose);
+      if (asCanonical) cooldownPurposes.push(asCanonical);
       const [recent] = await db
         .select({ challengeId: verificationChallenges.challengeId })
         .from(verificationChallenges)
         .where(and(
-          eq(verificationChallenges.purpose, definition.purpose),
+          inArray(verificationChallenges.purpose, cooldownPurposes),
           eq(verificationChallenges.destination, destination),
           eq(verificationChallenges.status, "pending"),
           gte(verificationChallenges.createdAt, new Date(now.getTime() - 60_000)),
@@ -567,12 +586,19 @@ export class UnifiedVerificationService {
       }
     }
 
+    // task #193: persist the CANONICAL SCREAMING_SNAKE_CASE form when
+    // the legacy → canonical mapping is ONE_TO_ONE
+    // (shared/auth/legacyOtpPurposeMap). Pass-through for everything
+    // else so legacy strings without a canonical stay unchanged. Read
+    // path (getPurposeDefinition above) accepts both forms so any
+    // existing pending row still resolves during the migration window.
+    const persistedPurpose = canonicalizePurposeInput(input.purpose);
     const [challenge] = await db.insert(verificationChallenges).values({
       challengeId,
       userId: input.actor.userId,
       channel: input.channel,
       destination,
-      purpose: input.purpose,
+      purpose: persistedPurpose,
       payload: input.payload ?? {},
       codeHash,
       maxAttempts: definition.maxAttempts,
