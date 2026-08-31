@@ -226,14 +226,17 @@ class EscrowService {
             serviceType: (e.metadata as any)?.serviceType ?? null,
           });
           if (!gate.ok) {
-            // enforceGate:true forces the fail-closed HOLD for a specific caller
-            // regardless of the global env flag. Used by the TIME-BASED orphan
-            // auto-release (autoReleaseExpiredHolds) so it can NEVER release an
-            // escrow whose booking isn't actually completed — WITHOUT changing
-            // behavior for explicit, already-authorized releases (owner-confirm,
-            // manual party release, octopus completion), which release now and
-            // must not be blocked by the 48h refund-window gate.
-            const enforce = opts?.enforceGate === true || process.env.ESCROW_PAYOUT_GATE_ENFORCE === "true";
+            // P0-AUDIT-MONEY-1 (task #226) — the gate is now FAIL-CLOSED by
+            // default. Previously the env flag defaulted OFF and every human
+            // release (owner-confirm / manual / dispute-close) bypassed the
+            // refund-window + tax-verification + open-dispute checks; auditor
+            // 2026-09 flagged this as a money-integrity CRIT (payouts released
+            // while refund window still open). The env var flips MEANING:
+            // ESCROW_PAYOUT_GATE_DISABLE=true → shadow mode (log only, legacy
+            // behavior) — kept as an emergency escape hatch, NEVER as prod
+            // default. Explicit callers can still bypass with opts.bypassGate
+            // (already used by audited admin overrides).
+            const enforce = process.env.ESCROW_PAYOUT_GATE_DISABLE !== "true";
             console.warn(
               `[Escrow] payout gate ${enforce ? "HELD" : "WOULD HOLD (shadow)"} ` +
                 `escrow ${escrowId} — ${gate.reason}: ${gate.message}`,

@@ -188,18 +188,27 @@ router.post('/guest', runUpload(upload.single('photo')), async (req, res) => {
   }
 });
 
-// AI GENERATION ENDPOINT: Generate avatar from preset (PUBLIC - No Auth Required)
-// Note: Currently returns placeholder; full implementation requires Gemini image generation model
-router.post('/generate-from-preset', async (req, res) => {
+// AI GENERATION ENDPOINT: Generate avatar from preset
+// P0-AUDIT-AI-2 (task #197): was PUBLIC and hit Imagen 3 (most
+// expensive Gemini surface). Now requires validateFirebaseToken so
+// each call is attributable + rate-limitable by UID (see #203
+// per-UID daily quota follow-up).
+router.post('/generate-from-preset', validateFirebaseToken, async (req: any, res) => {
   try {
     const { presetId, petName } = req.body;
-    
+
     if (!presetId) {
       return res.status(400).json({ error: 'Preset ID is required' });
     }
-    
+
     if (!petName?.trim()) {
       return res.status(400).json({ error: 'Pet name is required' });
+    }
+
+    // P0-AUDIT-AI-2 defence-in-depth: cap petName length so a
+    // pathological string can't inflate the Imagen prompt cost.
+    if (String(petName).length > 60) {
+      return res.status(400).json({ error: 'Pet name too long' });
     }
     
     // Import presets dynamically (server-side)
