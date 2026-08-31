@@ -66,7 +66,7 @@ export function redactPaymentPayload(payload: any): any {
   }
 
   const redacted = { ...payload };
-  
+
   // Common PAN field names
   const panFields = [
     'cardNumber',
@@ -76,7 +76,7 @@ export function redactPaymentPayload(payload: any): any {
     'accountNumber',
     'account_number'
   ];
-  
+
   // Common CVV field names
   const cvvFields = [
     'cvv',
@@ -84,29 +84,130 @@ export function redactPaymentPayload(payload: any): any {
     'securityCode',
     'security_code'
   ];
-  
+
   // Redact PAN fields
   panFields.forEach(field => {
     if (redacted[field]) {
       redacted[field] = redactPAN(redacted[field]);
     }
   });
-  
+
   // Completely remove CVV fields
   cvvFields.forEach(field => {
     if (redacted[field]) {
       redacted[field] = '***';
     }
   });
-  
+
   // Redact nested objects
   Object.keys(redacted).forEach(key => {
     if (typeof redacted[key] === 'object' && redacted[key] !== null) {
       redacted[key] = redactPaymentPayload(redacted[key]);
     }
   });
-  
+
   return redacted;
+}
+
+/**
+ * P0-AUDIT-LOG-STRATEGIC (task #208): the field-name allowlist the
+ * ServerLogger.formatLog runs every context value through before
+ * emitting to stdout/Sentry. A field whose (case-insensitive) name
+ * matches any pattern is replaced with '[REDACTED]' — no substring
+ * of the original leaks. Applied recursively; arrays walked
+ * element-by-element.
+ *
+ * Distinct from payment-payload redaction (which only touches PAN /
+ * CVV). This is the broader spec covering auth secrets, OTPs,
+ * tokens, cookies, and identity ids.
+ */
+const SENSITIVE_KEY_PATTERNS: readonly RegExp[] = [
+  /^password$/i,
+  /^new_?password$/i,
+  /^old_?password$/i,
+  /^password_?hash$/i,
+  /^otp$/i,
+  /^otp_?code$/i,
+  /^verification_?code$/i,
+  /^code$/i,                                              // OTP short form
+  /^token$/i,
+  /^id_?token$/i,
+  /^access_?token$/i,
+  /^refresh_?token$/i,
+  /^auth_?token$/i,
+  /^bearer_?token$/i,
+  /^session_?cookie$/i,
+  /^custom_?token$/i,
+  /^authorization$/i,
+  /^cookie$/i,
+  /^set-cookie$/i,
+  /^api_?key$/i,
+  /^secret$/i,
+  /^client_?secret$/i,
+  /^webhook_?secret$/i,
+  /^id_?number$/i,                                        // Teudat Zehut
+  /^national_?id$/i,
+  /^teudat_?zehut$/i,
+  /^iban$/i,
+  /^bank_?account$/i,
+  /^bank_?account_?number$/i,
+  /^routing_?number$/i,
+  /^card_?number$/i,
+  /^cvv$/i,
+  /^cvc$/i,
+  /^pin$/i,
+  /^pin_?code$/i,
+];
+
+/** Fields whose value is an email/phone but where we still want to keep
+ * a masked form in logs (not delete outright, so operators can correlate
+ * on last-4 / domain). */
+const EMAIL_KEY_PATTERNS: readonly RegExp[] = [
+  /^email$/i, /^new_?email$/i, /^old_?email$/i, /^recipient_?email$/i,
+  /^sender_?email$/i, /^destination(_?email)?$/i, /^to(_?email)?$/i,
+];
+const PHONE_KEY_PATTERNS: readonly RegExp[] = [
+  /^phone$/i, /^phone_?number$/i, /^phone_?e164$/i, /^mobile$/i,
+  /^new_?phone$/i, /^old_?phone$/i, /^to_?phone$/i, /^recipient_?phone$/i,
+];
+
+function keyMatches(patterns: readonly RegExp[], key: string): boolean {
+  for (const p of patterns) if (p.test(key)) return true;
+  return false;
+}
+
+const REDACTOR_MAX_DEPTH = 6;
+
+/**
+ * Recursively scrub sensitive fields from a log context object.
+ * NEVER mutates the input. Depth-capped so a pathological ref-cycle
+ * or a giant nested object can't hang the logger.
+ */
+export function redactLogContext(value: unknown, depth = 0): unknown {
+  if (depth > REDACTOR_MAX_DEPTH) return '[REDACTED_MAX_DEPTH]';
+  if (value === null || value === undefined) return value;
+  if (typeof value !== 'object') return value;
+  if (value instanceof Date || value instanceof Error) return value;
+  if (Array.isArray(value)) {
+    return value.map((v) => redactLogContext(v, depth + 1));
+  }
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (keyMatches(SENSITIVE_KEY_PATTERNS, k)) {
+      out[k] = '[REDACTED]';
+      continue;
+    }
+    if (keyMatches(EMAIL_KEY_PATTERNS, k) && typeof v === 'string') {
+      out[k] = redactEmail(v);
+      continue;
+    }
+    if (keyMatches(PHONE_KEY_PATTERNS, k) && typeof v === 'string') {
+      out[k] = redactPhone(v);
+      continue;
+    }
+    out[k] = redactLogContext(v, depth + 1);
+  }
+  return out;
 }
 
 /**
