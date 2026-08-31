@@ -601,6 +601,111 @@ async function providerDocExpiryItems(userId: string, he: boolean): Promise<Atte
   }
 }
 
+/**
+ * CEO §80 Phase 1 Journey Brain probe (task #140) — provider
+ * application status. Different from doc-expiry (which fires only
+ * inside the 30-day expiry window on an approved provider): this
+ * probe fires when the application itself is stalled in
+ * DRAFT / PENDING_REVIEW / DOCUMENTS_REQUIRED / UNDER_REVIEW /
+ * CHANGES_REQUESTED / SUSPENDED / REJECTED. Approved / withdrawn
+ * applications surface no item.
+ *
+ * Uses the most recent provider_applications row per applicant
+ * so a resubmission doesn't double-alert against a stale draft.
+ */
+async function providerApplicationStatusItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const rows = await db
+      .select({
+        id: providerApplications.id,
+        applicationId: providerApplications.applicationId,
+        status: providerApplications.status,
+      })
+      .from(providerApplications)
+      .where(eq(providerApplications.userId, userId))
+      .orderBy(desc(providerApplications.createdAt))
+      .limit(1);
+    if (!rows.length) return [];
+    const r = rows[0];
+    const status = (r.status ?? 'draft').toLowerCase();
+    // Approved / withdrawn → no attention needed. Everything else
+    // is user-actionable or PetWash-side reviewable and deserves
+    // a card.
+    if (status === 'approved' || status === 'withdrawn') return [];
+
+    // Priority + copy per status. URGENT for stalled/rejected, DUE_SOON
+    // for CHANGES_REQUESTED, INFORMATIONAL for IN_REVIEW / DRAFT.
+    let priority: AttentionItem['priority'];
+    let titleHe: string;
+    let titleEn: string;
+    let reasonHe: string;
+    let reasonEn: string;
+    let nextAction: AttentionItem['nextAction'] = 'view';
+    switch (status) {
+      case 'suspended':
+        priority = 'urgent';
+        titleHe = 'החשבון שלכם מושהה';
+        titleEn = 'Your provider account is suspended';
+        reasonHe = 'צרו קשר עם התמיכה כדי להסיר את ההשעיה';
+        reasonEn = 'Contact support to resolve the suspension';
+        break;
+      case 'rejected':
+        priority = 'urgent';
+        titleHe = 'הבקשה שלכם נדחתה';
+        titleEn = 'Your application was declined';
+        reasonHe = 'ראו סיבת דחייה במסך הבקשה';
+        reasonEn = 'See the reason in the application screen';
+        break;
+      case 'changes_requested':
+        priority = 'due_soon';
+        titleHe = 'שינויים נדרשים בבקשה שלכם';
+        titleEn = 'Changes requested on your application';
+        reasonHe = 'ראו הערות הבודק וטפלו כדי לקדם את הבקשה';
+        reasonEn = 'Review the reviewer notes and address them to move forward';
+        nextAction = 'upload';
+        break;
+      case 'documents_required':
+      case 'pending_review':
+        priority = 'due_soon';
+        titleHe = 'חסרים מסמכים בבקשה שלכם';
+        titleEn = 'Documents required to submit';
+        reasonHe = 'העלו את המסמכים הנדרשים כדי להשלים את הבקשה';
+        reasonEn = 'Upload the required documents to complete the application';
+        nextAction = 'upload';
+        break;
+      case 'under_review':
+        priority = 'informational';
+        titleHe = 'הבקשה שלכם בבדיקה';
+        titleEn = 'Your application is under review';
+        reasonHe = 'הצוות שלנו יחזור אליכם עם עדכון בקרוב';
+        reasonEn = 'Our team will get back to you with an update shortly';
+        break;
+      case 'draft':
+      default:
+        priority = 'informational';
+        titleHe = 'טיוטת הבקשה שלכם ממתינה';
+        titleEn = 'Your application draft is waiting';
+        reasonHe = 'המשיכו את הבקשה כדי להתחיל לקבל הזמנות';
+        reasonEn = 'Continue the application to start receiving bookings';
+        break;
+    }
+    return [{
+      id: `provider_application:${r.id}`,
+      actor: 'provider',
+      domain: 'kyc',
+      entityId: String(r.applicationId ?? r.id),
+      priority,
+      title: he ? titleHe : titleEn,
+      reason: he ? reasonHe : reasonEn,
+      nextAction,
+      destination: '/provider-application/status',
+    }];
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] provider application-status probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
 export async function composeAttentionFeed(actor: AttentionActor, userId: string, he: boolean): Promise<AttentionFeed> {
   if (!userId) {
     return { actor, items: [], composedAt: new Date().toISOString() };
@@ -621,6 +726,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
         ...await providerBookingItems(userId, he),
         ...await providerPayoutItems(userId, he),
         ...await providerDocExpiryItems(userId, he),
+        ...await providerApplicationStatusItems(userId, he),
       ];
   return { actor, items: sortItems(items), composedAt: new Date().toISOString() };
 }

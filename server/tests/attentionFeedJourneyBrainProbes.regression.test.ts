@@ -29,8 +29,26 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
     expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),/);
   });
 
-  it('composer concatenates the booking + payout + doc-expiry probes on the provider path', () => {
-    expect(SRC).toMatch(/\.\.\.await providerBookingItems\(userId, he\),\s*\n\s*\.\.\.await providerPayoutItems\(userId, he\),\s*\n\s*\.\.\.await providerDocExpiryItems\(userId, he\),/);
+  it('composer concatenates the booking + payout + doc-expiry + application-status probes on the provider path', () => {
+    expect(SRC).toMatch(/\.\.\.await providerBookingItems\(userId, he\),\s*\n\s*\.\.\.await providerPayoutItems\(userId, he\),\s*\n\s*\.\.\.await providerDocExpiryItems\(userId, he\),\s*\n\s*\.\.\.await providerApplicationStatusItems\(userId, he\),/);
+  });
+
+  it('provider application-status probe reads the most-recent row by userId + branches on status', () => {
+    // Ownership: MUST filter by userId — a shared query would leak
+    // a stranger's application status.
+    expect(SRC).toMatch(/eq\(providerApplications\.userId, userId\)/);
+    // Most recent wins.
+    expect(SRC).toMatch(/orderBy\(desc\(providerApplications\.createdAt\)\)\s*\.limit\(1\)/);
+    // Approved / withdrawn → no item (empty feed for happy path).
+    expect(SRC).toMatch(/if \(status === 'approved' \|\| status === 'withdrawn'\) return \[\];/);
+    // Priorities: suspended + rejected → urgent, changes_requested / documents_required → due_soon,
+    // under_review / draft → informational.
+    expect(SRC).toContain("case 'suspended'");
+    expect(SRC).toContain("case 'rejected'");
+    expect(SRC).toContain("case 'changes_requested'");
+    expect(SRC).toContain("case 'documents_required'");
+    expect(SRC).toContain("case 'under_review'");
+    expect(SRC).toContain("case 'draft'");
   });
 
   it('eGift probe reads owner_uid + status IN (CLAIMED, ACTIVE) + remaining > 0 — never invents balance', () => {
