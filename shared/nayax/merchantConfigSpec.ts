@@ -119,6 +119,26 @@ export const PETWASH_NAYAX_MACHINES: readonly NayaxMachineSpec[] = [
 ];
 
 /** Utility guards used by NayaxFiscalDocumentGuard and admin surfaces. */
+/**
+ * Resolve a Nayax identifier (either the audited machineId like
+ * '182374' OR the physical deviceId like '854470209') to the
+ * canonical machineId. Returns undefined if neither form matches
+ * any of the four audited machines.
+ *
+ * Callers (fiscal composer, guard wire) use this because the
+ * runtime write-side may store either form on the K9000 event; the
+ * guard operates on the canonical machineId regardless.
+ */
+export function resolveMachineId(candidate: string | null | undefined): string | undefined {
+  if (!candidate) return undefined;
+  const trimmed = candidate.trim();
+  if (!trimmed) return undefined;
+  const hit = PETWASH_NAYAX_MACHINES.find(
+    (m) => m.machineId === trimmed || m.deviceId === trimmed,
+  );
+  return hit?.machineId;
+}
+
 export function isKnownMachineId(machineId: string): boolean {
   return PETWASH_NAYAX_MACHINES.some((m) => m.machineId === machineId);
 }

@@ -32,6 +32,8 @@ import { logger } from '../../lib/logger';
 import { getSumitDocumentMapping } from '../sumitDocumentMapping';
 import { composeProviderCommissionLineage, composeRefundLineage } from './lineage';
 import { collectWarnings, type ReconciliationSignal } from './reconciliation';
+import { guardFiscalDocument } from '../marketplace/NayaxFiscalDocumentGuard';
+import { resolveMachineId } from '@shared/nayax/merchantConfigSpec';
 import {
   fiscalEventKey,
   paymentClassForEvent,
@@ -393,7 +395,24 @@ async function composeK9000Fiscal(eventId: string, viewer: FiscalActor): Promise
     money: baseMoney(total, undefined, total, paid ? total : 0),
     fundingLegs: paid ? [{ rail, amountCents: total, currency: 'ILS', label: rail === 'MACHINE_NAYAX' ? 'Card (Nayax)' : rail === 'EGIFT' ? 'eGift' : 'Wallet', externalRef: event.nayaxTransactionId ?? undefined }] : [],
     payment: buildPaymentBlock(paid, false, rail, event.nayaxTransactionId),
-    fiscalDocument: fiscalDocumentFromCPA(evt, paid ? 'PENDING' : 'NOT_REQUIRED'),
+    // §55 K9000 fiscal doctrine (CEO auditor 2026-08-30, task #168).
+    // For a paid Nayax public-card wash, we may NOT silently claim a
+    // fiscal document was auto-issued: the eReceipt module is OFF and
+    // the fiscal engine is UNDECIDED in the BusinessDecisionRegistry.
+    // Route the state through NayaxFiscalDocumentGuard — REFUSE means
+    // RECONCILIATION_REQUIRED (a human must confirm what SUMIT/Nayax
+    // did), ASSUME_ISSUED means PENDING as before. Non-Nayax rails
+    // (wallet, eGift) keep the original CPA-mapped state.
+    fiscalDocument: fiscalDocumentFromCPA(
+      evt,
+      paid
+        ? (isPublicCard
+            ? (guardFiscalDocument({ machineId: resolveMachineId(event.nayaxTerminalId) ?? '' }).code === 'ASSUME_ISSUED'
+                ? 'PENDING'
+                : 'RECONCILIATION_REQUIRED')
+            : 'PENDING')
+        : 'NOT_REQUIRED',
+    ),
     commercialState: paid ? 'FULFILLED' : 'DRAFT',
     fulfilmentState: paid ? 'CUSTOMER_CONFIRMED' : 'NOT_STARTED',
     payoutState: 'NOT_APPLICABLE',
