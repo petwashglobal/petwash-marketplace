@@ -36,6 +36,7 @@ export const LEGACY_OTP_PURPOSES = [
   'signup',
   'egift_redeem',
   'change_email',
+  'phone_change',
   'enable_2fa',
   'disable_2fa',
   'close_account',
@@ -82,6 +83,12 @@ export const LEGACY_OTP_PURPOSE_MAP: readonly MappingEntry[] = [
     certainty: 'ONE_TO_ONE',
     canonical: 'EMAIL_VERIFICATION',
     rationale: 'Both verify ownership of a new email address; the change-email flow is a superset that adds a state machine on top.',
+  },
+  {
+    legacy: 'phone_change',
+    certainty: 'ONE_TO_ONE',
+    canonical: 'PHONE_VERIFICATION',
+    rationale: 'Established-account MOBILE change (P0-MY-ACCOUNT task #194) — the OTP verifies ownership of the new mobile number, which is exactly PHONE_VERIFICATION. Distinct from signup (first-time mobile), which is #188.',
   },
   {
     legacy: 'close_account',

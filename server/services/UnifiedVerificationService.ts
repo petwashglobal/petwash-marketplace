@@ -22,6 +22,7 @@ export type VerificationPurpose =
   | "signup"
   | "egift_redeem"
   | "change_email"
+  | "phone_change"
   | "enable_2fa"
   | "disable_2fa"
   | "close_account"
@@ -150,6 +151,34 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
         newEmail: challenge.destination,
         oldEmail: (challenge.payload as any)?.oldEmail,
         action: "change_email",
+        userId: challenge.userId || undefined,
+      },
+    }),
+  },
+  /**
+   * phone_change — established-account MOBILE change flow (P0-MY-ACCOUNT
+   * task #194). Distinct from `signup` (which handles first-time mobile
+   * ownership on a NEW account); the CEO's #188 decision on
+   * signup-vs-phone-verification does not need to settle before this
+   * purpose ships, because the CHANGE case is unambiguously a
+   * PHONE_VERIFICATION per the canonical OTP_PURPOSES registry.
+   *
+   * Maps ONE_TO_ONE → PHONE_VERIFICATION in legacyOtpPurposeMap so
+   * new challenges persist under the canonical form via the dual-
+   * accept write path (task #193).
+   */
+  phone_change: {
+    purpose: "phone_change",
+    migrated: true,
+    sensitive: true,
+    requiresSession: true,
+    ttlSeconds: 300,
+    maxAttempts: 5,
+    execute: async (challenge) => ({
+      metadata: {
+        newPhone: challenge.destination,
+        oldPhone: (challenge.payload as any)?.oldPhone,
+        action: "phone_change",
         userId: challenge.userId || undefined,
       },
     }),

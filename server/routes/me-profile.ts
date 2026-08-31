@@ -240,11 +240,26 @@ router.post('/contact-change/initiate', async (req: Request, res: Response) => {
         expiresAt: challenge.expiresAt,
       });
     }
-    // MOBILE side needs a `phone_change` purpose in the runtime
-    // registry that ships in a follow-up (needs the CEO's #188
-    // signup-vs-phone-verification decision to name it correctly).
+    // MOBILE branch — parallel to EMAIL, but the phone_change purpose
+    // routes over SMS. Task #194: uses the newly-registered
+    // phone_change entry in unifiedVerificationPurposeRegistry;
+    // dual-accept persists it as canonical PHONE_VERIFICATION.
     if (!PHONE_E164_RE.test(value)) return res.status(400).json({ error: 'INVALID_VALUE' });
-    return res.status(501).json({ error: 'not_implemented', reason: 'awaiting_phone_change_purpose_registration' });
+    const phoneRows = await db.select({ phone: users.phone }).from(users).where(eq(users.id, uid)).limit(1);
+    const oldPhone = phoneRows[0]?.phone ?? '';
+    const mobileResult = await unifiedVerificationService.startChallenge({
+      purpose: 'phone_change',
+      channel: 'sms',
+      destination: value,
+      payload: { oldPhone },
+      actor: actorFromRequest(req, uid),
+    });
+    return res.status(200).json({
+      state: 'AWAITING_VERIFICATION',
+      proposedValue: value,
+      challengeId: mobileResult.challenge.challengeId,
+      expiresAt: mobileResult.challenge.expiresAt,
+    });
   } catch (err: any) {
     if (err instanceof UnifiedVerificationError) {
       return res.status(err.statusCode).json({ error: err.reasonCode });
@@ -265,27 +280,29 @@ router.post('/contact-change/verify', async (req: Request, res: Response) => {
     if (!challengeId) return res.status(400).json({ error: 'MISSING_CHALLENGE' });
     if (code.length < 4) return res.status(400).json({ error: 'OTP_WRONG' });
 
-    if (kind !== 'EMAIL') {
-      return res.status(501).json({ error: 'not_implemented', reason: 'awaiting_phone_change_purpose_registration' });
-    }
-
     // One-shot verify + commit. verifyChallenge validates + marks the
-    // challenge consumed atomically. The metadata carries newEmail
-    // (set by change_email's PurposeDefinition.execute in
-    // UnifiedVerificationService).
+    // challenge consumed atomically. The metadata carries
+    // newEmail / newPhone (set by change_email / phone_change's
+    // PurposeDefinition.execute in UnifiedVerificationService).
     const verifyResult = await unifiedVerificationService.verifyChallenge({
       challengeId,
       code,
       actor: actorFromRequest(req, uid),
     });
     const metadata = (verifyResult.action as { metadata?: Record<string, unknown> } | undefined)?.metadata ?? {};
-    const newEmail = typeof metadata.newEmail === 'string' ? metadata.newEmail : '';
-    if (!newEmail) return res.status(400).json({ error: 'INVALID_VERIFICATION_ACTION' });
 
-    // Commit: update the canonical users row + Firebase Auth email,
-    // then re-project the snapshot for the client's re-render.
-    await admin.auth().updateUser(uid, { email: newEmail });
-    await db.update(users).set({ email: newEmail, emailVerified: true }).where(eq(users.id, uid));
+    if (kind === 'EMAIL') {
+      const newEmail = typeof metadata.newEmail === 'string' ? metadata.newEmail : '';
+      if (!newEmail) return res.status(400).json({ error: 'INVALID_VERIFICATION_ACTION' });
+      await admin.auth().updateUser(uid, { email: newEmail });
+      await db.update(users).set({ email: newEmail, emailVerified: true }).where(eq(users.id, uid));
+    } else {
+      // MOBILE
+      const newPhone = typeof metadata.newPhone === 'string' ? metadata.newPhone : '';
+      if (!newPhone) return res.status(400).json({ error: 'INVALID_VERIFICATION_ACTION' });
+      await admin.auth().updateUser(uid, { phoneNumber: newPhone });
+      await db.update(users).set({ phone: newPhone, phoneVerified: true }).where(eq(users.id, uid));
+    }
 
     const rows = await db.select().from(users).where(eq(users.id, uid)).limit(1);
     const row = rows[0];

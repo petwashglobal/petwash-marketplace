@@ -16,7 +16,7 @@ import { OTP_PURPOSES } from '@shared/auth/otpPurposeRegistry';
 
 describe('LegacyOtpPurposeMap', () => {
   describe('coverage', () => {
-    it('exactly the 9 legacy purposes the trigger inventory names', () => {
+    it('exactly the 10 legacy purposes today (9 from trigger inventory + phone_change from task #194)', () => {
       expect([...LEGACY_OTP_PURPOSES].sort()).toEqual([
         'change_email',
         'close_account',
@@ -26,6 +26,7 @@ describe('LegacyOtpPurposeMap', () => {
         'enable_2fa',
         'login',
         'payout',
+        'phone_change',
         'signup',
       ]);
     });
@@ -101,10 +102,10 @@ describe('LegacyOtpPurposeMap', () => {
   });
 
   describe('certainty distribution — matches CEO OTP brief audit findings', () => {
-    it('3 ONE_TO_ONE, 1 DELETE, 4 NEEDS_CEO, 1 NEEDS_NEW', () => {
+    it('4 ONE_TO_ONE, 1 DELETE, 4 NEEDS_CEO, 1 NEEDS_NEW (phone_change joined ONE_TO_ONE via task #194)', () => {
       const counts = { ONE_TO_ONE: 0, DELETE: 0, NEEDS_CEO: 0, NEEDS_NEW: 0 };
       for (const e of LEGACY_OTP_PURPOSE_MAP) counts[e.certainty as keyof typeof counts]++;
-      expect(counts).toEqual({ ONE_TO_ONE: 3, DELETE: 1, NEEDS_CEO: 4, NEEDS_NEW: 1 });
+      expect(counts).toEqual({ ONE_TO_ONE: 4, DELETE: 1, NEEDS_CEO: 4, NEEDS_NEW: 1 });
     });
   });
 });

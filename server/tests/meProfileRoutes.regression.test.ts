@@ -1,11 +1,10 @@
 /**
  * Regression pin — /api/me/profile mount + contract shape.
  *
- * GET + PATCH + email contact-change are wired end-to-end (users
- * row read + UpdateProfileService write + Firebase displayName +
- * unifiedVerificationService for email OTP). Mobile contact-change
- * stays 501 until a `phone_change` purpose is added to the
- * runtime registry (needs the CEO's #188 signup-vs-phone decision).
+ * Every primary path is wired: GET + PATCH read/write the users row,
+ * EMAIL contact-change runs over unifiedVerificationService(change_email),
+ * MOBILE contact-change runs over unifiedVerificationService(phone_change).
+ * Cancel is idempotent. No 501 remains on any real endpoint.
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
@@ -65,11 +64,14 @@ describe('MeProfile — mount + contract shape', () => {
     expect(ROUTER).toMatch(/state:\s*['"]COMMITTED['"]/);
   });
 
-  it('MOBILE contact-change stays honestly 501 pending phone_change purpose registration', () => {
-    // The MOBILE branch of initiate + verify still 501 with the
-    // documented reason — no silent fake success.
-    expect(ROUTER).toContain('awaiting_phone_change_purpose_registration');
-    expect(ROUTER).toContain("'not_implemented'");
+  it('MOBILE contact-change is WIRED to UnifiedVerificationService (phone_change) + Firebase phoneNumber + drizzle', () => {
+    // initiate: startChallenge with phone_change purpose over sms channel.
+    expect(ROUTER).toContain("purpose: 'phone_change'");
+    expect(ROUTER).toMatch(/channel:\s*['"]sms['"]/);
+    // verify: same one-shot verify+commit path — admin.auth().updateUser(phoneNumber)
+    // + drizzle set phone + phoneVerified=true.
+    expect(ROUTER).toMatch(/admin\.auth\(\)\.updateUser\(\s*uid\s*,\s*\{\s*phoneNumber/);
+    expect(ROUTER).toMatch(/db\.update\(users\)\.set\(\s*\{\s*phone:\s*newPhone/);
   });
 
   it('cancel endpoint always succeeds with state=CANCELLED (idempotent)', () => {
