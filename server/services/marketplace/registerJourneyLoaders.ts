@@ -18,6 +18,7 @@ import { petKyaJourneyLoader } from './loaders/PetKyaJourneyLoader';
 import { supportCaseJourneyLoader } from './loaders/SupportCaseJourneyLoader';
 import { bookingJourneyLoader } from './loaders/BookingJourneyLoader';
 import { k9000JourneyLoader } from './loaders/K9000JourneyLoader';
+import { providerApplicationJourneyLoader } from './loaders/ProviderApplicationJourneyLoader';
 
 let alreadyRegistered = false;
 
@@ -31,6 +32,7 @@ export function registerJourneyLoaders(): void {
   svc.registerLoader('support_case', supportCaseJourneyLoader);
   svc.registerLoader('booking', bookingJourneyLoader);
   svc.registerLoader('k9000_session', k9000JourneyLoader);
+  svc.registerLoader('provider_application', providerApplicationJourneyLoader);
 }
 
 /** Tests only — allow re-registration after resetting the default service. */
