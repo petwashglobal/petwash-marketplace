@@ -19,6 +19,8 @@
  */
 
 import express from 'express';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { db } from '../db';
 import { 
   nayaxTelemetry, 
@@ -676,14 +678,22 @@ router.get('/dashboard/stats', async (req, res) => {
  * POST /api/k9000/dashboard/send-maintenance-alert
  * Send push notification for maintenance issue
  */
-router.post('/dashboard/send-maintenance-alert', async (req, res) => {
+// P0-AUDIT-SMS-1 (task #217): the route mounts under
+// optionalFirebaseToken and fires an SMS to TECH_PHONE_NUMBER
+// for every anonymous caller within the 200 req/15 min IP budget.
+// Now requires a Firebase-verified super-admin, matching the
+// staff-only intent of a maintenance-alert dispatcher.
+router.post('/dashboard/send-maintenance-alert', validateFirebaseToken, async (req: any, res) => {
   try {
+    if (!isSuperAdminVerified(req)) {
+      return res.status(403).json({ success: false, error: 'super_admin_required' });
+    }
     const { stationId, alertType, message, severity } = req.body;
-    
+
     if (!stationId || !alertType) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'stationId and alertType required' 
+      return res.status(400).json({
+        success: false,
+        error: 'stationId and alertType required'
       });
     }
     
