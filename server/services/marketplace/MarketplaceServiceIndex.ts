@@ -138,6 +138,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../shared/auth/otpScreenSpec.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'OTP-screen view-model — purpose-scoped title + masked destination + mm:ss resend countdown + change-destination CTA (CEO OTP brief §8)' },
   { path: '../../../shared/auth/otpCodeGeneration.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'Canonical generateOtpCode() — single-source-of-truth for 6-digit CSPRNG OTP generation, pinned against sprawl (audit gap #3)' },
   { path: 'WizardCheckpointBuilder.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_32', summary: 'Per-CheckpointKind Zod payload schemas + typed build/parse for JourneyCheckpoint — safe wizard writes and RESUME reads (CEO Journey Brain Phase 2)' },
+  { path: '../../../shared/auth/legacyOtpPurposeMap.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Legacy → canonical OTP purpose bridge — 3 ONE_TO_ONE, 1 DELETE, 4 NEEDS_CEO, 1 NEEDS_NEW (task #177)' },
 ];
 
 /** Small guards used by regression pins. */
