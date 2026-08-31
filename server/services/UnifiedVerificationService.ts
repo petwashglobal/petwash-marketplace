@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { generateOtpCode } from "@shared/auth/otpCodeGeneration";
+import { canonicalFor } from "@shared/auth/legacyOtpPurposeMap";
 import jwt from "jsonwebtoken";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../db";
@@ -219,6 +220,25 @@ export function getPurposeDefinition(purpose: string): PurposeDefinition {
     throw new UnifiedVerificationError("UNKNOWN_PURPOSE", "Unknown verification purpose.", 400);
   }
   return definition;
+}
+
+/**
+ * READ-SIDE canonical projection (task #192 / P0-CEP).
+ *
+ * Consumers (logging, analytics, UI badges, telemetry) that want
+ * the CANONICAL OtpPurpose for a legacy verification_challenges row
+ * call this. Returns the SCREAMING_SNAKE_CASE canonical when the
+ * legacy mapping is ONE_TO_ONE per shared/auth/legacyOtpPurposeMap;
+ * returns undefined for NEEDS_CEO / NEEDS_NEW / DELETE / unknown
+ * — the caller decides how to render that (usually: fall back to
+ * the raw legacy string).
+ *
+ * Additive read helper — does NOT touch the DB, does NOT change
+ * what gets persisted. The wire format stays the legacy string
+ * until the CEO decision tasks (#188/#189/#190/#191) settle.
+ */
+export function canonicalPurposeFor(legacyPurpose: string): string | undefined {
+  return canonicalFor(legacyPurpose);
 }
 
 export function generateVerificationCode(): string {
