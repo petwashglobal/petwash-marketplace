@@ -133,6 +133,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../shared/marketplace/anonymousProfileReconciler.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Anonymous device → identified UID merge verdict — carry context, refuse cross-account bleed (CEO Batch §1)' },
   { path: 'PaymentResumeResolver.ts', kind: 'EVALUATOR', programCode: 'DOCTRINE_12', summary: 'Resume-time safe-next-action for a payment-bearing checkpoint — never emits PAY_AGAIN (CEO §12)' },
   { path: '../../../shared/auth/otpMessageTemplateCatalog.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'Per-purpose × per-locale OTP SMS/email renderer — brand + code + TTL + safety warning (CEO OTP brief §2)' },
+  { path: '../../../shared/auth/otpChannelChoice.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'Email-preferred OTP channel picker — SMS only for mobile-verification, sensitive purposes, elevated risk (CEO OTP brief §3)' },
 ];
 
 /** Small guards used by regression pins. */
