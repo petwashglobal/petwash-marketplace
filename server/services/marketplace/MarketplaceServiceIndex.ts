@@ -128,6 +128,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../shared/auth/otpPurposeRegistry.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Purpose-scoped OTP consumption verdict — no cross-purpose reuse (CEO Batch §4)' },
   { path: '../../../shared/marketplace/pushPermissionValueGate.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Never-ask-first-launch push prompt verdict — value + OS + cooldown (CEO Batch §5)' },
   { path: '../../../shared/marketplace/eventEnvelope.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'EventEnvelope + outbox-row state transitions — outbox pattern shape (CEO Batch §16/§17)' },
+  { path: '../../../shared/marketplace/notificationInboxSpec.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Authoritative in-app inbox item shape + user-driven state transitions (CEO Batch §12)' },
 ];
 
 /** Small guards used by regression pins. */
