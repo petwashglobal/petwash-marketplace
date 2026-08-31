@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { generateOtpCode } from "@shared/auth/otpCodeGeneration";
 import jwt from "jsonwebtoken";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../db";
@@ -221,7 +222,7 @@ export function getPurposeDefinition(purpose: string): PurposeDefinition {
 }
 
 export function generateVerificationCode(): string {
-  return String(crypto.randomInt(100000, 1000000));
+  return generateOtpCode();
 }
 
 export function hashVerificationCode(challengeId: string, code: string, pepper = process.env.VERIFICATION_CODE_PEPPER || ""): string {

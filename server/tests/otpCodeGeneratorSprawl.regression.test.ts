@@ -46,11 +46,27 @@ const FILES = walkNarrow([
 ]);
 
 /**
- * The pattern that flags an inline OTP generator. Matches any
- * `crypto.randomInt(100000` occurrence — the shape every one of the
- * 12 legacy generators uses.
+ * Patterns that flag an inline 6-digit OTP generator. The 12 legacy
+ * sites use three shape families:
+ *   (a) crypto.randomInt(100000, 1000000)           — direct
+ *   (b) crypto.randomInt(100000, 999999)             — direct, tight range
+ *   (c) Math.floor(100000 + crypto.randomInt(900000)) — offset form
+ *   (d) randomInt(100000, 1000000)                   — named import
+ *
+ * The union below catches all four. Splitting them keeps the regex
+ * simple and grep-debuggable — a future engineer running `grep -E`
+ * with any single pattern can find the corresponding site quickly.
  */
-const PATTERN = /crypto\.randomInt\s*\(\s*100000/;
+const PATTERNS: readonly RegExp[] = [
+  /crypto\.randomInt\s*\(\s*100000/,                                     // (a) + (b)
+  /Math\.floor\s*\(\s*100000\s*\+\s*crypto\.randomInt\s*\(\s*900000/,     // (c)
+  /\brandomInt\s*\(\s*100000\s*,\s*1000000\)/,                            // (d) named import
+];
+
+function containsGenerator(contents: string): boolean {
+  for (const p of PATTERNS) if (p.test(contents)) return true;
+  return false;
+}
 
 /**
  * KNOWN_LEGACY_GENERATORS — the 12 pre-canonical generator sites
@@ -59,17 +75,11 @@ const PATTERN = /crypto\.randomInt\s*\(\s*100000/;
  * generateOtpCode from shared/auth/otpCodeGeneration.ts.
  */
 const KNOWN_LEGACY_GENERATORS: ReadonlySet<string> = new Set([
-  'services/UnifiedVerificationService.ts',
-  'services/TwilioSMSService.ts',
-  'services/RegistrationOTPService.ts',
-  'services/TwoFactorAuthService.ts',
-  'services/TransactionOTPService.ts',
-  'routes/onboarding-verification.ts',
-  'routes/profile-settings.ts',
-  'routes/provider-phone.ts',
-  'routes/admin.ts',
-  'routes/israeli-2025-esign.ts',
-  'lib/serviceVerificationCrypto.ts',
+  // Empty — all 10 user-auth OTP generators identified in the trigger
+  // inventory (docs/audit/2026-08-31-otp-verification-trigger-inventory.md
+  // gap #3) have been migrated to shared/auth/otpCodeGeneration.ts
+  // as of task #187. This set stays as a shape for the next time a
+  // similar refactor lane opens.
 ]);
 
 /**
@@ -84,6 +94,10 @@ const NOT_OTP_GENERATORS: ReadonlySet<string> = new Set([
   // user-auth OTP registry. Excluded from the trigger inventory
   // (docs/audit/2026-08-31-otp-verification-trigger-inventory.md).
   'services/booking-engines/k9000/K9000StationBookingEngine.ts',
+  // Walk-My-Pet booking confirmation code — a handoff PIN the pet
+  // parent shares with the sitter to prove pickup, not a user-auth OTP.
+  // Same domain family as the K9000 station token above.
+  'routes/walk-my-pet.ts',
 ]);
 
 describe('OTP code generator sprawl — source-anchored', () => {
@@ -94,7 +108,7 @@ describe('OTP code generator sprawl — source-anchored', () => {
       if (f.endsWith('otpCodeGeneratorSprawl.regression.test.ts')) continue;
       let contents: string;
       try { contents = fs.readFileSync(f, 'utf8'); } catch { continue; }
-      if (!PATTERN.test(contents)) continue;
+      if (!containsGenerator(contents)) continue;
       const rel = path.relative(SERVER_ROOT, f);
       if (KNOWN_LEGACY_GENERATORS.has(rel)) continue;
       if (NOT_OTP_GENERATORS.has(rel)) continue;

@@ -10,6 +10,7 @@
 
 import express from 'express';
 import crypto from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { db, auth as firebaseAuth } from '../lib/firebase-admin';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
@@ -60,7 +61,7 @@ router.post('/send-otp', async (req, res) => {
 
     // Generate 6-digit code. Persist ONLY its HMAC — never the raw code.
     // The plaintext code is sent over SMS and then discarded.
-    const code = crypto.randomInt(100000, 999999).toString();
+    const code = generateOtpCode();
     const codeHmac = hashOtpCode(code);
     const otpId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes

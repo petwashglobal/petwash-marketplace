@@ -2,6 +2,7 @@ import twilio from 'twilio';
 import jwt from 'jsonwebtoken';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { smsAbuseDetector } from './SmsAbuseDetector';
 import { redis } from './redis';
 
@@ -318,7 +319,7 @@ class TwilioSMSService {
   }
 
   private generateCode(): string {
-    return String(Math.floor(100000 + crypto.randomInt(900000)));
+    return generateOtpCode();
   }
 
   private formatPhoneNumber(phone: string): string {

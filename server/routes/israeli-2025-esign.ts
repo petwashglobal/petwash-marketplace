@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { randomInt } from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { israeli2025SignatureService, type EnhancedSignatureRequest } from '../services/Israeli2025SignatureService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
@@ -296,7 +297,7 @@ router.post('/otp/send', requireAuth, async (req, res) => {
     }
     
     // Generate 6-digit OTP
-    const otp = randomInt(100000, 1000000).toString();
+    const otp = generateOtpCode();
     const uid = (req as any).user?.uid;
 
     // Store OTP in Redis with 5-minute TTL (key per uid + method)

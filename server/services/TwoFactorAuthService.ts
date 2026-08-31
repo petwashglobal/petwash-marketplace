@@ -3,6 +3,7 @@ import { redis } from './redis';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { PETWASH_LOGO_BASE64 } from '../email/templates/logo-base64';
 import crypto from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 
 const OTP_TTL_SEC = 300;
 const OTP_MAX_ATTEMPTS = 5;
@@ -10,7 +11,7 @@ const OTP_COOLDOWN_SEC = 30;
 const IP_MAX_REQUESTS_PER_10MIN = 40;
 
 function generateOtp6(): string {
-  return String(Math.floor(100000 + crypto.randomInt(900000)));
+  return generateOtpCode();
 }
 
 function constantTimeEq(a: string, b: string): boolean {

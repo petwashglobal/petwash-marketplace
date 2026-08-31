@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { logger } from '../lib/logger';
 import { redis } from './redis';
 import { twilioSMSService } from './TwilioSMSService';
@@ -51,7 +52,7 @@ const TRANSACTION_LABELS: Record<TransactionType, { he: string; en: string }> = 
 };
 
 function generateSecureOTP(): string {
-  return String(Math.floor(100000 + crypto.randomInt(900000)));
+  return generateOtpCode();
 }
 
 function constantTimeEqual(a: string, b: string): boolean {

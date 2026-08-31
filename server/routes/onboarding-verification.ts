@@ -8,6 +8,7 @@ import { logger } from '../lib/logger';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import crypto from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { db } from '../db';
 import { users } from '../../shared/schema';
 import {
@@ -210,7 +211,7 @@ const verificationLimiter = rateLimit({
 });
 
 function generateCode(): string {
-  return String(Math.floor(100000 + crypto.randomInt(900000)));
+  return generateOtpCode();
 }
 
 function getBaseUrl(req: Request): string {
@@ -780,7 +781,7 @@ router.post('/send-activation-email', async (req: Request, res: Response) => {
     // 24h TTL for activation links.
     const normalizedEmail = email.toLowerCase().trim();
     const emailCode = {
-      code: String(Math.floor(100000 + crypto.randomInt(900000))),
+      code: generateOtpCode(),
       email: normalizedEmail,
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       attempts: 0,

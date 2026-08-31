@@ -1,6 +1,7 @@
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { Router } from 'express';
 import { randomInt, randomBytes } from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { db as firestore } from '../lib/firebase-admin';
 import { db } from '../db';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
@@ -983,7 +984,7 @@ router.post('/ceo/request-voucher', validateFirebaseToken, requireCEO, async (re
     }
 
     // Generate 6-digit verification code
-    const verificationCode = randomInt(100000, 1000000).toString();
+    const verificationCode = generateOtpCode();
     
     // Store pending voucher request in Firestore (expires in 5 minutes)
     const requestRef = firestore.collection('ceo_voucher_requests').doc();

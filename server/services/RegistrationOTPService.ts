@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { db } from '../db';
 import { otpEvents, smsEvidence } from '@shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
@@ -109,7 +110,7 @@ interface VerifyOTPResult {
 }
 
 function generateSecureOTP(): string {
-  return String(Math.floor(100000 + crypto.randomInt(900000)));
+  return generateOtpCode();
 }
 
 function sha256(data: string): string {

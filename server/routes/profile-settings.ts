@@ -6,6 +6,7 @@ import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import crypto from 'crypto';
+import { generateOtpCode } from '@shared/auth/otpCodeGeneration';
 import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
 import multer from 'multer';
 import { authService } from '../services/AuthService';
@@ -339,7 +340,7 @@ router.post('/settings/email/request-change', async (req, res) => {
       });
     }
 
-    const verificationCode = crypto.randomInt(100000, 999999).toString();
+    const verificationCode = generateOtpCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     // Persist ONLY the HMAC of the code — never the plaintext code at rest.
