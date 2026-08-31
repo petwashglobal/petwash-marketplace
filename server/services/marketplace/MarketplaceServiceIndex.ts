@@ -123,6 +123,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: 'UpdateProfileService.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'Atomic canonical write + Firebase-claim fan-out + split-brain guard' },
   { path: 'PrestigeMirrorRefreshService.ts', kind: 'EVALUATOR', programCode: 'P0_MY_ACCOUNT', summary: 'Refresh privilege_members MIRROR on canonical identity change' },
   { path: '../../routes/me-profile.ts', kind: 'ROUTER', programCode: 'P0_MY_ACCOUNT', summary: 'GET/PATCH /api/me/profile + POST /api/me/contact-change/*' },
+  { path: '../../../client/src/pages/MyAccountCanonical.tsx', kind: 'ROUTER', programCode: 'P0_MY_ACCOUNT', summary: 'Slug-only canonical MyAccount scaffold at /my-account/canonical' },
 ];
 
 /** Small guards used by regression pins. */

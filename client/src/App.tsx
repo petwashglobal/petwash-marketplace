@@ -244,6 +244,7 @@ const AddPetPassport = lazy(() => import("@/pages/AddPetPassport"));
 const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
+const MyAccountCanonical = lazy(() => import("@/pages/MyAccountCanonical"));
 const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
 const AccountFinancials = lazy(() => import("@/pages/AccountFinancials"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
@@ -3082,6 +3083,19 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                 <Suspense fallback={<PageLoader />}>
                   {/* ProfileV2 (luxury account hub) behind a flag; legacy MyAccount is the default + deep-edit target. */}
                   {import.meta.env.VITE_PROFILE_V2_ENABLED === 'true' ? <ProfileV2 /> : <MyAccount />}
+                </Suspense>
+              </RouteErrorBoundary>
+            </RequireAuth>
+          )}
+        </Route>
+        {/* CEO P0-MY-ACCOUNT — canonical scaffold co-existing with legacy /my-account.
+            Slug-only, doctrine-clean, wired to /api/me/profile + useProfileCompleteness. */}
+        <Route path="/my-account/canonical">
+          {() => (
+            <RequireAuth>
+              <RouteErrorBoundary routeName="/my-account/canonical">
+                <Suspense fallback={<PageLoader />}>
+                  <MyAccountCanonical />
                 </Suspense>
               </RouteErrorBoundary>
             </RequireAuth>
