@@ -3,6 +3,7 @@
  * Uses LOG_LEVEL from environment
  */
 import * as Sentry from '@sentry/node';
+import { redactLogContext } from './redaction';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -32,20 +33,37 @@ class ServerLogger {
 
   private formatLog(level: LogLevel, message: string, context?: LogContext) {
     const timestamp = new Date().toISOString();
+    // P0-AUDIT-LOG-STRATEGIC (task #208): every context value is run
+    // through redactLogContext BEFORE emission — password / otp /
+    // token / cookie / id_number / bank_account / iban / cvv / api_key
+    // fields become '[REDACTED]', and email/phone fields are masked
+    // (a***e@example.com / ***234) so operators can still correlate.
+    // Guarded: if redaction throws for any reason (pathological
+    // ref-cycle, exotic object) the raw context still emits — we
+    // never lose an error line, but the guard log itself carries no
+    // sensitive fields.
+    let safeContext: Record<string, unknown> | undefined;
+    if (context) {
+      try {
+        safeContext = redactLogContext(context) as Record<string, unknown>;
+      } catch {
+        safeContext = { __redactorFailed: true };
+      }
+    }
     const log = {
       timestamp,
       level: level.toUpperCase(),
       message,
-      ...context
+      ...(safeContext ?? {}),
     };
 
     // In production (LOG_LEVEL=info or higher), output structured JSON
     if (process.env.APP_ENV === 'production') {
       return JSON.stringify(log);
     }
-    
+
     // In development, output human-readable format
-    return `[${timestamp}] [${level.toUpperCase()}] ${message}${context ? ' ' + JSON.stringify(context) : ''}`;
+    return `[${timestamp}] [${level.toUpperCase()}] ${message}${safeContext ? ' ' + JSON.stringify(safeContext) : ''}`;
   }
 
   debug(message: string, context?: LogContext) {
