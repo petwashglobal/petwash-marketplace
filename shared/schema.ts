@@ -280,6 +280,50 @@ export const insertVerificationChallengeSchema = createInsertSchema(verification
 export type VerificationChallenge = typeof verificationChallenges.$inferSelect;
 export type InsertVerificationChallenge = typeof verificationChallenges.$inferInsert;
 
+/**
+ * Journey Checkpoints — CEO Journey Brain Phase 2 (task #141).
+ *
+ * One row per (owner_uid, kind) capturing the last-known wizard step
+ * so the pet parent can resume on any device where they left off.
+ * ADDITIVE table — no existing table is touched. The runtime uses
+ * server/services/marketplace/JourneyCheckpointService.CheckpointStore;
+ * the PgCheckpointStore adapter reads/writes this row via drizzle.
+ *
+ * Payload shape per kind is enforced by
+ * server/services/marketplace/WizardCheckpointBuilder.ts (task #150) —
+ * that's why payload here is a bag jsonb rather than a strict column
+ * set. The builder validates on write.
+ *
+ * Discipline:
+ *   - owner_uid is the Firebase UID; NEVER derived from a request body.
+ *   - kind matches CheckpointKind from JourneyCheckpointService — new
+ *     kinds land in that union first, then here.
+ *   - UNIQUE (owner_uid, kind) makes upsert-on-put trivial and prevents
+ *     duplicate resume prompts.
+ */
+export const journeyCheckpoints = pgTable("journey_checkpoints", {
+  id: serial("id").primaryKey(),
+  ownerUid: varchar("owner_uid", { length: 100 }).notNull(),
+  // Matches CheckpointKind: SIGNUP | PET_PROFILE | PROVIDER_APPLICATION
+  // | BOOKING_REQUEST | CHECKOUT | SHOP_CART | EGIFT_PURCHASE | REFUND
+  // | DOCUMENT_ACTION. Free-text varchar (not enum) so a new kind can
+  // land without an ALTER TYPE.
+  kind: varchar("kind", { length: 40 }).notNull(),
+  step: varchar("step", { length: 100 }).notNull(),
+  payload: jsonb("payload").default(sql`'{}'::jsonb`).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  // The upsert target and the AttentionFeed abandoned-journey probe's
+  // read path both key on (owner_uid, kind).
+  uniqueIndex("uq_journey_checkpoints_owner_kind").on(table.ownerUid, table.kind),
+  index("idx_journey_checkpoints_updated").on(table.updatedAt),
+]);
+
+export const insertJourneyCheckpointSchema = createInsertSchema(journeyCheckpoints).omit({ id: true, createdAt: true, updatedAt: true });
+export type JourneyCheckpointRow = typeof journeyCheckpoints.$inferSelect;
+export type InsertJourneyCheckpoint = typeof journeyCheckpoints.$inferInsert;
+
 // Identity Accounts — links external auth identities (Google/Apple/phone/passkey)
 // to ONE canonical PetWash user, so the same human is a single user_id across
 // providers (Google-you and Apple-you stop being two accounts).
