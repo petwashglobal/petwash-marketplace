@@ -13545,7 +13545,18 @@ self.addEventListener('notificationclick', (event) => {
   // NOT_IMPLEMENTED so the client shows an honest subdued placeholder
   // (§72) instead of a fabricated OK badge.
   registerJourneyLoaders();
-  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member, refund, pet, support_case, booking)');
+  logger.info('[Routes] ✅ Marketplace Journey loaders registered (prestige_member, refund, pet, support_case, booking, k9000_session, provider_application, payout)');
+
+  // Task #195 — flip the default JourneyCheckpoint store from the
+  // in-memory scaffold to the Drizzle-backed PgCheckpointStore now
+  // that the journey_checkpoints table + implementation are live.
+  // From this point on every wizard write persists across process
+  // restarts and the AttentionFeed abandoned-journey probe surfaces
+  // real "we saved your progress" cards to real users.
+  const { setDefaultCheckpointStore } = await import('./services/marketplace/JourneyCheckpointService');
+  const { PgCheckpointStore } = await import('./services/marketplace/PgCheckpointStore');
+  setDefaultCheckpointStore(new PgCheckpointStore());
+  logger.info('[Routes] ✅ JourneyCheckpoint store swapped to PgCheckpointStore (task #195)');
 
   // Document Center detail endpoint (§11).
   app.use('/api/marketplace', validateFirebaseToken, apiLimiter, marketplaceDocumentsRoutes);
