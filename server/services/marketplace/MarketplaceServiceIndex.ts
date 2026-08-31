@@ -137,6 +137,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../shared/auth/otpAutofillFormat.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'iOS AutoFill + Android SMS Retriever compliance check on rendered OTP SMS body (CEO OTP brief §7)' },
   { path: '../../../shared/auth/otpScreenSpec.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'OTP-screen view-model — purpose-scoped title + masked destination + mm:ss resend countdown + change-destination CTA (CEO OTP brief §8)' },
   { path: '../../../shared/auth/otpCodeGeneration.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'Canonical generateOtpCode() — single-source-of-truth for 6-digit CSPRNG OTP generation, pinned against sprawl (audit gap #3)' },
+  { path: 'WizardCheckpointBuilder.ts', kind: 'EVALUATOR', programCode: 'PROGRAM_32', summary: 'Per-CheckpointKind Zod payload schemas + typed build/parse for JourneyCheckpoint — safe wizard writes and RESUME reads (CEO Journey Brain Phase 2)' },
 ];
 
 /** Small guards used by regression pins. */
