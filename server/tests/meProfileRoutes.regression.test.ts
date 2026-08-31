@@ -1,10 +1,11 @@
 /**
  * Regression pin — /api/me/profile mount + contract shape.
  *
- * GET + PATCH are wired end-to-end (users row read + UpdateProfileService
- * write + Firebase displayName fan-out). The four contact-change
- * endpoints are still 501 pending the OTP + Redis wire; the pin
- * asserts both realities.
+ * GET + PATCH + email contact-change are wired end-to-end (users
+ * row read + UpdateProfileService write + Firebase displayName +
+ * unifiedVerificationService for email OTP). Mobile contact-change
+ * stays 501 until a `phone_change` purpose is added to the
+ * runtime registry (needs the CEO's #188 signup-vs-phone decision).
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'fs';
@@ -52,13 +53,23 @@ describe('MeProfile — mount + contract shape', () => {
     expect(ROUTER).toContain("admin.auth().updateUser");
   });
 
-  it('contact-change initiate / verify / commit are still 501 with reason (awaiting OTP + Redis wire)', () => {
-    // 3 out of 4 contact-change endpoints still 501. Cancel is a
-    // real 200 already (idempotent).
-    const notImplementedCount = (ROUTER.match(/status\(501\)/g) ?? []).length;
-    expect(notImplementedCount).toBeGreaterThanOrEqual(3);
+  it('EMAIL contact-change is WIRED to UnifiedVerificationService + drizzle + Firebase', () => {
+    // initiate: startChallenge with change_email purpose over email channel.
+    expect(ROUTER).toContain("purpose: 'change_email'");
+    expect(ROUTER).toContain('unifiedVerificationService.startChallenge');
+    // verify: one-shot verify+commit — verifyChallenge + admin.auth().updateUser(email) + drizzle set.
+    expect(ROUTER).toContain('unifiedVerificationService.verifyChallenge');
+    expect(ROUTER).toMatch(/admin\.auth\(\)\.updateUser\(\s*uid\s*,\s*\{\s*email/);
+    expect(ROUTER).toMatch(/db\.update\(users\)\.set\(\s*\{\s*email:\s*newEmail/);
+    // Successful COMMITTED response carries snapshot + completeness.
+    expect(ROUTER).toMatch(/state:\s*['"]COMMITTED['"]/);
+  });
+
+  it('MOBILE contact-change stays honestly 501 pending phone_change purpose registration', () => {
+    // The MOBILE branch of initiate + verify still 501 with the
+    // documented reason — no silent fake success.
+    expect(ROUTER).toContain('awaiting_phone_change_purpose_registration');
     expect(ROUTER).toContain("'not_implemented'");
-    expect(ROUTER).toContain('awaiting_otp_wire');
   });
 
   it('cancel endpoint always succeeds with state=CANCELLED (idempotent)', () => {

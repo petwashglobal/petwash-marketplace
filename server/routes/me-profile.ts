@@ -44,6 +44,11 @@ import {
   type CompletenessOutcome,
   type ProfileSnapshot,
 } from '../services/marketplace/ProfileCompletenessService';
+import {
+  UnifiedVerificationError,
+  unifiedVerificationService,
+  type VerificationActor,
+} from '../services/UnifiedVerificationService';
 
 const router = Router();
 
@@ -188,6 +193,24 @@ router.patch('/profile', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * The state machine (server/services/marketplace/ContactChangeStateMachine.ts)
+ * is stateless — each POST reasons about the current transition
+ * without server-side session state. Persistence lives entirely on
+ * UnifiedVerificationService (verification_challenges + otp_events),
+ * so the client only needs to carry the challengeId between calls.
+ */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_E164_RE = /^\+\d{8,15}$/;
+
+function actorFromRequest(req: Request, uid: string): VerificationActor {
+  return {
+    userId: uid,
+    ip: (req.ip ?? (req.headers['x-forwarded-for'] as string | undefined)) as string | undefined,
+    userAgent: req.headers['user-agent'],
+  };
+}
+
 router.post('/contact-change/initiate', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).firebaseUser?.uid as string | undefined;
@@ -196,10 +219,36 @@ router.post('/contact-change/initiate', async (req: Request, res: Response) => {
     const value = String(req.body?.value ?? '').trim();
     if (kind !== 'MOBILE' && kind !== 'EMAIL') return res.status(400).json({ error: 'MISSING_KIND' });
     if (!value) return res.status(400).json({ error: 'INVALID_VALUE' });
-    // Wire pending: the contact-change flow needs Redis-backed
-    // per-user state + OTP send/verify. Tracked in task #164.
-    return res.status(501).json({ error: 'not_implemented', reason: 'awaiting_otp_wire' });
+
+    if (kind === 'EMAIL') {
+      if (!EMAIL_RE.test(value)) return res.status(400).json({ error: 'INVALID_VALUE' });
+      // Look up the old email for the change_email metadata payload
+      // so the /verify commit step knows what to swap.
+      const rows = await db.select({ email: users.email }).from(users).where(eq(users.id, uid)).limit(1);
+      const oldEmail = rows[0]?.email ?? '';
+      const { challenge } = await unifiedVerificationService.startChallenge({
+        purpose: 'change_email',
+        channel: 'email',
+        destination: value,
+        payload: { oldEmail },
+        actor: actorFromRequest(req, uid),
+      });
+      return res.status(200).json({
+        state: 'AWAITING_VERIFICATION',
+        proposedValue: value,
+        challengeId: challenge.challengeId,
+        expiresAt: challenge.expiresAt,
+      });
+    }
+    // MOBILE side needs a `phone_change` purpose in the runtime
+    // registry that ships in a follow-up (needs the CEO's #188
+    // signup-vs-phone-verification decision to name it correctly).
+    if (!PHONE_E164_RE.test(value)) return res.status(400).json({ error: 'INVALID_VALUE' });
+    return res.status(501).json({ error: 'not_implemented', reason: 'awaiting_phone_change_purpose_registration' });
   } catch (err: any) {
+    if (err instanceof UnifiedVerificationError) {
+      return res.status(err.statusCode).json({ error: err.reasonCode });
+    }
     logger.error('[MeProfile] contact-change/initiate', { error: err?.message });
     return res.status(500).json({ error: 'contact_change_unavailable' });
   }
@@ -209,8 +258,50 @@ router.post('/contact-change/verify', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).firebaseUser?.uid as string | undefined;
     if (!uid) return res.status(401).json({ error: 'auth_required' });
-    return res.status(501).json({ error: 'not_implemented', reason: 'awaiting_otp_wire' });
+    const kind = String(req.body?.kind ?? '').toUpperCase();
+    const challengeId = String(req.body?.challengeId ?? '').trim();
+    const code = String(req.body?.otpCode ?? req.body?.code ?? '').trim();
+    if (kind !== 'MOBILE' && kind !== 'EMAIL') return res.status(400).json({ error: 'MISSING_KIND' });
+    if (!challengeId) return res.status(400).json({ error: 'MISSING_CHALLENGE' });
+    if (code.length < 4) return res.status(400).json({ error: 'OTP_WRONG' });
+
+    if (kind !== 'EMAIL') {
+      return res.status(501).json({ error: 'not_implemented', reason: 'awaiting_phone_change_purpose_registration' });
+    }
+
+    // One-shot verify + commit. verifyChallenge validates + marks the
+    // challenge consumed atomically. The metadata carries newEmail
+    // (set by change_email's PurposeDefinition.execute in
+    // UnifiedVerificationService).
+    const verifyResult = await unifiedVerificationService.verifyChallenge({
+      challengeId,
+      code,
+      actor: actorFromRequest(req, uid),
+    });
+    const metadata = (verifyResult.action as { metadata?: Record<string, unknown> } | undefined)?.metadata ?? {};
+    const newEmail = typeof metadata.newEmail === 'string' ? metadata.newEmail : '';
+    if (!newEmail) return res.status(400).json({ error: 'INVALID_VERIFICATION_ACTION' });
+
+    // Commit: update the canonical users row + Firebase Auth email,
+    // then re-project the snapshot for the client's re-render.
+    await admin.auth().updateUser(uid, { email: newEmail });
+    await db.update(users).set({ email: newEmail, emailVerified: true }).where(eq(users.id, uid));
+
+    const rows = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+    const row = rows[0];
+    if (!row) return res.status(404).json({ error: 'user_not_found' });
+    return res.status(200).json({
+      state: 'COMMITTED',
+      snapshot: projectSnapshot(row),
+      completeness: completenessFromSnapshot(row),
+    });
   } catch (err: any) {
+    if (err instanceof UnifiedVerificationError) {
+      // Map the honest surface: CHALLENGE_NOT_FOUND / CODE_INCORRECT /
+      // CHALLENGE_EXPIRED / MAX_ATTEMPTS_REACHED all become 400s the
+      // client can render as OTP_WRONG / OTP_EXPIRED / MAX_OTP_ATTEMPTS.
+      return res.status(err.statusCode).json({ error: err.reasonCode });
+    }
     logger.error('[MeProfile] contact-change/verify', { error: err?.message });
     return res.status(500).json({ error: 'contact_change_unavailable' });
   }
@@ -220,7 +311,18 @@ router.post('/contact-change/commit', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).firebaseUser?.uid as string | undefined;
     if (!uid) return res.status(401).json({ error: 'auth_required' });
-    return res.status(501).json({ error: 'not_implemented', reason: 'awaiting_otp_wire' });
+    // The commit is fused into /verify above (one-shot verify-and-commit).
+    // A separate /commit call is redundant but stays idempotent — return
+    // the current snapshot so a legacy client that still posts /commit
+    // after /verify still gets a coherent response.
+    const rows = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+    const row = rows[0];
+    if (!row) return res.status(404).json({ error: 'user_not_found' });
+    return res.status(200).json({
+      state: 'COMMITTED',
+      snapshot: projectSnapshot(row),
+      completeness: completenessFromSnapshot(row),
+    });
   } catch (err: any) {
     logger.error('[MeProfile] contact-change/commit', { error: err?.message });
     return res.status(500).json({ error: 'contact_change_unavailable' });
