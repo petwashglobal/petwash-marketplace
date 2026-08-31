@@ -132,6 +132,7 @@ export const MARKETPLACE_SERVICE_INDEX: readonly ServiceEntry[] = [
   { path: '../../../shared/marketplace/communicationPreferences.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Per-channel per-purpose delivery gate — transactional bypass + marketing opt-in + quiet hours (CEO Batch §13)' },
   { path: '../../../shared/marketplace/anonymousProfileReconciler.ts', kind: 'EVALUATOR', programCode: 'P0_CEP', summary: 'Anonymous device → identified UID merge verdict — carry context, refuse cross-account bleed (CEO Batch §1)' },
   { path: 'PaymentResumeResolver.ts', kind: 'EVALUATOR', programCode: 'DOCTRINE_12', summary: 'Resume-time safe-next-action for a payment-bearing checkpoint — never emits PAY_AGAIN (CEO §12)' },
+  { path: '../../../shared/auth/otpMessageTemplateCatalog.ts', kind: 'EVALUATOR', programCode: 'P0_OTP_BRIEF', summary: 'Per-purpose × per-locale OTP SMS/email renderer — brand + code + TTL + safety warning (CEO OTP brief §2)' },
 ];
 
 /** Small guards used by regression pins. */
