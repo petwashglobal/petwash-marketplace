@@ -27,6 +27,11 @@ import type {
   AttentionFeed,
   AttentionItem,
 } from '@shared/lib/attentionFeed';
+import {
+  getDefaultCheckpointStore,
+  type CheckpointKind,
+  type JourneyCheckpoint,
+} from './marketplace/JourneyCheckpointService';
 
 const PRIORITY_ORDER: Record<AttentionItem['priority'], number> = {
   urgent: 0,
@@ -706,6 +711,64 @@ async function providerApplicationStatusItems(userId: string, he: boolean): Prom
   }
 }
 
+/**
+ * CEO §80 Phase 1 + Phase 2 probe (tasks #140 + #141) — abandoned
+ * checkout / wizard resume. Reads the pet-parent-facing
+ * JourneyCheckpoint kinds (CHECKOUT, SHOP_CART, EGIFT_PURCHASE,
+ * BOOKING_REQUEST) via the module-level checkpoint store. Any
+ * checkpoint updated within the last 7 days becomes an
+ * informational attention item titled "we saved your progress".
+ *
+ * Fail-CLOSED: the store may throw (a PgCheckpointStore with a
+ * transient DB error), the probe swallows it and returns [].
+ *
+ * Until PgCheckpointStore lands and replaces the default via
+ * setDefaultCheckpointStore, the store is in-memory per-process
+ * and effectively empty across a real deployment — the probe
+ * surfaces zero items but is READY to activate.
+ */
+async function petParentAbandonedJourneyItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  const KIND_TO_DEST: Partial<Record<CheckpointKind, { dest: string; domain: AttentionItem['domain']; heTitle: string; enTitle: string }>> = {
+    CHECKOUT:        { dest: '/checkout',                    domain: 'shop',    heTitle: 'שמרנו את התשלום עבורכם',      enTitle: 'We saved your checkout' },
+    SHOP_CART:       { dest: '/shop/cart',                   domain: 'shop',    heTitle: 'שמרנו את הסל עבורכם',          enTitle: 'We saved your cart' },
+    EGIFT_PURCHASE:  { dest: '/egift/purchase',              domain: 'egift',   heTitle: 'שמרנו את רכישת הגיפט קארד',     enTitle: 'We saved your gift purchase' },
+    BOOKING_REQUEST: { dest: '/booking-request',             domain: 'booking', heTitle: 'שמרנו את הזמנת הטיפול',        enTitle: 'We saved your booking request' },
+  };
+  const items: AttentionItem[] = [];
+  const store = getDefaultCheckpointStore();
+  const now = Date.now();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  for (const kind of Object.keys(KIND_TO_DEST) as CheckpointKind[]) {
+    let cp: JourneyCheckpoint | undefined;
+    try {
+      cp = await store.get(userId, kind);
+    } catch (e: any) {
+      logger.warn('[AttentionFeed] checkpoint store read failed', { userId, kind, err: e?.message });
+      continue;
+    }
+    if (!cp) continue;
+    const updated = Date.parse(cp.updatedAt);
+    if (!Number.isFinite(updated)) continue;
+    const ageMs = now - updated;
+    if (ageMs > sevenDaysMs || ageMs < 0) continue;
+    const meta = KIND_TO_DEST[kind]!;
+    items.push({
+      id: `abandoned:${kind}:${userId}`,
+      actor: 'pet_parent',
+      domain: meta.domain,
+      entityId: `${userId}:${kind}`,
+      priority: 'informational',
+      title: he ? meta.heTitle : meta.enTitle,
+      reason: he
+        ? 'המשיכו מהמקום בו הפסקתם'
+        : 'Pick up right where you left off',
+      nextAction: 'view',
+      destination: meta.dest,
+    });
+  }
+  return items;
+}
+
 export async function composeAttentionFeed(actor: AttentionActor, userId: string, he: boolean): Promise<AttentionFeed> {
   if (!userId) {
     return { actor, items: [], composedAt: new Date().toISOString() };
@@ -721,6 +784,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
         ...await petParentWalletItems(userId, he),
         ...await petParentPrestigeItems(userId, he),
         ...await petParentKyaStaleItems(userId, he),
+        ...await petParentAbandonedJourneyItems(userId, he),
       ]
     : [
         ...await providerBookingItems(userId, he),

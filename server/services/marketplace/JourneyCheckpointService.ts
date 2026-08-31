@@ -51,6 +51,26 @@ export class InMemoryCheckpointStore implements CheckpointStore {
   clear(): void { this.byKey.clear(); }
 }
 
+/**
+ * Module-level default store — the runtime singleton every checkpoint
+ * caller reads. Defaults to an InMemoryCheckpointStore so a wizard
+ * that hasn't yet been persistence-migrated still works within a
+ * single process. A Drizzle-backed PgCheckpointStore lands as a
+ * follow-up; boot code swaps it in via setDefaultCheckpointStore().
+ *
+ * Tests use setDefaultCheckpointStore(new InMemoryCheckpointStore())
+ * in beforeEach to isolate scenarios.
+ */
+let _defaultStore: CheckpointStore = new InMemoryCheckpointStore();
+
+export function getDefaultCheckpointStore(): CheckpointStore {
+  return _defaultStore;
+}
+
+export function setDefaultCheckpointStore(store: CheckpointStore): void {
+  _defaultStore = store;
+}
+
 export type ResumeOutcome =
   | { code: 'NO_CHECKPOINT' }
   | { code: 'EXPIRED'; deletedCheckpoint: JourneyCheckpoint }

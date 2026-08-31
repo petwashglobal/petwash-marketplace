@@ -29,6 +29,24 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
     expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),/);
   });
 
+  it('composer runs the abandoned-journey probe last on the pet-parent path (Phase 2 wire)', () => {
+    // The probe fails-CLOSED to [] when the checkpoint store is
+    // empty (in-memory default) so its presence in the pipe is
+    // always safe. When PgCheckpointStore lands it activates.
+    expect(SRC).toMatch(/\.\.\.await petParentAbandonedJourneyItems\(userId, he\),/);
+  });
+
+  it('abandoned-journey probe reads via getDefaultCheckpointStore and filters to a 7-day window', () => {
+    expect(SRC).toContain('getDefaultCheckpointStore()');
+    // The 7-day window is doctrine, not incidental. A refactor that
+    // silently changed it to 30 days would flood the user's feed.
+    expect(SRC).toMatch(/sevenDaysMs\s*=\s*7\s*\*\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
+    // Covers the four pet-parent wizard families.
+    for (const kind of ['CHECKOUT', 'SHOP_CART', 'EGIFT_PURCHASE', 'BOOKING_REQUEST']) {
+      expect(SRC).toContain(kind);
+    }
+  });
+
   it('composer concatenates the booking + payout + doc-expiry + application-status probes on the provider path', () => {
     expect(SRC).toMatch(/\.\.\.await providerBookingItems\(userId, he\),\s*\n\s*\.\.\.await providerPayoutItems\(userId, he\),\s*\n\s*\.\.\.await providerDocExpiryItems\(userId, he\),\s*\n\s*\.\.\.await providerApplicationStatusItems\(userId, he\),/);
   });
