@@ -108,21 +108,30 @@ function formatProviderName(providerId: string): string {
 
 router.post('/quote', async (req, res) => {
   try {
-    const { 
-      providerId, 
-      platform, 
-      serviceType, 
-      startDate, 
-      endDate, 
-      petCount = 1, 
+    const {
+      providerId,
+      platform,
+      serviceType,
+      startDate,
+      endDate,
+      petCount = 1,
       addons = [],
       customerId,
       slotId,
       lockToken
     } = req.body;
 
-    // Also check header for authenticated user
-    const userId = customerId || req.user?.uid || req.firebaseUser?.uid;
+    // AUDIT-AUTH-5 (2026-09-01): quote WAS fully anonymous AND wrote a
+    // quoteRequests row with customerId='anonymous'. That let any
+    // caller flood the table (persistent-log DoS) and produced an
+    // orphan row every browse. The right shape:
+    //   * Anonymous callers get an in-memory calculation. No DB row.
+    //     The caller must sign in before /checkout can be reached.
+    //   * Authenticated callers get the persistent quoteRequests row
+    //     they need so the checkout step can look up the quoteId.
+    // Client body's `customerId` is NEVER trusted — only the derived
+    // session uid counts. A body customerId is silently ignored.
+    const authedUid = req.user?.uid || req.firebaseUser?.uid || null;
 
     const quote = await bookingLifecycleService.calculateQuote(
       providerId,
@@ -132,49 +141,59 @@ router.post('/quote', async (req, res) => {
       new Date(endDate),
       petCount,
       addons,
-      userId
+      authedUid ?? undefined,
     );
 
-    // Persist the quote to database and generate a quoteId
-    const quoteId = `QUOTE-${nanoid(12)}`;
-    
-    // IMPORTANT — quoteRequests DB schema uses three combined monetary columns.
-    // Do NOT split these back into separate named fields; Drizzle will silently
-    // discard any key that does not match the schema column name exactly.
-    //   surchargeCents  = weekend + holiday surcharges combined  (DB: surcharge_cents)
-    //   discountCents   = duration + combo + loyalty discounts summed (DB: discount_cents)
-    //   taxCents        = VAT amount — NOT vatCents             (DB: tax_cents)
-    await db.insert(quoteRequests).values({
-      quoteId,
-      customerId: userId || 'anonymous',
-      providerId: String(providerId),
-      platform,
-      serviceType: serviceType || 'standard',
-      startDate: new Date(startDate).toISOString().split('T')[0],
-      endDate: new Date(endDate).toISOString().split('T')[0],
-      petCount,
-      baseAmountCents: quote.baseAmountCents,
-      additionalPetsCents: quote.additionalPetsCents,
-      addonsCents: quote.addonsCents,
-      // Schema has one combined surcharge column — store weekend surcharge here
-      surchargeCents: quote.weekendSurchargeCents,
-      // Schema has one combined discount column — sum all discount types
-      discountCents: (quote.durationDiscountCents || 0) + (quote.comboDiscountCents || 0) + (quote.loyaltyDiscountCents || 0),
-      subtotalCents: quote.subtotalCents,
-      platformFeeCents: quote.platformFeeCents,
-      taxCents: quote.vatCents,   // T4 fix: schema column is taxCents not vatCents
-      totalCents: quote.totalCents,
-      providerEarningsCents: quote.providerEarningsCents,
-      status: 'pending',
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minute expiry
-    });
+    // Persist the quote to database and generate a quoteId — ONLY
+    // when the caller is authenticated. Anonymous callers get the
+    // priced quote back but no row.
+    let quoteId: string | null = null;
+    if (authedUid) {
+      quoteId = `QUOTE-${nanoid(12)}`;
 
-    logger.info('[MarketplaceBookings] Quote created', { quoteId, userId, providerId, totalCents: quote.totalCents });
+      // IMPORTANT — quoteRequests DB schema uses three combined monetary columns.
+      // Do NOT split these back into separate named fields; Drizzle will silently
+      // discard any key that does not match the schema column name exactly.
+      //   surchargeCents  = weekend + holiday surcharges combined  (DB: surcharge_cents)
+      //   discountCents   = duration + combo + loyalty discounts summed (DB: discount_cents)
+      //   taxCents        = VAT amount — NOT vatCents             (DB: tax_cents)
+      await db.insert(quoteRequests).values({
+        quoteId,
+        customerId: authedUid,
+        providerId: String(providerId),
+        platform,
+        serviceType: serviceType || 'standard',
+        startDate: new Date(startDate).toISOString().split('T')[0],
+        endDate: new Date(endDate).toISOString().split('T')[0],
+        petCount,
+        baseAmountCents: quote.baseAmountCents,
+        additionalPetsCents: quote.additionalPetsCents,
+        addonsCents: quote.addonsCents,
+        // Schema has one combined surcharge column — store weekend surcharge here
+        surchargeCents: quote.weekendSurchargeCents,
+        // Schema has one combined discount column — sum all discount types
+        discountCents: (quote.durationDiscountCents || 0) + (quote.comboDiscountCents || 0) + (quote.loyaltyDiscountCents || 0),
+        subtotalCents: quote.subtotalCents,
+        platformFeeCents: quote.platformFeeCents,
+        taxCents: quote.vatCents,   // T4 fix: schema column is taxCents not vatCents
+        totalCents: quote.totalCents,
+        providerEarningsCents: quote.providerEarningsCents,
+        status: 'pending',
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000), // 15 minute expiry
+      });
+      logger.info('[MarketplaceBookings] Quote persisted', { quoteId, userId: authedUid, providerId, totalCents: quote.totalCents });
+    } else {
+      logger.debug('[MarketplaceBookings] Quote priced (anonymous — not persisted)', { providerId, totalCents: quote.totalCents });
+    }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
+      // Anonymous callers get quoteId=null; the client shows the
+      // "Sign in to continue" CTA and re-runs /quote after auth to
+      // get a persisted quoteId that /checkout can consume.
       quoteId,
+      persisted: !!quoteId,
       quote,
       breakdown: {
         baseAmount: (quote.baseAmountCents / 100).toFixed(2),

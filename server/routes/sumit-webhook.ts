@@ -241,8 +241,13 @@ router.post(
     try {
       parsed = JSON.parse(rawString);
     } catch {
+      // AUDIT-LOG-3 (2026-09-01): replaced `preview: rawString.slice(0, 200)`
+      // with a sha256 hash prefix. A 200-byte preview of a webhook body
+      // still leaks whatever fields the provider crammed into the first
+      // 200 bytes; a hash lets ops correlate without leakage.
       logger.warn('[SumitWebhook] signature OK but body is not JSON', {
-        bodyBytes, preview: rawString.slice(0, 200),
+        bodyBytes,
+        bodySha256Prefix: crypto.createHash('sha256').update(rawString).digest('hex').slice(0, 16),
       });
       // Still 200 — we don't want SUMIT to retry forever on a malformed
       // event we can't process. The audit row captures the failure.

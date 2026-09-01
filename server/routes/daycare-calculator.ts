@@ -12,6 +12,7 @@ import express, { type Router } from 'express';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import { aiChatLimiter } from '../middleware/rateLimiter';
 
 const router: Router = express.Router();
 
@@ -47,7 +48,15 @@ const calcSchema = z.object({
 });
 
 // ── POST /api/daycare-calculator/calculate ────────────────────────────────────
-router.post('/calculate', async (req, res) => {
+// AUDIT-AI-9 (2026-09-01): endpoint is public (deliberate — pricing preview
+// before signup), but every call previously hit Gemini regardless. Now:
+//   * aiChatLimiter throttles the call rate (60/hr IP + burst limits)
+//   * aiExplanation is DEFERRED until the arithmetic result renders; the
+//     Gemini branch only fires when the flag below is ON, keeping the
+//     public browse experience free of unnecessary AI cost.
+//   * When Gemini is invoked, output tokens are capped (maxOutputTokens)
+//     so a single crafted prompt can't run away.
+router.post('/calculate', aiChatLimiter, async (req, res) => {
   const parsed = calcSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'Validation failed', details: parsed.error.errors });
@@ -142,6 +151,9 @@ router.post('/calculate', async (req, res) => {
     const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      // AUDIT-AI-9: cap output to a short explanation (2-3 sentences).
+      // Prevents a crafted prompt from running to the model's default cap.
+      config: { maxOutputTokens: 256 },
     });
 
     aiExplanation = result.candidates?.[0]?.content?.parts?.[0]?.text ?? null;

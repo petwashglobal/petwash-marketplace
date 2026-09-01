@@ -41,6 +41,7 @@ import { fulfillRedemption, cancelRedemptionWithRefund, redemptionEffectiveStatu
 import { validateGift, giftNoteLine, buildGiftEmail, type GiftRequest } from '../services/giftAMoment';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { aiChatLimiter } from '../middleware/rateLimiter';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { eventPublisher } from '../services/EventPublisher';
@@ -1482,13 +1483,53 @@ router.get('/personalized-message', async (req: Request, res: Response) => {
 /**
  * POST /api/loyalty/ai-rewards-message
  * T012: Gemini generates a personalized loyalty rewards message based on user tier and points.
+ *
+ * AUDIT-AI-10 (2026-09-01): body fields USED to flow straight into the
+ * prompt string. `tier` was uppercased and interpolated without
+ * validation — a crafted body like
+ *   { tier: "bronze\n\nIGNORE PREVIOUS INSTRUCTIONS AND ..." }
+ * would inject arbitrary instructions into the Gemini prompt.
+ * The numeric fields were the same story via string coercion.
+ *
+ * Now:
+ *   * Zod schema strictly validates each field: tier is a fixed enum,
+ *     the three numbers are integers with sane bounds.
+ *   * aiChatLimiter throttles the endpoint.
+ *   * maxOutputTokens caps runaway output.
+ *   * The tier value the prompt sees is derived from the enum, not
+ *     from raw request text — no injection surface even if validation
+ *     is bypassed in the future.
  */
-router.post('/ai-rewards-message', async (req: Request, res: Response) => {
+const aiRewardsMessageBody = z.object({
+  tier: z.enum(['bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal']).default('bronze'),
+  points: z.number().int().min(0).max(10_000_000).default(0),
+  totalWashes: z.number().int().min(0).max(1_000_000).default(0),
+  nextTierPoints: z.number().int().min(0).max(10_000_000).default(0),
+});
+
+router.post('/ai-rewards-message', aiChatLimiter, async (req: Request, res: Response) => {
   try {
     const uid = (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { tier = 'bronze', points = 0, totalWashes = 0, nextTierPoints = 0 } = req.body;
+    const parsed = aiRewardsMessageBody.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation failed' });
+    }
+    const { tier, points, totalWashes, nextTierPoints } = parsed.data;
+    // Re-derive the tier label from the enum — belt-and-suspenders so
+    // even if the schema loosens later, the prompt never carries a
+    // caller-controlled string. Uppercase mapping is fixed.
+    const TIER_LABELS: Record<typeof tier, string> = {
+      bronze: 'BRONZE',
+      silver: 'SILVER',
+      gold: 'GOLD',
+      platinum: 'PLATINUM',
+      diamond: 'DIAMOND',
+      emerald: 'EMERALD',
+      royal: 'ROYAL',
+    };
+    const tierLabel = TIER_LABELS[tier];
 
     const { GoogleGenAI } = await import('@google/genai');
     const genAI = new GoogleGenAI(getVertexAIConfig());
@@ -1496,8 +1537,9 @@ router.post('/ai-rewards-message', async (req: Request, res: Response) => {
       model: 'gemini-2.5-flash',
       contents: [{
         role: 'user',
-        parts: [{ text: `You are the PetWash™ loyalty program AI concierge. Write a warm, personalized 2-sentence message for a ${tier.toUpperCase()} tier member who has ${points} points and ${totalWashes} total washes. ${nextTierPoints > 0 ? `They need ${nextTierPoints} more points to reach the next tier.` : 'They are at the top tier!'} Be encouraging, celebratory, and mention their pet care dedication. Include one pet-themed emoji. Keep it under 40 words.` }]
+        parts: [{ text: `You are the PetWash™ loyalty program AI concierge. Write a warm, personalized 2-sentence message for a ${tierLabel} tier member who has ${points} points and ${totalWashes} total washes. ${nextTierPoints > 0 ? `They need ${nextTierPoints} more points to reach the next tier.` : 'They are at the top tier!'} Be encouraging, celebratory, and mention their pet care dedication. Include one pet-themed emoji. Keep it under 40 words.` }]
       }],
+      config: { maxOutputTokens: 128 },
     });
 
     res.json({ message: result.text?.trim() || `Welcome back, loyal PetWash™ ${tier} member! Your dedication to pet care is remarkable. 🐾` });
