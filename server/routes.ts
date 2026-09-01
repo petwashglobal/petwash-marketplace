@@ -427,7 +427,6 @@ import { requireOnboardingComplete } from './middleware/onboardingGate';
 import { logSecurityEvent } from './services/securityEvents';
 import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClientIP, getCityFromIP } from './services/alerts';
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
-import { hashPassword, verifyPassword } from './simpleAuth';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 import adminMayaRouter from './routes/admin-maya';
@@ -2547,135 +2546,49 @@ self.addEventListener('notificationclick', (event) => {
   // deleted module is removed so the deploy module-load gate stays green.
 
   // ========================================================================
-  // 🔐 SIMPLE AUTH SYSTEM (Email + Password) - PostgreSQL Based
+  // 🔐 SIMPLE AUTH SYSTEM — RETIRED (auth-rebuild Phase 10.b, 2026-09-01)
   // ========================================================================
-  const { hashPassword, verifyPassword, getCurrentUser, requireAuth: simpleRequireAuth } = await import('./simpleAuth');
-
-  // POST /api/simple-auth/signup — HARD-DEPRECATED (410 GONE)
-  // This endpoint created rows in the `customers` table with a session-cookie-based
-  // identity that has NO Firebase UID. Those accounts are ghosts: they cannot
-  // authenticate with the Firebase-based platform (loyalty, bookings, payouts, etc.).
-  // No current UI calls this path — the useSimpleAuth hook is dead code.
-  // Canonical registration: Firebase Auth → POST /api/auth/session → POST /api/users/create-profile
-  app.post('/api/simple-auth/signup', (_req, res) => {
-    logger.warn('[SimpleAuth] Deprecated signup endpoint called — returning 410 GONE');
-    res.status(410).json({
-      ok: false,
-      error: 'ENDPOINT_REMOVED',
-      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
-      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמה הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
-    });
-  });
-
-  // POST /api/simple-auth/login - Login with email and password
-  // 🔐 SECURITY: Advanced rate limiting with failed attempt tracking
-  app.post('/api/simple-auth/login', loginRateLimitMiddleware, async (req, res) => {
-    try {
-      const { email, password } = req.body;
-
-      if (!email || !password) {
-        return res.status(400).json({ ok: false, error: 'Email and password required' });
-      }
-
-      const identifier = email.toLowerCase();
-
-      // Find user
-      const [user] = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.email, identifier))
-        .limit(1);
-
-      if (!user) {
-        // Record failed attempt (user not found) — await so Redis has the
-        // incremented counter before the client can fire another request
-        // (evil-hunt 2026-08-20: multi-instance bypass).
-        await recordFailedLogin(identifier);
-        return res.status(401).json({ ok: false, error: 'Invalid email or password' });
-      }
-
-      // Verify password
-      const isValid = await verifyPassword(password, user.password);
-      if (!isValid) {
-        // Record failed attempt (wrong password) — awaited (see above).
-        await recordFailedLogin(identifier);
-        
-        const rateLimit = (req as any).loginRateLimit;
-        const attemptsRemaining = 5 - (rateLimit?.attempts || 0) - 1; // -1 for current attempt
-        
-        logger.warn('[Simple Auth] Failed login attempt', {
-          email: identifier.substring(0, 3) + '***',
-          attemptsRemaining,
-        });
-        
-        return res.status(401).json({ 
-          ok: false, 
-          error: 'Invalid email or password',
-          attemptsRemaining: Math.max(0, attemptsRemaining),
-        });
-      }
-
-      // ✅ SUCCESS: Clear failed attempts (awaited — see above).
-      await clearLoginAttempts(identifier);
-
-      // Update last login for security monitoring and audit
-      await db
-        .update(customers)
-        .set({ lastLogin: new Date() })
-        .where(eq(customers.id, user.id));
-
-      // Create session
-      if (req.session) {
-        req.session.userId = String(user.id);
-      }
-
-      logger.info(`[Simple Auth] ✅ User logged in: ${identifier.substring(0, 3)}***`);
-
-      res.json({
-        ok: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          loyaltyTier: user.loyaltyTier,
-          washBalance: user.washBalance,
-        }
-      });
-    } catch (error) {
-      logger.error('[Simple Auth] Login error:', error);
-      res.status(500).json({ ok: false, error: 'Login failed' });
-    }
-  });
-
-  // POST /api/simple-auth/logout - Logout current user
-  app.post('/api/simple-auth/logout', (req, res) => {
-    req.session?.destroy((err) => {
-      if (err) {
-        logger.error('[Simple Auth] Logout error:', err);
-        return res.status(500).json({ ok: false, error: 'Logout failed' });
-      }
-      logger.info('[Simple Auth] ✅ User logged out');
-      res.json({ ok: true });
-    });
-  });
-
-  // GET /api/simple-auth/me - Get current authenticated user
-  // DISABLED: Now handled by publicAuthRouter (clean console mode - returns 200 for logged-out users)
-  // app.get('/api/simple-auth/me', async (req, res) => {
-  //   try {
-  //     const user = await getCurrentUser(req);
-  //     
-  //     if (!user) {
-  //       return res.status(401).json({ ok: false, error: 'Not authenticated' });
-  //     }
   //
-  //     res.json({ ok: true, user });
-  //   } catch (error) {
-  //     logger.error('[Simple Auth] Get current user error:', error);
-  //     res.status(500).json({ ok: false, error: 'Failed to get user' });
-  //   }
-  // });
+  // The whole /api/simple-auth/* surface wrote a session-cookie identity
+  // against the `customers` table with NO Firebase UID. Any account
+  // created that way was a ghost: it could sign in but could never
+  // participate in the Firebase-based platform (loyalty, bookings,
+  // payouts, wallet, provider, admin). No client code ever called
+  // /login or /logout (grep across client/src returns zero hits;
+  // useSimpleAuth hook does not exist in the client).
+  //
+  // Retirement plan (this phase):
+  //   POST /api/simple-auth/signup   → 410 GONE (already retired earlier)
+  //   POST /api/simple-auth/login    → 410 GONE (new — was writing ghost sessions)
+  //   POST /api/simple-auth/logout   → 410 GONE (new — orphaned pair with /login)
+  //   GET  /api/simple-auth/me       → served by publicAuthRouter (LIVE, unchanged)
+  //
+  // Canonical registration: Firebase Auth → POST /api/auth/session
+  //                       → POST /api/users/create-profile
+
+  const SIMPLE_AUTH_GONE_BODY = {
+    ok: false,
+    error: 'ENDPOINT_REMOVED',
+    message: 'This endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+  } as const;
+
+  app.post('/api/simple-auth/signup', (_req, res) => {
+    logger.warn('[SimpleAuth] Retired /signup called — returning 410 GONE');
+    res.status(410).json(SIMPLE_AUTH_GONE_BODY);
+  });
+
+  app.post('/api/simple-auth/login', (_req, res) => {
+    logger.warn('[SimpleAuth] Retired /login called — returning 410 GONE');
+    res.status(410).json(SIMPLE_AUTH_GONE_BODY);
+  });
+
+  app.post('/api/simple-auth/logout', (_req, res) => {
+    logger.warn('[SimpleAuth] Retired /logout called — returning 410 GONE');
+    res.status(410).json(SIMPLE_AUTH_GONE_BODY);
+  });
+
+  // GET /api/simple-auth/me is served by publicAuthRouter (LIVE, unchanged).
 
   // ========================================================================
   // 🔐 FIREBASE AUTH SYSTEM (Legacy - for admin/employee access)
