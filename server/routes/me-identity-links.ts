@@ -41,9 +41,12 @@ import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
 import { identityAccounts } from '@shared/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { requireStepUp } from '../services/StepUpService';
+import { issueLinkChallenge, verifyLinkChallenge } from '../services/LinkChallengeService';
+import { linkAdditionalProvider } from '../identity/loginOrLink';
+import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -105,28 +108,148 @@ router.get('/links', validateFirebaseToken, async (req: Request, res: Response) 
 // Until Phase 6.b lands, this returns 501 with the required-body shape
 // so callers can build against the contract.
 const InitiateBody = z.object({
-  provider: z.enum(['google', 'apple', 'facebook']),
+  provider: z.enum(['google', 'apple', 'facebook', 'passkey']),
   idToken: z.string().min(20),
 });
+
+/**
+ * Map a Firebase sign-in-provider string (from decoded claims) to
+ * the canonical PetWash provider name we store in identity_accounts.
+ * Returns null if the token was minted by a provider we don't accept
+ * for linking (which currently means "anything other than the four
+ * we recognise").
+ */
+function providerFromDecoded(decoded: any): string | null {
+  const raw = (decoded?.firebase?.sign_in_provider as string) || '';
+  switch (raw) {
+    case 'google.com':
+      return 'google';
+    case 'apple.com':
+      return 'apple';
+    case 'facebook.com':
+      return 'facebook';
+    case 'password':
+      return 'password';
+    case 'phone':
+      return 'phone';
+    case 'custom':
+      // The custom-token feeders (WebAuthn) mint passkey identities.
+      return 'passkey';
+    default:
+      return null;
+  }
+}
 
 router.post(
   '/link/initiate',
   validateFirebaseToken,
   requireStepUp('link_provider'),
   async (req: Request, res: Response) => {
-    const body = InitiateBody.safeParse(req.body);
-    if (!body.success) {
+    const parsed = InitiateBody.safeParse(req.body);
+    if (!parsed.success) {
       return res.status(400).json({
         error: 'BAD_REQUEST',
-        expected: { provider: 'google|apple|facebook', idToken: '<Firebase ID token>' },
+        expected: { provider: 'google|apple|facebook|passkey', idToken: '<Firebase ID token>' },
       });
     }
-    // Phase 6.b will implement — for now return 501 with the shape
-    // and a pointer.
-    return res.status(501).json({
-      error: 'NOT_YET_IMPLEMENTED',
-      phase: '6.b',
-      note: 'Endpoint scaffold — full flow implements dual-sided proof + link-challenge token. See server/routes/me-identity-links.ts docstring for the contract.',
+    const { provider, idToken } = parsed.data;
+    const callerUid = req.firebaseUser!.uid;
+
+    // 1. Verify the OTHER-provider Firebase ID token. `checkRevoked=true`
+    //    protects against a revoked-account link attempt.
+    let decoded: any;
+    try {
+      decoded = await admin.auth().verifyIdToken(idToken, true);
+    } catch (err: any) {
+      logger.warn('[identity/link/initiate] provider token verify failed', {
+        callerUid,
+        provider,
+        code: err?.code,
+      });
+      return res.status(401).json({ error: 'PROVIDER_TOKEN_INVALID' });
+    }
+
+    // 2. The token's own provider must match the client-declared one —
+    //    a Google-provider token cannot be pushed as an Apple link.
+    const decodedProvider = providerFromDecoded(decoded);
+    if (!decodedProvider || decodedProvider !== provider) {
+      return res.status(400).json({
+        error: 'PROVIDER_MISMATCH',
+        detail: `Client declared ${provider} but the ID token was minted by ${decodedProvider ?? 'unknown'}.`,
+      });
+    }
+
+    // 3. Extract the identity we would be linking. providerAccountId
+    //    is Firebase's uid on the OTHER account.
+    const providerAccountId = String(decoded.uid || '');
+    if (!providerAccountId) {
+      return res.status(400).json({ error: 'PROVIDER_ACCOUNT_ID_MISSING' });
+    }
+    const email = (decoded.email as string | undefined) ?? null;
+    const emailVerified = decoded.email_verified === true;
+
+    // 4. Refuse identity-vs-self: the caller cannot "link" their own
+    //    primary provider to themselves via /initiate. That's a no-op
+    //    with a confusing UX; return a specific code.
+    if (providerAccountId === callerUid) {
+      return res.status(409).json({ error: 'SAME_IDENTITY' });
+    }
+
+    // 5. Refuse if that identity is already linked to ANY user.
+    //    Cross-user linking of an existing identity is exactly what
+    //    D6 forbids — the person on the other side hasn't consented.
+    const [existing] = await db
+      .select({ userId: identityAccounts.userId })
+      .from(identityAccounts)
+      .where(
+        and(
+          eq(identityAccounts.provider, provider),
+          eq(identityAccounts.providerAccountId, providerAccountId),
+        ),
+      )
+      .limit(1);
+
+    if (existing) {
+      if (existing.userId === callerUid) {
+        return res.status(409).json({ error: 'ALREADY_LINKED_TO_YOU' });
+      }
+      logger.warn('[identity/link/initiate] refused — identity owned by another user', {
+        callerUid,
+        provider,
+      });
+      return res.status(409).json({ error: 'IDENTITY_OWNED_BY_ANOTHER' });
+    }
+
+    // 6. Mint the challenge. Bound to (uid, provider, providerAccountId,
+    //    email, emailVerified) so it can't be swapped between identities.
+    const challenge = issueLinkChallenge({
+      uid: callerUid,
+      provider,
+      providerAccountId,
+      email,
+      emailVerified,
+    });
+    if (!challenge) {
+      logger.error('[identity/link/initiate] challenge service unavailable');
+      return res.status(500).json({ error: 'CHALLENGE_SERVICE_UNAVAILABLE' });
+    }
+
+    logger.info('[identity/link/initiate] challenge issued', {
+      callerUid,
+      provider,
+      providerAccountIdHint: providerAccountId.slice(-6),
+    });
+
+    return res.json({
+      ok: true,
+      challengeToken: challenge.token,
+      expiresAt: challenge.expiresAt.toISOString(),
+      preview: {
+        provider,
+        providerAccountIdHint: providerAccountId.slice(-6),
+        email,
+        emailVerified,
+      },
     });
   },
 );
@@ -145,17 +268,160 @@ router.post(
   validateFirebaseToken,
   requireStepUp('link_provider'),
   async (req: Request, res: Response) => {
-    const body = ConfirmBody.safeParse(req.body);
-    if (!body.success) {
+    const parsed = ConfirmBody.safeParse(req.body);
+    if (!parsed.success) {
       return res.status(400).json({
         error: 'BAD_REQUEST',
         expected: { challengeToken: '<opaque>', confirm: true },
       });
     }
-    return res.status(501).json({
-      error: 'NOT_YET_IMPLEMENTED',
-      phase: '6.b',
-      note: 'Endpoint scaffold — will consume the challenge token from /initiate and call linkAdditionalProvider().',
+    const { challengeToken } = parsed.data;
+    const callerUid = req.firebaseUser!.uid;
+
+    // 1. Verify challenge — MAC + TTL + uid-binding all in the helper.
+    const check = verifyLinkChallenge(challengeToken, callerUid);
+    if (!check.ok) {
+      logger.warn('[identity/link/confirm] challenge rejected', {
+        callerUid,
+        reason: check.reason,
+      });
+      const status = check.reason === 'EXPIRED' ? 410 : 401;
+      return res.status(status).json({ error: 'CHALLENGE_INVALID', reason: check.reason });
+    }
+    const { challenge } = check;
+
+    // 2. Race-recheck: the identity may have been claimed between
+    //    /initiate and /confirm. Refuse if now owned by anyone else.
+    const [existing] = await db
+      .select({ userId: identityAccounts.userId })
+      .from(identityAccounts)
+      .where(
+        and(
+          eq(identityAccounts.provider, challenge.provider),
+          eq(identityAccounts.providerAccountId, challenge.providerAccountId),
+        ),
+      )
+      .limit(1);
+    if (existing) {
+      if (existing.userId === callerUid) {
+        return res.status(200).json({
+          ok: true,
+          alreadyLinked: true,
+          provider: challenge.provider,
+        });
+      }
+      return res.status(409).json({ error: 'IDENTITY_OWNED_BY_ANOTHER' });
+    }
+
+    // 3. Write the link via the canonical primitive. Never call
+    //    loginOrLink from here — that path is for unauthenticated
+    //    login resolution, not authenticated linking.
+    try {
+      await linkAdditionalProvider(callerUid, {
+        provider: challenge.provider,
+        providerAccountId: challenge.providerAccountId,
+        email: challenge.email,
+        emailVerified: challenge.emailVerified,
+      });
+    } catch (err: any) {
+      logger.error('[identity/link/confirm] linkAdditionalProvider failed', {
+        callerUid,
+        provider: challenge.provider,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'LINK_WRITE_FAILED' });
+    }
+
+    logger.info('[identity/link/confirm] linked', {
+      callerUid,
+      provider: challenge.provider,
+      providerAccountIdHint: challenge.providerAccountId.slice(-6),
+    });
+
+    return res.json({
+      ok: true,
+      provider: challenge.provider,
+      providerAccountIdHint: challenge.providerAccountId.slice(-6),
+      linkedAt: new Date().toISOString(),
+    });
+  },
+);
+
+// ─── POST /api/identity/link/unlink ──────────────────────────────────
+// Detach an already-linked provider. Refuses to leave the account
+// with ZERO auth methods (that would lock the user out permanently).
+// Step-up gated with a distinct purpose ('unlink_provider') so a
+// challenge minted for /link/initiate cannot be replayed here.
+const UnlinkBody = z.object({
+  provider: z.enum(['google', 'apple', 'facebook', 'passkey']),
+  providerAccountId: z.string().min(1),
+});
+
+router.post(
+  '/link/unlink',
+  validateFirebaseToken,
+  requireStepUp('unlink_provider'),
+  async (req: Request, res: Response) => {
+    const parsed = UnlinkBody.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'BAD_REQUEST',
+        expected: { provider: 'google|apple|facebook|passkey', providerAccountId: '<sub>' },
+      });
+    }
+    const { provider, providerAccountId } = parsed.data;
+    const callerUid = req.firebaseUser!.uid;
+
+    // Refuse if the caller has only one active link — unlink would
+    // orphan the account. The user may still delete the account
+    // separately via the delete-account flow.
+    const links = await db
+      .select({
+        provider: identityAccounts.provider,
+        providerAccountId: identityAccounts.providerAccountId,
+      })
+      .from(identityAccounts)
+      .where(eq(identityAccounts.userId, callerUid));
+
+    if (links.length <= 1) {
+      return res.status(409).json({ error: 'LAST_LINK_FORBIDDEN' });
+    }
+    const target = links.find(
+      (l) => l.provider === provider && l.providerAccountId === providerAccountId,
+    );
+    if (!target) {
+      return res.status(404).json({ error: 'LINK_NOT_FOUND' });
+    }
+
+    try {
+      await db
+        .delete(identityAccounts)
+        .where(
+          and(
+            eq(identityAccounts.userId, callerUid),
+            eq(identityAccounts.provider, provider),
+            eq(identityAccounts.providerAccountId, providerAccountId),
+          ),
+        );
+    } catch (err: any) {
+      logger.error('[identity/link/unlink] delete failed', {
+        callerUid,
+        provider,
+        error: err?.message,
+      });
+      return res.status(500).json({ error: 'UNLINK_FAILED' });
+    }
+
+    logger.info('[identity/link/unlink] unlinked', {
+      callerUid,
+      provider,
+      providerAccountIdHint: providerAccountId.slice(-6),
+    });
+
+    return res.json({
+      ok: true,
+      provider,
+      providerAccountIdHint: providerAccountId.slice(-6),
     });
   },
 );
