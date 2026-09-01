@@ -119,6 +119,13 @@ export const users = pgTable("users", {
   // when the role is still authorised. Never grants authority — the
   // capabilities aggregator remains the source of truth. Migration 0136.
   lastActiveRole: varchar("last_active_role", { length: 30 }),
+  // Auth-rebuild Phase 6 · SOFT-MERGE target (CEO D6). When non-NULL,
+  // this row is the SECONDARY of a super-admin merge and identity
+  // resolution should return the users row whose id = merged_into_uid.
+  // NEVER used to re-parent money / tax / booking / audit rows — those
+  // stay on their original uid as immutable evidence. Reversible by
+  // clearing this column. Migration 0138.
+  mergedIntoUid: varchar("merged_into_uid", { length: 64 }),
   userStatus: varchar("user_status").default("new"),
   signupIntent: varchar("signup_intent"),
   accessLevel: integer("access_level").default(1),
