@@ -113,6 +113,30 @@ router.post('/google', async (req: Request, res: Response) => {
 
     const uid = firebaseUser.uid;
 
+    // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+    // Records the Google-provider link on identity_accounts and emits
+    // IDENTITY_SHADOW_WOULD_MERGE if this email collides with another
+    // users row. Observation only — never merges, never changes UID.
+    try {
+      const { getFeatureFlag } = await import('../services/SystemConfig');
+      const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+      if (identityUnifiedOn) {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        await loginOrLink({
+          provider: 'google',
+          providerAccountId: uid,
+          email,
+          emailVerified: payload.email_verified === true,
+          displayName: name || null,
+        });
+      }
+    } catch (identityErr) {
+      logger.warn('[Mobile Auth] loginOrLink probe failed (non-blocking)', {
+        uid,
+        error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+      });
+    }
+
     // Get or create Firestore profile
     const userRef = firestore.collection('users').doc(uid);
     const userDoc = await userRef.get();

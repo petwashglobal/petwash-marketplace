@@ -87,6 +87,22 @@ export interface SystemConfigMap {
   'sumit.mode': 'off' | 'email' | 'api' | 'csv_export';
   'recovery.signup_reminder_enabled': boolean;
   'recovery.booking_followup_enabled': boolean;
+  /**
+   * Auth-rebuild Phase 1 (CEO directive 2026-09-01) — canonical identity
+   * resolver. When ON, every session-mint feeder calls
+   * `server/identity/loginOrLink.ts` after Firebase verify to record the
+   * identity_accounts link and emit IDENTITY_SHADOW_WOULD_MERGE if a
+   * verified email collides with another users row.
+   *
+   * Default OFF: existing feeders keep their current byte-for-byte
+   * behaviour until every one is wired AND the dedup dry-run has been
+   * reviewed by support. Folds in the legacy IDENTITY_UNIFIED_ENABLED
+   * env gate — either enables the wiring.
+   *
+   * Turning this ON is safe: identity_accounts writes are additive and
+   * observation-only in Phase 1. No automatic linking, no merging.
+   */
+  'ff.returning_user.identity_unified.enabled': boolean;
 }
 
 const DEFAULTS: SystemConfigMap = {
@@ -144,6 +160,9 @@ const DEFAULTS: SystemConfigMap = {
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
+  // Auth-rebuild Phase 1 — canonical identity resolver. Default OFF.
+  // See interface docstring above.
+  'ff.returning_user.identity_unified.enabled': false,
 };
 
 export type ConfigKey = keyof SystemConfigMap;

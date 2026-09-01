@@ -1450,6 +1450,32 @@ self.addEventListener('notificationclick', (event) => {
         _syncDecoded = decoded;
         const { authService } = await import('./services/AuthService');
 
+        // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+        // Records the (provider, providerAccountId) link in identity_accounts
+        // and emits IDENTITY_SHADOW_WOULD_MERGE if a verified email collides
+        // with another users row. Observation only — never merges, never
+        // changes which user this login resolves to.
+        try {
+          const { getFeatureFlag } = await import('./services/SystemConfig');
+          const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+          if (identityUnifiedOn) {
+            const { loginOrLink } = await import('./identity/loginOrLink');
+            const providerId = (decoded.firebase?.sign_in_provider as string) || 'firebase-legacy';
+            await loginOrLink({
+              provider: providerId,
+              providerAccountId: decoded.uid,
+              email: decoded.email || null,
+              emailVerified: decoded.email_verified === true,
+              displayName: decoded.name || null,
+            });
+          }
+        } catch (identityErr) {
+          logger.warn('[Session] loginOrLink probe failed (non-blocking)', {
+            uid: decoded.uid,
+            error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+          });
+        }
+
         let firstName: string | undefined;
         let lastName: string | undefined;
         let phone: string | undefined;

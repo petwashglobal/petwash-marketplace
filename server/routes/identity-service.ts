@@ -254,6 +254,31 @@ router.post("/login/standard", async (req, res) => {
         logger.warn(`[Identity] Failed to create session cookie (non-fatal): ${cookieError}`);
       }
 
+      // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+      // /auth/login/standard bypasses /api/auth/session's mint pipeline, so
+      // the loginOrLink call is here too. Observation only — records the
+      // link and emits IDENTITY_SHADOW_WOULD_MERGE on collisions. Never
+      // merges, never mutates the canonical UID.
+      try {
+        const { getFeatureFlag } = await import('../services/SystemConfig');
+        const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+        if (identityUnifiedOn) {
+          const { loginOrLink } = await import('../identity/loginOrLink');
+          await loginOrLink({
+            provider: 'password',
+            providerAccountId: userId,
+            email: userRecord.email || email || null,
+            emailVerified: userRecord.emailVerified === true,
+            displayName: userRecord.displayName || null,
+          });
+        }
+      } catch (identityErr) {
+        logger.warn('[Identity] loginOrLink probe failed (non-blocking)', {
+          userId,
+          error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+        });
+      }
+
       // Log successful login
       await db.collection("auth_events").add({
         userId,

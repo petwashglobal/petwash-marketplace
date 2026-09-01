@@ -49,13 +49,15 @@ const FEEDER_FILES: readonly string[] = [
 // Files scheduled for Phase 1.x loginOrLink wiring. Do NOT add new entries.
 // Each entry must have a Phase 1.x follow-up planned; the wiring lands
 // before Phase 6 (account-linking) opens.
+//
+// Progress log:
+//   - server/routes.ts                       WIRED 2026-09-01 (/api/auth/session)
+//   - server/routes/mobile-auth.ts           WIRED 2026-09-01 (/api/mobile-auth/google)
+//   - server/routes/identity-service.ts      WIRED 2026-09-01 (/auth/login/standard)
 const KNOWN_LEGACY: ReadonlySet<string> = new Set([
-  'server/routes.ts',
   'server/routes/publicAuthRoutes.ts',
-  'server/routes/mobile-auth.ts',
   'server/routes/mobile-biometric.ts',
   'server/routes/pin-auth.ts',
-  'server/routes/identity-service.ts',
   'server/customAuth.ts',
 ]);
 
@@ -101,11 +103,17 @@ describe('Phase 1 regression pin — loginOrLink feeder coverage', () => {
     // loginOrLink they leave this set. This test guards against KNOWN_LEGACY
     // GROWING — a symptom of a new un-wired feeder sneaking in and being
     // added to the exemption list instead of being wired.
-    const ALLOWED_LEGACY_MAX = 7;
+    // Progressive ceiling: starts at 7 (Phase 1 landing), drops by one every
+    // time a feeder gets wired. Current cap: 4 (routes.ts + mobile-auth.ts +
+    // identity-service.ts wired 2026-09-01). Every future PR that wires
+    // another feeder MUST also lower this cap by the number of feeders it
+    // wired.
+    const ALLOWED_LEGACY_MAX = 4;
     expect(
       KNOWN_LEGACY.size,
-      `KNOWN_LEGACY has ${KNOWN_LEGACY.size} entries; Phase 1 pinned it at ${ALLOWED_LEGACY_MAX}. ` +
-        'If you added a new feeder, WIRE loginOrLink; do not extend KNOWN_LEGACY.',
+      `KNOWN_LEGACY has ${KNOWN_LEGACY.size} entries; current cap is ${ALLOWED_LEGACY_MAX}. ` +
+        'If you added a new feeder, WIRE loginOrLink; do not extend KNOWN_LEGACY. ' +
+        'If you wired a feeder, ALSO lower the ALLOWED_LEGACY_MAX.',
     ).toBeLessThanOrEqual(ALLOWED_LEGACY_MAX);
   });
 
