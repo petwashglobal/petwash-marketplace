@@ -48,6 +48,11 @@ import { sumitClient } from '../services/SumitClient';
 import { recordAuditEvent } from '../utils/auditSignature';
 import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
 import { isCommerceFlagEnabled, COMMERCE_FLAGS } from '@shared/purchase-lifecycle/flags';
+import {
+  claimEvent as claimInboxEvent,
+  markCompleted as markInboxCompleted,
+  markFailedRetryable as markInboxFailedRetryable,
+} from '../lib/nayaxWebhookDedup';
 
 const router = Router();
 
@@ -307,17 +312,64 @@ router.post(
       // The idempotency anchor: prefer the SUMIT transaction/payment id;
       // fall back to the stable event id so a duplicate delivery still dedupes.
       const providerReference = transactionId || eventId;
+
+      // AUDIT-MONEY-4 (#229, 2026-09-01): persistent inbox dedup around the
+      // activation branch. Prior comment claimed "we dedupe on that", but
+      // no state machine existed — activateFromVerifiedPayment relied on
+      // whatever idempotency downstream services happened to enforce, and
+      // a SUMIT retry between the transaction commit and our final
+      // markCompleted could re-run activation (e.g. re-issue notifications,
+      // re-award loyalty). We reuse the nayax inbox with a namespaced
+      // eventId (`sumit:${...}`) so keys cannot collide between providers,
+      // and land a proper state machine WITHOUT adding a new table. A
+      // later slice can migrate to a dedicated `sumit_processed_event_ids`
+      // table if the operators want per-provider retention policy.
+      const inboxEventId = `sumit:${providerReference}`;
+      let claim: Awaited<ReturnType<typeof claimInboxEvent>> | null = null;
       try {
-        activation = await activateFromVerifiedPayment({
-          providerReference,
-          transactionId,
-          externalRef,
+        claim = await claimInboxEvent({
+          eventId: inboxEventId,
+          sourceRoute: '/api/sumit/webhook',
         });
       } catch (err: any) {
-        // The service itself never throws, but belt-and-suspenders: a thrown
-        // error must not turn into a non-2xx (which would trigger SUMIT retries).
-        logger.error('[SumitWebhook] activation threw (returning 200)', { eventId, err: err?.message });
-        activation = { outcome: 'failed', reason: 'activation_threw' };
+        // Fail CLOSED: without an inbox row we can't guarantee we won't
+        // double-activate on retry. Log + 500 so SUMIT retries and the
+        // next delivery gets a chance to write the row.
+        logger.error('[SumitWebhook] inbox claim failed — failing CLOSED', {
+          eventId, inboxEventId, err: err?.message,
+        });
+        return res.status(500).json({ ok: false, error: 'inbox_unavailable' });
+      }
+
+      if (claim.decision === 'dedup') {
+        logger.info('[SumitWebhook] activation replay short-circuited by inbox', {
+          eventId, inboxEventId, previousStatus: claim.row.status,
+        });
+        activation = { outcome: 'deduped', purchaseId: undefined };
+      } else if (claim.decision === 'conflict') {
+        // Another delivery is actively processing this same event right
+        // now. Tell SUMIT to retry rather than double-run.
+        logger.warn('[SumitWebhook] concurrent delivery — asking SUMIT to retry', {
+          eventId, inboxEventId,
+        });
+        return res.status(409).json({ ok: false, error: 'concurrent_delivery' });
+      } else {
+        // 'new' or 'retry' — actually run the activation.
+        try {
+          activation = await activateFromVerifiedPayment({
+            providerReference,
+            transactionId,
+            externalRef,
+          });
+          await markInboxCompleted(inboxEventId);
+        } catch (err: any) {
+          // The service itself never throws, but belt-and-suspenders: a thrown
+          // error must not turn into a non-2xx (which would trigger SUMIT retries).
+          logger.error('[SumitWebhook] activation threw (returning 200)', { eventId, err: err?.message });
+          activation = { outcome: 'failed', reason: 'activation_threw' };
+          // Mark retryable so a SUMIT retry can re-run the handler.
+          await markInboxFailedRetryable(inboxEventId, 'activation_threw').catch(() => { /* non-fatal */ });
+        }
       }
 
       if (activation.outcome === 'not_found') {
