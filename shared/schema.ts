@@ -114,6 +114,11 @@ export const users = pgTable("users", {
   unsubscribedAt: timestamp("unsubscribed_at"), // When user unsubscribed from all marketing
   
   role: varchar("role").default("customer"),
+  // Auth-rebuild Phase 5 · which authorised role the user was operating
+  // in on their last session. Read on fresh-session mint to skip /mode
+  // when the role is still authorised. Never grants authority — the
+  // capabilities aggregator remains the source of truth. Migration 0136.
+  lastActiveRole: varchar("last_active_role", { length: 30 }),
   userStatus: varchar("user_status").default("new"),
   signupIntent: varchar("signup_intent"),
   accessLevel: integer("access_level").default(1),
