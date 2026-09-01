@@ -237,6 +237,7 @@ import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
 import meStatusRoutes from "./routes/me-status";
 import meCapabilitiesRoutes from "./routes/me-capabilities";
+import meActiveRoleRoutes from "./routes/me-active-role";
 // Canonical multi-role aggregator — used by whoami to emit `roles: string[]`
 // derived from every true capability, so ONE identity is visible across all
 // journeys (customer / loyalty / provider / staff / admin) instead of the
@@ -13033,6 +13034,14 @@ self.addEventListener('notificationclick', (event) => {
   // The router internally applies validateFirebaseToken on the /capabilities
   // handler, so an unauthenticated call returns 401 (never 200 with empty caps).
   app.use('/api/me', apiLimiter, meCapabilitiesRoutes);
+  // Phase 5 activeRole (CEO auth-rebuild directive 2026-09-01, D5):
+  // GET  /api/me/active-role   — { lastActiveRole, authorizedRoles }
+  // POST /api/me/active-role   — server-verified role switch; writes
+  //                              users.last_active_role only if the
+  //                              requested role is in capabilities.
+  //                              NEVER grants authority. Emits
+  //                              ROLE_SWITCHED audit event.
+  app.use('/api/me', apiLimiter, meActiveRoleRoutes);
   // Canonical service-session read adapter (CEO 2026-08-18 §12/§13):
   // GET /api/service-sessions/:bookingRef — projects booking_requests
   // (and, in follow-up PRs, walk_bookings + pettrek_trips) into a
