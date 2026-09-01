@@ -58,79 +58,90 @@ export async function awardLoyaltyPoints(input: AwardPointsInput): Promise<Award
   if (!userId || amount <= 0) return { awarded: false, skipped: 'zero' };
 
   try {
-    // Idempotency — already awarded for this exact source event?
-    const existing = await db
-      .select({ id: pointsTransactions.id })
-      .from(pointsTransactions)
-      .where(and(
-        eq(pointsTransactions.userId, userId),
-        eq(pointsTransactions.source, source),
-        eq(pointsTransactions.sourceId, sourceId),
-      ))
-      .limit(1);
-    if (existing.length) return { awarded: false, skipped: 'duplicate' };
-
-    const [profile] = await db
-      .select()
-      .from(loyaltyProfiles)
-      .where(eq(loyaltyProfiles.userId, userId))
-      .limit(1);
-    if (!profile) return { awarded: false, skipped: 'no_profile' };
-
-    // Atomic SQL increment — do NOT compute newBalance in JS and write it
-    // back, that's a classic lost-update: two concurrent awards for the same
-    // user (spend-based hook + badge unlock, or a webhook retry that took a
-    // different sourceId path) both read the same balance and one write
-    // wins, losing the other's points. Same pattern as
-    // server/routes/nayax-monyx-events.ts:143.
+    // P0-AUDIT-MONEY-2 (task #227): the previous SELECT-existing → SELECT-profile →
+    // UPDATE-balance → INSERT-transaction sequence had a race window under
+    // concurrent webhook retries. Two concurrent calls with the same
+    // (userId, source, sourceId) would BOTH pass the SELECT-existing check,
+    // BOTH increment the balance, and then the DB's uniqueIndex
+    // (points_transactions_user_source_ref_uniq_idx) would trip on the
+    // second INSERT — leaving the user with double points but only one
+    // audit row.
     //
-    // Use RETURNING to read back the post-increment values in a single
-    // round-trip — the pointsTransactions insert below persists the
-    // committed balance, and the caller receives the atomic newBalance.
-    const [updated] = await db
-      .update(loyaltyProfiles)
-      .set({
-        points:         sql`${loyaltyProfiles.points} + ${amount}`,
-        lifetimePoints: sql`${loyaltyProfiles.lifetimePoints} + ${amount}`,
-        updatedAt: new Date(),
-      })
-      .where(eq(loyaltyProfiles.userId, userId))
-      .returning({
-        points: loyaltyProfiles.points,
-        lifetimePoints: loyaltyProfiles.lifetimePoints,
-      });
-    const newBalance = updated?.points ?? profile.points + amount;
-    const newLifetime = updated?.lifetimePoints ?? profile.lifetimePoints + amount;
+    // Fix: run the whole earn inside a Postgres transaction, and acquire a
+    // FOR UPDATE lock on the profile row. That serializes all concurrent
+    // awards for this user, so the existing-transaction check runs against
+    // a stable view. The uniqueIndex remains a belt-and-braces guard at
+    // the storage layer if the transaction ever gets skipped.
+    return await db.transaction(async (tx) => {
+      const [profile] = await tx
+        .select()
+        .from(loyaltyProfiles)
+        .where(eq(loyaltyProfiles.userId, userId))
+        .for('update')
+        .limit(1);
+      if (!profile) return { awarded: false, skipped: 'no_profile' as const };
 
-    const tierCheck = detectTierUpgrade(profile.lifetimePoints, newLifetime);
-    if (tierCheck.upgraded) {
-      await db
+      // Idempotency — the FOR UPDATE above serializes concurrent awards
+      // for this user, so this check is now race-free.
+      const existing = await tx
+        .select({ id: pointsTransactions.id })
+        .from(pointsTransactions)
+        .where(and(
+          eq(pointsTransactions.userId, userId),
+          eq(pointsTransactions.source, source),
+          eq(pointsTransactions.sourceId, sourceId),
+        ))
+        .limit(1);
+      if (existing.length) return { awarded: false, skipped: 'duplicate' as const };
+
+      // Atomic SQL increment inside the transaction. Same lost-update
+      // reasoning as before, but we now have a row lock, so no concurrent
+      // updater can slip between the RETURNING and the INSERT below.
+      const [updated] = await tx
         .update(loyaltyProfiles)
-        .set({ tier: tierCheck.newTier, tierSince: new Date() })
-        .where(eq(loyaltyProfiles.userId, userId));
-      logger.info('[LoyaltyEarn] Tier upgrade', { userId, from: tierCheck.previousTier, to: tierCheck.newTier });
-    }
+        .set({
+          points:         sql`${loyaltyProfiles.points} + ${amount}`,
+          lifetimePoints: sql`${loyaltyProfiles.lifetimePoints} + ${amount}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(loyaltyProfiles.userId, userId))
+        .returning({
+          points: loyaltyProfiles.points,
+          lifetimePoints: loyaltyProfiles.lifetimePoints,
+        });
+      const newBalance = updated?.points ?? profile.points + amount;
+      const newLifetime = updated?.lifetimePoints ?? profile.lifetimePoints + amount;
 
-    await db.insert(pointsTransactions).values({
-      userId,
-      type: 'earned',
-      amount,
-      balance: newBalance,
-      source,
-      sourceId,
-      description: description ?? `Earned ${amount} points`,
-    });
+      const tierCheck = detectTierUpgrade(profile.lifetimePoints, newLifetime);
+      if (tierCheck.upgraded) {
+        await tx
+          .update(loyaltyProfiles)
+          .set({ tier: tierCheck.newTier, tierSince: new Date() })
+          .where(eq(loyaltyProfiles.userId, userId));
+        logger.info('[LoyaltyEarn] Tier upgrade', { userId, from: tierCheck.previousTier, to: tierCheck.newTier });
+      }
 
-    logger.info('[LoyaltyEarn] Awarded points', {
-      userId, amount, source, sourceId, newBalance, tierUpgraded: tierCheck.upgraded,
+      await tx.insert(pointsTransactions).values({
+        userId,
+        type: 'earned',
+        amount,
+        balance: newBalance,
+        source,
+        sourceId,
+        description: description ?? `Earned ${amount} points`,
+      });
+
+      logger.info('[LoyaltyEarn] Awarded points', {
+        userId, amount, source, sourceId, newBalance, tierUpgraded: tierCheck.upgraded,
+      });
+      return {
+        awarded: true,
+        points: amount,
+        newBalance,
+        tierUpgraded: tierCheck.upgraded,
+        newTier: tierCheck.upgraded ? tierCheck.newTier : undefined,
+      };
     });
-    return {
-      awarded: true,
-      points: amount,
-      newBalance,
-      tierUpgraded: tierCheck.upgraded,
-      newTier: tierCheck.upgraded ? tierCheck.newTier : undefined,
-    };
   } catch (err: any) {
     logger.error('[LoyaltyEarn] Failed to award points', { error: err?.message, userId, source, sourceId });
     return { awarded: false, skipped: 'error' };
