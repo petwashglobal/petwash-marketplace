@@ -41,9 +41,7 @@ const KNOWN_LEGACY_READERS: ReadonlySet<string> = new Set([
   // (PrestigeEnroll.tsx         migrated 2026-09-01 → readReturnTo)
   // (ExecutiveSuiteGuard.tsx    migrated 2026-09-01 → buildReturnToParam)
   // (CompleteProfile.tsx        migrated 2026-09-01 → readReturnTo)
-  // RequireAuth writes ?from — reader lives elsewhere; keeping the pin
-  // exemption pending the Phase 8.b migration to buildReturnToParam.
-  'client/src/auth/RequireAuth.tsx',
+  // (RequireAuth.tsx            migrated 2026-09-01 → buildReturnToParam)
 ]);
 
 /** Walk client/src/ collecting .ts and .tsx files. */
@@ -119,10 +117,10 @@ describe('returnTo canonical-key regression pin', () => {
     // Progressive ceiling. When you migrate a KNOWN_LEGACY_READERS entry
     // to the canonical helper, remove it AND lower this cap by one.
     // Migrations landed 2026-09-01: workspaceFromPath, PrestigeEnroll,
-    // ExecutiveSuiteGuard, CompleteProfile. Placeholder entries that
-    // didn't actually match the pin patterns (WalletDownload, ChooseMode,
-    // LegalPage) removed as well. Down from 10 → 3.
-    const ALLOWED_MAX = 3;
+    // ExecutiveSuiteGuard, CompleteProfile, RequireAuth. Only
+    // returnTo.ts (the canonical transition module) and SignUpLuxury
+    // (3,035-line refactor deferred to Phase 4) remain.
+    const ALLOWED_MAX = 2;
     expect(
       KNOWN_LEGACY_READERS.size,
       `KNOWN_LEGACY_READERS has ${KNOWN_LEGACY_READERS.size} entries; ` +
