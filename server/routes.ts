@@ -240,6 +240,7 @@ import meCapabilitiesRoutes from "./routes/me-capabilities";
 import meActiveRoleRoutes from "./routes/me-active-role";
 import meIdentityLinksRoutes from "./routes/me-identity-links";
 import meStepUpRoutes from "./routes/me-step-up";
+import meSessionsRoutes from "./routes/me-sessions";
 import adminIdentitySoftMergeRoutes from "./routes/admin-identity-soft-merge";
 // Canonical multi-role aggregator — used by whoami to emit `roles: string[]`
 // derived from every true capability, so ONE identity is visible across all
@@ -12983,6 +12984,11 @@ self.addEventListener('notificationclick', (event) => {
   //   token's auth_time to be within 5 min — the ONE proof that the
   //   user JUST re-authenticated.
   app.use('/api/me', apiLimiter, meStepUpRoutes);
+  // Phase 9 Account Security (CEO 2026-09-01):
+  //   GET  /api/me/sessions                    — list active sessions_pw rows
+  //   POST /api/me/sessions/:rowId/revoke      — revoke ONE device
+  //   POST /api/me/sessions/revoke-all         — sign out everywhere (step-up)
+  app.use('/api/me', apiLimiter, meSessionsRoutes);
   // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
   //   GET  /api/identity/links           — list linked providers (live)
   //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c
