@@ -602,7 +602,15 @@ export class NayaxPaymentService {
   }
 
   private static async handleSessionStarted(payload: NayaxWebhookPayload): Promise<boolean> {
-    logger.info('Session started', { payload });
+    // P0-AUDIT-LOG-2 (task #210) — was `{ payload }` which dumped every
+    // Nayax webhook field (customer identifiers, raw transaction id).
+    // Log only the routing-relevant ids so the audit trail stays useful
+    // without exposing PII to log readers.
+    logger.info('Session started', {
+      transactionId: payload.transactionId,
+      terminalId: payload.terminalId,
+      eventId: (payload as any).eventId,
+    });
     return true;
   }
 
@@ -642,7 +650,12 @@ export class NayaxPaymentService {
   }
 
   private static async handleQRScanned(payload: NayaxWebhookPayload): Promise<boolean> {
-    logger.info('QR code scanned', { payload });
+    // P0-AUDIT-LOG-2 (task #210) — see handleSessionStarted above.
+    logger.info('QR code scanned', {
+      transactionId: payload.transactionId,
+      terminalId: payload.terminalId,
+      eventId: (payload as any).eventId,
+    });
     return true;
   }
 }

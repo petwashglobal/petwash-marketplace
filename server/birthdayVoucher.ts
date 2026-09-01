@@ -74,7 +74,17 @@ export async function createBirthdayVoucher(
         expiresAt: expiresAt.toISOString()
       });
     
-    logger.info(`Birthday voucher created: ${voucherCode} for ${email} (${dogName || 'Pet'})`);
+    // P0-AUDIT-LOG-4 (task #212) — was `Birthday voucher created: ${voucherCode} for ${email}`
+    // which interpolated the single-use voucher code AND raw email
+    // into the log message. Log the voucher's id (not its code) and
+    // the redacted email so the audit trail keeps its correlation
+    // handle without exposing a live redeem token.
+    const { redactEmail } = await import('./lib/redaction');
+    logger.info('Birthday voucher created', {
+      voucherId: voucherCode.slice(-6),
+      email: redactEmail(email),
+      hasPet: !!dogName,
+    });
     
     return voucher;
   } catch (error) {

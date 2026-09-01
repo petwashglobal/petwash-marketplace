@@ -101,7 +101,13 @@ router.post('/sms-status', validateTwilioSignature, async (req: Request, res: Re
   } = req.body as Record<string, string>;
 
   if (!MessageSid || !MessageStatus) {
-    logger.warn('[SMSStatus] Callback missing MessageSid or MessageStatus', { body: req.body });
+    // P0-AUDIT-LOG-1 (task #209) — was `{ body: req.body }` which dumped
+    // the raw Twilio callback (unmasked To/From phone numbers). Now
+    // log only the field names so a malformed callback stays debuggable
+    // without leaking recipient phones to the log stream.
+    logger.warn('[SMSStatus] Callback missing MessageSid or MessageStatus', {
+      bodyKeys: req.body && typeof req.body === 'object' ? Object.keys(req.body) : [],
+    });
     return;
   }
 
