@@ -9,6 +9,7 @@ import { socialPosts, socialComments, socialLikes, socialFollows } from "../../s
 import { eq, desc, sql, and } from "drizzle-orm";
 import { contentModerationService } from "../services/ContentModerationService";
 import { logger } from "../lib/logger";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 
 const router = Router();
 
@@ -26,8 +27,7 @@ router.get("/feed", async (req: Request, res: Response) => {
 
     res.json({ success: true, data: posts });
   } catch (error: any) {
-    logger.error('[SocialCircle] Failed to fetch feed', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'SOCIAL_FEED_FETCH_FAILED', { logContext: { op: 'fetch-feed' } });
   }
 });
 
@@ -100,8 +100,7 @@ router.post("/posts", async (req: Request, res: Response) => {
       message: '✅ הפוסט שלך פורסם בהצלחה! / Your post has been published!'
     });
   } catch (error: any) {
-    logger.error('[SocialCircle] Failed to create post', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'SOCIAL_POST_CREATE_FAILED', { logContext: { op: 'create-post' } });
   }
 });
 
@@ -150,8 +149,7 @@ router.post("/posts/:id/like", async (req: Request, res: Response) => {
       res.json({ success: true, liked: true });
     }
   } catch (error: any) {
-    logger.error('[SocialCircle] Failed to like post', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'SOCIAL_POST_LIKE_FAILED', { logContext: { op: 'like-post' } });
   }
 });
 
@@ -173,8 +171,7 @@ router.get("/posts/:id/comments", async (req: Request, res: Response) => {
 
     res.json({ success: true, data: comments });
   } catch (error: any) {
-    logger.error('[SocialCircle] Failed to fetch comments', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'SOCIAL_COMMENTS_FETCH_FAILED', { logContext: { op: 'fetch-comments' } });
   }
 });
 
@@ -245,8 +242,7 @@ router.post("/posts/:id/comments", async (req: Request, res: Response) => {
       message: '✅ התגובה פורסמה! / Comment published!'
     });
   } catch (error: any) {
-    logger.error('[SocialCircle] Failed to add comment', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'SOCIAL_COMMENT_ADD_FAILED', { logContext: { op: 'add-comment' } });
   }
 });
 

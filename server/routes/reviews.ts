@@ -21,6 +21,7 @@ import {
 } from '@shared/schema';
 import { bookings, providers } from '@shared/super-app-schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -487,8 +488,7 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    logger.error('[Reviews] Submit review error', error);
-    res.status(500).json({ error: error.message || 'Failed to submit review' });
+    sendSanitizedError(res, error, 'REVIEWS_SUBMIT_FAILED', { logContext: { op: 'submit' } });
   }
 });
 
@@ -538,8 +538,7 @@ router.get('/trust-score/:contractorId', async (req: Request, res: Response) => 
       lastCalculatedAt: trustScore.lastCalculatedAt,
     });
   } catch (error: any) {
-    logger.error('[Trust Score] Get score error', error);
-    res.status(500).json({ error: error.message || 'Failed to get trust score' });
+    sendSanitizedError(res, error, 'TRUST_SCORE_FETCH_FAILED', { logContext: { op: 'trust-score' } });
   }
 });
 
@@ -594,8 +593,7 @@ router.get('/:platform/:providerId', async (req: Request, res: Response) => {
       })),
     });
   } catch (error: any) {
-    logger.error('[Reviews] Get reviews by platform/provider error', error);
-    return res.status(500).json({ error: error.message || 'Failed to get reviews' });
+    return sendSanitizedError(res, error, 'REVIEWS_LIST_BY_PROVIDER_FAILED', { logContext: { op: 'list-by-provider' } });
   }
 });
 
@@ -648,8 +646,7 @@ router.get('/:subjectId', async (req: Request, res: Response) => {
       }))
     });
   } catch (error: any) {
-    logger.error('[Reviews] Get reviews error', error);
-    res.status(500).json({ error: error.message || 'Failed to get reviews' });
+    sendSanitizedError(res, error, 'REVIEWS_LIST_FAILED', { logContext: { op: 'list' } });
   }
 });
 
@@ -706,8 +703,7 @@ router.post('/:reviewId/respond', requireAuth, async (req: Request, res: Respons
 
     res.json({ success: true, message: 'Response added successfully' });
   } catch (error: any) {
-    logger.error('[Reviews] Respond to review error', error);
-    res.status(500).json({ error: error.message || 'Failed to respond to review' });
+    sendSanitizedError(res, error, 'REVIEWS_RESPOND_FAILED', { logContext: { op: 'respond' } });
   }
 });
 

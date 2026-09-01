@@ -22,6 +22,7 @@ import {
 } from '../services/IsraeliContractorCompliance';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -119,8 +120,7 @@ router.post('/withholding-tax/calculate', async (req: Request, res: Response) =>
       }
     });
   } catch (error: any) {
-    logger.error('[Israeli Compliance API] Withholding tax calculation failed', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ISRAELI_COMPLIANCE_WITHHOLDING_FAILED', { logContext: { op: 'withholding' } });
   }
 });
 
@@ -183,8 +183,7 @@ router.post('/national-insurance/calculate', async (req: Request, res: Response)
       piiWarning: '⚠️ Tax data is sensitive PII. Production requires encryption at rest and redaction in responses.'
     });
   } catch (error: any) {
-    logger.error('[Israeli Compliance API] National Insurance calculation failed', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ISRAELI_COMPLIANCE_NATIONAL_INSURANCE_FAILED', { logContext: { op: 'national-insurance' } });
   }
 });
 
@@ -236,8 +235,7 @@ router.get('/vat-threshold/:providerId', async (req: Request, res: Response) => 
       }
     });
   } catch (error: any) {
-    logger.error('[Israeli Compliance API] VAT threshold check failed', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ISRAELI_COMPLIANCE_VAT_THRESHOLD_FAILED', { logContext: { op: 'vat-threshold' } });
   }
 });
 
@@ -288,8 +286,7 @@ router.post('/payout-obligations', async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    logger.error('[Israeli Compliance API] Payout obligations calculation failed', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ISRAELI_COMPLIANCE_PAYOUT_OBLIGATIONS_FAILED', { logContext: { op: 'payout-obligations' } });
   }
 });
 
@@ -329,8 +326,7 @@ router.get('/summary/:providerId', async (req: Request, res: Response) => {
       }
     });
   } catch (error: any) {
-    logger.error('[Israeli Compliance API] Compliance summary failed', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ISRAELI_COMPLIANCE_SUMMARY_FAILED', { logContext: { op: 'summary' } });
   }
 });
 
