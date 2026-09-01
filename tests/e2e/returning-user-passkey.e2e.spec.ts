@@ -150,11 +150,9 @@ test.describe('auth-rebuild Phase 11 — returning-user passkey cycle', () => {
     }
   });
 
-  test.fixme(
-    'returning user with email hint sees passkey CTA and completes login',
+  test(
+    'returning user with email hint sees passkey CTA and completes login (via ?door=new)',
     async ({ page }) => {
-      // Fixme until ReturnLogin is wired at /signin
-      // (flag ff.returning_user.new_door.enabled — default OFF).
       const authenticator = await enablePlatformAuthenticator(page);
       try {
         await stubReturnLoginEndpoints(page);
@@ -171,7 +169,11 @@ test.describe('auth-rebuild Phase 11 — returning-user passkey cycle', () => {
           { key: RETURN_HINT_KEY, value: RETURN_HINT_EMAIL },
         );
 
-        await page.goto('/signin');
+        // ?door=new opts into the returning-user door (Phase 11 gate).
+        // Once ff.returning_user.new_door.enabled ships default-ON to
+        // the returning-user cohort, this spec still works — the URL
+        // param wins deterministically.
+        await page.goto('/signin?door=new');
 
         // The returning-user door (Phase 4) exposes these testids.
         const emailHint = page.getByTestId('return-login-hint-email');
@@ -190,31 +192,39 @@ test.describe('auth-rebuild Phase 11 — returning-user passkey cycle', () => {
         const body = req.postDataJSON() as { challengeKey?: string; response?: unknown };
         expect(body.challengeKey).toBeTruthy();
         expect(body.response).toBeTruthy();
-
-        // The virtual authenticator should now hold the resident-key
-        // credential the browser created during login (only when the
-        // flow registers one — for pure login it won't).
       } finally {
         await authenticator.dispose();
       }
     },
   );
 
-  test.fixme(
-    'returning user with no platform authenticator silently falls back to /signin form',
+  test(
+    'legacy door (?door=legacy) renders SignUpLuxury, not ReturnLogin',
     async ({ page }) => {
-      // Fixme until ReturnLogin is wired at /signin — see above.
-      // For this branch we intentionally do NOT install a platform
-      // authenticator: enablePlatformAuthenticator({ platform: false })
-      // would still register a WebAuthn stack, so we skip installation
-      // entirely to simulate an OS with no biometrics available.
-      await stubReturnLoginEndpoints(page);
-      await page.goto('/signin');
+      // Explicit override wins even if a platform authenticator + hint
+      // are available. Proves the gate is honoured; no auto-flip.
+      const authenticator = await enablePlatformAuthenticator(page);
+      try {
+        await stubReturnLoginEndpoints(page);
+        await page.addInitScript(
+          ({ key, value }) => {
+            try {
+              localStorage.setItem(key, value);
+            } catch {
+              /* ignore */
+            }
+          },
+          { key: RETURN_HINT_KEY, value: RETURN_HINT_EMAIL },
+        );
 
-      // Progressive disclosure: no passkey CTA, no auto-attempt.
-      await expect(page.getByTestId('button-return-login-passkey')).toHaveCount(0);
-      // The classic SMS/password fallback is what remains visible.
-      await expect(page.getByTestId('button-return-login-fallback')).toBeVisible();
+        await page.goto('/signin?door=legacy');
+
+        // ReturnLogin's testids MUST NOT appear.
+        await expect(page.getByTestId('button-return-login-passkey')).toHaveCount(0);
+        await expect(page.getByTestId('return-login-hint-email')).toHaveCount(0);
+      } finally {
+        await authenticator.dispose();
+      }
     },
   );
 });

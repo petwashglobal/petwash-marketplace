@@ -13,6 +13,7 @@ import { NotificationPermissionPrompt } from "@/components/NotificationPermissio
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
 import { useWhoami } from "@/auth/useWhoami";
 import RequireAuth from "@/auth/RequireAuth";
+import { useReturnLoginGate } from "@/auth/useReturnLoginGate";
 import StationMembershipGuard from "@/components/StationMembershipGuard";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
 import AppTermsGate from "@/components/AppTermsGate";
@@ -89,6 +90,11 @@ const Unsubscribe = lazy(() => import("@/pages/Unsubscribe"));
 // SignIn (the old white "WELCOME BACK" modal) KILLED 2026-06-28 — every login
 // route now renders the premium SignUpLuxury screen. Do NOT reintroduce it.
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
+// Auth-rebuild Phase 11 (CEO D7 · /signin door flip). ReturnLogin is
+// the returning-user door — surfaced by useReturnLoginGate only when
+// an explicit override or a rolled-out cohort qualifies. When the gate
+// picks 'legacy', SignUpLuxury renders exactly like it did pre-11.
+const ReturnLogin = lazy(() => import("@/auth/ReturnLogin"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
@@ -719,6 +725,31 @@ function MobileNavBodyPaddingToggle({ enabled }: { enabled: boolean }) {
   return null;
 }
 
+/**
+ * SigninDoor — auth-rebuild Phase 11 (/signin door flip).
+ *
+ * Renders the returning-user door (ReturnLogin) or the legacy sign-in
+ * surface (SignUpLuxury) based on useReturnLoginGate(). No render-time
+ * navigation — this component picks a child and lets it render. If the
+ * new door can't actually complete a passkey login (no platform
+ * authenticator, no stored hint), ReturnLogin's own silent fallback
+ * pushes the user to /signin — where this component re-runs and, if
+ * the URL override that opened the door is now gone, picks legacy.
+ */
+function SigninDoor({
+  language,
+  onLanguageChange,
+}: {
+  language: Language;
+  onLanguageChange: (lang: Language) => void;
+}) {
+  const door = useReturnLoginGate();
+  if (door === 'new') {
+    return <ReturnLogin />;
+  }
+  return <SignUpLuxury language={language} onLanguageChange={onLanguageChange} />;
+}
+
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
   const { role, isLoading: roleLoading } = useWhoami();
@@ -930,13 +961,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => renderRootForApp()}
         </Route>
         <Route path="/signin">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/sign-in">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/login">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/booking-chat/inbox">
           {() => (
@@ -960,7 +991,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signin-advanced">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signup">
           {() => <Layout language={language} onLanguageChange={handleLanguageChange}><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></Layout>}

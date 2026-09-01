@@ -122,6 +122,36 @@ export interface SystemConfigMap {
    * failure (all callers wrap it in try/catch).
    */
   'ff.returning_user.sessions_owned.enabled': boolean;
+  /**
+   * Auth-rebuild Phase 11 (CEO D7 — /signin door flip).
+   *
+   * When ON, /signin renders the returning-user door (ReturnLogin,
+   * client/src/auth/ReturnLogin.tsx) when the browser reports a
+   * platform authenticator AND a `petwash_passkey_email` hint is
+   * present in localStorage. When any of those conditions fail, the
+   * door silently falls back to the legacy SignUpLuxury signin
+   * surface — no visible flicker, no dead-end.
+   *
+   * When OFF, /signin renders the legacy SignUpLuxury signin surface
+   * regardless. That is the default until CEO flips this flag as part
+   * of the cohort rollout (internal → staff → percentage → default).
+   *
+   * The client independently honours two per-viewer overrides that
+   * DO NOT need this flag set:
+   *   - URL param `?door=new`   — one-off preview / test cohort
+   *   - localStorage `pw_ff_new_door=1` — internal-user opt-in
+   * These are staff-facing preview knobs. Turning the server flag ON
+   * enables the door for all traffic that qualifies.
+   */
+  'ff.returning_user.new_door.enabled': boolean;
+  /**
+   * Percentage cohort (0..100) of returning-user traffic that gets the
+   * new door when `ff.returning_user.new_door.enabled` is ON. Used to
+   * stage: 0 → 1 → 10 → 50 → 100. Deterministic per-visitor via a
+   * stable hash of the passkey-email hint so a user does not flip
+   * between doors between visits. Ignored when the master flag is OFF.
+   */
+  'ff.returning_user.new_door.percent': number;
 }
 
 const DEFAULTS: SystemConfigMap = {
@@ -185,6 +215,12 @@ const DEFAULTS: SystemConfigMap = {
   // Auth-rebuild Phase 3.b — Pet Wash-owned session observation. OFF.
   // See interface docstring above.
   'ff.returning_user.sessions_owned.enabled': false,
+  // Auth-rebuild Phase 11 — /signin door flip. Default OFF.
+  // Client-side ?door=new and localStorage pw_ff_new_door=1 still work
+  // as per-viewer previews even while the flag is OFF; see interface
+  // docstring above for the full rollout ladder.
+  'ff.returning_user.new_door.enabled': false,
+  'ff.returning_user.new_door.percent': 0,
 };
 
 export type ConfigKey = keyof SystemConfigMap;
