@@ -42,6 +42,7 @@ import { validateGift, giftNoteLine, buildGiftEmail, type GiftRequest } from '..
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { aiChatLimiter } from '../middleware/rateLimiter';
+import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from '../middleware/aiUserBudget';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { eventPublisher } from '../services/EventPublisher';
@@ -1507,7 +1508,15 @@ const aiRewardsMessageBody = z.object({
   nextTierPoints: z.number().int().min(0).max(10_000_000).default(0),
 });
 
-router.post('/ai-rewards-message', aiChatLimiter, async (req: Request, res: Response) => {
+router.post(
+  '/ai-rewards-message',
+  aiChatLimiter,
+  aiUserBudget({
+    endpointTag: 'loyalty_ai_rewards',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }),
+  async (req: Request, res: Response) => {
   try {
     const uid = (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });

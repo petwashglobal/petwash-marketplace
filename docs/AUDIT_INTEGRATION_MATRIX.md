@@ -27,7 +27,7 @@ Status vocabulary (per CEO):
 | 189 | — | OTP MFA: fold vs distinct TWO_FACTOR_ENABLE/DISABLE | ditto | doctrine | — | CROSS-BRANCH — same |
 | 190 | — | OTP payout: single vs split PAYOUT_ACTION | ditto | doctrine | — | CROSS-BRANCH — same |
 | 191 | — | Add GIFT_REDEEM to OTP purposes | ditto | doctrine | — | CROSS-BRANCH — same |
-| 203 | HIGH | AI-8: rate limiters IP-only, no per-user budget | `server/middleware/rateLimiter.ts` | — | — | DEFERRED — cross-cutting; needs Redis+per-user budget middleware lane |
+| 203 | HIGH | AI-8: rate limiters IP-only, no per-user budget | `server/middleware/aiUserBudget.ts` + limiter file | `returning-user-auth-architecture` | (Lane A slice 1) | SLICE LANDED — per-UID AI budget middleware + Redis-backed daily bucket, wired to daycare-calculator + loyalty/ai-rewards-message; auth 200/day, anon 30/day, fails CLOSED in prod. ARCH FIX = migrate the remaining ~28 AI endpoints + add global concurrency + wire token-weighted charge from Gemini responses |
 | 204 | MED | AI-9: /daycare-calculator public Gemini | `server/routes/daycare-calculator.ts` | `returning-user-auth-architecture` | `f7d15a609` | LANDED |
 | 205 | MED | AI-10: loyalty ai-rewards-message unfiltered prompt | `server/routes/loyalty.ts` | `returning-user-auth-architecture` | `f7d15a609` | LANDED |
 | 206 | MED | AI-11: /subscriptions/:id/ai-recommendations full DB in prompt | subscriptions route | — | — | PENDING — subscriptions route not on this branch |
@@ -43,14 +43,14 @@ Status vocabulary (per CEO):
 | 224 | MED | SMS-11: booking confirmation uses body phone | booking-confirmation SMS site | — | — | PENDING — locate + fix |
 | 225 | LOW | SMS-14: E.164 phone stored unhashed | multiple tables | — | — | DEFERRED — schema-migration lane |
 | 228 | HIGH | MONEY-3: financial-document ref ids use Math.random() | `server/services/FinancialDocumentService.ts` | `returning-user-auth-architecture` | `68a6d0287` | LANDED |
-| 229 | HIGH | MONEY-4: SUMIT webhook lacks persistent inbox dedup | `server/routes/sumit-webhook.ts` | — | — | PENDING — dedup requires outbox/inbox table |
-| 230 | MED | MONEY-5+6: Nayax refund + monyx side-effect gaps | nayax handlers | — | — | PENDING |
-| 231 | MED-LOW | MONEY-7+9+10: Math.random for treasury / referral / prestige-pass ids | multiple | — | — | PENDING — apply same crypto.randomBytes fix pattern |
-| 232 | MED | MONEY-8: maya voice webhook HMAC re-serialise | `server/routes/maya-voice-webhook.ts` | `returning-user-auth-architecture` | `68a6d0287` | LANDED |
-| 233 | LOW | MONEY-11: super-app-bookings cancel refunds 0 | super-app-bookings route | — | — | PENDING |
+| 229 | HIGH | MONEY-4: SUMIT webhook lacks persistent inbox dedup | `server/routes/sumit-webhook.ts` | — | — | PENDING — requires `sumit_processed_event_ids` table (or nayax-inbox extension); pattern mirrors `server/lib/nayaxWebhookDedup.ts` |
+| 230 | MED | MONEY-5+6: Nayax refund + monyx side-effect gaps | nayax handlers | — | — | PENDING — refund fanout needs `EscrowService.reverseOnRefund` + booking status downgrade + notification emit, gated inside inbox `markCompleted` |
+| 231 | MED-LOW | MONEY-7+9+10: Math.random for treasury / referral / prestige-pass ids | treasury/prestige-pass/ReferralStore/appleCX/conversion/waitlist | `returning-user-auth-architecture` | `d54b7fad3` | LANDED — treasury batchRef, prestige-pass passId, ReferralStore.randomCode all use crypto |
+| 232 | MED | MONEY-8: maya voice webhook HMAC re-serialise | `server/routes/maya-voice-webhook.ts` | `returning-user-auth-architecture` | `68a6d0287`+`d54b7fad3` | LANDED — code fix + behavioural HMAC test (raw vs mutated vs re-serialised) |
+| 233 | LOW | MONEY-11: super-app-bookings cancel refunds 0 | super-app-bookings route | `returning-user-auth-architecture` | `d54b7fad3` | LANDED — reads totalCents with legacy fallback |
 | 237 | MED | AUTH-4: escrow release header-secret gate | `server/routes/escrow.ts` | `returning-user-auth-architecture` | `f7d15a609` | LANDED (pin confirms requireAuth+ownership+no-shared-secret invariants) |
 | 238 | MED | AUTH-5: /marketplace-bookings/quote anonymous DB write | `server/routes/marketplace-bookings.ts` | `returning-user-auth-architecture` | `f7d15a609` | LANDED |
-| 239 | MED-LOW | AUTH-6/9/10: body-userId impersonation | user/delete, walk-payment webhook, reviews | — | — | PENDING |
+| 239 | MED-LOW | AUTH-6/9/10: body-userId impersonation | user/delete, walk-payment webhook, reviews, station-operators, credit-wallet, coupons | `returning-user-auth-architecture` | `d54b7fad3` | PARTIAL LANDED — walk-payment-flow dev webhook rejects missing owner (400 INVALID_OWNER, was `\|\| 'payment-webhook'`). Remaining admin-scoped body-userId reads (credit-wallet, coupons, station-operators) already have admin gates upstream; adding `assertUserExists` is a next slice, tracked in matrix |
 | 240 | MED | AUTH-7: prestige-pass `session.user.isAdmin` (160 sites) | `server/routes/prestige-pass.ts` | `returning-user-auth-architecture` | `bc07e08a9` | MITIGATION LANDED — progressive ceiling at 160 + pattern-spread ban; ARCH FIX = fix shared authorisation layer (isSuperAdminVerified), then migrate consumers, then reduce ceiling to zero |
 | 241 | MED | AUTH-8: /walkers/search anonymous geo-scrape | `server/routes/walk-my-pet.ts` | `returning-user-auth-architecture` | `68a6d0287` | LANDED (apiLimiter + radius cap + lat/lon rounding) |
 

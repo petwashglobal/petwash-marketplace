@@ -13,6 +13,7 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 import { aiChatLimiter } from '../middleware/rateLimiter';
+import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from '../middleware/aiUserBudget';
 
 const router: Router = express.Router();
 
@@ -56,7 +57,15 @@ const calcSchema = z.object({
 //     public browse experience free of unnecessary AI cost.
 //   * When Gemini is invoked, output tokens are capped (maxOutputTokens)
 //     so a single crafted prompt can't run away.
-router.post('/calculate', aiChatLimiter, async (req, res) => {
+router.post(
+  '/calculate',
+  aiChatLimiter,
+  aiUserBudget({
+    endpointTag: 'daycare_calc',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }),
+  async (req, res) => {
   const parsed = calcSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: 'Validation failed', details: parsed.error.errors });
