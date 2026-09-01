@@ -34,7 +34,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { getApiUrl } from '@/lib/api-config';
+import { getApiUrl } from '@/lib/apiConfig';
 import { auth } from '@/lib/firebase';
 import {
   requestStepUpProofWithPassword,

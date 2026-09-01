@@ -46,7 +46,7 @@
  */
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getApiUrl } from '@/lib/api-config';
+import { getApiUrl } from '@/lib/apiConfig';
 import { signInWithPasskey } from '@/auth/passkey';
 
 export type StepUpPurpose =
