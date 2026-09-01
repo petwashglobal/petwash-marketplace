@@ -451,7 +451,31 @@ router.post('/authenticate/verify', verifyAppCheckToken, async (req: Request, re
     // Create Firebase custom token for mobile app
     const admin = await import('firebase-admin');
     const token = await admin.default.auth().createCustomToken(uid);
-    
+
+    // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+    // Records the passkey provider link on identity_accounts and emits
+    // IDENTITY_SHADOW_WOULD_MERGE if this uid's email collides with
+    // another users row. Observation only.
+    try {
+      const { getFeatureFlag } = await import('../services/SystemConfig');
+      const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+      if (identityUnifiedOn) {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        await loginOrLink({
+          provider: 'passkey',
+          providerAccountId: uid,
+          email: userData.email || null,
+          emailVerified: userData.emailVerified === true,
+          displayName: userData.displayName || null,
+        });
+      }
+    } catch (identityErr) {
+      logger.warn('[Mobile Biometric] loginOrLink probe failed (non-blocking)', {
+        uid,
+        error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+      });
+    }
+
     // Audit log (use normalized credId)
     await db.collection('auditLogs').add({
       eventType: 'mobile_biometric_authentication_success',

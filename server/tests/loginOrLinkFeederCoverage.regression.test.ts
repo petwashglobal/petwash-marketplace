@@ -51,13 +51,14 @@ const FEEDER_FILES: readonly string[] = [
 // before Phase 6 (account-linking) opens.
 //
 // Progress log:
-//   - server/routes.ts                       WIRED 2026-09-01 (/api/auth/session)
+//   - server/routes.ts                       WIRED 2026-09-01 (/api/auth/session
+//                                            + /api/webauthn/login/verify)
 //   - server/routes/mobile-auth.ts           WIRED 2026-09-01 (/api/mobile-auth/google)
 //   - server/routes/identity-service.ts      WIRED 2026-09-01 (/auth/login/standard)
+//   - server/routes/mobile-biometric.ts      WIRED 2026-09-01 (/authenticate/verify)
+//   - server/routes/pin-auth.ts              WIRED 2026-09-01 (/trusted-device-verify)
 const KNOWN_LEGACY: ReadonlySet<string> = new Set([
   'server/routes/publicAuthRoutes.ts',
-  'server/routes/mobile-biometric.ts',
-  'server/routes/pin-auth.ts',
   'server/customAuth.ts',
 ]);
 
@@ -104,11 +105,13 @@ describe('Phase 1 regression pin — loginOrLink feeder coverage', () => {
     // GROWING — a symptom of a new un-wired feeder sneaking in and being
     // added to the exemption list instead of being wired.
     // Progressive ceiling: starts at 7 (Phase 1 landing), drops by one every
-    // time a feeder gets wired. Current cap: 4 (routes.ts + mobile-auth.ts +
-    // identity-service.ts wired 2026-09-01). Every future PR that wires
-    // another feeder MUST also lower this cap by the number of feeders it
-    // wired.
-    const ALLOWED_LEGACY_MAX = 4;
+    // time a feeder gets wired. Current cap: 2 (routes.ts + mobile-auth.ts +
+    // identity-service.ts + mobile-biometric.ts + pin-auth.ts wired
+    // 2026-09-01). Remaining KNOWN_LEGACY: publicAuthRoutes.ts (needs the
+    // 409 EMAIL_HAS_ACCOUNT collision-guard care) and customAuth.ts
+    // (silent bridge — per D6 legacy-preserve, may stay indefinitely).
+    // Every future PR that wires another feeder MUST also lower this cap.
+    const ALLOWED_LEGACY_MAX = 2;
     expect(
       KNOWN_LEGACY.size,
       `KNOWN_LEGACY has ${KNOWN_LEGACY.size} entries; current cap is ${ALLOWED_LEGACY_MAX}. ` +

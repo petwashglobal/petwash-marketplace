@@ -3721,6 +3721,31 @@ self.addEventListener('notificationclick', (event) => {
       //   The chain is in client/src/pages/admin/AdminLoginV2.tsx.
       const customToken = await firebaseAdmin.auth().createCustomToken(uid);
 
+      // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+      // Records the passkey provider link on identity_accounts and emits
+      // IDENTITY_SHADOW_WOULD_MERGE on collisions. Observation only —
+      // never merges. Passkey verify requires prior enrollment, so this
+      // is always a return-login for a known uid.
+      try {
+        const { getFeatureFlag } = await import('./services/SystemConfig');
+        const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+        if (identityUnifiedOn) {
+          const { loginOrLink } = await import('./identity/loginOrLink');
+          await loginOrLink({
+            provider: 'passkey',
+            providerAccountId: uid,
+            email: email || null,
+            emailVerified: !!email, // WebAuthn requires prior verified enrollment
+            displayName: null,
+          });
+        }
+      } catch (identityErr) {
+        logger.warn('[WebAuthn Login] loginOrLink probe failed (non-blocking)', {
+          uid,
+          error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+        });
+      }
+
       // Get city for location-based alerts
       const city = await getCityFromIP(ip);
 
