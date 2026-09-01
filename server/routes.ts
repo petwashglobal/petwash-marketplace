@@ -239,6 +239,7 @@ import meStatusRoutes from "./routes/me-status";
 import meCapabilitiesRoutes from "./routes/me-capabilities";
 import meActiveRoleRoutes from "./routes/me-active-role";
 import meIdentityLinksRoutes from "./routes/me-identity-links";
+import meStepUpRoutes from "./routes/me-step-up";
 import adminIdentitySoftMergeRoutes from "./routes/admin-identity-soft-merge";
 // Canonical multi-role aggregator — used by whoami to emit `roles: string[]`
 // derived from every true capability, so ONE identity is visible across all
@@ -12975,6 +12976,13 @@ self.addEventListener('notificationclick', (event) => {
   //                              NEVER grants authority. Emits
   //                              ROLE_SWITCHED audit event.
   app.use('/api/me', apiLimiter, meActiveRoleRoutes);
+  // Phase 7 step-up proof issuance (CEO 2026-09-01):
+  //   POST /api/me/step-up/issue — takes { purpose, freshIdToken }
+  //   and returns { proof, purpose, expiresAt }. Client puts proof in
+  //   X-StepUp-Proof on the sensitive request. Requires the fresh
+  //   token's auth_time to be within 5 min — the ONE proof that the
+  //   user JUST re-authenticated.
+  app.use('/api/me', apiLimiter, meStepUpRoutes);
   // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
   //   GET  /api/identity/links           — list linked providers (live)
   //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c
