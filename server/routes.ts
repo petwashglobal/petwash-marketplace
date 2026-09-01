@@ -616,8 +616,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Maya WhatsApp lead-bot — public, HMAC-verified, flag ff.maya.whatsapp.enabled.
   app.use('/api/maya/whatsapp', mayaWhatsappRouter);
   // AI-B1 conversational booking intake — parse-only, never creates bookings.
-  // Public (uses apiLimiter inherited at app level). Feature-flag gated.
-  app.use('/api/ai/booking', aiBookingRouter);
+  // P0-AUDIT-AI-5 + AI-7 (tasks #200, #202): every /api/ai/booking/* route
+  // now inherits aiChatLimiter (20/min IP) + aiChatHourlyLimiter (60/hr IP)
+  // so a bot cannot fan out matching, slot-suggestions, care-tags without
+  // hitting the same budget the public /api/ai/chat is capped by.
+  // Feature-flag remains the primary gate.
+  app.use('/api/ai/booking', aiChatLimiter, aiChatHourlyLimiter, aiBookingRouter);
   app.use('/api/provider/', requireProviderActive);
 
   // ========================================================================
