@@ -8,6 +8,7 @@ import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import { isSuperAdmin } from '../middleware/rbac';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -52,8 +53,7 @@ router.post('/walk/start', requireAuth, async (req, res) => {
       message: 'Walk session started',
     });
   } catch (error: any) {
-    logger.error('[GPS API] Start walk failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_START_WALK_FAILED', { logContext: { op: 'start-walk' } });
   }
 });
 
@@ -87,8 +87,7 @@ router.post('/walk/update-location', requireAuth, async (req, res) => {
       message: 'Location updated',
     });
   } catch (error: any) {
-    logger.error('[GPS API] Update location failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_UPDATE_LOCATION_FAILED', { logContext: { op: 'update-location' } });
   }
 });
 
@@ -124,8 +123,7 @@ router.post('/walk/end', requireAuth, async (req, res) => {
       routePath: result.routePath,
     });
   } catch (error: any) {
-    logger.error('[GPS API] End walk failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_END_WALK_FAILED', { logContext: { op: 'end-walk' } });
   }
 });
 
@@ -181,8 +179,7 @@ router.get('/walk/:sessionId/location', requireAuth, async (req, res) => {
       ...location,
     });
   } catch (error: any) {
-    logger.error('[GPS API] Get location failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_GET_LOCATION_FAILED', { logContext: { op: 'get-location' } });
   }
 });
 
@@ -202,8 +199,7 @@ router.get('/walker/history', requireAuth, async (req, res) => {
       walks: history,
     });
   } catch (error: any) {
-    logger.error('[GPS API] Get history failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_GET_HISTORY_FAILED', { logContext: { op: 'get-history' } });
   }
 });
 
@@ -222,8 +218,7 @@ router.get('/owner/active-walks', requireAuth, async (req, res) => {
       activeWalks,
     });
   } catch (error: any) {
-    logger.error('[GPS API] Get active walks failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_GET_ACTIVE_WALKS_FAILED', { logContext: { op: 'get-active-walks' } });
   }
 });
 
@@ -261,8 +256,7 @@ router.post('/user-location', requireAuth, async (req, res) => {
 
     res.json({ success: true, stamp });
   } catch (error: any) {
-    logger.error('[GPS] User location stamp failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_USER_STAMP_FAILED', { logContext: { op: 'user-stamp' } });
   }
 });
 
@@ -282,8 +276,7 @@ router.get('/live-locations', requireAuth, async (req, res) => {
     const locations = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
     res.json({ success: true, locations, total: locations.length });
   } catch (error: any) {
-    logger.error('[GPS] Live locations fetch failed', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'GPS_LIVE_LOCATIONS_FAILED', { logContext: { op: 'live-locations' } });
   }
 });
 

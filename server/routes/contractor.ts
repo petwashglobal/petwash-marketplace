@@ -11,6 +11,7 @@ import { eq, and, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { auth } from '../lib/firebase-admin';
 import { calculateTrustScores, updateContractorTrustScores } from '../services/trustScoring';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -103,8 +104,7 @@ router.get('/:contractorId/trust-score', requireAuth, async (req: any, res) => {
       isAdmin,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching trust score', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'CONTRACTOR_TRUST_SCORE_FETCH_FAILED', { logContext: { op: 'fetch-trust-score' } });
   }
 });
 
@@ -128,8 +128,7 @@ router.post('/:contractorId/update-trust-score', requireAdmin, async (req: any, 
       updatedBy: req.user.uid,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error updating trust score', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'CONTRACTOR_TRUST_SCORE_UPDATE_FAILED', { logContext: { op: 'update-trust-score' } });
   }
 });
 
@@ -223,8 +222,7 @@ router.get('/:contractorId/earnings', requireAuth, async (req: any, res) => {
       earningsCount: earnings.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching earnings', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'CONTRACTOR_EARNINGS_FAILED', { logContext: { op: 'fetch-earnings' } });
   }
 });
 
@@ -296,8 +294,7 @@ router.get('/:contractorId/tax-summary', requireAuth, async (req: any, res) => {
       earningsCount: earnings.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching tax summary', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'CONTRACTOR_TAX_SUMMARY_FAILED', { logContext: { op: 'fetch-tax-summary' } });
   }
 });
 
@@ -351,8 +348,7 @@ router.get('/:contractorId/violations', requireAuth, async (req: any, res) => {
       count: violations.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching violations', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'CONTRACTOR_VIOLATIONS_FAILED', { logContext: { op: 'fetch-violations' } });
   }
 });
 
@@ -398,8 +394,7 @@ router.get('/:contractorId/badges', async (req: any, res) => {
       count: validBadges.length,
     });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching badges', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'CONTRACTOR_BADGES_FAILED', { logContext: { op: 'fetch-badges' } });
   }
 });
 
@@ -505,8 +500,7 @@ router.get('/:contractorId/dashboard', requireAuth, async (req: any, res) => {
 
     logger.info('[Contractor] Dashboard data fetched', { contractorId });
   } catch (error: any) {
-    logger.error('[Contractor] Error fetching dashboard', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'CONTRACTOR_DASHBOARD_FAILED', { logContext: { op: 'fetch-dashboard' } });
   }
 });
 

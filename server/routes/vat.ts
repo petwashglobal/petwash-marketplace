@@ -3,6 +3,7 @@ import VATCalculatorService from "../services/VATCalculatorService";
 import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 
 const router = express.Router();
 
@@ -50,8 +51,7 @@ router.post("/calculate", requireAuth, async (req, res) => {
 
     res.json({ calculation });
   } catch (error: any) {
-    logger.error("[VAT] Error calculating", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'VAT_CALCULATE_FAILED', { logContext: { op: 'calculate' } });
   }
 });
 
@@ -67,8 +67,7 @@ router.post("/record-transaction", requireAuth, async (req, res) => {
     );
     res.json({ entry });
   } catch (error: any) {
-    logger.error("[VAT] Error recording transaction", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'VAT_RECORD_TRANSACTION_FAILED', { logContext: { op: 'record-transaction' } });
   }
 });
 
@@ -81,8 +80,7 @@ router.get("/platform-pl/:platform", requireAdmin, async (req, res) => {
     const pl = await VATCalculatorService.getPlatformPL(platform as any, start, end);
     res.json({ pl });
   } catch (error: any) {
-    logger.error("[VAT] Error fetching platform P&L", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'VAT_PLATFORM_PNL_FAILED', { logContext: { op: 'platform-pnl' } });
   }
 });
 
@@ -94,8 +92,7 @@ router.get("/consolidated-pl", requireAdmin, async (req, res) => {
     const consolidated = await VATCalculatorService.getConsolidatedPL(start, end);
     res.json({ consolidated });
   } catch (error: any) {
-    logger.error("[VAT] Error fetching consolidated P&L", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'VAT_CONSOLIDATED_PNL_FAILED', { logContext: { op: 'consolidated-pnl' } });
   }
 });
 
@@ -106,8 +103,7 @@ router.get("/report/:month/:year", requireAdmin, async (req, res) => {
     const report = await VATCalculatorService.generateVATReport(month, year);
     res.json({ report });
   } catch (error: any) {
-    logger.error("[VAT] Error generating report", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'VAT_REPORT_GENERATE_FAILED', { logContext: { op: 'generate-report' } });
   }
 });
 
