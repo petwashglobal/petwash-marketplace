@@ -69,25 +69,38 @@ function uidPrefix(uid: string | null | undefined): string | null {
 }
 
 /**
+ * Result flag for the inline compare — validateFirebaseToken uses
+ * this to know whether authority mode wants to fail-CLOSED on the
+ * current request. Undefined = observation only / not applicable.
+ */
+export interface ShadowCompareResult {
+  /**
+   * True when the caller should REFUSE the request (Phase 3.c.3
+   * authority mode + disagreement). Observation mode never sets this.
+   */
+  authorityDeny?: boolean;
+}
+
+/**
  * Inline flavour used by `validateFirebaseToken` — runs after
- * req.firebaseUser is populated, does the same shadow compare, but
- * as a plain async call rather than express middleware.
+ * req.firebaseUser is populated, does the shadow compare, and (when
+ * authority mode is ON) signals whether the caller should fail-CLOSED.
  * Never throws.
  */
-export async function runSessionShadowCompareInline(req: Request): Promise<void> {
+export async function runSessionShadowCompareInline(req: Request): Promise<ShadowCompareResult> {
   try {
     const shadowOn = await getFeatureFlag('ff.returning_user.sessions_owned.shadow_verify');
-    if (!shadowOn) return;
+    if (!shadowOn) return {};
 
     const raw = (req as any).cookies?.[COOKIE_NAME];
-    if (!raw || typeof raw !== 'string' || raw.length < 32) return;
+    if (!raw || typeof raw !== 'string' || raw.length < 32) return {};
 
     const pw = await verifySession(raw, req.ip ?? null, (req.headers['user-agent'] as string) ?? null);
     if (!pw) {
       logger.warn('[sessionShadowVerify:inline] pw_session_id cookie present but invalid', {
         sessionHashPrefix: hashPrefix(raw),
       });
-      return;
+      return {};
     }
     req.pwSession = {
       rowId: pw.id as unknown as bigint,
@@ -104,11 +117,27 @@ export async function runSessionShadowCompareInline(req: Request): Promise<void>
         path: req.path,
         method: req.method,
       });
+
+      // Phase 3.c.3 — authority mode. If ON, tell the caller to
+      // fail-CLOSED. Observation-only mode falls through.
+      const authorityOn = await getFeatureFlag('ff.returning_user.sessions_owned.authority');
+      if (authorityOn) {
+        logger.error('[sessionShadowVerify:inline] SECURITY_SESSION_AUTHORITY_DROP', {
+          firebaseUidPrefix: uidPrefix(firebaseUid),
+          pwUidPrefix: uidPrefix(pw.userId),
+          sessionHashPrefix: hashPrefix(raw),
+          path: req.path,
+          method: req.method,
+        });
+        return { authorityDeny: true };
+      }
     }
+    return {};
   } catch (err: any) {
     logger.warn('[sessionShadowVerify:inline] error (observation-only)', {
       error: err?.message,
     });
+    return {};
   }
 }
 

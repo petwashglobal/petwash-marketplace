@@ -159,6 +159,27 @@ export interface SystemConfigMap {
    */
   'ff.returning_user.sessions_owned.shadow_verify': boolean;
   /**
+   * Auth-rebuild Phase 3.c.3 — AUTHORITY cutover.
+   *
+   * When ON (in addition to `shadow_verify`), a Firebase↔PW UID
+   * disagreement on ANY request causes the middleware to REFUSE the
+   * request rather than continue on the more-privileged side. Client
+   * sees 401 { error: 'SESSION_AUTHORITY_SKEW' }; server logs a
+   * redacted SECURITY_SESSION_AUTHORITY_DROP event.
+   *
+   * Fail-CLOSED by design (CEO §2): the less-privileged path in a
+   * disagreement is "refuse and force re-auth" — never "silently
+   * choose the more privileged result".
+   *
+   * Enabling this flag ONLY takes effect while
+   * `sessions_owned.enabled` + `.emit_cookie` + `.shadow_verify` are
+   * all ON — otherwise the cookies for comparison don't exist and
+   * the middleware short-circuits to next(). Default OFF; do not flip
+   * ON in production until shadow_verify has observed zero disagreements
+   * for a meaningful window.
+   */
+  'ff.returning_user.sessions_owned.authority': boolean;
+  /**
    * Auth-rebuild Phase 11 (CEO D7 — /signin door flip).
    *
    * When ON, /signin renders the returning-user door (ReturnLogin,
@@ -255,6 +276,8 @@ const DEFAULTS: SystemConfigMap = {
   'ff.returning_user.sessions_owned.emit_cookie': false,
   // Auth-rebuild Phase 3.c.2 — shadow-verify pw_session_id against Firebase. OFF.
   'ff.returning_user.sessions_owned.shadow_verify': false,
+  // Auth-rebuild Phase 3.c.3 — authority cutover; fail-CLOSED on disagreement. OFF.
+  'ff.returning_user.sessions_owned.authority': false,
   // Auth-rebuild Phase 11 — /signin door flip. Default OFF.
   // Client-side ?door=new and localStorage pw_ff_new_door=1 still work
   // as per-viewer previews even while the flag is OFF; see interface

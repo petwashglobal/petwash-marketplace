@@ -76,12 +76,29 @@ describe('session cutover Phase 3.c — shadow observation', () => {
     }
   });
 
-  it('shadow-verify never returns 401 in Phase 3.c.2 (observation only)', () => {
-    // No status(401) anywhere in the shadow module — authority mode
-    // (Phase 3.c.3) will add it. If this pin fires because someone
-    // added a 401, bump the pin AND ensure a flag gates the block.
-    expect(/res\.status\(401\)/.test(shadow)).toBe(false);
-    expect(/status\(401\)/.test(shadow)).toBe(false);
+  it('shadow module itself never sends 401 — deny is signalled to caller via authorityDeny', () => {
+    // The middleware / inline helper MUST NOT call res.status(…) —
+    // even when authority mode wants to fail-CLOSED, that decision is
+    // signalled back to validateFirebaseToken (which owns the 401
+    // response shape). This keeps the shadow module test-friendly
+    // (a pure compare function).
+    expect(/res\.status\(/.test(shadow)).toBe(false);
+    // But the module MUST expose the authority signal so callers
+    // can act on it.
+    expect(shadow).toMatch(/authorityDeny/);
+    expect(shadow).toMatch(/getFeatureFlag\(\s*['"]ff\.returning_user\.sessions_owned\.authority['"]\s*\)/);
+    // And the SECURITY_SESSION_AUTHORITY_DROP event fires only inside
+    // the authority-on branch.
+    expect(shadow).toMatch(/SECURITY_SESSION_AUTHORITY_DROP/);
+  });
+
+  it('validateFirebaseToken honours authorityDeny with a 401 SESSION_AUTHORITY_SKEW', () => {
+    // The Firebase middleware is the ONE place we translate the
+    // authority signal into an HTTP response — this pin makes sure
+    // the translation exists and cannot regress to a silent pass.
+    expect(fbAuth).toMatch(/result\?\.authorityDeny/);
+    expect(fbAuth).toMatch(/error:\s*['"]SESSION_AUTHORITY_SKEW['"]/);
+    expect(fbAuth).toMatch(/status\(401\)/);
   });
 
   it('shadow module never throws (every entry point is try/catch wrapped)', () => {

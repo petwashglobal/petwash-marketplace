@@ -99,13 +99,19 @@ export async function validateFirebaseToken(
     }
     req.firebaseUser = user;
     bridgeFirebaseUser(req);
-    // Auth-rebuild Phase 3.c.2 — best-effort shadow-verify the Pet Wash
-    // session cookie against the Firebase-derived UID. Flag-gated OFF
-    // by default; when ON, logs SECURITY_SESSION_MISMATCH on disagreement.
-    // Never blocks the request in Phase 3.c.2 — that's Phase 3.c.3.
+    // Auth-rebuild Phase 3.c.2 + 3.c.3 — shadow-verify + authority.
+    // Flag-gated OFF by default. In observation mode logs
+    // SECURITY_SESSION_MISMATCH; in authority mode returns
+    // authorityDeny=true on disagreement and we refuse the request.
     try {
       const { runSessionShadowCompareInline } = await import('./sessionShadowVerify');
-      await runSessionShadowCompareInline(req);
+      const result = await runSessionShadowCompareInline(req);
+      if (result?.authorityDeny) {
+        return res.status(401).json({
+          error: 'SESSION_AUTHORITY_SKEW',
+          detail: 'Session state disagreed across cookies — please sign in again.',
+        });
+      }
     } catch {
       /* observation-only; never impedes auth */
     }
