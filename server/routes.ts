@@ -1378,6 +1378,48 @@ self.addEventListener('notificationclick', (event) => {
       const { createSessionCookie } = await import('./lib/sessionCookies');
       try {
         await createSessionCookie(idToken, res, req);
+
+        // ── Phase 3.b Pet Wash-owned session observation ──
+        // When ff.returning_user.sessions_owned.enabled is ON, ALSO mint
+        // a `sessions_pw` row via SessionService. The raw opaque id is
+        // discarded (Phase 3.c will emit it as an HttpOnly cookie).
+        // Purpose: prove mint plumbing + index shape + audit against real
+        // production login traffic before flipping authority. Wrapped in
+        // try/catch so the primary Firebase-cookie flow never fails on a
+        // sessions_pw write hiccup. Never blocks login.
+        try {
+          const { getFeatureFlag } = await import('./services/SystemConfig');
+          const sessionsObserveOn = await getFeatureFlag('ff.returning_user.sessions_owned.enabled');
+          if (sessionsObserveOn) {
+            // The main users-row sync block below re-verifies the ID
+            // token; do a light verify here too so the observation
+            // write doesn't reach into a variable that isn't populated
+            // yet. Verified token is cheap on the Admin SDK.
+            const decodedForSession = await fbAdminAuth.verifyIdToken(idToken, true);
+            if (decodedForSession?.uid) {
+              const { mintSession } = await import('./services/SessionService');
+              const providerId = (decodedForSession.firebase?.sign_in_provider as string) || 'firebase-legacy';
+              const providerName = ({
+                'password': 'password',
+                'google.com': 'google',
+                'apple.com': 'apple',
+                'facebook.com': 'facebook',
+                'phone': 'phone',
+                'custom': 'passkey', // custom-token feeders (WebAuthn, phone-session, etc.)
+              } as Record<string, string>)[providerId] || 'firebase-legacy';
+              await mintSession({
+                userId: decodedForSession.uid,
+                authMethod: providerName as any,
+                ip: (req.ip || req.headers['x-forwarded-for']?.toString() || null),
+                userAgent: (req.headers['user-agent'] || null),
+              });
+            }
+          }
+        } catch (sessionsObserveErr) {
+          logger.warn('[Session] sessions_pw observation write failed (non-blocking)', {
+            error: sessionsObserveErr instanceof Error ? sessionsObserveErr.message : String(sessionsObserveErr),
+          });
+        }
       } catch (sessionCookieErr: any) {
         // Distinguish a Firebase Admin SDK / IAM misconfiguration (the most
         // common production failure mode for admin login) from a generic 500

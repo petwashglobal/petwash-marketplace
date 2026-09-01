@@ -103,6 +103,25 @@ export interface SystemConfigMap {
    * observation-only in Phase 1. No automatic linking, no merging.
    */
   'ff.returning_user.identity_unified.enabled': boolean;
+  /**
+   * Auth-rebuild Phase 3.b (CEO directive 2026-09-01, D3) — Pet Wash-
+   * owned session model observation.
+   *
+   * When ON, `POST /api/auth/session` (and other session-cookie mint
+   * sites) additionally calls `SessionService.mintSession()` to record
+   * a `sessions_pw` row. The Firebase `__session` cookie remains the
+   * authoritative session; the opaque Pet Wash session id is minted
+   * and hashed at rest but is NOT emitted to the client in Phase 3.b.
+   *
+   * Purpose: prove the mint mechanism, index shape, and cache-invalidation
+   * plumbing all behave correctly against real production login traffic
+   * before Phase 3.c makes the Pet Wash session cookie authoritative.
+   *
+   * Default OFF. Zero behaviour change. Turning ON is safe: SessionService
+   * is transaction-safe and never blocks the login response on write
+   * failure (all callers wrap it in try/catch).
+   */
+  'ff.returning_user.sessions_owned.enabled': boolean;
 }
 
 const DEFAULTS: SystemConfigMap = {
@@ -163,6 +182,9 @@ const DEFAULTS: SystemConfigMap = {
   // Auth-rebuild Phase 1 — canonical identity resolver. Default OFF.
   // See interface docstring above.
   'ff.returning_user.identity_unified.enabled': false,
+  // Auth-rebuild Phase 3.b — Pet Wash-owned session observation. OFF.
+  // See interface docstring above.
+  'ff.returning_user.sessions_owned.enabled': false,
 };
 
 export type ConfigKey = keyof SystemConfigMap;
