@@ -37,24 +37,13 @@ const KNOWN_LEGACY_READERS: ReadonlySet<string> = new Set([
   // SignUpLuxury still reads ?from and ?redirect directly. Migration
   // to readReturnTo is a Phase 8.b client-side task.
   'client/src/pages/SignUpLuxury.tsx',
-  // ChooseMode reads ?returnTo directly (already canonical name).
-  'client/src/pages/ChooseMode.tsx',
-  // WalletDownload reads ?returnTo directly (already canonical name).
-  'client/src/pages/WalletDownload.tsx',
-  // ExecutiveSuiteGuard reads ?redirect directly. Phase 8.b migration.
-  'client/src/components/ExecutiveSuiteGuard.tsx',
-  // LegalPage reads ?next directly. Phase 8.b migration.
-  'client/src/pages/legal/LegalPage.tsx',
-  // (CompleteProfile.tsx migrated to readReturnTo 2026-09-01.)
+  // (workspaceFromPath.ts       migrated 2026-09-01 → readReturnTo)
+  // (PrestigeEnroll.tsx         migrated 2026-09-01 → readReturnTo)
+  // (ExecutiveSuiteGuard.tsx    migrated 2026-09-01 → buildReturnToParam)
+  // (CompleteProfile.tsx        migrated 2026-09-01 → readReturnTo)
   // RequireAuth writes ?from — reader lives elsewhere; keeping the pin
   // exemption pending the Phase 8.b migration to buildReturnToParam.
   'client/src/auth/RequireAuth.tsx',
-  // workspaceFromPath.ts reads ?redirect — legacy workspace switcher.
-  // Phase 8.b migration to readReturnTo.
-  'client/src/lib/workspaceFromPath.ts',
-  // PrestigeEnroll.tsx reads ?redirect for post-enrollment landing.
-  // Phase 8.b migration to readReturnTo.
-  'client/src/pages/PrestigeEnroll.tsx',
 ]);
 
 /** Walk client/src/ collecting .ts and .tsx files. */
@@ -129,7 +118,11 @@ describe('returnTo canonical-key regression pin', () => {
   it('KNOWN_LEGACY_READERS cannot GROW — Phase 8.b shrinks it', () => {
     // Progressive ceiling. When you migrate a KNOWN_LEGACY_READERS entry
     // to the canonical helper, remove it AND lower this cap by one.
-    const ALLOWED_MAX = 9;
+    // Migrations landed 2026-09-01: workspaceFromPath, PrestigeEnroll,
+    // ExecutiveSuiteGuard, CompleteProfile. Placeholder entries that
+    // didn't actually match the pin patterns (WalletDownload, ChooseMode,
+    // LegalPage) removed as well. Down from 10 → 3.
+    const ALLOWED_MAX = 3;
     expect(
       KNOWN_LEGACY_READERS.size,
       `KNOWN_LEGACY_READERS has ${KNOWN_LEGACY_READERS.size} entries; ` +

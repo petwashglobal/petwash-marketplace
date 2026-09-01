@@ -77,14 +77,15 @@ export function workspaceFromPath(pathname: string | null | undefined): Workspac
  * Pull a `returnTo` from the current URL (SSR-safe). Callers pass the
  * result to `workspaceFromPath` to know if the deep-link already knows
  * which workspace it belongs to.
+ *
+ * Phase 8.b migration (2026-09-01): delegates to the canonical
+ * `readReturnTo` helper so `?redirect=` fallback + open-redirect
+ * validation live in one place. Behaviour unchanged: accepts
+ * ?returnTo (canonical) or ?redirect (legacy), returns null on unsafe
+ * targets.
  */
+import { readReturnTo } from '../auth/returnTo';
 export function readReturnToFromLocation(): string | null {
   if (typeof window === 'undefined') return null;
-  try {
-    const url = new URL(window.location.href);
-    const rt = url.searchParams.get('returnTo') || url.searchParams.get('redirect');
-    return rt ? decodeURIComponent(rt) : null;
-  } catch {
-    return null;
-  }
+  return readReturnTo(window.location.search);
 }
