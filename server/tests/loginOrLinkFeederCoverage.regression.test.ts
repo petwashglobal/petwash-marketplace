@@ -57,8 +57,14 @@ const FEEDER_FILES: readonly string[] = [
 //   - server/routes/identity-service.ts      WIRED 2026-09-01 (/auth/login/standard)
 //   - server/routes/mobile-biometric.ts      WIRED 2026-09-01 (/authenticate/verify)
 //   - server/routes/pin-auth.ts              WIRED 2026-09-01 (/trusted-device-verify)
+//   - server/routes/publicAuthRoutes.ts      WIRED 2026-09-01 (/phone-session
+//                                            + /email-session; 409 EMAIL_HAS_ACCOUNT
+//                                            guard preserved per D6)
 const KNOWN_LEGACY: ReadonlySet<string> = new Set([
-  'server/routes/publicAuthRoutes.ts',
+  // customAuth.ts — silent bridge that creates `customers` row (not `users`).
+  // Per D6 legacy-preserve, wiring loginOrLink here would attach identity to
+  // the wrong table. Full retirement is Phase 10 (customers/simple-auth
+  // legacy stack). Stays in KNOWN_LEGACY until then.
   'server/customAuth.ts',
 ]);
 
@@ -105,13 +111,11 @@ describe('Phase 1 regression pin — loginOrLink feeder coverage', () => {
     // GROWING — a symptom of a new un-wired feeder sneaking in and being
     // added to the exemption list instead of being wired.
     // Progressive ceiling: starts at 7 (Phase 1 landing), drops by one every
-    // time a feeder gets wired. Current cap: 2 (routes.ts + mobile-auth.ts +
-    // identity-service.ts + mobile-biometric.ts + pin-auth.ts wired
-    // 2026-09-01). Remaining KNOWN_LEGACY: publicAuthRoutes.ts (needs the
-    // 409 EMAIL_HAS_ACCOUNT collision-guard care) and customAuth.ts
-    // (silent bridge — per D6 legacy-preserve, may stay indefinitely).
+    // time a feeder gets wired. Current cap: 1 — 6 of 7 feeders wired on
+    // 2026-09-01. Only customAuth.ts (silent bridge to `customers` table)
+    // remains; it stays until the Phase 10 legacy stack retirement.
     // Every future PR that wires another feeder MUST also lower this cap.
-    const ALLOWED_LEGACY_MAX = 2;
+    const ALLOWED_LEGACY_MAX = 1;
     expect(
       KNOWN_LEGACY.size,
       `KNOWN_LEGACY has ${KNOWN_LEGACY.size} entries; current cap is ${ALLOWED_LEGACY_MAX}. ` +

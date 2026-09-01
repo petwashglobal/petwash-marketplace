@@ -1085,6 +1085,31 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
 
     logger.info('[PhoneAuth] Custom token created for user:', user.uid);
 
+    // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+    // The pre-existing 409 EMAIL_HAS_ACCOUNT guard at line ~895 STAYS.
+    // Per D6 (no auto-linking on email collisions), loginOrLink here is
+    // observation only — records the phone provider link and emits
+    // IDENTITY_SHADOW_WOULD_MERGE if the supplied email collides.
+    try {
+      const { getFeatureFlag } = await import('../services/SystemConfig');
+      const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+      if (identityUnifiedOn) {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        await loginOrLink({
+          provider: 'phone',
+          providerAccountId: user.uid,
+          email: email || null,
+          emailVerified: false, // phone-session does not verify email
+          displayName: null,
+        });
+      }
+    } catch (identityErr) {
+      logger.warn('[PhoneAuth] loginOrLink probe failed (non-blocking)', {
+        uid: user.uid,
+        error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+      });
+    }
+
     return res.status(200).json({
       ok: true,
       userId: user.uid,
@@ -1270,6 +1295,30 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
 
     const customToken = await adminAuth.createCustomToken(user.uid, { email, authMethod: 'email' });
     logger.info('[EmailAuth] Custom token created', { uid: user.uid });
+
+    // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+    // Records the email provider link. This route mints only after a
+    // successful HMAC-signed email-OTP proof, so email is verified.
+    try {
+      const { getFeatureFlag } = await import('../services/SystemConfig');
+      const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+      if (identityUnifiedOn) {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        await loginOrLink({
+          provider: 'email',
+          providerAccountId: user.uid,
+          email: email || null,
+          emailVerified: true,
+          displayName: null,
+        });
+      }
+    } catch (identityErr) {
+      logger.warn('[EmailAuth] loginOrLink probe failed (non-blocking)', {
+        uid: user.uid,
+        error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+      });
+    }
+
     return res.status(200).json({
       ok: true,
       userId: user.uid,
