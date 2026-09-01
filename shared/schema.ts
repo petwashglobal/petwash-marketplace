@@ -322,13 +322,53 @@ export const userPasskeys = pgTable("user_passkeys", {
   backedUp: boolean("backed_up").default(false).notNull(),
   transports: jsonb("transports").default(sql`'[]'::jsonb`).notNull(), // ["internal","hybrid",...]
   aaguid: varchar("aaguid", { length: 64 }), // authenticator model id
-  label: varchar("label", { length: 120 }), // user-friendly name, e.g. "iPhone Face ID"
+  label: varchar("label", { length: 120 }), // legacy user-friendly name; prefer deviceName below
   lastUsedAt: timestamp("last_used_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+  // ── Auth-rebuild Phase 2 · lossless-cutover columns (migration 0134) ──
+  // Every column below was identified by the field-audit as required to
+  // preserve full Firestore parity when the Postgres store becomes
+  // canonical. Additive-only; no reader is wired to these yet.
+
+  // WebAuthn L2 backup semantics — spec-precise BE and BS separately.
+  backupEligible: boolean("backup_eligible"),
+  backupState: boolean("backup_state"),
+  // Discoverable / resident credential flag.
+  isDiscoverable: boolean("is_discoverable").default(true).notNull(),
+  // Revocation state (Firestore soft-delete parity).
+  isRevoked: boolean("is_revoked").default(false).notNull(),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: varchar("revoked_reason", { length: 40 }),
+  revokedBy: varchar("revoked_by"),
+  // Live security gate — auth is refused if trustScore < threshold.
+  trustScore: integer("trust_score").default(50).notNull(),
+  // Usage / failure counters (unified web+mobile).
+  usageCount: integer("usage_count").default(0).notNull(),
+  consecutiveFailures: integer("consecutive_failures").default(0).notNull(),
+  lastAuthFailureAt: timestamp("last_auth_failure_at"),
+  // Attestation posture.
+  attestationFormat: varchar("attestation_format", { length: 40 }),
+  // Presentation / installation metadata.
+  platform: varchar("platform", { length: 16 }),
+  osVersion: varchar("os_version", { length: 32 }),
+  browserName: varchar("browser_name", { length: 32 }),
+  browserVersion: varchar("browser_version", { length: 32 }),
+  deviceName: varchar("device_name", { length: 120 }),
+  // Registration provenance (anti-phishing forensic snapshots).
+  registrationUserAgent: text("registration_user_agent"),
+  registrationIp: varchar("registration_ip", { length: 45 }),
+  registrationOrigin: varchar("registration_origin", { length: 255 }),
+  // Preserve Firestore's users/ vs employees/ realm split.
+  realm: varchar("realm", { length: 10 }).default("user").notNull(),
 }, (table) => [
   uniqueIndex("uq_user_passkeys_credential").on(table.credentialId),
   index("idx_user_passkeys_user").on(table.userId),
+  // Active-passkeys-per-user hot path.
+  index("idx_user_passkeys_active").on(table.userId).where(sql`is_revoked = false`),
+  // Realm-scoped user lookup (until unified role discriminator lives on users).
+  index("idx_user_passkeys_realm_user").on(table.realm, table.userId),
 ]);
 
 export const insertUserPasskeySchema = createInsertSchema(userPasskeys).omit({ id: true, createdAt: true, updatedAt: true });
