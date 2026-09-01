@@ -241,6 +241,7 @@ import meActiveRoleRoutes from "./routes/me-active-role";
 import meIdentityLinksRoutes from "./routes/me-identity-links";
 import meStepUpRoutes from "./routes/me-step-up";
 import meSessionsRoutes from "./routes/me-sessions";
+import configPublicRoutes from "./routes/config-public";
 import adminIdentitySoftMergeRoutes from "./routes/admin-identity-soft-merge";
 // Canonical multi-role aggregator — used by whoami to emit `roles: string[]`
 // derived from every true capability, so ONE identity is visible across all
@@ -12989,6 +12990,9 @@ self.addEventListener('notificationclick', (event) => {
   //   POST /api/me/sessions/:rowId/revoke      — revoke ONE device
   //   POST /api/me/sessions/revoke-all         — sign out everywhere (step-up)
   app.use('/api/me', apiLimiter, meSessionsRoutes);
+  // Phase 11.b — public config surface for the /signin door cohort.
+  // Whitelist-only; exposes ONLY ff.returning_user.new_door.{enabled,percent}.
+  app.use('/api/config', apiLimiter, configPublicRoutes);
   // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
   //   GET  /api/identity/links           — list linked providers (live)
   //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c

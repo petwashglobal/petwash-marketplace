@@ -65,8 +65,15 @@ describe('/signin door flip (Phase 11)', () => {
     // Direct behavioural test of the pure fn — inline eval'd via a
     // small transpile-style substring check. Keeps the pin in a
     // node-only vitest file (no jsdom needed).
-    // We check the SOURCE encodes "no override → legacy".
-    expect(gate).toMatch(/\/\/ No override, no server cohort wired yet → legacy\.\s*\n\s*\/\/[\s\S]*?\n\s*return 'legacy';/);
+    // The final fall-through MUST return 'legacy' — no override wins,
+    // server cohort didn't place the visitor. Note: with Phase 11.b
+    // the "no cohort" branch is not the only fall-through anymore, but
+    // the LAST `return 'legacy'` in decideDoor still governs the
+    // no-input case.
+    const fn = gate.match(/export function decideDoor[\s\S]*?\n\}/);
+    expect(fn, 'decideDoor function must exist').toBeTruthy();
+    // The very last statement of the function must be `return 'legacy';`.
+    expect(fn![0]).toMatch(/return 'legacy';\s*\n\}\s*$/);
   });
 
   it('gate honours ?door=new AND ?door=legacy', () => {

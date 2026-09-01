@@ -41,10 +41,19 @@
  *     /signin's own already-signed-in guard sends them home.
  */
 
+import { useEffect, useState } from 'react';
+
 const RETURN_HINT_KEY = 'petwash_passkey_email';
 const OPT_IN_KEY = 'pw_ff_new_door';
 
 export type DoorDecision = 'new' | 'legacy' | 'pending';
+
+export interface ServerDoorCohort {
+  /** Whether the server flag is ON. */
+  enabled: boolean;
+  /** Percentage cohort (0..100). */
+  percent: number;
+}
 
 interface DecisionInputs {
   /** URL search string, e.g. window.location.search. Optional for SSR safety. */
@@ -54,15 +63,31 @@ interface DecisionInputs {
   /** Injectable for tests. Reads the returning-user email hint. */
   readHint?: () => string | null;
   /**
-   * Injectable for tests. In production this hook does NOT call the
-   * browser's `isUserVerifyingPlatformAuthenticatorAvailable()` — that's
-   * async and would introduce flicker. ReturnLogin itself does the
-   * real capability check and silently falls back to /signin if the
-   * platform can't authenticate. This hook returns 'new' as soon as
-   * the hint is present + local/URL overrides align; ReturnLogin's
-   * fallback handles the unhappy path with no visible transition.
+   * Server-driven cohort. When present AND `enabled: true`, we take
+   * the hint email, hash it deterministically, and place the visitor
+   * in the door if their hash falls in the percentage cohort. When
+   * absent (fetch pending / failed / server hasn't been asked yet),
+   * this branch is skipped and the function falls through to 'legacy'.
    */
-  hasHint?: boolean;
+  serverCohort?: ServerDoorCohort;
+}
+
+/**
+ * Deterministic per-visitor hash → integer [0, 100). Used to place a
+ * viewer inside/outside the percent cohort so they don't flip doors
+ * between visits. Stable across page loads for the same hint.
+ * SHA-256 → first 4 bytes → mod 100. This is NOT cryptographic — just
+ * a stable-bucket function; collisions are fine.
+ */
+function bucketFor(input: string): number {
+  // Small FNV-1a for a synchronous no-dep hash. subtle.digest would
+  // be async and force the hook to be async too.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = (hash + ((hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24))) >>> 0;
+  }
+  return hash % 100;
 }
 
 function safeLocalStorageGet(key: string): string | null {
@@ -93,18 +118,71 @@ export function decideDoor(inputs: DecisionInputs = {}): DoorDecision {
   if (localOverride === '1') return 'new';
   if (localOverride === '0') return 'legacy';
 
-  // No override, no server cohort wired yet → legacy.
-  // (When the server cohort lands in Phase 11.b, this branch checks it.)
+  // Server-driven cohort — Phase 11.b. Requires a hint to bucket by
+  // (deterministic per-visitor). If we don't have a hint, we can't
+  // stably bucket, so fall through to 'legacy' — a viewer without a
+  // stored passkey email wouldn't benefit from the new door anyway.
+  const cohort = inputs.serverCohort;
+  if (cohort?.enabled && cohort.percent > 0) {
+    const hint = inputs.readHint ? inputs.readHint() : safeLocalStorageGet(RETURN_HINT_KEY);
+    if (hint) {
+      const bucket = bucketFor(hint);
+      if (bucket < Math.max(0, Math.min(100, cohort.percent))) return 'new';
+    }
+  }
+
   return 'legacy';
 }
 
+// Module-scope cache: one fetch per page load. React 18 double-invoke
+// (StrictMode) is fine — the cache dedupes.
+let _cohortCache: ServerDoorCohort | null = null;
+let _cohortInflight: Promise<ServerDoorCohort> | null = null;
+
+async function fetchServerCohort(): Promise<ServerDoorCohort> {
+  if (_cohortCache) return _cohortCache;
+  if (_cohortInflight) return _cohortInflight;
+  _cohortInflight = (async () => {
+    try {
+      // Relative URL — the same origin serves /api and the client. If
+      // the request fails, we fail-safe to legacy (enabled: false).
+      const res = await fetch('/api/config/public', { credentials: 'omit' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      const cohort: ServerDoorCohort = {
+        enabled: body?.returningUser?.newDoor?.enabled === true,
+        percent: Math.max(0, Math.min(100, Number(body?.returningUser?.newDoor?.percent) || 0)),
+      };
+      _cohortCache = cohort;
+      return cohort;
+    } catch {
+      // Fail-safe: legacy door until config is reachable.
+      _cohortCache = { enabled: false, percent: 0 };
+      return _cohortCache;
+    }
+  })();
+  return _cohortInflight;
+}
+
 /**
- * React hook flavour. Deliberately does not use useEffect — the
- * decision is synchronous, deterministic on the URL + localStorage
- * snapshot at render time. Storage events across tabs are not
- * subscribed to here: a viewer sees the door for the tab they're in;
- * no cross-tab re-render is expected on /signin.
+ * React hook flavour. Runs the pure decideDoor() on every render, so
+ * URL / localStorage overrides take effect immediately. The server
+ * cohort is fetched ONCE per page load (module-cached) and folded in
+ * as soon as it lands — the initial render is 'legacy' until then
+ * (fail-safe; no flicker to the new door for cohort-eligible users
+ * costs less than falsely flashing it for ineligible ones).
  */
 export function useReturnLoginGate(): DoorDecision {
-  return decideDoor();
+  const [cohort, setCohort] = useState<ServerDoorCohort | null>(_cohortCache);
+  useEffect(() => {
+    if (cohort) return;
+    let cancelled = false;
+    fetchServerCohort().then((c) => {
+      if (!cancelled) setCohort(c);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [cohort]);
+  return decideDoor({ serverCohort: cohort ?? undefined });
 }
