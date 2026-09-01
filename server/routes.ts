@@ -238,6 +238,8 @@ import memberDiscountRoutes from "./routes/member-discount";
 import meStatusRoutes from "./routes/me-status";
 import meCapabilitiesRoutes from "./routes/me-capabilities";
 import meActiveRoleRoutes from "./routes/me-active-role";
+import meIdentityLinksRoutes from "./routes/me-identity-links";
+import adminIdentitySoftMergeRoutes from "./routes/admin-identity-soft-merge";
 // Canonical multi-role aggregator — used by whoami to emit `roles: string[]`
 // derived from every true capability, so ONE identity is visible across all
 // journeys (customer / loyalty / provider / staff / admin) instead of the
@@ -12955,6 +12957,16 @@ self.addEventListener('notificationclick', (event) => {
   //                              NEVER grants authority. Emits
   //                              ROLE_SWITCHED audit event.
   app.use('/api/me', apiLimiter, meActiveRoleRoutes);
+  // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
+  //   GET  /api/identity/links           — list linked providers (live)
+  //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c
+  //   POST /api/identity/link/confirm    — 501 stub until Phase 6.c
+  app.use('/api/identity', apiLimiter, meIdentityLinksRoutes);
+  // Phase 6.b admin soft-merge (super-admin + step-up):
+  //   POST /api/admin/identity/soft-merge/preview  — read-only projection (live)
+  //   POST /api/admin/identity/soft-merge          — writes merged_into_uid
+  //   POST /api/admin/identity/soft-merge/unmerge  — reverses a merge
+  app.use('/api/admin/identity', apiLimiter, adminIdentitySoftMergeRoutes);
   // Canonical service-session read adapter (CEO 2026-08-18 §12/§13):
   // GET /api/service-sessions/:bookingRef — projects booking_requests
   // (and, in follow-up PRs, walk_bookings + pettrek_trips) into a

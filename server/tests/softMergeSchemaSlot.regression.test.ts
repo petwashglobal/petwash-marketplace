@@ -67,7 +67,7 @@ describe('auth-rebuild Phase 6 · users.merged_into_uid schema slot', () => {
     expect(line!.includes('.notNull()')).toBe(false);
   });
 
-  it('admin soft-merge router remains 501 with super-admin + step-up gates', () => {
+  it('admin soft-merge router keeps super-admin + step-up gates on every endpoint', () => {
     const path = join(ROOT, 'server/routes/admin-identity-soft-merge.ts');
     expect(existsSync(path)).toBe(true);
     const src = readFileSync(path, 'utf8');
@@ -75,9 +75,24 @@ describe('auth-rebuild Phase 6 · users.merged_into_uid schema slot', () => {
     expect(src).toMatch(/isSuperAdminVerified/);
     // Step-up proof for admin_dangerous_action must remain in place.
     expect(src).toMatch(/requireStepUp\(\s*['"]admin_dangerous_action['"]\s*\)/);
-    // Preview and write endpoints stay 501 until Phase 6.b lands.
+    // The three endpoints exist.
     expect(src).toMatch(/\/soft-merge\/preview/);
-    expect(src).toMatch(/\/soft-merge['"]/);
-    expect(src).toMatch(/status\(501\)/);
+    expect(src).toMatch(/\/soft-merge\/unmerge/);
+    expect(src).toMatch(/router\.post\(\s*['"]\/soft-merge['"]/);
+    // Write path enforces preview freshness AND recommendation.
+    expect(src).toMatch(/PREVIEW_MAX_AGE_MS/);
+    expect(src).toMatch(/MERGE_REJECTED_BY_PREVIEW/);
+    // Write path never re-parents money — the UPDATE only touches
+    // merged_into_uid, never other columns.
+    const setBlock = src.match(/\.set\(\{[\s\S]*?mergedIntoUid:[\s\S]*?\}\)/g) || [];
+    for (const block of setBlock) {
+      // Only merged_into_uid may appear inside the SET on this router.
+      // Any other column name (email, phone, role, balance, etc.) is a
+      // soft-merge contract violation.
+      const dangerous = /(email|phone|role|balance|payout|passkey|wallet|loyalty|password|idNumber)/i;
+      expect(dangerous.test(block), `SET clause must not touch identity/money fields: ${block}`).toBe(
+        false,
+      );
+    }
   });
 });
