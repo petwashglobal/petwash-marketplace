@@ -16,6 +16,7 @@ import {
   bookingMessages,
 } from '../../shared/schema';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { aiChatLimiter, aiChatHourlyLimiter } from '../middleware/rateLimiter';
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
@@ -24,6 +25,10 @@ const router = Router();
 router.use(validateFirebaseToken);
 
 const genAI = new GoogleGenAI(getVertexAIConfig());
+
+// P0-AUDIT-AI-3 (task #198) caps for provider AI assistant.
+const AI_QUERY_MAX_CHARS = 2000;
+const AI_QUERY_MAX_OUTPUT_TOKENS = 800;
 
 // ─── SETTINGS ────────────────────────────────────────────────
 /**
@@ -430,12 +435,20 @@ router.get('/performance', async (req, res) => {
 });
 
 // ─── GEMINI AI ASSISTANT ─────────────────────────────────────
-router.post('/ai/query', async (req, res) => {
+// P0-AUDIT-AI-3+7 (tasks #198, #202): aiChatLimiter (20/min IP) +
+// aiChatHourlyLimiter (60/hr IP) applied at the per-route layer so
+// the rest of provider-console (settings, bookings, rate cards, etc.)
+// is not throttled through the AI budget. Query length is capped and
+// the model config below carries maxOutputTokens to bound reply cost.
+router.post('/ai/query', aiChatLimiter, aiChatHourlyLimiter, async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { query } = req.body;
     if (!query || typeof query !== 'string') {
       return res.status(400).json({ error: 'query is required' });
+    }
+    if (query.length > AI_QUERY_MAX_CHARS) {
+      return res.status(413).json({ error: 'query_too_long', maxChars: AI_QUERY_MAX_CHARS });
     }
 
     // Gather live provider context to inject
@@ -468,6 +481,7 @@ Provider's question: ${query}
     const result = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: context,
+      config: { maxOutputTokens: AI_QUERY_MAX_OUTPUT_TOKENS },
     });
 
     const text = result.text ?? 'Unable to generate response.';

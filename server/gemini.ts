@@ -117,6 +117,15 @@ is a flat 5% for every member tier (up to 10% only with a verified senior/disabi
 - Growing network of locations
 `;
 
+// P0-AUDIT-AI-4 (task #199): hard caps on Kenzo chat inputs to bound
+// per-request Gemini cost and stop a well-crafted long-thread from
+// draining the AI budget in a single call. Numbers tuned to real Kenzo
+// exchanges: 2000-char user turn, 20 prior turns max in the rolling
+// history, 800 output tokens per reply.
+const KENZO_MAX_MESSAGE_CHARS = 2000;
+const KENZO_MAX_HISTORY_TURNS = 20;
+const KENZO_MAX_OUTPUT_TOKENS = 800;
+
 export async function chatWithPetWashAI(
   message: string,
   language: 'he' | 'en' | 'ar' | 'es' | 'fr' | 'ru' = 'en',
@@ -129,8 +138,13 @@ export async function chatWithPetWashAI(
     return injectionCheck.safeRefusal!;
   }
 
+  // ── AI-4 length guard — truncate silently, don't reject the user turn.
+  const boundedMessage = message.length > KENZO_MAX_MESSAGE_CHARS
+    ? message.slice(0, KENZO_MAX_MESSAGE_CHARS)
+    : message;
+
   // ── Item 6: Redact PII from outbound message before it reaches Gemini ─────
-  const { text: safeMessage } = redactOutboundPII(message);
+  const { text: safeMessage } = redactOutboundPII(boundedMessage);
 
   const startMs = Date.now();
 
@@ -171,13 +185,22 @@ ${KENZO_KNOWLEDGE_2026}`;
 
     // Build conversation history (like Kotlin's startChat with history)
     const contents = [];
-    
-    // Add conversation history if provided
+
+    // Add conversation history if provided — capped to the LAST N turns
+    // (AI-4). Older turns are dropped rather than truncated so the model
+    // still sees whole exchanges; the message.slice above bounds each
+    // individual turn's history size when re-sent by the client.
     if (conversationHistory && conversationHistory.length > 0) {
-      for (const msg of conversationHistory) {
+      const boundedHistory = conversationHistory.length > KENZO_MAX_HISTORY_TURNS
+        ? conversationHistory.slice(-KENZO_MAX_HISTORY_TURNS)
+        : conversationHistory;
+      for (const msg of boundedHistory) {
+        const turnText = msg.text.length > KENZO_MAX_MESSAGE_CHARS
+          ? msg.text.slice(0, KENZO_MAX_MESSAGE_CHARS)
+          : msg.text;
         contents.push({
           role: msg.role,
-          parts: [{ text: msg.text }]
+          parts: [{ text: turnText }]
         });
       }
     }
@@ -192,6 +215,8 @@ ${KENZO_KNOWLEDGE_2026}`;
       model: "gemini-2.5-flash",
       config: {
         systemInstruction: systemPrompt,
+        // AI-4: bound reply length so a chatty prompt can't drain quota.
+        maxOutputTokens: KENZO_MAX_OUTPUT_TOKENS,
       },
       contents,
     });
