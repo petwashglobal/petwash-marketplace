@@ -1057,7 +1057,16 @@ router.post(
       // fee; provider/platform fault → full) so a wallet-funded booking can be
       // refunded immediately by the rail rather than left pending.
       const { customerCancellationRefundCents } = await import('../services/IsraeliCancellationPolicy');
-      const chargeCents = Math.round(Number(existingBooking.total ?? 0) * 100);
+      // AUDIT-MONEY-11 (#233, 2026-09-01): `total` was replaced by
+      // `totalCents` in the schema migration; the legacy field is null
+      // on new rows, so a cancel that reads `total` computes a 0-refund
+      // and short-circuits the whole refund rail. Prefer totalCents;
+      // fall back to legacy total only for un-migrated pre-totalCents
+      // rows (multiplied to cents for the shared policy calc).
+      const chargeCents =
+        (existingBooking as any).totalCents != null
+          ? Number((existingBooking as any).totalCents)
+          : Math.round(Number(existingBooking.total ?? 0) * 100);
       const policyRefund = customerCancellationRefundCents({
         amountCents: chargeCents,
         reason: isCustomer ? 'customer' : 'provider_fault',

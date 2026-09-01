@@ -177,9 +177,22 @@ router.post('/payments/nayax/webhook', async (req, res) => {
         return res.status(400).json({ error: 'Invalid holdId' });
       }
 
+      // AUDIT-AUTH-9 (#239, 2026-09-01): even though this route is
+      // dev-only (IS_PRODUCTION guard above returns 404), the body-
+      // supplied userId fallback is exactly the impersonation shape
+      // the audit called out — a caller could POST a fake webhook and
+      // trigger an emergency walk owned by any user id they choose.
+      // Any prod-webhook lookalike must go through the real Nayax
+      // webhook at /api/webhooks/nayax/payment, which resolves the
+      // owner from the persisted payment record rather than trusting
+      // the body. Reject the request instead of silently substituting.
+      const claimedOwner = typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
+      if (!claimedOwner) {
+        return res.status(400).json({ error: 'INVALID_OWNER' });
+      }
       const { EmergencyWalkService } = await import('../services/EmergencyWalkService');
       const result = await EmergencyWalkService.requestEmergencyWalk({
-        ownerId: req.body.userId || 'payment-webhook',
+        ownerId: claimedOwner,
         petName: req.body.petName || 'Unknown',
         location: { latitude: 0, longitude: 0 },
         walkDuration: req.body.walkDuration || 30,

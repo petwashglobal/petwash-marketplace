@@ -21,6 +21,7 @@
  * truthful about what is owed first, pay second. Auto-crediting wallets from a
  * path that has never once worked correctly would be the wrong way round.
  */
+import { randomInt } from 'node:crypto';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
@@ -28,9 +29,13 @@ import { logger } from '../lib/logger';
 /** Unambiguous alphabet — no O/0, I/1 confusion when read off a screen. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
+// AUDIT-MONEY-9 (#231, 2026-09-01): referral codes were built from
+// Math.random(), which is predictable and can produce guessable
+// codes across a large member base. Use crypto.randomInt so a bad
+// actor cannot enumerate valid codes just from a few observed ones.
 function randomCode(len = 8): string {
   let out = '';
-  for (let i = 0; i < len; i++) out += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  for (let i = 0; i < len; i++) out += CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)];
   return out;
 }
 

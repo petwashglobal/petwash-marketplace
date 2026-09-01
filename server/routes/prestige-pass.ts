@@ -85,7 +85,14 @@ async function ensurePassAccount(userId: string): Promise<{ passId: string; qrTo
     const issuer = process.env.GOOGLE_WALLET_ISSUER_ID || 'petwash';
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      const passId = `PW-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+      // AUDIT-MONEY-10 (#231, 2026-09-01): pass id was two 4-digit
+      // Math.random draws — only ~1e7 possibilities, easily enumerable,
+      // and the id is used as a wallet-pass primary key. Kill the
+      // guessable form. randomBytes(4) → 32 bits of unpredictability,
+      // written as 8 uppercase hex chars split with a hyphen so the
+      // human-facing format is preserved.
+      const passIdRaw = randomBytes(4).toString('hex').toUpperCase();
+      const passId = `PW-${passIdRaw.slice(0, 4)}-${passIdRaw.slice(4, 8)}`;
       const appleSerialNumber = `APPLE-${passId}-${randomBytes(3).toString('hex').toUpperCase()}`;
       const googleObjectId = `${issuer}.${passId.replace(/-/g, '')}`;
       try {

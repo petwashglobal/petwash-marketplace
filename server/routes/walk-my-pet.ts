@@ -409,8 +409,17 @@ router.post('/walkers/search', apiLimiter, async (req, res) => {
         const walkerLat = parseFloat(walker.currentLatitude || '0');
         const walkerLon = parseFloat(walker.currentLongitude || '0');
         const distance = calculateDistance(latitude, longitude, walkerLat, walkerLon);
+        // AUDIT-AUTH-8 refinement (2026-09-01, CEO): quantize the
+        // response distance to 100m precision. Bounding-box coordinates
+        // are already rounded to ~110m (round3) for the DB query, but
+        // the returned distance was a raw float, allowing an anonymous
+        // caller to triangulate a walker's exact position by moving
+        // the query point. Rounding both sides to the same order of
+        // magnitude closes the loop — precise geolocation only after
+        // match, not during discovery.
+        const distanceKm = Math.round(distance * 10) / 10;
         const dto = projectPublicWalker(walker);
-        return dto ? { ...dto, distanceKm: distance, hasBodyCamera: walker.hasBodyCamera === true, hasDroneAccess: walker.hasDroneAccess === true } : null;
+        return dto ? { ...dto, distanceKm, hasBodyCamera: walker.hasBodyCamera === true, hasDroneAccess: walker.hasDroneAccess === true } : null;
       })
       .filter((w): w is NonNullable<typeof w> => w !== null)
       .filter(w => w.distanceKm <= radiusKm)
