@@ -123,6 +123,42 @@ export interface SystemConfigMap {
    */
   'ff.returning_user.sessions_owned.enabled': boolean;
   /**
+   * Auth-rebuild Phase 3.c.1 — EMIT the Pet Wash session cookie.
+   *
+   * When ON (in addition to `ff.returning_user.sessions_owned.enabled`),
+   * successful login responses set an HttpOnly `pw_session_id` cookie
+   * carrying the RAW opaque session id from SessionService.mintSession().
+   * The cookie is SameSite=Lax, Secure in prod, path=/, and max-age
+   * matches the sessions_pw expiry.
+   *
+   * NOTHING READS THE COOKIE YET. Phase 3.c.2 adds a shadow-verify
+   * middleware that compares the cookie-derived UID with the Firebase-
+   * decoded UID and logs disagreements. Phase 3.c.3 flips authority.
+   *
+   * Default OFF. Turning ON is safe: the cookie is emitted but no code
+   * path reads it, so login continues to run on the Firebase session
+   * cookie as before.
+   */
+  'ff.returning_user.sessions_owned.emit_cookie': boolean;
+  /**
+   * Auth-rebuild Phase 3.c.2 — SHADOW-VERIFY the Pet Wash session cookie.
+   *
+   * When ON, every request that carries both `__session` (Firebase) and
+   * `pw_session_id` (Pet Wash) resolves each independently and compares.
+   * On disagreement:
+   *   - Log a redacted `SECURITY_SESSION_MISMATCH` event
+   *   - Continue serving on the LESS-PRIVILEGED result (do NOT choose
+   *     the more privileged one on disagreement — fail closed on
+   *     authority even during shadow observation)
+   * When authority has not yet flipped (Phase 3.c.3), the request still
+   * proceeds via the Firebase path — this observation only surfaces the
+   * disagreement, it doesn't change auth decisions.
+   *
+   * Default OFF. Requires `sessions_owned.enabled` + `emit_cookie` to
+   * be ON to produce useful observations.
+   */
+  'ff.returning_user.sessions_owned.shadow_verify': boolean;
+  /**
    * Auth-rebuild Phase 11 (CEO D7 — /signin door flip).
    *
    * When ON, /signin renders the returning-user door (ReturnLogin,
@@ -215,6 +251,10 @@ const DEFAULTS: SystemConfigMap = {
   // Auth-rebuild Phase 3.b — Pet Wash-owned session observation. OFF.
   // See interface docstring above.
   'ff.returning_user.sessions_owned.enabled': false,
+  // Auth-rebuild Phase 3.c.1 — emit HttpOnly pw_session_id cookie. OFF.
+  'ff.returning_user.sessions_owned.emit_cookie': false,
+  // Auth-rebuild Phase 3.c.2 — shadow-verify pw_session_id against Firebase. OFF.
+  'ff.returning_user.sessions_owned.shadow_verify': false,
   // Auth-rebuild Phase 11 — /signin door flip. Default OFF.
   // Client-side ?door=new and localStorage pw_ff_new_door=1 still work
   // as per-viewer previews even while the flag is OFF; see interface

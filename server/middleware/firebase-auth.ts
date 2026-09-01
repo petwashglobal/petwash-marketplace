@@ -99,6 +99,16 @@ export async function validateFirebaseToken(
     }
     req.firebaseUser = user;
     bridgeFirebaseUser(req);
+    // Auth-rebuild Phase 3.c.2 — best-effort shadow-verify the Pet Wash
+    // session cookie against the Firebase-derived UID. Flag-gated OFF
+    // by default; when ON, logs SECURITY_SESSION_MISMATCH on disagreement.
+    // Never blocks the request in Phase 3.c.2 — that's Phase 3.c.3.
+    try {
+      const { runSessionShadowCompareInline } = await import('./sessionShadowVerify');
+      await runSessionShadowCompareInline(req);
+    } catch {
+      /* observation-only; never impedes auth */
+    }
     next();
   } catch (error: any) {
     // OBSERVABILITY 2026-06-18: highest-volume auth rejection path — used to log one

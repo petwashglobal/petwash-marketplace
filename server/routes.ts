@@ -1409,12 +1409,30 @@ self.addEventListener('notificationclick', (event) => {
                 'phone': 'phone',
                 'custom': 'passkey', // custom-token feeders (WebAuthn, phone-session, etc.)
               } as Record<string, string>)[providerId] || 'firebase-legacy';
-              await mintSession({
+              const mintResult = await mintSession({
                 userId: decodedForSession.uid,
                 authMethod: providerName as any,
                 ip: (req.ip || req.headers['x-forwarded-for']?.toString() || null),
                 userAgent: (req.headers['user-agent'] || null),
               });
+
+              // Phase 3.c.1 — emit the HttpOnly pw_session_id cookie under
+              // an additional flag. When OFF the raw id is discarded and
+              // nothing reads it (unchanged from Phase 3.b). Cookie name
+              // is intentionally distinct from Firebase's `__session` so
+              // both can co-exist during dual-run.
+              const emitCookieOn = await getFeatureFlag('ff.returning_user.sessions_owned.emit_cookie');
+              if (emitCookieOn && mintResult?.rawSessionId) {
+                const isProd = process.env.NODE_ENV === 'production';
+                const ttlSeconds = Math.max(60, Math.floor((mintResult.expiresAt.getTime() - Date.now()) / 1000));
+                res.cookie('pw_session_id', mintResult.rawSessionId, {
+                  httpOnly: true,
+                  secure: isProd,
+                  sameSite: 'lax',
+                  path: '/',
+                  maxAge: ttlSeconds * 1000,
+                });
+              }
             }
           }
         } catch (sessionsObserveErr) {
