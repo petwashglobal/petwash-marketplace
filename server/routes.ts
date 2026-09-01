@@ -13971,6 +13971,18 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(400).json({ error: 'Missing text or sessionId' });
       }
 
+      // P0-AUDIT-AI-1 (task #196) — the sibling /api/ai/chat handler
+      // caps text at 4000 chars; this route was missing the cap so any
+      // attacker within the 20/min budget could burn max-context
+      // tokens per call. Mirror the sibling's cap and return honest
+      // 413 so the client can chunk.
+      if (typeof text !== 'string' || text.length > 4000) {
+        return res.status(413).json({ error: 'text_too_long', maxChars: 4000 });
+      }
+      if (typeof sessionId !== 'string' || sessionId.length > 200) {
+        return res.status(400).json({ error: 'invalid_session_id' });
+      }
+
       // Map language code to supported languages
       const langMap: Record<string, 'he' | 'en' | 'ar' | 'es' | 'fr' | 'ru'> = {
         'he': 'he', 'he-IL': 'he',
