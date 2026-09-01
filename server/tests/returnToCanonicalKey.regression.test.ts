@@ -45,8 +45,7 @@ const KNOWN_LEGACY_READERS: ReadonlySet<string> = new Set([
   'client/src/components/ExecutiveSuiteGuard.tsx',
   // LegalPage reads ?next directly. Phase 8.b migration.
   'client/src/pages/legal/LegalPage.tsx',
-  // CompleteProfile reads ?from directly. Phase 8.b migration.
-  'client/src/pages/CompleteProfile.tsx',
+  // (CompleteProfile.tsx migrated to readReturnTo 2026-09-01.)
   // RequireAuth writes ?from — reader lives elsewhere; keeping the pin
   // exemption pending the Phase 8.b migration to buildReturnToParam.
   'client/src/auth/RequireAuth.tsx',
@@ -130,7 +129,7 @@ describe('returnTo canonical-key regression pin', () => {
   it('KNOWN_LEGACY_READERS cannot GROW — Phase 8.b shrinks it', () => {
     // Progressive ceiling. When you migrate a KNOWN_LEGACY_READERS entry
     // to the canonical helper, remove it AND lower this cap by one.
-    const ALLOWED_MAX = 10;
+    const ALLOWED_MAX = 9;
     expect(
       KNOWN_LEGACY_READERS.size,
       `KNOWN_LEGACY_READERS has ${KNOWN_LEGACY_READERS.size} entries; ` +

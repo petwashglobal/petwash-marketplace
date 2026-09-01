@@ -11,6 +11,7 @@ import { Loader2, UserCircle, Gift, Crown } from "lucide-react";
 import { getApiUrl } from "@/lib/apiConfig";
 import { resolvePostLogin } from "@/lib/postLoginCoordinator";
 import { useToast } from "@/hooks/use-toast";
+import { readReturnTo } from "@/auth/returnTo";
 
 interface WhoamiUser {
   id: number;
@@ -77,7 +78,11 @@ function getRoleConfig(role: string) {
 export default function CompleteProfile() {
   const [, navigate] = useLocation();
   const searchString = useSearch();
-  const fromParam = new URLSearchParams(searchString).get("from") || null;
+  // Phase 8 migration (2026-09-01): canonical readReturnTo helper.
+  // Accepts ?returnTo (canonical) OR ?from / ?redirect / ?next (legacy
+  // transition), validates as a safe internal path, blocks open-redirect
+  // vectors. See client/src/auth/returnTo.ts.
+  const fromParam = readReturnTo(searchString);
   const { toast } = useToast();
   const lang = localStorage.getItem("i18nextLng") || "he";
   const isHe = lang === "he";
