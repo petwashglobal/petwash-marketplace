@@ -1794,11 +1794,19 @@ router.post('/apply', wrapUpload(upload.fields([
       });
     }
   } catch (error: any) {
+    // AUDIT-LOG-7 (2026-09-01): sanitize log meta so a Postgres UNIQUE
+    // or FK failure does NOT drop the offending row's plaintext values
+    // (email / phone / national-id) into the log line. `error.detail`
+    // includes "Key (email)=(user@x.com) already exists" verbatim; the
+    // constraint name alone is enough to diagnose. `stack` capped to
+    // 500 chars was fine; message and code stay (they are internal
+    // enums like '23505'); detail is DROPPED.
     logger.error('[Provider Onboarding] Application submission error', {
       traceId: req.body?.traceId,
-      message: error.message,
+      // error.message is often our own thrown string, but Postgres
+      // messages can echo values — clamp aggressively.
+      message: typeof error.message === 'string' ? error.message.slice(0, 200) : undefined,
       code: error.code,
-      detail: error.detail,
       constraint: error.constraint,
       stack: error.stack?.substring(0, 500),
     });

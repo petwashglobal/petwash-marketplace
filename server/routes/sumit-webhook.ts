@@ -266,9 +266,15 @@ router.post(
           sumitEventType: eventType,
           ip: req.ip,
           bodyBytes,
-          // Truncate the body so a huge payload doesn't bloat the
-          // audit chain row. Keep enough to reconstruct manually.
-          bodyPreview: rawString.slice(0, 2000),
+          // AUDIT-LOG-3 (2026-09-01): bodyPreview REMOVED. The prior
+          // slice(0, 2000) put up to 2 KB of raw webhook body into the
+          // immutable audit chain — that body can contain document
+          // ids, invoice line items, payer names / national ids, and
+          // occasionally full JWT payloads. bodyBytes is enough for
+          // billing / traffic correlation; a full-body reconstruction
+          // is available via the app logs (which pass through the
+          // logger redactor). Never put unredacted webhook bodies
+          // into the audit chain again.
         },
         ipAddress: req.ip || null,
         userAgent: '[SumitWebhook]',
