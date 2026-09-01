@@ -889,7 +889,21 @@ class TwilioSMSService {
     }
   }
 
-  async sendSMS(to: string, body: string, meta?: { userId?: string; ip?: string; ua?: string }): Promise<{
+  /**
+   * P0-AUDIT-SMS-4 (task #220): per-phone cooldown + daily-cap checks
+   * are hoisted INTO sendSMS so every caller inherits them without
+   * touching a single call-site. Previously only sendVerificationCode
+   * enforced them, letting the provider-phone / esign / booking /
+   * prestige / etc. paths SMS-bomb any phone within the global
+   * 6000/day. transactional=true is the opt-out for receipts that
+   * MUST reach the customer even after the daily cap (e.g. a
+   * legally-required fiscal document; caller must audit the reason).
+   */
+  async sendSMS(
+    to: string,
+    body: string,
+    meta?: { userId?: string; ip?: string; ua?: string; transactional?: boolean },
+  ): Promise<{
     success: boolean;
     messageId?: string;
     error?: string;
@@ -905,6 +919,30 @@ class TwilioSMSService {
     if (!isAllowedCountry(formattedPhone)) {
       logger.error('[TwilioSMS] 🚫 BLOCKED: destination country not in allowlist', { ...auditCtx, formattedPhone: formattedPhone.slice(0, 6) + '****' });
       return { success: false, error: 'Destination country not permitted' };
+    }
+
+    // ── Per-phone protections (P0-AUDIT-SMS-4) ──────────────────────
+    // Skippable ONLY when caller passes transactional:true (fiscal /
+    // legally-required receipts). Every other path — notifications,
+    // welcome, booking confirmations, MFA prompts, provider-phone /
+    // esign OTPs — inherits the same cap that sendVerificationCode
+    // already enforced. This kills the SMS-bomb vectors named as
+    // audit findings SMS-2 and SMS-3.
+    if (!meta?.transactional) {
+      const lastSent = phoneLastSentAt.get(formattedPhone);
+      if (lastSent) {
+        const elapsedSec = Math.floor((Date.now() - lastSent) / 1000);
+        if (elapsedSec < RESEND_COOLDOWN_SECONDS) {
+          const waitSec = RESEND_COOLDOWN_SECONDS - elapsedSec;
+          logger.warn('[TwilioSMS] sendSMS blocked — per-phone cooldown', { ...auditCtx, waitSec });
+          return { success: false, error: 'SMS_RATE_LIMITED' };
+        }
+      }
+      const capBlock = this.checkDailyPhoneCap(formattedPhone);
+      if (capBlock) {
+        logger.warn('[TwilioSMS] sendSMS blocked — per-phone daily cap', { ...auditCtx });
+        return { success: false, error: 'SMS_DAILY_CAP' };
+      }
     }
 
     if (!checkGlobalDailyCap()) {
@@ -955,6 +993,13 @@ class TwilioSMSService {
       smsAbuseDetector.recordSent().catch(err =>
         logger.error('[TwilioSMS] AbuseDetector.recordSent failed (non-fatal)', { error: err?.message })
       );
+
+      // Stamp per-phone cooldown + increment the daily cap so subsequent
+      // sends see them (P0-AUDIT-SMS-4). Skipped in transactional mode.
+      if (!meta?.transactional) {
+        phoneLastSentAt.set(formattedPhone, Date.now());
+        this.incrementDailyPhoneCount(formattedPhone);
+      }
 
       return {
         success: true,
