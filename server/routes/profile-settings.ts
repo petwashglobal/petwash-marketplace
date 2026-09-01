@@ -375,9 +375,12 @@ router.post('/settings/email/request-change', async (req, res) => {
     });
 
     logger.info('[ProfileSettings] Email change requested', { userId: uid, newEmail });
-    if (process.env.NODE_ENV === 'development') {
-      logger.info('[ProfileSettings] Verification code (DEV ONLY):', verificationCode);
-    }
+    // P0-AUDIT-LOG-5 (task #213) — was `[ProfileSettings] Verification
+    // code (DEV ONLY): ${verificationCode}` even in development. That
+    // dumps a live OTP into CI/dev logs and (passed as 2nd positional
+    // arg) mangles the JSON context. Removed. Dev debugging goes
+    // through the response body when ALLOW_DEV_OTP_ECHO=true (not
+    // through logs, which get shipped to Sentry).
 
     res.json({
       success: true,
