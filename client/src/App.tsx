@@ -95,6 +95,10 @@ const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 // an explicit override or a rolled-out cohort qualifies. When the gate
 // picks 'legacy', SignUpLuxury renders exactly like it did pre-11.
 const ReturnLogin = lazy(() => import("@/auth/ReturnLogin"));
+// Auth-rebuild Phase 9 · Account Security — surfaces linked providers +
+// active sessions with the /api/identity/link/* and /api/me/sessions
+// endpoints. Step-up gated for the destructive branches.
+const AccountSecurity = lazy(() => import("@/pages/AccountSecurity"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
 const CustomerBookings = lazy(() => import("@/pages/CustomerBookings"));
@@ -992,6 +996,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/signin-advanced">
           {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
+        <Route path="/account/security">
+          {() => (
+            <RequireAuth>
+              <AccountSecurity />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/signup">
           {() => <Layout language={language} onLanguageChange={handleLanguageChange}><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></Layout>}
