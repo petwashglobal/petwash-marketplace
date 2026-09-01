@@ -142,10 +142,34 @@ export interface GeminiResult {
   error?: string;
 }
 
+/**
+ * P0-AUDIT-AI-6 (task #201) — hard default so every safeGenerate
+ * call is cost-bounded even when the caller forgot to set one.
+ * 800 tokens is comfortable for chat / classifier / summarizer
+ * workloads that already dominate the surface; the few callers
+ * that need more (long-form advisor, postmortem) must pass an
+ * explicit `maxOutputTokens` in `opts`. Also caps the prompt
+ * itself so a client that smuggles a huge string can't blow up
+ * INPUT tokens either — the caller sees a clear TRUNCATED result,
+ * not a silent bill.
+ */
+export const SAFE_GENERATE_DEFAULT_MAX_OUTPUT_TOKENS = 800;
+export const SAFE_GENERATE_MAX_PROMPT_CHARS = 12_000;
+
+export interface SafeGenerateOptions {
+  /** Override the default output cap for a specific caller. */
+  maxOutputTokens?: number;
+  /** Override the default input-side prompt cap (chars, not tokens). */
+  maxPromptChars?: number;
+  /** Model temperature; caller decides when they need determinism. */
+  temperature?: number;
+}
+
 export async function safeGenerate(
   model: string,
   prompt: string,
   caller: string,
+  opts: SafeGenerateOptions = {},
 ): Promise<GeminiResult> {
   if (!geminiClient) {
     return { ok: false, text: null, error: 'no_client' };
@@ -157,12 +181,42 @@ export async function safeGenerate(
     return { ok: false, text: null, error: quotaCheck.reason };
   }
 
+  // Input-side cap — always applied. A truncated prompt still runs;
+  // the caller's log records the truncation so the ratio between
+  // (chars submitted) and (chars accepted) is visible per-caller.
+  const promptCharCap = Math.min(
+    opts.maxPromptChars ?? SAFE_GENERATE_MAX_PROMPT_CHARS,
+    SAFE_GENERATE_MAX_PROMPT_CHARS,
+  );
+  const capped = prompt.length > promptCharCap;
+  const submittedPrompt = capped ? prompt.slice(0, promptCharCap) : prompt;
+  if (capped) {
+    logger.warn(`[GeminiClient] ${caller} prompt truncated`, {
+      caller,
+      submittedChars: promptCharCap,
+      originalChars: prompt.length,
+    });
+  }
+
   quota.callsThisMinute++;
   quota.totalCallsSession++;
 
+  const maxOutputTokens = Math.max(1, Math.min(
+    opts.maxOutputTokens ?? SAFE_GENERATE_DEFAULT_MAX_OUTPUT_TOKENS,
+    // Hard ceiling — no caller may bypass the cost bound entirely.
+    8_192,
+  ));
+
   const start = Date.now();
   try {
-    const response = await geminiClient.models.generateContent({ model, contents: prompt });
+    const response = await geminiClient.models.generateContent({
+      model,
+      contents: submittedPrompt,
+      config: {
+        maxOutputTokens,
+        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      },
+    });
     const text = response.text ?? null;
     logger.info(`[GeminiClient] ${caller} ok`, {
       model,
