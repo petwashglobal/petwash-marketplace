@@ -359,10 +359,20 @@ router.get('/sitters/:id', async (req, res) => {
 
 /**
  * POST /api/sitter-suite/sitters - Create sitter profile
+ * P0-AUDIT-AUTH-1 (task #234): requireAuth guard added. The route
+ * writes into sitter_profiles.user_id (Firebase UID); before this fix
+ * an anonymous client could POST a body carrying any userId and create
+ * a sitter profile attached to another person's account, which the
+ * approval-queue trusted. userId is now sourced from the verified
+ * Firebase token, never from the request body.
  */
-router.post('/sitters', async (req, res) => {
+router.post('/sitters', requireAuth, async (req: any, res) => {
   try {
+    const callerUid: string | undefined = req.user?.uid || req.firebaseUser?.uid;
+    if (!callerUid) return res.status(401).json({ error: 'Authentication required' });
     const { captchaToken, turnstileToken: sitterTurnstileToken, ...bodyWithoutToken } = req.body;
+    // Strip client-supplied userId — the caller's authenticated UID wins.
+    delete (bodyWithoutToken as any).userId;
     if (!captchaToken) {
       logger.warn('[Sitter Suite] Sitter registration rejected — missing captchaToken');
       return res.status(400).json({ error: 'Security verification token required. Please refresh and try again.', errorCode: 'CAPTCHA_REQUIRED' });
@@ -388,10 +398,10 @@ router.post('/sitters', async (req, res) => {
     }
 
     const validatedData = insertSitterProfileSchema.parse(bodyWithoutToken);
-    
+
     const [newSitter] = await db
       .insert(sitterProfiles)
-      .values(validatedData)
+      .values({ ...validatedData, userId: callerUid })
       .returning();
     
     logger.info('[Sitter Suite] Sitter profile created', {

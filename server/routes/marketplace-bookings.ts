@@ -23,6 +23,7 @@ import {
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { isSuperAdmin } from '../middleware/rbac';
 import { haversineKm } from '../utils/providerSearch';
 import { requireIdempotency, requireStrictIdempotency } from '../middleware/idempotency';
 import bookingLifecycleService from '../services/BookingLifecycleService';
@@ -1609,18 +1610,19 @@ router.post('/provider/:providerId/availability', requireAuth, async (req, res) 
     // Before this fix the ownership check was commented out ("for testing"),
     // meaning any authenticated user could block/unblock any provider's calendar.
     //
-    // SECURITY 2026-05-24 (CRITICAL fix from audit finding S2):
-    // The .endsWith('@petwash.co.il') admin path did NOT check email_verified.
-    // Firebase Auth allows signup with an unverified email; an attacker minting
-    // an unverified `attacker@petwash.co.il` Firebase account could pass this
-    // check and sabotage any provider's calendar. Now requires email_verified
-    // = true (which is what the Firebase ID token's `email_verified` claim
-    // resolves to in req.user when validated by validateFirebaseToken).
+    // P0-AUDIT-AUTH-3 (task #236): Even after the 2026-05-24 email_verified
+    // guard, the .endsWith('@petwash.co.il') path still trusted the entire
+    // domain. Anyone who happens to hold ANY verified @petwash.co.il Firebase
+    // identity — including an ex-contractor, a phishing target, or a leaked
+    // Google Workspace account — could sabotage every provider's calendar.
+    // Now the admin path only opens for accounts on SUPER_ADMIN_EMAILS
+    // (email_verified enforced inside isSuperAdminVerified) or a custom
+    // admin claim. The domain-only guess is gone.
     const callerEmail: string | undefined = req.user?.email;
     const callerEmailVerified: boolean = !!req.user?.email_verified;
     const callerIsAdmin =
       req.user?.customClaims?.admin === true ||
-      (callerEmailVerified && callerEmail?.toLowerCase().endsWith('@petwash.co.il'));
+      (callerEmailVerified && !!callerEmail && isSuperAdmin(callerEmail));
     if (userId !== providerId && !callerIsAdmin) {
       return res.status(403).json({ success: false, error: 'Not authorized to modify this provider\'s availability' });
     }
