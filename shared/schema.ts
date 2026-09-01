@@ -375,6 +375,37 @@ export const insertUserPasskeySchema = createInsertSchema(userPasskeys).omit({ i
 export type UserPasskey = typeof userPasskeys.$inferSelect;
 export type InsertUserPasskey = typeof userPasskeys.$inferInsert;
 
+// Sessions — first-class Pet Wash-owned session model (Phase 3).
+// Migration 0135. NO WRITER TODAY. Table exists so Phase 3.x service
+// can mint into it without needing a schema change alongside runtime
+// work. Cookie carries the raw opaque session id (32 bytes hex, HttpOnly,
+// Secure, SameSite Lax); server stores only SHA-256 hash. Per-session
+// revocation via revoked_at; Redis cache invalidation on revoke lives in
+// the service layer (not TTL drift). CEO D3.
+export const sessionsPw = pgTable("sessions_pw", {
+  id: bigserial("id", { mode: "bigint" }).primaryKey(),
+  sessionIdHash: varchar("session_id_hash", { length: 64 }).notNull(), // SHA-256(opaque_id)
+  userId: varchar("user_id").notNull(),
+  authMethod: varchar("auth_method", { length: 30 }), // google | apple | phone | email | password | passkey | pin | firebase-legacy
+  activeRole: varchar("active_role", { length: 30 }), // populated by Phase 5
+  deviceRef: varchar("device_ref"), // Phase 9 device link (unenforced FK)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: varchar("revoked_reason", { length: 60 }),
+  registrationIp: varchar("registration_ip", { length: 45 }),
+  registrationUserAgent: varchar("registration_user_agent", { length: 400 }),
+  lastSeenIp: varchar("last_seen_ip", { length: 45 }),
+  lastSeenUserAgent: varchar("last_seen_user_agent", { length: 400 }),
+}, (table) => [
+  uniqueIndex("uq_sessions_pw_session_id_hash").on(table.sessionIdHash),
+  index("idx_sessions_pw_user_active").on(table.userId, table.lastSeenAt).where(sql`revoked_at IS NULL`),
+  index("idx_sessions_pw_expires_at").on(table.expiresAt).where(sql`revoked_at IS NULL`),
+]);
+export type SessionPw = typeof sessionsPw.$inferSelect;
+export type InsertSessionPw = typeof sessionsPw.$inferInsert;
+
 // Admin Invitations — invite-only admin/staff onboarding. NO public path can create
 // an admin: a super-admin issues an invite (token_hash, role, expiry); the invitee
 // accepts at /accept-invite?token=… and the server cross-checks their Firebase email
