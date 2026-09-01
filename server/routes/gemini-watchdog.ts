@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { logger } from '../lib/logger';
 import GeminiWatchdogService from '../services/GeminiWatchdogService';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { db } from '../db';
 import { 
   watchdogIssues, 
@@ -27,8 +28,7 @@ router.get('/status', async (req, res) => {
     const status = await GeminiWatchdogService.getStatus();
     res.json({ success: true, status });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get status', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_STATUS_FAILED', { logContext: { op: 'get-status' } });
   }
 });
 
@@ -47,8 +47,7 @@ router.get('/issues', async (req, res) => {
 
     res.json({ success: true, issues });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get issues', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_ISSUES_FAILED', { logContext: { op: 'get-issues' } });
   }
 });
 
@@ -67,8 +66,7 @@ router.get('/struggles', async (req, res) => {
 
     res.json({ success: true, struggles });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get struggles', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_STRUGGLES_FAILED', { logContext: { op: 'get-struggles' } });
   }
 });
 
@@ -86,8 +84,7 @@ router.get('/auto-fixes', async (req, res) => {
 
     res.json({ success: true, autoFixes });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get auto-fixes', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_AUTOFIXES_FAILED', { logContext: { op: 'get-auto-fixes' } });
   }
 });
 
@@ -113,8 +110,7 @@ router.get('/checkout', async (req, res) => {
 
     res.json({ success: true, checkouts });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get checkout data', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_CHECKOUT_FAILED', { logContext: { op: 'get-checkout' } });
   }
 });
 
@@ -133,8 +129,7 @@ router.get('/registration', async (req, res) => {
 
     res.json({ success: true, registrations });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get registration data', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_REGISTRATION_FAILED', { logContext: { op: 'get-registration' } });
   }
 });
 
@@ -174,8 +169,7 @@ router.get('/journeys', async (req, res) => {
       }
     });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get journeys', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_JOURNEYS_FAILED', { logContext: { op: 'get-journeys' } });
   }
 });
 
@@ -203,8 +197,7 @@ router.post('/track-action', async (req, res) => {
 
     res.json({ success: true, message: 'Action tracked' });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to track action', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_TRACK_ACTION_FAILED', { logContext: { op: 'track-action' } });
   }
 });
 
@@ -233,8 +226,7 @@ router.post('/track-checkout', async (req, res) => {
 
     res.json({ success: true, message: 'Checkout tracked' });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to track checkout', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_TRACK_CHECKOUT_FAILED', { logContext: { op: 'track-checkout' } });
   }
 });
 
@@ -261,8 +253,7 @@ router.post('/track-registration', async (req, res) => {
 
     res.json({ success: true, message: 'Registration tracked' });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to track registration', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_TRACK_REGISTRATION_FAILED', { logContext: { op: 'track-registration' } });
   }
 });
 
@@ -282,8 +273,7 @@ router.patch('/issues/:id/resolve', async (req, res) => {
 
     res.json({ success: true, message: 'Issue resolved' });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to resolve issue', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_RESOLVE_ISSUE_FAILED', { logContext: { op: 'resolve-issue' } });
   }
 });
 
@@ -303,8 +293,7 @@ router.patch('/struggles/:id/resolve', async (req, res) => {
 
     res.json({ success: true, message: 'Struggle resolved' });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to resolve struggle', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_RESOLVE_STRUGGLE_FAILED', { logContext: { op: 'resolve-struggle' } });
   }
 });
 
@@ -316,8 +305,7 @@ router.get('/tech-updates', async (req, res) => {
     const updates = await GeminiWatchdogService.getTechUpdates();
     res.json({ success: true, ...updates });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to get tech updates', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_TECH_UPDATES_FAILED', { logContext: { op: 'get-tech-updates' } });
   }
 });
 
@@ -330,8 +318,7 @@ router.post('/tech-updates/scan', async (req, res) => {
     const updates = await GeminiWatchdogService.forceTechScan();
     res.json({ success: true, message: 'Tech update scan completed', ...updates });
   } catch (error: any) {
-    logger.error('[Gemini Watchdog API] Failed to run tech scan', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'GEMINI_WATCHDOG_TECH_SCAN_FAILED', { logContext: { op: 'run-tech-scan' } });
   }
 });
 

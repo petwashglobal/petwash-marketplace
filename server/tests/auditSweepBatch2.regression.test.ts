@@ -264,7 +264,9 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     //
     // 2026-09-01 migration wave 1: accounting-export.ts (6 sites),
     // google-forms.ts (2), disputes.ts (1) → ceiling 385 → 377.
-    const CEILING = 377;
+    // 2026-09-01 migration wave 2: gemini-watchdog.ts (14 sites)
+    //   → ceiling 377 → 363.
+    const CEILING = 363;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });
