@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { haversineKm as sharedHaversineKm } from '../lib/geo';
 import { db } from '../db';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { vatFromInclusive } from '@shared/money';
 import { 
   bookings,
@@ -274,8 +275,7 @@ router.post('/create', requireAuth, requireIdempotency, async (req, res) => {
       nextStatus: 'quote_sent'
     });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Create error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_CREATE_FAILED', { logContext: { op: 'create' } });
   }
 });
 
@@ -712,8 +712,7 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
     });
 
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Checkout error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_CHECKOUT_FAILED', { logContext: { op: 'checkout' } });
   }
 });
 
@@ -735,8 +734,7 @@ router.get('/my-bookings', requireAuth, async (req, res) => {
 
     res.json({ success: true, bookings: userBookings });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Fetch error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_FETCH_FAILED', { logContext: { op: 'fetch' } });
   }
 });
 
@@ -760,8 +758,7 @@ router.get('/:bookingId', requireAuth, async (req, res) => {
 
     res.json({ success: true, booking });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Get error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_GET_FAILED', { logContext: { op: 'get' } });
   }
 });
 
@@ -999,8 +996,7 @@ router.get('/:bookingId/history', requireAuth, async (req, res) => {
 
     res.json({ success: true, history });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] History error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_HISTORY_FAILED', { logContext: { op: 'history' } });
   }
 });
 
@@ -1039,8 +1035,7 @@ router.get('/:bookingId/escrow', requireAuth, async (req, res) => {
       }
     });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Escrow error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_ESCROW_FAILED', { logContext: { op: 'escrow' } });
   }
 });
 
@@ -1066,8 +1061,7 @@ router.get('/provider/:providerId/rate-card', async (req, res) => {
       }))
     });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Rate card error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_RATE_CARD_FAILED', { logContext: { op: 'rate-card' } });
   }
 });
 
@@ -1608,8 +1602,7 @@ router.get('/provider/:providerId/availability', async (req, res) => {
       range: { start: start.toISOString(), end: end.toISOString() }
     });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Availability error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_AVAILABILITY_FAILED', { logContext: { op: 'availability' } });
   }
 });
 
@@ -1686,8 +1679,7 @@ router.post('/provider/:providerId/availability', requireAuth, async (req, res) 
 
     res.json({ success: true, updates: results });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Update availability error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_UPDATE_AVAILABILITY_FAILED', { logContext: { op: 'update-availability' } });
   }
 });
 
@@ -1770,8 +1762,7 @@ router.post('/provider/rate-card', requireAuth, async (req, res) => {
       res.json({ success: true, action: 'created', rateCardId });
     }
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Rate card error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_RATE_CARD_FAILED', { logContext: { op: 'rate-card' } });
   }
 });
 
@@ -1797,8 +1788,7 @@ router.post('/process-escrow-releases', async (req, res) => {
       message: `Released ${releasedCount} escrow holdings` 
     });
   } catch (error: any) {
-    logger.error('[MarketplaceBookings] Escrow release error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MARKETPLACE_BOOKING_ESCROW_RELEASE_FAILED', { logContext: { op: 'escrow-release' } });
   }
 });
 

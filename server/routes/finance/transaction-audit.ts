@@ -29,6 +29,7 @@ import {
 } from '@shared/schema';
 import { eq, desc, and, gte, lte, sql, or, like } from 'drizzle-orm';
 import { escapeLike } from '../../lib/sqlLike';
+import { sendSanitizedError } from '../../lib/sanitizeErrorResponse';
 import { requireAdmin } from '../../adminAuth';
 import { logger } from '../../lib/logger';
 import { z } from 'zod';
@@ -123,8 +124,7 @@ router.get('/overview', async (_req, res) => {
       payments: paymentStats,
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Overview error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_OVERVIEW_FAILED', { logContext: { op: 'overview' } });
   }
 });
 
@@ -247,8 +247,7 @@ router.get('/bookings', async (req, res) => {
       },
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Bookings error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_BOOKINGS_FAILED', { logContext: { op: 'bookings' } });
   }
 });
 
@@ -281,8 +280,7 @@ router.get('/credit-transactions', async (req, res) => {
       },
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Credit transactions error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_CREDITS_FAILED', { logContext: { op: 'credits' } });
   }
 });
 
@@ -315,8 +313,7 @@ router.get('/redemption-sessions', async (req, res) => {
       },
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Redemption sessions error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_REDEMPTIONS_FAILED', { logContext: { op: 'redemptions' } });
   }
 });
 
@@ -349,8 +346,7 @@ router.get('/receipts', async (req, res) => {
       },
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Receipts error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_RECEIPTS_FAILED', { logContext: { op: 'receipts' } });
   }
 });
 
@@ -383,8 +379,7 @@ router.get('/audit-trail', async (req, res) => {
       },
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Audit trail error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_TRAIL_FAILED', { logContext: { op: 'audit-trail' } });
   }
 });
 
@@ -471,8 +466,7 @@ router.get('/booking/:bookingId/full-trail', async (req, res) => {
       auditTrail: auditEntries,
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Full trail error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_FULL_TRAIL_FAILED', { logContext: { op: 'full-trail' } });
   }
 });
 
@@ -517,8 +511,7 @@ router.get('/wallet-balances', async (req, res) => {
       },
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Wallet balances error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_WALLET_BALANCES_FAILED', { logContext: { op: 'wallet-balances' } });
   }
 });
 
@@ -599,8 +592,7 @@ router.get('/compliance-report', async (req, res) => {
       disclaimer: 'This report is generated from the PetWash™ financial system. All amounts in ILS. VAT rate: 18%. For Israeli Tax Authority compliance review.',
     });
   } catch (error: any) {
-    logger.error('[TransactionAudit] Compliance report error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'TRANSACTION_AUDIT_COMPLIANCE_FAILED', { logContext: { op: 'compliance-report' } });
   }
 });
 

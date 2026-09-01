@@ -268,7 +268,9 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     //   → ceiling 377 → 363.
     // 2026-09-01 migration wave 3: providers.ts (9 sites)
     //   → ceiling 363 → 354.
-    const CEILING = 354;
+    // 2026-09-01 migration wave 4: marketplace-bookings.ts (11 sites) +
+    //   finance/transaction-audit.ts (9 sites) → ceiling 354 → 334.
+    const CEILING = 334;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });
