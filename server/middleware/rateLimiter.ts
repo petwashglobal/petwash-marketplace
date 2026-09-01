@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response } from 'express';
 import { logger } from '../lib/logger';
+import { redisRateLimitStore } from './rateLimiterRedisStore';
 
 // Helper to get client IP safely (IPv6-compatible)
 function getClientIP(req: Request): string {
@@ -269,6 +270,13 @@ export const aiChatLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
+  // AUDIT-SMS-10 (#223b, Lane E slice 1, 2026-09-01): the default
+  // MemoryStore is per-process. On Cloud Run with N replicas a caller
+  // sees N * 20 effective requests before any single instance says no.
+  // Redis-backed store enforces the cap ACROSS replicas — while still
+  // BYPASSING gracefully on a Redis outage so infra failure never locks
+  // legitimate users out of every AI surface.
+  store: redisRateLimitStore('ai_chat_min'),
   keyGenerator: (req: Request) => {
     const ip = getClientIP(req);
     return `ai_chat_min:${ip}`;
@@ -290,6 +298,9 @@ export const aiChatHourlyLimiter = rateLimit({
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
+  // AUDIT-SMS-10 (#223b, Lane E slice 1): Redis-backed for
+  // multi-replica consistency (see aiChatLimiter comment above).
+  store: redisRateLimitStore('ai_chat_hour'),
   keyGenerator: (req: Request) => {
     const ip = getClientIP(req);
     return `ai_chat_hour:${ip}`;
