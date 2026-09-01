@@ -411,6 +411,30 @@ export const sessionsPw = pgTable("sessions_pw", {
 export type SessionPw = typeof sessionsPw.$inferSelect;
 export type InsertSessionPw = typeof sessionsPw.$inferInsert;
 
+// Devices — installation trust model (Phase 9, CEO D4 correction).
+// Migration 0137. NO WRITER TODAY. A device is a known app/browser
+// installation — NOT a hardware fingerprint. Trust level is a UX
+// signal only, never an authentication factor. Passkeys still belong
+// to the user, not the device (synced credentials).
+export const devicesPw = pgTable("devices_pw", {
+  id: bigserial("id", { mode: "bigint" }).primaryKey(),
+  userId: varchar("user_id").notNull(),
+  installId: varchar("install_id", { length: 64 }).notNull(),
+  label: varchar("label", { length: 120 }),
+  platform: varchar("platform", { length: 16 }),
+  formFactor: varchar("form_factor", { length: 16 }),
+  trustLevel: varchar("trust_level", { length: 20 }).default("unknown").notNull(),
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: varchar("revoked_reason", { length: 60 }),
+}, (table) => [
+  uniqueIndex("uq_devices_pw_user_install").on(table.userId, table.installId),
+  index("idx_devices_pw_user_active").on(table.userId, table.lastSeenAt).where(sql`revoked_at IS NULL`),
+]);
+export type DevicePw = typeof devicesPw.$inferSelect;
+export type InsertDevicePw = typeof devicesPw.$inferInsert;
+
 // Admin Invitations — invite-only admin/staff onboarding. NO public path can create
 // an admin: a super-admin issues an invite (token_hash, role, expiry); the invitee
 // accepts at /accept-invite?token=… and the server cross-checks their Firebase email
