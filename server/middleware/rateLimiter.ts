@@ -119,6 +119,10 @@ export const webauthnLimiter = rateLimit({
   message: 'Too many passkey attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  // AUDIT-SMS-10 (Lane E slice 1): Redis-backed. WebAuthn ceremonies
+  // are security-critical — a per-replica cap is meaningless when
+  // Cloud Run scales horizontally under load.
+  store: redisRateLimitStore('webauthn'),
   keyGenerator: (req: Request) => {
     // Combine IP + uid for user-specific limiting (IPv6-safe)
     const uid = (req as any).firebaseUser?.uid || (req as any).user?.uid || 'anonymous';
@@ -143,6 +147,10 @@ export const authLimiter = rateLimit({
   message: 'Too many authentication attempts',
   standardHeaders: true,
   legacyHeaders: false,
+  // AUDIT-SMS-10 (Lane E slice 1): Redis-backed for multi-replica
+  // consistency. Auth brute-force protection would be trivially
+  // bypassable if a caller could hit N replicas for N * 10 attempts.
+  store: redisRateLimitStore('auth'),
   keyGenerator: (req: Request) => {
     // Use IP-based limiting (IPv6-safe)
     const ip = getClientIP(req);
@@ -247,6 +255,11 @@ export const otpLimiter = rateLimit({
   message: 'Too many verification code requests',
   standardHeaders: true,
   legacyHeaders: false,
+  // AUDIT-SMS-10 (Lane E slice 1): Redis-backed. OTP brute-force is a
+  // primary abuse vector and the previous per-instance limiter meant a
+  // caller could hit N replicas for N * 5 SMS/window. Redis makes the
+  // cap effective across the whole fleet.
+  store: redisRateLimitStore('otp'),
   keyGenerator: (req: Request) => {
     // Use IP-based limiting (IPv6-safe)
     const ip = getClientIP(req);
