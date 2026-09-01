@@ -261,7 +261,10 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     // The earlier estimate of 241 was per-line; the actual multiline
     // pattern matches more spanning blocks. Decrement as endpoints
     // migrate to sendSanitizedError().
-    const CEILING = 385;
+    //
+    // 2026-09-01 migration wave 1: accounting-export.ts (6 sites),
+    // google-forms.ts (2), disputes.ts (1) → ceiling 385 → 377.
+    const CEILING = 377;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });

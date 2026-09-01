@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
 import { createAllForms, FORMS_DEFINITIONS } from '../services/GoogleFormsCreatorService';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -85,8 +86,7 @@ router.post('/api/google-forms/create-all', requireAdmin, async (_req: Request, 
       })),
     });
   } catch (error: any) {
-    logger.error('[GoogleForms] Bulk creation error', error);
-    res.status(500).json({ error: error.message || 'Form creation failed' });
+    sendSanitizedError(res, error, 'GOOGLE_FORMS_BULK_CREATE_FAILED', { logContext: { route: 'bulk' } });
   }
 });
 
@@ -105,8 +105,7 @@ router.post('/api/google-forms/create/:formType', requireAdmin, async (req: Requ
     }
     res.json({ success: true, form: result });
   } catch (error: any) {
-    logger.error('[GoogleForms] Single form creation error', error);
-    res.status(500).json({ error: error.message || 'Form creation failed' });
+    sendSanitizedError(res, error, 'GOOGLE_FORMS_CREATE_FAILED', { logContext: { route: 'single' } });
   }
 });
 

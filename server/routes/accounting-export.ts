@@ -10,6 +10,7 @@ import { Router, Request, Response } from 'express';
 import { BookingExportService } from '../services/BookingExportService';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -38,8 +39,7 @@ router.post('/setup', async (req: Request, res: Response) => {
       });
     }
   } catch (error: any) {
-    logger.error('[Accounting] Setup failed:', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ACCOUNTING_SETUP_FAILED', { logContext: { route: '/setup' } });
   }
 });
 
@@ -75,8 +75,7 @@ router.post('/export/transactions', async (req: Request, res: Response) => {
       });
     }
   } catch (error: any) {
-    logger.error('[Accounting] Export failed:', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ACCOUNTING_EXPORT_FAILED', { logContext: { route: '/export' } });
   }
 });
 
@@ -110,8 +109,7 @@ router.post('/export/compliance', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, errors: result.errors });
     }
   } catch (error: any) {
-    logger.error('[Accounting] Compliance export failed:', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ACCOUNTING_COMPLIANCE_EXPORT_FAILED', { logContext: { route: '/compliance-export' } });
   }
 });
 
@@ -134,8 +132,7 @@ router.post('/export/escrow', async (req: Request, res: Response) => {
       res.status(400).json({ success: false, errors: result.errors });
     }
   } catch (error: any) {
-    logger.error('[Accounting] Escrow export failed:', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ACCOUNTING_ESCROW_EXPORT_FAILED', { logContext: { route: '/escrow-export' } });
   }
 });
 
@@ -171,8 +168,7 @@ router.get('/compliance/report', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    logger.error('[Accounting] Compliance report generation failed:', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ACCOUNTING_COMPLIANCE_REPORT_FAILED', { logContext: { route: '/compliance-report' } });
   }
 });
 
@@ -210,8 +206,7 @@ router.get('/summary', async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    logger.error('[Accounting] Summary generation failed:', error);
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'ACCOUNTING_SUMMARY_FAILED', { logContext: { route: '/summary' } });
   }
 });
 
