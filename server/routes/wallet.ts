@@ -1137,13 +1137,21 @@ router.post('/admin-send', async (req, res) => {
     }
     const { auth: firebaseAuth } = await import('../lib/firebase-admin');
     let callerEmail: string | undefined;
+    let callerEmailVerified = false;
     try {
       const decoded = await firebaseAuth.verifyIdToken(authHeader.split('Bearer ')[1], true);
       callerEmail = decoded.email;
+      // P0-AUDIT-AUTH-2 (task #235): Firebase Auth lets a user register
+      // with any email address the domain owner has not yet verified.
+      // Without this check an attacker who minted an unverified
+      // <ceo>@petwash.co.il Firebase account could pass the allowlist
+      // and trigger wallet-pass delivery to any user. email_verified
+      // is the ID-token claim controlled by Firebase, not the client.
+      callerEmailVerified = decoded.email_verified === true;
     } catch {
       return res.status(401).json({ error: 'Invalid Firebase token' });
     }
-    if (!callerEmail || !SUPER_ADMIN_EMAILS.includes(callerEmail.toLowerCase())) {
+    if (!callerEmail || !callerEmailVerified || !SUPER_ADMIN_EMAILS.includes(callerEmail.toLowerCase())) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
