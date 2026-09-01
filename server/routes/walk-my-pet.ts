@@ -32,7 +32,7 @@ import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { checkBookingProximity } from '../lib/proximity';
-import { bookingLimiter } from '../middleware/rateLimiter';
+import { bookingLimiter, apiLimiter } from '../middleware/rateLimiter';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
@@ -305,7 +305,11 @@ router.patch('/walkers/:walkerId', requireAuth, async (req, res) => {
 });
 
 // GET /walkers/search — Returns all active, verified walkers for client-side filtering (used by WalkMyPet listing page)
-router.get('/walkers/search', async (req, res) => {
+// AUDIT-AUTH-8 (2026-09-01): deliberately unauthenticated (product needs
+// browse-before-signup UX). Mitigations: apiLimiter throttles per-IP;
+// projectPublicWalker (existing) drops KYC / banking / live GPS from
+// the DTO. Coarser geohash rounding is tracked in the POST handler.
+router.get('/walkers/search', apiLimiter, async (req, res) => {
   try {
     const city = (req.query.city as string) || '';
     const walkers = await db
@@ -338,18 +342,41 @@ router.get('/walkers/search', async (req, res) => {
 });
 
 // Search walkers by location (geolocation)
-router.post('/walkers/search', async (req, res) => {
+// AUDIT-AUTH-8 (2026-09-01): unauthenticated by design (product browse
+// use case). Mitigations:
+//   * apiLimiter throttles per-IP so a crawler can't harvest a
+//     coverage grid at scale.
+//   * radiusKm capped at 25 (was uncapped — a caller could sweep the
+//     whole country in one request).
+//   * lat/lon rounded to 3 decimal places (~110m precision) before
+//     the DB query so query-plan caches and access logs don't record
+//     the caller's exact position, and consecutive scrapes at ~110m
+//     grid produce identical query plans (limits enumeration).
+router.post('/walkers/search', apiLimiter, async (req, res) => {
   try {
-    const { latitude, longitude, radiusKm = 5, minRating = 0, hasBodyCamera, hasDroneAccess } = req.body;
+    const { latitude, longitude, radiusKm: rawRadiusKm = 5, minRating = 0, hasBodyCamera, hasDroneAccess } = req.body;
 
     if (!latitude || !longitude) {
       return res.status(400).json({ error: 'Latitude and longitude required' });
     }
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: 'Latitude and longitude must be numbers' });
+    }
+
+    // Cap radius to prevent a country-wide sweep.
+    const radiusKm = Math.min(25, Math.max(0.1, Number(rawRadiusKm) || 5));
+
+    // Round to ~110m precision. Only affects the query bounds; the
+    // caller still gets accurate distances back computed on their own
+    // side. Prevents log-based fingerprinting.
+    const round3 = (n: number) => Math.round(n * 1000) / 1000;
+    const qLat = round3(latitude);
+    const qLon = round3(longitude);
 
     // Calculate bounding box for efficient search
     // 1 degree latitude ≈ 111km, longitude varies by latitude
     const latDelta = radiusKm / 111;
-    const lonDelta = radiusKm / (111 * Math.cos(latitude * Math.PI / 180));
+    const lonDelta = radiusKm / (111 * Math.cos(qLat * Math.PI / 180));
 
     let query = db
       .select()
@@ -361,10 +388,10 @@ router.post('/walkers/search', async (req, res) => {
           eq(walkerProfiles.isActive, true),
           gte(walkerProfiles.averageRating, minRating.toString()),
           // Bounding box filter
-          gte(walkerProfiles.currentLatitude, (latitude - latDelta).toString()),
-          lte(walkerProfiles.currentLatitude, (latitude + latDelta).toString()),
-          gte(walkerProfiles.currentLongitude, (longitude - lonDelta).toString()),
-          lte(walkerProfiles.currentLongitude, (longitude + lonDelta).toString())
+          gte(walkerProfiles.currentLatitude, (qLat - latDelta).toString()),
+          lte(walkerProfiles.currentLatitude, (qLat + latDelta).toString()),
+          gte(walkerProfiles.currentLongitude, (qLon - lonDelta).toString()),
+          lte(walkerProfiles.currentLongitude, (qLon + lonDelta).toString())
         )
       );
 

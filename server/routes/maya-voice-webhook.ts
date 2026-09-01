@@ -14,7 +14,7 @@
  * Stage 3A: signature stubbed to always pass. Stage 3B replaces with real
  * provider-specific HMAC check.
  */
-import { Router, type Request, type Response, type NextFunction } from 'express';
+import { Router, type Request, type Response, type NextFunction, raw as expressRaw } from 'express';
 import { logger } from '../lib/logger';
 import { getFeatureFlag } from '../services/SystemConfig';
 import { StubVoiceProvider } from '../services/voice/StubVoiceProvider';
@@ -55,14 +55,51 @@ async function requireInbound(_req: Request, res: Response, next: NextFunction) 
 
 router.use(requireVoiceMaster);
 
-// Raw body capture for HMAC verification (needed by real providers in Stage 3B).
-// Stage 3A doesn't strictly need it but we wire it now so the interface is
-// stable when we swap providers.
-router.use((req: Request & { rawBody?: string }, _res, next) => {
-  if (typeof req.body === 'string') req.rawBody = req.body;
-  else req.rawBody = JSON.stringify(req.body ?? {});
-  next();
-});
+// AUDIT-MONEY-8 (2026-09-01) — Raw body capture for HMAC verification.
+//
+// The prior implementation ran AFTER express.json() and re-serialised
+// the already-parsed body with JSON.stringify — which produces
+// DIFFERENT bytes than the provider signed (JSON.stringify has no
+// guarantee of key order, whitespace, or numeric formatting). Any
+// HMAC computed over that re-serialised string would verify against
+// itself but NEVER against the provider's signature — so Stage 3B
+// would ship a broken-by-design integration.
+//
+// The fix: mount express.raw({ type: '*/*' }) BEFORE any body parser
+// on this router. That captures the actual bytes into req.body as a
+// Buffer, we save them as req.rawBody (utf8) for the HMAC check, and
+// then parse the JSON ourselves into req.body for the handlers. This
+// makes provider signature verification correct for any provider that
+// signs the raw request body.
+router.use(
+  '/webhook',
+  expressRaw({ type: '*/*', limit: '256kb' }),
+  (req: Request & { rawBody?: string }, _res, next) => {
+    try {
+      // express.raw put the raw bytes on req.body as a Buffer.
+      const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body ?? '');
+      req.rawBody = buf.length > 0 ? buf.toString('utf8') : '';
+      // Re-parse the JSON envelope for handler convenience. Provider
+      // signature verification MUST use req.rawBody — NEVER re-derive
+      // bytes from req.body.
+      if (req.rawBody.length > 0) {
+        try {
+          req.body = JSON.parse(req.rawBody);
+        } catch {
+          // Malformed JSON body — leave req.body as the raw buffer;
+          // handler will validate and 400.
+          req.body = {};
+        }
+      } else {
+        req.body = {};
+      }
+      next();
+    } catch (err) {
+      logger.warn({ err }, 'maya voice webhook: raw-body capture failed');
+      next();
+    }
+  },
+);
 
 /**
  * POST /api/maya/voice/webhook

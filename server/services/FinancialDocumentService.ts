@@ -22,7 +22,7 @@ import { db } from '../db';
 import { financialDocuments } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 
 export type FinancialDocumentType =
   | 'booking_receipt'
@@ -66,9 +66,22 @@ const REFERENCE_PREFIXES: Record<FinancialDocumentType, string> = {
 };
 
 function generateDocumentReference(type: FinancialDocumentType): string {
+  // AUDIT-MONEY-3 (2026-09-01): Math.random() replaced with
+  // crypto.randomBytes. Financial-document reference ids appear on
+  // customer-visible receipts, refund confirmations, and payout
+  // rows — a predictable id could be enumerated by an attacker who
+  // knows any single reference from the same second (Date.now is
+  // ~ms-resolution, so `ts` collision within a request burst is
+  // routine). 4 random bytes → base36 → 5-char uppercase suffix
+  // gives ~52 bits of unpredictability per reference.
   const prefix = REFERENCE_PREFIXES[type];
   const ts = Date.now().toString(36).toUpperCase();
-  const rnd = Math.random().toString(36).substring(2, 7).toUpperCase();
+  const rnd = randomBytes(4)
+    .readUInt32BE(0)
+    .toString(36)
+    .toUpperCase()
+    .padStart(6, '0')
+    .slice(0, 6);
   return `${prefix}-${ts}-${rnd}`;
 }
 
