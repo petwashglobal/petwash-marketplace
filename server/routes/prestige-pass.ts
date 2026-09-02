@@ -20088,26 +20088,65 @@ router.post('/admin/system/incidents/:id/postmortem', async (req, res) => {
     if (!incRes.rows.length) return res.status(404).json({ error: 'Incident not found' });
     const inc = incRes.rows[0];
 
-    const timelineRes = await pool.query(
-      `SELECT event_type, content, actor, occurred_at, metadata_json
-       FROM incident_timeline_entries WHERE incident_id = $1
-       ORDER BY occurred_at ASC`,
+    // AUDIT-AI-12 (#207): incident timelines can grow to thousands of
+    // entries on long-running P1s; serialising the whole thing into a
+    // Gemini prompt is an unbounded per-call token cost. Fetch a bounded
+    // window instead — the first HEAD entries (the incident's initial
+    // triage state) plus the most-recent TAIL entries (what led to
+    // resolution). A gap marker in between makes the truncation explicit
+    // to the reader.
+    const TIMELINE_HEAD = 20;
+    const TIMELINE_TAIL = 30;
+    const TIMELINE_TOTAL_CAP = TIMELINE_HEAD + TIMELINE_TAIL;
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM incident_timeline_entries WHERE incident_id = $1`,
       [id],
     );
+    const totalTimeline: number = countRes.rows[0]?.n ?? 0;
+    let timelineRows: any[];
+    let timelineTruncated = false;
+    if (totalTimeline <= TIMELINE_TOTAL_CAP) {
+      const r = await pool.query(
+        `SELECT event_type, content, actor, occurred_at, metadata_json
+         FROM incident_timeline_entries WHERE incident_id = $1
+         ORDER BY occurred_at ASC`,
+        [id],
+      );
+      timelineRows = r.rows;
+    } else {
+      const headR = await pool.query(
+        `SELECT event_type, content, actor, occurred_at, metadata_json
+         FROM incident_timeline_entries WHERE incident_id = $1
+         ORDER BY occurred_at ASC LIMIT $2`,
+        [id, TIMELINE_HEAD],
+      );
+      const tailR = await pool.query(
+        `SELECT event_type, content, actor, occurred_at, metadata_json
+         FROM incident_timeline_entries WHERE incident_id = $1
+         ORDER BY occurred_at DESC LIMIT $2`,
+        [id, TIMELINE_TAIL],
+      );
+      timelineRows = [...headR.rows, ...tailR.rows.reverse()];
+      timelineTruncated = true;
+    }
 
-    // Self-healing actions that fired during the incident window
+    // Self-healing actions that fired during the incident window — also
+    // bounded (top-N by anomaly_score, then chronological) so a big
+    // storm can't dominate the prompt.
     let shExecsData = '';
+    const SH_CAP = 20;
     if (inc.anomaly_event_id) {
       const shRes = await pool.query(
         `SELECT e.*, r.name as rule_name, r.action_type
          FROM self_healing_executions e
          LEFT JOIN self_healing_rules r ON r.id = e.rule_id
          WHERE e.anomaly_event_id = $1
-         ORDER BY e.executed_at ASC`,
-        [inc.anomaly_event_id],
+         ORDER BY e.anomaly_score DESC NULLS LAST, e.executed_at ASC
+         LIMIT $2`,
+        [inc.anomaly_event_id, SH_CAP],
       );
       if (shRes.rows.length) {
-        shExecsData = '\n\nSelf-Healing Actions Fired:\n' + shRes.rows.map((e: any) =>
+        shExecsData = '\n\nSelf-Healing Actions Fired' + (shRes.rows.length === SH_CAP ? ` (top ${SH_CAP} by anomaly score)` : '') + ':\n' + shRes.rows.map((e: any) =>
           `  - [${e.result?.toUpperCase()}] ${e.rule_name ?? 'Rule #' + e.rule_id} (${e.action_type}) — score ${e.anomaly_score} — conf ${e.confidence_score ?? 'N/A'} — ${new Date(e.executed_at).toISOString()}`
         ).join('\n');
       }
@@ -20117,9 +20156,16 @@ router.post('/admin/system/incidents/:id/postmortem', async (req, res) => {
       ? `${Math.round((new Date(inc.resolved_at).getTime() - new Date(inc.started_at).getTime()) / 60000)} minutes`
       : 'Not yet resolved';
 
-    const timelineText = timelineRes.rows.map((t: any) =>
+    const timelineLines = timelineRows.map((t: any) =>
       `  [${new Date(t.occurred_at).toISOString()}] [${t.event_type}] ${t.content} — by ${t.actor}`
-    ).join('\n') || '  (No timeline entries)';
+    );
+    const timelineText = timelineTruncated
+      ? [
+          ...timelineLines.slice(0, TIMELINE_HEAD),
+          `  … (${totalTimeline - TIMELINE_TOTAL_CAP} intermediate entries omitted from prompt) …`,
+          ...timelineLines.slice(TIMELINE_HEAD),
+        ].join('\n')
+      : (timelineLines.join('\n') || '  (No timeline entries)');
 
     const prompt = `You are an expert Site Reliability Engineer writing an incident postmortem for a pet care SaaS platform (PetWash).
 
@@ -20148,9 +20194,13 @@ Write a structured incident postmortem in the following format:
 Write in a professional but concise style. Focus on technical accuracy. This is for internal engineering review.`;
 
     const genAI = new GoogleGenAI(getVertexAIConfig());
+    // AUDIT-AI-12 (#207): cap generateContent output tokens so a runaway
+    // response can't spend past a bounded envelope. Postmortems are
+    // narrative but not novel-length; 4096 tokens is generous headroom.
     const aiRes = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { maxOutputTokens: 4096 },
     });
 
     const postmortemText = aiRes.text ?? '';
