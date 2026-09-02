@@ -194,6 +194,32 @@ describe('AUDIT-SMS-14 / #225 slice 2 — otp_events + sms_evidence phone_hash w
     expect(src).toMatch(/toPhoneHash:\s*phoneLookupHash\(challenge\.destination\)/);
   });
 
+  it('backfill script scripts/backfill-phone-hash.ts exists and covers all three tables', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const src = readFileSync(
+      join(__dirname, '..', '..', 'scripts', 'backfill-phone-hash.ts'),
+      'utf8',
+    );
+    // Refuses to run without the HMAC secret — this is the whole point of
+    // assertSecret(): a partial backfill under a rotating secret would
+    // leave orphan hashes that never match new writes.
+    expect(src).toMatch(/PHONE_HMAC_SECRET/);
+    expect(src).toMatch(/refusing to run/i);
+    // All three write-side targets covered.
+    expect(src).toMatch(/backfillUsers/);
+    expect(src).toMatch(/backfillOtpEvents/);
+    expect(src).toMatch(/backfillSmsEvidence/);
+    // Idempotent-shape queries — only rows whose hash column is still
+    // null get touched. Never overwrites existing hashes.
+    expect(src).toMatch(/isNull\(users\.phoneHash\)/);
+    expect(src).toMatch(/isNull\(otpEvents\.phoneHash\)/);
+    expect(src).toMatch(/isNull\(smsEvidence\.toPhoneHash\)/);
+    // Two-phase (dry-run vs COMMIT) so an operator can preview before
+    // touching production.
+    expect(src).toMatch(/const COMMIT\s*=\s*process\.argv\.includes\(['"]--commit['"]\)/);
+  });
+
   it('publicAuthRoutes writes both phone_hash and to_phone_hash on the three insert sites', async () => {
     const { readFileSync } = await import('node:fs');
     const { join } = await import('node:path');
