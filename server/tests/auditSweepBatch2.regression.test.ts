@@ -285,7 +285,10 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     // 2026-09-01 migration wave 11: israeli-cpi.ts (4) +
     //   israeli-2025-esign.ts (4) + esign.ts (3) + police-check.ts (3)
     //   → ceiling 182 → 147.
-    const CEILING = 147;
+    // 2026-09-01 migration wave 12: weather.ts (5) + wallet.ts (5) +
+    //   translation.ts (3) + send-thank-you.ts (2) + monitoring.ts (2)
+    //   + campaigns.ts (2) → ceiling 147 → 120.
+    const CEILING = 120;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });

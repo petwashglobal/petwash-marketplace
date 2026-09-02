@@ -17,6 +17,7 @@ import { EmailService } from '../emailService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
 import { replaceTemplates, validateTemplate, type TemplateContext } from '../lib/template-engine';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { assertMarketingConsent } from '../services/CampaignDeliveryService';
@@ -471,11 +472,7 @@ router.post('/send', async (req: Request, res: Response) => {
       });
     }
     
-    res.status(500).json({
-      success: false,
-      error: 'Campaign sending failed',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'CAMPAIGN_SEND_FAILED', { logContext: { op: 'send' } });
   }
 });
 
@@ -555,10 +552,7 @@ router.get('/preview', async (req: Request, res: Response) => {
     
   } catch (error: any) {
     logger.error('Campaign preview failed', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    sendSanitizedError(res, error, 'CAMPAIGN_OPERATION_FAILED', { logContext: { op: 'operation' } });
   }
 });
 

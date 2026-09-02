@@ -12,6 +12,7 @@ import {
   healthCheck 
 } from '../services/geminiTranslation';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { z } from 'zod';
 
 const router: Router = express.Router();
@@ -78,10 +79,7 @@ router.post('/', async (req, res) => {
 
   } catch (error) {
     logger.error('[Translation API] Error:', error);
-    res.status(500).json({ 
-      error: 'Translation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'TRANSLATION_FAILED', { logContext: { op: 'translate' } });
   }
 });
 
@@ -128,10 +126,7 @@ router.post('/batch', async (req, res) => {
 
   } catch (error) {
     logger.error('[Translation API] Batch error:', error);
-    res.status(500).json({ 
-      error: 'Batch translation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'TRANSLATION_BATCH_FAILED', { logContext: { op: 'batch' } });
   }
 });
 
@@ -244,10 +239,7 @@ router.post('/verify', async (req, res) => {
 
   } catch (error) {
     logger.error('[Translation API] Verify error:', error);
-    res.status(500).json({ 
-      error: 'Verification failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'TRANSLATION_VERIFY_FAILED', { logContext: { op: 'verify' } });
   }
 });
 

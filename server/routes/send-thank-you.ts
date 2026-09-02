@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -107,10 +108,7 @@ router.post('/send-signature-invite', async (req, res) => {
 
   } catch (error: any) {
     logger.error('Failed to send e-signature invitation:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: error.message || 'Failed to send email'
-    });
+    return sendSanitizedError(res, error, 'THANK_YOU_SEND_FAILED', { logContext: { op: 'send-1' } });
   }
 });
 
@@ -459,10 +457,7 @@ Launching Soon at: https://petwash.co.il
 
   } catch (error) {
     logger.error('[Thank You Email] Failed to send', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to send email'
-    });
+    sendSanitizedError(res, error, 'THANK_YOU_SEND_ALT_FAILED', { logContext: { op: 'send-2' } });
   }
 });
 

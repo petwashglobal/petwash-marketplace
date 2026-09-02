@@ -11,6 +11,7 @@
 import express from 'express';
 import { AppleWalletService } from '../appleWallet';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { db } from '../lib/firebase-admin';
 import { walletFraudProtection, WalletFraudDetection } from '../middleware/fraudDetection';
 import { WalletTelemetryService } from '../services/WalletTelemetryService';
@@ -209,10 +210,7 @@ router.post('/vip-card', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating VIP card:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate VIP card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_VIP_CARD_FAILED', { logContext: { op: 'vip-card' } });
   }
 });
 
@@ -309,10 +307,7 @@ router.post('/e-voucher', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating E-Voucher:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate E-Voucher',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_EVOUCHER_FAILED', { logContext: { op: 'evoucher' } });
   }
 });
 
@@ -358,10 +353,7 @@ router.post('/update-vip', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error updating VIP card:', error);
-    res.status(500).json({ 
-      error: 'Failed to update VIP card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_VIP_UPDATE_FAILED', { logContext: { op: 'vip-update' } });
   }
 });
 
@@ -537,10 +529,7 @@ router.post('/my-business-card', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating personal business card:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate business card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_BUSINESS_CARD_FAILED', { logContext: { op: 'business-card' } });
   }
 });
 
@@ -749,10 +738,7 @@ router.post('/business-card', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating business card:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate business card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_BUSINESS_CARD_FAILED', { logContext: { op: 'business-card' } });
   }
 });
 

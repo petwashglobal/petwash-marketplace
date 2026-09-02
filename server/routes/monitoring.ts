@@ -6,6 +6,7 @@
 import { Router } from 'express';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { db } from '../db';
 
 const router = Router();
@@ -132,10 +133,7 @@ router.get('/performance', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[Monitoring] Failed to get performance metrics', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
+    sendSanitizedError(res, error, 'MONITORING_A_FAILED', { logContext: { op: 'monitoring-a' } });
   }
 });
 
@@ -234,7 +232,7 @@ router.get('/database/slow-queries', async (req, res) => {
     res.json({ success: true, source, slowQueries });
   } catch (error: any) {
     logger.error('[Monitoring] Failed to get slow queries', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    sendSanitizedError(res, error, 'MONITORING_B_FAILED', { logContext: { op: 'monitoring-b' } });
   }
 });
 
