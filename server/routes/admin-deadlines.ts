@@ -36,7 +36,7 @@
 import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import {
   stationBills,
   stationAssets,
@@ -52,8 +52,8 @@ const router = Router();
 // ---- Auth: token first, then super-admin email check -----------------------
 router.use(validateFirebaseToken);
 function requireAdmin(req: any, res: Response, next: any) {
-  const email = (req.firebaseUser?.email || '').toLowerCase();
-  if (!isSuperAdmin(email)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: 'Full admin access required' });
   }
   next();

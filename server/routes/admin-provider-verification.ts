@@ -7,7 +7,7 @@
  */
 import { Router, type Request, type Response } from "express";
 import { z } from "zod";
-import { isSuperAdmin } from "../middleware/rbac";
+import { isSuperAdminVerified } from "../middleware/rbac";
 import { logger } from "../lib/logger";
 import {
   MATCH_VERDICTS, OFFICIAL_DOC_TYPES, DOC_SUBMISSION_METHODS,
@@ -20,7 +20,7 @@ import {
 const router = Router();
 function adminUid(req: any): string { return req.firebaseUser?.uid || req.userId || req.user?.id || "unknown"; }
 function requireAdmin(req: any, res: any, next: any) {
-  if (!isSuperAdmin((req.firebaseUser?.email || "").toLowerCase())) return res.status(403).json({ error: "Full admin access required" });
+  if (!isSuperAdminVerified(req)) return res.status(403).json({ error: "Full admin access required" });
   next();
 }
 router.use(requireAdmin);

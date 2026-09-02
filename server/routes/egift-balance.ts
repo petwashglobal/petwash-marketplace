@@ -21,7 +21,7 @@ import {
   releaseByReservationId,
 } from '../services/egift/egiftReservationService';
 import { pool } from '../db';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 
 const router = Router();
 
@@ -46,10 +46,11 @@ const router = Router();
 async function assertEgiftOwnership(
   egiftId: string,
   callerUid: string,
-  callerEmail: string | undefined,
+  req: Request,
 ): Promise<{ ok: true } | { ok: false; status: 404 | 500 }> {
   try {
-    if (callerEmail && isSuperAdmin(callerEmail)) return { ok: true };
+    // #240 migration: paired shape — allowlist + email_verified.
+    if (isSuperAdminVerified(req)) return { ok: true };
     const r = await pool.query<{ owner_uid: string | null; purchaser_uid: string | null }>(
       `SELECT owner_uid, purchaser_uid FROM e_vouchers WHERE id = $1 LIMIT 1`,
       [egiftId],
@@ -76,7 +77,7 @@ router.get('/:egiftId/balance', async (req: Request, res: Response) => {
   if (!uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
   const egiftId = String(req.params.egiftId ?? '').trim();
   if (!egiftId) return res.status(400).json({ ok: false, error: 'EGIFT_ID_REQUIRED' });
-  const acl = await assertEgiftOwnership(egiftId, uid, email);
+  const acl = await assertEgiftOwnership(egiftId, uid, req);
   if (!acl.ok) return res.status(acl.status).json({ ok: false, error: acl.status === 500 ? 'ACL_LOOKUP_FAILED' : 'NOT_FOUND' });
   try {
     const projection = await projectEgiftBalance(egiftId);
@@ -106,7 +107,7 @@ router.post('/:egiftId/reservations', async (req: Request, res: Response) => {
   if (!uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
   const egiftId = String(req.params.egiftId ?? '').trim();
   if (!egiftId) return res.status(400).json({ ok: false, error: 'EGIFT_ID_REQUIRED' });
-  const acl = await assertEgiftOwnership(egiftId, uid, email);
+  const acl = await assertEgiftOwnership(egiftId, uid, req);
   if (!acl.ok) return res.status(acl.status).json({ ok: false, error: acl.status === 500 ? 'ACL_LOOKUP_FAILED' : 'NOT_FOUND' });
 
   const result = await reserveFromEgift({
@@ -130,7 +131,7 @@ router.post('/:egiftId/reservations/:reservationId/commit', async (req: Request,
   const egiftId = String(req.params.egiftId ?? '').trim();
   const reservationId = String(req.params.reservationId ?? '').trim();
   if (!egiftId) return res.status(400).json({ ok: false, error: 'EGIFT_ID_REQUIRED' });
-  const acl = await assertEgiftOwnership(egiftId, uid, email);
+  const acl = await assertEgiftOwnership(egiftId, uid, req);
   if (!acl.ok) return res.status(acl.status).json({ ok: false, error: acl.status === 500 ? 'ACL_LOOKUP_FAILED' : 'NOT_FOUND' });
   const result = await commitReservation({
     reservationId,
@@ -147,7 +148,7 @@ router.post('/:egiftId/reservations/:reservationId/release', async (req: Request
   const egiftId = String(req.params.egiftId ?? '').trim();
   const reservationId = String(req.params.reservationId ?? '').trim();
   if (!egiftId) return res.status(400).json({ ok: false, error: 'EGIFT_ID_REQUIRED' });
-  const acl = await assertEgiftOwnership(egiftId, uid, email);
+  const acl = await assertEgiftOwnership(egiftId, uid, req);
   if (!acl.ok) return res.status(acl.status).json({ ok: false, error: acl.status === 500 ? 'ACL_LOOKUP_FAILED' : 'NOT_FOUND' });
   const result = await releaseByReservationId(reservationId);
   if (!result.ok) return res.status(400).json({ ok: false, errorCode: result.errorCode });

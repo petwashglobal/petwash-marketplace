@@ -40,7 +40,7 @@ const ROOT = join(__dirname, '..', '..');
 function grepRepo(pattern: string): string[] {
   try {
     const out = execSync(
-      `rg --no-heading -n -U --multiline -g '*.ts' -g '!server/tests/**' -g '!**/node_modules/**' ${JSON.stringify(pattern)} ${ROOT}`,
+      `rg --no-heading -n -U --multiline -g '*.ts' -g '!server/tests/**' -g '!tests/**' -g '!**/node_modules/**' ${JSON.stringify(pattern)} ${ROOT}`,
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30_000 },
     );
     return out.split('\n').filter(Boolean);
@@ -94,11 +94,13 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
       if (usesWrapper || hasVerifiedCheck) continue;
       strays.push(`${rel}:${lineNo}`);
     }
-    // Ceiling captured today. DECREMENT as call-sites migrate.
-    const CEILING = 84;
+    // #240 migration: production runtime is now clean. STRICT ceiling —
+    // any new bare isSuperAdmin() call-site outside rbac.ts, without a
+    // paired email_verified === true check nearby, fails the pin.
+    const CEILING = 0;
     expect(
       strays.length,
-      `unpaired isSuperAdmin(...) call-sites: ${strays.length} — must not grow past ${CEILING}. Current:\n${strays.join('\n')}`,
+      `unpaired isSuperAdmin(...) call-sites: ${strays.length} — must be 0. New offenders:\n${strays.join('\n')}`,
     ).toBeLessThanOrEqual(CEILING);
   });
 });

@@ -7,7 +7,7 @@ import { GPSTrackingService } from '../services/GPSTrackingService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
 import { db as firestoreDb } from '../lib/firebase-admin';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
@@ -158,7 +158,8 @@ router.get('/walk/:sessionId/location', requireAuth, async (req, res) => {
     const session = sessionSnap.data() as { walkerId?: string; ownerId?: string } | undefined;
     const isWalker = !!session?.walkerId && session.walkerId === uid;
     const isOwner = !!session?.ownerId && session.ownerId === uid;
-    const isAdmin = isSuperAdmin(req.user?.email || '');
+    // #240 migration: paired shape — allowlist + email_verified.
+    const isAdmin = isSuperAdminVerified(req as any);
 
     if (!isWalker && !isOwner && !isAdmin) {
       logger.warn('[GPS API] Unauthorized location read blocked', {

@@ -19,7 +19,7 @@ import { eq } from 'drizzle-orm';
 import { businessLegalIdDocuments } from '@shared/schema';
 import { logAuditEvent } from '../middleware/auditLog';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -87,8 +87,8 @@ async function requireComplianceRole(req: Request, res: Response, next: NextFunc
 
     const email = req.firebaseUser.email?.toLowerCase() || '';
 
-    // Super admins always have compliance access
-    if (isSuperAdmin(email)) {
+    // #240 migration: paired shape — allowlist + email_verified.
+    if (isSuperAdminVerified(req as any)) {
       (req as any).actorRole = 'super_admin';
       return next();
     }

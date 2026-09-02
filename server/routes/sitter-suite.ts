@@ -37,7 +37,7 @@ import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember, enrichWithLoyalty } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { withOwnerMedicalFields, filterPetForProvider } from '../lib/petPrivacy';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
@@ -442,8 +442,8 @@ router.patch('/sitters/:id', requireAuth, async (req: any, res) => {
     // it. Without this check the route was anonymous → anyone could rewrite any
     // sitter's name/phone/price/active state (profile takeover).
     const callerUid = req.user!.uid;
-    const callerEmail = req.user?.email || '';
-    if (existingSitter.userId !== callerUid && !isSuperAdmin(callerEmail)) {
+    // #240 migration: paired shape — allowlist + email_verified.
+    if (existingSitter.userId !== callerUid && !isSuperAdminVerified(req as any)) {
       return res.status(403).json({ error: 'You can only edit your own sitter profile' });
     }
 
@@ -630,7 +630,6 @@ router.get('/calculate-price', requireAuth, async (req: any, res) => {
 router.get('/pets', requireAuth, async (req: any, res) => {
   try {
     const callerId: string = req.user?.uid || req.firebaseUser?.uid || '';
-    const callerEmail: string = req.user?.email || '';
     const userId = req.query.userId as string;
 
     if (!userId) {
@@ -640,15 +639,10 @@ router.get('/pets', requireAuth, async (req: any, res) => {
     const isOwner = callerId === userId;
 
     // ── Super-admin / compliance bypass ────────────────────────────────────
+    // #240 migration: paired shape — allowlist + email_verified.
     const COMPLIANCE_ROLES = ['compliance', 'compliance_officer', 'auditor', 'legal'];
-    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
-      .split(',')
-      .map(e => e.trim().toLowerCase())
-      .filter(Boolean);
-    const callerEmailLower = callerEmail.toLowerCase();
     const isAdminOrCompliance =
-      superAdminEmails.includes(callerEmailLower) ||
-      isSuperAdmin(callerEmail) ||
+      isSuperAdminVerified(req as any) ||
       (req.userRole?.role && COMPLIANCE_ROLES.includes(String(req.userRole.role.name || req.userRole.role).toLowerCase()));
 
     // ── Assigned provider check ─────────────────────────────────────────────

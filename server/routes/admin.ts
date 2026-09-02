@@ -16,7 +16,7 @@ import { logger } from '../lib/logger';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 
 const router = Router();
@@ -26,16 +26,21 @@ const router = Router();
 // when Firebase delivers emails in non-matching case (e.g. 'Support@PetWash.co.il'
 // vs 'support@petwash.co.il'). All entries in these lists must be lowercase.
 //
-// Full-admin gate: delegates to isSuperAdmin() which reads SUPER_ADMIN_EMAILS env var.
-// Viewer list: separate read-only allowlist managed here.
-// Viewer-only access list — read from ADMIN_VIEWER_EMAILS env var (comma-separated)
+// #240 migration: full-admin gate now uses isSuperAdminVerified — the
+// email allowlist ALONE is insufficient (an unverified Firebase account
+// with a matching email address would otherwise pass). Viewer list is
+// separately env-configured (read-only) and still allowlist-only.
 const ADMIN_VIEWER_EMAILS: string[] = (process.env.ADMIN_VIEWER_EMAILS || '')
   .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
 
 // Check if user has any admin/viewer access
 const requireAdminOrViewer = (req: any, res: any, next: any) => {
   const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const isAdmin = isSuperAdmin(userEmail);
+  // Full admin path: allowlist + email_verified (identical shape to
+  // isSuperAdminVerified). Viewer path stays allowlist-only — viewers
+  // are a manually curated read-only list; no elevation risk exists
+  // beyond viewing.
+  const isAdmin = isSuperAdminVerified(req);
   const isViewer = ADMIN_VIEWER_EMAILS.includes(userEmail);
 
   if (!isAdmin && !isViewer) {
@@ -48,9 +53,8 @@ const requireAdminOrViewer = (req: any, res: any, next: any) => {
 
 // Require full admin access (no viewers)
 const requireAdmin = (req: any, res: any, next: any) => {
-  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-
-  if (!isSuperAdmin(userEmail)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({
       error: 'Full admin access required',
       message: 'This action requires administrator privileges. Viewers have read-only access.',

@@ -23,7 +23,7 @@ import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { sendSmsTemplate } from '../services/smsTemplates';
 import { assignProviderMembership } from '../services/MembershipService';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
-import { isSuperAdmin, isSuperAdminVerified } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import {
   seedProviderServicesOnApproval,
   resolveApplicationServiceTypes,
@@ -1186,7 +1186,8 @@ router.post('/withdraw', async (req: Request, res: Response) => {
 // Same class of bug as the escrow shape fix (Issue #153 escrow follow-up).
 //
 // We now read from `firebaseUser.claims.accountType` (canonical) AND
-// consult `isSuperAdmin(email)` for the super-admin email allowlist.
+// consult isSuperAdminVerified(req) for the super-admin email allowlist +
+// email_verified check.
 // `'internal'` and `'admin'` accountType values stay accepted exactly
 // as the previous (broken) check intended.
 const ADMIN_ACCOUNT_TYPES = ['internal', 'admin'] as const;
@@ -1195,11 +1196,11 @@ function callerIsAdmin(req: Request): boolean {
   const fb = (req as any).firebaseUser;
   const claims = fb?.claims || {};
   // SUPER-ADMIN via email allowlist MUST also require Firebase-verified email.
-  // isSuperAdmin(email) alone would accept an attacker who registers an account
-  // with an email matching SUPER_ADMIN_EMAILS but has not clicked the verify
-  // link. Server-side custom claims (accountType) are safe on their own because
-  // only our own /post-login writer sets them. (Evil-hunt 2026-08-20 — mirrors
-  // Item 199 fix on whoami and rbac.ts:isSuperAdminVerified.)
+  // The bare allowlist primitive alone would accept an attacker who registers
+  // an account with an email matching SUPER_ADMIN_EMAILS but has not clicked
+  // the verify link. Server-side custom claims (accountType) are safe on
+  // their own because only our own /post-login writer sets them.
+  // (Evil-hunt 2026-08-20 — mirrors Item 199 fix on whoami.)
   if (isSuperAdminVerified(req)) return true;
   const accountType = typeof claims.accountType === 'string' ? claims.accountType : undefined;
   if (accountType && (ADMIN_ACCOUNT_TYPES as readonly string[]).includes(accountType)) return true;

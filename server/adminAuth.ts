@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 import { AdminUser } from "@shared/schema";
 import { logger } from './lib/logger';
-import { isSuperAdmin } from './middleware/rbac';
+import { isSuperAdminVerified } from './middleware/rbac';
 import { ADMIN_ROLES, isAdminRole } from '@shared/adminRoles';
 
 // Extend Express Request to include admin user
@@ -89,7 +89,15 @@ async function resolveClaimsBasedAuth(req: Request, res: Response): Promise<{
   }
 
   const userEmail = (decoded.email || '').toLowerCase();
-  const isSuperAdminUser = isSuperAdmin(userEmail);
+  // #240 migration: paired shape — allowlist + email_verified. Decoded
+  // Firebase token supplies email_verified directly (adminAuth resolver
+  // does not populate req.firebaseUser at this point, so match the
+  // canonical helper's contract inline).
+  const isSuperAdminUser = !!userEmail
+    && decoded.email_verified === true
+    && (process.env.SUPER_ADMIN_EMAILS || '')
+        .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+        .includes(userEmail);
   if (isSuperAdminUser) role = 'super_admin';
 
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -180,8 +188,8 @@ export const requireRole = (allowedRoles: string[]) => {
       || adminUser?.email?.toLowerCase() 
       || '';
     
-    // Super admins always have access
-    if (userEmail && isSuperAdmin(userEmail)) {
+    // #240 migration: paired shape — allowlist + email_verified.
+    if (isSuperAdminVerified(req as any)) {
       return next();
     }
     

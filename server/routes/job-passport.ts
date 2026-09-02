@@ -22,7 +22,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { logger } from '../lib/logger';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { composeJobPassport } from '../services/jobPassport/composer';
 import {
   issueHandoff, verifyHandoff, revokeHandoff, inspectHandoff,
@@ -47,7 +47,8 @@ function resolveViewer(req: Request): ActorIdentity | null {
   const uid = (req as any).firebaseUser?.uid;
   const email = (req as any).firebaseUser?.email || '';
   if (!uid) return null;
-  const kind: ActorKind = isSuperAdmin(email) ? 'PETWASH_STAFF' : 'CUSTOMER';
+  // #240 migration: paired shape — allowlist + email_verified.
+  const kind: ActorKind = isSuperAdminVerified(req as any) ? 'PETWASH_STAFF' : 'CUSTOMER';
   return { kind, uid };
 }
 

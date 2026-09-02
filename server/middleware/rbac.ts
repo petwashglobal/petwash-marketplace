@@ -70,6 +70,22 @@ export function isSuperAdmin(email: string): boolean {
 }
 
 /**
+ * Non-authoritative alias for {@link isSuperAdmin} — a pure
+ * SUPER_ADMIN_EMAILS allowlist membership check for a string that is
+ * NOT the request's own caller identity (e.g. reading a stored user
+ * row and asking "is this user on the allowlist?").
+ *
+ * Use {@link isSuperAdminVerified} for any authorization gate where
+ * the request's caller must actually be a super-admin. This helper
+ * exists so the invariant pin can distinguish "authoritative gate"
+ * (must pair email_verified) from "data-lookup" (email is not the
+ * request caller — the pair-check is irrelevant).
+ */
+export function isSuperAdminAllowlisted(email: string): boolean {
+  return isSuperAdmin(email);
+}
+
+/**
  * Strict super-admin check that requires Firebase to have verified the
  * email address. Use this on any new admin gate — if the user's email
  * is not yet verified the function returns false even when the email

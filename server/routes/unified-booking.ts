@@ -11,7 +11,7 @@
 
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware as requireAuth } from '../middleware/auth';
-import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
+import { requireAdmin, isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
@@ -322,8 +322,8 @@ router.post('/:bookingId/start', requireAuth, async (req: Request, res: Response
   try {
     const { bookingId } = req.params;
     const startedBy = req.firebaseUser?.uid || req.user?.uid || '';
-    // firebaseUser.role is not a Firebase custom claim we set — always use isSuperAdmin()
-    const isAdmin = isSuperAdmin((req.firebaseUser?.email || '').toLowerCase());
+    // #240 migration: allowlist + email_verified.
+    const isAdmin = isSuperAdminVerified(req);
 
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
@@ -372,8 +372,8 @@ router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Respo
   try {
     const { bookingId } = req.params;
     const completedBy = req.firebaseUser?.uid || req.user?.uid || '';
-    // firebaseUser.role is not a Firebase custom claim we set — always use isSuperAdmin()
-    const isAdmin = isSuperAdmin((req.firebaseUser?.email || '').toLowerCase());
+    // #240 migration: allowlist + email_verified.
+    const isAdmin = isSuperAdminVerified(req);
 
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
@@ -450,8 +450,8 @@ router.post('/:bookingId/cancel', requireAuth, async (req: Request, res: Respons
     const { bookingId } = req.params;
     const { reason } = req.body;
     const cancelledBy = req.firebaseUser?.uid || req.user?.uid || '';
-    // firebaseUser.role is not a Firebase custom claim we set — always use isSuperAdmin()
-    const role: Role = isSuperAdmin((req.firebaseUser?.email || '').toLowerCase()) ? 'ADMIN' : 'USER';
+    // #240 migration: allowlist + email_verified.
+    const role: Role = isSuperAdminVerified(req) ? 'ADMIN' : 'USER';
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
 
     const booking = await loadBookingFromDB(bookingId);

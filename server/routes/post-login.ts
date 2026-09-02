@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
 import { ALLOWED_INTENTS, type UserStatus, type UserRole } from "@shared/schema";
 import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
-import { isSuperAdmin, isSuperAdminVerified } from "../middleware/rbac";
+import { isSuperAdmin, isSuperAdminVerified, isSuperAdminAllowlisted } from "../middleware/rbac";
 import { isAdminRole } from "@shared/adminRoles";
 import { MEMBER_REQUIRED_FIELDS } from "@shared/memberRequiredFields";
 import { recordLoginEvent } from "../services/AuthEventService";
@@ -267,7 +267,7 @@ function buildRoutingResponse(
   }
 
   if (isAdminRole(role)) {
-    // super_admin users have implicit approval via the isSuperAdmin() guard.
+    // super_admin users have implicit approval via the isSuperAdminVerified guard.
     // staff role goes through the staffReq approval flow handled above.
     // All other admin roles (admin, management, ops, hr, finance, ceo) require
     // an explicit admin-panel approval (approvedAt + approvedBy in the DB),
@@ -275,7 +275,7 @@ function buildRoutingResponse(
     const requiresApproval = role !== 'super_admin' && role !== 'staff';
     if (requiresApproval) {
       const isApproved = !!(user as any).approvedAt && !!(user as any).approvedBy;
-      const superAdminEmail = (user as any).email ? isSuperAdmin((user as any).email) : false;
+      const superAdminEmail = (user as any).email ? isSuperAdminAllowlisted((user as any).email) : false;
       if (!isApproved && !superAdminEmail) {
         return { nextUrl: '/access-pending', reason: 'STAFF_APPROVAL_REQUIRED', profileStatus: 'pending_review', role, userStatus };
       }
@@ -1066,7 +1066,11 @@ export async function getWhoami(req: Request, res: Response) {
       // a name-less phone/email signup got hard-stuck after OTP. Alias them.
       // (2026-07-27)
       requiredFields: missingFields,
-      isSuperAdmin: isSuperAdmin((user.email || '').toLowerCase()),
+      // #240 migration: response field describes whether the stored user
+      // email is on the SUPER_ADMIN_EMAILS allowlist — this is a data lookup
+      // for client UI, NOT an authorization gate. isSuperAdminVerified(req)
+      // is the authoritative gate and runs on every privileged endpoint.
+      isSuperAdmin: isSuperAdminAllowlisted((user.email || '').toLowerCase()),
     });
   } catch (error: any) {
     logger.error(`[Whoami] Error: ${error.message}`, { error });
@@ -1172,7 +1176,10 @@ export async function approveAccess(req: Request, res: Response) {
   try {
     const approverEmail = ((req as any).userEmail || '').toLowerCase();
 
-    if (approverEmail !== ADMIN_APPROVER_EMAIL.toLowerCase() && !isSuperAdmin(approverEmail)) {
+    // #240 migration: paired shape — allowlist + email_verified. The primary
+    // approver email is an explicit env-configured account; the super-admin
+    // path additionally requires the caller's Firebase email_verified === true.
+    if (approverEmail !== ADMIN_APPROVER_EMAIL.toLowerCase() && !isSuperAdminVerified(req as any)) {
       return res.status(403).json({
         error: "FORBIDDEN",
         message: "Only authorized admins can approve access",

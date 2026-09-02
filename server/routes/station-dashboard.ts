@@ -19,7 +19,7 @@ import { stations, stationOperators, franchiseOwners } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { requireStationRole, resolveStationRole } from '../middleware/stationAuth';
 import { auth } from '../lib/firebase-admin';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -91,8 +91,8 @@ router.get('/station-operators/my-stations', async (req, res) => {
       return res.status(401).json({ error: 'AUTH_REQUIRED' });
     }
 
-    const email = (req as any).firebaseUser?.email ?? '';
-    if (isSuperAdmin(email)) {
+    // #240 migration: paired shape — allowlist + email_verified.
+    if (isSuperAdminVerified(req as any)) {
       const allStations = await db.execute(sql`
         SELECT id, name, name_he, status, is_active, equipment_status
         FROM stations WHERE is_active = true ORDER BY name

@@ -9162,9 +9162,13 @@ self.addEventListener('notificationclick', (event) => {
       
       if (sessionCookie) {
         const claims = await verifySessionCookie(sessionCookie, false);
+        // #240 migration: paired shape — allowlist + email_verified === true.
+        // Session-cookie claims carry email_verified from the ID token they
+        // were minted from; without it, an unverified allowlisted email
+        // would clear the gate.
         const { isSuperAdmin } = await import('./middleware/rbac');
-        
-        if (isSuperAdmin(claims.email || '')) {
+
+        if (isSuperAdmin(claims.email || '') && claims.email_verified === true) {
           return res.json({
             ok: true,
             user: {
@@ -12087,9 +12091,9 @@ self.addEventListener('notificationclick', (event) => {
   // Admin Google Sheets URL endpoint (protected)
   app.get('/api/admin/sheets-url', validateFirebaseToken, async (req: any, res) => {
     try {
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      const email = req.firebaseUser?.email?.toLowerCase();
-      if (!email || !isSuperAdmin(email)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
       const { getSpreadsheetUrl } = await import('./services/googleSheetsIntegration');
@@ -12110,9 +12114,9 @@ self.addEventListener('notificationclick', (event) => {
   // Admin Google Drive backup status endpoint (protected)
   app.get('/api/admin/drive-backup-status', validateFirebaseToken, async (req: any, res) => {
     try {
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      const email = req.firebaseUser?.email?.toLowerCase();
-      if (!email || !isSuperAdmin(email)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
       res.json({
@@ -14583,9 +14587,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
       
-      // Check if admin is authorized to create invitations
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      if (!isSuperAdmin(adminEmail)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ success: false, error: 'Only administrators can create invitations' });
       }
       
@@ -14869,8 +14873,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
       
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      if (!isSuperAdmin(adminEmail)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
       
@@ -14899,8 +14904,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
       
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      if (!isSuperAdmin(adminEmail)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
       

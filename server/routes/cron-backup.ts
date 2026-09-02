@@ -20,7 +20,7 @@
  *   (repeat for /firestore at "0 1 * * *" and /code at "0 2 * * 0")
  */
 import { Router, type Request, type Response } from 'express';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -37,8 +37,8 @@ async function authorized(req: Request): Promise<boolean> {
     provided.length === expected.length &&
     timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
   if (secretOk) return true;
-  const email = (req as any).firebaseUser?.email || (req as any).user?.email || '';
-  return isSuperAdmin(email);
+  // #240 migration: allowlist + email_verified. Cron secret handled above; UID path is the only one that can bypass without a shared secret.
+  return isSuperAdminVerified(req as any);
 }
 
 // POST /api/cron/backup/:type  (type = postgres | firestore | code)

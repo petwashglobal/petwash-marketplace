@@ -3,15 +3,15 @@ import { db } from '../db';
 import { googleFormsConfig } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { createAllForms, FORMS_DEFINITIONS } from '../services/GoogleFormsCreatorService';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
 function requireAdmin(req: Request, res: Response, next: Function) {
-  const email = req.firebaseUser?.email;
-  if (!email || !isSuperAdmin(email)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: 'Admin access required' });
   }
   next();

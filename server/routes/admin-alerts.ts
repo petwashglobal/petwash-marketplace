@@ -18,7 +18,7 @@ import { z } from "zod";
 import { and, eq, desc, ilike, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import { adminAlerts, ALERT_STATUSES, ALERT_SEVERITIES, ALERT_CATEGORIES } from "@shared/schema-admin-alerts";
-import { isSuperAdmin } from "../middleware/rbac";
+import { isSuperAdminVerified } from "../middleware/rbac";
 import { logAuditEvent } from "../middleware/auditLog";
 import { runAlertSweep } from "../services/AlertEngine";
 import { logger } from "../lib/logger";
@@ -30,8 +30,10 @@ function adminUid(req: any): string {
 }
 
 function requireAdmin(req: any, res: any, next: any) {
-  const email = (req.firebaseUser?.email || "").toLowerCase();
-  if (!isSuperAdmin(email)) {
+  // #240 migration: gate on the paired shape (allowlist + email_verified)
+  // — a bare isSuperAdmin(email) match lets an unverified Firebase account
+  // claim <admin>@petwash.co.il clear this door.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: "Full admin access required" });
   }
   next();

@@ -27,14 +27,14 @@ import { providerServices } from '../../shared/schema-provider-services';
 import { reconfirmationRecords } from '../../shared/schema-provider-services';
 import { providerApplicants } from '../../shared/schema-enterprise';
 import { and, eq, desc, sql, ilike, or, gt, isNull } from 'drizzle-orm';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 
 const router = Router();
 
 function requireAdmin(req: any, res: any, next: any) {
-  const email = (req.firebaseUser?.email || '').toLowerCase();
-  if (!isSuperAdmin(email)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: 'Full admin access required' });
   }
   next();

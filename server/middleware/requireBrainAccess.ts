@@ -25,7 +25,7 @@
  *   - No code change required.
  */
 import type { Request, Response, NextFunction } from 'express';
-import { isSuperAdmin } from './rbac';
+import { isSuperAdminVerified } from './rbac';
 import { logger } from '../lib/logger';
 
 export const BRAIN_ROLES = ['ceo', 'cfo', 'ops_lead'] as const;
@@ -55,8 +55,8 @@ export function requireBrainAccess(req: Request, res: Response, next: NextFuncti
     });
   }
 
-  // 1. Super-admin email allowlist (env-driven, primary gate today)
-  if (email && isSuperAdmin(email)) {
+  // 1. #240 migration: paired shape — allowlist + email_verified === true.
+  if (isSuperAdminVerified(req)) {
     return next();
   }
 
