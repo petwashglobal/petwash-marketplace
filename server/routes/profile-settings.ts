@@ -4,6 +4,7 @@ import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { phoneLookupHash } from '../lib/phoneHmac';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
@@ -189,18 +190,24 @@ router.patch('/settings/profile', async (req, res) => {
           return res.status(404).json({ error: 'User row not found; profile change was NOT saved.' });
         }
       } else {
-        await db.insert(users).values({
-          id: uid,
-          email: firebaseUser.email || '',
-          firstName: updates.firstName || firebaseUser.displayName?.split(' ')[0] || '',
-          lastName: updates.lastName || firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-          phone: updates.phone || firebaseUser.phoneNumber || '',
-          address: updates.address || '',
-          city: updates.city || '',
-          dateOfBirth: updates.birthdate || '',
-          profileImageUrl: firebaseUser.photoURL || '',
-          language: updates.preferredLanguage || 'he',
-        });
+        {
+          // AUDIT-SMS-14 (#225): mirror the phone into the HMAC lookup
+          // column on first insert so hash-based queries hit immediately.
+          const phoneForInsert = updates.phone || firebaseUser.phoneNumber || '';
+          await db.insert(users).values({
+            id: uid,
+            email: firebaseUser.email || '',
+            firstName: updates.firstName || firebaseUser.displayName?.split(' ')[0] || '',
+            lastName: updates.lastName || firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+            phone: phoneForInsert,
+            phoneHash: phoneLookupHash(phoneForInsert),
+            address: updates.address || '',
+            city: updates.city || '',
+            dateOfBirth: updates.birthdate || '',
+            profileImageUrl: firebaseUser.photoURL || '',
+            language: updates.preferredLanguage || 'he',
+          });
+        }
         // Ensure wallet and loyalty profile exist for newly-created user rows.
         // This is idempotent — silently skips creation if they already exist.
         authService.ensureWalletAccount(uid).catch((e: any) => logger.warn('[ProfileSettings:WalletAccount] ensureWalletAccount failed (non-blocking)', { uid, error: e?.message }));
@@ -604,9 +611,13 @@ router.post('/settings/phone/confirm-verification', async (req, res) => {
       return res.status(400).json({ error: 'No phone number linked to account' });
     }
 
-    await db.update(users).set({ 
+    // AUDIT-SMS-14 (#225): write both the raw phone (needed for the
+    // sender path) and the HMAC lookup key so subsequent code can
+    // query without touching the raw column.
+    await db.update(users).set({
       phone: firebaseUser.phoneNumber,
-      updatedAt: new Date()
+      phoneHash: phoneLookupHash(firebaseUser.phoneNumber),
+      updatedAt: new Date(),
     }).where(eq(users.id, uid));
 
     const firestore = admin.firestore();

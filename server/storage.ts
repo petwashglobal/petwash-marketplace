@@ -231,6 +231,7 @@ import crypto from "crypto";
 import { db } from "./db";
 import { eq, desc, and, or, lt, gte, lte, like, sql, asc, isNull } from "drizzle-orm";
 import { NotFoundError } from "./errors";
+import { phoneLookupHash } from "./lib/phoneHmac";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -1000,13 +1001,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
+    // AUDIT-SMS-14 (#225): whenever a caller writes the raw phone, mirror
+    // it into the phone_hash HMAC lookup column so hash-based queries
+    // land immediately (no wait for the async backfill). Callers that
+    // don't touch phone are unaffected — the spread stays a no-op.
+    const withHash: any = { ...userData };
+    if ('phone' in userData) {
+      withHash.phoneHash = phoneLookupHash((userData as any).phone);
+    }
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values(withHash)
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          ...withHash,
           updatedAt: new Date(),
         },
       })
@@ -1015,9 +1024,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    // AUDIT-SMS-14 (#225): mirror phone → phone_hash on every raw-phone
+    // update so the lookup column stays consistent with the sender path.
+    const withHash: any = { ...updates };
+    if ('phone' in updates) {
+      withHash.phoneHash = phoneLookupHash((updates as any).phone);
+    }
     const [user] = await db
       .update(users)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...withHash, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
 
@@ -1053,10 +1068,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createManualUser(userData: any): Promise<User> {
+    // AUDIT-SMS-14 (#225): stamp phone_hash alongside the raw phone.
+    const withHash: any = { ...userData };
+    if ('phone' in userData) {
+      withHash.phoneHash = phoneLookupHash(userData.phone);
+    }
     const [user] = await db
       .insert(users)
       .values({
-        ...userData,
+        ...withHash,
         createdAt: new Date(),
         updatedAt: new Date(),
       })

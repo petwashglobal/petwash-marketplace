@@ -44,6 +44,11 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   phone: varchar("phone").unique(),
+  // AUDIT-SMS-14 (#225): HMAC-SHA-256 lookup key over the normalised
+  // E.164 phone under PHONE_HMAC_SECRET (see server/lib/phoneHmac.ts).
+  // A leaked DB backup exposes only the hash — the raw phone stays for
+  // the sender path. Nullable until backfill lands.
+  phoneHash: varchar("phone_hash", { length: 64 }),
   dateOfBirth: varchar("date_of_birth"),
   address: text("address"),
   street: text("street"),
