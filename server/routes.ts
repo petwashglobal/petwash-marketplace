@@ -1,5 +1,6 @@
 import { getVertexAIConfig } from './lib/gemini-client';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import { sendSanitizedError } from './lib/sanitizeErrorResponse';
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
@@ -3361,10 +3362,7 @@ self.addEventListener('notificationclick', (event) => {
 
     } catch (error: any) {
       logger.error('[Account Deletion] Error:', error);
-      res.status(500).json({ 
-        error: 'Failed to delete account',
-        details: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_01', { logContext: { site: 'routes.ts:migrated-1' } });
     }
   });
 
@@ -3455,10 +3453,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[Profile Update] Error', error);
-      res.status(500).json({ 
-        error: 'Failed to update profile',
-        message: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_02', { logContext: { site: 'routes.ts:migrated-2' } });
     }
   });
 
@@ -4370,10 +4365,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ status: 'ok', diagnostics });
     } catch (error) {
       logger.error('[Firebase Admin Test] Error:', error);
-      res.status(500).json({ 
-        status: 'error', 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_03', { logContext: { site: 'routes.ts:migrated-3' } });
     }
   });
 
@@ -4552,10 +4544,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json(features);
     } catch (error) {
       logger.error('[Firebase Features] Error:', error);
-      res.status(500).json({ 
-        status: 'error', 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_04', { logContext: { site: 'routes.ts:migrated-4' } });
     }
   });
 
@@ -4618,7 +4607,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error) {
       logger.error('[Debug] WebAuthn debug error', error);
-      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_05', { logContext: { site: 'routes.ts:migrated-5' } });
     }
   });
 
@@ -7524,11 +7513,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error) {
       logger.error('Test purchase failed', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Test purchase failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_06', { logContext: { site: 'routes.ts:migrated-6' } });
     }
   });
 
@@ -8778,7 +8763,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('[GCS BACKUP] Manual code backup error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_07', { logContext: { site: 'routes.ts:migrated-7' } });
     }
   });
 
@@ -8817,7 +8802,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('[GCS BACKUP] Manual Firestore export error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_08', { logContext: { site: 'routes.ts:migrated-8' } });
     }
   });
 
@@ -8834,7 +8819,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[GCS BACKUP] Status check error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_09', { logContext: { site: 'routes.ts:migrated-9' } });
     }
   });
 
@@ -8866,7 +8851,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[GCS BACKUP] Logs fetch error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_10', { logContext: { site: 'routes.ts:migrated-10' } });
     }
   });
 
@@ -11765,11 +11750,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('HubSpot sync error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to sync user to HubSpot",
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_11', { logContext: { site: 'routes.ts:migrated-11' } });
     }
   });
 
@@ -11792,11 +11773,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error) {
       logger.error('HubSpot event tracking error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to track event in HubSpot",
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_12', { logContext: { site: 'routes.ts:migrated-12' } });
     }
   });
 
@@ -11831,11 +11808,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json(result);
     } catch (error: any) {
       logger.error('AI chat error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: "Failed to get AI response",
-        message: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_13', { logContext: { site: 'routes.ts:migrated-13' } });
     }
   });
 
@@ -14164,10 +14137,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Birthday trigger error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_14', { logContext: { site: 'routes.ts:migrated-14' } });
     }
   });
 
@@ -14185,10 +14155,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Observances trigger error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_15', { logContext: { site: 'routes.ts:migrated-15' } });
     }
   });
 
@@ -14204,10 +14171,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Voucher validation error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_16', { logContext: { site: 'routes.ts:migrated-16' } });
     }
   });
 
@@ -14223,10 +14187,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Get user vouchers error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_17', { logContext: { site: 'routes.ts:migrated-17' } });
     }
   });
 
@@ -14268,10 +14229,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Voucher redemption error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_18', { logContext: { site: 'routes.ts:migrated-18' } });
     }
   });
 
@@ -14557,7 +14515,7 @@ self.addEventListener('notificationclick', (event) => {
     } catch (error: any) {
       logger.error('Create profile error', error, { traceId: req.body?.traceId });
       const errorCode = error.code === '23505' ? 'USER_EXISTS' : 'REGISTRATION_FAILED';
-      res.status(500).json({ success: false, error: error.message, errorCode });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_19', { logContext: { site: 'routes.ts:migrated-19' } });
     }
   });
 
@@ -14697,7 +14655,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Create invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_20', { logContext: { site: 'routes.ts:migrated-20' } });
     }
   });
   
@@ -14751,7 +14709,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Verify invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_21', { logContext: { site: 'routes.ts:migrated-21' } });
     }
   });
   
@@ -14889,7 +14847,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Accept invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_22', { logContext: { site: 'routes.ts:migrated-22' } });
     }
   });
   
@@ -14919,7 +14877,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('List invitations error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_23', { logContext: { site: 'routes.ts:migrated-23' } });
     }
   });
   
@@ -14950,7 +14908,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Revoke invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_24', { logContext: { site: 'routes.ts:migrated-24' } });
     }
   });
 
@@ -15000,7 +14958,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Welcome email trigger error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_25', { logContext: { site: 'routes.ts:migrated-25' } });
     }
   });
 
@@ -15177,7 +15135,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, wash: washData });
     } catch (error: any) {
       logger.error('Admin test wash error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_26', { logContext: { site: 'routes.ts:migrated-26' } });
     }
   });
 
@@ -15237,7 +15195,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, coupon: couponData });
     } catch (error: any) {
       logger.error('Admin test coupon error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_27', { logContext: { site: 'routes.ts:migrated-27' } });
     }
   });
 
@@ -15305,7 +15263,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Sample email error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_28', { logContext: { site: 'routes.ts:migrated-28' } });
     }
   });
 
@@ -15563,7 +15521,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('[TEST] Tax report and backup test failed', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_29', { logContext: { site: 'routes.ts:migrated-29' } });
     }
   });
 
@@ -15612,7 +15570,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[Backup Verify] Error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_30', { logContext: { site: 'routes.ts:migrated-30' } });
     }
   });
 
@@ -15641,7 +15599,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Manual revenue report error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_31', { logContext: { site: 'routes.ts:migrated-31' } });
     }
   });
 
@@ -15666,7 +15624,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Manual backup error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_32', { logContext: { site: 'routes.ts:migrated-32' } });
     }
   });
 
@@ -15704,7 +15662,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Backup status error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_33', { logContext: { site: 'routes.ts:migrated-33' } });
     }
   });
 
@@ -15725,7 +15683,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Activity logs error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_34', { logContext: { site: 'routes.ts:migrated-34' } });
     }
   });
 
@@ -15800,7 +15758,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Workflow logs error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_35', { logContext: { site: 'routes.ts:migrated-35' } });
     }
   });
 
@@ -15859,7 +15817,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Legal compliance status error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_36', { logContext: { site: 'routes.ts:migrated-36' } });
     }
   });
 
@@ -15887,7 +15845,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, reviews });
     } catch (error: any) {
       logger.error('Legal reviews error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_37', { logContext: { site: 'routes.ts:migrated-37' } });
     }
   });
 
@@ -15913,7 +15871,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, review });
     } catch (error: any) {
       logger.error('Create legal review error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_38', { logContext: { site: 'routes.ts:migrated-38' } });
     }
   });
 
@@ -15950,7 +15908,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, review: updated });
     } catch (error: any) {
       logger.error('Update legal review error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_39', { logContext: { site: 'routes.ts:migrated-39' } });
     }
   });
 
@@ -15974,7 +15932,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, versions });
     } catch (error: any) {
       logger.error('Legal versions error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_40', { logContext: { site: 'routes.ts:migrated-40' } });
     }
   });
 
@@ -15996,7 +15954,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, version });
     } catch (error: any) {
       logger.error('Create legal version error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_41', { logContext: { site: 'routes.ts:migrated-41' } });
     }
   });
 
@@ -16044,7 +16002,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, message: 'Reminder email sent successfully' });
     } catch (error: any) {
       logger.error('Send legal reminder error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_42', { logContext: { site: 'routes.ts:migrated-42' } });
     }
   });
 
@@ -16235,7 +16193,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Get interactions error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_43', { logContext: { site: 'routes.ts:migrated-43' } });
     }
   });
 
@@ -16298,7 +16256,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Interaction analytics error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_44', { logContext: { site: 'routes.ts:migrated-44' } });
     }
   });
 
@@ -16845,11 +16803,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MapKit] Token generation error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message,
-        available: false,
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_45', { logContext: { site: 'routes.ts:migrated-45' } });
     }
   });
 
@@ -16881,10 +16835,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(config);
     } catch (error: any) {
       logger.error('[MapKit] Config error', error);
-      res.status(500).json({ 
-        available: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_46', { logContext: { site: 'routes.ts:migrated-46' } });
     }
   });
 
@@ -16985,10 +16936,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       }
     } catch (error: any) {
       logger.error('Platform report endpoint error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_47', { logContext: { site: 'routes.ts:migrated-47' } });
     }
   });
 
@@ -17014,7 +16962,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[BiometricMonitor] Record event failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_48', { logContext: { site: 'routes.ts:migrated-48' } });
     }
   });
 
@@ -17026,7 +16974,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(insights);
     } catch (error: any) {
       logger.error('[BiometricMonitor] Get insights failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_49', { logContext: { site: 'routes.ts:migrated-49' } });
     }
   });
 
@@ -17036,7 +16984,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(alerts);
     } catch (error: any) {
       logger.error('[BiometricMonitor] Get alerts failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_50', { logContext: { site: 'routes.ts:migrated-50' } });
     }
   });
 
@@ -17049,7 +16997,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(activity);
     } catch (error: any) {
       logger.error('[LoyaltyMonitor] Track activity failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_51', { logContext: { site: 'routes.ts:migrated-51' } });
     }
   });
 
@@ -17059,7 +17007,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(fraud);
     } catch (error: any) {
       logger.error('[LoyaltyMonitor] Fraud detection failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_52', { logContext: { site: 'routes.ts:migrated-52' } });
     }
   });
 
@@ -17070,7 +17018,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(performers);
     } catch (error: any) {
       logger.error('[LoyaltyMonitor] Get top performers failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_53', { logContext: { site: 'routes.ts:migrated-53' } });
     }
   });
 
@@ -17089,7 +17037,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[OAuthMonitor] Record consent failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_54', { logContext: { site: 'routes.ts:migrated-54' } });
     }
   });
 
@@ -17100,7 +17048,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(status);
     } catch (error: any) {
       logger.error('[OAuthMonitor] Verify certificate failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_55', { logContext: { site: 'routes.ts:migrated-55' } });
     }
   });
 
@@ -17113,7 +17061,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(history);
     } catch (error: any) {
       logger.error('[OAuthMonitor] Get consent history failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_56', { logContext: { site: 'routes.ts:migrated-56' } });
     }
   });
 
@@ -17128,7 +17076,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Record consent failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_57', { logContext: { site: 'routes.ts:migrated-57' } });
     }
   });
 
@@ -17144,7 +17092,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(await readNotificationPrefs(req.params.userId));
     } catch (error: any) {
       logger.error('[NotificationConsent] Get preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_58', { logContext: { site: 'routes.ts:migrated-58' } });
     }
   });
 
@@ -17155,7 +17103,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Update preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_59', { logContext: { site: 'routes.ts:migrated-59' } });
     }
   });
 
@@ -17165,7 +17113,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Revoke all failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_60', { logContext: { site: 'routes.ts:migrated-60' } });
     }
   });
 
@@ -17175,7 +17123,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(audit);
     } catch (error: any) {
       logger.error('[NotificationConsent] Get audit log failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_61', { logContext: { site: 'routes.ts:migrated-61' } });
     }
   });
 
@@ -17195,7 +17143,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true, message: '7-year data cleanup completed successfully' });
     } catch (error: any) {
       logger.error('[Monitoring] Cleanup failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_62', { logContext: { site: 'routes.ts:migrated-62' } });
     }
   });
 
@@ -17215,7 +17163,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         version: '1.0.0',
       });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_63', { logContext: { site: 'routes.ts:migrated-63' } });
     }
   });
 
@@ -17251,7 +17199,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[Performance] Failed to track metrics', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_64', { logContext: { site: 'routes.ts:migrated-64' } });
     }
   });
 
@@ -17317,7 +17265,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true, data: await readNotificationPrefs(userId) });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Get preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_65', { logContext: { site: 'routes.ts:migrated-65' } });
     }
   });
 
@@ -17332,7 +17280,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true, message: 'Preferences updated successfully' });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Update preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_66', { logContext: { site: 'routes.ts:migrated-66' } });
     }
   });
 
@@ -17353,7 +17301,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Get consent history failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_67', { logContext: { site: 'routes.ts:migrated-67' } });
     }
   });
 
@@ -17401,7 +17349,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] Biometric security stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_68', { logContext: { site: 'routes.ts:migrated-68' } });
     }
   });
 
@@ -17443,7 +17391,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] Loyalty activity stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_69', { logContext: { site: 'routes.ts:migrated-69' } });
     }
   });
 
@@ -17483,7 +17431,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] OAuth certificates stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_70', { logContext: { site: 'routes.ts:migrated-70' } });
     }
   });
 
@@ -17522,7 +17470,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] Notification consent stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_71', { logContext: { site: 'routes.ts:migrated-71' } });
     }
   });
 
@@ -17805,7 +17753,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(newSchedule);
     } catch (error: any) {
       logger.error('[PetCare] Schedule wash failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_72', { logContext: { site: 'routes.ts:migrated-72' } });
     }
   });
 
@@ -17875,7 +17823,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(loyaltyProfile);
     } catch (error: any) {
       logger.error('[Loyalty] Fetch profile failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_73', { logContext: { site: 'routes.ts:migrated-73' } });
     }
   });
 
@@ -17928,7 +17876,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[Meetings] Schedule failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_74', { logContext: { site: 'routes.ts:migrated-74' } });
     }
   });
 
@@ -17951,7 +17899,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(meetings);
     } catch (error: any) {
       logger.error('[Meetings] Fetch failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_75', { logContext: { site: 'routes.ts:migrated-75' } });
     }
   });
 
@@ -18022,7 +17970,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
     } catch (error: any) {
       logger.error('[PersonalizedGreeting] Failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_76', { logContext: { site: 'routes.ts:migrated-76' } });
     }
   });
 

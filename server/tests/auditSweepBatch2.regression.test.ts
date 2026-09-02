@@ -288,7 +288,10 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     // 2026-09-01 migration wave 12: weather.ts (5) + wallet.ts (5) +
     //   translation.ts (3) + send-thank-you.ts (2) + monitoring.ts (2)
     //   + campaigns.ts (2) → ceiling 147 → 120.
-    const CEILING = 120;
+    // 2026-09-01 migration wave 13: server/routes.ts (76 blocks
+    //   bulk-migrated via scripted single-line-block replace) →
+    //   ceiling 120 → 24.
+    const CEILING = 24;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });
