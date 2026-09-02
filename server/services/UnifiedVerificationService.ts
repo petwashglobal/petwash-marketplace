@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../db";
 import { logger } from "../lib/logger";
+import { redactOtpBody } from "../lib/redactOtpBody";
 import { isUnifiedVerificationPurposeEnabled } from "../lib/feature-flags/unifiedVerification";
 import { twilioSMSService } from "./TwilioSMSService";
 import { sendVerificationEmailCode } from "./VerificationEmailDelivery";
@@ -402,7 +403,11 @@ async function recordSmsEvidence(
       templateId: templateIdForChallenge(challenge as VerificationChallenge),
       templateVersion: "1.0",
       toPhone: challenge.destination,
-      renderedText,
+      // AUDIT-SMS-11 (#222): scrub OTP digits before persisting the SMS body.
+      // See server/lib/redactOtpBody.ts — canonical verifier lives in
+      // verification_challenges.codeHash; keeping the digits in a second
+      // table would make the DB row a working OTP itself.
+      renderedText: redactOtpBody(renderedText, "OTP"),
       contentHash: crypto.createHash("sha256").update(renderedText).digest("hex"),
       provider,
       providerMessageId,

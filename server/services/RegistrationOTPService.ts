@@ -3,6 +3,7 @@ import { db } from '../db';
 import { otpEvents, smsEvidence } from '@shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { redactOtpBody } from '../lib/redactOtpBody';
 import { redis } from './redis';
 import { twilioSMSService } from './TwilioSMSService';
 
@@ -311,7 +312,11 @@ export class RegistrationOTPService {
         templateId: channel === 'whatsapp' ? 'registration_otp_whatsapp_v1' : 'registration_otp_v1',
         templateVersion: '1.0',
         toPhone: phoneE164,
-        renderedText: smsBody,
+        // AUDIT-SMS-11 (#222): scrub OTP digits before persisting the SMS body
+        // to sms_evidence. See server/lib/redactOtpBody.ts — the canonical
+        // verifier lives in verification_challenges.codeHash; keeping the digits
+        // in a second table would make the DB row a working OTP itself.
+        renderedText: redactOtpBody(smsBody, 'OTP'),
         contentHash: sha256(smsBody),
         provider: providerLabel,
         providerMessageId: providerMessageId || null,
@@ -500,7 +505,11 @@ export class RegistrationOTPService {
         templateId: channel === 'whatsapp' ? 'registration_otp_whatsapp_v1' : 'registration_otp_v1',
         templateVersion: '1.0',
         toPhone: phoneE164,
-        renderedText: smsBody,
+        // AUDIT-SMS-11 (#222): scrub OTP digits before persisting the SMS body
+        // to sms_evidence. See server/lib/redactOtpBody.ts — the canonical
+        // verifier lives in verification_challenges.codeHash; keeping the digits
+        // in a second table would make the DB row a working OTP itself.
+        renderedText: redactOtpBody(smsBody, 'OTP'),
         contentHash: sha256(smsBody),
         provider: providerLabel,
         providerMessageId: sendResult.messageId || null,
