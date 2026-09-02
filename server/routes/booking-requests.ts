@@ -3672,21 +3672,29 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     if (booking.ownerId !== callerUserId) {
       logger.warn('[BookingRequests] Caller is not the booking owner — skipping confirmation SMS', { requestId, callerUserId, ownerId: booking.ownerId });
     }
-    // Fallback to the users row (2026-07-30): these were read from req.body
-    // ONLY, so a /confirm without them sent no SMS and (token-less flows) no
-    // receipt email — the account's own contact details were never used.
-    let { ownerPhone, ownerEmail } = req.body;
-    if (!ownerPhone || !ownerEmail) {
-      try {
-        const [ownerRow] = await db
-          .select({ email: users.email, phone: users.phone })
-          .from(users)
-          .where(or(eq(users.id, booking.ownerId), eq(users.firebaseUid, booking.ownerId)))
-          .limit(1);
-        ownerPhone = ownerPhone || ownerRow?.phone || undefined;
-        ownerEmail = ownerEmail || ownerRow?.email || undefined;
-      } catch { /* non-blocking — validation below handles absence */ }
-    }
+    // AUDIT-SMS-11 (#224, 2026-09-01): source contact details from the
+    // canonical users row keyed by the booking OWNER, never from req.body.
+    //
+    // Prior code destructured `ownerPhone` and `ownerEmail` from req.body
+    // and only fell back to the users row when they were absent. That let
+    // an authenticated booking owner point the PetWash-branded booking-
+    // confirmation SMS at any phone number they typed into the request —
+    // a free, PetWash-billed SMS-send primitive. The audit called it out
+    // as "booking confirmation SMS uses body-supplied phone".
+    //
+    // The fix: DROP the req.body read entirely. `booking.ownerId` +
+    // `users` is the single source of truth for the destination.
+    let ownerPhone: string | undefined;
+    let ownerEmail: string | undefined;
+    try {
+      const [ownerRow] = await db
+        .select({ email: users.email, phone: users.phone })
+        .from(users)
+        .where(or(eq(users.id, booking.ownerId), eq(users.firebaseUid, booking.ownerId)))
+        .limit(1);
+      ownerPhone = ownerRow?.phone || undefined;
+      ownerEmail = ownerRow?.email || undefined;
+    } catch { /* non-blocking — validation below handles absence */ }
     const phoneRegex = /^\+?[1-9]\d{6,14}$/;
     const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
     const validPhone = ownerPhone && phoneRegex.test(ownerPhone.replace(/[\s-]/g, ''));
