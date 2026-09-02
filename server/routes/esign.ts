@@ -6,6 +6,7 @@ import { db } from '../db';
 import { signingSessions } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 
 const router = Router();
@@ -96,11 +97,7 @@ router.post('/create-session', requireAuth, async (req, res) => {
     });
 
   } catch (error: any) {
-    logger.error('[E-Sign] ❌ Failed to create signing session:', error);
-    res.status(500).json({
-      error: 'Failed to create signing session',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ESIGN_SESSION_CREATE_FAILED', { logContext: { op: 'create-session' } });
   }
 });
 
@@ -155,11 +152,7 @@ router.get('/session/:sessionId', requireAuth, async (req, res) => {
     res.json({ success: true, session });
 
   } catch (error: any) {
-    logger.error('[E-Sign] ❌ Failed to get session:', error);
-    res.status(500).json({
-      error: 'Failed to get session',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ESIGN_SESSION_GET_FAILED', { logContext: { op: 'get-session' } });
   }
 });
 
@@ -178,11 +171,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
     res.json({ success: true, sessions });
 
   } catch (error: any) {
-    logger.error('[E-Sign] ❌ Failed to get sessions:', error);
-    res.status(500).json({
-      error: 'Failed to get sessions',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ESIGN_SESSIONS_LIST_FAILED', { logContext: { op: 'list-sessions' } });
   }
 });
 

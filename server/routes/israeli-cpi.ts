@@ -10,6 +10,7 @@ import IsraeliCPIService from '../services/IsraeliCPIService';
 import { requireAdmin } from '../middleware/rbac';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = express.Router();
 
@@ -162,12 +163,7 @@ router.post('/calculate', async (req: Request, res: Response) => {
 
     res.json(result);
   } catch (error: any) {
-    logger.error('[CPI API] Failed to calculate indexed amount', error, { 
-      body: req.body });
-    res.status(500).json({ 
-      error: error.message || 'Failed to calculate indexed amount',
-      errorHe: 'נכשל בחישוב סכום מוצמד'
-    });
+    sendSanitizedError(res, error, 'CPI_CALC_INDEXED_FAILED', { logContext: { op: 'calc-indexed' } });
   }
 });
 
@@ -206,12 +202,7 @@ router.post('/calculate-rent', requireAuth, async (req: Request, res: Response) 
 
     res.json(result);
   } catch (error: any) {
-    logger.error('[CPI API] Failed to calculate rent adjustment', error, { 
-      body: req.body });
-    res.status(500).json({ 
-      error: error.message || 'Failed to calculate rent adjustment',
-      errorHe: 'נכשל בחישוב התאמת שכר דירה'
-    });
+    sendSanitizedError(res, error, 'CPI_CALC_RENT_FAILED', { logContext: { op: 'calc-rent' } });
   }
 });
 
@@ -264,12 +255,7 @@ router.post('/add', requireAdmin, async (req: Request, res: Response) => {
       },
     });
   } catch (error: any) {
-    logger.error('[CPI API] Failed to add CPI index', error, { 
-      body: req.body });
-    res.status(500).json({ 
-      error: error.message || 'Failed to add CPI index',
-      errorHe: 'נכשל בהוספת מדד'
-    });
+    sendSanitizedError(res, error, 'CPI_ADD_FAILED', { logContext: { op: 'add' } });
   }
 });
 
@@ -322,11 +308,7 @@ router.post('/seed', requireAdmin, async (req: Request, res: Response) => {
       messageHe: 'נתוני המדד נוספו בהצלחה',
     });
   } catch (error: any) {
-    logger.error('[CPI API] Failed to seed CPI data', error);
-    res.status(500).json({ 
-      error: error.message || 'Failed to seed CPI data',
-      errorHe: 'נכשל בהוספת נתוני המדד'
-    });
+    sendSanitizedError(res, error, 'CPI_SEED_FAILED', { logContext: { op: 'seed' } });
   }
 });
 

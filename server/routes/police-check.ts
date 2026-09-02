@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { policeCheckService } from '../services/PoliceCheckService';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { auth } from '../lib/firebase-admin';
 import { z } from 'zod';
 
@@ -109,10 +110,7 @@ router.post('/submit', requireAuth, async (req: any, res) => {
 
     res.json(result);
   } catch (error: any) {
-    logger.error('[Police Check Routes] Error submitting check', error);
-    res.status(500).json({ 
-      error: error.message || 'שגיאה בהגשת תעודת היושר' 
-    });
+    sendSanitizedError(res, error, 'POLICE_CHECK_SUBMIT_FAILED', { logContext: { op: 'submit' } });
   }
 });
 
@@ -165,11 +163,7 @@ router.post('/biometric-onboarding', requireAuth, async (req: any, res) => {
 
     res.json(result);
   } catch (error: any) {
-    logger.error('[Police Check Routes] Error in biometric onboarding', error);
-    res.status(500).json({ 
-      error: error.message || 'שגיאה בתהליך ההצטרפות הביומטרי',
-      errorEn: 'Error in biometric onboarding process'
-    });
+    sendSanitizedError(res, error, 'POLICE_CHECK_BIOMETRIC_FAILED', { logContext: { op: 'biometric' } });
   }
 });
 
@@ -226,10 +220,7 @@ router.get('/status', requireAuth, async (req: any, res) => {
       statusMessageEn,
     });
   } catch (error: any) {
-    logger.error('[Police Check Routes] Error getting status', error);
-    res.status(500).json({ 
-      error: error.message || 'שגיאה בטעינת סטטוס' 
-    });
+    sendSanitizedError(res, error, 'POLICE_CHECK_STATUS_FAILED', { logContext: { op: 'status' } });
   }
 });
 
