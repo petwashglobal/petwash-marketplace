@@ -4,6 +4,7 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../db";
 import { logger } from "../lib/logger";
 import { redactOtpBody } from "../lib/redactOtpBody";
+import { phoneLookupHash } from "../lib/phoneHmac";
 import { SMS_PURPOSES, type SmsPurpose } from "../lib/perUidSmsBudget";
 import { isUnifiedVerificationPurposeEnabled } from "../lib/feature-flags/unifiedVerification";
 import { twilioSMSService } from "./TwilioSMSService";
@@ -404,6 +405,8 @@ async function recordSmsEvidence(
       templateId: templateIdForChallenge(challenge as VerificationChallenge),
       templateVersion: "1.0",
       toPhone: challenge.destination,
+      // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+      toPhoneHash: phoneLookupHash(challenge.destination),
       // AUDIT-SMS-11 (#222): scrub OTP digits before persisting the SMS body.
       // See server/lib/redactOtpBody.ts — canonical verifier lives in
       // verification_challenges.codeHash; keeping the digits in a second

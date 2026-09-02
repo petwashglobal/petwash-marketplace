@@ -5,6 +5,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { getCurrentUser } from "../simpleAuth";
 import { apiLimiter } from '../middleware/rateLimiter';
 import { logger } from "../lib/logger";
+import { phoneLookupHash } from "../lib/phoneHmac";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
 import { verifyTurnstileToken } from "../lib/verifyTurnstile";
 import { twilioSMSService } from "../services/TwilioSMSService";
@@ -413,6 +414,8 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       templateId: 'phone_login_v1',
       templateVersion: '1.0',
       toPhone: normalizedPhone,
+      // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+      toPhoneHash: phoneLookupHash(normalizedPhone),
       renderedText: smsText,
       contentHash: crypto.createHash('sha256').update(normalizedPhone + traceId).digest('hex'),
       provider: 'twilio',
@@ -428,6 +431,8 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       otpId: traceId,
       eventType: 'OTP_SENT',
       phoneE164: normalizedPhone,
+      // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+      phoneHash: phoneLookupHash(normalizedPhone),
       userTypeIntent: 'PUBLIC',
       provider: 'twilio',
       providerMessageId: result.messageId || null,
@@ -1890,6 +1895,8 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, asyn
             templateId,
             templateVersion: '1.0',
             toPhone: metadata.phoneE164,
+            // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+            toPhoneHash: phoneLookupHash(metadata.phoneE164),
             renderedText: smsBody,
             contentHash: crypto.createHash('sha256').update(smsBody).digest('hex'),
             provider: 'twilio',

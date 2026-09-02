@@ -13421,6 +13421,9 @@ export const otpEvents = pgTable("otp_events", {
   otpId: varchar("otp_id", { length: 100 }).notNull(), // UUID or event-scoped key
   eventType: varchar("event_type", { length: 30 }).notNull(), // OTP_SENT, OTP_VERIFIED, OTP_FAILED, OTP_EXPIRED
   phoneE164: varchar("phone_e164", { length: 20 }).notNull(),
+  // AUDIT-SMS-14 (#225): HMAC-SHA-256 lookup key over the normalised
+  // E.164 phone under PHONE_HMAC_SECRET. Nullable until backfill lands.
+  phoneHash: varchar("phone_hash", { length: 64 }),
   userId: varchar("user_id"), // nullable for pre-auth
   userTypeIntent: varchar("user_type_intent", { length: 20 }).notNull(), // PUBLIC, PROVIDER, STAFF_REQUEST
   otpHash: varchar("otp_hash", { length: 128 }), // SHA-256 hash, never store raw code
@@ -13456,6 +13459,9 @@ export const smsEvidence = pgTable("sms_evidence", {
   templateId: varchar("template_id", { length: 50 }),
   templateVersion: varchar("template_version", { length: 10 }).default("1.0"),
   toPhone: varchar("to_phone", { length: 20 }).notNull(),
+  // AUDIT-SMS-14 (#225): HMAC-SHA-256 lookup key over the normalised
+  // E.164 to_phone under PHONE_HMAC_SECRET. Nullable until backfill lands.
+  toPhoneHash: varchar("to_phone_hash", { length: 64 }),
   renderedText: text("rendered_text").notNull(), // Exact text sent (for legal evidence)
   contentHash: varchar("content_hash", { length: 128 }), // SHA-256 of rendered text
   provider: varchar("provider", { length: 30 }).default("twilio"),

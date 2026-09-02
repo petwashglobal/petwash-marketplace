@@ -132,3 +132,80 @@ describe('AUDIT-SMS-14 / #225 — write-path mirror wiring', () => {
     expect(src).toMatch(/phoneHash:\s*phoneLookupHash\(firebaseUser\.phoneNumber\)/);
   });
 });
+
+describe('AUDIT-SMS-14 / #225 slice 2 — otp_events + sms_evidence phone_hash wiring', () => {
+  it('otp_events schema exposes phone_hash varchar(64)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const schema = readFileSync(
+      join(__dirname, '..', '..', 'shared', 'schema.ts'),
+      'utf8',
+    );
+    // phoneHash column on otp_events, alongside phoneE164
+    expect(schema).toMatch(/phoneE164:\s*varchar\("phone_e164"[\s\S]{0,300}phoneHash:\s*varchar\("phone_hash",\s*\{\s*length:\s*64\s*\}\)/);
+  });
+
+  it('sms_evidence schema exposes to_phone_hash varchar(64)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const schema = readFileSync(
+      join(__dirname, '..', '..', 'shared', 'schema.ts'),
+      'utf8',
+    );
+    expect(schema).toMatch(/toPhone:\s*varchar\("to_phone"[\s\S]{0,300}toPhoneHash:\s*varchar\("to_phone_hash",\s*\{\s*length:\s*64\s*\}\)/);
+  });
+
+  it('migration 0141 adds both hash columns + partial indexes', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const sql = readFileSync(
+      join(__dirname, '..', '..', 'migrations', '0141_otp_events_sms_evidence_phone_hash_2026_09_02.sql'),
+      'utf8',
+    );
+    expect(sql).toMatch(/ALTER TABLE otp_events[\s\S]*?ADD COLUMN IF NOT EXISTS phone_hash/i);
+    expect(sql).toMatch(/ALTER TABLE sms_evidence[\s\S]*?ADD COLUMN IF NOT EXISTS to_phone_hash/i);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS idx_otp_events_phone_hash/i);
+    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS idx_sms_evidence_to_phone_hash/i);
+  });
+
+  it('RegistrationOTPService writes phone_hash on both otp_events + smsEvidence, initial and resend', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const src = readFileSync(
+      join(__dirname, '..', '..', 'server', 'services', 'RegistrationOTPService.ts'),
+      'utf8',
+    );
+    expect(src).toMatch(/import\s*\{\s*phoneLookupHash\s*\}\s*from\s*['"]\.\.\/lib\/phoneHmac['"]/);
+    // 2× phoneHash for otp_events (initial + resend), 2× toPhoneHash for smsEvidence.
+    const phoneHashCount = (src.match(/phoneHash:\s*phoneLookupHash\(phoneE164\)/g) || []).length;
+    const toPhoneHashCount = (src.match(/toPhoneHash:\s*phoneLookupHash\(phoneE164\)/g) || []).length;
+    expect(phoneHashCount).toBeGreaterThanOrEqual(2);
+    expect(toPhoneHashCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('UnifiedVerificationService.recordSmsEvidence writes toPhoneHash', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const src = readFileSync(
+      join(__dirname, '..', '..', 'server', 'services', 'UnifiedVerificationService.ts'),
+      'utf8',
+    );
+    expect(src).toMatch(/import\s*\{\s*phoneLookupHash\s*\}\s*from\s*['"]\.\.\/lib\/phoneHmac['"]/);
+    expect(src).toMatch(/toPhoneHash:\s*phoneLookupHash\(challenge\.destination\)/);
+  });
+
+  it('publicAuthRoutes writes both phone_hash and to_phone_hash on the three insert sites', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const src = readFileSync(
+      join(__dirname, '..', '..', 'server', 'routes', 'publicAuthRoutes.ts'),
+      'utf8',
+    );
+    expect(src).toMatch(/import\s*\{\s*phoneLookupHash\s*\}\s*from\s*['"]\.\.\/lib\/phoneHmac['"]/);
+    // login flow: 1 phoneHash on otp_events + 1 toPhoneHash on sms_evidence
+    // welcome-SMS: 1 toPhoneHash on sms_evidence
+    expect(src).toMatch(/phoneHash:\s*phoneLookupHash\(normalizedPhone\)/);
+    const toPhoneHashCount = (src.match(/toPhoneHash:\s*phoneLookupHash\(/g) || []).length;
+    expect(toPhoneHashCount).toBeGreaterThanOrEqual(2);
+  });
+});
