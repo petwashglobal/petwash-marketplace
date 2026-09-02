@@ -27,6 +27,7 @@
 import { Router, Request, Response } from 'express';
 import { z }                          from 'zod';
 import rateLimit                      from 'express-rate-limit';
+import { redisRateLimitStore }        from '../middleware/rateLimiterRedisStore';
 import { db }                         from '../db';
 import {
   petwashPassAccounts,
@@ -45,15 +46,19 @@ const router = Router();
 
 // ─── Rate limiters ───────────────────────────────────────────────────────────
 
+// Release-blocker B3 (CEO 2026-09-02): shared Redis store so both
+// caps are fleet-wide, not per-pod.
 const redeemLimiter = rateLimit({
   windowMs: 60_000,
   max:      30,
   message:  'Too many redeem requests',
+  store: redisRateLimitStore('pass_redeem'),
 });
 
 const adminLimiter = rateLimit({
   windowMs: 60_000,
   max:      100,
+  store: redisRateLimitStore('pass_redeem_admin'),
 });
 
 // ─── Schemas ─────────────────────────────────────────────────────────────────

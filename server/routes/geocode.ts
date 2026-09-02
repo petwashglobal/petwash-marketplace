@@ -12,6 +12,7 @@
 // the client fills the structured form with no second round-trip and no key.
 import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import { logger } from '../lib/logger';
 import { searchIsraelCities } from '@shared/data/israel-cities';
 import { searchIsraelStreets, getStreetsForCity } from '../lib/israelStreets';
@@ -43,11 +44,14 @@ const cache = new Map<string, { at: number; data: any }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_MAX = 500;
 
+// Release-blocker B3 (CEO 2026-09-02): shared Redis store — external
+// geocoder provider cap must be fleet-wide, not per-pod.
 const suggestLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60, // per IP/min — generous for typing, still polite to the providers
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisRateLimitStore('geocode_suggest'),
 });
 
 async function photonSuggest(q: string): Promise<Prediction[]> {

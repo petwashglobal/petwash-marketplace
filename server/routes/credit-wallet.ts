@@ -3,6 +3,7 @@ import { walletService } from '../services/WalletService';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import { db } from '../db';
 import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
@@ -19,7 +20,10 @@ import type { CreditType } from '../../shared/petwash-operating-system';
 
 const router = Router();
 
-// Rate limiters for redemption endpoints to prevent abuse
+// Release-blocker A6 + B3 (CEO 2026-09-02): every money-touching limiter
+// in this file now uses the Redis-backed store so the cap is enforced
+// across the whole Cloud Run fleet instead of per-pod (which multiplied
+// the permitted rate by the pod count).
 const redemptionRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // 20 redemptions per 15 min per user
@@ -28,6 +32,7 @@ const redemptionRateLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => (req as any).user?.uid || (req as any).firebaseUser?.uid || 'anonymous',
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  store: redisRateLimitStore('wallet_redemption'),
 });
 
 const nayaxValidationRateLimiter = rateLimit({
@@ -36,6 +41,7 @@ const nayaxValidationRateLimiter = rateLimit({
   message: { success: false, error: 'Rate limit exceeded for code validation' },
   keyGenerator: (req) => req.body?.stationId || 'default-station',
   validate: { xForwardedForHeader: false, ip: false },
+  store: redisRateLimitStore('wallet_nayax_validate'),
 });
 
 const previewSchema = z.object({
@@ -71,14 +77,18 @@ function sourceLooksPaid(sourceType: string): boolean {
   return /payment|receipt|sumit|nayax|paid/i.test(sourceType);
 }
 
+// Release-blocker A6 (CEO 2026-09-02): wallet top-up limiter MUST use
+// the shared Redis store — the previous in-memory default scaled with
+// pod count, so N pods = 5N top-ups/hour per user.
 const topupRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // max 5 top-ups per hour per user
+  max: 5, // max 5 top-ups per hour per user (across all pods)
   message: { success: false, error: 'Too many top-up requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req as any).user?.uid || (req as any).firebaseUser?.uid || 'anonymous',
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  store: redisRateLimitStore('wallet_topup'),
 });
 
 const topupSchema = z.object({

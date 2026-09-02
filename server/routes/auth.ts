@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { hash } from "bcrypt";
 import jwt from "jsonwebtoken";
 import rateLimit from "express-rate-limit";
+import { redisRateLimitStore } from "../middleware/rateLimiterRedisStore";
 import { db } from "../db";
 import { users, devices, refreshTokens } from "@shared/schema";
 import { eq, and, gt, isNull } from "drizzle-orm";
@@ -37,11 +38,14 @@ if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
 const ACCESS_TOKEN_EXPIRY = "30m"; // 30 minutes
 const REFRESH_TOKEN_EXPIRY_DAYS = 30; // 30 days
 
+// Release-blocker B3 (CEO 2026-09-02): login limiter uses the shared
+// Redis store so brute-force lockout is fleet-wide, not per-pod.
 const loginLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
   max: 20, // 20 requests per 5 minutes
   standardHeaders: true,
   legacyHeaders: false,
+  store: redisRateLimitStore('auth_login'),
 });
 
 // Helper: Guard — returns true if JWT secrets are missing and responds with 503

@@ -2,6 +2,7 @@ import express from "express";
 import crypto from 'crypto';
 import { z } from 'zod';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import { getCurrentUser } from "../simpleAuth";
 import { apiLimiter } from '../middleware/rateLimiter';
 import { logger } from "../lib/logger";
@@ -35,6 +36,9 @@ const phoneSendRateLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  // Release-blocker B3 (CEO 2026-09-02): shared Redis store — SMS
+  // bill blow-up cap must be fleet-wide, not per-pod.
+  store: redisRateLimitStore('public_phone_send'),
   handler: (_req, res) => {
     logger.warn('[PublicAuth] SMS rate limit hit', { ip: _req.ip });
     return res.status(429).json({
@@ -53,6 +57,9 @@ const phoneVerifyRateLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  // Release-blocker B3: shared Redis store — brute-force lockout cap
+  // must be fleet-wide.
+  store: redisRateLimitStore('public_phone_verify'),
   handler: (_req, res) => {
     return res.status(429).json({
       ok: false,
@@ -1948,6 +1955,9 @@ const clientEventRateLimiter = rateLimit({
   // IPv6 address-rotation bypass). Trust-proxy is set to 1 in index.ts so
   // req.ip is the real client IP from the GCP/Firebase load-balancer header.
   keyGenerator: ipKeyGenerator,
+  // Release-blocker B3: shared Redis store — event-flood cap must be
+  // fleet-wide.
+  store: redisRateLimitStore('public_client_event'),
   handler: (_req, res) => res.status(429).json({ ok: false, error: 'TOO_MANY_EVENTS' }),
 });
 

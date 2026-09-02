@@ -42,6 +42,7 @@
 
 import express, { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import { sumitClient } from '../services/SumitClient';
@@ -65,6 +66,9 @@ const sumitWebhookLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => req.ip || 'unknown',
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  // Release-blocker B3 (CEO 2026-09-02): shared Redis store so the
+  // fleet-wide cap holds under a SUMIT webhook spike / attack.
+  store: redisRateLimitStore('sumit_webhook'),
   handler: (req, res) => {
     logger.warn('[SumitWebhook] rate limit hit', { ip: req.ip });
     res.status(429).json({ ok: false, error: 'rate_limited' });
