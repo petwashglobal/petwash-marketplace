@@ -280,7 +280,9 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     //   multi-line blocks) → ceiling 290 → 263.
     // 2026-09-01 migration wave 9: ai-payout-verification.ts (7) +
     //   backup.ts (7) + environment.ts (6) → ceiling 263 → 203.
-    const CEILING = 203;
+    // 2026-09-01 migration wave 10: finance/settlements.ts (7)
+    //   → ceiling 203 → 182.
+    const CEILING = 182;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });

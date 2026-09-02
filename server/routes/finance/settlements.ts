@@ -20,6 +20,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { db } from '../../db';
+import { sendSanitizedError } from '../../lib/sanitizeErrorResponse';
 import { settlements, partners, partnerAgreements } from '@shared/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 import { requireAdmin } from '../../adminAuth';
@@ -125,10 +126,7 @@ router.post('/generate', async (req, res) => {
       stack: error.stack,
     });
 
-    res.status(500).json({
-      error: 'Settlement generation failed',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'SETTLEMENT_GENERATE_FAILED', { logContext: { op: 'generate' } });
   }
 });
 
@@ -197,10 +195,7 @@ router.get('/', async (req, res) => {
   } catch (error: any) {
     logger.error('[FinanceAPI] Failed to list settlements', { error: error.message });
 
-    res.status(500).json({
-      error: 'Failed to retrieve settlements',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'SETTLEMENT_LIST_FAILED', { logContext: { op: 'list' } });
   }
 });
 
@@ -251,10 +246,7 @@ router.get('/:id', async (req, res) => {
   } catch (error: any) {
     logger.error('[FinanceAPI] Failed to retrieve settlement', { error: error.message });
 
-    res.status(500).json({
-      error: 'Failed to retrieve settlement',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'SETTLEMENT_GET_FAILED', { logContext: { op: 'get' } });
   }
 });
 
@@ -326,10 +318,7 @@ router.patch('/:id/approve', async (req, res) => {
   } catch (error: any) {
     logger.error('[FinanceAPI] Settlement approval failed', { error: error.message });
 
-    res.status(500).json({
-      error: 'Settlement approval failed',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'SETTLEMENT_APPROVE_FAILED', { logContext: { op: 'approve' } });
   }
 });
 
@@ -433,10 +422,7 @@ router.patch('/:id/pay', async (req, res) => {
   } catch (error: any) {
     logger.error('[FinanceAPI] Settlement payment recording failed', { error: error.message });
 
-    res.status(500).json({
-      error: 'Failed to record payment',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'SETTLEMENT_PAY_FAILED', { logContext: { op: 'pay' } });
   }
 });
 
@@ -482,10 +468,7 @@ router.get('/:id/export', async (req, res) => {
   } catch (error: any) {
     logger.error('[FinanceAPI] CSV export failed', { error: error.message });
 
-    res.status(500).json({
-      error: 'CSV export failed',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'SETTLEMENT_CSV_EXPORT_FAILED', { logContext: { op: 'csv-export' } });
   }
 });
 
@@ -517,10 +500,7 @@ router.get('/partners/:id/dashboard', async (req, res) => {
   } catch (error: any) {
     logger.error('[FinanceAPI] Partner dashboard retrieval failed', { error: error.message });
 
-    res.status(500).json({
-      error: 'Failed to retrieve partner dashboard',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'SETTLEMENT_PARTNER_DASHBOARD_FAILED', { logContext: { op: 'partner-dashboard' } });
   }
 });
 
