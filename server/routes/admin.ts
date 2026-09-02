@@ -13,6 +13,7 @@ import {
 import { users, nayaxTransactions, eVouchers, eVoucherRedemptions, customers } from '@shared/schema';
 import { count, sql, gte, eq, and, inArray, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
 import { isSuperAdmin } from '../middleware/rbac';
@@ -936,8 +937,7 @@ router.post('/test/vaccine-reminder', validateFirebaseToken, requireAdmin, async
       message: `Found ${matchingPets.length} pets with vaccines due on ${targetDateStr}. Would send ${remindersByOwner.size} reminder(s).`,
     });
   } catch (error) {
-    logger.error('Error in vaccine reminder test', error);
-    res.status(500).json({ error: 'Test failed', details: error instanceof Error ? error.message : 'Unknown error' });
+    sendSanitizedError(res, error, 'ADMIN_VACCINE_REMINDER_TEST_FAILED', { logContext: { op: 'vaccine-reminder-test' } });
   }
 });
 
@@ -1239,8 +1239,7 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
       message: `Complimentary ₪${amount} gift card sent to ${recipientEmail}`
     });
   } catch (error) {
-    logger.error('[CEO] Error issuing free voucher', error);
-    res.status(500).json({ error: 'Failed to issue voucher', details: error instanceof Error ? error.message : 'Unknown error' });
+    sendSanitizedError(res, error, 'ADMIN_ISSUE_VOUCHER_FAILED', { logContext: { op: 'issue-voucher' } });
   }
 });
 
@@ -1285,7 +1284,7 @@ router.post('/security/platform-monitor/scan', validateFirebaseToken, requireAdm
     const assessment = await geminiPlatformMonitor.forceScan();
     res.json({ ok: true, assessment });
   } catch (error) {
-    res.status(500).json({ error: 'Scan failed', details: error instanceof Error ? error.message : 'Unknown' });
+    sendSanitizedError(res, error, 'ADMIN_SCAN_FAILED', { logContext: { op: 'scan' } });
   }
 });
 

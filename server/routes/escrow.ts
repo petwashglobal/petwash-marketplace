@@ -3,6 +3,7 @@ import EscrowService, { type EscrowPayment } from "../services/EscrowService";
 import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
 import { db } from "../db";
 import { bookingDisputes, users } from "@shared/schema";
@@ -339,8 +340,7 @@ router.get("/payments", requireAuth, async (req, res) => {
     const payments = await projectCustomerPayments(userId);
     res.json({ payments });
   } catch (error: any) {
-    logger.error("[Escrow] Error fetching payments", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'ESCROW_FETCH_PAYMENTS_FAILED', { logContext: { op: 'fetch-payments' } });
   }
 });
 
@@ -370,8 +370,7 @@ router.get("/booking/:bookingId", requireAuth, async (req, res) => {
 
     res.json({ escrows: permitted });
   } catch (error: any) {
-    logger.error("[Escrow] Error fetching by booking", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'ESCROW_FETCH_BY_BOOKING_FAILED', { logContext: { op: 'fetch-by-booking' } });
   }
 });
 
@@ -380,8 +379,7 @@ router.post("/admin/auto-release", requireAdmin, async (req, res) => {
     const releasedCount = await EscrowService.autoReleaseExpiredHolds();
     res.json({ releasedCount });
   } catch (error: any) {
-    logger.error("[Escrow] Error auto-releasing", { error: error.message });
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'ESCROW_AUTO_RELEASE_FAILED', { logContext: { op: 'auto-release' } });
   }
 });
 

@@ -41,6 +41,7 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
@@ -169,8 +170,7 @@ router.post('/walkers/register', requireAuth, async (req, res) => {
       message: 'Walker profile created. Please complete KYC verification to activate.' 
     });
   } catch (error: any) {
-    console.error('[Walk My Pet] Walker registration error:', error);
-    res.status(500).json({ error: 'Failed to create walker profile', details: error.message });
+    sendSanitizedError(res, error, 'WALKER_REGISTRATION_FAILED', { logContext: { op: 'walker-registration' } });
   }
 });
 
@@ -917,8 +917,7 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
         console.warn('[Walk My Pet] slot-lock release after failed booking skipped', relErr),
       );
     }
-    console.error('[Walk My Pet] Booking error:', error);
-    res.status(500).json({ error: 'Failed to create booking', details: error.message });
+    sendSanitizedError(res, error, 'WALK_BOOKING_FAILED', { logContext: { op: 'create-booking' } });
   }
 });
 
@@ -1155,8 +1154,7 @@ router.post('/walks/emergency-request', requireAuth, async (req, res) => {
       message: `Emergency walk confirmed! Walker ${result.matchedWalker?.walkerName} will arrive in ${result.matchedWalker?.estimatedArrivalMinutes} minutes.`,
     });
   } catch (error: any) {
-    console.error('[Emergency Walk] Request failed:', error);
-    res.status(500).json({ error: 'Failed to process emergency walk request', details: error.message });
+    sendSanitizedError(res, error, 'EMERGENCY_WALK_FAILED', { logContext: { op: 'emergency-walk' } });
   }
 });
 

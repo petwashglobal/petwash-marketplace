@@ -274,7 +274,9 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     //   contractor.ts (7 sites) + vat.ts (5 sites) → ceiling 334 → 314.
     // 2026-09-01 migration wave 6: social-circle.ts (5 sites) +
     //   reviews.ts (5) + israeli-compliance-2025.ts (5) → ceiling 314 → 299.
-    const CEILING = 299;
+    // 2026-09-01 migration wave 7: escrow.ts (3) + walk-my-pet.ts (3) +
+    //   admin.ts (3) → ceiling 299 → 290.
+    const CEILING = 290;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });
