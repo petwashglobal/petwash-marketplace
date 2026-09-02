@@ -14,6 +14,7 @@ import { authMiddleware as requireAuth } from '../middleware/auth';
 import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { bookings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import {
@@ -167,11 +168,7 @@ router.post('/draft', requireAuth, async (req: Request, res: Response) => {
       booking
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Failed to create draft', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_CREATE_FAILED', { logContext: { op: 'create-draft' } });
   }
 });
 
@@ -220,11 +217,7 @@ router.post('/:bookingId/quote', requireAuth, async (req: Request, res: Response
       priceSnapshot: quotedBooking.priceSnapshot
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Failed to quote', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_QUOTE_FAILED', { logContext: { op: 'quote' } });
   }
 });
 
@@ -316,11 +309,7 @@ router.post('/:bookingId/confirm', requireAuth, async (req: Request, res: Respon
       logger.warn('[UnifiedBookingAPI] Confirm rejected — no payment reference for cash-due booking', { error: error.message });
       return res.status(400).json({ success: false, error: error.message, code: 'PAYMENT_REFERENCE_REQUIRED' });
     }
-    logger.error('[UnifiedBookingAPI] Failed to confirm', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_CONFIRM_FAILED', { logContext: { op: 'confirm' } });
   }
 });
 
@@ -370,11 +359,7 @@ router.post('/:bookingId/start', requireAuth, async (req: Request, res: Response
       status: 'IN_PROGRESS'
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Failed to start', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_START_FAILED', { logContext: { op: 'start' } });
   }
 });
 
@@ -452,11 +437,7 @@ router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Respo
       reconciliationId: result.reconciliationId,
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Failed to complete', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_COMPLETE_FAILED', { logContext: { op: 'complete' } });
   }
 });
 
@@ -501,11 +482,7 @@ router.post('/:bookingId/cancel', requireAuth, async (req: Request, res: Respons
       status: 'CANCELLED'
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Failed to cancel', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_CANCEL_FAILED', { logContext: { op: 'cancel' } });
   }
 });
 
@@ -582,11 +559,7 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
       status: 'REFUNDED'
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Failed to refund', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_REFUND_FAILED', { logContext: { op: 'refund' } });
   }
 });
 
@@ -629,11 +602,7 @@ router.post('/admin/free-wash', requireAuth, requireAdmin, async (req: Request, 
       message: `Free ${minutes}-minute wash granted on machine ${machineId}`
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Failed to grant free wash', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_GRANT_FREE_WASH_FAILED', { logContext: { op: 'grant-free-wash' } });
   }
 });
 
@@ -693,11 +662,7 @@ router.post('/flow', requireAuth, async (req: Request, res: Response) => {
       ...result
     });
   } catch (error: any) {
-    logger.error('[UnifiedBookingAPI] Flow failed', { error: error.message });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'UNIFIED_BOOKING_FLOW_FAILED', { logContext: { op: 'flow' } });
   }
 });
 
