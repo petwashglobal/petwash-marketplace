@@ -18,6 +18,7 @@ import {
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
+import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from '../middleware/aiUserBudget';
 import { getVertexAIConfig } from '../lib/gemini-client';
 
 const router = Router();
@@ -430,7 +431,11 @@ router.get('/performance', async (req, res) => {
 });
 
 // ─── GEMINI AI ASSISTANT ─────────────────────────────────────
-router.post('/ai/query', async (req, res) => {
+router.post('/ai/query', aiUserBudget({
+  endpointTag: 'provider_console_ai_query',
+  dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+  dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+}), async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { query } = req.body;

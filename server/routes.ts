@@ -424,6 +424,7 @@ import { IsraeliTaxService } from "@shared/israeliTax";
 import multer from 'multer';
 import crypto from 'crypto';
 import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter, aiChatLimiter, aiChatHourlyLimiter } from './middleware/rateLimiter';
+import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from './middleware/aiUserBudget';
 import { incrementAIRequest, startAIMetricsFlusher } from './middleware/aiSecurity';
 import { loginRateLimitMiddleware, recordFailedLogin, clearLoginAttempts } from './middleware/loginRateLimiter';
 import { verifyAppCheckToken, verifyAppCheckTokenOptional } from './middleware/appCheckMiddleware';
@@ -11779,7 +11780,11 @@ self.addEventListener('notificationclick', (event) => {
 
   // AI Chat Assistant endpoint (Enhanced with Learning)
   // Protected: 20 req/min + 60 req/hour hard cap per IP
-  app.post('/api/ai/chat', aiChatLimiter, aiChatHourlyLimiter, async (req, res) => {
+  app.post('/api/ai/chat', aiChatLimiter, aiChatHourlyLimiter, aiUserBudget({
+    endpointTag: 'ai_chat_assistant',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }), async (req, res) => {
     try {
       const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { message, language, sessionId, userId, previousMessage, timeSpentOnPreviousAnswer } = req.body;
@@ -13381,7 +13386,11 @@ self.addEventListener('notificationclick', (event) => {
   
   // Kenzo AI Chatbot (Gemini 2.5 Flash powered with Hebrew/English/Arabic support)
   // Protected: 20 req/min + 60 req/hour hard cap per IP
-  app.post('/api/v1/chat/message', aiChatLimiter, aiChatHourlyLimiter, async (req, res) => {
+  app.post('/api/v1/chat/message', aiChatLimiter, aiChatHourlyLimiter, aiUserBudget({
+    endpointTag: 'kenzo_chat_v1',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }), async (req, res) => {
     try {
       const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { text, sessionId, languageCode } = req.body;
