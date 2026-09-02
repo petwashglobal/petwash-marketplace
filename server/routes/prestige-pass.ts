@@ -32,6 +32,13 @@ import { db, pool } from '../db';
 import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import {
+  getKillSwitchAllowed as _getKillSwitchAllowed,
+  checkIdempotency as _checkIdempotency,
+  recordIdempotency as _recordIdempotency,
+  KillSwitchUnavailableError,
+  IdempotencyUnavailableError,
+} from '../lib/killSwitchAndIdempotency';
 import { logAuditEvent, auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 import { z } from 'zod';
 import multer from 'multer';
@@ -11908,7 +11915,7 @@ router.get('/admin/wallet/archive/artifacts', async (req: Request, res: Response
 // PHASE 3.5G — REPLAY APPROVALS & SIGNED RUN REPORTS
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { createHash } from 'crypto';
+// `createHash` is already imported at file top (line 26).
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 // POST /admin/wallet/replay/request-execute — request approval for latest dry-run of given type
@@ -16986,31 +16993,15 @@ router.post('/admin/wallet/governance-alerts/trigger', async (req, res) => {
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-async function getKillSwitch(key: string): Promise<boolean> {
-  try {
-    const r = await pool.query(`SELECT enabled FROM system_kill_switches WHERE key = $1`, [key]);
-    if (!r.rows.length) return true; // default open if key not found
-    return r.rows[0].enabled;
-  } catch { return true; }
-}
-
-async function checkIdempotency(iKey: string, endpoint: string): Promise<{ hit: boolean; responseHash?: string }> {
-  try {
-    const r = await pool.query(`SELECT response_hash FROM idempotency_keys WHERE key = $1 AND endpoint = $2`, [iKey, endpoint]);
-    if (r.rows.length) return { hit: true, responseHash: r.rows[0].response_hash };
-    return { hit: false };
-  } catch { return { hit: false }; }
-}
-
-async function recordIdempotency(iKey: string, endpoint: string, responseJson: string) {
-  const hash = Buffer.from(responseJson).toString('base64').slice(0, 128);
-  try {
-    await pool.query(
-      `INSERT INTO idempotency_keys (key, endpoint, response_hash) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING`,
-      [iKey, endpoint, hash],
-    );
-  } catch {}
-}
+// Release-blocker A1 / A2 fail-closed helpers extracted to
+// server/lib/killSwitchAndIdempotency.ts. These local aliases keep the
+// call-site shape below unchanged while the actual contract + tests
+// live in the reusable module.
+const getKillSwitchAllowed = (key: string) => _getKillSwitchAllowed(pool as any, key);
+const checkIdempotency = (iKey: string, endpoint: string) =>
+  _checkIdempotency(pool as any, iKey, endpoint);
+const recordIdempotency = (iKey: string, endpoint: string, responseJson: string) =>
+  _recordIdempotency(pool as any, iKey, endpoint, responseJson);
 
 // ─── 4.5C — GLOBAL KILL SWITCHES ─────────────────────────────────────────────
 
@@ -17045,10 +17036,25 @@ router.post('/admin/wallet/kill-switches/:key/toggle', async (req, res) => {
   }
 });
 
-// Kill switch enforcement check endpoint (for testing)
+// Kill switch enforcement check endpoint (for testing / admin display).
+// Release-blocker A1: on kill-switch-unavailable we return 503 with
+// blocked:true so the caller can never mistake an infra failure for
+// "operation permitted".
 router.get('/admin/wallet/kill-switches/:key/check', async (req, res) => {
-  const enabled = await getKillSwitch(req.params.key);
-  return res.json({ key: req.params.key, enabled, blocked: !enabled });
+  try {
+    const enabled = await getKillSwitchAllowed(req.params.key);
+    return res.json({ key: req.params.key, enabled, blocked: !enabled });
+  } catch (err) {
+    if (err instanceof KillSwitchUnavailableError) {
+      return res.status(503).json({
+        key: req.params.key,
+        enabled: false,
+        blocked: true,
+        error: 'kill_switch_unavailable',
+      });
+    }
+    throw err;
+  }
 });
 
 // ─── 4.5D — IDEMPOTENCY & RETRY SAFETY ───────────────────────────────────────
@@ -17069,6 +17075,14 @@ router.post('/admin/wallet/test-retry-safety', async (req, res) => {
     await recordIdempotency(idempotencyKey, endpoint, JSON.stringify(response));
     return res.json(response);
   } catch (err: any) {
+    // Release-blocker A2: idempotency-infrastructure failure returns 503
+    // asking the client to retry, NOT 200 with a fresh mutation.
+    if (err instanceof IdempotencyUnavailableError) {
+      return res.status(503).json({
+        error: 'idempotency_unavailable',
+        message: 'Cannot verify retry safety — please retry shortly',
+      });
+    }
     return res.status(500).json({ error: 'Retry safety test failed', detail: err.message });
   }
 });
