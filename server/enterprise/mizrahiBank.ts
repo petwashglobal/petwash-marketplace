@@ -9,6 +9,7 @@ import type { Request, Response } from 'express';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const AGGREGATOR_URL = process.env.BANK_AGGREGATOR_URL || 'https://api.your-aggregator.com/mizrahi/transactions';
 const AGGREGATOR_TOKEN = process.env.BANK_AGGREGATOR_SECRET_KEY;
@@ -290,11 +291,7 @@ export async function reconcileTransaction(
     });
     
   } catch (error: any) {
-    logger.error('[MizrahiBank] Reconciliation failed:', error);
-    res.status(500).json({
-      error: 'Reconciliation failed',
-      details: error.message
-    });
+    sendSanitizedError(res, error, 'MIZRAHI_RECONCILIATION_FAILED', { logContext: { op: 'reconciliation' } });
   }
 }
 

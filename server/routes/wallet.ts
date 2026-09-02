@@ -1240,8 +1240,7 @@ router.post('/admin-send', async (req, res) => {
     res.json({ success: true, message: `Wallet passes sent to ${targetEmail}`, targetEmail, vipLinkId: vipLink.linkId, businessLinkId: businessLink.linkId });
 
   } catch (error) {
-    logger.error('[Wallet API] Admin-send error:', error);
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to send wallet pass' });
+    sendSanitizedError(res, error, 'WALLET_ADMIN_SEND_FAILED', { logContext: { op: 'admin-send' } });
   }
 });
 
@@ -1656,11 +1655,7 @@ router.post('/nayax/redeem-loyalty', auditLogMiddleware('WALLET_BURN'), async (r
     });
 
   } catch (error) {
-    logger.error('[Nayax] Loyalty redemption failed:', error);
-    res.status(500).json({ 
-      error: 'Redemption failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'NAYAX_LOYALTY_REDEEM_FAILED', { logContext: { op: 'nayax-loyalty-redeem' } });
   }
 });
 

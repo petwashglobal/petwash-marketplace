@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { EmailService } from '../emailService';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { readFileSync } from 'fs';
 
 const router = Router();
@@ -22,8 +23,7 @@ router.post('/send-platform-report', async (req: Request, res: Response) => {
     
     res.json({ success: true, message: 'Report sent to Support@PetWash.co.il' });
   } catch (error: any) {
-    console.error('Failed to send report:', error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'SEND_REPORT_FAILED', { logContext: { op: 'send-report' } });
   }
 });
 

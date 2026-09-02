@@ -291,7 +291,15 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     // 2026-09-01 migration wave 13: server/routes.ts (76 blocks
     //   bulk-migrated via scripted single-line-block replace) →
     //   ceiling 120 → 24.
-    const CEILING = 24;
+    // 2026-09-02 migration wave 14: wallet.ts (2) + stations.ts (1) +
+    //   meetings.ts (1) + super-app-bookings.ts (1) + marketplace-reviews.ts
+    //   (1) + send-report.ts (1) + israeli-contractor-compliance.ts (1) +
+    //   enterprise/mizrahiBank.ts (1) + israeliTax.ts (1) +
+    //   userDeletion.ts (1) + monthlyInvoicing.ts (1) → ceiling 24 → 0.
+    //
+    // Ceiling is now ZERO. Any new site that echoes error.message into
+    // a 5xx JSON body fails this pin. The migration is complete.
+    const CEILING = 0;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });

@@ -5,6 +5,7 @@ import { requireAuth } from '../customAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { FinancialDocumentService } from '../services/FinancialDocumentService';
 import {
   dispatchNotifications,
@@ -817,15 +818,13 @@ router.post(
 
       res.status(201).json(result);
     } catch (error: any) {
-      logger.error('Payment intent creation failed', {
-        error: error.message,
-        userId: req.firebaseUser?.uid || req.user?.uid,
-        platformId: req.platformContext?.platformId,
-        bookingId: req.params.bookingId
-      });
-
-      res.status(500).json({ 
-        error: error.message || 'Failed to create payment intent'
+      sendSanitizedError(res, error, 'PAYMENT_INTENT_CREATE_FAILED', {
+        logContext: {
+          op: 'payment-intent-create',
+          userId: req.firebaseUser?.uid || req.user?.uid,
+          platformId: req.platformContext?.platformId,
+          bookingId: req.params.bookingId,
+        },
       });
     }
   }

@@ -27,6 +27,7 @@ import {
 import { db } from '../db';
 import { eq, desc, sql, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { maskPII } from '../lib/piiFieldCrypto';
 import { auth as fbAdminAuth } from '../lib/firebase-admin';
 
@@ -186,11 +187,10 @@ router.post('/calculate-commission', async (req, res) => {
     res.json({ success: true, commission });
   } catch (error: any) {
     if (error.status === 401 || error.status === 403) return handleAuthError(res, error);
-    logger.error('[Israeli Compliance API] Commission calculation failed', { error: error.message });
     if (error.name === 'ZodError') {
       return res.status(400).json({ success: false, error: 'Invalid commission data', details: error.errors });
     }
-    res.status(500).json({ success: false, error: error.message || 'Failed to calculate commission' });
+    sendSanitizedError(res, error, 'CONTRACTOR_COMMISSION_CALC_FAILED', { logContext: { op: 'commission-calc' } });
   }
 });
 
