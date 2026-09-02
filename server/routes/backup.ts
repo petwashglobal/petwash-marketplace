@@ -8,6 +8,7 @@
 
 import { Router, Request, Response } from 'express';
 import { googleDriveBackupService } from '../services/googleDriveBackupService';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { storage } from '../storage';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
@@ -57,11 +58,7 @@ router.get('/status', validateFirebaseToken, requireBackupAdmin, async (req: Req
       }
     });
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-      connected: false
-    });
+    sendSanitizedError(res, error, 'BACKUP_STATUS_FAILED', { logContext: { op: 'status' } });
   }
 });
 
@@ -78,10 +75,7 @@ router.get('/list', validateFirebaseToken, requireBackupAdmin, async (req: Reque
       count: result.files.length
     });
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'BACKUP_FAILED', { logContext: { route: req.path } });
   }
 });
 
@@ -108,10 +102,7 @@ router.post('/json', validateFirebaseToken, requireBackupAdmin, async (req: Requ
 
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'BACKUP_FAILED', { logContext: { route: req.path } });
   }
 });
 
@@ -138,10 +129,7 @@ router.post('/spreadsheet', validateFirebaseToken, requireBackupAdmin, async (re
 
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'BACKUP_FAILED', { logContext: { route: req.path } });
   }
 });
 
@@ -168,10 +156,7 @@ router.post('/document', validateFirebaseToken, requireBackupAdmin, async (req: 
 
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'BACKUP_FAILED', { logContext: { route: req.path } });
   }
 });
 
@@ -193,10 +178,7 @@ router.post('/report', validateFirebaseToken, requireBackupAdmin, async (req: Re
     const result = await googleDriveBackupService.backupReport(reportName, content);
     res.json(result);
   } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'BACKUP_FAILED', { logContext: { route: req.path } });
   }
 });
 
@@ -413,10 +395,7 @@ router.post('/full', validateFirebaseToken, requireBackupAdmin, async (req: Requ
       message: `Full backup FAILED: ${error.message?.slice(0, 200)}`,
       detail: { error: error.message },
     });
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    sendSanitizedError(res, error, 'BACKUP_FULL_FAILED', { logContext: { op: 'full' } });
   }
 });
 

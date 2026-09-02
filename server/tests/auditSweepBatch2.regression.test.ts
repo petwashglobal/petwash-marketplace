@@ -278,7 +278,9 @@ describe('#214 5xx error.message echoes — helper + progressive ceiling', () =>
     //   admin.ts (3) → ceiling 299 → 290.
     // 2026-09-01 migration wave 8: unified-booking.ts (9 handlers,
     //   multi-line blocks) → ceiling 290 → 263.
-    const CEILING = 263;
+    // 2026-09-01 migration wave 9: ai-payout-verification.ts (7) +
+    //   backup.ts (7) + environment.ts (6) → ceiling 263 → 203.
+    const CEILING = 203;
     expect(filtered.length).toBeLessThanOrEqual(CEILING);
   });
 });

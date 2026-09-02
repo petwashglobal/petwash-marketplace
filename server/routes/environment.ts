@@ -7,6 +7,7 @@
 import express from 'express';
 import { logger } from '../lib/logger';
 import smartEnvironmentService from '../services/SmartEnvironmentService';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = express.Router();
 
@@ -53,11 +54,7 @@ router.get('/air-quality', async (req, res) => {
     });
 
   } catch (error: any) {
-    logger.error('[Environment API] Air quality request failed', { error: error.message });
-    res.status(500).json({
-      error: 'Failed to fetch air quality data',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ENVIRONMENT_AIR_QUALITY_FAILED', { logContext: { op: 'air-quality' } });
   }
 });
 
@@ -110,11 +107,7 @@ router.get('/pollen', async (req, res) => {
     });
 
   } catch (error: any) {
-    logger.error('[Environment API] Pollen request failed', { error: error.message });
-    res.status(500).json({
-      error: 'Failed to fetch pollen data',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ENVIRONMENT_POLLEN_FAILED', { logContext: { op: 'pollen' } });
   }
 });
 
@@ -182,11 +175,7 @@ router.get('/insights', async (req, res) => {
     });
 
   } catch (error: any) {
-    logger.error('[Environment API] Insights request failed', { error: error.message });
-    res.status(500).json({
-      error: 'Failed to fetch environmental insights',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ENVIRONMENT_INSIGHTS_FAILED', { logContext: { op: 'insights' } });
   }
 });
 
@@ -250,11 +239,7 @@ router.get('/uv', async (req, res) => {
     });
 
   } catch (error: any) {
-    logger.error('[Environment API] UV index error:', error);
-    res.status(500).json({
-      error: 'Failed to fetch UV index',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ENVIRONMENT_UV_FAILED', { logContext: { op: 'uv' } });
   }
 });
 
@@ -299,11 +284,7 @@ router.get('/air-quality-extended', async (req, res) => {
     });
 
   } catch (error: any) {
-    logger.error('[Environment API] Extended air quality error:', error);
-    res.status(500).json({
-      error: 'Failed to fetch air quality data',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ENVIRONMENT_AIR_QUALITY_EXT_FAILED', { logContext: { op: 'air-quality-extended' } });
   }
 });
 
@@ -375,10 +356,6 @@ router.get('/complete', async (req, res) => {
     logger.info('[Environment API] ✅ Complete environmental data delivered');
 
   } catch (error: any) {
-    logger.error('[Environment API] Complete data error:', error);
-    res.status(500).json({
-      error: 'Failed to fetch environmental data',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'ENVIRONMENT_COMPLETE_DATA_FAILED', { logContext: { op: 'complete' } });
   }
 });

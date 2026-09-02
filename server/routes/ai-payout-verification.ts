@@ -12,6 +12,7 @@ import { db } from "../db";
 import { superAppPayouts } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 
 const router = Router();
 
@@ -49,11 +50,7 @@ router.post("/verify/:payoutId", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Verification failed", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Verification failed",
-    });
+    sendSanitizedError(res, error, 'AI_PAYOUT_VERIFY_FAILED', { logContext: { op: 'verify' } });
   }
 });
 
@@ -91,11 +88,7 @@ router.get("/status/:payoutId", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Status check failed", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Status check failed",
-    });
+    sendSanitizedError(res, error, 'AI_PAYOUT_STATUS_CHECK_FAILED', { logContext: { op: 'status' } });
   }
 });
 
@@ -119,11 +112,7 @@ router.post("/batch", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Batch verification failed", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Batch verification failed",
-    });
+    sendSanitizedError(res, error, 'AI_PAYOUT_BATCH_FAILED', { logContext: { op: 'batch' } });
   }
 });
 
@@ -161,11 +150,7 @@ router.get("/pending", async (req, res) => {
       })),
     });
   } catch (error) {
-    logger.error("[AI Verification] Failed to get pending payouts", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to get pending payouts",
-    });
+    sendSanitizedError(res, error, 'AI_PAYOUT_PENDING_FAILED', { logContext: { op: 'pending' } });
   }
 });
 
@@ -204,11 +189,7 @@ router.get("/flagged", async (req, res) => {
       })),
     });
   } catch (error) {
-    logger.error("[AI Verification] Failed to get flagged payouts", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to get flagged payouts",
-    });
+    sendSanitizedError(res, error, 'AI_PAYOUT_FLAGGED_FAILED', { logContext: { op: 'flagged' } });
   }
 });
 
@@ -270,11 +251,7 @@ router.post("/override/:payoutId", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Override failed", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Override failed",
-    });
+    sendSanitizedError(res, error, 'AI_PAYOUT_OVERRIDE_FAILED', { logContext: { op: 'override' } });
   }
 });
 
@@ -321,11 +298,7 @@ router.get("/stats", async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("[AI Verification] Stats query failed", error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : "Stats query failed",
-    });
+    sendSanitizedError(res, error, 'AI_PAYOUT_STATS_FAILED', { logContext: { op: 'stats' } });
   }
 });
 
