@@ -16593,7 +16593,11 @@ self.addEventListener('notificationclick', (event) => {
    * Uses Google Gemini to suggest products based on pet profile
    * Requires authentication
    */
-  app.post('/api/subscriptions/:id/ai-recommendations', requireAuth, async (req: any, res) => {
+  app.post('/api/subscriptions/:id/ai-recommendations', requireAuth, aiUserBudget({
+    endpointTag: 'subscription_ai_recommendations',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }), async (req: any, res) => {
     try {
       const subscriptionId = parseInt(req.params.id);
       const userId = req.user.uid;
@@ -16623,17 +16627,32 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(404).json({ success: false, error: 'Subscription box type not found' });
       }
 
-      // Get available products
-      const products = await db
+      // AUDIT-AI-11 (#206): pre-filter the product catalogue by petType +
+      // sizeGroup + ageGroup BEFORE it hits the prompt, and hard-cap the
+      // injected list. Previously the full active catalogue (~unbounded) was
+      // serialised into the prompt — a growth-linear token blow-up that
+      // ballooned per-call cost. The filter is server-side, so no product
+      // ever reaches Gemini that couldn't be recommended anyway.
+      const petProfile = subscription.petProfile as any;
+      const AI_PRODUCT_LIMIT = 40;
+      const allActive = await db
         .select()
         .from(subscriptionProducts)
         .where(eq(subscriptionProducts.isActive, true));
+      const petType = petProfile?.petType || 'dog';
+      const petSize = petProfile?.size || 'medium';
+      const petAge = petProfile?.age || 'adult';
+      const filtered = allActive.filter((p: any) => {
+        const typeOk = !p.petType || p.petType === petType || p.petType === 'all';
+        const sizeOk = !p.sizeGroup || p.sizeGroup === petSize || p.sizeGroup === 'any';
+        const ageOk = !p.ageGroup || p.ageGroup === petAge || p.ageGroup === 'any';
+        return typeOk && sizeOk && ageOk;
+      });
+      const products = (filtered.length > 0 ? filtered : allActive).slice(0, AI_PRODUCT_LIMIT);
 
       // Import Google Gemini API
       const { GoogleGenAI } = await import('@google/genai');
       const genAI = new GoogleGenAI(getVertexAIConfig());
-
-      const petProfile = subscription.petProfile as any;
       const prompt = `You are an expert pet nutritionist and product curator. Based on the following pet profile and available products, recommend the best ${boxType.itemCount} products for this month's subscription box.
 
 Pet Profile:
@@ -16661,9 +16680,12 @@ Return a JSON response with the following structure:
 
 Select exactly ${boxType.itemCount} products that match the pet's profile, age, size, and dietary needs. Prioritize variety across categories (food, treats, toys, etc.).`;
 
+      // AUDIT-AI-11 (#206): cap Gemini output tokens so a malformed prompt
+      // or a runaway response can't spend beyond a bounded envelope.
       const result = await genAI.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
+        config: { maxOutputTokens: 2048 },
       });
       const responseText = result.text || '';
       
