@@ -9,6 +9,7 @@ import { loadEmployeeProfile, requireRole, requirePermission } from '../middlewa
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { createHandoff, DEFAULT_HANDOFF_TTL_SEC } from '../security/oneTapHandoff';
 
 const router = Router();
 
@@ -414,24 +415,31 @@ router.post('/:uid/generate-mobile-link', requireRole(['admin']), async (req: Re
       });
     }
 
-    // Generate custom Firebase token (valid for 1 hour)
+    // AUDIT-LOG-13 (#216): the Firebase custom token used to be embedded
+    // directly in the returned URL (?token=...). That surface leaked to
+    // browser history, referer headers, CDN access logs, and any analytics
+    // that captured the URL. Instead, mint the token, stash it in Redis
+    // under a random handoff CODE, and return a URL that carries only the
+    // code. The code buys exactly one call to /api/oauth/one-tap/exchange
+    // (Redis GETDEL), which returns the token in a fetch response body.
     const customToken = await firebaseAdmin.createCustomToken(uid);
-    
-    // Create one-tap login URL
+    const handoffCode = await createHandoff({ customToken, uid });
+
     const baseUrl = process.env.BASE_URL || 'https://petwash.co.il';
     const redirectPath = redirect || '/m';
-    const oneTapUrl = `${baseUrl}/ops/one-tap-employee?token=${encodeURIComponent(customToken)}&redirect=${encodeURIComponent(redirectPath)}`;
-    
+    const oneTapUrl = `${baseUrl}/ops/one-tap-employee?code=${encodeURIComponent(handoffCode)}&redirect=${encodeURIComponent(redirectPath)}`;
+
     logger.info(`Generated one-tap login link for employee ${employee?.email}`, {
       uid,
       redirect: redirectPath,
       generatedBy: req.employee!.email,
+      handoffTtlSec: DEFAULT_HANDOFF_TTL_SEC,
     });
 
-    res.json({ 
+    res.json({
       message: 'One-tap login link generated',
       url: oneTapUrl,
-      expiresIn: '1 hour',
+      expiresIn: `${DEFAULT_HANDOFF_TTL_SEC} seconds`,
     });
   } catch (error) {
     logger.error('Error generating mobile link:', error);

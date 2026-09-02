@@ -109,6 +109,27 @@ class RedisService {
     }
   }
 
+  /**
+   * Atomic GETDEL — reads a key and deletes it in a single Redis round-trip.
+   * Used for one-time consumption handoffs (e.g. AUDIT-LOG-13/#216 one-tap
+   * custom-token) where the value must be usable exactly once and never
+   * re-read even by a racing concurrent request.
+   *
+   * Returns null when Redis is unavailable OR the key doesn't exist / has
+   * already been consumed — callers cannot distinguish these two, and MUST
+   * treat both as "no valid handoff" so a Redis outage never turns into a
+   * bypass of the one-shot semantic.
+   */
+  async getDel(key: string): Promise<string | null> {
+    if (!this.isEnabled || !this.client) return null;
+    try {
+      return await this.client.getdel(key);
+    } catch (error) {
+      logger.error(`[Redis] GETDEL error for key ${key}:`, error);
+      return null;
+    }
+  }
+
   async del(key: string | string[]): Promise<boolean> {
     if (!this.isEnabled || !this.client) {
       return false;

