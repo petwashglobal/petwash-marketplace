@@ -2,6 +2,10 @@ import { Router } from 'express';
 import { randomInt, randomBytes } from 'crypto';
 import { db, pool } from '../db';
 import {
+  runFiscalDocumentAndPersistOnFailure,
+  FiscalOutboxUnavailableError,
+} from '../services/fiscalDocumentOutbox';
+import {
   walkerProfiles,
   walkBookings,
   walkGpsTracking,
@@ -789,34 +793,29 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       throw lockErr;
     }
 
-    // BRIDGE (2026-07-24): mirror into booking_requests so the provider job
-    // inbox (/provider-os) can SEE and accept this walk. Without it the booking
-    // hung at pending_provider forever — the only UI that reads walk_bookings
-    // (WalkerDashboard.tsx) was never routed. Fail-soft.
-    try {
-      const { bridgeLegacyBooking } = await import('../services/legacyBookingBridge');
+    // Release-blocker A5 (CEO 2026-09-02): the bridge is NOT best-effort.
+    // Without it the paid booking hangs at pending_provider forever (the
+    // WalkerDashboard.tsx UI never routes it). Try inline; on failure
+    // enqueue a durable fiscal_document_outbox row for the drainer to
+    // retry. If BOTH fail, return 5xx so the client can retry the whole
+    // booking creation (idempotent by walk_bookings.id).
+    {
       const startAt = new Date(`${scheduledDateOnly}T${scheduledStartTime || '09:00'}:00`);
       const endAt = new Date(startAt.getTime() + (Number(durationMinutes) || 30) * 60000);
-      await bridgeLegacyBooking({
+      const bridgePayload = {
         ownerId,
         providerUserId: walkerProfile.userId as string,
         providerProfileId: walkerProfile.profileId as number,
         providerType: 'walker',
         serviceType: 'dog_walking',
-        startDate: isNaN(startAt.getTime()) ? new Date() : startAt,
-        endDate: isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt,
+        startDateIso: (isNaN(startAt.getTime()) ? new Date() : startAt).toISOString(),
+        endDateIso: (isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt).toISOString(),
         petCount: 1,
         subtotalCents: Math.round(pricing.baseRate * 100),
         serviceFeeCents: Math.round(pricing.platformFee * 100),
         totalCents: Math.round(pricing.totalPrice * 100),
         providerPayoutCents: Math.round(pricing.providerPayout * 100),
-        ownerMessage: null,
         legacyRef: { table: 'walk_bookings', id: bookingId },
-        // CEO §12: carry the pet display context AND the KYA safety
-        // snapshot onto the mirror so /walker/requests + /walker/active
-        // can render name/breed/type (no more "Pet" fallback) AND the
-        // aggression / escape-risk / allergy warnings the walker MUST
-        // see before grabbing the leash.
         petDetails: {
           petName: petName || null,
           petType: 'dog',
@@ -825,8 +824,59 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
           address: pickupAddress || null,
           safety: safeSnapshot,
         },
-      });
-    } catch { /* bridge is best-effort */ }
+      };
+      try {
+        const outcome = await runFiscalDocumentAndPersistOnFailure({
+          pool,
+          kind: 'walk_legacy_bridge',
+          sourceKey: `walk_booking:${bookingId}`,
+          payload: bridgePayload,
+          runNow: async () => {
+            const { bridgeLegacyBooking } = await import('../services/legacyBookingBridge');
+            await bridgeLegacyBooking({
+              ownerId,
+              providerUserId: walkerProfile.userId as string,
+              providerProfileId: walkerProfile.profileId as number,
+              providerType: 'walker',
+              serviceType: 'dog_walking',
+              startDate: isNaN(startAt.getTime()) ? new Date() : startAt,
+              endDate: isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt,
+              petCount: 1,
+              subtotalCents: Math.round(pricing.baseRate * 100),
+              serviceFeeCents: Math.round(pricing.platformFee * 100),
+              totalCents: Math.round(pricing.totalPrice * 100),
+              providerPayoutCents: Math.round(pricing.providerPayout * 100),
+              ownerMessage: null,
+              legacyRef: { table: 'walk_bookings', id: bookingId },
+              petDetails: {
+                petName: petName || null,
+                petType: 'dog',
+                petBreed: petBreed || null,
+                petWeight: petWeight || null,
+                address: pickupAddress || null,
+                safety: safeSnapshot,
+              },
+            });
+          },
+        });
+        if (!outcome.ranInline) {
+          console.warn('[Walk] legacy-bridge enqueued to outbox for retry', {
+            bookingId, inlineError: outcome.inlineError,
+          });
+        }
+      } catch (err) {
+        if (err instanceof FiscalOutboxUnavailableError) {
+          console.error('[Walk] legacy-bridge both inline AND outbox failed', {
+            bookingId, err: err.message,
+          });
+          return res.status(503).json({
+            error: 'walk_bridge_unavailable',
+            message: 'Booking could not persist provider-routing state; please retry.',
+          });
+        }
+        throw err;
+      }
+    }
 
     // Record in Octopus Brain ledger (financial audit trail)
     const octopusId = `OB-WALK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;

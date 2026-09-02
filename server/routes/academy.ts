@@ -8,7 +8,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { haversineKm } from '../utils/providerSearch';
-import { db } from '../db';
+import { db, pool } from '../db';
+import {
+  runFiscalDocumentAndPersistOnFailure,
+  FiscalOutboxUnavailableError,
+} from '../services/fiscalDocumentOutbox';
 import {
   trainers,
   trainerBookings,
@@ -793,42 +797,77 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
 
     logger.info('[Academy] Booking confirmed', { bookingId, trainerId: booking.trainerId });
 
-    // Israeli digital receipt for the training service (non-blocking). Academy
-    // previously issued NO fiscal document — this closes that gap, consistent
-    // with the sitter/walk marketplace flows. VAT is derived from totalAmount by
-    // the receipt service; the fee/payout figures are informational.
-    try {
+    // Release-blocker A4 (CEO 2026-09-02): Israeli digital receipt is
+    // NOT best-effort. Try inline; on failure enqueue a durable
+    // fiscal_document_outbox row for the drainer worker. If BOTH fail,
+    // return 5xx so the client can retry the confirm (idempotent by
+    // booking id).
+    {
       const totalAmount = (booking.walletHoldCents || 0) / 100;
       if (totalAmount > 0) {
-        const [cust] = await db
-          .select({ email: users.email, first: users.firstName, last: users.lastName })
-          .from(users).where(eq(users.id, booking.userId)).limit(1);
-        const [trn] = await db
-          .select({ first: users.firstName, last: users.lastName })
-          .from(users).where(eq(users.id, booking.trainerUserId)).limit(1);
-        const platformFeeAmount = Math.round(totalAmount * PETWASH_COMMISSION_RATE * 100) / 100;
-        await IsraeliDigitalReceiptService.generateReceipt({
-          platform: 'academy',
-          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
-          bookingId,
-          customerEmail: cust?.email || '',
-          customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
-          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
-          providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
-          providerId: String(booking.trainerId),
-          providerType: 'trainer',
-          serviceDescription: 'Pet Wash Academy training session',
-          serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
-          subtotalAmount: totalAmount,
-          platformFeeAmount,
-          totalAmount,
-          paymentMethod: 'PetWash Wallet',
-          providerPayoutAmount: Math.round((totalAmount - platformFeeAmount) * 100) / 100,
-          brokerCommissionAmount: platformFeeAmount,
-        });
+        try {
+          const outcome = await runFiscalDocumentAndPersistOnFailure({
+            pool,
+            kind: 'academy_receipt',
+            sourceKey: `booking:${bookingId}`,
+            payload: {
+              platform: 'academy',
+              paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+              bookingId,
+              trainerId: booking.trainerId,
+              trainerUserId: booking.trainerUserId,
+              customerUserId: booking.userId,
+              totalAmountIls: totalAmount,
+            },
+            runNow: async () => {
+              const [cust] = await db
+                .select({ email: users.email, first: users.firstName, last: users.lastName })
+                .from(users).where(eq(users.id, booking.userId)).limit(1);
+              const [trn] = await db
+                .select({ first: users.firstName, last: users.lastName })
+                .from(users).where(eq(users.id, booking.trainerUserId)).limit(1);
+              const platformFeeAmount = Math.round(totalAmount * PETWASH_COMMISSION_RATE * 100) / 100;
+              await IsraeliDigitalReceiptService.generateReceipt({
+                platform: 'academy',
+                paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+                bookingId,
+                customerEmail: cust?.email || '',
+                customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
+                serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
+                providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
+                providerId: String(booking.trainerId),
+                providerType: 'trainer',
+                serviceDescription: 'Pet Wash Academy training session',
+                serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
+                subtotalAmount: totalAmount,
+                platformFeeAmount,
+                totalAmount,
+                paymentMethod: 'PetWash Wallet',
+                providerPayoutAmount: Math.round((totalAmount - platformFeeAmount) * 100) / 100,
+                brokerCommissionAmount: platformFeeAmount,
+              });
+            },
+          });
+          if (!outcome.ranInline) {
+            logger.warn('[Academy] Receipt enqueued to outbox for retry', {
+              bookingId,
+              inlineError: outcome.inlineError,
+            });
+          }
+        } catch (err) {
+          if (err instanceof FiscalOutboxUnavailableError) {
+            logger.error('[Academy] Receipt both inline AND outbox failed', {
+              bookingId,
+              err: err.message,
+            });
+            return res.status(503).json({
+              error: 'fiscal_receipt_unavailable',
+              message: 'Confirm could not persist receipt; please retry.',
+            });
+          }
+          throw err;
+        }
       }
-    } catch (receiptErr) {
-      logger.warn('[Academy] Receipt generation on confirm failed (non-blocking)', receiptErr);
     }
 
     // 2.7C/D — fire-and-forget SMS to trainer + customer

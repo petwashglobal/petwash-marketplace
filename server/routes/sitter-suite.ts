@@ -6,7 +6,11 @@
  */
 
 import { Router, Request } from 'express';
-import { db } from '../db';
+import { db, pool } from '../db';
+import {
+  runFiscalDocumentAndPersistOnFailure,
+  FiscalOutboxUnavailableError,
+} from '../services/fiscalDocumentOutbox';
 import {
   sitterProfiles,
   petProfilesForSitting,
@@ -1587,23 +1591,62 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
     // Stage 2: settlement (withholding, Osek type, commissionId) is passed so the
     // P&L ledger entry is complete in one write — no second pass required.
     // Non-blocking — failure must not abort the completion response.
+    // Release-blocker A3 (CEO 2026-09-02): VAT ledger MUST NOT disappear
+    // into a `.catch()` — an Israeli fiscal-law breach. Try inline, and
+    // on failure enqueue a durable fiscal_document_outbox row for the
+    // drainer worker to retry. If BOTH fail we return 5xx so the
+    // client retries the whole booking-completion (idempotent by id).
+    const vatPayload = {
+      source: 'sitter-suite',
+      bookingId: booking.bookingId,
+      grossAmountIls: booking.totalChargeCents / 100,
+      metadata: {
+        completedAt: new Date().toISOString(),
+        bookingDbId: booking.id,
+      },
+      settlement: settlementResult.settlement ? {
+        withholdingTaxAmount: settlementResult.settlement.withholdingTaxAmount,
+        withholdingTaxRate: settlementResult.settlement.withholdingTaxRate,
+        netPaymentToProvider: settlementResult.settlement.netPaymentToProvider,
+        commissionId: settlementResult.settlement.commissionId,
+        osekType: settlementResult.settlement.osekType,
+      } : null,
+    };
     try {
-      await VATCalculatorService.recordTransactionFromGross(
-        'sitter-suite',
-        booking.bookingId,
-        booking.totalChargeCents / 100,
-        booking.bookingId,
-        { completedAt: new Date().toISOString(), bookingDbId: booking.id },
-        settlementResult.settlement ? {
-          withholdingTaxAmount: settlementResult.settlement.withholdingTaxAmount,
-          withholdingTaxRate: settlementResult.settlement.withholdingTaxRate,
-          netPaymentToProvider: settlementResult.settlement.netPaymentToProvider,
-          commissionId: settlementResult.settlement.commissionId,
-          osekType: settlementResult.settlement.osekType,
-        } : undefined
-      );
-    } catch (vatCompletionErr: any) {
-      logger.warn('[Sitter Suite] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId: booking.bookingId });
+      const outcome = await runFiscalDocumentAndPersistOnFailure({
+        pool,
+        kind: 'vat_ledger',
+        sourceKey: `booking:${booking.bookingId}`,
+        payload: vatPayload,
+        runNow: async () => {
+          await VATCalculatorService.recordTransactionFromGross(
+            'sitter-suite',
+            booking.bookingId,
+            booking.totalChargeCents / 100,
+            booking.bookingId,
+            { completedAt: new Date().toISOString(), bookingDbId: booking.id },
+            vatPayload.settlement || undefined,
+          );
+        },
+      });
+      if (!outcome.ranInline) {
+        logger.warn('[Sitter Suite] VAT ledger enqueued to outbox for retry', {
+          bookingId: booking.bookingId,
+          inlineError: outcome.inlineError,
+        });
+      }
+    } catch (err) {
+      if (err instanceof FiscalOutboxUnavailableError) {
+        logger.error('[Sitter Suite] VAT ledger both inline AND outbox failed', {
+          bookingId: booking.bookingId,
+          err: err.message,
+        });
+        return res.status(503).json({
+          error: 'fiscal_ledger_unavailable',
+          message: 'Booking completion could not persist fiscal state; please retry.',
+        });
+      }
+      throw err;
     }
     
     logger.info('[Sitter Suite] ✅ Booking completed - Israeli law 2026 compliant', {
