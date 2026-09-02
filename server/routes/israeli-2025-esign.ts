@@ -299,10 +299,12 @@ router.post('/otp/send', requireAuth, async (req, res) => {
     // Send OTP via the appropriate channel
     if (method === 'sms' && phone) {
       try {
+        // AUDIT-SMS-5 (#221): esign OTP per-UID budget.
+        const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
         await twilioSMSService.sendSMS(
           phone,
           `PetWash™ קוד אימות: ${otp}\nתוקף הקוד 5 דקות. אל תשתף קוד זה עם אף אחד.`,
-          { userId: uid, ip: (req as any).ip, ua: (req as any).headers?.['user-agent'] },
+          { userId: uid, ip: (req as any).ip, ua: (req as any).headers?.['user-agent'], purpose: _P.ESIGN },
         );
       } catch (smsErr: any) {
         logger.error('[Israeli2025-ESign] SMS send failed:', smsErr.message);

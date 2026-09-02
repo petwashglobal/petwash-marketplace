@@ -281,7 +281,9 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
     try {
       const smsBody = bodyText || stripHtml(bodyHtml);
       const truncated = smsBody.length > 300 ? smsBody.slice(0, 297) + '...' : smsBody;
-      const result = await twilioSMSService.sendSMS(phone, truncated, { userId: uid });
+      // AUDIT-SMS-5 (#221): generic notification dispatcher — booking-confirm bucket.
+      const { SMS_PURPOSES: _P } = await import('./perUidSmsBudget');
+      const result = await twilioSMSService.sendSMS(phone, truncated, { userId: uid, purpose: _P.BOOKING_CONFIRM });
       smsSent = result.success;
       if (!result.success) errors.push(`SMS failed: ${result.error || 'unknown'}`);
       else logger.info('[NotificationDispatcher] SMS sent', { uid, type });

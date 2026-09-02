@@ -4,6 +4,7 @@ import { otpEvents, smsEvidence } from '@shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { redactOtpBody } from '../lib/redactOtpBody';
+import { SMS_PURPOSES } from '../lib/perUidSmsBudget';
 import { redis } from './redis';
 import { twilioSMSService } from './TwilioSMSService';
 
@@ -280,7 +281,14 @@ export class RegistrationOTPService {
       if (channel === 'whatsapp') {
         sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
       } else {
-        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code));
+        // AUDIT-SMS-5 (#221): pass userId + purpose so TwilioSMSService can
+        // enforce the per-UID daily budget in checkAndBumpUidSmsBudget.
+        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code), {
+          userId: opts.userId,
+          ip: opts.ip,
+          ua: opts.userAgent,
+          purpose: SMS_PURPOSES.ONBOARDING,
+        });
       }
       if (sendResult.success && sendResult.messageId) {
         providerMessageId = sendResult.messageId;
@@ -477,7 +485,13 @@ export class RegistrationOTPService {
       if (channel === 'whatsapp') {
         sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
       } else {
-        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code));
+        // AUDIT-SMS-5 (#221): resend path also budgets per-UID.
+        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code), {
+          userId: record.userId || undefined,
+          ip: opts.ip,
+          ua: opts.userAgent,
+          purpose: SMS_PURPOSES.ONBOARDING,
+        });
       }
 
       const providerLabel = channel === 'whatsapp' ? 'twilio_whatsapp' : 'twilio';

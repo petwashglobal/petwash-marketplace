@@ -1876,7 +1876,12 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, asyn
         if (isNewUser && firstName && metadata.phoneE164 && metadata.phoneE164 !== 'N/A') {
           const smsBody = renderWelcomeSMS(smsType, { firstName, membershipId: displayId, language });
           const templateId = getTemplateId(smsType);
-          const smsResult = await twilioSMSService.sendSMS(metadata.phoneE164, smsBody);
+          // AUDIT-SMS-5 (#221): welcome-SMS per-UID budget (onboarding purpose).
+          const { SMS_PURPOSES: _SPWelcome } = await import('../lib/perUidSmsBudget');
+          const smsResult = await twilioSMSService.sendSMS(metadata.phoneE164, smsBody, {
+            userId: firebaseUser2?.uid,
+            purpose: _SPWelcome.ONBOARDING,
+          });
 
           await db.insert(smsEvidence).values({
             userId: firebaseUser2?.uid || null,

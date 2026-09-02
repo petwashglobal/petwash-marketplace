@@ -4,6 +4,7 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "../db";
 import { logger } from "../lib/logger";
 import { redactOtpBody } from "../lib/redactOtpBody";
+import { SMS_PURPOSES, type SmsPurpose } from "../lib/perUidSmsBudget";
 import { isUnifiedVerificationPurposeEnabled } from "../lib/feature-flags/unifiedVerification";
 import { twilioSMSService } from "./TwilioSMSService";
 import { sendVerificationEmailCode } from "./VerificationEmailDelivery";
@@ -472,12 +473,21 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
   }
 
   const renderedText = smsBodyForChallenge(code, (challenge.payload as any)?.language);
+  // AUDIT-SMS-5 (#221): map the VerificationPurpose to an SMS-budget purpose
+  // so TwilioSMSService.sendSMS can enforce the per-UID daily cap. Non-SMS
+  // channels don't need this — the WhatsApp path has its own economics.
+  const smsBudgetPurpose: SmsPurpose = challenge.purpose === "enable_2fa" || challenge.purpose === "disable_2fa"
+    ? SMS_PURPOSES.VERIFY_MFA
+    : challenge.purpose === "change_email"
+      ? SMS_PURPOSES.VERIFY_MOBILE
+      : SMS_PURPOSES.VERIFY_MOBILE;
   const sendResult = challenge.channel === "whatsapp"
     ? await twilioSMSService.sendWhatsApp(challenge.destination, renderedText)
     : await twilioSMSService.sendSMS(challenge.destination, renderedText, {
         userId: challenge.userId || undefined,
         ip: challenge.ip || undefined,
         ua: challenge.userAgent || undefined,
+        purpose: smsBudgetPurpose,
       });
 
   const provider = challenge.channel === "whatsapp" ? "twilio_whatsapp" : "twilio";

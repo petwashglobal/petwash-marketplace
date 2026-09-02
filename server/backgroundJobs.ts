@@ -1152,7 +1152,9 @@ export class BackgroundJobProcessor {
               continue;
             }
 
-            const result = await twilioSMSService.sendSMS(phone, smsBody, { userId: uid });
+            // AUDIT-SMS-5 (#221): birthday marketing SMS — booking-remind bucket.
+            const { SMS_PURPOSES: _P } = await import('./lib/perUidSmsBudget');
+            const result = await twilioSMSService.sendSMS(phone, smsBody, { userId: uid, purpose: _P.BOOKING_REMINDER });
             if (result.success) {
               sent++;
               await db.collection('pet_birthday_sms_log').doc(smsKey).set({

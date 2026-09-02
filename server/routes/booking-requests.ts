@@ -3702,7 +3702,9 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     if (validPhone && booking.ownerId === callerUserId) {
       try {
         const smsBody = `PetWash™ ההזמנה אושרה!\n\nמזהה: ${requestId}\nשירות: ${booking.serviceType}\nתאריכים: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}\nסכום: ₪${(booking.totalCents / 100).toFixed(2)}\nסטטוס: אושר ✅\n\nתודה שבחרת ב-PetWash™!`;
-        await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'] });
+        // AUDIT-SMS-5 (#221): booking-confirm per-UID budget.
+        const { SMS_PURPOSES: _SP } = await import('../lib/perUidSmsBudget');
+        await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'], purpose: _SP.BOOKING_CONFIRM });
         logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
       } catch (smsErr: any) {
         logger.warn('[BookingRequests] SMS send failed', { error: smsErr.message });

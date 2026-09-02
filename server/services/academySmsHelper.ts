@@ -120,7 +120,9 @@ export function dispatchAcademySms({
       for (const { phone, audience, uid } of sends) {
         const body = buildAcademySmsCopy({ bookingId, trainerName, amountCents, event, audience });
         try {
-          await twilioSMSService.sendSMS(phone, body, { userId: uid });
+          // AUDIT-SMS-5 (#221): booking-confirm notification per-UID budget.
+          const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
+          await twilioSMSService.sendSMS(phone, body, { userId: uid, purpose: _P.BOOKING_CONFIRM });
           logger.info('[AcademySMS] Sent', {
             bookingId,
             audience,

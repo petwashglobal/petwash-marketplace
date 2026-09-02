@@ -14,6 +14,7 @@ import { db, auth as firebaseAuth } from '../lib/firebase-admin';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
 import { logger } from '../lib/logger';
+import { SMS_PURPOSES } from '../lib/perUidSmsBudget';
 
 const router = express.Router();
 
@@ -82,10 +83,12 @@ router.post('/send-otp', async (req, res) => {
       ? `קוד האימות של PetWash™: ${code}\nתוקף: 10 דקות\nאין לשתף קוד זה עם איש.`
       : `Your PetWash™ verification code: ${code}\nExpires in 10 minutes. Never share this code.`;
 
+    // AUDIT-SMS-5 (#221): pass purpose so per-UID daily budget applies.
     const result = await twilioSMSService.sendSMS(normalizedPhone, message, {
       userId: uid,
       ip: req.ip,
       ua: req.headers['user-agent'],
+      purpose: SMS_PURPOSES.PROVIDER_PHONE,
     });
 
     if (!result.success) {

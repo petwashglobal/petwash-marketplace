@@ -1874,10 +1874,13 @@ router.post('/send-wallet-sms', walletEmailLimiter, async (req: Request, res: Re
     const link = `${appBaseUrl}/wallet-download`;
     const body = `PetWash™ — הכרטיס שלך ל-Apple/Google Wallet: ${link}`;
 
+    // AUDIT-SMS-5 (#221): prestige wallet-download link is a booking-confirm-shape send.
+    const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
     const result = await twilioSMSService.sendSMS(phone, body, {
       userId,
       ip: req.ip,
       ua: req.headers['user-agent'] as string | undefined,
+      purpose: _P.BOOKING_CONFIRM,
     });
 
     if (result.success) {

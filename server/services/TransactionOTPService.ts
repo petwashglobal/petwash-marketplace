@@ -297,7 +297,14 @@ class TransactionOTPService {
     if (phone && phone.startsWith('+')) {
       try {
         const smsBody = buildSmsBody(code, transactionType, amount, currency, language);
-        const result = await twilioSMSService.sendSMS(phone, smsBody);
+        // AUDIT-SMS-5 (#221): transaction-OTP path — pass userId + purpose so
+        // the shared per-UID daily budget is enforced.
+        const { SMS_PURPOSES } = await import('../lib/perUidSmsBudget');
+        const result = await twilioSMSService.sendSMS(phone, smsBody, {
+          userId,
+          ip,
+          purpose: SMS_PURPOSES.VERIFY_MOBILE,
+        });
         if (result.success) {
           sentVia.push('sms');
         } else {

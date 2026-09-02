@@ -216,8 +216,11 @@ export async function runWashReminderCron(): Promise<WashReminderResult> {
             `לקביעת תור: petwash.co.il\n` +
             OPT_OUT_LINE;
 
+          // AUDIT-SMS-5 (#221): booking-reminder per-UID budget.
+          const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
           const sendRes = await twilioSMSService.sendSMS(row.phone as string, smsBody, {
             userId: row.user_id,
+            purpose: _P.BOOKING_REMINDER,
           });
           delivered = sendRes.success;
           if (!delivered) {
