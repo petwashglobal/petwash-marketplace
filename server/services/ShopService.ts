@@ -722,9 +722,12 @@ export class ShopService {
       // SMS notification
       if (user.phone) {
               try {
+                        // AUDIT-SMS-5 (#221): dispatch-notification per-UID budget.
+                        const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
                         await this.smsService.sendSMS(
                                     user.phone,
-                                    `PetWash™: הזמנה #${order.order_number} יצאה לדרך! ${order.tracking_number ? `מעקב: ${order.tracking_url}` : ''}`
+                                    `PetWash™: הזמנה #${order.order_number} יצאה לדרך! ${order.tracking_number ? `מעקב: ${order.tracking_url}` : ''}`,
+                                    { userId: (order as any).user_id || (order as any).userId, purpose: _P.BOOKING_CONFIRM },
                                   );
               } catch (e: any) {
                         logger.warn('[ShopService] dispatch SMS failed', { orderId: order.id, err: e.message });

@@ -142,7 +142,7 @@ export async function sendSmsTemplate(
   key: string,
   to: string,
   vars: Record<string, string | number> = {},
-  opts: { lang?: 'he' | 'en'; userId?: string } = {},
+  opts: { lang?: 'he' | 'en'; userId?: string; purpose?: string } = {},
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const rendered = renderSms(key, vars, opts.lang ?? 'he');
   if (!rendered) {
@@ -152,5 +152,11 @@ export async function sendSmsTemplate(
   if (rendered.category === 'marketing' && !vars.unsubscribe) {
     logger.warn('[SMS] marketing template sent without an opt-out link', { key });
   }
-  return twilioSMSService.sendSMS(to, rendered.body, { userId: opts.userId });
+  // AUDIT-SMS-5 (#221): marketing templates default to BOOKING_REMINDER
+  // (which is where they sit in the per-UID budget catalogue), everything
+  // else to BOOKING_CONFIRM. Callers CAN override with opts.purpose.
+  const { SMS_PURPOSES } = await import('../lib/perUidSmsBudget');
+  const purpose = opts.purpose
+    ?? (rendered.category === 'marketing' ? SMS_PURPOSES.BOOKING_REMINDER : SMS_PURPOSES.BOOKING_CONFIRM);
+  return twilioSMSService.sendSMS(to, rendered.body, { userId: opts.userId, purpose });
 }

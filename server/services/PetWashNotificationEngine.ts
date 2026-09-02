@@ -300,8 +300,22 @@ export async function dispatchNotifications(job: NotificationJob): Promise<void>
       }
 
       if (channel === 'sms' && job.sms) {
+        // AUDIT-SMS-5 (#221): map the notification eventType to a purpose
+        // bucket so TwilioSMSService's per-UID daily budget applies.
+        // eventType names are lowercase/snake; MFA/verify events map to
+        // VERIFY_* buckets, cancellations/reminders to BOOKING_REMINDER,
+        // everything else defaults to BOOKING_CONFIRM.
+        const { SMS_PURPOSES } = await import('../lib/perUidSmsBudget');
+        const et = String(job.eventType || '').toLowerCase();
+        const smsPurpose =
+          et.includes('mfa') || et.includes('2fa') || et.includes('verify')
+            ? SMS_PURPOSES.VERIFY_MFA
+            : et.includes('cancel') || et.includes('reminder') || et.includes('reminded')
+              ? SMS_PURPOSES.BOOKING_REMINDER
+              : SMS_PURPOSES.BOOKING_CONFIRM;
         const result = await twilioSMSService.sendSMS(job.sms.to, job.sms.text, {
           userId: job.userId,
+          purpose: smsPurpose,
         });
         sent = result.success;
         providerMessageId = result.messageId ?? null; // Twilio SID (e.g. SMxxxxxxxx)

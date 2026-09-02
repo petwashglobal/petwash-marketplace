@@ -881,12 +881,15 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
           if (walkerPhone) {
             const { TwilioSMSService } = await import('../services/TwilioSMSService');
             const smsService = new TwilioSMSService();
+            // AUDIT-SMS-5 (#221): walker booking-notification per-UID budget.
+            const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
             await smsService.sendSMS(
               walkerPhone,
               `🐾 ⁦PetWash™⁩ - בקשת טיול חדשה!\n` +
               `תאריך: ${scheduledDate} בשעה ${scheduledStartTime}\n` +
               `${durationMinutes} דקות · ₪${pricing.totalPrice.toFixed(0)}\n` +
-              `אנא אשר/י את ההזמנה באפליקציה.`
+              `אנא אשר/י את ההזמנה באפליקציה.`,
+              { userId: walker.userId, purpose: _P.BOOKING_CONFIRM },
             );
           }
         }

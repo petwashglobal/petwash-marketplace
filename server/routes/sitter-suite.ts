@@ -1073,13 +1073,16 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
           const { TwilioSMSService } = await import('../services/TwilioSMSService');
           const smsService = new TwilioSMSService();
           const ownerName = (req as any).user?.email?.split('@')[0] || 'לקוח/ה';
+          // AUDIT-SMS-5 (#221): sitter notification per-UID budget.
+          const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
           await smsService.sendSMS(
             sitter.phone,
             `🐾 ⁦PetWash™⁩ - בקשת הזמנה חדשה!\n` +
             `לקוח/ה: ${ownerName}\n` +
             `תאריכים: ${start.toLocaleDateString('he-IL')} - ${end.toLocaleDateString('he-IL')}\n` +
             `${totalDays} ימים · ₪${(pricing.subtotal).toFixed(0)}\n` +
-            `אנא אשר/י את ההזמנה באפליקציה.`
+            `אנא אשר/י את ההזמנה באפליקציה.`,
+            { userId: sitter.userId || undefined, purpose: _P.SITTER_SUITE },
           );
           logger.info('[Sitter Suite] ✅ Provider notification sent via SMS', { bookingId, phone: '***' });
         }
