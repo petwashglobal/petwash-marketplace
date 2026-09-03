@@ -31,6 +31,33 @@ import type { MarketplacePlatformId } from '@shared/schema';
 import { BookingCalendar } from '@/components/marketplace/BookingCalendar';
 import { MobileDatePicker } from '@/components/ui/mobile-date-picker';
 import { CreditWalletCard } from '@/components/wallet/CreditWalletCard';
+import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
+
+/**
+ * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire.
+ *
+ * Third resumable customer journey (after sitter #2198, walk #2201).
+ * Marketplace booking is a 5-step wizard — service → date/time → pet →
+ * review → pay. Every step BEFORE the checkout POST is safe to resume;
+ * the POST itself re-runs pricing / availability / auth gates against
+ * canonical state.
+ *
+ * Never persists finalised payment truth (quoteId, checkoutSessionId,
+ * chargeId, etc.) — the endpoint refuses those keys and the wizard
+ * re-quotes on resume.
+ */
+interface MarketplaceBookCheckpointPayload extends Record<string, unknown> {
+  platform?: string;
+  providerId?: string;
+  currentStep?: number;
+  selectedService?: string;
+  selectedDate?: string;
+  selectedTime?: string;
+  selectedPetId?: number | null;
+  specialInstructions?: string;
+  selectedAddons?: string[];
+  updatedAt?: string;
+}
 
 interface BookingStep {
   id: number;
@@ -119,6 +146,85 @@ export default function MarketplaceBookingFlow() {
     loyaltyInfo?: { tierName: string; discountPercent: number };
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Lane C.3 — resumable checkpoint. Enabled only when signed in.
+  const checkpoint = useJourneyCheckpoint<MarketplaceBookCheckpointPayload>('marketplace_book', {
+    enabled: !!user,
+  });
+
+  // Hydrate on mount — fill only fields the user has NOT already
+  // touched. Query-param intent (platform/id from URL) still wins.
+  useEffect(() => {
+    if (checkpoint.hydrating || !checkpoint.initial) return;
+    const p = checkpoint.initial;
+    if (typeof p.currentStep === 'number' && p.currentStep >= 1 && p.currentStep <= 4) {
+      setCurrentStep(p.currentStep);
+    }
+    if (selectedService === 'standard' && typeof p.selectedService === 'string') {
+      setSelectedService(p.selectedService);
+    }
+    if (!selectedDate && typeof p.selectedDate === 'string') {
+      const d = new Date(p.selectedDate);
+      if (!isNaN(d.getTime())) setSelectedDate(d);
+    }
+    if (!selectedTime && typeof p.selectedTime === 'string') {
+      setSelectedTime(p.selectedTime);
+    }
+    if (selectedPetId === null && typeof p.selectedPetId === 'number') {
+      setSelectedPetId(p.selectedPetId);
+    }
+    if (!specialInstructions && typeof p.specialInstructions === 'string') {
+      setSpecialInstructions(p.specialInstructions);
+    }
+    if (selectedAddons.length === 0 && Array.isArray(p.selectedAddons)) {
+      setSelectedAddons(p.selectedAddons.filter((x) => typeof x === 'string'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkpoint.hydrating, checkpoint.initial]);
+
+  // Debounced save whenever resumable state changes. NEVER includes
+  // payment truth (quoteId / checkoutSessionId / chargeId / etc.).
+  // Skipped on step 5 (payment in-flight) and on empty forms.
+  useEffect(() => {
+    if (!user) return;
+    if (checkpoint.hydrating) return;
+    if (currentStep >= 5) return; // payment step — checkpoint owned by server-side flow
+    if (
+      selectedService === 'standard' &&
+      !selectedDate &&
+      !selectedTime &&
+      selectedPetId === null &&
+      !specialInstructions &&
+      selectedAddons.length === 0
+    ) {
+      return; // nothing meaningful yet
+    }
+    void checkpoint.save({
+      platform: platform ?? undefined,
+      providerId: id ?? undefined,
+      currentStep,
+      selectedService,
+      selectedDate: selectedDate?.toISOString(),
+      selectedTime,
+      selectedPetId,
+      specialInstructions,
+      selectedAddons,
+      updatedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    user,
+    platform,
+    id,
+    currentStep,
+    selectedService,
+    selectedDate,
+    selectedTime,
+    selectedPetId,
+    specialInstructions,
+    selectedAddons,
+    checkpoint.hydrating,
+  ]);
 
   // Fetch provider details
   const { data: providerData, isLoading: providerLoading } = useProviderDetails(platform!, id!);
@@ -303,6 +409,10 @@ export default function MarketplaceBookingFlow() {
       return response.json();
     },
     onSuccess: (data) => {
+      // Lane C.3 — checkout succeeded (either sent to payment or already
+      // booked). Drop the resumable checkpoint so the home resume-card
+      // stops showing this journey.
+      void checkpoint.clear();
       if (data.paymentUrl) {
         // Redirect to Nayax payment page
         window.location.href = data.paymentUrl;
