@@ -219,3 +219,12 @@ until the next deploy of the drainer.
 
 - **2026-09-02** — Release ready. All A + B + C boxes green. Drainer
   landed as `3c13551ab`. Awaiting external smoke to close Section F.
+- **2026-09-03** — PR #2177 merged as `a2053c041`; security-floor
+  top-up (D lane) landed via #2178 as squash `f980b5675e`. Migrations
+  `0142` + `0143` applied via CI (`[apply-pending-migrations]` marker
+  path), Cloud Run backend deployed + traffic promoted, Firebase
+  Hosting frontend deployed. Post-deploy smoke (`release-smoke.yml`,
+  run 33740142916) passed against `https://petwash.co.il`:
+  `/api/health`, `/api/config/public`, `/api/me/capabilities` gated,
+  first JS asset serves, `/` and `/signin` render without React
+  crash. **Release CLOSED.**
