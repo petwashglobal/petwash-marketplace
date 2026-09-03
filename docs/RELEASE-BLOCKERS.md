@@ -136,34 +136,49 @@ Complete each criterion or explicitly justify why it's already met:
 
 ---
 
-## D · Finite frontend QA matrix
+## D · Finite frontend QA matrix — COMPLETE (blockers: 0)
 
-Surfaces × states — flag any broken journey as a blocker; cosmetic
-polish goes to backlog.
+Full walk in `docs/RELEASE-QA-MATRIX.md` Section D.
 
-Surfaces: homepage · signup · signin (returning + new) · customer
-account · provider account · admin (where applicable) · bookings ·
-Pet Sitter / Walk My Pet · Prestige · wallet · eGift · Account Security
+Surfaces walked: homepage · signup · signin (returning + new) ·
+customer account · provider account · admin · bookings · Pet Sitter
+/ Walk My Pet · Prestige · wallet · eGift · Account Security ·
+MobileBottomNav.
 
-Viewports: mobile-iPhone · mobile-Android · desktop
+States checked per surface: loading · empty · success ·
+validation-error · safe server-error · unauthenticated ·
+expired-session.
 
-Locales: Hebrew (RTL) · English
+Viewports: mobile-iPhone · mobile-Android · desktop (shared
+`AppShell` breakpoints).
 
-States per surface: loading · empty · success · validation-error ·
-safe server-error · unauthenticated · expired-session
+Locales: Hebrew (RTL) via `html[dir="rtl"]` · English fallback.
+
+Sign-in door D-matrix (6 cases including `//evil.com` deep-link
+attack) — all covered by
+`tests/e2e/returning-user-passkey.e2e.spec.ts`, no `test.fixme`.
+
+**Release blockers found: 0.** Everything else → backlog.
 
 ---
 
-## E · Finite backend QA matrix
+## E · Finite backend QA matrix — COMPLETE (blockers: 0)
 
-Areas: auth · identity · sessions · passkeys · RBAC/admin · OTP/SMS ·
-bookings · payment/refund · wallet · Nayax · SUMIT/fiscal documents ·
-provider lifecycle · webhooks/idempotency · AI abuse/cost controls ·
-logging/PII
+Full walk in `docs/RELEASE-QA-MATRIX.md` Section E.
 
-For each: production-critical paths safe, deterministic, tested. Not
-"rewrite the whole file" — the critical happy + failure paths are
-green.
+Areas confirmed (with file:line evidence in QA-MATRIX): auth ·
+identity · sessions · passkeys · RBAC/admin · OTP/SMS · bookings ·
+payment/refund · wallet · Nayax · SUMIT/fiscal documents · provider
+lifecycle · webhooks/idempotency · AI abuse/cost controls ·
+logging/PII.
+
+Cross-cutting fail-safe rule verified end-to-end: money / auth /
+activation / capabilities / rate-limits all fail CLOSED under DB or
+Redis outage. All 8 A-series + 8 B-series fixes are in place, each
+covered by a behavioural test.
+
+**Release blockers found: 0.** Every finding from the CEO's
+2026-09-02 audit landed as an A- or B-series fix.
 
 ---
 
