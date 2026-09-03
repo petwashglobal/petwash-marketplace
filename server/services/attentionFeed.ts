@@ -27,6 +27,7 @@ import type {
   AttentionFeed,
   AttentionItem,
 } from '@shared/lib/attentionFeed';
+import type { JourneyDomain } from './journeyCheckpoints';
 
 const PRIORITY_ORDER: Record<AttentionItem['priority'], number> = {
   urgent: 0,
@@ -601,6 +602,84 @@ async function providerDocExpiryItems(userId: string, he: boolean): Promise<Atte
   }
 }
 
+/**
+ * Journey Brain Phase 1 (post-release 2026-09-03 · Lane C.1).
+ *
+ * Reads active JourneyCheckpoint rows for the user and emits ONE
+ * informational item per abandoned flow — "we saved your <domain>
+ * where you left off". Purely a UX resume hint. The RESUMING wizard
+ * re-runs every payment / permission / state gate against canonical
+ * truth; the checkpoint is never authority.
+ *
+ * Fails-CLOSED to [] on any DB / service error so a partial outage
+ * cannot break the composer for the whole feed.
+ *
+ * Destinations map to routes that already exist on the client. If a
+ * checkpoint carries an unknown `domain` (a future release added a
+ * new flow but this deploy predates the enum), we skip it silently
+ * rather than route the user into an unmounted URL.
+ */
+async function petParentJourneyResumeItems(
+  userId: string,
+  he: boolean,
+): Promise<AttentionItem[]> {
+  try {
+    const { pool } = await import('../db');
+    const { listActiveCheckpoints } = await import('./journeyCheckpoints');
+    const active = await listActiveCheckpoints(pool, { userUid: userId });
+    if (!active.length) return [];
+
+    // Each JourneyDomain maps to (a) the client route to resume on,
+    // (b) the closest existing AttentionDomain so the client can pick
+    // the correct icon / analytics bucket without a new enum member,
+    // and (c) bilingual labels for the card title.
+    const DOMAIN_META: Readonly<
+      Record<
+        JourneyDomain,
+        {
+          destination: string;
+          attentionDomain: AttentionItem['domain'];
+          he: string;
+          en: string;
+        }
+      >
+    > = Object.freeze({
+      walk_book:        { destination: '/walk-my-pet',       attentionDomain: 'walk',        he: 'הזמנת הליכה',           en: 'walk booking' },
+      sitter_book:      { destination: '/sitter-suite',      attentionDomain: 'sitting',     he: 'הזמנת פט-סיטר',         en: 'sitter booking' },
+      marketplace_book: { destination: '/marketplace',       attentionDomain: 'booking',     he: 'הזמנה מהמרקטפלייס',     en: 'marketplace booking' },
+      shop_checkout:    { destination: '/shop/checkout',     attentionDomain: 'shop',        he: 'רכישה בחנות',           en: 'shop purchase' },
+      egift:            { destination: '/wallet/egift/buy',  attentionDomain: 'egift',       he: 'רכישת eGift',           en: 'eGift purchase' },
+      provider_apply:   { destination: '/provider-onboarding', attentionDomain: 'kyc',       he: 'רישום ספק',             en: 'provider application' },
+    });
+
+    const items: AttentionItem[] = [];
+    for (const row of active) {
+      const meta = DOMAIN_META[row.domain as JourneyDomain];
+      if (!meta) continue; // unknown domain → don't route into a dead URL
+      items.push({
+        id: `journey_resume:${row.domain}`,
+        actor: 'pet_parent',
+        domain: meta.attentionDomain,
+        entityId: row.id,
+        priority: 'informational',
+        title: he ? `המשך ${meta.he}` : `Resume your ${meta.en}`,
+        reason: he
+          ? 'שמרנו את המקום שלך — נמשיך מהמקום בו עצרת.'
+          : 'We saved where you left off — pick up from the same spot.',
+        nextAction: 'view',
+        destination: meta.destination,
+      });
+    }
+    return items;
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] journey-resume probe failed', {
+      userId,
+      err: e?.message,
+    });
+    return [];
+  }
+}
+
 export async function composeAttentionFeed(actor: AttentionActor, userId: string, he: boolean): Promise<AttentionFeed> {
   if (!userId) {
     return { actor, items: [], composedAt: new Date().toISOString() };
@@ -616,6 +695,9 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
         ...await petParentWalletItems(userId, he),
         ...await petParentPrestigeItems(userId, he),
         ...await petParentKyaStaleItems(userId, he),
+        // Lane C.1 (post-release 2026-09-03) — Journey Brain Phase 1
+        // resume-hint probe over the journey_checkpoints table.
+        ...await petParentJourneyResumeItems(userId, he),
       ]
     : [
         ...await providerBookingItems(userId, he),
