@@ -1530,11 +1530,11 @@ router.post('/:requestId/respond', async (req, res) => {
       }
 
       // ── 6-MONTH RE-CONFIRMATION GATE (CEO spec §7) ────────────────────────
-      // A provider whose 6-month legal/tax/status re-confirmation is overdue may
-      // not accept NEW jobs until they re-confirm. Self-healing (recording a
-      // reconfirmation clears it). Flag-gated (RECONFIRMATION_ENFORCE, default
-      // off = SHADOW log; on = BLOCK). Fail-safe: isReconfirmationOverdue returns
-      // false on any lookup error, so an infra hiccup never blocks a live job.
+      // Release-blocker B2 (CEO 2026-09-02): compliance gates fail CLOSED
+      // on infra error when they are ENFORCED. In shadow mode (flag off)
+      // infra errors still log-only. In enforce mode, an unknown state
+      // means "cannot confirm the provider is compliant" — we must not
+      // let them accept a live job under uncertainty.
       try {
         const overdue = await isReconfirmationOverdue(userId!);
         if (overdue) {
@@ -1547,7 +1547,19 @@ router.post('/:requestId/respond', async (req, res) => {
             });
           }
         }
-      } catch { /* fail-open: advisory gate must never break a live accept on infra error */ }
+      } catch (reconfirmErr: any) {
+        const enforce = (process.env.RECONFIRMATION_ENFORCE || 'off').toLowerCase() === 'on';
+        logger.error('[BookingRequests] reconfirmation gate infra error', {
+          providerId: userId, err: reconfirmErr?.message, enforce,
+        });
+        if (enforce) {
+          return res.status(503).json({
+            error: 'RECONFIRMATION_GATE_UNAVAILABLE',
+            message: 'Could not verify reconfirmation status. Please retry.',
+          });
+        }
+        // Shadow mode: log-only, don't block.
+      }
 
       // ── PROVIDER PROTECTION DECLARATIONS GATE (epic #49) ──────────────────
       // A provider may not ACCEPT a booking (go live serving a job) until every
@@ -1558,6 +1570,10 @@ router.post('/:requestId/respond', async (req, res) => {
       // provider (incl. legacy) who hasn't signed — which is the intended Protection
       // Book rule; run shadow first to see who would be blocked. Fail-safe:
       // checkProviderDeclarationsSigned never throws, and shadow only logs.
+      // Release-blocker B2 (CEO 2026-09-02): same fail-CLOSED contract as
+      // the reconfirmation gate above. In enforce mode, an infra error
+      // means "cannot confirm the provider has signed declarations" —
+      // deny with 503 rather than let a paid job through.
       try {
         const decl = await checkProviderDeclarationsSigned(userId!);
         if (!decl.ok) {
@@ -1573,7 +1589,19 @@ router.post('/:requestId/respond', async (req, res) => {
             });
           }
         }
-      } catch { /* fail-open: advisory gate must never break a live accept on infra error */ }
+      } catch (declErr: any) {
+        const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'on').toLowerCase() === 'on';
+        logger.error('[BookingRequests] declarations gate infra error', {
+          providerId: userId, err: declErr?.message, enforce,
+        });
+        if (enforce) {
+          return res.status(503).json({
+            error: 'DECLARATIONS_GATE_UNAVAILABLE',
+            message: 'Could not verify declaration signatures. Please retry.',
+          });
+        }
+        // Shadow mode: log-only, don't block.
+      }
     }
 
     const statusHistory = (booking.statusHistory as any[]) || [];

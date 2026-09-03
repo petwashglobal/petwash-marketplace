@@ -694,11 +694,23 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     // user never reached activationStatus='active' and stayed blocked from
     // wallet/booking by requireActive. markEmailVerified sets the timestamp and,
     // with the mobile timestamp from phone-session, flips the account to active.
+    // Release-blocker B6 (CEO 2026-09-02): activation MUST succeed before
+    // we reply {ok:true, emailVerified:true}. Silently swallowing the
+    // advance failure previously left the account stuck at
+    // activationStatus != 'active' with the client believing signup was
+    // done, so wallet/booking silently failed with no retry surface.
     try {
       const { markEmailVerified } = await import('../services/ActivationService');
       await markEmailVerified(uid, { acceptTerms: true });
     } catch (vErr: any) {
-      logger.warn('[Signup] verify-signup-email activation advance failed (non-blocking)', { error: vErr?.message });
+      logger.error('[Signup] verify-signup-email activation advance FAILED', {
+        uid, error: vErr?.message,
+      });
+      return res.status(503).json({
+        ok: false,
+        error: 'activation_unavailable',
+        message: 'Email verified but activation could not complete; please retry.',
+      });
     }
     // Include twoFactorPersisted so the client can surface a follow-up toast
     // when the 2FA preference didn't stick (rather than being blocked entirely).
@@ -762,11 +774,22 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
     // Advance ACTIVATION: markMobileVerified sets mobileVerifiedAt + phoneVerified +
     // activationStatus together (verification-drift fix) so a social-then-mobile
     // dual-verified user reaches 'active'.
+    // Release-blocker B6 (CEO 2026-09-02): same rule as email path — the
+    // activation advance MUST succeed before we reply {ok:true}. Prior
+    // silent-catch left accounts wedged just short of `active` with no
+    // retry surface.
     try {
       const { markMobileVerified } = await import('../services/ActivationService');
       await markMobileVerified(uid);
     } catch (vErr: any) {
-      logger.warn('[Signup] verify-signup-mobile activation advance failed (non-blocking)', { error: vErr?.message });
+      logger.error('[Signup] verify-signup-mobile activation advance FAILED', {
+        uid, error: vErr?.message,
+      });
+      return res.status(503).json({
+        ok: false,
+        error: 'activation_unavailable',
+        message: 'Mobile verified but activation could not complete; please retry.',
+      });
     }
     return res.json({ ok: true });
   } catch (e: any) {
