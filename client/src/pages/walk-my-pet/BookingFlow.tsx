@@ -21,8 +21,27 @@ import { type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { AddressPicker } from "@/components/ui/address-picker";
 import { NavigationButton } from "@/components/NavigationButton";
 import { PetWashIcon } from '@/components/PetWashIcon';
+import { useJourneyCheckpoint } from "@/hooks/useJourneyCheckpoint";
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
+
+/**
+ * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire
+ * for the walk booking. Same shape as the sitter wire in #2198:
+ * durable in-flight state, cleared on successful submit, NEVER
+ * carries payment truth. Wizard's real submit re-runs every gate
+ * against canonical state on resume.
+ */
+interface WalkBookCheckpointPayload extends Record<string, unknown> {
+  walkerId?: string;
+  selectedPetIds?: number[];
+  selectedDate?: string;
+  duration?: number;
+  notes?: string;
+  pickupAddress?: string;
+  step?: string;
+  updatedAt?: string;
+}
 
 export default function WalkBookingFlow() {
   const { walkerId } = useParams();
@@ -50,6 +69,69 @@ export default function WalkBookingFlow() {
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
   const [pickupAddress, setPickupAddress] = useState('');
   const [pickupDetails, setPickupDetails] = useState<PlaceDetails | null>(null);
+
+  // Lane C.3 — resumable checkpoint (enabled only when signed in).
+  const checkpoint = useJourneyCheckpoint<WalkBookCheckpointPayload>('walk_book', {
+    enabled: !!user,
+  });
+
+  // Hydrate on mount — fill only fields the user has NOT already
+  // touched. A fresh navigation with its own query-param intent still
+  // wins over the saved draft.
+  useEffect(() => {
+    if (checkpoint.hydrating || !checkpoint.initial) return;
+    const p = checkpoint.initial;
+    if (selectedPetIds.length === 0 && Array.isArray(p.selectedPetIds)) {
+      setSelectedPetIds(p.selectedPetIds);
+    }
+    if (!selectedDate && typeof p.selectedDate === 'string') {
+      const d = new Date(p.selectedDate);
+      if (!isNaN(d.getTime())) setSelectedDate(d);
+    }
+    if (typeof p.duration === 'number' && p.duration > 0) setDuration(p.duration);
+    if (!notes && typeof p.notes === 'string') setNotes(p.notes);
+    if (!pickupAddress && typeof p.pickupAddress === 'string') setPickupAddress(p.pickupAddress);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkpoint.hydrating, checkpoint.initial]);
+
+  // Debounced save whenever resumable state changes. Skipped on
+  // pending_match / confirmation and when the form is empty. NEVER
+  // includes payment-truth (chargeId, paidAt, etc.) — both the hook
+  // and the endpoint would reject it.
+  useEffect(() => {
+    if (!user) return;
+    if (checkpoint.hydrating) return;
+    if (step === 'pending_match' || step === 'confirmation') return;
+    if (
+      selectedPetIds.length === 0 &&
+      !selectedDate &&
+      !notes &&
+      !pickupAddress
+    ) {
+      return; // nothing meaningful to save yet
+    }
+    void checkpoint.save({
+      walkerId: walkerId ?? undefined,
+      selectedPetIds,
+      selectedDate: selectedDate?.toISOString(),
+      duration,
+      notes,
+      pickupAddress,
+      step,
+      updatedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    user,
+    walkerId,
+    step,
+    selectedPetIds,
+    selectedDate,
+    duration,
+    notes,
+    pickupAddress,
+    checkpoint.hydrating,
+  ]);
 
   // Pre-fill pickup address from user's saved profile
   const { data: userProfile } = useQuery<{
@@ -366,6 +448,10 @@ export default function WalkBookingFlow() {
 
       // Mark first booking as complete for push notification permission (Apple compliance)
       localStorage.setItem('petwash_first_booking_complete', 'true');
+
+      // Lane C.3 — booking POST succeeded; drop the resumable checkpoint
+      // so the home resume-card stops showing this journey.
+      void checkpoint.clear();
 
       // Show pending match step — both parties must consent before the walk is confirmed
       setStep("pending_match");
