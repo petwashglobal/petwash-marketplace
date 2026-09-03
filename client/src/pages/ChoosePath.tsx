@@ -21,6 +21,7 @@
 import { useLocation } from 'wouter';
 import { PawPrint, Briefcase } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
+import { emitCtaEvent, type CtaAction } from '@/lib/ctaActions';
 
 interface ChoosePathProps {
   language: Language;
@@ -30,7 +31,16 @@ export default function ChoosePath({ language }: ChoosePathProps) {
   const [, navigate] = useLocation();
   const he = language === 'he';
 
-  const options = [
+  const options: Array<{
+    key: string;
+    icon: typeof PawPrint;
+    title: string;
+    desc: string;
+    cta: string;
+    onClick: () => void;
+    primary: boolean;
+    actionId: CtaAction;
+  }> = [
     {
       key: 'pet_parent',
       icon: PawPrint,
@@ -44,6 +54,7 @@ export default function ChoosePath({ language }: ChoosePathProps) {
       // a customer picking "Pet Parent" must land on the workspace.
       onClick: () => navigate('/pet-parent/home'),
       primary: true,
+      actionId: 'SWITCH_TO_PET_PARENT_WORKSPACE',
     },
     {
       key: 'provider',
@@ -55,6 +66,7 @@ export default function ChoosePath({ language }: ChoosePathProps) {
       cta: he ? 'התחל/י רישום ספק/ית' : 'Start provider signup',
       onClick: () => navigate('/provider-onboarding'),
       primary: false,
+      actionId: 'BECOME_PROVIDER_ENTRY',
     },
     // "Both" tile removed (CEO 2026-08-26 role-model): becoming a Provider
     // is already additive — the Pet Parent side is preserved automatically.
@@ -76,7 +88,9 @@ export default function ChoosePath({ language }: ChoosePathProps) {
           {options.map((o) => {
             const Icon = o.icon;
             return (
-              <button key={o.key} type="button" onClick={o.onClick}
+              <button key={o.key} type="button"
+                onClick={() => { emitCtaEvent(o.actionId); o.onClick(); }}
+                data-action-id={o.actionId}
                 data-testid={`choosepath-${o.key}`}
                 style={{
                   display: 'flex', gap: 16, alignItems: 'flex-start', textAlign: he ? 'right' : 'left',
@@ -99,7 +113,9 @@ export default function ChoosePath({ language }: ChoosePathProps) {
           })}
         </div>
 
-        <button type="button" onClick={() => navigate('/pet-parent/home')}
+        <button type="button"
+          onClick={() => { emitCtaEvent('SWITCH_TO_PET_PARENT_WORKSPACE', { source: 'choosepath-decide-later' }); navigate('/pet-parent/home'); }}
+          data-action-id="SWITCH_TO_PET_PARENT_WORKSPACE"
           data-testid="choosepath-decide-later"
           style={{ display: 'block', margin: '22px auto 0', background: 'none', border: 'none', color: 'inherit', opacity: 0.6, fontSize: 13.5, cursor: 'pointer', textDecoration: 'underline' }}>
           {he ? 'אחליט/ה מאוחר יותר' : 'I’ll decide later'}
