@@ -40,7 +40,15 @@ export type FiscalOutboxKind =
   | 'vat_ledger'
   | 'digital_receipt'
   | 'academy_receipt'
-  | 'walk_legacy_bridge';
+  | 'walk_legacy_bridge'
+  // Post-release 2026-09-03 (backlog P1): the SUMIT credit-note stamp
+  // — a local UPDATE that writes sumitDocumentId back onto a
+  // digital_receipt row after SUMIT accepted the credit. Prior code
+  // logged CRITICAL on failure and moved on, leaving the local receipt
+  // orphaned and inviting ops to re-issue in SUMIT (the double-credit
+  // scenario the source comment already warns about). Now durable +
+  // retryable via the same outbox drainer.
+  | 'sumit_credit_stamp';
 
 export class FiscalOutboxUnavailableError extends Error {
   readonly kind: FiscalOutboxKind;
