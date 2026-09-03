@@ -1538,6 +1538,62 @@ if (isProduction) {
       console.warn('[Startup] SystemConfig refresh loop failed to start (non-blocking)', e?.message);
     }
 
+    // Release-blocker A3+A4+A5 completion (CEO 2026-09-02):
+    // fiscal_document_outbox drainer. runFiscalDocumentAndPersistOnFailure
+    // persists a row on inline failure; this loop retries it with
+    // exponential backoff until success or MAX_ATTEMPTS (→
+    // failed_needs_review for ops intervention). Non-blocking on boot.
+    try {
+      const { pool } = await import('./db');
+      const { startFiscalOutboxDrainer } = await import('./services/fiscalDocumentOutboxDrainer');
+      const { default: VATCalculatorService } = await import('./services/VATCalculatorService');
+      const { IsraeliDigitalReceiptService } = await import('./services/IsraeliDigitalReceiptService');
+      const { bridgeLegacyBooking } = await import('./services/legacyBookingBridge');
+      startFiscalOutboxDrainer(pool as any, {
+        handlers: {
+          vat_ledger: async (p: any) => {
+            await VATCalculatorService.recordTransactionFromGross(
+              p.source,
+              p.bookingId,
+              p.grossAmountIls,
+              p.bookingId,
+              p.metadata ?? {},
+              p.settlement ?? undefined,
+            );
+          },
+          academy_receipt: async (p: any) => {
+            // The drainer retries with the ORIGINAL payload we stored;
+            // the receipt service is idempotent by bookingId.
+            await IsraeliDigitalReceiptService.generateReceipt(p);
+          },
+          walk_legacy_bridge: async (p: any) => {
+            await bridgeLegacyBooking({
+              ownerId: p.ownerId,
+              providerUserId: p.providerUserId,
+              providerProfileId: p.providerProfileId,
+              providerType: p.providerType,
+              serviceType: p.serviceType,
+              startDate: new Date(p.startDateIso),
+              endDate: new Date(p.endDateIso),
+              petCount: p.petCount,
+              subtotalCents: p.subtotalCents,
+              serviceFeeCents: p.serviceFeeCents,
+              totalCents: p.totalCents,
+              providerPayoutCents: p.providerPayoutCents,
+              ownerMessage: null,
+              legacyRef: p.legacyRef,
+              petDetails: p.petDetails,
+            });
+          },
+          digital_receipt: async (p: any) => {
+            await IsraeliDigitalReceiptService.generateReceipt(p);
+          },
+        },
+      });
+    } catch (e: any) {
+      console.warn('[Startup] FiscalOutboxDrainer failed to start (non-blocking)', e?.message);
+    }
+
     // Log Firebase client config availability immediately after routes are ready.
     // This makes it trivial to verify in Cloud Run logs whether the browser will
     // receive a real Firebase API key or fall back to the placeholder, which is

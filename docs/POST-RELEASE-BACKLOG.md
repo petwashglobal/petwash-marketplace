@@ -15,8 +15,15 @@ release requires that we can't ship without.
 - **`IsraeliDigitalReceiptService.ts:1294-1301` — SUMIT credit-note
   stamp UPDATE swallowed on error.** Local `sumitDocumentId` not
   written; ops can re-issue in SUMIT and produce the double-credit
-  scenario the comment warns about. Fix: enqueue a retry, or
-  compensating "reconcile SUMIT vs local" batch.
+  scenario the comment warns about. Fix: enqueue a retry into the
+  `fiscal_document_outbox` (drainer already shipped this release —
+  just needs the SUMIT-stamp path to write a row on failure).
+
+- **Fiscal outbox admin surface** — a small `/api/admin/fiscal-outbox`
+  read + `POST /api/admin/fiscal-outbox/:id/force-retry` and
+  `POST /api/admin/fiscal-outbox/:id/mark-reviewed` so ops can act on
+  `failed_needs_review` rows the drainer flags. Drainer + retry loop
+  already ship — only the surface is deferred.
 
 ## P2 — hygiene / observability
 
