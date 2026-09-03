@@ -3161,107 +3161,32 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // PUT /api/profile - Update current user's profile (with validation)
+  // Release-blocker B4 (CEO 2026-09-02): retired.
+  //
+  // Previously PUT /api/profile wrote to Firestore
+  // `users/{uid}/profile/data` while PATCH /api/profile (below at
+  // ~5318) writes to Postgres via storage.updateUser. Two different
+  // allowlists, two different stores — a caller's choice of verb
+  // silently determined WHICH store received the write. Postgres-
+  // backed reads (whoami, capabilities, me/profile) never saw fields
+  // written by PUT, and vice versa.
+  //
+  // Canonical writer is PATCH /api/profile → storage.updateUser
+  // (Postgres). This PUT handler now returns 410 Gone with a Location
+  // hint so any surviving client sees an explicit failure and switches
+  // to the canonical path, rather than a silent split-brain.
   app.put('/api/profile', async (req, res) => {
-    try {
-      const token = req.cookies?.pw_session;
-      if (!token) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
-      let decoded;
-      try {
-        decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
-      } catch (error) {
-        logger.error('[Profile PUT] Session verification failed', error);
-        return res.status(401).json({ error: 'Invalid session' });
-      }
-
-      const uid = decoded.uid;
-
-      // Validate and extract allowed fields
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        petName,
-        petBreed,
-        petAge,
-        petWeight,
-        address,
-        city,
-        postcode,
-        country,
-        marketingOptIn
-      } = req.body;
-
-      // Build update object (only include provided fields)
-      const updates: any = {};
-      if (firstName !== undefined) updates.firstName = String(firstName).trim();
-      if (lastName !== undefined) updates.lastName = String(lastName).trim();
-      if (phone !== undefined) updates.phone = String(phone).trim();
-      if (dateOfBirth !== undefined) updates.dateOfBirth = dateOfBirth;
-      if (petName !== undefined) updates.petName = String(petName).trim();
-      if (petBreed !== undefined) updates.petBreed = String(petBreed).trim();
-      if (petAge !== undefined) updates.petAge = String(petAge).trim();
-      if (petWeight !== undefined) updates.petWeight = String(petWeight).trim();
-      if (address !== undefined) updates.address = String(address).trim();
-      if (city !== undefined) updates.city = String(city).trim();
-      if (postcode !== undefined) updates.postcode = String(postcode).trim();
-      if (country !== undefined) updates.country = String(country).trim();
-      if (marketingOptIn !== undefined) updates.marketingOptIn = !!marketingOptIn;
-
-      // Phone number validation (basic E.164 format)
-      if (updates.phone && !updates.phone.match(/^\+?[1-9]\d{1,14}$/)) {
-        return res.status(400).json({ 
-          error: 'Invalid phone number format. Use international format (+1 for USA, +972 for Israel, etc.)',
-          field: 'phone'
-        });
-      }
-
-      // Date of birth validation (must be at least 13 years old)
-      if (updates.dateOfBirth) {
-        const dob = new Date(updates.dateOfBirth);
-        const today = new Date();
-        const minAge = new Date();
-        minAge.setFullYear(minAge.getFullYear() - 13);
-        
-        if (dob >= today) {
-          return res.status(400).json({ 
-            error: 'Date of birth must be in the past',
-            field: 'dateOfBirth'
-          });
-        }
-        
-        if (dob > minAge) {
-          return res.status(400).json({ 
-            error: 'You must be at least 13 years old',
-            field: 'dateOfBirth'
-          });
-        }
-      }
-
-      updates.updatedAt = new Date().toISOString();
-
-      // Update Firestore using Admin SDK (bypasses security rules)
-      await db.collection('users').doc(uid).collection('profile').doc('data').set(updates, { merge: true });
-
-      // Fetch updated profile
-      const updatedDoc = await db.collection('users').doc(uid).collection('profile').doc('data').get();
-      const profile = updatedDoc.data() || {};
-
-      logger.info('[Profile PUT] ✅ Profile updated', { uid, fields: Object.keys(updates) });
-
-      res.json({ 
-        ok: true,
-        message: 'Profile updated successfully',
-        profile 
-      });
-    } catch (error) {
-      logger.error('[Profile PUT] Error', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    logger.warn('[Profile PUT] Retired endpoint hit — client should use PATCH /api/profile', {
+      ua: req.headers['user-agent'],
+      referer: req.headers.referer,
+    });
+    res.setHeader('Location', '/api/profile');
+    res.setHeader('Allow', 'PATCH, GET');
+    return res.status(410).json({
+      error: 'endpoint_retired',
+      message: 'PUT /api/profile is retired. Use PATCH /api/profile instead.',
+      canonical: 'PATCH /api/profile',
+    });
   });
 
   // GET /api/greeting - Get personalized AI greeting based on occasion
@@ -8660,7 +8585,7 @@ self.addEventListener('notificationclick', (event) => {
       if (!changes || typeof changes !== 'object') {
         return res.status(400).json({ ok: false, error: 'Body must be a JSON object' });
       }
-      systemConfig.patch(changes, adminUid);
+      await systemConfig.patch(changes, adminUid);
       res.json({ ok: true, config: systemConfig.all() });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message });
@@ -8672,7 +8597,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { systemConfig } = await import('./services/SystemConfig');
       const adminUid: string = req.user?.uid || req.firebaseUser?.uid || 'unknown';
-      systemConfig.reset(adminUid);
+      await systemConfig.reset(adminUid);
       res.json({ ok: true, config: systemConfig.all() });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message });
@@ -13337,7 +13262,18 @@ self.addEventListener('notificationclick', (event) => {
   // /api/provider-console serves as the provider OS (operating console) — auth-gated since Pass 6.
   // Legacy reference to "provider-os" in task history maps to this mount point.
   app.use('/api/provider-console', validateFirebaseToken, providerConsoleRouter);
-  app.use('/api/finance', adminLimiter, moneyFlowRouter);
+  // Release-blocker B5 (CEO 2026-09-02): the /api/finance mount was
+  // registered twice — once at line ~12185 with `validateFirebaseToken`
+  // + apiLimiter, and again here with only adminLimiter. Any handler
+  // added to moneyFlowRouter without inline requireRole was
+  // anonymously reachable via the second mount because Express uses
+  // the FIRST matching mount for auth but concatenates handlers.
+  // Consolidate to one correctly-authenticated mount by adding the
+  // same auth stack to moneyFlowRouter and moving it under the first
+  // mount path guard. adminLimiter still stacks on top for admin
+  // endpoints that mount deeper — but no handler is now anonymously
+  // reachable.
+  app.use('/api/finance', validateFirebaseToken, adminLimiter, moneyFlowRouter);
   app.use('/api/legal-stamps', apiLimiter, legalStampsRoutes);
   app.use('/api/user/activity', apiLimiter, userActivityRoutes);
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);

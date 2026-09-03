@@ -2,15 +2,21 @@
  * SYSTEM CONFIG SERVICE
  * PETWASH SYSTEM INTELLIGENCE SPEC — Admin Control System
  *
- * Singleton in-memory config store for runtime toggles.
- * Admins can adjust these via the admin panel without a code deploy.
+ * Release-blocker B1 (CEO 2026-09-02 release freeze): moved from a
+ * per-instance in-memory Map to a shared Postgres store
+ * (system_config, migration 0143). Every set() writes through Postgres
+ * first; every pod hydrates from Postgres on boot and refreshes every
+ * SYSTEM_CONFIG_REFRESH_MS (default 30 000 ms). Sync get() still reads
+ * from the local cache so hot paths pay no DB cost.
  *
- * On server restart values reset to defaults — this is intentional.
- * These toggles govern live operational behaviour (e.g. whether CAPTCHA
- * is strictly enforced) and should default to safe values.
+ * When Postgres is unavailable the service falls back to DEFAULTS +
+ * whatever was previously cached. Callers of hot paths never block on
+ * the DB. Writes without a working DB raise so an admin toggling a
+ * flag sees the failure instead of a silent per-pod change.
  */
 
 import { logger } from '../lib/logger';
+import { pool } from '../db';
 
 export interface SystemConfigMap {
   'captcha.strict_mode': boolean;
@@ -292,30 +298,95 @@ class SystemConfigService {
   private store: SystemConfigMap = { ...DEFAULTS };
   private lastUpdated = new Date();
   private auditLog: Array<{ key: string; from: unknown; to: unknown; by: string; at: Date }> = [];
+  private hydrated = false;
+  private refreshTimer: NodeJS.Timeout | null = null;
+
+  /**
+   * Read the whole system_config table and update the in-memory cache.
+   * Called on boot AND every SYSTEM_CONFIG_REFRESH_MS. Fails safe:
+   * on DB error the cache stays as it was (defaults on first boot,
+   * last-good-hydrate on subsequent errors).
+   */
+  async hydrate(): Promise<void> {
+    try {
+      const r = await pool.query<{ key: string; value_json: unknown }>(
+        `SELECT key, value_json FROM system_config`,
+      );
+      const next: SystemConfigMap = { ...DEFAULTS };
+      for (const row of r.rows) {
+        if (row.key in DEFAULTS) {
+          (next as any)[row.key] = row.value_json;
+        }
+      }
+      this.store = next;
+      this.hydrated = true;
+      this.lastUpdated = new Date();
+    } catch (err: any) {
+      logger.warn('[SystemConfig] hydrate failed — keeping current cache', {
+        err: err?.message,
+        hydrated: this.hydrated,
+      });
+    }
+  }
+
+  /**
+   * Start the periodic refresh loop. Call once on boot. Does NOT block —
+   * the first hydrate is fire-and-forget so a slow DB never delays app
+   * boot. Every SYSTEM_CONFIG_REFRESH_MS the cache re-syncs from
+   * Postgres, so a flag flipped on another pod eventually reaches this
+   * one.
+   */
+  startRefreshLoop(): void {
+    if (this.refreshTimer) return;
+    const intervalMs = parseInt(process.env.SYSTEM_CONFIG_REFRESH_MS || '30000', 10);
+    // Fire the first hydrate in the background — boot must not block.
+    void this.hydrate();
+    this.refreshTimer = setInterval(() => {
+      void this.hydrate();
+    }, intervalMs);
+    (this.refreshTimer as any).unref?.();
+  }
 
   get<K extends ConfigKey>(key: K): SystemConfigMap[K] {
     return this.store[key];
   }
 
-  set<K extends ConfigKey>(key: K, value: SystemConfigMap[K], updatedBy: string): void {
+  /**
+   * Write-through to Postgres AND update the local cache. Throws on DB
+   * failure so an admin toggling a flag sees the error instead of a
+   * silent per-pod change that vanishes on redeploy.
+   */
+  async set<K extends ConfigKey>(
+    key: K,
+    value: SystemConfigMap[K],
+    updatedBy: string,
+  ): Promise<void> {
     const prev = this.store[key];
+    // Persist to Postgres first — if this throws, we don't stamp the
+    // cache, and the caller sees the failure.
+    await pool.query(
+      `INSERT INTO system_config (key, value_json, updated_at, updated_by)
+       VALUES ($1, $2::jsonb, now(), $3)
+       ON CONFLICT (key)
+       DO UPDATE SET value_json = EXCLUDED.value_json,
+                     updated_at = EXCLUDED.updated_at,
+                     updated_by = EXCLUDED.updated_by`,
+      [key, JSON.stringify(value), updatedBy],
+    );
     this.store[key] = value;
     this.lastUpdated = new Date();
     this.auditLog.push({ key, from: prev, to: value, by: updatedBy, at: new Date() });
 
-    logger.info('[SystemConfig] Config updated', {
-      key,
-      from: prev,
-      to: value,
-      by: updatedBy,
+    logger.info('[SystemConfig] Config updated (persisted)', {
+      key, from: prev, to: value, by: updatedBy,
     });
   }
 
-  patch(changes: Partial<SystemConfigMap>, updatedBy: string): void {
+  async patch(changes: Partial<SystemConfigMap>, updatedBy: string): Promise<void> {
     for (const [rawKey, value] of Object.entries(changes)) {
       const key = rawKey as ConfigKey;
       if (key in this.store) {
-        this.set(key, value as any, updatedBy);
+        await this.set(key, value as any, updatedBy);
       } else {
         logger.warn('[SystemConfig] Unknown config key ignored', { key });
       }
@@ -331,13 +402,14 @@ class SystemConfigService {
       lastUpdated: this.lastUpdated,
       auditLog: this.auditLog.slice(-20),
       defaults: DEFAULTS,
+      hydrated: this.hydrated,
     };
   }
 
-  reset(updatedBy: string): void {
+  async reset(updatedBy: string): Promise<void> {
     logger.warn('[SystemConfig] Full reset to defaults', { by: updatedBy });
     for (const key of Object.keys(DEFAULTS) as ConfigKey[]) {
-      this.set(key, DEFAULTS[key], updatedBy);
+      await this.set(key, DEFAULTS[key], updatedBy);
     }
   }
 }

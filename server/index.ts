@@ -1526,6 +1526,18 @@ if (isProduction) {
     _initPhase = 'ready';
     console.log(`[Startup] ✅ Routes registered. Total init time: ${((Date.now() - _initStartedTs) / 1000).toFixed(1)}s`);
 
+    // Release-blocker B1 (CEO 2026-09-02): kick the system_config
+    // hydrate + refresh loop so every pod picks up admin flag changes
+    // within SYSTEM_CONFIG_REFRESH_MS (default 30s) and defaults are
+    // no longer per-pod. Non-blocking — the first hydrate is
+    // fire-and-forget so a slow DB never delays boot.
+    try {
+      const { systemConfig } = await import('./services/SystemConfig');
+      systemConfig.startRefreshLoop();
+    } catch (e: any) {
+      console.warn('[Startup] SystemConfig refresh loop failed to start (non-blocking)', e?.message);
+    }
+
     // Log Firebase client config availability immediately after routes are ready.
     // This makes it trivial to verify in Cloud Run logs whether the browser will
     // receive a real Firebase API key or fall back to the placeholder, which is
