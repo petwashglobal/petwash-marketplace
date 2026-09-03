@@ -164,7 +164,10 @@ function buildRoutingResponse(
     // every time with no way to say "this session I want to see the
     // provider side" without losing the super_admin claim. Now:
     //   intent === 'provider' → /provider-os
-    //   intent === 'loyalty' | 'customer' | 'member' → /prestige/home
+    //   intent === 'loyalty' | 'customer' | 'member' → /pet-parent/home
+    //     (canonical customer workspace; Prestige is an in-workspace
+    //     entitlement/membership, not a competing destination — CEO
+    //     ruling 2026-09-03 post-release Lane A).
     //   intent === 'admin' (or absent) → /admin/dashboard (default)
     // The super_admin CLAIM is untouched — the header mode-switch
     // (client/src/lib/uiMode.ts) still lets the user jump to any surface
@@ -175,7 +178,8 @@ function buildRoutingResponse(
       return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
     }
     if (wantsMemberView) {
-      return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
+      // Lane A (CEO 2026-09-03): canonical customer workspace.
+      return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
     }
     return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
   }
@@ -197,10 +201,11 @@ function buildRoutingResponse(
   }
 
   if (role === 'loyalty') {
-    // Canonical member home is /prestige/home (the purpose-built member
-    // dashboard). /home renders the MARKETING page for signed-in web users —
-    // a member who logged in used to land on the marketing site (audit 2026-07-24).
-    return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
+    // Lane A (CEO 2026-09-03): canonical customer workspace is
+    // /pet-parent/home. Prestige (member entitlements + club pages)
+    // renders INSIDE this workspace as a badge — never as a competing
+    // destination that forces a customer into a separate auth universe.
+    return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
   }
 
   if (providerApp) {
@@ -234,7 +239,8 @@ function buildRoutingResponse(
       // Explicit intent still wins:
       //   • intent === 'provider'                           → /provider-os
       //   • intent === 'customer'|'pet_parent'|'loyalty'|'member'
-      //                                                     → /prestige/home
+      //                                                     → /pet-parent/home
+      //     (Lane A CEO ruling 2026-09-03 — canonical customer workspace)
       //   • no intent                                       → /mode picker
       const wantsProvider = intent === 'provider';
       const wantsCustomer =
@@ -244,7 +250,7 @@ function buildRoutingResponse(
         return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
       if (wantsCustomer) {
-        return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role, userStatus };
+        return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
       return { nextUrl: '/mode', reason: 'MULTI_ROLE_PICK', profileStatus: 'approved', role, userStatus };
     }
@@ -283,8 +289,10 @@ function buildRoutingResponse(
     return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
   }
 
-  // Default member/customer → the canonical member dashboard (not marketing).
-  return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
+  // Lane A (CEO 2026-09-03): default customer destination is
+  // /pet-parent/home. /home renders the MARKETING page for signed-in
+  // web users — a customer who logged in must not land there.
+  return { nextUrl: '/pet-parent/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
 }
 
 export async function postLoginDecider(req: Request, res: Response) {
