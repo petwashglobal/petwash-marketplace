@@ -1,0 +1,68 @@
+name: Release Smoke (post-deploy, petwash.co.il)
+
+# Fires after the PetWash CI production deploy completes SUCCESSFULLY on
+# main. Runs a bounded, non-destructive check-list against the real
+# public hostname from a GitHub-hosted runner (which has normal internet
+# egress, unlike some agent environments). Complements the every-15-min
+# uptime-healthcheck.yml with the release runbook §5 checks.
+#
+# Also runnable on demand via workflow_dispatch — useful for verifying
+# a manual Cloud Run rollback or after applying migrations out-of-band.
+
+on:
+  workflow_run:
+    workflows: ['PetWash CI 2026 — Production Deploy']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to smoke (default: https://petwash.co.il)'
+        type: string
+        default: 'https://petwash.co.il'
+
+concurrency:
+  group: release-smoke
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    # Only fire when the upstream deploy actually succeeded — a failed
+    # petwash-ci run must not trigger a smoke that would definitely fail
+    # for the wrong reason.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch'
+        || (github.event.workflow_run.conclusion == 'success'
+            && github.event.workflow_run.event == 'push') }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Install Playwright + Chromium
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+
+      - name: Run release smoke
+        env:
+          SMOKE_URL: ${{ inputs.base_url || 'https://petwash.co.il' }}
+          SMOKE_ATTEMPTS: '3'
+          SMOKE_RETRY_MS: '20000'
+        run: node scripts/monitoring/release-smoke.mjs "$SMOKE_URL"
+
+      - name: Slack alert on failure
+        if: failure() && env.SLACK_WEBHOOK != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.ALERTS_SLACK_WEBHOOK }}
+        run: |
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data '{"text":"🚨 Post-deploy smoke FAILED on petwash.co.il — see run: '"${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"'"}' \
+            "$SLACK_WEBHOOK" || true
