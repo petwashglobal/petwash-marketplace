@@ -602,7 +602,16 @@ export class NayaxPaymentService {
   }
 
   private static async handleSessionStarted(payload: NayaxWebhookPayload): Promise<boolean> {
-    logger.info('Session started', { payload });
+    // Post-release 2026-09-03 (backlog P1 · AUDIT-LOG-2): the prior log
+    // spread the FULL webhook payload — Nayax includes tokenized PAN,
+    // MSISDN, and machine identifiers we don't want in stdout / Sentry.
+    // Emit only the allowlisted fields we need for correlation.
+    logger.info('[Nayax] Session started', {
+      transactionId: payload.transactionId,
+      terminalId: payload.terminalId,
+      eventType: payload.eventType,
+      eventId: payload.eventId,
+    });
     return true;
   }
 
@@ -642,7 +651,14 @@ export class NayaxPaymentService {
   }
 
   private static async handleQRScanned(payload: NayaxWebhookPayload): Promise<boolean> {
-    logger.info('QR code scanned', { payload });
+    // AUDIT-LOG-2 (same rationale as handleSessionStarted): allowlist,
+    // don't spread the full webhook body.
+    logger.info('[Nayax] QR code scanned', {
+      transactionId: payload.transactionId,
+      terminalId: payload.terminalId,
+      eventType: payload.eventType,
+      eventId: payload.eventId,
+    });
     return true;
   }
 }

@@ -1,6 +1,7 @@
 import { db } from './lib/firebase-admin';
 import { nanoid } from 'nanoid';
 import { logger } from './lib/logger';
+import { redactEmail } from './lib/redaction';
 
 export interface BirthdayVoucher {
   code: string;
@@ -74,7 +75,17 @@ export async function createBirthdayVoucher(
         expiresAt: expiresAt.toISOString()
       });
     
-    logger.info(`Birthday voucher created: ${voucherCode} for ${email} (${dogName || 'Pet'})`);
+    // Post-release 2026-09-03 (backlog P1 · AUDIT-LOG-4): the prior log
+    // put the FULL voucher code + raw recipient email into stdout. The
+    // voucher code is a one-shot bearer token — a leaked log line lets
+    // any observer redeem it. The email is PII. Emit only the last-4 of
+    // the code (enough for correlation) and a redacted email.
+    const codeSuffix = voucherCode.slice(-4);
+    logger.info('[BirthdayVoucher] created', {
+      codeSuffix,
+      email: redactEmail(email),
+      dogName: dogName || 'Pet',
+    });
     
     return voucher;
   } catch (error) {
