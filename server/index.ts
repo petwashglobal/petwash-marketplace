@@ -1885,6 +1885,11 @@ if (isProduction) {
       // a K9000 kiosk stops sending heartbeats for >15 minutes.
       const { startHeartbeatMonitorCron } = await import("./cron/station-heartbeat-monitor");
       startHeartbeatMonitorCron();
+      // Lane C.2 (post-release 2026-09-03) — Journey Brain Phase 2:
+      // hourly sweep of expired journey_checkpoints rows so abandoned
+      // wizard state never accumulates on disk indefinitely.
+      const { startJourneyCheckpointsPrunerCron } = await import("./cron/journey-checkpoints-prune");
+      startJourneyCheckpointsPrunerCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);
