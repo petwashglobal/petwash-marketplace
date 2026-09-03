@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import { getApiUrl } from '@/lib/apiConfig';
+import { emitCtaEvent, PROVIDER_SERVICE_ACTION_IDS } from '@/lib/ctaActions';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import {
   PROVIDER_DECLARATION_TEXT,
@@ -1167,10 +1168,15 @@ export default function ProviderOnboarding() {
                       <div
                         data-testid="provider-type-walker"
                         data-selected={hasProviderType('walker') ? 'true' : 'false'}
+                        data-action-id={hasProviderType('walker') ? PROVIDER_SERVICE_ACTION_IDS.walker.add : PROVIDER_SERVICE_ACTION_IDS.walker.select}
                         role="button"
                         aria-pressed={hasProviderType('walker')}
                         className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`}
-                        onClick={() => toggleProviderType('walker')}
+                        onClick={() => {
+                          const willSelect = !hasProviderType('walker');
+                          emitCtaEvent(willSelect ? PROVIDER_SERVICE_ACTION_IDS.walker.add : PROVIDER_SERVICE_ACTION_IDS.walker.select);
+                          toggleProviderType('walker');
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <Checkbox 
@@ -1187,10 +1193,15 @@ export default function ProviderOnboarding() {
                       <div
                         data-testid="provider-type-sitter"
                         data-selected={hasProviderType('sitter') ? 'true' : 'false'}
+                        data-action-id={hasProviderType('sitter') ? PROVIDER_SERVICE_ACTION_IDS.sitter.add : PROVIDER_SERVICE_ACTION_IDS.sitter.select}
                         role="button"
                         aria-pressed={hasProviderType('sitter')}
                         className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`}
-                        onClick={() => toggleProviderType('sitter')}
+                        onClick={() => {
+                          const willSelect = !hasProviderType('sitter');
+                          emitCtaEvent(willSelect ? PROVIDER_SERVICE_ACTION_IDS.sitter.add : PROVIDER_SERVICE_ACTION_IDS.sitter.select);
+                          toggleProviderType('sitter');
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <Checkbox 
@@ -1207,10 +1218,15 @@ export default function ProviderOnboarding() {
                       <div
                         data-testid="provider-type-driver"
                         data-selected={hasProviderType('driver') ? 'true' : 'false'}
+                        data-action-id={hasProviderType('driver') ? PROVIDER_SERVICE_ACTION_IDS.driver.add : PROVIDER_SERVICE_ACTION_IDS.driver.select}
                         role="button"
                         aria-pressed={hasProviderType('driver')}
                         className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`}
-                        onClick={() => toggleProviderType('driver')}
+                        onClick={() => {
+                          const willSelect = !hasProviderType('driver');
+                          emitCtaEvent(willSelect ? PROVIDER_SERVICE_ACTION_IDS.driver.add : PROVIDER_SERVICE_ACTION_IDS.driver.select);
+                          toggleProviderType('driver');
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <Checkbox 
@@ -1227,10 +1243,15 @@ export default function ProviderOnboarding() {
                       <div
                         data-testid="provider-type-trainer"
                         data-selected={hasProviderType('trainer') ? 'true' : 'false'}
+                        data-action-id={hasProviderType('trainer') ? PROVIDER_SERVICE_ACTION_IDS.trainer.add : PROVIDER_SERVICE_ACTION_IDS.trainer.select}
                         role="button"
                         aria-pressed={hasProviderType('trainer')}
                         className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`}
-                        onClick={() => toggleProviderType('trainer')}
+                        onClick={() => {
+                          const willSelect = !hasProviderType('trainer');
+                          emitCtaEvent(willSelect ? PROVIDER_SERVICE_ACTION_IDS.trainer.add : PROVIDER_SERVICE_ACTION_IDS.trainer.select);
+                          toggleProviderType('trainer');
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <Checkbox 
