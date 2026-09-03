@@ -66,6 +66,7 @@ import { humanizeAuthError } from '@/auth/client';
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider,
   isNativePlatform, signInWithGoogleNative, signInWithAppleNative } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
+import { emitCtaEvent } from '@/lib/ctaActions';
 import { useAppFlavor } from '@/lib/appFlavor';
 import { type Language } from '@/lib/i18n';
 import { fieldSchemas, vmsg } from '@/lib/validation';
@@ -1869,12 +1870,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   "accept terms + 18+" message above and scrolls it into view. */}
               <div className="sl-social4">
                 {signupFlags.googleSignin && (
-                  <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
+                  <button
+                    className="sl-soc"
+                    disabled={busy}
+                    onClick={() => { emitCtaEvent('AUTH_GOOGLE'); social('google'); }}
+                    data-action-id="AUTH_GOOGLE"
+                    data-testid="button-auth-google"
+                  >
                     <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
                   </button>
                 )}
                 {signupFlags.appleSignin && APPLE_SIGNIN_READY && (
-                  <button className="sl-soc sl-soc--apple" disabled={busy} onClick={() => social('apple')}>
+                  <button
+                    className="sl-soc sl-soc--apple"
+                    disabled={busy}
+                    onClick={() => { emitCtaEvent('AUTH_APPLE'); social('apple'); }}
+                    data-action-id="AUTH_APPLE"
+                    data-testid="button-auth-apple"
+                  >
                     <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
                   </button>
                 )}
@@ -1891,12 +1904,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {authMode === 'join' && !manualMode && (
                 <>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
-                    onClick={() => { setManualMode(true); setMethod('mobile'); setSent(false); setInlineError(null); }}
+                    onClick={() => { emitCtaEvent('AUTH_PHONE_OTP'); setManualMode(true); setMethod('mobile'); setSent(false); setInlineError(null); }}
+                    data-action-id="AUTH_PHONE_OTP"
                     data-testid="button-continue-mobile">
                     <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
                   </button>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
-                    onClick={() => { setManualMode(true); setMethod('email'); setSent(false); setInlineError(null); }}
+                    onClick={() => { emitCtaEvent('AUTH_EMAIL_PASSWORD'); setManualMode(true); setMethod('email'); setSent(false); setInlineError(null); }}
+                    data-action-id="AUTH_EMAIL_PASSWORD"
                     data-testid="button-continue-email">
                     <FaEnvelope aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם אימייל' : 'Continue with email'}</span>
                   </button>
@@ -2149,11 +2164,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           copy on success and failure, so an unauthenticated
                           attacker can't use this to enumerate accounts. */}
                       <button type="button" className="sl-switchLink" disabled={busy || !emailValid}
+                        data-action-id="AUTH_FORGOT_PASSWORD"
                         onClick={async () => {
                           if (!emailValid) {
                             fail(he ? 'הזינו אימייל תקין קודם' : 'Enter a valid email first');
                             return;
                           }
+                          emitCtaEvent('AUTH_FORGOT_PASSWORD');
                           try {
                             const { sendPasswordResetEmail } = await import('firebase/auth');
                             const { auth: fbAuth } = await import('@/lib/firebase');
@@ -2207,7 +2224,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   send; the countdown (server rate-limit is the hard gate) keeps
                   users from spam-tapping into 429s. */}
               <button className="sl-btn" disabled={busy || resendCountdown > 0}
-                onClick={() => { setResendCountdown(60); void sendCode(); }}
+                onClick={() => { emitCtaEvent('AUTH_RESEND_OTP', { channel: 'mobile' }); setResendCountdown(60); void sendCode(); }}
+                data-action-id="AUTH_RESEND_OTP"
                 data-testid="button-resend-code-mobile">
                 {resendCountdown > 0
                   ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
@@ -2234,7 +2252,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : `Enter the code sent to ${email}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
               <button className="sl-btn" disabled={busy || resendCountdown > 0}
-                onClick={() => { setResendCountdown(60); void sendEmailCode(); }}
+                onClick={() => { emitCtaEvent('AUTH_RESEND_OTP', { channel: 'email' }); setResendCountdown(60); void sendEmailCode(); }}
+                data-action-id="AUTH_RESEND_OTP"
                 data-testid="button-resend-code-email">
                 {resendCountdown > 0
                   ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
@@ -2442,7 +2461,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {bioAvailable && (
                 <>
                   <div className="sl-div">{he ? 'כבר חברים? התחברות מהירה' : 'Already a member? Quick sign-in'}</div>
-                  <button type="button" className="sl-bio" disabled={busy} onClick={handlePasskeyLogin}>
+                  <button
+                    type="button"
+                    className="sl-bio"
+                    disabled={busy}
+                    onClick={() => { emitCtaEvent('AUTH_PASSKEY'); handlePasskeyLogin(); }}
+                    data-action-id="AUTH_PASSKEY"
+                    data-testid="button-auth-passkey"
+                  >
                     <FaFingerprint aria-hidden /> {he ? `התחברות עם ${bioName}` : `Sign in with ${bioName}`}
                   </button>
                 </>
