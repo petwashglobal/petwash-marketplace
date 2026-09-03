@@ -24,7 +24,11 @@
  * - Israeli Digital Invoice Law 2024/2025 (חוק חשבוניות דיגיטליות)
  */
 
-import { db } from '../db';
+import { db, pool } from '../db';
+import {
+  runFiscalDocumentAndPersistOnFailure,
+  FiscalOutboxUnavailableError,
+} from './fiscalDocumentOutbox';
 import { digitalReceipts, providerCommissions, withholdingRemittanceLedger, octopusLedger } from '@shared/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
@@ -1282,22 +1286,43 @@ export class IsraeliDigitalReceiptService {
             context: { platform: params.platform, bookingId: params.bookingId, creditNoteNumber },
           });
           if (creditResult.sumitDocumentId) {
-            // MUST log loudly on failure — if this stamp doesn't land, our
-            // local credit note has no reference back to the SUMIT document,
-            // ops thinks SUMIT is broken and re-issues manually → duplicate
-            // credit in SUMIT. The previous `.catch(() => {})` hid this.
-            // (Evil-hunt 2026-08-20: silent SUMIT ID drop.)
+            // Post-release 2026-09-03 (backlog P1): the stamp UPDATE is
+            // now durable. Prior code logged CRITICAL on failure and
+            // moved on, leaving the local receipt orphaned and inviting
+            // ops to re-issue in SUMIT (the double-credit scenario the
+            // source comment already warns about). runFiscalDocumentAnd
+            // PersistOnFailure keeps the inline attempt as the fast path,
+            // enqueues a durable row on inline failure, and throws
+            // FiscalOutboxUnavailableError on double-failure so nothing
+            // silently vanishes.
+            const stampPayload = {
+              creditNoteId: creditNote.id,
+              sumitDocumentId: creditResult.sumitDocumentId,
+            };
             try {
-              await db.update(digitalReceipts)
-                .set({ sumitDocumentId: creditResult.sumitDocumentId, issuerOfRecord: 'sumit' })
-                .where(eq(digitalReceipts.id, creditNote.id));
-            } catch (stampErr: any) {
-              logger.error('[Digital Receipt] CRITICAL: SUMIT credit issued but local sumitDocumentId stamp FAILED — reconcile manually', {
-                creditNoteNumber,
-                creditNoteId: creditNote.id,
-                sumitDocumentId: creditResult.sumitDocumentId,
-                error: stampErr?.message,
+              await runFiscalDocumentAndPersistOnFailure({
+                pool,
+                kind: 'sumit_credit_stamp',
+                sourceKey: `credit_note:${creditNote.id}`,
+                payload: stampPayload,
+                runNow: async () => {
+                  await db.update(digitalReceipts)
+                    .set({ sumitDocumentId: creditResult.sumitDocumentId, issuerOfRecord: 'sumit' })
+                    .where(eq(digitalReceipts.id, creditNote.id));
+                },
               });
+            } catch (fatal) {
+              if (fatal instanceof FiscalOutboxUnavailableError) {
+                logger.error('[Digital Receipt] CRITICAL: SUMIT credit issued but stamp inline + outbox both failed — reconcile manually', {
+                  creditNoteNumber,
+                  creditNoteId: creditNote.id,
+                  sumitDocumentId: creditResult.sumitDocumentId,
+                  kind: fatal.kind,
+                  sourceKey: fatal.sourceKey,
+                });
+              } else {
+                throw fatal;
+              }
             }
           }
         } catch (sumitErr: any) {

@@ -1588,6 +1588,18 @@ if (isProduction) {
           digital_receipt: async (p: any) => {
             await IsraeliDigitalReceiptService.generateReceipt(p);
           },
+          // Post-release 2026-09-03 (backlog P1): SUMIT credit-note stamp
+          // retry. Handler re-runs the local UPDATE that writes
+          // sumitDocumentId back onto the digital_receipt row. Idempotent:
+          // repeating the UPDATE with the same value is a no-op.
+          sumit_credit_stamp: async (p: any) => {
+            const { db } = await import('./db');
+            const { digitalReceipts } = await import('@shared/schema');
+            const { eq } = await import('drizzle-orm');
+            await db.update(digitalReceipts)
+              .set({ sumitDocumentId: p.sumitDocumentId, issuerOfRecord: 'sumit' })
+              .where(eq(digitalReceipts.id, p.creditNoteId));
+          },
         },
       });
     } catch (e: any) {
