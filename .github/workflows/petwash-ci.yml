@@ -1227,6 +1227,13 @@ jobs:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
           VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
 
+      # Post-release 2026-09-03 (backlog P1): dist-manifest verifier —
+      # catches the specific class of stale-chunk 404 that killed /signin
+      # on 2026-08-29. Runs against dist/public before the Docker image
+      # is built. Exit code 1 aborts the deploy loud, not silent.
+      - name: Verify dist manifest (all referenced assets exist on disk)
+        run: npx tsx scripts/verify-dist-manifest.ts dist/public
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
