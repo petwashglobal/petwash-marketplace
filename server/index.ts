@@ -1152,6 +1152,33 @@ app.get('/health/strict', (_req, res) => {
   });
 });
 
+/**
+ * Post-release 2026-09-03 (backlog P1): /api/release-info.
+ *
+ * A tiny, always-on endpoint that returns just the deployed build's
+ * fingerprint — git SHA, Cloud Run revision, and build timestamp.
+ * Used by scripts/critical-route-canary.sh + release-smoke.yml to
+ * confirm the revision under test is actually the one they expected,
+ * not a rolled-back or mid-flight one. Never touches the DB.
+ *
+ * Sources (with graceful fallbacks so the endpoint is always cheap):
+ *   • GIT_SHA          — injected by the CI build step. `unknown` if unset.
+ *   • BUILD_TIMESTAMP  — ISO8601 injected at build time. Falls back to
+ *                        the boot epoch, which is the same for the whole
+ *                        revision.
+ *   • K_REVISION       — Cloud Run auto-sets this per revision.
+ */
+app.get('/api/release-info', (_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.status(200).json({
+    sha: process.env.GIT_SHA || 'unknown',
+    revision: process.env.K_REVISION || null,
+    builtAt: process.env.BUILD_TIMESTAMP || new Date(bootEpochMs).toISOString(),
+    bootTs: healthState.bootTs,
+    nodeEnv: process.env.NODE_ENV || 'unknown',
+  });
+});
+
 app.get('/api/health', async (_req, res) => {
   const db = await checkDbOnce();
   const status = db.ok ? 'OK' : 'DEGRADED';
