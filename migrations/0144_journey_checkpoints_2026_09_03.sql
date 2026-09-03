@@ -37,12 +37,25 @@ CREATE TABLE IF NOT EXISTS journey_checkpoints (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_journey_checkpoints_user_domain
   ON journey_checkpoints (user_uid, domain);
 
--- Attention-feed lookup + expiry sweep both walk by user then by
--- expiry. Partial index on active-only rows keeps the scan small.
+-- HOTFIX 2026-09-03 — deploy-blocker: the previous version of this
+-- index had a partial predicate `WHERE expires_at > now()`, which
+-- PostgreSQL rejects with:
+--
+--   ERROR: functions in index predicate must be marked IMMUTABLE
+--
+-- because `now()` is STABLE and its value changes every transaction.
+-- The active-user lookup is still fast — the composite index below
+-- covers (user_uid, expires_at) which the query planner uses when
+-- application code adds `WHERE user_uid = $1 AND expires_at > now()`
+-- at query time (that `now()` is perfectly legal at query time,
+-- since it evaluates once per query, not once per row of an index
+-- predicate).
+--
+-- Attention-feed lookup + pruner both walk this table by user AND
+-- by expiry. This composite index serves both.
 CREATE INDEX IF NOT EXISTS idx_journey_checkpoints_active
-  ON journey_checkpoints (user_uid, updated_at DESC)
-  WHERE expires_at > now();
+  ON journey_checkpoints (user_uid, expires_at, updated_at DESC);
 
--- Sweep index for the periodic prune.
+-- Sweep index for the periodic prune (deletes WHERE expires_at <= now()).
 CREATE INDEX IF NOT EXISTS idx_journey_checkpoints_expiry
   ON journey_checkpoints (expires_at);
