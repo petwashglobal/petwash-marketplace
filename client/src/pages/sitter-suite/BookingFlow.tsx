@@ -18,7 +18,35 @@ import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOptio
 import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Calendar } from "@/components/ui/calendar";
+import { useJourneyCheckpoint } from "@/hooks/useJourneyCheckpoint";
 import type { DateRange } from "react-day-picker";
+
+/**
+ * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire.
+ *
+ * The sitter booking wizard now durably saves its in-flight step
+ * state to /api/journey/checkpoint (domain: sitter_book) so an
+ * abandoned tab / phone lock / battery-die resumes on the next
+ * visit. Only RESUMABLE, non-payment intent is persisted (sitter id,
+ * dates, selected pets, address, notes). On successful submission
+ * the checkpoint is cleared. Never used as authority: on resume, the
+ * real /api/sitter-suite/bookings POST re-runs every price / auth /
+ * availability gate against canonical truth.
+ */
+interface SitterBookCheckpointPayload extends Record<string, unknown> {
+  sitterId?: string;
+  selectedPetIds?: number[];
+  checkInDate?: string;
+  checkOutDate?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  notes?: string;
+  address?: string;
+  addressCity?: string;
+  addressPostal?: string;
+  step?: string;
+  updatedAt?: string;
+}
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
 
@@ -71,6 +99,86 @@ export default function SitterBookingFlow() {
   const [addressLat, setAddressLat] = useState<number | null>(null);
   const [addressLng, setAddressLng] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Lane C.3 — Journey Brain resumable-state hook. Enabled only when
+  // the user is signed in (the endpoint requires validateFirebaseToken,
+  // so an anonymous call would 401 on every save).
+  const checkpoint = useJourneyCheckpoint<SitterBookCheckpointPayload>('sitter_book', {
+    enabled: !!user,
+  });
+
+  // Hydrate from a saved checkpoint the first time it lands. Only fills
+  // fields the user has NOT already touched — a fresh navigation with
+  // its own query-param intent still wins.
+  useEffect(() => {
+    if (checkpoint.hydrating || !checkpoint.initial) return;
+    const p = checkpoint.initial;
+    if (selectedPetIds.length === 0 && Array.isArray(p.selectedPetIds)) {
+      setSelectedPetIds(p.selectedPetIds);
+    }
+    if (!checkInDate && typeof p.checkInDate === 'string') {
+      const d = new Date(p.checkInDate);
+      if (!isNaN(d.getTime())) setCheckInDate(d);
+    }
+    if (!checkOutDate && typeof p.checkOutDate === 'string') {
+      const d = new Date(p.checkOutDate);
+      if (!isNaN(d.getTime())) setCheckOutDate(d);
+    }
+    if (typeof p.checkInTime === 'string') setCheckInTime(p.checkInTime);
+    if (typeof p.checkOutTime === 'string') setCheckOutTime(p.checkOutTime);
+    if (!notes && typeof p.notes === 'string') setNotes(p.notes);
+    if (!address && typeof p.address === 'string') setAddress(p.address);
+    if (!addressCity && typeof p.addressCity === 'string') setAddressCity(p.addressCity);
+    if (!addressPostal && typeof p.addressPostal === 'string') setAddressPostal(p.addressPostal);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkpoint.hydrating, checkpoint.initial]);
+
+  // Debounced save whenever any resumable field changes. NEVER
+  // includes payment-truth (chargeId, paidAt, refundId, etc.) — those
+  // keys are refused by both the hook and the server endpoint.
+  useEffect(() => {
+    if (!user) return;
+    if (checkpoint.hydrating) return;
+    if (step === 'pending_match' || step === 'confirmation') return;
+    if (
+      selectedPetIds.length === 0 &&
+      !checkInDate &&
+      !checkOutDate &&
+      !notes &&
+      !address
+    ) {
+      return; // nothing meaningful to save yet
+    }
+    void checkpoint.save({
+      sitterId: sitterId ?? undefined,
+      selectedPetIds,
+      checkInDate: checkInDate?.toISOString(),
+      checkOutDate: checkOutDate?.toISOString(),
+      checkInTime,
+      checkOutTime,
+      notes,
+      address,
+      addressCity,
+      addressPostal,
+      step,
+      updatedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    user,
+    sitterId,
+    step,
+    selectedPetIds,
+    checkInDate,
+    checkOutDate,
+    checkInTime,
+    checkOutTime,
+    notes,
+    address,
+    addressCity,
+    addressPostal,
+    checkpoint.hydrating,
+  ]);
 
   // Pre-fill address from user's saved profile
   const { data: userProfile } = useQuery<{
@@ -331,6 +439,11 @@ export default function SitterBookingFlow() {
 
       // Mark first booking as complete for push notification permission (Apple compliance)
       localStorage.setItem('petwash_first_booking_complete', 'true');
+
+      // Lane C.3 — the wizard has finished intent-collection and the
+      // real booking is now server-owned. Drop the resumable checkpoint
+      // so the home resume-card stops showing this journey.
+      void checkpoint.clear();
 
       setStep("pending_match");
 
