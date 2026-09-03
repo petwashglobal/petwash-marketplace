@@ -444,6 +444,7 @@ import adminPaymentDevicesRouter from './routes/admin-payment-devices';
 import adminDeadlinesRouter from './routes/admin-deadlines';
 import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import adminStationHealthRouter from './routes/admin-station-health';
+import adminFiscalOutboxRouter from './routes/adminFiscalOutbox';
 import adminFaultIntelRouter from './routes/admin-fault-intel';
 import adminReconfirmationRouter from './routes/admin-reconfirmation';
 import adminStaffAcademyRouter from './routes/admin-staff-academy';
@@ -592,6 +593,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Inline requireAdmin inside the router; mounted under /api/admin/* for the
   // full admin security stack (defence in depth).
   app.use('/api/admin/station-health', adminStationHealthRouter);
+  // Post-release 2026-09-03 (backlog P1): fiscal-outbox admin surface.
+  // Read + force-retry + mark-reviewed for durable fiscal-doc rows the
+  // drainer has flagged. Under /api/admin/* so the full admin stack
+  // (limiter + Firebase + role + MFA + read-only-mutations) applies;
+  // the two write endpoints add an extra isSuperAdminVerified check.
+  app.use('/api/admin/fiscal-outbox', adminFiscalOutboxRouter);
   app.use('/api/admin', adminFaultIntelRouter); // §11 fault-cost + §12 predictive-maintenance (read-only)
   app.use('/api/admin', adminStaffAcademyRouter); // §16 staff-performance + §17 academy (read-only)
   app.use('/api/admin', adminExpansionMarketingRouter); // §9 location-scoring (model) + §25 marketing-campaigns (read-only)
