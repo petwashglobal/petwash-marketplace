@@ -24,6 +24,7 @@ import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
+import { emitCtaEvent, type CtaAction } from '@/lib/ctaActions';
 import { getTierDisplay } from '@/lib/loyalty';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
@@ -200,17 +201,32 @@ export default function PrestigeHome() {
     try { await navigator.clipboard.writeText(memberId); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
   };
 
-  const actions: { label: string; labelHe: string; icon: any; to: string; soon?: boolean }[] = [
-    { label: 'Book Wash',     labelHe: 'שטיפה',    icon: Droplets,      to: '/stations' },
-    { label: 'Pet Sitter',    labelHe: 'Pet Sitter',  icon: Dog,           to: '/sitter-suite' },
-    { label: 'Walk My Pet',   labelHe: 'Walk My Pet',   icon: Footprints,    to: '/walk-my-pet' },
-    { label: 'PetWash Shop',  labelHe: 'PetWash Shop',     icon: ShoppingBag,   to: '/shop' },
-    { label: 'Send a Gift',   labelHe: 'שליחת מתנה', icon: Gift,        to: '/buy-gift-card' },
-    { label: 'Buy Package',   labelHe: 'רכישת חבילה', icon: CreditCard, to: '/packages' },
-    { label: 'Wallet Top Up', labelHe: 'טעינת ארנק', icon: WalletIcon,  to: '/my-wallet' },
-    { label: 'Academy',       labelHe: 'Academy',   icon: GraduationCap, to: '/academy' },
-    { label: 'My Pets',       labelHe: 'החיות שלי', icon: PawPrint,     to: '/pets' },
-    { label: 'PetTrek',       labelHe: 'PetTrek',  icon: Mountain,      to: '#', soon: true },
+  // Every action gets an optional (actionId, testId) so a tap carries
+  // stable analytics + a stable test handle. actionId maps to the
+  // canonical CtaAction enum (client/src/lib/ctaActions.ts) so it
+  // survives i18n / CSS refactors. Actions still under construction
+  // (PetTrek) OR without a distinct booking-journey identity yet
+  // (Book Wash, Buy Package, My Pets) leave actionId undefined; the
+  // button renders the same but skips the emit + attribute.
+  const actions: {
+    label: string;
+    labelHe: string;
+    icon: any;
+    to: string;
+    soon?: boolean;
+    actionId?: CtaAction;
+    testId?: string;
+  }[] = [
+    { label: 'Book Wash',     labelHe: 'שטיפה',        icon: Droplets,      to: '/stations' },
+    { label: 'Pet Sitter',    labelHe: 'Pet Sitter',   icon: Dog,           to: '/sitter-suite',    actionId: 'BOOK_SITTER_ENTRY',   testId: 'petparent-home-book-sitter' },
+    { label: 'Walk My Pet',   labelHe: 'Walk My Pet',  icon: Footprints,    to: '/walk-my-pet',     actionId: 'BOOK_WALK_ENTRY',     testId: 'petparent-home-book-walk' },
+    { label: 'PetWash Shop',  labelHe: 'PetWash Shop', icon: ShoppingBag,   to: '/shop' },
+    { label: 'Send a Gift',   labelHe: 'שליחת מתנה',    icon: Gift,          to: '/buy-gift-card',   actionId: 'EGIFT_PURCHASE',      testId: 'petparent-home-egift-purchase' },
+    { label: 'Buy Package',   labelHe: 'רכישת חבילה',    icon: CreditCard,    to: '/packages' },
+    { label: 'Wallet Top Up', labelHe: 'טעינת ארנק',     icon: WalletIcon,    to: '/my-wallet',       actionId: 'WALLET_TOP_UP',       testId: 'petparent-home-wallet-top-up' },
+    { label: 'Academy',       labelHe: 'Academy',       icon: GraduationCap, to: '/academy',         actionId: 'BOOK_ACADEMY_ENTRY',  testId: 'petparent-home-book-academy' },
+    { label: 'My Pets',       labelHe: 'החיות שלי',     icon: PawPrint,      to: '/pets',            actionId: 'PET_ADD',             testId: 'petparent-home-pets' },
+    { label: 'PetTrek',       labelHe: 'PetTrek',       icon: Mountain,      to: '#', soon: true },
   ];
 
   const stats = [
@@ -380,8 +396,14 @@ export default function PrestigeHome() {
               return (
                 <button
                   key={a.label}
-                  onClick={() => !a.soon && navigate(a.to)}
+                  onClick={() => {
+                    if (a.soon) return;
+                    if (a.actionId) emitCtaEvent(a.actionId);
+                    navigate(a.to);
+                  }}
                   disabled={a.soon}
+                  data-action-id={a.actionId}
+                  data-testid={a.testId}
                   className="flex flex-col items-center gap-1.5 group"
                 >
                   <span className={`w-14 h-14 rounded-2xl flex items-center justify-center border ${a.soon ? 'border-dashed border-gray-200 bg-gray-50' : 'border-[#F0E9D4] bg-[#FFFDF7] group-active:scale-95'} transition-transform`}>
