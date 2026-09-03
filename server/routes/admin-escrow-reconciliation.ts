@@ -27,25 +27,18 @@ import { logger } from '../lib/logger';
 import { desc, eq, gte, lte, and, or } from 'drizzle-orm';
 import { requireAuth } from '../middleware/gates';
 import { logAuditEvent } from '../middleware/auditLog';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 
 const router = Router();
 const firestore = admin.firestore();
 
-// Issue #153 — escrow role-check shape fix.
-// The previous inline checks read `req.user.admin` / `req.user.role`, but
-// `bridgeFirebaseUser()` only populates `req.user.{uid,id,email}` —
-// neither `.admin` nor `.role`. Result: legitimate admins received 403.
-// We now read the role from the canonical source `req.firebaseUser.claims.role`
-// (populated by `validateFirebaseToken` on the mount) and consult
-// `isSuperAdmin(email)` for the super-admin email allowlist. The split
-// between read-endpoints (allow 'finance') and the sync mutation
-// (admin/super_admin only) is preserved exactly.
+// #240 migration: super-admin path now uses isSuperAdminVerified (allowlist
+// AND email_verified === true). The role-claims path is preserved for the
+// finance/admin split — those tokens are already server-issued.
 function callerHasRole(req: Request, allowedRoles: readonly string[]): boolean {
+  if (isSuperAdminVerified(req)) return true;
   const fb = (req as any).firebaseUser;
   const claims = fb?.claims || {};
-  const email = (fb?.email || '').toLowerCase();
-  if (email && isSuperAdmin(email)) return true;
   const role = typeof claims.role === 'string' ? claims.role : undefined;
   if (role && allowedRoles.includes(role)) return true;
   return false;

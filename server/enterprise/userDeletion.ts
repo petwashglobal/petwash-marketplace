@@ -7,6 +7,7 @@
 import { db as firestoreDb } from '../lib/firebase-admin';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import type { Request, Response } from 'express';
 
 interface DeletionResult {
@@ -346,7 +347,6 @@ export async function exportUserData(
     res.status(200).json(userData);
     
   } catch (error: any) {
-    logger.error('[UserDeletion] Data export error:', error);
-    res.status(500).json({ error: 'Export failed', details: error.message });
+    sendSanitizedError(res, error, 'USER_DATA_EXPORT_FAILED', { logContext: { op: 'user-data-export' } });
   }
 }

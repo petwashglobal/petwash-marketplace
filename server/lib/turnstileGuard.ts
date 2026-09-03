@@ -55,10 +55,31 @@ export function isTurnstileConfigured(): boolean {
 export function turnstileGuard(opts: TurnstileGuardOptions) {
   const tokenField = opts.tokenField ?? 'turnstileToken';
   return async function turnstileGuardMiddleware(req: Request, res: Response, next: NextFunction) {
-    // Env-not-configured: SKIP + WARN. Production-readiness endpoint
-    // /api/health/bot-check reports the misconfiguration to operators.
+    // AUDIT-SMS-6 (2026-09-01): env-not-configured MUST fail CLOSED in
+    // production. The prior behaviour was SKIP + WARN — meaning a
+    // missing TURNSTILE_SECRET_KEY silently bypassed bot-checks on
+    // every signup / OTP / password-reset surface. A deploy that
+    // dropped the secret would look green from the outside while the
+    // entire bot floor was open.
+    //
+    // In production → 503 TURNSTILE_NOT_CONFIGURED so the surface
+    // stops accepting requests until ops fixes the env.
+    // Outside production → keep skip+warn so local dev / preview
+    // environments don't require the secret. NODE_ENV is the same
+    // signal every other prod-only gate uses (see server/index.ts
+    // CSRF secret enforcement).
     if (!isTurnstileConfigured()) {
-      logger.warn('[TurnstileGuard] TURNSTILE_SECRET_KEY not configured — check skipped', {
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('[TurnstileGuard] TURNSTILE_SECRET_KEY missing in production — failing CLOSED', {
+          action: opts.action,
+        });
+        return res.status(503).json({
+          ok: false,
+          error: 'TURNSTILE_NOT_CONFIGURED',
+          action: opts.action,
+        });
+      }
+      logger.warn('[TurnstileGuard] TURNSTILE_SECRET_KEY not configured — check skipped (non-prod)', {
         action: opts.action,
       });
       return next();

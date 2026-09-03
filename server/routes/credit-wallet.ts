@@ -3,10 +3,11 @@ import { walletService } from '../services/WalletService';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import { db } from '../db';
 import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 // Modernity SEV-1 #1 (2026-08-20 audit): wrap every money-mutating POST in
 // the canonical audit middleware so admin dashboards can filter on
 // action_type. Read-only GETs remain untouched.
@@ -19,7 +20,10 @@ import type { CreditType } from '../../shared/petwash-operating-system';
 
 const router = Router();
 
-// Rate limiters for redemption endpoints to prevent abuse
+// Release-blocker A6 + B3 (CEO 2026-09-02): every money-touching limiter
+// in this file now uses the Redis-backed store so the cap is enforced
+// across the whole Cloud Run fleet instead of per-pod (which multiplied
+// the permitted rate by the pod count).
 const redemptionRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // 20 redemptions per 15 min per user
@@ -28,6 +32,7 @@ const redemptionRateLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => (req as any).user?.uid || (req as any).firebaseUser?.uid || 'anonymous',
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  store: redisRateLimitStore('wallet_redemption'),
 });
 
 const nayaxValidationRateLimiter = rateLimit({
@@ -36,6 +41,7 @@ const nayaxValidationRateLimiter = rateLimit({
   message: { success: false, error: 'Rate limit exceeded for code validation' },
   keyGenerator: (req) => req.body?.stationId || 'default-station',
   validate: { xForwardedForHeader: false, ip: false },
+  store: redisRateLimitStore('wallet_nayax_validate'),
 });
 
 const previewSchema = z.object({
@@ -71,14 +77,18 @@ function sourceLooksPaid(sourceType: string): boolean {
   return /payment|receipt|sumit|nayax|paid/i.test(sourceType);
 }
 
+// Release-blocker A6 (CEO 2026-09-02): wallet top-up limiter MUST use
+// the shared Redis store — the previous in-memory default scaled with
+// pod count, so N pods = 5N top-ups/hour per user.
 const topupRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // max 5 top-ups per hour per user
+  max: 5, // max 5 top-ups per hour per user (across all pods)
   message: { success: false, error: 'Too many top-up requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => (req as any).user?.uid || (req as any).firebaseUser?.uid || 'anonymous',
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  store: redisRateLimitStore('wallet_topup'),
 });
 
 const topupSchema = z.object({
@@ -101,11 +111,10 @@ router.post('/topup', topupRateLimiter, auditLogMiddleware('WALLET_TOPUP'), asyn
 
     const { amountCents, nayaxTxId, description } = parsed.data;
 
-    // SECURITY: Admin status derived ONLY from the server-side Firebase-verified email.
-    // The x-admin-id header was removed — clients can set arbitrary headers, making it
-    // trivially exploitable for unlimited self-crediting.
+    // #240 migration: allowlist + email_verified. The x-admin-id header
+    // path is dead; admin status derives from the Firebase-verified email.
     const userEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
-    const isAdminUser = isSuperAdmin(userEmail);
+    const isAdminUser = isSuperAdminVerified(req as any);
 
     if (!nayaxTxId && !isAdminUser) {
       return res.status(403).json({ success: false, error: 'Top-up requires Nayax transaction ID' });
@@ -540,7 +549,7 @@ router.post('/redemptions/:sessionId/refund', auditLogMiddleware('REFUND'), asyn
   try {
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
 
-    if (!isSuperAdmin(adminEmail)) {
+    if (!isSuperAdminVerified(req as any)) {
       logger.warn('[Credit Wallet] Unauthorized refund attempt', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ 
         success: false, 
@@ -639,7 +648,7 @@ router.post('/credits/add', auditLogMiddleware('CREDIT_WALLET_ADJUST'), async (r
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
     const adminUserId = (req.firebaseUser as any)?.uid || (req.user as any)?.uid || '';
 
-    if (!isSuperAdmin(adminEmail)) {
+    if (!isSuperAdminVerified(req as any)) {
       logger.warn('[Credit Wallet] Unauthorized credit add attempt', { ip: req.ip, email: adminEmail });
       return res.status(403).json({
         success: false,
@@ -895,7 +904,7 @@ router.post('/admin/inject', auditLogMiddleware('CREDIT_WALLET_ADJUST'), async (
       return res.status(401).json({ success: false, error: 'Admin authentication required' });
     }
 
-    if (!isSuperAdmin(adminEmail)) {
+    if (!isSuperAdminVerified(req as any)) {
       logger.warn('[Credit Wallet] Unauthorized admin injection attempt', { adminUserId, adminEmail, ip: req.ip });
       return res.status(403).json({ success: false, error: 'Insufficient permissions for credit injection' });
     }
@@ -1034,7 +1043,7 @@ router.get('/admin/injection-history/:userId', async (req, res) => {
     if (!adminEmail) {
       return res.status(401).json({ success: false, error: 'Admin authentication required' });
     }
-    if (!isSuperAdmin(adminEmail)) {
+    if (!isSuperAdminVerified(req as any)) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 
@@ -1081,7 +1090,7 @@ router.post('/admin/process-expired-credits', async (req, res) => {
       expectedCronSecret.length > 0 &&
       cronSecret.length === expectedCronSecret.length &&
       timingSafeEqual(Buffer.from(cronSecret), Buffer.from(expectedCronSecret));
-    if (!validCronSecret && !isSuperAdmin(adminEmail)) {
+    if (!validCronSecret && !isSuperAdminVerified(req as any)) {
       logger.warn('[Credit Wallet] Unauthorized expired-credits trigger', { ip: req.ip, email: adminEmail });
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
@@ -1089,7 +1098,7 @@ router.post('/admin/process-expired-credits', async (req, res) => {
     const result = await walletService.processExpiredCredits();
 
     logger.info('[Credit Wallet] Expired credits processed', { 
-      triggeredBy: isSuperAdmin(adminEmail) ? adminEmail : 'cron',
+      triggeredBy: isSuperAdminVerified(req as any) ? adminEmail : 'cron',
       ...result 
     });
 
@@ -1110,7 +1119,7 @@ router.get('/admin/dormant-wallets', async (req, res) => {
     if (!adminEmail) {
       return res.status(401).json({ success: false, error: 'Admin authentication required' });
     }
-    if (!isSuperAdmin(adminEmail)) {
+    if (!isSuperAdminVerified(req as any)) {
       return res.status(403).json({ success: false, error: 'Insufficient permissions' });
     }
 

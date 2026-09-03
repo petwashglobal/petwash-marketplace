@@ -8,6 +8,7 @@ import express, { type Router, type Request, type Response } from 'express';
 import { geocodeLocation, getWeatherForecast, getUnifiedLocationData } from '../services/unifiedLocationWeather';
 import { smartWeatherAdvisor } from '../services/smartWeatherAdvisor';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { 
   type SupportedLanguage,
   getWeatherConditionTranslation,
@@ -95,10 +96,7 @@ router.get('/forecast', async (req, res) => {
 
   } catch (error) {
     logger.error('[Weather API] Error fetching forecast:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch weather data',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WEATHER_FETCH_FAILED', { logContext: { op: 'fetch' } });
   }
 });
 
@@ -436,10 +434,7 @@ router.post('/smart-advice', async (req, res) => {
 
   } catch (error) {
     logger.error('[Smart Weather Advisor] Error generating advice:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate smart weather advice',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WEATHER_ADVICE_FAILED', { logContext: { op: 'advice' } });
   }
 });
 
@@ -713,10 +708,7 @@ router.get('/planner', optionalFirebaseToken, optionalEmployeeProfile, async (re
     
   } catch (error) {
     logger.error('[Weather Planner] Error:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate weather planner',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WEATHER_PLANNER_FAILED', { logContext: { op: 'planner' } });
   }
 });
 
@@ -901,10 +893,7 @@ router.get('/comprehensive', async (req, res) => {
 
   } catch (error: any) {
     logger.error('[Weather API] Comprehensive weather error:', error);
-    res.status(500).json({
-      error: 'Failed to fetch comprehensive weather',
-      message: error.message
-    });
+    sendSanitizedError(res, error, 'WEATHER_COMPREHENSIVE_FAILED', { logContext: { op: 'comprehensive' } });
   }
 });
 
@@ -1043,7 +1032,7 @@ Weather for the booking day:
 
   } catch (error: any) {
     logger.error('[Weather/booking-check] Error:', error);
-    return res.status(500).json({ error: 'Failed to check weather', message: error.message });
+    return sendSanitizedError(res, error, 'WEATHER_CHECK_FAILED', { logContext: { op: 'check' } });
   }
 });
 

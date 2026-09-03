@@ -4,6 +4,7 @@ import { logger } from '../lib/logger';
 import crypto from 'crypto';
 import { smsAbuseDetector } from './SmsAbuseDetector';
 import { redis } from './redis';
+import { checkAndBumpUidSmsBudget } from '../lib/perUidSmsBudget';
 
 interface VerificationCode {
   code: string;
@@ -888,16 +889,45 @@ class TwilioSMSService {
     }
   }
 
-  async sendSMS(to: string, body: string, meta?: { userId?: string; ip?: string; ua?: string }): Promise<{
+  async sendSMS(to: string, body: string, meta?: { userId?: string; ip?: string; ua?: string; purpose?: string; uidDailyLimit?: number }): Promise<{
     success: boolean;
     messageId?: string;
     error?: string;
   }> {
-    const auditCtx = { to: to.slice(0, 6) + '****', userId: meta?.userId, ip: meta?.ip, ua: meta?.ua?.slice(0, 80) };
+    const auditCtx = { to: to.slice(0, 6) + '****', userId: meta?.userId, ip: meta?.ip, ua: meta?.ua?.slice(0, 80), purpose: meta?.purpose };
 
     if (await smsAbuseDetector.isKillSwitchActive()) {
       logger.warn('[TwilioSMS] 🚨 Kill switch active — sendSMS blocked', auditCtx);
       return { success: false, error: 'SMS service temporarily suspended' };
+    }
+
+    // AUDIT-SMS-5 (#221, 2026-09-01): per-UID daily budget enforcement.
+    // When a caller passes both userId + purpose we check the shared
+    // per-UID budget in Redis. Missing purpose or userId means the caller
+    // is a system flow (cron, webhook) and cannot be UID-budgeted — those
+    // still go through the global kill switch + per-phone cap + IP
+    // limiters, so they are not unprotected. Callers that CAN pass a UID
+    // MUST — a later slice enforces this with an audit pin walking every
+    // sendSMS call site.
+    if (meta?.userId && meta?.purpose) {
+      const budget = await checkAndBumpUidSmsBudget(meta.userId, {
+        purpose: meta.purpose,
+        dailyLimit: meta.uidDailyLimit,
+      });
+      if (!budget.allowed) {
+        logger.warn('[TwilioSMS] per-UID SMS budget denied send', {
+          ...auditCtx,
+          reason: budget.reason,
+          limit: budget.limit,
+        });
+        return {
+          success: false,
+          error:
+            budget.reason === 'BUDGET_EXCEEDED'
+              ? 'Daily SMS limit for this account reached'
+              : 'SMS budget service unavailable',
+        };
+      }
     }
 
     const formattedPhone = this.formatPhoneNumber(to);

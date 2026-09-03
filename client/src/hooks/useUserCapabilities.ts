@@ -34,9 +34,20 @@ export function useUserCapabilities() {
     queryKey: USER_CAPABILITIES_QUERY_KEY,
     queryFn: async () => {
       const res = await apiRequest('GET', '/api/me/capabilities');
-      if (!res.ok) {
-        // Fail-soft: unauthenticated / server error → least-privilege shape.
+      // Release-blocker B8 (CEO 2026-09-02): distinguish INFRA FAILURE
+      // (503 with `unavailable:true`) from a legit unauthenticated read.
+      //   - 401  → user really is signed out; least-privilege is honest.
+      //   - 503  → the server cannot compute capabilities; THROW so
+      //            react-query flags isError and retries on its own
+      //            cadence, and the UI can surface "please retry."
+      //            Silently returning emptyCapabilities would demote a
+      //            provider/admin to member-only during a DB blip.
+      //   - other non-ok → also throw so the caller sees the error.
+      if (res.status === 401) {
         return emptyCapabilities(user?.uid || '');
+      }
+      if (!res.ok) {
+        throw new Error(`capabilities_unavailable:${res.status}`);
       }
       const body = (await res.json()) as UserCapabilities;
       return body;
@@ -44,16 +55,26 @@ export function useUserCapabilities() {
     enabled: !!user,
     staleTime: 30_000,
     refetchOnWindowFocus: false,
+    // Automatic retry with exponential backoff on infra failure.
+    retry: (failureCount, err) => {
+      if (failureCount >= 3) return false;
+      return String(err?.message || '').startsWith('capabilities_unavailable');
+    },
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
   });
 
-  // Return the empty-capabilities shape while loading / signed out, so
-  // callers can render least-privilege UI without extra null-checks.
+  // While loading / signed out, callers still get the empty-capabilities
+  // shape so they can render least-privilege UI without null-checks.
+  // On isError the caller SHOULD render an error/retry surface and MUST
+  // fail privileged actions closed (they already do — every privileged
+  // API is gated server-side).
   const capabilities: UserCapabilities = q.data ?? emptyCapabilities(user?.uid || '');
 
   return {
     capabilities,
     isLoading: q.isLoading,
     isError: q.isError,
+    isUnavailable: q.isError,
     refetch: q.refetch,
   };
 }

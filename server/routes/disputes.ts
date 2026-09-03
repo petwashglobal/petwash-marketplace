@@ -19,6 +19,7 @@ import { eq, desc, and } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -96,8 +97,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, dispute: { id: dispute.id, status: dispute.status } });
   } catch (error: any) {
-    logger.error('[Disputes] Submit error', error);
-    res.status(500).json({ error: error.message || 'Failed to submit dispute' });
+    sendSanitizedError(res, error, 'DISPUTE_SUBMIT_FAILED', { logContext: { route: 'submit' } });
   }
 });
 

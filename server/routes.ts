@@ -1,5 +1,6 @@
 import { getVertexAIConfig } from './lib/gemini-client';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
+import { sendSanitizedError } from './lib/sanitizeErrorResponse';
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
@@ -237,6 +238,12 @@ import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
 import meStatusRoutes from "./routes/me-status";
 import meCapabilitiesRoutes from "./routes/me-capabilities";
+import meActiveRoleRoutes from "./routes/me-active-role";
+import meIdentityLinksRoutes from "./routes/me-identity-links";
+import meStepUpRoutes from "./routes/me-step-up";
+import meSessionsRoutes from "./routes/me-sessions";
+import configPublicRoutes from "./routes/config-public";
+import adminIdentitySoftMergeRoutes from "./routes/admin-identity-soft-merge";
 // Canonical multi-role aggregator — used by whoami to emit `roles: string[]`
 // derived from every true capability, so ONE identity is visible across all
 // journeys (customer / loyalty / provider / staff / admin) instead of the
@@ -417,6 +424,7 @@ import { IsraeliTaxService } from "@shared/israeliTax";
 import multer from 'multer';
 import crypto from 'crypto';
 import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter, aiChatLimiter, aiChatHourlyLimiter } from './middleware/rateLimiter';
+import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from './middleware/aiUserBudget';
 import { incrementAIRequest, startAIMetricsFlusher } from './middleware/aiSecurity';
 import { loginRateLimitMiddleware, recordFailedLogin, clearLoginAttempts } from './middleware/loginRateLimiter';
 import { verifyAppCheckToken, verifyAppCheckTokenOptional } from './middleware/appCheckMiddleware';
@@ -426,7 +434,6 @@ import { requireOnboardingComplete } from './middleware/onboardingGate';
 import { logSecurityEvent } from './services/securityEvents';
 import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClientIP, getCityFromIP } from './services/alerts';
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
-import { hashPassword, verifyPassword } from './simpleAuth';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL, SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 import adminMayaRouter from './routes/admin-maya';
@@ -1378,6 +1385,66 @@ self.addEventListener('notificationclick', (event) => {
       const { createSessionCookie } = await import('./lib/sessionCookies');
       try {
         await createSessionCookie(idToken, res, req);
+
+        // ── Phase 3.b Pet Wash-owned session observation ──
+        // When ff.returning_user.sessions_owned.enabled is ON, ALSO mint
+        // a `sessions_pw` row via SessionService. The raw opaque id is
+        // discarded (Phase 3.c will emit it as an HttpOnly cookie).
+        // Purpose: prove mint plumbing + index shape + audit against real
+        // production login traffic before flipping authority. Wrapped in
+        // try/catch so the primary Firebase-cookie flow never fails on a
+        // sessions_pw write hiccup. Never blocks login.
+        try {
+          const { getFeatureFlag } = await import('./services/SystemConfig');
+          const sessionsObserveOn = await getFeatureFlag('ff.returning_user.sessions_owned.enabled');
+          if (sessionsObserveOn) {
+            // The main users-row sync block below re-verifies the ID
+            // token; do a light verify here too so the observation
+            // write doesn't reach into a variable that isn't populated
+            // yet. Verified token is cheap on the Admin SDK.
+            const decodedForSession = await fbAdminAuth.verifyIdToken(idToken, true);
+            if (decodedForSession?.uid) {
+              const { mintSession } = await import('./services/SessionService');
+              const providerId = (decodedForSession.firebase?.sign_in_provider as string) || 'firebase-legacy';
+              const providerName = ({
+                'password': 'password',
+                'google.com': 'google',
+                'apple.com': 'apple',
+                'facebook.com': 'facebook',
+                'phone': 'phone',
+                'custom': 'passkey', // custom-token feeders (WebAuthn, phone-session, etc.)
+              } as Record<string, string>)[providerId] || 'firebase-legacy';
+              const mintResult = await mintSession({
+                userId: decodedForSession.uid,
+                authMethod: providerName as any,
+                ip: (req.ip || req.headers['x-forwarded-for']?.toString() || null),
+                userAgent: (req.headers['user-agent'] || null),
+              });
+
+              // Phase 3.c.1 — emit the HttpOnly pw_session_id cookie under
+              // an additional flag. When OFF the raw id is discarded and
+              // nothing reads it (unchanged from Phase 3.b). Cookie name
+              // is intentionally distinct from Firebase's `__session` so
+              // both can co-exist during dual-run.
+              const emitCookieOn = await getFeatureFlag('ff.returning_user.sessions_owned.emit_cookie');
+              if (emitCookieOn && mintResult?.rawSessionId) {
+                const isProd = process.env.NODE_ENV === 'production';
+                const ttlSeconds = Math.max(60, Math.floor((mintResult.expiresAt.getTime() - Date.now()) / 1000));
+                res.cookie('pw_session_id', mintResult.rawSessionId, {
+                  httpOnly: true,
+                  secure: isProd,
+                  sameSite: 'lax',
+                  path: '/',
+                  maxAge: ttlSeconds * 1000,
+                });
+              }
+            }
+          }
+        } catch (sessionsObserveErr) {
+          logger.warn('[Session] sessions_pw observation write failed (non-blocking)', {
+            error: sessionsObserveErr instanceof Error ? sessionsObserveErr.message : String(sessionsObserveErr),
+          });
+        }
       } catch (sessionCookieErr: any) {
         // Distinguish a Firebase Admin SDK / IAM misconfiguration (the most
         // common production failure mode for admin login) from a generic 500
@@ -1449,6 +1516,32 @@ self.addEventListener('notificationclick', (event) => {
         const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
         _syncDecoded = decoded;
         const { authService } = await import('./services/AuthService');
+
+        // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+        // Records the (provider, providerAccountId) link in identity_accounts
+        // and emits IDENTITY_SHADOW_WOULD_MERGE if a verified email collides
+        // with another users row. Observation only — never merges, never
+        // changes which user this login resolves to.
+        try {
+          const { getFeatureFlag } = await import('./services/SystemConfig');
+          const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+          if (identityUnifiedOn) {
+            const { loginOrLink } = await import('./identity/loginOrLink');
+            const providerId = (decoded.firebase?.sign_in_provider as string) || 'firebase-legacy';
+            await loginOrLink({
+              provider: providerId,
+              providerAccountId: decoded.uid,
+              email: decoded.email || null,
+              emailVerified: decoded.email_verified === true,
+              displayName: decoded.name || null,
+            });
+          }
+        } catch (identityErr) {
+          logger.warn('[Session] loginOrLink probe failed (non-blocking)', {
+            uid: decoded.uid,
+            error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+          });
+        }
 
         let firstName: string | undefined;
         let lastName: string | undefined;
@@ -2478,135 +2571,49 @@ self.addEventListener('notificationclick', (event) => {
   // deleted module is removed so the deploy module-load gate stays green.
 
   // ========================================================================
-  // 🔐 SIMPLE AUTH SYSTEM (Email + Password) - PostgreSQL Based
+  // 🔐 SIMPLE AUTH SYSTEM — RETIRED (auth-rebuild Phase 10.b, 2026-09-01)
   // ========================================================================
-  const { hashPassword, verifyPassword, getCurrentUser, requireAuth: simpleRequireAuth } = await import('./simpleAuth');
-
-  // POST /api/simple-auth/signup — HARD-DEPRECATED (410 GONE)
-  // This endpoint created rows in the `customers` table with a session-cookie-based
-  // identity that has NO Firebase UID. Those accounts are ghosts: they cannot
-  // authenticate with the Firebase-based platform (loyalty, bookings, payouts, etc.).
-  // No current UI calls this path — the useSimpleAuth hook is dead code.
-  // Canonical registration: Firebase Auth → POST /api/auth/session → POST /api/users/create-profile
-  app.post('/api/simple-auth/signup', (_req, res) => {
-    logger.warn('[SimpleAuth] Deprecated signup endpoint called — returning 410 GONE');
-    res.status(410).json({
-      ok: false,
-      error: 'ENDPOINT_REMOVED',
-      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
-      messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמה הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
-    });
-  });
-
-  // POST /api/simple-auth/login - Login with email and password
-  // 🔐 SECURITY: Advanced rate limiting with failed attempt tracking
-  app.post('/api/simple-auth/login', loginRateLimitMiddleware, async (req, res) => {
-    try {
-      const { email, password } = req.body;
-
-      if (!email || !password) {
-        return res.status(400).json({ ok: false, error: 'Email and password required' });
-      }
-
-      const identifier = email.toLowerCase();
-
-      // Find user
-      const [user] = await db
-        .select()
-        .from(customers)
-        .where(eq(customers.email, identifier))
-        .limit(1);
-
-      if (!user) {
-        // Record failed attempt (user not found) — await so Redis has the
-        // incremented counter before the client can fire another request
-        // (evil-hunt 2026-08-20: multi-instance bypass).
-        await recordFailedLogin(identifier);
-        return res.status(401).json({ ok: false, error: 'Invalid email or password' });
-      }
-
-      // Verify password
-      const isValid = await verifyPassword(password, user.password);
-      if (!isValid) {
-        // Record failed attempt (wrong password) — awaited (see above).
-        await recordFailedLogin(identifier);
-        
-        const rateLimit = (req as any).loginRateLimit;
-        const attemptsRemaining = 5 - (rateLimit?.attempts || 0) - 1; // -1 for current attempt
-        
-        logger.warn('[Simple Auth] Failed login attempt', {
-          email: identifier.substring(0, 3) + '***',
-          attemptsRemaining,
-        });
-        
-        return res.status(401).json({ 
-          ok: false, 
-          error: 'Invalid email or password',
-          attemptsRemaining: Math.max(0, attemptsRemaining),
-        });
-      }
-
-      // ✅ SUCCESS: Clear failed attempts (awaited — see above).
-      await clearLoginAttempts(identifier);
-
-      // Update last login for security monitoring and audit
-      await db
-        .update(customers)
-        .set({ lastLogin: new Date() })
-        .where(eq(customers.id, user.id));
-
-      // Create session
-      if (req.session) {
-        req.session.userId = String(user.id);
-      }
-
-      logger.info(`[Simple Auth] ✅ User logged in: ${identifier.substring(0, 3)}***`);
-
-      res.json({
-        ok: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          loyaltyTier: user.loyaltyTier,
-          washBalance: user.washBalance,
-        }
-      });
-    } catch (error) {
-      logger.error('[Simple Auth] Login error:', error);
-      res.status(500).json({ ok: false, error: 'Login failed' });
-    }
-  });
-
-  // POST /api/simple-auth/logout - Logout current user
-  app.post('/api/simple-auth/logout', (req, res) => {
-    req.session?.destroy((err) => {
-      if (err) {
-        logger.error('[Simple Auth] Logout error:', err);
-        return res.status(500).json({ ok: false, error: 'Logout failed' });
-      }
-      logger.info('[Simple Auth] ✅ User logged out');
-      res.json({ ok: true });
-    });
-  });
-
-  // GET /api/simple-auth/me - Get current authenticated user
-  // DISABLED: Now handled by publicAuthRouter (clean console mode - returns 200 for logged-out users)
-  // app.get('/api/simple-auth/me', async (req, res) => {
-  //   try {
-  //     const user = await getCurrentUser(req);
-  //     
-  //     if (!user) {
-  //       return res.status(401).json({ ok: false, error: 'Not authenticated' });
-  //     }
   //
-  //     res.json({ ok: true, user });
-  //   } catch (error) {
-  //     logger.error('[Simple Auth] Get current user error:', error);
-  //     res.status(500).json({ ok: false, error: 'Failed to get user' });
-  //   }
-  // });
+  // The whole /api/simple-auth/* surface wrote a session-cookie identity
+  // against the `customers` table with NO Firebase UID. Any account
+  // created that way was a ghost: it could sign in but could never
+  // participate in the Firebase-based platform (loyalty, bookings,
+  // payouts, wallet, provider, admin). No client code ever called
+  // /login or /logout (grep across client/src returns zero hits;
+  // useSimpleAuth hook does not exist in the client).
+  //
+  // Retirement plan (this phase):
+  //   POST /api/simple-auth/signup   → 410 GONE (already retired earlier)
+  //   POST /api/simple-auth/login    → 410 GONE (new — was writing ghost sessions)
+  //   POST /api/simple-auth/logout   → 410 GONE (new — orphaned pair with /login)
+  //   GET  /api/simple-auth/me       → served by publicAuthRouter (LIVE, unchanged)
+  //
+  // Canonical registration: Firebase Auth → POST /api/auth/session
+  //                       → POST /api/users/create-profile
+
+  const SIMPLE_AUTH_GONE_BODY = {
+    ok: false,
+    error: 'ENDPOINT_REMOVED',
+    message: 'This endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+  } as const;
+
+  app.post('/api/simple-auth/signup', (_req, res) => {
+    logger.warn('[SimpleAuth] Retired /signup called — returning 410 GONE');
+    res.status(410).json(SIMPLE_AUTH_GONE_BODY);
+  });
+
+  app.post('/api/simple-auth/login', (_req, res) => {
+    logger.warn('[SimpleAuth] Retired /login called — returning 410 GONE');
+    res.status(410).json(SIMPLE_AUTH_GONE_BODY);
+  });
+
+  app.post('/api/simple-auth/logout', (_req, res) => {
+    logger.warn('[SimpleAuth] Retired /logout called — returning 410 GONE');
+    res.status(410).json(SIMPLE_AUTH_GONE_BODY);
+  });
+
+  // GET /api/simple-auth/me is served by publicAuthRouter (LIVE, unchanged).
 
   // ========================================================================
   // 🔐 FIREBASE AUTH SYSTEM (Legacy - for admin/employee access)
@@ -3154,107 +3161,32 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // PUT /api/profile - Update current user's profile (with validation)
+  // Release-blocker B4 (CEO 2026-09-02): retired.
+  //
+  // Previously PUT /api/profile wrote to Firestore
+  // `users/{uid}/profile/data` while PATCH /api/profile (below at
+  // ~5318) writes to Postgres via storage.updateUser. Two different
+  // allowlists, two different stores — a caller's choice of verb
+  // silently determined WHICH store received the write. Postgres-
+  // backed reads (whoami, capabilities, me/profile) never saw fields
+  // written by PUT, and vice versa.
+  //
+  // Canonical writer is PATCH /api/profile → storage.updateUser
+  // (Postgres). This PUT handler now returns 410 Gone with a Location
+  // hint so any surviving client sees an explicit failure and switches
+  // to the canonical path, rather than a silent split-brain.
   app.put('/api/profile', async (req, res) => {
-    try {
-      const token = req.cookies?.pw_session;
-      if (!token) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
-      let decoded;
-      try {
-        decoded = await firebaseAdmin.auth().verifySessionCookie(token, true);
-      } catch (error) {
-        logger.error('[Profile PUT] Session verification failed', error);
-        return res.status(401).json({ error: 'Invalid session' });
-      }
-
-      const uid = decoded.uid;
-
-      // Validate and extract allowed fields
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        petName,
-        petBreed,
-        petAge,
-        petWeight,
-        address,
-        city,
-        postcode,
-        country,
-        marketingOptIn
-      } = req.body;
-
-      // Build update object (only include provided fields)
-      const updates: any = {};
-      if (firstName !== undefined) updates.firstName = String(firstName).trim();
-      if (lastName !== undefined) updates.lastName = String(lastName).trim();
-      if (phone !== undefined) updates.phone = String(phone).trim();
-      if (dateOfBirth !== undefined) updates.dateOfBirth = dateOfBirth;
-      if (petName !== undefined) updates.petName = String(petName).trim();
-      if (petBreed !== undefined) updates.petBreed = String(petBreed).trim();
-      if (petAge !== undefined) updates.petAge = String(petAge).trim();
-      if (petWeight !== undefined) updates.petWeight = String(petWeight).trim();
-      if (address !== undefined) updates.address = String(address).trim();
-      if (city !== undefined) updates.city = String(city).trim();
-      if (postcode !== undefined) updates.postcode = String(postcode).trim();
-      if (country !== undefined) updates.country = String(country).trim();
-      if (marketingOptIn !== undefined) updates.marketingOptIn = !!marketingOptIn;
-
-      // Phone number validation (basic E.164 format)
-      if (updates.phone && !updates.phone.match(/^\+?[1-9]\d{1,14}$/)) {
-        return res.status(400).json({ 
-          error: 'Invalid phone number format. Use international format (+1 for USA, +972 for Israel, etc.)',
-          field: 'phone'
-        });
-      }
-
-      // Date of birth validation (must be at least 13 years old)
-      if (updates.dateOfBirth) {
-        const dob = new Date(updates.dateOfBirth);
-        const today = new Date();
-        const minAge = new Date();
-        minAge.setFullYear(minAge.getFullYear() - 13);
-        
-        if (dob >= today) {
-          return res.status(400).json({ 
-            error: 'Date of birth must be in the past',
-            field: 'dateOfBirth'
-          });
-        }
-        
-        if (dob > minAge) {
-          return res.status(400).json({ 
-            error: 'You must be at least 13 years old',
-            field: 'dateOfBirth'
-          });
-        }
-      }
-
-      updates.updatedAt = new Date().toISOString();
-
-      // Update Firestore using Admin SDK (bypasses security rules)
-      await db.collection('users').doc(uid).collection('profile').doc('data').set(updates, { merge: true });
-
-      // Fetch updated profile
-      const updatedDoc = await db.collection('users').doc(uid).collection('profile').doc('data').get();
-      const profile = updatedDoc.data() || {};
-
-      logger.info('[Profile PUT] ✅ Profile updated', { uid, fields: Object.keys(updates) });
-
-      res.json({ 
-        ok: true,
-        message: 'Profile updated successfully',
-        profile 
-      });
-    } catch (error) {
-      logger.error('[Profile PUT] Error', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
+    logger.warn('[Profile PUT] Retired endpoint hit — client should use PATCH /api/profile', {
+      ua: req.headers['user-agent'],
+      referer: req.headers.referer,
+    });
+    res.setHeader('Location', '/api/profile');
+    res.setHeader('Allow', 'PATCH, GET');
+    return res.status(410).json({
+      error: 'endpoint_retired',
+      message: 'PUT /api/profile is retired. Use PATCH /api/profile instead.',
+      canonical: 'PATCH /api/profile',
+    });
   });
 
   // GET /api/greeting - Get personalized AI greeting based on occasion
@@ -3356,10 +3288,7 @@ self.addEventListener('notificationclick', (event) => {
 
     } catch (error: any) {
       logger.error('[Account Deletion] Error:', error);
-      res.status(500).json({ 
-        error: 'Failed to delete account',
-        details: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_01', { logContext: { site: 'routes.ts:migrated-1' } });
     }
   });
 
@@ -3450,10 +3379,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[Profile Update] Error', error);
-      res.status(500).json({ 
-        error: 'Failed to update profile',
-        message: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_02', { logContext: { site: 'routes.ts:migrated-2' } });
     }
   });
 
@@ -3694,6 +3620,31 @@ self.addEventListener('notificationclick', (event) => {
       //         → POST /api/auth/session { idToken } (mints the cookie)
       //   The chain is in client/src/pages/admin/AdminLoginV2.tsx.
       const customToken = await firebaseAdmin.auth().createCustomToken(uid);
+
+      // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+      // Records the passkey provider link on identity_accounts and emits
+      // IDENTITY_SHADOW_WOULD_MERGE on collisions. Observation only —
+      // never merges. Passkey verify requires prior enrollment, so this
+      // is always a return-login for a known uid.
+      try {
+        const { getFeatureFlag } = await import('./services/SystemConfig');
+        const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+        if (identityUnifiedOn) {
+          const { loginOrLink } = await import('./identity/loginOrLink');
+          await loginOrLink({
+            provider: 'passkey',
+            providerAccountId: uid,
+            email: email || null,
+            emailVerified: !!email, // WebAuthn requires prior verified enrollment
+            displayName: null,
+          });
+        }
+      } catch (identityErr) {
+        logger.warn('[WebAuthn Login] loginOrLink probe failed (non-blocking)', {
+          uid,
+          error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+        });
+      }
 
       // Get city for location-based alerts
       const city = await getCityFromIP(ip);
@@ -4340,10 +4291,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ status: 'ok', diagnostics });
     } catch (error) {
       logger.error('[Firebase Admin Test] Error:', error);
-      res.status(500).json({ 
-        status: 'error', 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_03', { logContext: { site: 'routes.ts:migrated-3' } });
     }
   });
 
@@ -4522,10 +4470,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json(features);
     } catch (error) {
       logger.error('[Firebase Features] Error:', error);
-      res.status(500).json({ 
-        status: 'error', 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_04', { logContext: { site: 'routes.ts:migrated-4' } });
     }
   });
 
@@ -4588,7 +4533,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error) {
       logger.error('[Debug] WebAuthn debug error', error);
-      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_05', { logContext: { site: 'routes.ts:migrated-5' } });
     }
   });
 
@@ -7494,11 +7439,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error) {
       logger.error('Test purchase failed', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Test purchase failed',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_06', { logContext: { site: 'routes.ts:migrated-6' } });
     }
   });
 
@@ -8644,7 +8585,7 @@ self.addEventListener('notificationclick', (event) => {
       if (!changes || typeof changes !== 'object') {
         return res.status(400).json({ ok: false, error: 'Body must be a JSON object' });
       }
-      systemConfig.patch(changes, adminUid);
+      await systemConfig.patch(changes, adminUid);
       res.json({ ok: true, config: systemConfig.all() });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message });
@@ -8656,7 +8597,7 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { systemConfig } = await import('./services/SystemConfig');
       const adminUid: string = req.user?.uid || req.firebaseUser?.uid || 'unknown';
-      systemConfig.reset(adminUid);
+      await systemConfig.reset(adminUid);
       res.json({ ok: true, config: systemConfig.all() });
     } catch (err: any) {
       res.status(500).json({ ok: false, error: err.message });
@@ -8748,7 +8689,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('[GCS BACKUP] Manual code backup error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_07', { logContext: { site: 'routes.ts:migrated-7' } });
     }
   });
 
@@ -8787,7 +8728,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('[GCS BACKUP] Manual Firestore export error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_08', { logContext: { site: 'routes.ts:migrated-8' } });
     }
   });
 
@@ -8804,7 +8745,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[GCS BACKUP] Status check error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_09', { logContext: { site: 'routes.ts:migrated-9' } });
     }
   });
 
@@ -8836,7 +8777,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[GCS BACKUP] Logs fetch error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_10', { logContext: { site: 'routes.ts:migrated-10' } });
     }
   });
 
@@ -9146,9 +9087,13 @@ self.addEventListener('notificationclick', (event) => {
       
       if (sessionCookie) {
         const claims = await verifySessionCookie(sessionCookie, false);
+        // #240 migration: paired shape — allowlist + email_verified === true.
+        // Session-cookie claims carry email_verified from the ID token they
+        // were minted from; without it, an unverified allowlisted email
+        // would clear the gate.
         const { isSuperAdmin } = await import('./middleware/rbac');
-        
-        if (isSuperAdmin(claims.email || '')) {
+
+        if (isSuperAdmin(claims.email || '') && claims.email_verified === true) {
           return res.json({
             ok: true,
             user: {
@@ -11735,11 +11680,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('HubSpot sync error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to sync user to HubSpot",
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_11', { logContext: { site: 'routes.ts:migrated-11' } });
     }
   });
 
@@ -11762,17 +11703,17 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error) {
       logger.error('HubSpot event tracking error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to track event in HubSpot",
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_12', { logContext: { site: 'routes.ts:migrated-12' } });
     }
   });
 
   // AI Chat Assistant endpoint (Enhanced with Learning)
   // Protected: 20 req/min + 60 req/hour hard cap per IP
-  app.post('/api/ai/chat', aiChatLimiter, aiChatHourlyLimiter, async (req, res) => {
+  app.post('/api/ai/chat', aiChatLimiter, aiChatHourlyLimiter, aiUserBudget({
+    endpointTag: 'ai_chat_assistant',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }), async (req, res) => {
     try {
       const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { message, language, sessionId, userId, previousMessage, timeSpentOnPreviousAnswer } = req.body;
@@ -11801,11 +11742,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json(result);
     } catch (error: any) {
       logger.error('AI chat error:', error);
-      res.status(500).json({ 
-        success: false, 
-        error: "Failed to get AI response",
-        message: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_13', { logContext: { site: 'routes.ts:migrated-13' } });
     }
   });
 
@@ -12079,9 +12016,9 @@ self.addEventListener('notificationclick', (event) => {
   // Admin Google Sheets URL endpoint (protected)
   app.get('/api/admin/sheets-url', validateFirebaseToken, async (req: any, res) => {
     try {
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      const email = req.firebaseUser?.email?.toLowerCase();
-      if (!email || !isSuperAdmin(email)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
       const { getSpreadsheetUrl } = await import('./services/googleSheetsIntegration');
@@ -12102,9 +12039,9 @@ self.addEventListener('notificationclick', (event) => {
   // Admin Google Drive backup status endpoint (protected)
   app.get('/api/admin/drive-backup-status', validateFirebaseToken, async (req: any, res) => {
     try {
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      const email = req.firebaseUser?.email?.toLowerCase();
-      if (!email || !isSuperAdmin(email)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ error: 'Admin access required' });
       }
       res.json({
@@ -12940,6 +12877,39 @@ self.addEventListener('notificationclick', (event) => {
   // The router internally applies validateFirebaseToken on the /capabilities
   // handler, so an unauthenticated call returns 401 (never 200 with empty caps).
   app.use('/api/me', apiLimiter, meCapabilitiesRoutes);
+  // Phase 5 activeRole (CEO auth-rebuild directive 2026-09-01, D5):
+  // GET  /api/me/active-role   — { lastActiveRole, authorizedRoles }
+  // POST /api/me/active-role   — server-verified role switch; writes
+  //                              users.last_active_role only if the
+  //                              requested role is in capabilities.
+  //                              NEVER grants authority. Emits
+  //                              ROLE_SWITCHED audit event.
+  app.use('/api/me', apiLimiter, meActiveRoleRoutes);
+  // Phase 7 step-up proof issuance (CEO 2026-09-01):
+  //   POST /api/me/step-up/issue — takes { purpose, freshIdToken }
+  //   and returns { proof, purpose, expiresAt }. Client puts proof in
+  //   X-StepUp-Proof on the sensitive request. Requires the fresh
+  //   token's auth_time to be within 5 min — the ONE proof that the
+  //   user JUST re-authenticated.
+  app.use('/api/me', apiLimiter, meStepUpRoutes);
+  // Phase 9 Account Security (CEO 2026-09-01):
+  //   GET  /api/me/sessions                    — list active sessions_pw rows
+  //   POST /api/me/sessions/:rowId/revoke      — revoke ONE device
+  //   POST /api/me/sessions/revoke-all         — sign out everywhere (step-up)
+  app.use('/api/me', apiLimiter, meSessionsRoutes);
+  // Phase 11.b — public config surface for the /signin door cohort.
+  // Whitelist-only; exposes ONLY ff.returning_user.new_door.{enabled,percent}.
+  app.use('/api/config', apiLimiter, configPublicRoutes);
+  // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
+  //   GET  /api/identity/links           — list linked providers (live)
+  //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c
+  //   POST /api/identity/link/confirm    — 501 stub until Phase 6.c
+  app.use('/api/identity', apiLimiter, meIdentityLinksRoutes);
+  // Phase 6.b admin soft-merge (super-admin + step-up):
+  //   POST /api/admin/identity/soft-merge/preview  — read-only projection (live)
+  //   POST /api/admin/identity/soft-merge          — writes merged_into_uid
+  //   POST /api/admin/identity/soft-merge/unmerge  — reverses a merge
+  app.use('/api/admin/identity', apiLimiter, adminIdentitySoftMergeRoutes);
   // Canonical service-session read adapter (CEO 2026-08-18 §12/§13):
   // GET /api/service-sessions/:bookingRef — projects booking_requests
   // (and, in follow-up PRs, walk_bookings + pettrek_trips) into a
@@ -13292,7 +13262,18 @@ self.addEventListener('notificationclick', (event) => {
   // /api/provider-console serves as the provider OS (operating console) — auth-gated since Pass 6.
   // Legacy reference to "provider-os" in task history maps to this mount point.
   app.use('/api/provider-console', validateFirebaseToken, providerConsoleRouter);
-  app.use('/api/finance', adminLimiter, moneyFlowRouter);
+  // Release-blocker B5 (CEO 2026-09-02): the /api/finance mount was
+  // registered twice — once at line ~12185 with `validateFirebaseToken`
+  // + apiLimiter, and again here with only adminLimiter. Any handler
+  // added to moneyFlowRouter without inline requireRole was
+  // anonymously reachable via the second mount because Express uses
+  // the FIRST matching mount for auth but concatenates handlers.
+  // Consolidate to one correctly-authenticated mount by adding the
+  // same auth stack to moneyFlowRouter and moving it under the first
+  // mount path guard. adminLimiter still stacks on top for admin
+  // endpoints that mount deeper — but no handler is now anonymously
+  // reachable.
+  app.use('/api/finance', validateFirebaseToken, adminLimiter, moneyFlowRouter);
   app.use('/api/legal-stamps', apiLimiter, legalStampsRoutes);
   app.use('/api/user/activity', apiLimiter, userActivityRoutes);
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
@@ -13345,7 +13326,11 @@ self.addEventListener('notificationclick', (event) => {
   
   // Kenzo AI Chatbot (Gemini 2.5 Flash powered with Hebrew/English/Arabic support)
   // Protected: 20 req/min + 60 req/hour hard cap per IP
-  app.post('/api/v1/chat/message', aiChatLimiter, aiChatHourlyLimiter, async (req, res) => {
+  app.post('/api/v1/chat/message', aiChatLimiter, aiChatHourlyLimiter, aiUserBudget({
+    endpointTag: 'kenzo_chat_v1',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }), async (req, res) => {
     try {
       const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { text, sessionId, languageCode } = req.body;
@@ -14101,10 +14086,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Birthday trigger error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_14', { logContext: { site: 'routes.ts:migrated-14' } });
     }
   });
 
@@ -14122,10 +14104,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Observances trigger error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_15', { logContext: { site: 'routes.ts:migrated-15' } });
     }
   });
 
@@ -14141,10 +14120,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Voucher validation error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_16', { logContext: { site: 'routes.ts:migrated-16' } });
     }
   });
 
@@ -14160,10 +14136,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Get user vouchers error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_17', { logContext: { site: 'routes.ts:migrated-17' } });
     }
   });
 
@@ -14205,10 +14178,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Voucher redemption error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_18', { logContext: { site: 'routes.ts:migrated-18' } });
     }
   });
 
@@ -14494,7 +14464,7 @@ self.addEventListener('notificationclick', (event) => {
     } catch (error: any) {
       logger.error('Create profile error', error, { traceId: req.body?.traceId });
       const errorCode = error.code === '23505' ? 'USER_EXISTS' : 'REGISTRATION_FAILED';
-      res.status(500).json({ success: false, error: error.message, errorCode });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_19', { logContext: { site: 'routes.ts:migrated-19' } });
     }
   });
 
@@ -14553,9 +14523,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
       
-      // Check if admin is authorized to create invitations
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      if (!isSuperAdmin(adminEmail)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ success: false, error: 'Only administrators can create invitations' });
       }
       
@@ -14634,7 +14604,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Create invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_20', { logContext: { site: 'routes.ts:migrated-20' } });
     }
   });
   
@@ -14688,7 +14658,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Verify invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_21', { logContext: { site: 'routes.ts:migrated-21' } });
     }
   });
   
@@ -14826,7 +14796,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Accept invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_22', { logContext: { site: 'routes.ts:migrated-22' } });
     }
   });
   
@@ -14839,8 +14809,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
       
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      if (!isSuperAdmin(adminEmail)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
       
@@ -14856,7 +14827,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('List invitations error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_23', { logContext: { site: 'routes.ts:migrated-23' } });
     }
   });
   
@@ -14869,8 +14840,9 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
       
-      const { isSuperAdmin } = await import('./middleware/rbac');
-      if (!isSuperAdmin(adminEmail)) {
+      // #240 migration: paired shape — allowlist + email_verified.
+      const { isSuperAdminVerified } = await import('./middleware/rbac');
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ success: false, error: 'Access denied' });
       }
       
@@ -14887,7 +14859,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Revoke invitation error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_24', { logContext: { site: 'routes.ts:migrated-24' } });
     }
   });
 
@@ -14937,7 +14909,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('Welcome email trigger error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_25', { logContext: { site: 'routes.ts:migrated-25' } });
     }
   });
 
@@ -15114,7 +15086,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, wash: washData });
     } catch (error: any) {
       logger.error('Admin test wash error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_26', { logContext: { site: 'routes.ts:migrated-26' } });
     }
   });
 
@@ -15174,7 +15146,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, coupon: couponData });
     } catch (error: any) {
       logger.error('Admin test coupon error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_27', { logContext: { site: 'routes.ts:migrated-27' } });
     }
   });
 
@@ -15242,7 +15214,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Sample email error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_28', { logContext: { site: 'routes.ts:migrated-28' } });
     }
   });
 
@@ -15500,7 +15472,7 @@ self.addEventListener('notificationclick', (event) => {
       
     } catch (error: any) {
       logger.error('[TEST] Tax report and backup test failed', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_29', { logContext: { site: 'routes.ts:migrated-29' } });
     }
   });
 
@@ -15549,7 +15521,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('[Backup Verify] Error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_30', { logContext: { site: 'routes.ts:migrated-30' } });
     }
   });
 
@@ -15578,7 +15550,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Manual revenue report error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_31', { logContext: { site: 'routes.ts:migrated-31' } });
     }
   });
 
@@ -15603,7 +15575,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Manual backup error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_32', { logContext: { site: 'routes.ts:migrated-32' } });
     }
   });
 
@@ -15641,7 +15613,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Backup status error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_33', { logContext: { site: 'routes.ts:migrated-33' } });
     }
   });
 
@@ -15662,7 +15634,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Activity logs error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_34', { logContext: { site: 'routes.ts:migrated-34' } });
     }
   });
 
@@ -15737,7 +15709,7 @@ self.addEventListener('notificationclick', (event) => {
       }
     } catch (error: any) {
       logger.error('Workflow logs error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_35', { logContext: { site: 'routes.ts:migrated-35' } });
     }
   });
 
@@ -15796,7 +15768,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Legal compliance status error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_36', { logContext: { site: 'routes.ts:migrated-36' } });
     }
   });
 
@@ -15824,7 +15796,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, reviews });
     } catch (error: any) {
       logger.error('Legal reviews error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_37', { logContext: { site: 'routes.ts:migrated-37' } });
     }
   });
 
@@ -15850,7 +15822,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, review });
     } catch (error: any) {
       logger.error('Create legal review error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_38', { logContext: { site: 'routes.ts:migrated-38' } });
     }
   });
 
@@ -15887,7 +15859,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, review: updated });
     } catch (error: any) {
       logger.error('Update legal review error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_39', { logContext: { site: 'routes.ts:migrated-39' } });
     }
   });
 
@@ -15911,7 +15883,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, versions });
     } catch (error: any) {
       logger.error('Legal versions error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_40', { logContext: { site: 'routes.ts:migrated-40' } });
     }
   });
 
@@ -15933,7 +15905,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, version });
     } catch (error: any) {
       logger.error('Create legal version error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_41', { logContext: { site: 'routes.ts:migrated-41' } });
     }
   });
 
@@ -15981,7 +15953,7 @@ self.addEventListener('notificationclick', (event) => {
       res.json({ success: true, message: 'Reminder email sent successfully' });
     } catch (error: any) {
       logger.error('Send legal reminder error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_42', { logContext: { site: 'routes.ts:migrated-42' } });
     }
   });
 
@@ -16172,7 +16144,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Get interactions error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_43', { logContext: { site: 'routes.ts:migrated-43' } });
     }
   });
 
@@ -16235,7 +16207,7 @@ self.addEventListener('notificationclick', (event) => {
       });
     } catch (error: any) {
       logger.error('Interaction analytics error', error);
-      res.status(500).json({ success: false, error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_44', { logContext: { site: 'routes.ts:migrated-44' } });
     }
   });
 
@@ -16563,7 +16535,11 @@ self.addEventListener('notificationclick', (event) => {
    * Uses Google Gemini to suggest products based on pet profile
    * Requires authentication
    */
-  app.post('/api/subscriptions/:id/ai-recommendations', requireAuth, async (req: any, res) => {
+  app.post('/api/subscriptions/:id/ai-recommendations', requireAuth, aiUserBudget({
+    endpointTag: 'subscription_ai_recommendations',
+    dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
+    dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
+  }), async (req: any, res) => {
     try {
       const subscriptionId = parseInt(req.params.id);
       const userId = req.user.uid;
@@ -16593,17 +16569,32 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(404).json({ success: false, error: 'Subscription box type not found' });
       }
 
-      // Get available products
-      const products = await db
+      // AUDIT-AI-11 (#206): pre-filter the product catalogue by petType +
+      // sizeGroup + ageGroup BEFORE it hits the prompt, and hard-cap the
+      // injected list. Previously the full active catalogue (~unbounded) was
+      // serialised into the prompt — a growth-linear token blow-up that
+      // ballooned per-call cost. The filter is server-side, so no product
+      // ever reaches Gemini that couldn't be recommended anyway.
+      const petProfile = subscription.petProfile as any;
+      const AI_PRODUCT_LIMIT = 40;
+      const allActive = await db
         .select()
         .from(subscriptionProducts)
         .where(eq(subscriptionProducts.isActive, true));
+      const petType = petProfile?.petType || 'dog';
+      const petSize = petProfile?.size || 'medium';
+      const petAge = petProfile?.age || 'adult';
+      const filtered = allActive.filter((p: any) => {
+        const typeOk = !p.petType || p.petType === petType || p.petType === 'all';
+        const sizeOk = !p.sizeGroup || p.sizeGroup === petSize || p.sizeGroup === 'any';
+        const ageOk = !p.ageGroup || p.ageGroup === petAge || p.ageGroup === 'any';
+        return typeOk && sizeOk && ageOk;
+      });
+      const products = (filtered.length > 0 ? filtered : allActive).slice(0, AI_PRODUCT_LIMIT);
 
       // Import Google Gemini API
       const { GoogleGenAI } = await import('@google/genai');
       const genAI = new GoogleGenAI(getVertexAIConfig());
-
-      const petProfile = subscription.petProfile as any;
       const prompt = `You are an expert pet nutritionist and product curator. Based on the following pet profile and available products, recommend the best ${boxType.itemCount} products for this month's subscription box.
 
 Pet Profile:
@@ -16631,9 +16622,12 @@ Return a JSON response with the following structure:
 
 Select exactly ${boxType.itemCount} products that match the pet's profile, age, size, and dietary needs. Prioritize variety across categories (food, treats, toys, etc.).`;
 
+      // AUDIT-AI-11 (#206): cap Gemini output tokens so a malformed prompt
+      // or a runaway response can't spend beyond a bounded envelope.
       const result = await genAI.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
+        config: { maxOutputTokens: 2048 },
       });
       const responseText = result.text || '';
       
@@ -16782,11 +16776,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MapKit] Token generation error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message,
-        available: false,
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_45', { logContext: { site: 'routes.ts:migrated-45' } });
     }
   });
 
@@ -16818,10 +16808,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(config);
     } catch (error: any) {
       logger.error('[MapKit] Config error', error);
-      res.status(500).json({ 
-        available: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_46', { logContext: { site: 'routes.ts:migrated-46' } });
     }
   });
 
@@ -16922,10 +16909,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       }
     } catch (error: any) {
       logger.error('Platform report endpoint error', error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message 
-      });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_47', { logContext: { site: 'routes.ts:migrated-47' } });
     }
   });
 
@@ -16951,7 +16935,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[BiometricMonitor] Record event failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_48', { logContext: { site: 'routes.ts:migrated-48' } });
     }
   });
 
@@ -16963,7 +16947,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(insights);
     } catch (error: any) {
       logger.error('[BiometricMonitor] Get insights failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_49', { logContext: { site: 'routes.ts:migrated-49' } });
     }
   });
 
@@ -16973,7 +16957,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(alerts);
     } catch (error: any) {
       logger.error('[BiometricMonitor] Get alerts failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_50', { logContext: { site: 'routes.ts:migrated-50' } });
     }
   });
 
@@ -16986,7 +16970,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(activity);
     } catch (error: any) {
       logger.error('[LoyaltyMonitor] Track activity failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_51', { logContext: { site: 'routes.ts:migrated-51' } });
     }
   });
 
@@ -16996,7 +16980,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(fraud);
     } catch (error: any) {
       logger.error('[LoyaltyMonitor] Fraud detection failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_52', { logContext: { site: 'routes.ts:migrated-52' } });
     }
   });
 
@@ -17007,7 +16991,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(performers);
     } catch (error: any) {
       logger.error('[LoyaltyMonitor] Get top performers failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_53', { logContext: { site: 'routes.ts:migrated-53' } });
     }
   });
 
@@ -17026,7 +17010,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[OAuthMonitor] Record consent failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_54', { logContext: { site: 'routes.ts:migrated-54' } });
     }
   });
 
@@ -17037,7 +17021,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(status);
     } catch (error: any) {
       logger.error('[OAuthMonitor] Verify certificate failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_55', { logContext: { site: 'routes.ts:migrated-55' } });
     }
   });
 
@@ -17050,7 +17034,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(history);
     } catch (error: any) {
       logger.error('[OAuthMonitor] Get consent history failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_56', { logContext: { site: 'routes.ts:migrated-56' } });
     }
   });
 
@@ -17065,7 +17049,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Record consent failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_57', { logContext: { site: 'routes.ts:migrated-57' } });
     }
   });
 
@@ -17081,7 +17065,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(await readNotificationPrefs(req.params.userId));
     } catch (error: any) {
       logger.error('[NotificationConsent] Get preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_58', { logContext: { site: 'routes.ts:migrated-58' } });
     }
   });
 
@@ -17092,7 +17076,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Update preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_59', { logContext: { site: 'routes.ts:migrated-59' } });
     }
   });
 
@@ -17102,7 +17086,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Revoke all failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_60', { logContext: { site: 'routes.ts:migrated-60' } });
     }
   });
 
@@ -17112,7 +17096,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(audit);
     } catch (error: any) {
       logger.error('[NotificationConsent] Get audit log failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_61', { logContext: { site: 'routes.ts:migrated-61' } });
     }
   });
 
@@ -17132,7 +17116,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true, message: '7-year data cleanup completed successfully' });
     } catch (error: any) {
       logger.error('[Monitoring] Cleanup failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_62', { logContext: { site: 'routes.ts:migrated-62' } });
     }
   });
 
@@ -17152,7 +17136,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         version: '1.0.0',
       });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_63', { logContext: { site: 'routes.ts:migrated-63' } });
     }
   });
 
@@ -17188,7 +17172,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[Performance] Failed to track metrics', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_64', { logContext: { site: 'routes.ts:migrated-64' } });
     }
   });
 
@@ -17254,7 +17238,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true, data: await readNotificationPrefs(userId) });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Get preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_65', { logContext: { site: 'routes.ts:migrated-65' } });
     }
   });
 
@@ -17269,7 +17253,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json({ success: true, message: 'Preferences updated successfully' });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Update preferences failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_66', { logContext: { site: 'routes.ts:migrated-66' } });
     }
   });
 
@@ -17290,7 +17274,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Get consent history failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_67', { logContext: { site: 'routes.ts:migrated-67' } });
     }
   });
 
@@ -17338,7 +17322,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] Biometric security stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_68', { logContext: { site: 'routes.ts:migrated-68' } });
     }
   });
 
@@ -17380,7 +17364,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] Loyalty activity stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_69', { logContext: { site: 'routes.ts:migrated-69' } });
     }
   });
 
@@ -17420,7 +17404,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] OAuth certificates stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_70', { logContext: { site: 'routes.ts:migrated-70' } });
     }
   });
 
@@ -17459,7 +17443,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[MonitoringDashboard] Notification consent stats failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_71', { logContext: { site: 'routes.ts:migrated-71' } });
     }
   });
 
@@ -17742,7 +17726,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(newSchedule);
     } catch (error: any) {
       logger.error('[PetCare] Schedule wash failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_72', { logContext: { site: 'routes.ts:migrated-72' } });
     }
   });
 
@@ -17812,7 +17796,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(loyaltyProfile);
     } catch (error: any) {
       logger.error('[Loyalty] Fetch profile failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_73', { logContext: { site: 'routes.ts:migrated-73' } });
     }
   });
 
@@ -17865,7 +17849,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       });
     } catch (error: any) {
       logger.error('[Meetings] Schedule failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_74', { logContext: { site: 'routes.ts:migrated-74' } });
     }
   });
 
@@ -17888,7 +17872,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       res.json(meetings);
     } catch (error: any) {
       logger.error('[Meetings] Fetch failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_75', { logContext: { site: 'routes.ts:migrated-75' } });
     }
   });
 
@@ -17959,7 +17943,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
     } catch (error: any) {
       logger.error('[PersonalizedGreeting] Failed', error);
-      res.status(500).json({ error: error.message });
+      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_76', { logContext: { site: 'routes.ts:migrated-76' } });
     }
   });
 

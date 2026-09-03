@@ -1530,11 +1530,11 @@ router.post('/:requestId/respond', async (req, res) => {
       }
 
       // ── 6-MONTH RE-CONFIRMATION GATE (CEO spec §7) ────────────────────────
-      // A provider whose 6-month legal/tax/status re-confirmation is overdue may
-      // not accept NEW jobs until they re-confirm. Self-healing (recording a
-      // reconfirmation clears it). Flag-gated (RECONFIRMATION_ENFORCE, default
-      // off = SHADOW log; on = BLOCK). Fail-safe: isReconfirmationOverdue returns
-      // false on any lookup error, so an infra hiccup never blocks a live job.
+      // Release-blocker B2 (CEO 2026-09-02): compliance gates fail CLOSED
+      // on infra error when they are ENFORCED. In shadow mode (flag off)
+      // infra errors still log-only. In enforce mode, an unknown state
+      // means "cannot confirm the provider is compliant" — we must not
+      // let them accept a live job under uncertainty.
       try {
         const overdue = await isReconfirmationOverdue(userId!);
         if (overdue) {
@@ -1547,7 +1547,19 @@ router.post('/:requestId/respond', async (req, res) => {
             });
           }
         }
-      } catch { /* fail-open: advisory gate must never break a live accept on infra error */ }
+      } catch (reconfirmErr: any) {
+        const enforce = (process.env.RECONFIRMATION_ENFORCE || 'off').toLowerCase() === 'on';
+        logger.error('[BookingRequests] reconfirmation gate infra error', {
+          providerId: userId, err: reconfirmErr?.message, enforce,
+        });
+        if (enforce) {
+          return res.status(503).json({
+            error: 'RECONFIRMATION_GATE_UNAVAILABLE',
+            message: 'Could not verify reconfirmation status. Please retry.',
+          });
+        }
+        // Shadow mode: log-only, don't block.
+      }
 
       // ── PROVIDER PROTECTION DECLARATIONS GATE (epic #49) ──────────────────
       // A provider may not ACCEPT a booking (go live serving a job) until every
@@ -1558,6 +1570,10 @@ router.post('/:requestId/respond', async (req, res) => {
       // provider (incl. legacy) who hasn't signed — which is the intended Protection
       // Book rule; run shadow first to see who would be blocked. Fail-safe:
       // checkProviderDeclarationsSigned never throws, and shadow only logs.
+      // Release-blocker B2 (CEO 2026-09-02): same fail-CLOSED contract as
+      // the reconfirmation gate above. In enforce mode, an infra error
+      // means "cannot confirm the provider has signed declarations" —
+      // deny with 503 rather than let a paid job through.
       try {
         const decl = await checkProviderDeclarationsSigned(userId!);
         if (!decl.ok) {
@@ -1573,7 +1589,19 @@ router.post('/:requestId/respond', async (req, res) => {
             });
           }
         }
-      } catch { /* fail-open: advisory gate must never break a live accept on infra error */ }
+      } catch (declErr: any) {
+        const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'on').toLowerCase() === 'on';
+        logger.error('[BookingRequests] declarations gate infra error', {
+          providerId: userId, err: declErr?.message, enforce,
+        });
+        if (enforce) {
+          return res.status(503).json({
+            error: 'DECLARATIONS_GATE_UNAVAILABLE',
+            message: 'Could not verify declaration signatures. Please retry.',
+          });
+        }
+        // Shadow mode: log-only, don't block.
+      }
     }
 
     const statusHistory = (booking.statusHistory as any[]) || [];
@@ -3672,21 +3700,29 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     if (booking.ownerId !== callerUserId) {
       logger.warn('[BookingRequests] Caller is not the booking owner — skipping confirmation SMS', { requestId, callerUserId, ownerId: booking.ownerId });
     }
-    // Fallback to the users row (2026-07-30): these were read from req.body
-    // ONLY, so a /confirm without them sent no SMS and (token-less flows) no
-    // receipt email — the account's own contact details were never used.
-    let { ownerPhone, ownerEmail } = req.body;
-    if (!ownerPhone || !ownerEmail) {
-      try {
-        const [ownerRow] = await db
-          .select({ email: users.email, phone: users.phone })
-          .from(users)
-          .where(or(eq(users.id, booking.ownerId), eq(users.firebaseUid, booking.ownerId)))
-          .limit(1);
-        ownerPhone = ownerPhone || ownerRow?.phone || undefined;
-        ownerEmail = ownerEmail || ownerRow?.email || undefined;
-      } catch { /* non-blocking — validation below handles absence */ }
-    }
+    // AUDIT-SMS-11 (#224, 2026-09-01): source contact details from the
+    // canonical users row keyed by the booking OWNER, never from req.body.
+    //
+    // Prior code destructured `ownerPhone` and `ownerEmail` from req.body
+    // and only fell back to the users row when they were absent. That let
+    // an authenticated booking owner point the PetWash-branded booking-
+    // confirmation SMS at any phone number they typed into the request —
+    // a free, PetWash-billed SMS-send primitive. The audit called it out
+    // as "booking confirmation SMS uses body-supplied phone".
+    //
+    // The fix: DROP the req.body read entirely. `booking.ownerId` +
+    // `users` is the single source of truth for the destination.
+    let ownerPhone: string | undefined;
+    let ownerEmail: string | undefined;
+    try {
+      const [ownerRow] = await db
+        .select({ email: users.email, phone: users.phone })
+        .from(users)
+        .where(or(eq(users.id, booking.ownerId), eq(users.firebaseUid, booking.ownerId)))
+        .limit(1);
+      ownerPhone = ownerRow?.phone || undefined;
+      ownerEmail = ownerRow?.email || undefined;
+    } catch { /* non-blocking — validation below handles absence */ }
     const phoneRegex = /^\+?[1-9]\d{6,14}$/;
     const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
     const validPhone = ownerPhone && phoneRegex.test(ownerPhone.replace(/[\s-]/g, ''));
@@ -3694,7 +3730,9 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     if (validPhone && booking.ownerId === callerUserId) {
       try {
         const smsBody = `PetWash™ ההזמנה אושרה!\n\nמזהה: ${requestId}\nשירות: ${booking.serviceType}\nתאריכים: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}\nסכום: ₪${(booking.totalCents / 100).toFixed(2)}\nסטטוס: אושר ✅\n\nתודה שבחרת ב-PetWash™!`;
-        await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'] });
+        // AUDIT-SMS-5 (#221): booking-confirm per-UID budget.
+        const { SMS_PURPOSES: _SP } = await import('../lib/perUidSmsBudget');
+        await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'], purpose: _SP.BOOKING_CONFIRM });
         logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
       } catch (smsErr: any) {
         logger.warn('[BookingRequests] SMS send failed', { error: smsErr.message });

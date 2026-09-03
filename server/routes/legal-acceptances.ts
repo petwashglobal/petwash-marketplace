@@ -41,7 +41,7 @@ import {
   recordLegalAcceptance,
   listUserLegalAcceptances,
 } from '../services/LegalAcceptanceService';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import {
   LEGAL_DOCUMENT_KEYS,
@@ -189,8 +189,8 @@ router.get('/my-acceptances', async (req: Request, res: Response) => {
 
 // Admin — full evidence view for one user.
 router.get('/admin/legal-acceptances/:userId', async (req: Request, res: Response) => {
-  const callerEmail = (req as any).firebaseUser?.email || '';
-  if (!isSuperAdmin(callerEmail)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req as any)) {
     return res.status(403).json({ ok: false, error: 'Admin access required' });
   }
   const userId = req.params.userId;

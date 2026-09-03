@@ -29,6 +29,7 @@ import { marketplaceReviews, bookings } from '@shared/schema';
 import { eq, and, desc, sql, count } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { computeAndPersistRankingScore } from './marketplace-ranking';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import crypto from 'crypto';
@@ -336,8 +337,7 @@ router.post('/', validateFirebaseToken, async (req: Request, res: Response) => {
       review: { id: review.id, overallRating: review.overallRating, isFlagged: review.isFlagged },
     });
   } catch (error: any) {
-    logger.error('[MarketplaceReviews] Submit error', error);
-    res.status(500).json({ error: error.message || 'Failed to submit review' });
+    sendSanitizedError(res, error, 'MARKETPLACE_REVIEW_SUBMIT_FAILED', { logContext: { op: 'submit-review' } });
   }
 });
 

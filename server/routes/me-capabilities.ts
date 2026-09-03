@@ -17,7 +17,6 @@ import { Router, type Request, type Response } from 'express';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { getUserCapabilities } from '../lib/userCapabilities';
-import { emptyCapabilities } from '@shared/lib/userCapabilities';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -32,10 +31,21 @@ router.get('/capabilities', validateFirebaseToken, async (req: Request, res: Res
     const caps = await getUserCapabilities(uid, { superAdminVerified });
     return res.json(caps);
   } catch (err: any) {
-    logger.error('[me/capabilities] unexpected error', { uid, err: err?.message });
-    // Never leak internal error state — return the empty capability set so
-    // the client renders "least-privilege" instead of crashing.
-    return res.json(emptyCapabilities(uid));
+    // Release-blocker B8 (CEO 2026-09-02): distinguish INFRA FAILURE
+    // from "this user genuinely has no elevated capabilities." Returning
+    // emptyCapabilities on error would silently demote an admin or
+    // provider to member-only in the UI during any DB blip. Instead
+    // return a 503 with an explicit unavailable state so the client can
+    // render an error/retry surface and fail privileged actions closed.
+    logger.error('[me/capabilities] infra failure — returning 503', {
+      uid,
+      err: err?.message || String(err),
+    });
+    return res.status(503).json({
+      unavailable: true,
+      error: 'capabilities_unavailable',
+      message: 'Capabilities could not be loaded; please retry.',
+    });
   }
 });
 

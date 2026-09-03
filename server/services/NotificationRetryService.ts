@@ -79,8 +79,13 @@ async function retryRow(row: {
       const payload = row.payload as Record<string, any> | null;
       const text = payload?.smsText as string | undefined;
       if (text) {
+        // AUDIT-SMS-5 (#221): retry path still counts against the per-UID
+        // budget — a legit retry after outage stays within cap, a stuck
+        // retry loop can't drain the daily allowance either.
+        const { SMS_PURPOSES } = await import('../lib/perUidSmsBudget');
         const result = await twilioSMSService.sendSMS(row.recipientPhone, text, {
           userId: row.recipientUserId,
+          purpose: SMS_PURPOSES.BOOKING_CONFIRM,
         });
         sent = result.success;
         providerMessageId = result.messageId ?? null;

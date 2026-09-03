@@ -1106,6 +1106,30 @@ router.post('/trusted-device-verify', async (req: Request, res: Response) => {
       });
     }
 
+    // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+    // Records the PIN provider link on identity_accounts. Observation
+    // only — never merges. PIN auth requires prior PIN setup by the
+    // authenticated user, so identity is always known here.
+    try {
+      const { getFeatureFlag } = await import('../services/SystemConfig');
+      const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+      if (identityUnifiedOn) {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        await loginOrLink({
+          provider: 'pin',
+          providerAccountId: userInfo.id,
+          email: null,
+          emailVerified: false,
+          displayName: null,
+        });
+      }
+    } catch (identityErr) {
+      logger.warn('[PIN Auth] loginOrLink probe failed (non-blocking)', {
+        userId: userInfo.id,
+        error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+      });
+    }
+
     logger.info('[PIN Auth] Trusted device PIN login success', { userId: userInfo.id, userType: userInfo.type });
     return res.json({ 
       success: true, 

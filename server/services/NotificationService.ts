@@ -249,15 +249,30 @@ export class NotificationService {
   
   /**
    * Send SMS via Twilio (live integration)
+   *
+   * AUDIT-SMS-5 (#221): callers with a Firebase UID in reach MUST pass
+   * `meta.userId + meta.purpose` so TwilioSMSService.sendSMS can enforce
+   * the per-UID daily budget. Falls back to the shared BOOKING_CONFIRM
+   * bucket when the caller omits purpose but still supplies userId.
    */
-  static async sendToSMS(phone: string, message: string): Promise<boolean> {
+  static async sendToSMS(
+    phone: string,
+    message: string,
+    meta?: { userId?: string; purpose?: string; ip?: string; ua?: string },
+  ): Promise<boolean> {
     if (!phone) {
       logger.warn('[NotificationService] No phone provided for SMS');
       return false;
     }
 
     try {
-      const result = await twilioSMSService.sendSMS(phone, message);
+      const { SMS_PURPOSES } = await import('../lib/perUidSmsBudget');
+      const result = await twilioSMSService.sendSMS(phone, message, {
+        userId: meta?.userId,
+        ip: meta?.ip,
+        ua: meta?.ua,
+        purpose: meta?.purpose ?? (meta?.userId ? SMS_PURPOSES.BOOKING_CONFIRM : undefined),
+      });
       if (!result.success) {
         logger.warn('[NotificationService] SMS send failed', { phone: phone.slice(0, 6) + '****', error: result.error });
       }

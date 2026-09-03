@@ -30,14 +30,14 @@ import {
 import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { adjustLoyaltyBalance } from '../utils/loyaltyLedger';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
 function requireAdmin(req: any, res: any, next: any) {
-  const email = (req.firebaseUser?.email || '').toLowerCase();
-  if (!isSuperAdmin(email)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: 'Full admin access required' });
   }
   next();

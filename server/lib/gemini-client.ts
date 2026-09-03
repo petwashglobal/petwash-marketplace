@@ -142,10 +142,22 @@ export interface GeminiResult {
   error?: string;
 }
 
+/**
+ * Release freeze 2026-09-03 top-up (AI-1 + AI-6 HIGH): a Gemini call with no
+ * maxOutputTokens can run to the model's ceiling on a hostile or accidentally
+ * long prompt. Every safeGenerate() call now ships a default cap unless the
+ * caller explicitly overrides via GEMINI_DEFAULT_MAX_OUTPUT_TOKENS.
+ */
+const DEFAULT_GEMINI_MAX_OUTPUT_TOKENS = parseInt(
+  process.env.GEMINI_DEFAULT_MAX_OUTPUT_TOKENS || '2048',
+  10,
+);
+
 export async function safeGenerate(
   model: string,
   prompt: string,
   caller: string,
+  opts?: { maxOutputTokens?: number },
 ): Promise<GeminiResult> {
   if (!geminiClient) {
     return { ok: false, text: null, error: 'no_client' };
@@ -162,7 +174,12 @@ export async function safeGenerate(
 
   const start = Date.now();
   try {
-    const response = await geminiClient.models.generateContent({ model, contents: prompt });
+    const maxOutputTokens = opts?.maxOutputTokens ?? DEFAULT_GEMINI_MAX_OUTPUT_TOKENS;
+    const response = await geminiClient.models.generateContent({
+      model,
+      contents: prompt,
+      config: { maxOutputTokens },
+    });
     const text = response.text ?? null;
     logger.info(`[GeminiClient] ${caller} ok`, {
       model,

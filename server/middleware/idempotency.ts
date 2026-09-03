@@ -178,12 +178,28 @@ function installFinalizeHook(key: string, res: Response) {
     if (finalized) return;
     finalized = true;
     const marker = JSON.stringify({ status: res.statusCode }).slice(0, 255);
+    // Release-blocker B7 (CEO 2026-09-02): on finalize-UPDATE failure the
+    // row would previously stay `pending` and block real retries with 409
+    // for the full PENDING_LEASE_MS window (5 min default). Recover by
+    // DELETing the row so a retry can CLAIM fresh immediately, and log
+    // ERROR so ops sees the failure instead of it being silently swallowed.
     db.execute(sql`
       UPDATE idempotency_keys
       SET response_hash = ${marker}
       WHERE key = ${key}
-    `).catch(() => {
-      // Non-fatal — the PENDING lease will eventually let a retry steal.
+    `).catch((err) => {
+      logger.error('[Idempotency] finalize UPDATE failed — releasing lease', {
+        key,
+        status: res.statusCode,
+        err: err?.message || String(err),
+      });
+      db.execute(sql`DELETE FROM idempotency_keys WHERE key = ${key}`)
+        .catch((delErr) => {
+          logger.error('[Idempotency] lease-release DELETE ALSO failed — retries will wait for PENDING_LEASE_MS steal', {
+            key,
+            err: delErr?.message || String(delErr),
+          });
+        });
     });
   };
   res.on('finish', finalize);

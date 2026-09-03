@@ -3,41 +3,14 @@ import { storage } from '../storage';
 import { logger } from '../lib/logger';
 import { requireAuth } from '../customAuth';
 import { logAuditEvent } from '../middleware/auditLog';
+import { isSuperAdminVerified } from '../middleware/rbac';
 
 const router = Router();
 
-// P0-FIX: Super-admin email list must not be hardcoded in source.
-// Set SUPER_ADMIN_EMAILS as a comma-separated list in environment variables.
-// Example: SUPER_ADMIN_EMAILS=ceo@company.com,cfo@company.com
-function getSuperAdminEmails(): string[] {
-  const raw = process.env.SUPER_ADMIN_EMAILS;
-  if (!raw) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('FATAL: SUPER_ADMIN_EMAILS environment variable is required in production');
-    }
-    console.warn('[access-requests] WARNING: SUPER_ADMIN_EMAILS not set — all super-admin access will be denied');
-    return [];
-  }
-  return raw.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-}
-
-/**
- * Strict super-admin check.
- *
- * PR-A P0-3: Now requires Firebase to have verified the email
- * (`req.firebaseUser.email_verified === true`) before passing the
- * allowlist check. Without this gate an attacker who registers an
- * account with an email matching SUPER_ADMIN_EMAILS but who never
- * verifies it could approve their own staff access request.
- */
-function isSuperAdmin(req: { firebaseUser?: { email?: string; email_verified?: boolean } }): boolean {
-  const fu = req.firebaseUser;
-  if (!fu) return false;
-  if (fu.email_verified !== true) return false;
-  const email = fu.email;
-  if (!email) return false;
-  return getSuperAdminEmails().includes(email.toLowerCase());
-}
+// #240 migration: local shim removed. Callers use the canonical
+// isSuperAdminVerified helper in server/middleware/rbac.ts, which
+// enforces the same "allowlist AND email_verified === true" contract
+// PR-A P0-3 introduced here originally.
 
 // PR-ACCESS-REQUESTS-MINE-PROJECTION (2026-08-15) — fire-order item 104.
 // storage.getStaffAccessRequestByUser returns the full staff_access_requests
@@ -143,7 +116,7 @@ router.post('/', requireAuth, async (req, res) => {
 
 router.get('/', requireAuth, async (req, res) => {
   try {
-    if (!isSuperAdmin(req)) {
+    if (!isSuperAdminVerified(req)) {
       return res.status(403).json({ error: 'Super admin access required' });
     }
 
@@ -157,7 +130,7 @@ router.get('/', requireAuth, async (req, res) => {
 
 router.post('/:id/approve', requireAuth, async (req, res) => {
   try {
-    if (!isSuperAdmin(req)) {
+    if (!isSuperAdminVerified(req)) {
       return res.status(403).json({ error: 'Super admin access required' });
     }
     const email = req.firebaseUser?.email;
@@ -237,7 +210,7 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
 
 router.post('/:id/deny', requireAuth, async (req, res) => {
   try {
-    if (!isSuperAdmin(req)) {
+    if (!isSuperAdminVerified(req)) {
       return res.status(403).json({ error: 'Super admin access required' });
     }
     const email = req.firebaseUser?.email;

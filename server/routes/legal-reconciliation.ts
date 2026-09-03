@@ -30,15 +30,15 @@
 
 import { Router, type Request, type Response } from 'express';
 import { pool } from '../db';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { LEGAL_DOCUMENTS, legalDocumentStats } from '@shared/lib/legalDocumentRegistry';
 
 const router = Router();
 
 router.get('/legal-reconciliation', async (req: Request, res: Response) => {
-  const callerEmail = (req as any).firebaseUser?.email || '';
-  if (!isSuperAdmin(callerEmail)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req as any)) {
     return res.status(403).json({ ok: false, error: 'Admin access required' });
   }
 

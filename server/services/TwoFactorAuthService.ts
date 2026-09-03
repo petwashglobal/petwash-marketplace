@@ -217,7 +217,13 @@ class OctopusTwoFactorService {
         const smsBody = locale === 'he'
           ? `קוד האימות שלך ל-⁦PetWash™⁩ הוא: ${code}`
           : `Your ⁦PetWash™⁩ verification code is: ${code}`;
-        const result = await twilioSMSService.sendSMS(phone, smsBody);
+        // AUDIT-SMS-5 (#221): 2FA verify path — pass userId + purpose so the
+        // shared per-UID daily budget is enforced.
+        const { SMS_PURPOSES } = await import('../lib/perUidSmsBudget');
+        const result = await twilioSMSService.sendSMS(phone, smsBody, {
+          userId,
+          purpose: SMS_PURPOSES.VERIFY_MFA,
+        });
         if (result.success) {
           sentVia.push('sms');
         } else {

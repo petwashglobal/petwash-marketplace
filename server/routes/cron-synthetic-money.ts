@@ -13,7 +13,7 @@
  *     --headers="x-cron-secret=<CRON_SECRET>"
  */
 import { Router, type Request, type Response } from 'express';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { SyntheticMoneyPathMonitor } from '../services/SyntheticMoneyPathMonitor';
 import { sendCriticalAlert } from '../services/alerts';
@@ -29,8 +29,8 @@ async function authorized(req: Request): Promise<boolean> {
     provided.length === expected.length &&
     timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
   if (secretOk) return true;
-  const email = (req as any).firebaseUser?.email || (req as any).user?.email || '';
-  return isSuperAdmin(email);
+  // #240 migration: allowlist + email_verified. Cron secret handled above; UID path is the only one that can bypass without a shared secret.
+  return isSuperAdminVerified(req as any);
 }
 
 async function handler(req: Request, res: Response) {

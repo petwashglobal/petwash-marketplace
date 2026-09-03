@@ -231,13 +231,17 @@ async function requireAdmin(req: Request, res: Response, next: Function) {
       return res.status(401).json({ error: 'Unauthorized - Email not found in token', errorCode: 'MISSING_EMAIL' });
     }
     
-    // Check super admin list first (CEO, Directors)
-    if (isSuperAdmin(userEmail)) {
+    // #240 migration: paired shape — allowlist + email_verified. Decoded
+    // Firebase token supplies email_verified directly (this middleware
+    // does not populate req.firebaseUser, so isSuperAdminVerified is not
+    // used here). Match its "allowlist AND email_verified === true"
+    // contract inline.
+    if (isSuperAdmin(userEmail) && decodedToken.email_verified === true) {
       req.body.adminUid = decodedToken.uid;
       req.body.adminEmail = userEmail;
       return next();
     }
-    
+
     // Check database for admin role assignments
     const assignments = await db
       .select({
@@ -305,8 +309,8 @@ async function requireSupport(req: Request, res: Response, next: Function) {
     const userEmail = decodedToken.email?.toLowerCase();
     if (!userEmail) return res.status(401).json({ error: 'Unauthorized — email missing', errorCode: 'MISSING_EMAIL' });
 
-    // Super admins always allowed
-    if (isSuperAdmin(userEmail)) {
+    // #240 migration: paired shape — allowlist + email_verified === true.
+    if (isSuperAdmin(userEmail) && decodedToken.email_verified === true) {
       req.body.adminUid = decodedToken.uid;
       req.body.adminEmail = userEmail;
       req.body.adminRole = 'super_admin';
@@ -357,7 +361,8 @@ async function requireManagement(req: Request, res: Response, next: Function) {
     const userEmail = decodedToken.email?.toLowerCase();
     if (!userEmail) return res.status(401).json({ error: 'Unauthorized — email missing', errorCode: 'MISSING_EMAIL' });
 
-    if (isSuperAdmin(userEmail)) {
+    // #240 migration: paired shape — allowlist + email_verified === true.
+    if (isSuperAdmin(userEmail) && decodedToken.email_verified === true) {
       req.body.adminUid = decodedToken.uid;
       req.body.adminEmail = userEmail;
       req.body.adminRole = 'super_admin';
@@ -1794,11 +1799,19 @@ router.post('/apply', wrapUpload(upload.fields([
       });
     }
   } catch (error: any) {
+    // AUDIT-LOG-7 (2026-09-01): sanitize log meta so a Postgres UNIQUE
+    // or FK failure does NOT drop the offending row's plaintext values
+    // (email / phone / national-id) into the log line. `error.detail`
+    // includes "Key (email)=(user@x.com) already exists" verbatim; the
+    // constraint name alone is enough to diagnose. `stack` capped to
+    // 500 chars was fine; message and code stay (they are internal
+    // enums like '23505'); detail is DROPPED.
     logger.error('[Provider Onboarding] Application submission error', {
       traceId: req.body?.traceId,
-      message: error.message,
+      // error.message is often our own thrown string, but Postgres
+      // messages can echo values — clamp aggressively.
+      message: typeof error.message === 'string' ? error.message.slice(0, 200) : undefined,
       code: error.code,
-      detail: error.detail,
       constraint: error.constraint,
       stack: error.stack?.substring(0, 500),
     });

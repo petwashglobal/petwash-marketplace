@@ -39,7 +39,7 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { pool } from '../db';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -47,10 +47,11 @@ const router = Router();
 const MAX_SAMPLES = 20;
 
 router.get('/approved-provider-recon', async (req: Request, res: Response) => {
-  const callerEmail = (req as any).firebaseUser?.email || '';
-  if (!isSuperAdmin(callerEmail)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req as any)) {
     return res.status(403).json({ ok: false, error: 'Admin access required' });
   }
+  const callerEmail = (req as any).firebaseUser?.email || '';
 
   try {
     // Approved applications by provider_type — the population we care about.

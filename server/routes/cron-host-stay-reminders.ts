@@ -28,7 +28,7 @@
 import { Router, type Request, type Response } from 'express';
 import { and, eq, gte, lte, inArray } from 'drizzle-orm';
 import { apiLimiter } from '../middleware/rateLimiter';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { bookingRequests, hostStayDetails, superAppNotifications } from '@shared/schema';
@@ -46,8 +46,8 @@ async function authorized(req: Request): Promise<boolean> {
     provided.length === expected.length &&
     timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
   if (secretOk) return true;
-  const email = (req as any).firebaseUser?.email || (req as any).user?.email || '';
-  return isSuperAdmin(email);
+  // #240 migration: allowlist + email_verified. Cron secret handled above; UID path is the only one that can bypass without a shared secret.
+  return isSuperAdminVerified(req as any);
 }
 
 const HOST_STAY_SERVICES = ['pet_sitting', 'sitter', 'PETSITTER', 'boarding', 'daycare'];

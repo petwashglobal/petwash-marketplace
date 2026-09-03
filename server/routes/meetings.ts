@@ -12,6 +12,7 @@ import {
 import { eq, and, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { EmailService } from '../emailService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
 
@@ -655,11 +656,7 @@ router.delete('/:id', async (req: Request, res: Response) => {
     });
     
   } catch (error: any) {
-    logger.error(`[Meetings ${correlationId}] Failed to cancel meeting`, error);
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to cancel meeting',
-    });
+    sendSanitizedError(res, error, 'MEETING_CANCEL_FAILED', { logContext: { op: 'cancel-meeting', correlationId } });
   }
 });
 

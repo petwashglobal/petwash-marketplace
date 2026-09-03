@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { mfaEnrollments } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
-import { isSuperAdmin, ROLE_HIERARCHY } from './rbac';
+import { isSuperAdminVerified, isSuperAdminAllowlisted, ROLE_HIERARCHY } from './rbac';
 import { logger } from '../lib/logger';
 
 const MFA_REQUIRED_ROLES = ['admin', 'super_admin', 'management', 'hr', 'finance'];
@@ -49,9 +49,10 @@ export async function requireAdminMfa(
       .limit(1);
 
     if (enrollments.length === 0) {
-      // Super admins are allowed through without MFA so they can reach /settings/security to enroll.
-      // All such access is logged as a security warning.
-      if (isSuperAdmin(userEmail)) {
+      // #240 migration: paired shape — allowlist + email_verified. Super
+      // admins bypass the enroll wall so they can reach /settings/security
+      // and enrol themselves; every such pass is logged as a security event.
+      if (isSuperAdminVerified(req)) {
         logger.warn(`[MFA-Enforcement] ⚠️ Super admin ${userEmail} accessed without MFA enrollment — please enroll at /settings/security`);
         return next();
       }
@@ -83,7 +84,10 @@ export async function requireAdminMfa(
 }
 
 async function doesRoleRequireMfa(uid: string, email: string): Promise<boolean> {
-  if (isSuperAdmin(email)) {
+  // #240 migration: data-only allowlist check — this helper answers
+  // "does the account's role require MFA?" and never authorises access.
+  // The caller (requireAdminMfa) still gates on isSuperAdminVerified.
+  if (isSuperAdminAllowlisted(email)) {
     return true;
   }
 

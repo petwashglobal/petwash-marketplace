@@ -6,7 +6,11 @@
  */
 
 import { Router, Request } from 'express';
-import { db } from '../db';
+import { db, pool } from '../db';
+import {
+  runFiscalDocumentAndPersistOnFailure,
+  FiscalOutboxUnavailableError,
+} from '../services/fiscalDocumentOutbox';
 import {
   sitterProfiles,
   petProfilesForSitting,
@@ -36,8 +40,9 @@ import { nayaxSitterMarketplace } from '../services/NayaxSitterMarketplaceServic
 import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember, enrichWithLoyalty } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { withOwnerMedicalFields, filterPetForProvider } from '../lib/petPrivacy';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
@@ -358,9 +363,14 @@ router.get('/sitters/:id', async (req, res) => {
 });
 
 /**
- * POST /api/sitter-suite/sitters - Create sitter profile
+ * POST /api/sitter-suite/sitters - Create sitter profile.
+ *
+ * Release freeze 2026-09-03 top-up (AUTH-1 HIGH): previously anonymous +
+ * captcha-only, which created orphan sitter rows with no owner identity.
+ * Now requires a validated Firebase caller — anyone can still apply
+ * (registration is public), but the row is stamped to a real identity.
  */
-router.post('/sitters', async (req, res) => {
+router.post('/sitters', validateFirebaseToken, async (req, res) => {
   try {
     const { captchaToken, turnstileToken: sitterTurnstileToken, ...bodyWithoutToken } = req.body;
     if (!captchaToken) {
@@ -442,8 +452,8 @@ router.patch('/sitters/:id', requireAuth, async (req: any, res) => {
     // it. Without this check the route was anonymous → anyone could rewrite any
     // sitter's name/phone/price/active state (profile takeover).
     const callerUid = req.user!.uid;
-    const callerEmail = req.user?.email || '';
-    if (existingSitter.userId !== callerUid && !isSuperAdmin(callerEmail)) {
+    // #240 migration: paired shape — allowlist + email_verified.
+    if (existingSitter.userId !== callerUid && !isSuperAdminVerified(req as any)) {
       return res.status(403).json({ error: 'You can only edit your own sitter profile' });
     }
 
@@ -630,7 +640,6 @@ router.get('/calculate-price', requireAuth, async (req: any, res) => {
 router.get('/pets', requireAuth, async (req: any, res) => {
   try {
     const callerId: string = req.user?.uid || req.firebaseUser?.uid || '';
-    const callerEmail: string = req.user?.email || '';
     const userId = req.query.userId as string;
 
     if (!userId) {
@@ -640,15 +649,10 @@ router.get('/pets', requireAuth, async (req: any, res) => {
     const isOwner = callerId === userId;
 
     // ── Super-admin / compliance bypass ────────────────────────────────────
+    // #240 migration: paired shape — allowlist + email_verified.
     const COMPLIANCE_ROLES = ['compliance', 'compliance_officer', 'auditor', 'legal'];
-    const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
-      .split(',')
-      .map(e => e.trim().toLowerCase())
-      .filter(Boolean);
-    const callerEmailLower = callerEmail.toLowerCase();
     const isAdminOrCompliance =
-      superAdminEmails.includes(callerEmailLower) ||
-      isSuperAdmin(callerEmail) ||
+      isSuperAdminVerified(req as any) ||
       (req.userRole?.role && COMPLIANCE_ROLES.includes(String(req.userRole.role.name || req.userRole.role).toLowerCase()));
 
     // ── Assigned provider check ─────────────────────────────────────────────
@@ -1073,13 +1077,16 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
           const { TwilioSMSService } = await import('../services/TwilioSMSService');
           const smsService = new TwilioSMSService();
           const ownerName = (req as any).user?.email?.split('@')[0] || 'לקוח/ה';
+          // AUDIT-SMS-5 (#221): sitter notification per-UID budget.
+          const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
           await smsService.sendSMS(
             sitter.phone,
             `🐾 ⁦PetWash™⁩ - בקשת הזמנה חדשה!\n` +
             `לקוח/ה: ${ownerName}\n` +
             `תאריכים: ${start.toLocaleDateString('he-IL')} - ${end.toLocaleDateString('he-IL')}\n` +
             `${totalDays} ימים · ₪${(pricing.subtotal).toFixed(0)}\n` +
-            `אנא אשר/י את ההזמנה באפליקציה.`
+            `אנא אשר/י את ההזמנה באפליקציה.`,
+            { userId: sitter.userId || undefined, purpose: _P.SITTER_SUITE },
           );
           logger.info('[Sitter Suite] ✅ Provider notification sent via SMS', { bookingId, phone: '***' });
         }
@@ -1590,23 +1597,62 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
     // Stage 2: settlement (withholding, Osek type, commissionId) is passed so the
     // P&L ledger entry is complete in one write — no second pass required.
     // Non-blocking — failure must not abort the completion response.
+    // Release-blocker A3 (CEO 2026-09-02): VAT ledger MUST NOT disappear
+    // into a `.catch()` — an Israeli fiscal-law breach. Try inline, and
+    // on failure enqueue a durable fiscal_document_outbox row for the
+    // drainer worker to retry. If BOTH fail we return 5xx so the
+    // client retries the whole booking-completion (idempotent by id).
+    const vatPayload = {
+      source: 'sitter-suite',
+      bookingId: booking.bookingId,
+      grossAmountIls: booking.totalChargeCents / 100,
+      metadata: {
+        completedAt: new Date().toISOString(),
+        bookingDbId: booking.id,
+      },
+      settlement: settlementResult.settlement ? {
+        withholdingTaxAmount: settlementResult.settlement.withholdingTaxAmount,
+        withholdingTaxRate: settlementResult.settlement.withholdingTaxRate,
+        netPaymentToProvider: settlementResult.settlement.netPaymentToProvider,
+        commissionId: settlementResult.settlement.commissionId,
+        osekType: settlementResult.settlement.osekType,
+      } : null,
+    };
     try {
-      await VATCalculatorService.recordTransactionFromGross(
-        'sitter-suite',
-        booking.bookingId,
-        booking.totalChargeCents / 100,
-        booking.bookingId,
-        { completedAt: new Date().toISOString(), bookingDbId: booking.id },
-        settlementResult.settlement ? {
-          withholdingTaxAmount: settlementResult.settlement.withholdingTaxAmount,
-          withholdingTaxRate: settlementResult.settlement.withholdingTaxRate,
-          netPaymentToProvider: settlementResult.settlement.netPaymentToProvider,
-          commissionId: settlementResult.settlement.commissionId,
-          osekType: settlementResult.settlement.osekType,
-        } : undefined
-      );
-    } catch (vatCompletionErr: any) {
-      logger.warn('[Sitter Suite] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId: booking.bookingId });
+      const outcome = await runFiscalDocumentAndPersistOnFailure({
+        pool,
+        kind: 'vat_ledger',
+        sourceKey: `booking:${booking.bookingId}`,
+        payload: vatPayload,
+        runNow: async () => {
+          await VATCalculatorService.recordTransactionFromGross(
+            'sitter-suite',
+            booking.bookingId,
+            booking.totalChargeCents / 100,
+            booking.bookingId,
+            { completedAt: new Date().toISOString(), bookingDbId: booking.id },
+            vatPayload.settlement || undefined,
+          );
+        },
+      });
+      if (!outcome.ranInline) {
+        logger.warn('[Sitter Suite] VAT ledger enqueued to outbox for retry', {
+          bookingId: booking.bookingId,
+          inlineError: outcome.inlineError,
+        });
+      }
+    } catch (err) {
+      if (err instanceof FiscalOutboxUnavailableError) {
+        logger.error('[Sitter Suite] VAT ledger both inline AND outbox failed', {
+          bookingId: booking.bookingId,
+          err: err.message,
+        });
+        return res.status(503).json({
+          error: 'fiscal_ledger_unavailable',
+          message: 'Booking completion could not persist fiscal state; please retry.',
+        });
+      }
+      throw err;
     }
     
     logger.info('[Sitter Suite] ✅ Booking completed - Israeli law 2026 compliant', {

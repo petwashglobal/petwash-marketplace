@@ -32,6 +32,13 @@ import { db, pool } from '../db';
 import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import {
+  getKillSwitchAllowed as _getKillSwitchAllowed,
+  checkIdempotency as _checkIdempotency,
+  recordIdempotency as _recordIdempotency,
+  KillSwitchUnavailableError,
+  IdempotencyUnavailableError,
+} from '../lib/killSwitchAndIdempotency';
 import { logAuditEvent, auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 import { z } from 'zod';
 import multer from 'multer';
@@ -85,7 +92,14 @@ async function ensurePassAccount(userId: string): Promise<{ passId: string; qrTo
     const issuer = process.env.GOOGLE_WALLET_ISSUER_ID || 'petwash';
 
     for (let attempt = 0; attempt < 5; attempt++) {
-      const passId = `PW-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+      // AUDIT-MONEY-10 (#231, 2026-09-01): pass id was two 4-digit
+      // Math.random draws — only ~1e7 possibilities, easily enumerable,
+      // and the id is used as a wallet-pass primary key. Kill the
+      // guessable form. randomBytes(4) → 32 bits of unpredictability,
+      // written as 8 uppercase hex chars split with a hyphen so the
+      // human-facing format is preserved.
+      const passIdRaw = randomBytes(4).toString('hex').toUpperCase();
+      const passId = `PW-${passIdRaw.slice(0, 4)}-${passIdRaw.slice(4, 8)}`;
       const appleSerialNumber = `APPLE-${passId}-${randomBytes(3).toString('hex').toUpperCase()}`;
       const googleObjectId = `${issuer}.${passId.replace(/-/g, '')}`;
       try {
@@ -1867,10 +1881,13 @@ router.post('/send-wallet-sms', walletEmailLimiter, async (req: Request, res: Re
     const link = `${appBaseUrl}/wallet-download`;
     const body = `PetWash™ — הכרטיס שלך ל-Apple/Google Wallet: ${link}`;
 
+    // AUDIT-SMS-5 (#221): prestige wallet-download link is a booking-confirm-shape send.
+    const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
     const result = await twilioSMSService.sendSMS(phone, body, {
       userId,
       ip: req.ip,
       ua: req.headers['user-agent'] as string | undefined,
+      purpose: _P.BOOKING_CONFIRM,
     });
 
     if (result.success) {
@@ -6103,7 +6120,7 @@ async function requireFinanceRole(
   req: Request, res: Response, minRole: 'read' | 'write' | 'admin'
 ): Promise<string | null> {
   const session = (req as any).session;
-  if (!session?.user?.isAdmin) { res.status(403).json({ error: 'Admin only' }); return null; }
+  if (!isSuperAdminVerified(req)) { res.status(403).json({ error: 'Admin only' }); return null; }
   const uid       = session.user.uid ?? session.user.id ?? '';
   const storedRole = await getFinanceRole(uid);
   // Bootstrapping: admins with no explicit role default to 'admin' so existing workflows are unaffected
@@ -6154,7 +6171,7 @@ const COLLECTED_EVENTS = `('redeem_kiosk','redeem_online','hold_capture')`;
 router.get('/admin/wallet/settlement-summary', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const from         = req.query.from         as string | undefined; // ISO date string
     const to           = req.query.to           as string | undefined;
@@ -6279,7 +6296,7 @@ router.get('/admin/wallet/settlement-summary', async (req: Request, res: Respons
 router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const from         = req.query.from         as string | undefined;
     const to           = req.query.to           as string | undefined;
@@ -6410,7 +6427,7 @@ router.get('/admin/wallet/settlement-summary/export', async (req: Request, res: 
 router.post('/admin/wallet/disputes', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid as string;
 
     const schema = z.object({
@@ -6464,7 +6481,7 @@ router.post('/admin/wallet/disputes', async (req: Request, res: Response) => {
 router.get('/admin/wallet/disputes', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const status           = req.query.status           as string | undefined;
     const divisionCode     = req.query.divisionCode     as string | undefined;
@@ -6522,7 +6539,7 @@ router.get('/admin/wallet/disputes', async (req: Request, res: Response) => {
 router.patch('/admin/wallet/disputes/:caseRef', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid      = session.user.uid as string;
     const { caseRef } = req.params;
 
@@ -6573,7 +6590,7 @@ router.patch('/admin/wallet/disputes/:caseRef', async (req: Request, res: Respon
 router.post('/admin/wallet/disputes/:caseRef/resolve', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid      = session.user.uid as string;
     const { caseRef } = req.params;
 
@@ -6863,7 +6880,7 @@ async function executeApprovalRefund(opts: {
 router.post('/admin/wallet/refund-requests', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const requestedByUid = session.user.uid as string;
 
     const schema = z.object({
@@ -6950,7 +6967,7 @@ router.post('/admin/wallet/refund-requests', async (req: Request, res: Response)
 router.get('/admin/wallet/refund-requests/pending', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const rows: any = await db.execute(sql`
       SELECT * FROM refund_approvals
@@ -6971,7 +6988,7 @@ router.get('/admin/wallet/refund-requests/pending', async (req: Request, res: Re
 router.post('/admin/wallet/refund-requests/:id/approve', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const reviewerUid     = session.user.uid as string;
     const refundRequestId = req.params.id;
 
@@ -7025,7 +7042,7 @@ router.post('/admin/wallet/refund-requests/:id/approve', async (req: Request, re
 router.post('/admin/wallet/refund-requests/:id/reject', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const reviewerUid     = session.user.uid as string;
     const refundRequestId = req.params.id;
 
@@ -7187,7 +7204,7 @@ router.post('/admin/wallet/payout-batches/create', async (req: Request, res: Res
 router.get('/admin/wallet/payout-batches', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const rows: any = await db.execute(sql`
       SELECT pb.*,
@@ -7222,7 +7239,7 @@ router.get('/admin/wallet/payout-batches', async (req: Request, res: Response) =
 router.get('/admin/wallet/payout-batches/:batchId', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { batchId } = req.params;
 
     const batchRow: any = await db.execute(sql`
@@ -7408,7 +7425,7 @@ function serializePayoutEntries(entries: PayoutEntry[], batchId: string, format:
 router.get('/admin/wallet/payout-batches/:batchId/export', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { batchId } = req.params;
     const format: ExportFormat = EXPORT_FORMATS.includes(req.query.format as any)
       ? (req.query.format as ExportFormat)
@@ -7443,7 +7460,7 @@ router.get('/admin/wallet/payout-batches/:batchId/export', async (req: Request, 
 router.get('/admin/wallet/payout-batches/:batchId/provider-export', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { batchId } = req.params;
 
     const entriesRaw: any = await db.execute(sql`
@@ -7611,7 +7628,7 @@ async function buildChecklist(dateIso: string): Promise<Record<string, { ok: boo
 router.get('/admin/wallet/finance-close/history', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const rows: any = await db.execute(sql`
       SELECT id, close_date, status, closed_by_uid, closed_at,
@@ -7645,7 +7662,7 @@ router.get('/admin/wallet/finance-close/month-export', async (req: Request, res:
   try {
     const { createHash } = await import('crypto');
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const monthParam = (req.query.month as string) ?? '';
     if (!/^\d{4}-\d{2}$/.test(monthParam)) {
@@ -7785,7 +7802,7 @@ router.get('/admin/wallet/finance-close/month-export', async (req: Request, res:
 router.get('/admin/wallet/finance-close/:date', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const dateParam = req.params.date; // e.g. "2026-03-22"
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
@@ -7961,7 +7978,7 @@ router.get('/admin/wallet/finance-close/:date/export', async (req: Request, res:
   try {
     const { createHash } = await import('crypto');
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const dateParam = req.params.date;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
@@ -8164,7 +8181,7 @@ router.get('/provider/wallet/clawback-history', async (req: Request, res: Respon
 router.get('/admin/wallet/clawback-summary', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const { from, to, divisionCode } = req.query as Record<string, string>;
     const conditions: any[] = [sql`net_cents < 0`];
@@ -8339,7 +8356,7 @@ router.post('/admin/wallet/payout-batches/:batchId/send-remittances', async (req
 router.get('/admin/wallet/payout-batches/:batchId/remittance-log', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { batchId } = req.params;
 
     const raw: any = await db.execute(sql`
@@ -8381,7 +8398,7 @@ router.post('/admin/wallet/payout-batches/:batchId/reconcile',
   async (req: Request, res: Response) => {
     try {
       const session = (req as any).session;
-      if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+      if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
       const financeRole = await requireFinanceRole(req, res, 'write');
       if (!financeRole) return;
 
@@ -8542,7 +8559,7 @@ router.post('/admin/wallet/payout-batches/:batchId/reconcile',
 router.get('/admin/wallet/payout-batches/:batchId/reconciliation', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { batchId } = req.params;
 
     const uploadsRaw: any = await db.execute(sql`
@@ -8865,7 +8882,7 @@ router.post('/admin/wallet/disputes/:caseRef/escalate', async (req: Request, res
 router.post('/admin/wallet/disputes/auto-escalate', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin && req.headers['x-internal-job'] !== 'petwash-cron') {
+    if (!isSuperAdminVerified(req) && req.headers['x-internal-job'] !== 'petwash-cron') {
       return res.status(403).json({ error: 'Admin or internal cron only' });
     }
     const now = new Date();
@@ -8914,7 +8931,7 @@ router.post('/admin/wallet/disputes/auto-escalate', async (req: Request, res: Re
 router.get('/admin/wallet/alerts', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const includeAck  = req.query.includeAcknowledged === 'true';
     const severity    = (req.query.severity as string) || null;
@@ -9018,7 +9035,7 @@ router.post('/admin/wallet/alerts/acknowledge-all', async (req: Request, res: Re
 router.get('/admin/wallet/reconciliation-exceptions', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const { status, batchId, providerUid, assignedAdminUid, from, to } = req.query as Record<string, string>;
 
@@ -9147,7 +9164,7 @@ router.post('/admin/wallet/reconciliation-exceptions/:id/match', async (req: Req
 router.get('/admin/wallet/alerts/delivery-log', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { alertId, from, to } = req.query as Record<string, string>;
 
     const conditions: any[] = [];
@@ -9206,7 +9223,7 @@ router.post('/admin/wallet/alerts/:id/escalate-now', async (req: Request, res: R
 router.get('/admin/wallet/alerts/digest-preview', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const raw: any = await db.execute(sql`
       SELECT alert_type, severity, COUNT(*) as count
@@ -9238,7 +9255,7 @@ router.get('/admin/wallet/alerts/digest-preview', async (req: Request, res: Resp
 router.get('/admin/wallet/monthly-signoff', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
 
     const rowRaw: any = await db.execute(sql`
@@ -9323,7 +9340,7 @@ router.post('/admin/wallet/monthly-signoff', async (req: Request, res: Response)
 router.get('/admin/wallet/variance-commentary', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
 
     const rowsRaw: any = await db.execute(sql`
@@ -9377,7 +9394,7 @@ router.post('/admin/wallet/variance-commentary', async (req: Request, res: Respo
 router.get('/admin/wallet/monthly-signoff/:month/export', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const month = req.params.month;
     if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM.' });
 
@@ -9590,7 +9607,7 @@ router.get('/provider/wallet/payout-batch/:batchId', async (req: Request, res: R
 router.get('/admin/wallet/board-pack', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const month = (req.query.month as string) || new Date().toISOString().slice(0, 7);
     if (!/^\d{4}-\d{2}$/.test(month)) return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM.' });
 
@@ -9711,7 +9728,7 @@ router.get('/admin/wallet/board-pack', async (req: Request, res: Response) => {
 router.post('/admin/wallet/integrity/run', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid ?? session.user.id ?? 'unknown';
 
     const results: any[] = [];
@@ -9833,7 +9850,7 @@ router.post('/admin/wallet/integrity/run', async (req: Request, res: Response) =
 router.get('/admin/wallet/integrity/history', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const raw: any = await db.execute(sql`
       SELECT DISTINCT ON (job_name) job_name, id, started_at, completed_at, status, findings_count, summary
@@ -9853,7 +9870,7 @@ router.get('/admin/wallet/integrity/history', async (req: Request, res: Response
 router.get('/admin/wallet/capabilities', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { roleName } = req.query as Record<string, string>;
 
     const raw: any = roleName
@@ -9914,7 +9931,7 @@ router.post('/admin/wallet/capabilities', async (req: Request, res: Response) =>
 router.get('/admin/wallet/dispute-sla-report', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const { from, to, divisionCode, status: statusFilter } = req.query as Record<string, string>;
 
@@ -9986,7 +10003,7 @@ router.get('/admin/wallet/dispute-sla-report', async (req: Request, res: Respons
 router.get('/admin/wallet/variance-analysis', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const monthParam = String(req.query.month ?? '').trim();
     // Default to current month
@@ -10073,7 +10090,7 @@ router.get('/admin/wallet/variance-analysis', async (req: Request, res: Response
 router.get('/admin/wallet/finance-audit', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const { actor, action, entityType, from, to, page } = req.query as Record<string, string>;
     const pageNum  = Math.max(1, parseInt(page ?? '1', 10) || 1);
@@ -10131,7 +10148,7 @@ router.get('/admin/wallet/finance-audit', async (req: Request, res: Response) =>
 router.get('/admin/wallet/finance-roles', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const rows: any = await db.execute(sql`
       SELECT user_uid, role, granted_by, created_at, updated_at
@@ -10162,7 +10179,7 @@ router.get('/admin/wallet/finance-roles', async (req: Request, res: Response) =>
 router.post('/admin/wallet/finance-roles/:uid', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const grantorUid = session.user.uid ?? session.user.id ?? 'unknown';
     const { uid }    = req.params;
 
@@ -10204,7 +10221,7 @@ router.post('/admin/wallet/finance-roles/:uid', async (req: Request, res: Respon
 router.delete('/admin/wallet/finance-roles/:uid', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const grantorUid = session.user.uid ?? session.user.id ?? 'unknown';
     const { uid } = req.params;
 
@@ -10234,7 +10251,7 @@ router.delete('/admin/wallet/finance-roles/:uid', async (req: Request, res: Resp
 router.get('/admin/wallet/finance-roles/audit', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const raw: any = await db.execute(sql`
       SELECT id, grantor_uid, target_uid, action, old_role, new_role, created_at
@@ -10267,7 +10284,7 @@ router.get('/admin/wallet/finance-roles/audit', async (req: Request, res: Respon
 router.get('/admin/wallet/cash-forecast', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const horizon = Math.min(Math.max(parseInt((req.query.horizon as string) || '14', 10), 7), 30);
 
@@ -10361,7 +10378,7 @@ router.get('/admin/wallet/cash-forecast', async (req: Request, res: Response) =>
 router.get('/admin/wallet/payout-schedules', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const raw: any = await db.execute(sql`
       SELECT ps.*, COUNT(psr.id)::int AS run_count
@@ -10388,7 +10405,7 @@ router.get('/admin/wallet/payout-schedules', async (req: Request, res: Response)
 router.post('/admin/wallet/payout-schedules', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { divisionCode, cadence, dayOfWeek, dayOfMonth, enabled = true, minBatchNetCents = 0, notes = '' } = req.body;
     if (!cadence || !['daily','weekly','fortnightly','monthly'].includes(cadence)) {
@@ -10416,7 +10433,7 @@ router.post('/admin/wallet/payout-schedules', async (req: Request, res: Response
 router.patch('/admin/wallet/payout-schedules/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { divisionCode, cadence, dayOfWeek, dayOfMonth, enabled, minBatchNetCents, notes } = req.body;
@@ -10447,7 +10464,7 @@ router.patch('/admin/wallet/payout-schedules/:id', async (req: Request, res: Res
 router.post('/admin/wallet/payout-schedules/:id/run-now', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const scheduleId = parseInt(req.params.id, 10);
 
@@ -10511,7 +10528,7 @@ router.post('/admin/wallet/payout-schedules/:id/run-now', async (req: Request, r
 router.get('/admin/wallet/payout-schedules/runs', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const scheduleId = req.query.scheduleId ? parseInt(req.query.scheduleId as string, 10) : null;
     const raw: any = await db.execute(sql`
       SELECT psr.*, ps.cadence, ps.division_code
@@ -10540,7 +10557,7 @@ router.get('/admin/wallet/payout-schedules/runs', async (req: Request, res: Resp
 router.get('/admin/wallet/dispute-routing-rules', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM dispute_routing_rules ORDER BY priority ASC, id ASC`);
     const rules = (raw?.rows ?? raw ?? []).map((r: any) => ({
       id: r.id, divisionCode: r.division_code, minAmountCents: r.min_amount_cents,
@@ -10558,7 +10575,7 @@ router.get('/admin/wallet/dispute-routing-rules', async (req: Request, res: Resp
 router.post('/admin/wallet/dispute-routing-rules', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { divisionCode, minAmountCents = 0, maxAmountCents, assignToUid, queueName, priority = 100, enabled = true } = req.body;
     if (!queueName && !assignToUid) return res.status(400).json({ error: 'Must specify queueName or assignToUid' });
@@ -10583,7 +10600,7 @@ router.post('/admin/wallet/dispute-routing-rules', async (req: Request, res: Res
 router.patch('/admin/wallet/dispute-routing-rules/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { divisionCode, minAmountCents, maxAmountCents, assignToUid, queueName, priority, enabled } = req.body;
@@ -10614,7 +10631,7 @@ router.patch('/admin/wallet/dispute-routing-rules/:id', async (req: Request, res
 router.post('/admin/wallet/disputes/:caseRef/route', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { caseRef } = req.params;
     const { overrideQueue, overrideUid, reason } = req.body;
@@ -10686,7 +10703,7 @@ router.post('/admin/wallet/disputes/:caseRef/route', async (req: Request, res: R
 router.get('/admin/wallet/control-center', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const [forecastRaw, batchRaw, refundRaw, reconRaw, alertRaw, closeRaw]: any[] = await Promise.all([
       // Cash needed next 7 days: pending payout entries + pending refunds
@@ -10771,7 +10788,7 @@ router.get('/admin/wallet/control-center', async (req: Request, res: Response) =
 router.get('/admin/wallet/executive-kpis', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const period = (req.query.period as string) || 'daily';
     if (!['daily','weekly','monthly'].includes(period)) return res.status(400).json({ error: 'Invalid period' });
@@ -10886,7 +10903,7 @@ router.get('/admin/wallet/executive-kpis', async (req: Request, res: Response) =
 router.get('/admin/wallet/archive-policies', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM finance_archive_policies ORDER BY entity_type ASC`);
     const policies = (raw?.rows ?? raw ?? []).map((r: any) => ({
       id: r.id, entityType: r.entity_type, retentionDays: r.retention_days,
@@ -10903,7 +10920,7 @@ router.get('/admin/wallet/archive-policies', async (req: Request, res: Response)
 router.post('/admin/wallet/archive-policies', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { entityType, retentionDays, archiveAfterDays, enabled = true, notes = '' } = req.body;
     if (!entityType || !retentionDays || !archiveAfterDays) return res.status(400).json({ error: 'entityType, retentionDays, archiveAfterDays required' });
@@ -10928,7 +10945,7 @@ router.post('/admin/wallet/archive-policies', async (req: Request, res: Response
 router.patch('/admin/wallet/archive-policies/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { retentionDays, archiveAfterDays, enabled, notes } = req.body;
@@ -10956,7 +10973,7 @@ router.patch('/admin/wallet/archive-policies/:id', async (req: Request, res: Res
 router.get('/admin/wallet/archive-runs', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT * FROM finance_archive_runs ORDER BY ran_at DESC LIMIT 100
     `);
@@ -10975,7 +10992,7 @@ router.get('/admin/wallet/archive-runs', async (req: Request, res: Response) => 
 router.post('/admin/wallet/archive-runs/dry-run', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
 
     const policiesRaw: any = await db.execute(sql`SELECT * FROM finance_archive_policies WHERE enabled = true`);
@@ -11120,7 +11137,7 @@ async function runReplay(replayType: string, dryRun: boolean, initiatedBy: strin
 router.post('/admin/wallet/replay/dry-run', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { replayType } = req.body;
     if (!SAFE_REPLAY_TYPES.includes(replayType)) {
@@ -11145,7 +11162,7 @@ router.post('/admin/wallet/replay/dry-run', async (req: Request, res: Response) 
 router.post('/admin/wallet/replay/execute', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     // finance_admin only
     const roleRaw: any = await db.execute(sql`SELECT role FROM finance_user_roles WHERE uid = ${adminUid} LIMIT 1`);
@@ -11174,7 +11191,7 @@ router.post('/admin/wallet/replay/execute', async (req: Request, res: Response) 
 router.get('/admin/wallet/replay-runs', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT * FROM finance_replay_runs ORDER BY started_at DESC LIMIT 50
     `);
@@ -11199,7 +11216,7 @@ router.get('/admin/wallet/replay-runs', async (req: Request, res: Response) => {
 router.get('/admin/wallet/cash-forecast/accuracy', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const horizon = req.query.horizon ? parseInt(req.query.horizon as string, 10) : null;
     const from    = (req.query.from as string) || null;
@@ -11241,7 +11258,7 @@ router.get('/admin/wallet/cash-forecast/accuracy', async (req: Request, res: Res
 router.post('/admin/wallet/cash-forecast/accuracy/score', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const scored = await scoreForecastAccuracy();
     return res.json({ ok: true, scored });
   } catch (err: any) {
@@ -11326,7 +11343,7 @@ const PAYOUT_AUTO_RELEASE_LIMIT_CENTS = parseInt(process.env.PAYOUT_AUTO_RELEASE
 router.post('/admin/wallet/payout-batches/:batchId/release-request', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { batchId } = req.params;
     const { reason = '' } = req.body;
@@ -11398,7 +11415,7 @@ router.post('/admin/wallet/payout-batches/:batchId/release-request', async (req:
 router.get('/admin/wallet/payout-release-approvals/pending', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT pra.*, pb.net_total_cents, pb.entry_count, pb.status AS batch_status
       FROM payout_release_approvals pra
@@ -11422,7 +11439,7 @@ router.get('/admin/wallet/payout-release-approvals/pending', async (req: Request
 router.post('/admin/wallet/payout-release-approvals/:id/approve', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { id } = req.params;
 
@@ -11467,7 +11484,7 @@ router.post('/admin/wallet/payout-release-approvals/:id/approve', async (req: Re
 router.post('/admin/wallet/payout-release-approvals/:id/reject', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { reason = '' } = req.body;
@@ -11503,7 +11520,7 @@ router.post('/admin/wallet/payout-release-approvals/:id/reject', async (req: Req
 router.post('/admin/wallet/dispute-routing-rules/simulate', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const { divisionCode, amountCents = 0, bookingId, complainantType = 'customer' } = req.body;
 
@@ -11579,7 +11596,7 @@ const VALID_SIGNALS = ['cash_pressure','critical_alerts','stale_recon_exceptions
 router.get('/admin/wallet/control-subscriptions', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const raw: any = await db.execute(sql`
       SELECT * FROM finance_control_subscriptions
@@ -11601,7 +11618,7 @@ router.get('/admin/wallet/control-subscriptions', async (req: Request, res: Resp
 router.post('/admin/wallet/control-subscriptions', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { signalCode, deliveryChannel = 'email', enabled = true } = req.body;
     if (!VALID_SIGNALS.includes(signalCode)) return res.status(400).json({ error: 'Invalid signal code', validSignals: VALID_SIGNALS });
@@ -11623,7 +11640,7 @@ router.post('/admin/wallet/control-subscriptions', async (req: Request, res: Res
 router.patch('/admin/wallet/control-subscriptions/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { id } = req.params;
     const { enabled, deliveryChannel } = req.body;
@@ -11653,7 +11670,7 @@ router.patch('/admin/wallet/control-subscriptions/:id', async (req: Request, res
 router.get('/admin/wallet/executive-digest/preview', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const now = new Date();
     const monday = new Date(now);
@@ -11724,7 +11741,7 @@ router.get('/admin/wallet/executive-digest/preview', async (req: Request, res: R
 router.post('/admin/wallet/executive-digest/send', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
 
     const now = new Date();
@@ -11772,7 +11789,7 @@ router.post('/admin/wallet/executive-digest/send', async (req: Request, res: Res
 router.get('/admin/wallet/executive-digest/log', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM executive_digest_log ORDER BY sent_at DESC LIMIT 52`);
     const entries = (raw?.rows ?? raw ?? []).map((r: any) => ({
       id: r.id, periodStart: r.period_start, periodEnd: r.period_end,
@@ -11796,7 +11813,7 @@ const ARCHIVE_PROTECTED = new Set(['finance_audit_log','monthly_signoffs','finan
 router.post('/admin/wallet/archive/execute', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     // finance_admin only
     const roleRaw: any = await db.execute(sql`SELECT role FROM finance_user_roles WHERE uid = ${adminUid} LIMIT 1`);
@@ -11875,7 +11892,7 @@ router.post('/admin/wallet/archive/execute', async (req: Request, res: Response)
 router.get('/admin/wallet/archive/artifacts', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT faa.*, far.status AS run_status, far.ran_at
       FROM finance_archive_artifacts faa
@@ -11898,14 +11915,14 @@ router.get('/admin/wallet/archive/artifacts', async (req: Request, res: Response
 // PHASE 3.5G — REPLAY APPROVALS & SIGNED RUN REPORTS
 // ══════════════════════════════════════════════════════════════════════════════
 
-import { createHash } from 'crypto';
+// `createHash` is already imported at file top (line 26).
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 // POST /admin/wallet/replay/request-execute — request approval for latest dry-run of given type
 router.post('/admin/wallet/replay/request-execute', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const { replayType, reason = '' } = req.body;
     if (!replayType) return res.status(400).json({ error: 'replayType required' });
@@ -11948,7 +11965,7 @@ router.post('/admin/wallet/replay/request-execute', async (req: Request, res: Re
 router.get('/admin/wallet/replay/approvals/pending', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT fra.*, frr.replay_type, frr.findings_json, frr.started_at AS dry_run_started_at
       FROM finance_replay_approvals fra
@@ -11973,7 +11990,7 @@ router.get('/admin/wallet/replay/approvals/pending', async (req: Request, res: R
 router.post('/admin/wallet/replay/approvals/:id/approve', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const adminUid = session.user.uid;
     const roleRaw: any = await db.execute(sql`SELECT role FROM finance_user_roles WHERE uid = ${adminUid} LIMIT 1`);
     const role = (roleRaw?.rows ?? roleRaw)?.[0]?.role;
@@ -12039,7 +12056,7 @@ router.post('/admin/wallet/replay/approvals/:id/approve', async (req: Request, r
 router.get('/admin/wallet/replay/reports/:runId', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { runId } = req.params;
     const raw: any = await db.execute(sql`
       SELECT * FROM finance_replay_reports WHERE replay_run_id = ${parseInt(runId, 10)}
@@ -12062,7 +12079,7 @@ router.get('/admin/wallet/replay/reports/:runId', async (req: Request, res: Resp
 router.get('/admin/wallet/cash-forecast/weights', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const horizon = req.query.horizon ? parseInt(req.query.horizon as string, 10) : null;
     const raw: any = await db.execute(horizon
       ? sql`SELECT * FROM cash_forecast_weights WHERE horizon_days = ${horizon} ORDER BY factor_name`
@@ -12082,7 +12099,7 @@ router.get('/admin/wallet/cash-forecast/weights', async (req: Request, res: Resp
 router.post('/admin/wallet/cash-forecast/weights', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const { horizonDays, factorName, weight, enabled } = req.body;
     if (!horizonDays || !factorName || weight === undefined) return res.status(400).json({ error: 'horizonDays, factorName, weight required' });
@@ -12105,7 +12122,7 @@ router.post('/admin/wallet/cash-forecast/weights', async (req: Request, res: Res
 router.patch('/admin/wallet/cash-forecast/weights/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const id = parseInt(req.params.id, 10);
     const { weight, enabled } = req.body;
@@ -12127,7 +12144,7 @@ router.patch('/admin/wallet/cash-forecast/weights/:id', async (req: Request, res
 router.post('/admin/wallet/cash-forecast/recompute', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const horizon = parseInt((req.query.horizon as string) || '7', 10);
     // Load weights for this horizon
     const wRaw: any = await db.execute(sql`SELECT * FROM cash_forecast_weights WHERE horizon_days=${horizon} AND enabled=true ORDER BY factor_name`);
@@ -12163,7 +12180,7 @@ router.post('/admin/wallet/cash-forecast/recompute', async (req: Request, res: R
 router.get('/admin/wallet/payout-release-policies', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM payout_release_policies ORDER BY updated_at DESC`);
     const rows = (raw?.rows ?? raw) || [];
     return res.json({ ok: true, policies: rows.map((r: any) => ({
@@ -12181,7 +12198,7 @@ router.get('/admin/wallet/payout-release-policies', async (req: Request, res: Re
 router.post('/admin/wallet/payout-release-policies', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const { divisionCode, minAmountCents, maxAmountCents, requiresSecondApproval, allowedAutoRelease, notes } = req.body;
     const raw: any = await db.execute(sql`
@@ -12199,7 +12216,7 @@ router.post('/admin/wallet/payout-release-policies', async (req: Request, res: R
 router.patch('/admin/wallet/payout-release-policies/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const id = parseInt(req.params.id, 10);
     const { divisionCode, minAmountCents, maxAmountCents, requiresSecondApproval, allowedAutoRelease, enabled, notes } = req.body;
@@ -12220,7 +12237,7 @@ router.patch('/admin/wallet/payout-release-policies/:id', async (req: Request, r
 router.post('/admin/wallet/payout-batches/:batchId/evaluate-release-policy', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const batchId = parseInt(req.params.batchId, 10);
     const batchRaw: any = await db.execute(sql`SELECT * FROM payout_schedule_runs WHERE id=${batchId}`);
     const batch = (batchRaw?.rows ?? batchRaw)?.[0];
@@ -12268,7 +12285,7 @@ router.post('/admin/wallet/payout-batches/:batchId/evaluate-release-policy', asy
 router.get('/admin/wallet/digest-preferences', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM finance_digest_preferences ORDER BY updated_at DESC`);
     const rows = (raw?.rows ?? raw) || [];
     return res.json({ ok: true, preferences: rows.map((r: any) => ({
@@ -12285,7 +12302,7 @@ router.get('/admin/wallet/digest-preferences', async (req: Request, res: Respons
 router.post('/admin/wallet/digest-preferences', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { userUid, digestType, minSeverity, includeControlCenter, includeExecutiveSummary } = req.body;
     if (!userUid || !digestType) return res.status(400).json({ error: 'userUid and digestType required' });
     const raw: any = await db.execute(sql`
@@ -12303,7 +12320,7 @@ router.post('/admin/wallet/digest-preferences', async (req: Request, res: Respon
 router.patch('/admin/wallet/digest-preferences/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { digestType, minSeverity, includeControlCenter, includeExecutiveSummary, enabled } = req.body;
     if (digestType !== undefined)              await db.execute(sql`UPDATE finance_digest_preferences SET digest_type=${digestType}, updated_at=NOW() WHERE id=${id}`);
@@ -12325,7 +12342,7 @@ router.patch('/admin/wallet/digest-preferences/:id', async (req: Request, res: R
 router.post('/admin/wallet/archive/retrieve', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const { artifactId, reason } = req.body;
     if (!artifactId) return res.status(400).json({ error: 'artifactId required' });
@@ -12351,7 +12368,7 @@ router.post('/admin/wallet/archive/retrieve', async (req: Request, res: Response
 router.get('/admin/wallet/archive/retrievals', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM finance_archive_retrievals ORDER BY requested_at DESC LIMIT 50`);
     const rows = (raw?.rows ?? raw) || [];
     return res.json({ ok: true, retrievals: rows.map((r: any) => ({
@@ -12368,7 +12385,7 @@ router.get('/admin/wallet/archive/retrievals', async (req: Request, res: Respons
 router.post('/admin/wallet/archive/retrievals/:id/mark-ready', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'finance_admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'finance_admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const id = parseInt(req.params.id, 10);
     const { retrievalRef, errorDetail } = req.body;
@@ -12390,7 +12407,7 @@ router.post('/admin/wallet/archive/retrievals/:id/mark-ready', async (req: Reque
 router.get('/admin/wallet/replay/diff/:runId', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const runId = parseInt(req.params.runId, 10);
     // Load diffs if stored
     const diffRaw: any = await db.execute(sql`SELECT * FROM finance_replay_diffs WHERE replay_run_id=${runId} ORDER BY entity_type, entity_id`);
@@ -12424,7 +12441,7 @@ router.get('/admin/wallet/replay/diff/:runId', async (req: Request, res: Respons
 router.get('/admin/wallet/policies', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM finance_policy_rules ORDER BY policy_scope, policy_key`);
     const rows = (raw?.rows ?? raw) || [];
     return res.json({ ok: true, policies: rows.map((r: any) => ({
@@ -12441,7 +12458,7 @@ router.get('/admin/wallet/policies', async (req: Request, res: Response) => {
 router.post('/admin/wallet/policies', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const { policyKey, policyScope, divisionCode, valueJson } = req.body;
     if (!policyKey || !policyScope || valueJson === undefined) return res.status(400).json({ error: 'policyKey, policyScope, valueJson required' });
@@ -12463,7 +12480,7 @@ router.post('/admin/wallet/policies', async (req: Request, res: Response) => {
 router.patch('/admin/wallet/policies/:policyKey', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const uid = session.user.uid ?? session.user.id ?? 'unknown';
     const { policyKey } = req.params;
     const { valueJson, enabled } = req.body;
@@ -12485,7 +12502,7 @@ router.patch('/admin/wallet/policies/:policyKey', async (req: Request, res: Resp
 router.get('/admin/wallet/period-pack', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { type, period } = req.query;
     if (!type || !period) return res.status(400).json({ error: 'type (quarter|year) and period (e.g. 2026-Q1 or 2026) required' });
     // Check cache first
@@ -12545,7 +12562,7 @@ router.get('/admin/wallet/period-pack', async (req: Request, res: Response) => {
 router.get('/admin/wallet/period-pack/export', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { type, period } = req.query;
     if (!type || !period) return res.status(400).json({ error: 'type and period required' });
     const raw: any = await db.execute(sql`SELECT * FROM period_close_packs WHERE period_type=${type as string} AND period_key=${period as string} ORDER BY generated_at DESC LIMIT 1`);
@@ -12570,7 +12587,7 @@ router.get('/admin/wallet/period-pack/export', async (req: Request, res: Respons
 router.post('/admin/wallet/policy-simulation/run', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { policyKey, proposedValue, divisionCode, simulationContext } = req.body;
     if (!policyKey || proposedValue === undefined) return res.status(400).json({ error: 'policyKey and proposedValue required' });
 
@@ -12644,7 +12661,7 @@ router.post('/admin/wallet/policy-simulation/run', async (req: Request, res: Res
 router.get('/admin/wallet/policy-simulation/history', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const limit = Math.min(parseInt(req.query.limit as string || '50', 10), 200);
     const raw: any = await db.execute(sql`SELECT * FROM policy_simulations ORDER BY created_at DESC LIMIT ${limit}`);
     const rows = raw?.rows ?? raw;
@@ -12660,7 +12677,7 @@ router.get('/admin/wallet/policy-simulation/history', async (req: Request, res: 
 router.get('/admin/wallet/approval-chains', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const chainsRaw: any = await db.execute(sql`SELECT * FROM approval_chains ORDER BY trigger_type, min_amount_cents`);
     const chains = chainsRaw?.rows ?? chainsRaw;
     const stepsRaw: any = await db.execute(sql`SELECT * FROM approval_chain_steps ORDER BY chain_id, step_order`);
@@ -12676,7 +12693,7 @@ router.get('/admin/wallet/approval-chains', async (req: Request, res: Response) 
 router.post('/admin/wallet/approval-chains', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { chainName, triggerType, divisionCode, minAmountCents, maxAmountCents, escalationHours, notes } = req.body;
     if (!chainName || !triggerType) return res.status(400).json({ error: 'chainName and triggerType required' });
     const raw: any = await db.execute(sql`
@@ -12695,7 +12712,7 @@ router.post('/admin/wallet/approval-chains', async (req: Request, res: Response)
 router.patch('/admin/wallet/approval-chains/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { isActive, chainName, escalationHours, notes } = req.body;
     const raw: any = await db.execute(sql`
@@ -12718,7 +12735,7 @@ router.patch('/admin/wallet/approval-chains/:id', async (req: Request, res: Resp
 router.post('/admin/wallet/approval-chains/:id/steps', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const chainId = parseInt(req.params.id, 10);
     const { stepOrder, requiredRole, isRequired, timeoutHours, escalateToRole } = req.body;
     if (!stepOrder || !requiredRole) return res.status(400).json({ error: 'stepOrder and requiredRole required' });
@@ -12738,7 +12755,7 @@ router.post('/admin/wallet/approval-chains/:id/steps', async (req: Request, res:
 router.delete('/admin/wallet/approval-chain-steps/:stepId', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const stepId = parseInt(req.params.stepId, 10);
     await db.execute(sql`DELETE FROM approval_chain_steps WHERE id = ${stepId}`);
     return res.json({ ok: true });
@@ -12751,7 +12768,7 @@ router.delete('/admin/wallet/approval-chain-steps/:stepId', async (req: Request,
 router.get('/admin/wallet/approval-requests', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { status, entityType, limit: lim } = req.query;
     const limitVal = Math.min(parseInt(lim as string || '100', 10), 500);
     let query = sql`SELECT ar.*, ac.chain_name FROM approval_requests ar LEFT JOIN approval_chains ac ON ar.chain_id = ac.id WHERE 1=1`;
@@ -12778,7 +12795,7 @@ router.get('/admin/wallet/approval-requests', async (req: Request, res: Response
 router.post('/admin/wallet/approval-requests', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { chainId, entityType, entityId, amountCents, divisionCode, context } = req.body;
     if (!entityType || !entityId) return res.status(400).json({ error: 'entityType and entityId required' });
     const raw: any = await db.execute(sql`
@@ -12797,7 +12814,7 @@ router.post('/admin/wallet/approval-requests', async (req: Request, res: Respons
 router.post('/admin/wallet/approval-requests/:id/act', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const reqId = parseInt(req.params.id, 10);
     const { action, comment } = req.body;
     if (!action || !['approve','reject','escalate'].includes(action)) return res.status(400).json({ error: 'action must be approve|reject|escalate' });
@@ -12869,7 +12886,7 @@ router.post('/admin/wallet/approval-requests/:id/act', async (req: Request, res:
 router.get('/admin/wallet/forecast-scenarios', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM forecast_scenarios ORDER BY created_at DESC`);
     return res.json({ ok: true, scenarios: raw?.rows ?? raw });
   } catch (err: any) {
@@ -12881,7 +12898,7 @@ router.get('/admin/wallet/forecast-scenarios', async (req: Request, res: Respons
 router.post('/admin/wallet/forecast-scenarios', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { scenarioName, description, baseHorizonDays, weightOverrides, revenueAdjustmentPct, bookingVolumeAdjustmentPct, divisionCode } = req.body;
     if (!scenarioName) return res.status(400).json({ error: 'scenarioName required' });
     const raw: any = await db.execute(sql`
@@ -12899,7 +12916,7 @@ router.post('/admin/wallet/forecast-scenarios', async (req: Request, res: Respon
 router.patch('/admin/wallet/forecast-scenarios/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { scenarioName, description, revenueAdjustmentPct, bookingVolumeAdjustmentPct, weightOverrides, isActive } = req.body;
     const raw: any = await db.execute(sql`
@@ -12924,7 +12941,7 @@ router.patch('/admin/wallet/forecast-scenarios/:id', async (req: Request, res: R
 router.post('/admin/wallet/forecast-scenarios/:id/run', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const scenRaw: any = await db.execute(sql`SELECT * FROM forecast_scenarios WHERE id = ${id}`);
     const scenario = (scenRaw?.rows ?? scenRaw)?.[0];
@@ -12976,7 +12993,7 @@ router.post('/admin/wallet/forecast-scenarios/:id/run', async (req: Request, res
 router.get('/admin/wallet/exception-suggestions', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { status } = req.query;
     const raw: any = await db.execute(sql`
       SELECT * FROM exception_suggestions
@@ -12993,7 +13010,7 @@ router.get('/admin/wallet/exception-suggestions', async (req: Request, res: Resp
 router.post('/admin/wallet/exception-suggestions/generate', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
 
     const generated: any[] = [];
 
@@ -13065,7 +13082,7 @@ router.post('/admin/wallet/exception-suggestions/generate', async (req: Request,
 router.post('/admin/wallet/exception-suggestions/:id/apply', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const raw: any = await db.execute(sql`
       UPDATE exception_suggestions SET status='applied', applied_by_uid=${session.user.uid}, applied_at=NOW()
@@ -13083,7 +13100,7 @@ router.post('/admin/wallet/exception-suggestions/:id/apply', async (req: Request
 router.post('/admin/wallet/exception-suggestions/:id/dismiss', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     await db.execute(sql`UPDATE exception_suggestions SET status='dismissed' WHERE id = ${id}`);
     return res.json({ ok: true });
@@ -13098,7 +13115,7 @@ router.post('/admin/wallet/exception-suggestions/:id/dismiss', async (req: Reque
 router.get('/admin/wallet/governance-report', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { period } = req.query; // YYYY-MM or YYYY-Q1 format
 
     // Cross-entity aggregation
@@ -13226,7 +13243,7 @@ async function executeApprovalAction(approvalReq: any): Promise<{ success: boole
 router.post('/admin/wallet/approval-requests/:id/retry-execution', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const reqId = parseInt(req.params.id, 10);
     const raw: any = await db.execute(sql`SELECT * FROM approval_requests WHERE id = ${reqId}`);
     const approvalReq = (raw?.rows ?? raw)?.[0];
@@ -13253,7 +13270,7 @@ router.post('/admin/wallet/approval-requests/:id/retry-execution', async (req: R
 router.get('/admin/wallet/approval-requests/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const reqId = parseInt(req.params.id, 10);
     const raw: any = await db.execute(sql`
       SELECT ar.*, ac.chain_name FROM approval_requests ar
@@ -13276,7 +13293,7 @@ router.get('/admin/wallet/approval-requests/:id', async (req: Request, res: Resp
 router.post('/admin/wallet/policy-simulations/:id/promote', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const simId = parseInt(req.params.id, 10);
     const { notes, divisionCode, force } = req.body;
 
@@ -13380,7 +13397,7 @@ router.post('/admin/wallet/policy-simulations/:id/promote', async (req: Request,
 router.get('/admin/wallet/policy-promotions', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM policy_promotions ORDER BY promoted_at DESC LIMIT 100`);
     return res.json({ ok: true, promotions: raw?.rows ?? raw });
   } catch (err: any) {
@@ -13392,7 +13409,7 @@ router.get('/admin/wallet/policy-promotions', async (req: Request, res: Response
 router.post('/admin/wallet/policy-promotions/:id/rollback', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const promId = parseInt(req.params.id, 10);
     const raw: any = await db.execute(sql`SELECT * FROM policy_promotions WHERE id = ${promId}`);
     const prom = (raw?.rows ?? raw)?.[0];
@@ -13425,7 +13442,7 @@ router.post('/admin/wallet/policy-promotions/:id/rollback', async (req: Request,
 router.get('/admin/wallet/forecast-backtests', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { from, to, scenarioId } = req.query;
     let query = sql`SELECT fb.*, fs.scenario_name FROM forecast_backtests fb LEFT JOIN forecast_scenarios fs ON fb.scenario_id = fs.id WHERE 1=1`;
     if (from) query = sql`${query} AND fb.period_start >= ${from as string}`;
@@ -13443,7 +13460,7 @@ router.get('/admin/wallet/forecast-backtests', async (req: Request, res: Respons
 router.post('/admin/wallet/forecast-backtests/run', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { scenarioId, periodStart, periodEnd } = req.body;
     if (!periodStart || !periodEnd) return res.status(400).json({ error: 'periodStart and periodEnd required (YYYY-MM-DD)' });
 
@@ -13523,7 +13540,7 @@ router.post('/admin/wallet/forecast-backtests/run', async (req: Request, res: Re
 router.get('/admin/wallet/forecast-scenarios/:id/accuracy', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const scenarioId = parseInt(req.params.id, 10);
     const raw: any = await db.execute(sql`SELECT * FROM forecast_backtests WHERE scenario_id = ${scenarioId} ORDER BY created_at DESC`);
     const backtests = raw?.rows ?? raw;
@@ -13551,7 +13568,7 @@ const ALLOWED_ASSISTANT_ACTIONS = new Set([
 router.post('/admin/wallet/assistant/execute', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { action, payload, reason, assistantContext, suggestedAction, targetEntityType, targetEntityId, actionParams } = req.body;
 
     // Accept both old-style (suggestedAction) and new-style (action) field names
@@ -13595,7 +13612,7 @@ router.post('/admin/wallet/assistant/execute', async (req: Request, res: Respons
 router.get('/admin/wallet/assistant/actions', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM assistant_action_runs ORDER BY created_at DESC LIMIT 100`);
     return res.json({ ok: true, actions: raw?.rows ?? raw });
   } catch (err: any) {
@@ -13646,7 +13663,7 @@ function signGovernancePack(pack: any): string {
 router.get('/admin/wallet/governance-pack', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const packType  = (req.query.type as string) ?? 'monthly';
     const periodKey = (req.query.period as string) ?? new Date().toISOString().slice(0, 7);
     const pack = await buildGovernancePack(packType, periodKey);
@@ -13661,7 +13678,7 @@ router.get('/admin/wallet/governance-pack', async (req: Request, res: Response) 
 router.post('/admin/wallet/governance-pack/send', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { packType, periodKey, recipients } = req.body;
     if (!packType || !periodKey) return res.status(400).json({ error: 'packType and periodKey required' });
 
@@ -13689,7 +13706,7 @@ router.post('/admin/wallet/governance-pack/send', async (req: Request, res: Resp
 router.get('/admin/wallet/governance-pack/log', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT id, pack_type, period_key, sent_to, signature, sent_at, status FROM governance_pack_log ORDER BY sent_at DESC LIMIT 50`);
     return res.json({ ok: true, logs: raw?.rows ?? raw });
   } catch (err: any) {
@@ -13703,7 +13720,7 @@ router.get('/admin/wallet/governance-pack/log', async (req: Request, res: Respon
 router.get('/admin/wallet/playbooks', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { surfaceKey } = req.query;
     let query = sql`SELECT * FROM finance_playbook_links WHERE enabled = true`;
     if (surfaceKey) query = sql`${query} AND surface_key = ${surfaceKey as string}`;
@@ -13719,7 +13736,7 @@ router.get('/admin/wallet/playbooks', async (req: Request, res: Response) => {
 router.post('/admin/wallet/playbooks', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { surfaceKey, title, docUrl, description } = req.body;
     if (!surfaceKey || !title || !docUrl) return res.status(400).json({ error: 'surfaceKey, title, docUrl required' });
     const raw: any = await db.execute(sql`
@@ -13737,7 +13754,7 @@ router.post('/admin/wallet/playbooks', async (req: Request, res: Response) => {
 router.patch('/admin/wallet/playbooks/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { title, docUrl, description, enabled } = req.body;
     const raw: any = await db.execute(sql`
@@ -13762,7 +13779,7 @@ router.patch('/admin/wallet/playbooks/:id', async (req: Request, res: Response) 
 router.get('/admin/wallet/entities', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM finance_entities ORDER BY country_code, entity_code`);
     return res.json({ ok: true, entities: raw?.rows ?? raw });
   } catch (err: any) {
@@ -13774,7 +13791,7 @@ router.get('/admin/wallet/entities', async (req: Request, res: Response) => {
 router.post('/admin/wallet/entities', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { entityCode, entityName, countryCode, baseCurrency } = req.body;
     if (!entityCode || !entityName || !countryCode) return res.status(400).json({ error: 'entityCode, entityName, countryCode required' });
     const raw: any = await db.execute(sql`
@@ -13793,7 +13810,7 @@ router.post('/admin/wallet/entities', async (req: Request, res: Response) => {
 router.patch('/admin/wallet/entities/:entityCode', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const code = req.params.entityCode.toUpperCase();
     const { entityName, baseCurrency, enabled } = req.body;
     const raw: any = await db.execute(sql`
@@ -13817,7 +13834,7 @@ router.patch('/admin/wallet/entities/:entityCode', async (req: Request, res: Res
 router.post('/admin/wallet/finance-assistant', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { context, question } = req.body;
 
     const suggestions: { priority: string; action: string; reason: string; link?: string }[] = [];
@@ -13863,7 +13880,7 @@ router.post('/admin/wallet/finance-assistant', async (req: Request, res: Respons
 router.get('/admin/wallet/orchestration-runs', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { runType, status, from, to } = req.query as Record<string, string>;
 
     const condParts: SQL[] = [];
@@ -13887,7 +13904,7 @@ router.get('/admin/wallet/orchestration-runs', async (req: Request, res: Respons
 router.post('/admin/wallet/orchestration-runs/:id/retry', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const runId = parseInt(req.params.id, 10);
 
     const raw: any = await db.execute(sql`SELECT * FROM orchestration_runs WHERE id = ${runId}`);
@@ -13921,7 +13938,7 @@ router.post('/admin/wallet/orchestration-runs/:id/retry', async (req: Request, r
 router.get('/admin/wallet/promotion-validations', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const simId = req.query.simulationId ? parseInt(req.query.simulationId as string, 10) : null;
 
     const raw: any = simId
@@ -13940,7 +13957,7 @@ router.get('/admin/wallet/promotion-validations', async (req: Request, res: Resp
 router.get('/admin/wallet/forecast-templates', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT * FROM forecast_scenario_templates ORDER BY created_at DESC
     `);
@@ -13954,7 +13971,7 @@ router.get('/admin/wallet/forecast-templates', async (req: Request, res: Respons
 router.post('/admin/wallet/forecast-templates', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { name, description, scenarioJson } = req.body;
     if (!name || !scenarioJson) return res.status(400).json({ error: 'name and scenarioJson required' });
 
@@ -13973,7 +13990,7 @@ router.post('/admin/wallet/forecast-templates', async (req: Request, res: Respon
 router.patch('/admin/wallet/forecast-templates/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { enabled } = req.body;
     const raw: any = await db.execute(sql`
@@ -13989,7 +14006,7 @@ router.patch('/admin/wallet/forecast-templates/:id', async (req: Request, res: R
 router.post('/admin/wallet/forecast-templates/:id/apply', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
 
     const tplRaw: any = await db.execute(sql`SELECT * FROM forecast_scenario_templates WHERE id = ${id}`);
@@ -14026,7 +14043,7 @@ router.post('/admin/wallet/forecast-templates/:id/apply', async (req: Request, r
 router.get('/admin/wallet/assistant/queue', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT * FROM assistant_execution_queue ORDER BY created_at DESC LIMIT 100
     `);
@@ -14040,7 +14057,7 @@ router.get('/admin/wallet/assistant/queue', async (req: Request, res: Response) 
 router.post('/admin/wallet/assistant/queue/:id/assign', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { assignedToUid } = req.body;
     if (!assignedToUid) return res.status(400).json({ error: 'assignedToUid required' });
@@ -14063,7 +14080,7 @@ router.post('/admin/wallet/assistant/queue/:id/assign', async (req: Request, res
 router.post('/admin/wallet/assistant/queue/:id/approve', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { decision } = req.body; // 'approve' | 'reject'
     if (!['approve', 'reject'].includes(decision)) return res.status(400).json({ error: 'decision must be approve or reject' });
@@ -14092,7 +14109,7 @@ router.post('/admin/wallet/assistant/queue/:id/approve', async (req: Request, re
 router.post('/admin/wallet/assistant/queue/:id/execute', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
 
     const raw: any = await db.execute(sql`SELECT * FROM assistant_execution_queue WHERE id = ${id}`);
@@ -14155,7 +14172,7 @@ router.post('/admin/wallet/assistant/queue/:id/execute', async (req: Request, re
 router.get('/admin/wallet/governance/recipient-groups', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`SELECT * FROM governance_recipient_groups ORDER BY created_at DESC`);
     return res.json({ ok: true, groups: raw?.rows ?? raw });
   } catch (err: any) {
@@ -14167,7 +14184,7 @@ router.get('/admin/wallet/governance/recipient-groups', async (req: Request, res
 router.post('/admin/wallet/governance/recipient-groups', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { groupName, recipients } = req.body;
     if (!groupName) return res.status(400).json({ error: 'groupName required' });
 
@@ -14186,7 +14203,7 @@ router.post('/admin/wallet/governance/recipient-groups', async (req: Request, re
 router.patch('/admin/wallet/governance/recipient-groups/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { groupName, recipients, enabled } = req.body;
 
@@ -14207,7 +14224,7 @@ router.patch('/admin/wallet/governance/recipient-groups/:id', async (req: Reques
 router.get('/admin/wallet/governance/distribution-rules', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const raw: any = await db.execute(sql`
       SELECT dr.*, rg.group_name FROM governance_distribution_rules dr
       LEFT JOIN governance_recipient_groups rg ON rg.id = dr.group_id
@@ -14223,7 +14240,7 @@ router.get('/admin/wallet/governance/distribution-rules', async (req: Request, r
 router.post('/admin/wallet/governance/distribution-rules', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { packType, groupId, schedule } = req.body;
     if (!packType || !groupId) return res.status(400).json({ error: 'packType and groupId required' });
 
@@ -14242,7 +14259,7 @@ router.post('/admin/wallet/governance/distribution-rules', async (req: Request, 
 router.patch('/admin/wallet/governance/distribution-rules/:id', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const id = parseInt(req.params.id, 10);
     const { enabled, schedule } = req.body;
     const raw: any = await db.execute(sql`
@@ -14263,7 +14280,7 @@ router.patch('/admin/wallet/governance/distribution-rules/:id', async (req: Requ
 router.get('/admin/wallet/orchestration-trace/:entityType/:entityId', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { entityType, entityId } = req.params;
 
     const [approvalRaw, auditRaw, orchRaw, assistantRaw, disputeRaw] = await Promise.all([
@@ -14461,7 +14478,7 @@ router.patch('/admin/wallet/orchestration-retry-policies/:id', async (req: Reque
 router.get('/admin/wallet/approval-bottlenecks', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { from = '', to = '' } = req.query as Record<string,string>;
     // Validate date params before SQL interpolation
     const DATE_RE_BTL = /^\d{4}-\d{2}-\d{2}(T[\d:.Z+\-]{0,30})?$/;
@@ -14715,7 +14732,7 @@ router.get('/admin/wallet/ops-command-center', async (_req: Request, res: Respon
 router.get('/admin/wallet/recommendation-scores', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.isAdmin) return res.status(403).json({ error: 'Admin only' });
+    if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Admin only' });
     const { recommendationType, targetEntityType, from, to } = req.query as Record<string, string>;
 
     // Validate all params before SQL interpolation
@@ -16976,31 +16993,15 @@ router.post('/admin/wallet/governance-alerts/trigger', async (req, res) => {
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
-async function getKillSwitch(key: string): Promise<boolean> {
-  try {
-    const r = await pool.query(`SELECT enabled FROM system_kill_switches WHERE key = $1`, [key]);
-    if (!r.rows.length) return true; // default open if key not found
-    return r.rows[0].enabled;
-  } catch { return true; }
-}
-
-async function checkIdempotency(iKey: string, endpoint: string): Promise<{ hit: boolean; responseHash?: string }> {
-  try {
-    const r = await pool.query(`SELECT response_hash FROM idempotency_keys WHERE key = $1 AND endpoint = $2`, [iKey, endpoint]);
-    if (r.rows.length) return { hit: true, responseHash: r.rows[0].response_hash };
-    return { hit: false };
-  } catch { return { hit: false }; }
-}
-
-async function recordIdempotency(iKey: string, endpoint: string, responseJson: string) {
-  const hash = Buffer.from(responseJson).toString('base64').slice(0, 128);
-  try {
-    await pool.query(
-      `INSERT INTO idempotency_keys (key, endpoint, response_hash) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING`,
-      [iKey, endpoint, hash],
-    );
-  } catch {}
-}
+// Release-blocker A1 / A2 fail-closed helpers extracted to
+// server/lib/killSwitchAndIdempotency.ts. These local aliases keep the
+// call-site shape below unchanged while the actual contract + tests
+// live in the reusable module.
+const getKillSwitchAllowed = (key: string) => _getKillSwitchAllowed(pool as any, key);
+const checkIdempotency = (iKey: string, endpoint: string) =>
+  _checkIdempotency(pool as any, iKey, endpoint);
+const recordIdempotency = (iKey: string, endpoint: string, responseJson: string) =>
+  _recordIdempotency(pool as any, iKey, endpoint, responseJson);
 
 // ─── 4.5C — GLOBAL KILL SWITCHES ─────────────────────────────────────────────
 
@@ -17035,10 +17036,25 @@ router.post('/admin/wallet/kill-switches/:key/toggle', async (req, res) => {
   }
 });
 
-// Kill switch enforcement check endpoint (for testing)
+// Kill switch enforcement check endpoint (for testing / admin display).
+// Release-blocker A1: on kill-switch-unavailable we return 503 with
+// blocked:true so the caller can never mistake an infra failure for
+// "operation permitted".
 router.get('/admin/wallet/kill-switches/:key/check', async (req, res) => {
-  const enabled = await getKillSwitch(req.params.key);
-  return res.json({ key: req.params.key, enabled, blocked: !enabled });
+  try {
+    const enabled = await getKillSwitchAllowed(req.params.key);
+    return res.json({ key: req.params.key, enabled, blocked: !enabled });
+  } catch (err) {
+    if (err instanceof KillSwitchUnavailableError) {
+      return res.status(503).json({
+        key: req.params.key,
+        enabled: false,
+        blocked: true,
+        error: 'kill_switch_unavailable',
+      });
+    }
+    throw err;
+  }
 });
 
 // ─── 4.5D — IDEMPOTENCY & RETRY SAFETY ───────────────────────────────────────
@@ -17059,6 +17075,14 @@ router.post('/admin/wallet/test-retry-safety', async (req, res) => {
     await recordIdempotency(idempotencyKey, endpoint, JSON.stringify(response));
     return res.json(response);
   } catch (err: any) {
+    // Release-blocker A2: idempotency-infrastructure failure returns 503
+    // asking the client to retry, NOT 200 with a fresh mutation.
+    if (err instanceof IdempotencyUnavailableError) {
+      return res.status(503).json({
+        error: 'idempotency_unavailable',
+        message: 'Cannot verify retry safety — please retry shortly',
+      });
+    }
     return res.status(500).json({ error: 'Retry safety test failed', detail: err.message });
   }
 });
@@ -20078,26 +20102,65 @@ router.post('/admin/system/incidents/:id/postmortem', async (req, res) => {
     if (!incRes.rows.length) return res.status(404).json({ error: 'Incident not found' });
     const inc = incRes.rows[0];
 
-    const timelineRes = await pool.query(
-      `SELECT event_type, content, actor, occurred_at, metadata_json
-       FROM incident_timeline_entries WHERE incident_id = $1
-       ORDER BY occurred_at ASC`,
+    // AUDIT-AI-12 (#207): incident timelines can grow to thousands of
+    // entries on long-running P1s; serialising the whole thing into a
+    // Gemini prompt is an unbounded per-call token cost. Fetch a bounded
+    // window instead — the first HEAD entries (the incident's initial
+    // triage state) plus the most-recent TAIL entries (what led to
+    // resolution). A gap marker in between makes the truncation explicit
+    // to the reader.
+    const TIMELINE_HEAD = 20;
+    const TIMELINE_TAIL = 30;
+    const TIMELINE_TOTAL_CAP = TIMELINE_HEAD + TIMELINE_TAIL;
+    const countRes = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM incident_timeline_entries WHERE incident_id = $1`,
       [id],
     );
+    const totalTimeline: number = countRes.rows[0]?.n ?? 0;
+    let timelineRows: any[];
+    let timelineTruncated = false;
+    if (totalTimeline <= TIMELINE_TOTAL_CAP) {
+      const r = await pool.query(
+        `SELECT event_type, content, actor, occurred_at, metadata_json
+         FROM incident_timeline_entries WHERE incident_id = $1
+         ORDER BY occurred_at ASC`,
+        [id],
+      );
+      timelineRows = r.rows;
+    } else {
+      const headR = await pool.query(
+        `SELECT event_type, content, actor, occurred_at, metadata_json
+         FROM incident_timeline_entries WHERE incident_id = $1
+         ORDER BY occurred_at ASC LIMIT $2`,
+        [id, TIMELINE_HEAD],
+      );
+      const tailR = await pool.query(
+        `SELECT event_type, content, actor, occurred_at, metadata_json
+         FROM incident_timeline_entries WHERE incident_id = $1
+         ORDER BY occurred_at DESC LIMIT $2`,
+        [id, TIMELINE_TAIL],
+      );
+      timelineRows = [...headR.rows, ...tailR.rows.reverse()];
+      timelineTruncated = true;
+    }
 
-    // Self-healing actions that fired during the incident window
+    // Self-healing actions that fired during the incident window — also
+    // bounded (top-N by anomaly_score, then chronological) so a big
+    // storm can't dominate the prompt.
     let shExecsData = '';
+    const SH_CAP = 20;
     if (inc.anomaly_event_id) {
       const shRes = await pool.query(
         `SELECT e.*, r.name as rule_name, r.action_type
          FROM self_healing_executions e
          LEFT JOIN self_healing_rules r ON r.id = e.rule_id
          WHERE e.anomaly_event_id = $1
-         ORDER BY e.executed_at ASC`,
-        [inc.anomaly_event_id],
+         ORDER BY e.anomaly_score DESC NULLS LAST, e.executed_at ASC
+         LIMIT $2`,
+        [inc.anomaly_event_id, SH_CAP],
       );
       if (shRes.rows.length) {
-        shExecsData = '\n\nSelf-Healing Actions Fired:\n' + shRes.rows.map((e: any) =>
+        shExecsData = '\n\nSelf-Healing Actions Fired' + (shRes.rows.length === SH_CAP ? ` (top ${SH_CAP} by anomaly score)` : '') + ':\n' + shRes.rows.map((e: any) =>
           `  - [${e.result?.toUpperCase()}] ${e.rule_name ?? 'Rule #' + e.rule_id} (${e.action_type}) — score ${e.anomaly_score} — conf ${e.confidence_score ?? 'N/A'} — ${new Date(e.executed_at).toISOString()}`
         ).join('\n');
       }
@@ -20107,9 +20170,16 @@ router.post('/admin/system/incidents/:id/postmortem', async (req, res) => {
       ? `${Math.round((new Date(inc.resolved_at).getTime() - new Date(inc.started_at).getTime()) / 60000)} minutes`
       : 'Not yet resolved';
 
-    const timelineText = timelineRes.rows.map((t: any) =>
+    const timelineLines = timelineRows.map((t: any) =>
       `  [${new Date(t.occurred_at).toISOString()}] [${t.event_type}] ${t.content} — by ${t.actor}`
-    ).join('\n') || '  (No timeline entries)';
+    );
+    const timelineText = timelineTruncated
+      ? [
+          ...timelineLines.slice(0, TIMELINE_HEAD),
+          `  … (${totalTimeline - TIMELINE_TOTAL_CAP} intermediate entries omitted from prompt) …`,
+          ...timelineLines.slice(TIMELINE_HEAD),
+        ].join('\n')
+      : (timelineLines.join('\n') || '  (No timeline entries)');
 
     const prompt = `You are an expert Site Reliability Engineer writing an incident postmortem for a pet care SaaS platform (PetWash).
 
@@ -20138,9 +20208,13 @@ Write a structured incident postmortem in the following format:
 Write in a professional but concise style. Focus on technical accuracy. This is for internal engineering review.`;
 
     const genAI = new GoogleGenAI(getVertexAIConfig());
+    // AUDIT-AI-12 (#207): cap generateContent output tokens so a runaway
+    // response can't spend past a bounded envelope. Postmortems are
+    // narrative but not novel-length; 4096 tokens is generous headroom.
     const aiRes = await genAI.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { maxOutputTokens: 4096 },
     });
 
     const postmortemText = aiRes.text ?? '';

@@ -9,7 +9,7 @@
  *   - client/src/hooks/useAdminAuth.ts
  *   - client/src/pages/admin/AdminLoginV2.tsx
  *
- * super_admin is always allowed via the isSuperAdmin() check; it is also
+ * super_admin is always allowed via the isSuperAdminVerified check; it is also
  * included here so that role-string comparisons remain consistent.
  */
 export const ADMIN_ROLES = [

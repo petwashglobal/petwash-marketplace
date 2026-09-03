@@ -3,6 +3,9 @@ import { db } from '../db';
 import { otpEvents, smsEvidence } from '@shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { redactOtpBody } from '../lib/redactOtpBody';
+import { phoneLookupHash } from '../lib/phoneHmac';
+import { SMS_PURPOSES } from '../lib/perUidSmsBudget';
 import { redis } from './redis';
 import { twilioSMSService } from './TwilioSMSService';
 
@@ -279,7 +282,14 @@ export class RegistrationOTPService {
       if (channel === 'whatsapp') {
         sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
       } else {
-        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code));
+        // AUDIT-SMS-5 (#221): pass userId + purpose so TwilioSMSService can
+        // enforce the per-UID daily budget in checkAndBumpUidSmsBudget.
+        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code), {
+          userId: opts.userId,
+          ip: opts.ip,
+          ua: opts.userAgent,
+          purpose: SMS_PURPOSES.ONBOARDING,
+        });
       }
       if (sendResult.success && sendResult.messageId) {
         providerMessageId = sendResult.messageId;
@@ -291,6 +301,8 @@ export class RegistrationOTPService {
         otpId,
         eventType: 'OTP_SENT',
         phoneE164,
+        // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+        phoneHash: phoneLookupHash(phoneE164),
         userId: opts.userId || null,
         userTypeIntent,
         otpHash: codeHash,
@@ -311,7 +323,13 @@ export class RegistrationOTPService {
         templateId: channel === 'whatsapp' ? 'registration_otp_whatsapp_v1' : 'registration_otp_v1',
         templateVersion: '1.0',
         toPhone: phoneE164,
-        renderedText: smsBody,
+        // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+        toPhoneHash: phoneLookupHash(phoneE164),
+        // AUDIT-SMS-11 (#222): scrub OTP digits before persisting the SMS body
+        // to sms_evidence. See server/lib/redactOtpBody.ts — the canonical
+        // verifier lives in verification_challenges.codeHash; keeping the digits
+        // in a second table would make the DB row a working OTP itself.
+        renderedText: redactOtpBody(smsBody, 'OTP'),
         contentHash: sha256(smsBody),
         provider: providerLabel,
         providerMessageId: providerMessageId || null,
@@ -472,7 +490,13 @@ export class RegistrationOTPService {
       if (channel === 'whatsapp') {
         sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
       } else {
-        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code));
+        // AUDIT-SMS-5 (#221): resend path also budgets per-UID.
+        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code), {
+          userId: record.userId || undefined,
+          ip: opts.ip,
+          ua: opts.userAgent,
+          purpose: SMS_PURPOSES.ONBOARDING,
+        });
       }
 
       const providerLabel = channel === 'whatsapp' ? 'twilio_whatsapp' : 'twilio';
@@ -481,6 +505,8 @@ export class RegistrationOTPService {
         otpId: `${otpId}_resend_${Date.now()}`,
         eventType: 'OTP_RESENT',
         phoneE164,
+        // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+        phoneHash: phoneLookupHash(phoneE164),
         userId: record.userId || null,
         userTypeIntent: record.userTypeIntent,
         otpHash: codeHash,
@@ -500,7 +526,13 @@ export class RegistrationOTPService {
         templateId: channel === 'whatsapp' ? 'registration_otp_whatsapp_v1' : 'registration_otp_v1',
         templateVersion: '1.0',
         toPhone: phoneE164,
-        renderedText: smsBody,
+        // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+        toPhoneHash: phoneLookupHash(phoneE164),
+        // AUDIT-SMS-11 (#222): scrub OTP digits before persisting the SMS body
+        // to sms_evidence. See server/lib/redactOtpBody.ts — the canonical
+        // verifier lives in verification_challenges.codeHash; keeping the digits
+        // in a second table would make the DB row a working OTP itself.
+        renderedText: redactOtpBody(smsBody, 'OTP'),
         contentHash: sha256(smsBody),
         provider: providerLabel,
         providerMessageId: sendResult.messageId || null,

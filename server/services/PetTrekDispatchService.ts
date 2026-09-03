@@ -301,7 +301,12 @@ export class PetTrekDispatchService {
             `PetWash™ PetTrek™ - עבודה חדשה! 🚗\n` +
             `נסיעה #${tripId} ממתינה לאישורך.\n` +
             `היה/י הראשון/ת לאשר — פתח/י את האפליקציה.`;
-          await twilioSMSService.sendSMS(provider.phoneNumber, message);
+          // AUDIT-SMS-5 (#221): dispatch notification per-UID budget.
+          const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
+          await twilioSMSService.sendSMS(provider.phoneNumber, message, {
+            userId: (provider as any).userId,
+            purpose: _P.BOOKING_CONFIRM,
+          });
           logger.info('[PetTrek Dispatch] ✅ Driver SMS sent', {
             tripId,
             driverId: provider.id,

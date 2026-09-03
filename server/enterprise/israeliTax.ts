@@ -14,6 +14,7 @@ import type { Request, Response } from 'express';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import IsraeliTaxAPIService from '../services/IsraeliTaxAPIService';
 import ElectronicInvoicingService from '../services/ElectronicInvoicingService';
 import { ISRAEL_VAT_RATE, isShaamAllocationRequired } from "@shared/israel-compliance-config";
@@ -407,11 +408,7 @@ export async function checkInvoiceStatus(
     res.status(200).json(response.data);
     
   } catch (error: any) {
-    logger.error('[IsraeliTax] Status check error:', error);
-    res.status(500).json({
-      error: 'Failed to check invoice status',
-      details: error.message
-    });
+    sendSanitizedError(res, error, 'ITA_STATUS_CHECK_FAILED', { logContext: { op: 'ita-status-check' } });
   }
 }
 

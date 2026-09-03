@@ -2,6 +2,10 @@ import { Router } from 'express';
 import { randomInt, randomBytes } from 'crypto';
 import { db, pool } from '../db';
 import {
+  runFiscalDocumentAndPersistOnFailure,
+  FiscalOutboxUnavailableError,
+} from '../services/fiscalDocumentOutbox';
+import {
   walkerProfiles,
   walkBookings,
   walkGpsTracking,
@@ -32,7 +36,7 @@ import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { checkBookingProximity } from '../lib/proximity';
-import { bookingLimiter } from '../middleware/rateLimiter';
+import { bookingLimiter, apiLimiter } from '../middleware/rateLimiter';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
@@ -41,6 +45,7 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
@@ -169,8 +174,7 @@ router.post('/walkers/register', requireAuth, async (req, res) => {
       message: 'Walker profile created. Please complete KYC verification to activate.' 
     });
   } catch (error: any) {
-    console.error('[Walk My Pet] Walker registration error:', error);
-    res.status(500).json({ error: 'Failed to create walker profile', details: error.message });
+    sendSanitizedError(res, error, 'WALKER_REGISTRATION_FAILED', { logContext: { op: 'walker-registration' } });
   }
 });
 
@@ -305,7 +309,11 @@ router.patch('/walkers/:walkerId', requireAuth, async (req, res) => {
 });
 
 // GET /walkers/search — Returns all active, verified walkers for client-side filtering (used by WalkMyPet listing page)
-router.get('/walkers/search', async (req, res) => {
+// AUDIT-AUTH-8 (2026-09-01): deliberately unauthenticated (product needs
+// browse-before-signup UX). Mitigations: apiLimiter throttles per-IP;
+// projectPublicWalker (existing) drops KYC / banking / live GPS from
+// the DTO. Coarser geohash rounding is tracked in the POST handler.
+router.get('/walkers/search', apiLimiter, async (req, res) => {
   try {
     const city = (req.query.city as string) || '';
     const walkers = await db
@@ -338,18 +346,41 @@ router.get('/walkers/search', async (req, res) => {
 });
 
 // Search walkers by location (geolocation)
-router.post('/walkers/search', async (req, res) => {
+// AUDIT-AUTH-8 (2026-09-01): unauthenticated by design (product browse
+// use case). Mitigations:
+//   * apiLimiter throttles per-IP so a crawler can't harvest a
+//     coverage grid at scale.
+//   * radiusKm capped at 25 (was uncapped — a caller could sweep the
+//     whole country in one request).
+//   * lat/lon rounded to 3 decimal places (~110m precision) before
+//     the DB query so query-plan caches and access logs don't record
+//     the caller's exact position, and consecutive scrapes at ~110m
+//     grid produce identical query plans (limits enumeration).
+router.post('/walkers/search', apiLimiter, async (req, res) => {
   try {
-    const { latitude, longitude, radiusKm = 5, minRating = 0, hasBodyCamera, hasDroneAccess } = req.body;
+    const { latitude, longitude, radiusKm: rawRadiusKm = 5, minRating = 0, hasBodyCamera, hasDroneAccess } = req.body;
 
     if (!latitude || !longitude) {
       return res.status(400).json({ error: 'Latitude and longitude required' });
     }
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ error: 'Latitude and longitude must be numbers' });
+    }
+
+    // Cap radius to prevent a country-wide sweep.
+    const radiusKm = Math.min(25, Math.max(0.1, Number(rawRadiusKm) || 5));
+
+    // Round to ~110m precision. Only affects the query bounds; the
+    // caller still gets accurate distances back computed on their own
+    // side. Prevents log-based fingerprinting.
+    const round3 = (n: number) => Math.round(n * 1000) / 1000;
+    const qLat = round3(latitude);
+    const qLon = round3(longitude);
 
     // Calculate bounding box for efficient search
     // 1 degree latitude ≈ 111km, longitude varies by latitude
     const latDelta = radiusKm / 111;
-    const lonDelta = radiusKm / (111 * Math.cos(latitude * Math.PI / 180));
+    const lonDelta = radiusKm / (111 * Math.cos(qLat * Math.PI / 180));
 
     let query = db
       .select()
@@ -361,10 +392,10 @@ router.post('/walkers/search', async (req, res) => {
           eq(walkerProfiles.isActive, true),
           gte(walkerProfiles.averageRating, minRating.toString()),
           // Bounding box filter
-          gte(walkerProfiles.currentLatitude, (latitude - latDelta).toString()),
-          lte(walkerProfiles.currentLatitude, (latitude + latDelta).toString()),
-          gte(walkerProfiles.currentLongitude, (longitude - lonDelta).toString()),
-          lte(walkerProfiles.currentLongitude, (longitude + lonDelta).toString())
+          gte(walkerProfiles.currentLatitude, (qLat - latDelta).toString()),
+          lte(walkerProfiles.currentLatitude, (qLat + latDelta).toString()),
+          gte(walkerProfiles.currentLongitude, (qLon - lonDelta).toString()),
+          lte(walkerProfiles.currentLongitude, (qLon + lonDelta).toString())
         )
       );
 
@@ -382,8 +413,17 @@ router.post('/walkers/search', async (req, res) => {
         const walkerLat = parseFloat(walker.currentLatitude || '0');
         const walkerLon = parseFloat(walker.currentLongitude || '0');
         const distance = calculateDistance(latitude, longitude, walkerLat, walkerLon);
+        // AUDIT-AUTH-8 refinement (2026-09-01, CEO): quantize the
+        // response distance to 100m precision. Bounding-box coordinates
+        // are already rounded to ~110m (round3) for the DB query, but
+        // the returned distance was a raw float, allowing an anonymous
+        // caller to triangulate a walker's exact position by moving
+        // the query point. Rounding both sides to the same order of
+        // magnitude closes the loop — precise geolocation only after
+        // match, not during discovery.
+        const distanceKm = Math.round(distance * 10) / 10;
         const dto = projectPublicWalker(walker);
-        return dto ? { ...dto, distanceKm: distance, hasBodyCamera: walker.hasBodyCamera === true, hasDroneAccess: walker.hasDroneAccess === true } : null;
+        return dto ? { ...dto, distanceKm, hasBodyCamera: walker.hasBodyCamera === true, hasDroneAccess: walker.hasDroneAccess === true } : null;
       })
       .filter((w): w is NonNullable<typeof w> => w !== null)
       .filter(w => w.distanceKm <= radiusKm)
@@ -753,34 +793,29 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       throw lockErr;
     }
 
-    // BRIDGE (2026-07-24): mirror into booking_requests so the provider job
-    // inbox (/provider-os) can SEE and accept this walk. Without it the booking
-    // hung at pending_provider forever — the only UI that reads walk_bookings
-    // (WalkerDashboard.tsx) was never routed. Fail-soft.
-    try {
-      const { bridgeLegacyBooking } = await import('../services/legacyBookingBridge');
+    // Release-blocker A5 (CEO 2026-09-02): the bridge is NOT best-effort.
+    // Without it the paid booking hangs at pending_provider forever (the
+    // WalkerDashboard.tsx UI never routes it). Try inline; on failure
+    // enqueue a durable fiscal_document_outbox row for the drainer to
+    // retry. If BOTH fail, return 5xx so the client can retry the whole
+    // booking creation (idempotent by walk_bookings.id).
+    {
       const startAt = new Date(`${scheduledDateOnly}T${scheduledStartTime || '09:00'}:00`);
       const endAt = new Date(startAt.getTime() + (Number(durationMinutes) || 30) * 60000);
-      await bridgeLegacyBooking({
+      const bridgePayload = {
         ownerId,
         providerUserId: walkerProfile.userId as string,
         providerProfileId: walkerProfile.profileId as number,
         providerType: 'walker',
         serviceType: 'dog_walking',
-        startDate: isNaN(startAt.getTime()) ? new Date() : startAt,
-        endDate: isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt,
+        startDateIso: (isNaN(startAt.getTime()) ? new Date() : startAt).toISOString(),
+        endDateIso: (isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt).toISOString(),
         petCount: 1,
         subtotalCents: Math.round(pricing.baseRate * 100),
         serviceFeeCents: Math.round(pricing.platformFee * 100),
         totalCents: Math.round(pricing.totalPrice * 100),
         providerPayoutCents: Math.round(pricing.providerPayout * 100),
-        ownerMessage: null,
         legacyRef: { table: 'walk_bookings', id: bookingId },
-        // CEO §12: carry the pet display context AND the KYA safety
-        // snapshot onto the mirror so /walker/requests + /walker/active
-        // can render name/breed/type (no more "Pet" fallback) AND the
-        // aggression / escape-risk / allergy warnings the walker MUST
-        // see before grabbing the leash.
         petDetails: {
           petName: petName || null,
           petType: 'dog',
@@ -789,8 +824,59 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
           address: pickupAddress || null,
           safety: safeSnapshot,
         },
-      });
-    } catch { /* bridge is best-effort */ }
+      };
+      try {
+        const outcome = await runFiscalDocumentAndPersistOnFailure({
+          pool,
+          kind: 'walk_legacy_bridge',
+          sourceKey: `walk_booking:${bookingId}`,
+          payload: bridgePayload,
+          runNow: async () => {
+            const { bridgeLegacyBooking } = await import('../services/legacyBookingBridge');
+            await bridgeLegacyBooking({
+              ownerId,
+              providerUserId: walkerProfile.userId as string,
+              providerProfileId: walkerProfile.profileId as number,
+              providerType: 'walker',
+              serviceType: 'dog_walking',
+              startDate: isNaN(startAt.getTime()) ? new Date() : startAt,
+              endDate: isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt,
+              petCount: 1,
+              subtotalCents: Math.round(pricing.baseRate * 100),
+              serviceFeeCents: Math.round(pricing.platformFee * 100),
+              totalCents: Math.round(pricing.totalPrice * 100),
+              providerPayoutCents: Math.round(pricing.providerPayout * 100),
+              ownerMessage: null,
+              legacyRef: { table: 'walk_bookings', id: bookingId },
+              petDetails: {
+                petName: petName || null,
+                petType: 'dog',
+                petBreed: petBreed || null,
+                petWeight: petWeight || null,
+                address: pickupAddress || null,
+                safety: safeSnapshot,
+              },
+            });
+          },
+        });
+        if (!outcome.ranInline) {
+          console.warn('[Walk] legacy-bridge enqueued to outbox for retry', {
+            bookingId, inlineError: outcome.inlineError,
+          });
+        }
+      } catch (err) {
+        if (err instanceof FiscalOutboxUnavailableError) {
+          console.error('[Walk] legacy-bridge both inline AND outbox failed', {
+            bookingId, err: err.message,
+          });
+          return res.status(503).json({
+            error: 'walk_bridge_unavailable',
+            message: 'Booking could not persist provider-routing state; please retry.',
+          });
+        }
+        throw err;
+      }
+    }
 
     // Record in Octopus Brain ledger (financial audit trail)
     const octopusId = `OB-WALK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
@@ -845,12 +931,15 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
           if (walkerPhone) {
             const { TwilioSMSService } = await import('../services/TwilioSMSService');
             const smsService = new TwilioSMSService();
+            // AUDIT-SMS-5 (#221): walker booking-notification per-UID budget.
+            const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
             await smsService.sendSMS(
               walkerPhone,
               `🐾 ⁦PetWash™⁩ - בקשת טיול חדשה!\n` +
               `תאריך: ${scheduledDate} בשעה ${scheduledStartTime}\n` +
               `${durationMinutes} דקות · ₪${pricing.totalPrice.toFixed(0)}\n` +
-              `אנא אשר/י את ההזמנה באפליקציה.`
+              `אנא אשר/י את ההזמנה באפליקציה.`,
+              { userId: walker.userId, purpose: _P.BOOKING_CONFIRM },
             );
           }
         }
@@ -881,8 +970,7 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
         console.warn('[Walk My Pet] slot-lock release after failed booking skipped', relErr),
       );
     }
-    console.error('[Walk My Pet] Booking error:', error);
-    res.status(500).json({ error: 'Failed to create booking', details: error.message });
+    sendSanitizedError(res, error, 'WALK_BOOKING_FAILED', { logContext: { op: 'create-booking' } });
   }
 });
 
@@ -1119,8 +1207,7 @@ router.post('/walks/emergency-request', requireAuth, async (req, res) => {
       message: `Emergency walk confirmed! Walker ${result.matchedWalker?.walkerName} will arrive in ${result.matchedWalker?.estimatedArrivalMinutes} minutes.`,
     });
   } catch (error: any) {
-    console.error('[Emergency Walk] Request failed:', error);
-    res.status(500).json({ error: 'Failed to process emergency walk request', details: error.message });
+    sendSanitizedError(res, error, 'EMERGENCY_WALK_FAILED', { logContext: { op: 'emergency-walk' } });
   }
 });
 

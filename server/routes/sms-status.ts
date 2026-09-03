@@ -101,7 +101,15 @@ router.post('/sms-status', validateTwilioSignature, async (req: Request, res: Re
   } = req.body as Record<string, string>;
 
   if (!MessageSid || !MessageStatus) {
-    logger.warn('[SMSStatus] Callback missing MessageSid or MessageStatus', { body: req.body });
+    // Release freeze 2026-09-03 top-up (LOG-1 CRIT): never dump req.body
+    // verbatim — Twilio callbacks carry customer text (including OTPs) and
+    // PII. The logger-side redactor scrubs known keys, but the caller-side
+    // discipline is to log only structured, hand-picked fields.
+    logger.warn('[SMSStatus] Callback missing MessageSid or MessageStatus', {
+      hasSid: !!MessageSid,
+      hasStatus: !!MessageStatus,
+      messageSid: MessageSid ? MessageSid.slice(0, 6) + '***' : null,
+    });
     return;
   }
 

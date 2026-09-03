@@ -1,6 +1,7 @@
 import express from "express";
 import { db } from "../lib/firebase-admin";
 import { requireAuth } from "../customAuth";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 
 const router = express.Router();
 
@@ -62,8 +63,7 @@ router.get("/sitters", async (req, res) => {
 
     res.json({ sitters });
   } catch (error: any) {
-    console.error("[Providers] Error fetching sitters:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_FETCH_SITTERS_FAILED', { logContext: { op: 'fetch-sitters' } });
   }
 });
 
@@ -79,8 +79,7 @@ router.get("/sitters/:sitterId", async (req, res) => {
 
     res.json({ sitter: pickPublic(doc.data() as Record<string, unknown>, SITTER_PUBLIC_FIELDS, doc.id) });
   } catch (error: any) {
-    console.error("[Providers] Error fetching sitter:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_FETCH_SITTER_FAILED', { logContext: { op: 'fetch-sitter' } });
   }
 });
 
@@ -147,8 +146,7 @@ router.post("/sitters/profile", requireAuth, async (req, res) => {
     await db.collection("sitter_profiles").doc(userId).set(profileData, { merge: true });
     res.json({ success: true, profileId: userId });
   } catch (error: any) {
-    console.error("[Providers] Error saving sitter profile:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_SAVE_SITTER_FAILED', { logContext: { op: 'save-sitter' } });
   }
 });
 
@@ -172,8 +170,7 @@ router.get("/walkers", async (req, res) => {
 
     res.json({ walkers });
   } catch (error: any) {
-    console.error("[Providers] Error fetching walkers:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_FETCH_WALKERS_FAILED', { logContext: { op: 'fetch-walkers' } });
   }
 });
 
@@ -189,8 +186,7 @@ router.get("/walkers/:walkerId", async (req, res) => {
 
     res.json({ walker: pickPublic(doc.data() as Record<string, unknown>, WALKER_PUBLIC_FIELDS, doc.id) });
   } catch (error: any) {
-    console.error("[Providers] Error fetching walker:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_FETCH_WALKER_FAILED', { logContext: { op: 'fetch-walker' } });
   }
 });
 
@@ -208,8 +204,7 @@ router.post("/walkers/profile", requireAuth, async (req, res) => {
     await db.collection("walker_profiles").doc(userId).set(profileData, { merge: true });
     res.json({ success: true, profileId: userId });
   } catch (error: any) {
-    console.error("[Providers] Error saving walker profile:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_SAVE_WALKER_FAILED', { logContext: { op: 'save-walker' } });
   }
 });
 
@@ -237,8 +232,7 @@ router.get("/drivers", async (req, res) => {
 
     res.json({ drivers });
   } catch (error: any) {
-    console.error("[Providers] Error fetching drivers:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_FETCH_DRIVERS_FAILED', { logContext: { op: 'fetch-drivers' } });
   }
 });
 
@@ -254,8 +248,7 @@ router.get("/drivers/:driverId", async (req, res) => {
 
     res.json({ driver: pickPublic(doc.data() as Record<string, unknown>, DRIVER_PUBLIC_FIELDS, doc.id) });
   } catch (error: any) {
-    console.error("[Providers] Error fetching driver:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_FETCH_DRIVER_FAILED', { logContext: { op: 'fetch-driver' } });
   }
 });
 
@@ -273,8 +266,7 @@ router.post("/drivers/profile", requireAuth, async (req, res) => {
     await db.collection("driver_profiles").doc(userId).set(profileData, { merge: true });
     res.json({ success: true, profileId: userId });
   } catch (error: any) {
-    console.error("[Providers] Error saving driver profile:", error);
-    res.status(500).json({ error: error.message });
+    sendSanitizedError(res, error, 'PROVIDERS_SAVE_DRIVER_FAILED', { logContext: { op: 'save-driver' } });
   }
 });
 

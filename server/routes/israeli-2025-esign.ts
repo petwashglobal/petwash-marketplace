@@ -3,6 +3,7 @@ import { randomInt } from 'crypto';
 import { israeli2025SignatureService, type EnhancedSignatureRequest } from '../services/Israeli2025SignatureService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { z } from 'zod';
 import { redis } from '../services/redis';
 import { twilioSMSService } from '../services/TwilioSMSService';
@@ -199,11 +200,7 @@ router.post('/create', requireAuth, async (req, res) => {
       });
     }
     
-    logger.error('[Israeli2025-ESign] ❌ Failed to create signature:', error);
-    res.status(500).json({
-      error: 'Failed to create signature',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'ESIGN_2025_CREATE_FAILED', { logContext: { op: 'create-signature' } });
   }
 });
 
@@ -250,11 +247,7 @@ router.get('/verify/:signatureId', async (req, res) => {
     });
     
   } catch (error: any) {
-    logger.error('[Israeli2025-ESign] ❌ Verification failed:', error);
-    res.status(500).json({
-      error: 'Verification failed',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'ESIGN_2025_VERIFY_FAILED', { logContext: { op: 'verify' } });
   }
 });
 
@@ -306,10 +299,12 @@ router.post('/otp/send', requireAuth, async (req, res) => {
     // Send OTP via the appropriate channel
     if (method === 'sms' && phone) {
       try {
+        // AUDIT-SMS-5 (#221): esign OTP per-UID budget.
+        const { SMS_PURPOSES: _P } = await import('../lib/perUidSmsBudget');
         await twilioSMSService.sendSMS(
           phone,
           `PetWash™ קוד אימות: ${otp}\nתוקף הקוד 5 דקות. אל תשתף קוד זה עם אף אחד.`,
-          { userId: uid, ip: (req as any).ip, ua: (req as any).headers?.['user-agent'] },
+          { userId: uid, ip: (req as any).ip, ua: (req as any).headers?.['user-agent'], purpose: _P.ESIGN },
         );
       } catch (smsErr: any) {
         logger.error('[Israeli2025-ESign] SMS send failed:', smsErr.message);
@@ -347,11 +342,7 @@ router.post('/otp/send', requireAuth, async (req, res) => {
     });
     
   } catch (error: any) {
-    logger.error('[Israeli2025-ESign] ❌ Failed to send OTP:', error);
-    res.status(500).json({
-      error: 'Failed to send OTP',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'ESIGN_2025_OTP_SEND_FAILED', { logContext: { op: 'otp-send' } });
   }
 });
 
@@ -411,11 +402,7 @@ router.post('/otp/verify', requireAuth, async (req, res) => {
     });
     
   } catch (error: any) {
-    logger.error('[Israeli2025-ESign] ❌ OTP verification failed:', error);
-    res.status(500).json({
-      error: 'OTP verification failed',
-      message: error.message,
-    });
+    sendSanitizedError(res, error, 'ESIGN_2025_OTP_VERIFY_FAILED', { logContext: { op: 'otp-verify' } });
   }
 });
 

@@ -29,6 +29,7 @@ import { Redirect, useLocation } from 'wouter';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Crown, Check, Loader2 } from 'lucide-react';
 import { useWhoami } from '@/auth/useWhoami';
+import { readReturnTo } from '@/auth/returnTo';
 import { apiRequest } from '@/lib/queryClient';
 
 const GOLD = '#D4AF37';
@@ -96,12 +97,11 @@ export default function PrestigeEnroll() {
       await queryClient.invalidateQueries({ queryKey: ['/api/me/capabilities'] });
       await refetch();
       // Return to canonical customer home (CEO §2 / §9). Deep-link
-      // survivors (?redirect=/foo) are honored, but only if same-origin.
-      const params = new URLSearchParams(window.location.search);
-      const redirect = params.get('redirect');
-      const safeRedirect = redirect && redirect.startsWith('/') && !redirect.startsWith('//')
-        ? redirect
-        : '/pet-parent/home';
+      // survivors are honored via canonical readReturnTo helper —
+      // accepts ?returnTo (canonical) or ?redirect / ?from / ?next
+      // (legacy transition), blocks open-redirect vectors.
+      // Phase 8.b migration (2026-09-01).
+      const safeRedirect = readReturnTo(window.location.search) || '/pet-parent/home';
       navigate(safeRedirect);
     },
     onError: (err: unknown) => {

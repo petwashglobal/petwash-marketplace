@@ -16,7 +16,7 @@ import { ImmutableStampService } from "../services/ImmutableStampService";
 import { petWashOrchestrator } from "../services/PetWashOperationsOrchestrator";
 import { logger } from "../lib/logger";
 import { BookingLockService } from "../services/BookingLockService";
-import { isSuperAdmin } from "../middleware/rbac";
+import { isSuperAdminVerified } from "../middleware/rbac";
 import { computeAndPersistSettlement } from "../services/SettlementEngine";
 import { stations } from "@shared/schema";
 import { eq, and, sql as drizzleSql } from "drizzle-orm";
@@ -505,9 +505,8 @@ router.get("/:bookingId", requireAuth, async (req, res) => {
   try {
     const { bookingId } = req.params;
     const userId = req.user!.uid;
-    // BUG FIX: isSuperAdmin takes an email string, not a req object.
-    // Using req as the argument caused a runtime crash: "email.toLowerCase is not a function".
-    const admin = isSuperAdmin(((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase());
+    // #240 migration: allowlist + email_verified.
+    const admin = isSuperAdminVerified(req as any);
 
     const doc = await db.collection("bookings").doc(bookingId).get();
 
@@ -543,8 +542,8 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     }
     const booking = bookingDoc.data()!;
 
-    // firebaseUser.claims.role is not a custom claim we set — always use isSuperAdmin()
-    const isSuperAdminUser = isSuperAdmin(((req as any).firebaseUser?.email || '').toLowerCase());
+    // #240 migration: allowlist + email_verified.
+    const isSuperAdminUser = isSuperAdminVerified(req as any);
     const bookingStationId = booking.stationId ? Number(booking.stationId) : null;
 
     if (bookingStationId) {
@@ -664,9 +663,8 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
     }
 
     const booking = bookingDoc.data()!;
-    const isSuperAdminUser = isSuperAdmin(
-      ((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase()
-    );
+    // #240 migration: allowlist + email_verified.
+    const isSuperAdminUser = isSuperAdminVerified(req as any);
     const isOwner    = booking.userId === userId || booking.customerId === userId;
     const isProvider = booking.providerId === userId;
 
@@ -739,8 +737,8 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
     const { bookingId } = req.params;
     const { reason } = req.body;
     const userId = req.user!.uid;
-    // BUG FIX: isSuperAdmin expects an email string — was incorrectly passed req object.
-    const admin = isSuperAdmin(((req as any).firebaseUser?.email || req.user?.email || '').toLowerCase());
+    // #240 migration: allowlist + email_verified.
+    const admin = isSuperAdminVerified(req as any);
 
     // 1. Fetch booking and guard against missing
     const bookingDoc = await db.collection("bookings").doc(bookingId).get();

@@ -99,6 +99,22 @@ export async function validateFirebaseToken(
     }
     req.firebaseUser = user;
     bridgeFirebaseUser(req);
+    // Auth-rebuild Phase 3.c.2 + 3.c.3 — shadow-verify + authority.
+    // Flag-gated OFF by default. In observation mode logs
+    // SECURITY_SESSION_MISMATCH; in authority mode returns
+    // authorityDeny=true on disagreement and we refuse the request.
+    try {
+      const { runSessionShadowCompareInline } = await import('./sessionShadowVerify');
+      const result = await runSessionShadowCompareInline(req);
+      if (result?.authorityDeny) {
+        return res.status(401).json({
+          error: 'SESSION_AUTHORITY_SKEW',
+          detail: 'Session state disagreed across cookies — please sign in again.',
+        });
+      }
+    } catch {
+      /* observation-only; never impedes auth */
+    }
     next();
   } catch (error: any) {
     // OBSERVABILITY 2026-06-18: highest-volume auth rejection path — used to log one

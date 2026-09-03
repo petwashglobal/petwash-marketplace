@@ -11,6 +11,7 @@
 import express from 'express';
 import { AppleWalletService } from '../appleWallet';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { db } from '../lib/firebase-admin';
 import { walletFraudProtection, WalletFraudDetection } from '../middleware/fraudDetection';
 import { WalletTelemetryService } from '../services/WalletTelemetryService';
@@ -209,10 +210,7 @@ router.post('/vip-card', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating VIP card:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate VIP card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_VIP_CARD_FAILED', { logContext: { op: 'vip-card' } });
   }
 });
 
@@ -309,10 +307,7 @@ router.post('/e-voucher', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating E-Voucher:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate E-Voucher',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_EVOUCHER_FAILED', { logContext: { op: 'evoucher' } });
   }
 });
 
@@ -358,10 +353,7 @@ router.post('/update-vip', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error updating VIP card:', error);
-    res.status(500).json({ 
-      error: 'Failed to update VIP card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_VIP_UPDATE_FAILED', { logContext: { op: 'vip-update' } });
   }
 });
 
@@ -537,10 +529,7 @@ router.post('/my-business-card', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating personal business card:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate business card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_BUSINESS_CARD_FAILED', { logContext: { op: 'business-card' } });
   }
 });
 
@@ -749,10 +738,7 @@ router.post('/business-card', requireAuth, async (req, res) => {
 
   } catch (error) {
     logger.error('[Wallet API] Error generating business card:', error);
-    res.status(500).json({ 
-      error: 'Failed to generate business card',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'WALLET_BUSINESS_CARD_FAILED', { logContext: { op: 'business-card' } });
   }
 });
 
@@ -1137,11 +1123,20 @@ router.post('/admin-send', async (req, res) => {
     }
     const { auth: firebaseAuth } = await import('../lib/firebase-admin');
     let callerEmail: string | undefined;
+    let callerEmailVerified = false;
     try {
       const decoded = await firebaseAuth.verifyIdToken(authHeader.split('Bearer ')[1], true);
       callerEmail = decoded.email;
+      callerEmailVerified = decoded.email_verified === true;
     } catch {
       return res.status(401).json({ error: 'Invalid Firebase token' });
+    }
+    // Release freeze 2026-09-03 top-up (AUTH-2 HIGH): an unverified email in
+    // the allowlist could be a stale claim; require a verified Firebase email
+    // before any admin-send action. Matches the isSuperAdminUser contract
+    // shipped by B6 elsewhere in the release.
+    if (!callerEmailVerified) {
+      return res.status(403).json({ error: 'Verified email required for admin action' });
     }
     if (!callerEmail || !SUPER_ADMIN_EMAILS.includes(callerEmail.toLowerCase())) {
       return res.status(403).json({ error: 'Admin access required' });
@@ -1254,8 +1249,7 @@ router.post('/admin-send', async (req, res) => {
     res.json({ success: true, message: `Wallet passes sent to ${targetEmail}`, targetEmail, vipLinkId: vipLink.linkId, businessLinkId: businessLink.linkId });
 
   } catch (error) {
-    logger.error('[Wallet API] Admin-send error:', error);
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to send wallet pass' });
+    sendSanitizedError(res, error, 'WALLET_ADMIN_SEND_FAILED', { logContext: { op: 'admin-send' } });
   }
 });
 
@@ -1670,11 +1664,7 @@ router.post('/nayax/redeem-loyalty', auditLogMiddleware('WALLET_BURN'), async (r
     });
 
   } catch (error) {
-    logger.error('[Nayax] Loyalty redemption failed:', error);
-    res.status(500).json({ 
-      error: 'Redemption failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    sendSanitizedError(res, error, 'NAYAX_LOYALTY_REDEEM_FAILED', { logContext: { op: 'nayax-loyalty-redeem' } });
   }
 });
 

@@ -1,6 +1,7 @@
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useWhoami } from "@/auth/useWhoami";
 import { Redirect } from "wouter";
+import { buildReturnToParam } from "@/auth/returnTo";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Shield, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,11 @@ export function ExecutiveSuiteGuard({
   }
 
   if (!user) {
-    return <Redirect to={`/signin?redirect=${encodeURIComponent(window.location.pathname)}`} />;
+    // Phase 8.b migration (2026-09-01): canonical ?returnTo= via
+    // buildReturnToParam. Blocks open-redirect vectors (protocol-relative,
+    // absolute URLs, javascript:, CRLF) and returns '' when the target
+    // is the default landing so we don't emit a redundant query string.
+    return <Redirect to={`/signin${buildReturnToParam(window.location.pathname)}`} />;
   }
 
   const userRole = serverRole || 'user';

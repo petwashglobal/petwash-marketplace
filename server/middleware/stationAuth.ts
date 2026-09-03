@@ -19,7 +19,7 @@ import { db } from '../db';
 import { stationOperators } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
-import { isSuperAdmin } from './rbac';
+import { isSuperAdminVerified } from './rbac';
 import { logger } from '../lib/logger';
 import { isValidAdminSecret } from '../lib/admin-secret';
 
@@ -71,8 +71,8 @@ export function requireStationRole(minRole: StationRole) {
       return res.status(401).json({ error: 'AUTH_REQUIRED' });
     }
 
-    const email = (req as any).firebaseUser?.email ?? '';
-    if (isSuperAdmin(email)) {
+    // #240 migration: paired shape — allowlist + email_verified.
+    if (isSuperAdminVerified(req as any)) {
       return next();
     }
 
@@ -149,8 +149,8 @@ export async function resolveStationRole(
   const uid = await resolveUid(req);
   if (!uid) return null;
 
-  const email = (req as any).firebaseUser?.email ?? '';
-  if (isSuperAdmin(email)) return 'owner';
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (isSuperAdminVerified(req as any)) return 'owner';
 
   try {
     const [row] = await db

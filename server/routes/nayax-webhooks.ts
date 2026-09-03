@@ -35,8 +35,9 @@ import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from '../services/googleSheetsIntegration';
 import { canConfirmBooking } from '../services/DealGateService';
-import { dispatchNotifications } from '../services/PetWashNotificationEngine';
+import { dispatchNotifications, buildRefundIssuedSms } from '../services/PetWashNotificationEngine';
 import { createOrUpdateAlert } from '../services/AlertEngine';
+import { logAuditEvent } from '../middleware/auditLog';
 
 const SHEETS_API_ERRORS = 'API Error Log';
 
@@ -650,6 +651,86 @@ router.post(
       logger.info('[NayaxWebhook] Refund applied', {
         transactionId, refundId, capturedCents, refundedCents, isFullRefund,
       });
+
+      // AUDIT-MONEY-5 (#230): the refund handler used to update the
+      // payment_intents row and stop there. Nothing told the payer their
+      // money was moving, and nothing wrote an audit-events row — the
+      // only record was a logger.info that rotated out of scope within
+      // days. Fan out both, wrap each in try/catch so a notification
+      // outage never wedges the refund itself. Both fire BEFORE
+      // markCompleted so if either write throws the inbox stays in
+      // 'processing' and Nayax's retry (or the retry sweeper) re-runs
+      // the whole handler.
+      const payerUserId = (existing as any).userId as string | undefined;
+      const bookingId = (existing as any).bookingId as string | undefined;
+      const currencyCode = (existing as any).currency || currency || 'ILS';
+      const bookingRefLabel = bookingId ? String(bookingId).slice(0, 8).toUpperCase() : String(refundId || transactionId);
+      const refundAmountText = ((refundedCents || 0) / 100).toFixed(2);
+
+      try {
+        await logAuditEvent({
+          actorUserId: undefined,
+          actorRole: 'system',
+          actionType: 'NAYAX_REFUND_APPLIED',
+          targetType: 'payment_intent',
+          targetId: transactionId,
+          traceId: (req as any).traceId,
+          metadata: {
+            refundId: String(refundId || ''),
+            transactionId: String(transactionId),
+            bookingId: bookingId ?? null,
+            userId: payerUserId ?? null,
+            capturedCents,
+            refundedCents,
+            isFullRefund,
+            currency: currencyCode,
+            reason: reason ?? null,
+          },
+        });
+      } catch (auditErr: any) {
+        logger.warn('[NayaxWebhook] Refund audit write failed (non-blocking)', {
+          transactionId, refundId, error: auditErr?.message,
+        });
+      }
+
+      if (payerUserId) {
+        try {
+          const [payer] = await db
+            .select({ id: users.id, phone: users.phone })
+            .from(users)
+            .where(eq(users.id, payerUserId))
+            .limit(1);
+          const smsText = buildRefundIssuedSms({
+            bookingRef: bookingRefLabel,
+            refundAmount: refundAmountText,
+          });
+          await dispatchNotifications({
+            userId: payerUserId,
+            eventType: 'refund_issued',
+            templateKey: 'customer_refund_issued',
+            bookingId: bookingId,
+            channels: ['sms', 'push'],
+            sms: payer?.phone ? { to: payer.phone, text: smsText } : undefined,
+            push: {
+              userId: payerUserId,
+              title: `זיכוי הועבר – PetWash™`,
+              body: `${refundAmountText} ${currencyCode} על הזמנה ${bookingRefLabel}. יופיע תוך 3-5 ימי עסקים.`,
+              data: { transactionId, refundId, type: 'refund_issued' },
+            },
+            debugPayload: {
+              refundId,
+              transactionId,
+              refundedCents,
+              isFullRefund,
+              smsText,
+            },
+          });
+        } catch (notifyErr: any) {
+          logger.warn('[NayaxWebhook] Refund notification dispatch failed (non-blocking)', {
+            transactionId, refundId, userId: payerUserId, error: notifyErr?.message,
+          });
+        }
+      }
 
       await inbox?.markCompleted?.();
       res.status(200).json({

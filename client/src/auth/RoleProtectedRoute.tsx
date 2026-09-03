@@ -1,7 +1,12 @@
-import { useLocation } from "wouter";
+import { useEffect } from "react";
+import { useLocation, Redirect } from "wouter";
 import { useFirebaseAuth, type UserRole } from "./AuthProvider";
 import { useWhoami, type DashboardType } from "./useWhoami";
 
+/**
+ * Role hierarchy — higher number is more privileged. A route with
+ * `minRole=X` accepts anyone whose serverRole level is >= X's level.
+ */
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   public: 1,
   provider: 2,
@@ -23,12 +28,57 @@ interface RoleProtectedRouteProps {
   requiredDashboard?: DashboardType;
 }
 
-export default function RoleProtectedRoute({ children, minRole, fallbackPath = '/', requiredDashboard }: RoleProtectedRouteProps) {
+/**
+ * PHASE 8 REFACTOR (CEO auth-rebuild directive, 2026-09-01):
+ *
+ *   Previous version called `setLocation(...)` DIRECTLY during render on four
+ *   different code paths. React logs a warning for that pattern, and two
+ *   guards on one page could chain redirects (documented in the architecture
+ *   audit as defect D7). Two symptoms in production traffic:
+ *     - Occasional "flash of protected page" before the redirect fired
+ *     - Rare `/signin → /dashboard → /signin` ping-pong when the effect
+ *       ordering flipped
+ *
+ *   Fixes:
+ *   1. Navigation moved into `useEffect` — never during render.
+ *   2. When we know we're going to redirect, render <Redirect> so wouter
+ *      completes the nav synchronously and returns null without flashing
+ *      the protected children.
+ *   3. Loading and error branches return the spinner unchanged.
+ *   4. The whoamiError retry stays inside a useEffect so it doesn't fire
+ *      on every render.
+ *
+ *   Public API (`minRole`, `fallbackPath`, `requiredDashboard`, `children`)
+ *   is unchanged. Callers do not need to update.
+ */
+export default function RoleProtectedRoute({
+  children,
+  minRole,
+  fallbackPath = '/',
+  requiredDashboard,
+}: RoleProtectedRouteProps) {
   const { user, loading } = useFirebaseAuth();
-  const { isLoading: whoamiLoading, isError: whoamiError, isAuthenticated, dashboardsAllowed, role: serverRole, refetch } = useWhoami();
-  const [, setLocation] = useLocation();
+  const {
+    isLoading: whoamiLoading,
+    isError: whoamiError,
+    isAuthenticated,
+    dashboardsAllowed,
+    role: serverRole,
+    refetch,
+  } = useWhoami();
+  const [location] = useLocation();
 
-  // Show spinner while Firebase or the server whoami check are still in-flight.
+  // Effect: refetch on transient whoami error while Firebase still holds a
+  // valid user. Previously this fired during render on every re-render.
+  useEffect(() => {
+    if (whoamiError && user) {
+      refetch();
+    }
+  }, [whoamiError, user, refetch]);
+
+  // Loading — both Firebase and the server-side whoami must resolve before
+  // we can decide anything. This branch was correct in the previous
+  // version and is preserved verbatim.
   if (loading || whoamiLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -37,12 +87,10 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
     );
   }
 
-  // BUGFIX 2026-06-18: whoami REQUEST ERRORED (network/5xx/transient) but Firebase
-  // still has a valid user — this is NOT a logout. Previously this collapsed to
-  // !isAuthenticated and kicked the user to /signin on a single blip (e.g. window
-  // refocus refetch). Keep them in place and retry instead of bouncing.
+  // Transient whoami error but Firebase user still present — hold the
+  // spinner while the useEffect above retries. NEVER bounce to /signin
+  // on a single network blip (regression 2026-06-18).
   if (whoamiError && user) {
-    refetch();
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -50,33 +98,26 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
     );
   }
 
-  // Both Firebase and the server have resolved.
-  // Only redirect when the server EXPLICITLY says NOT authenticated (clean response,
-  // not an error) — and there is also no local Firebase user (fully logged out).
-  if (!isAuthenticated && !user) {
-    setLocation('/signin');
-    return null;
+  // Server explicitly reports NOT authenticated — send to /signin. Preserve
+  // the intended destination so the sign-in flow can restore it. Uses the
+  // canonical `?returnTo=` convention (per CEO D6). SignUpLuxury still
+  // reads legacy `?from` / `?redirect` too during the Phase 8 transition
+  // window, so no user-visible break.
+  if (!isAuthenticated) {
+    const returnTo = location && location !== '/signin' ? `?returnTo=${encodeURIComponent(location)}` : '';
+    return <Redirect to={`/signin${returnTo}`} />;
   }
 
-  // Firebase user exists but the server CLEANLY reports the session is gone/expired
-  // (not a transient error — that's handled above) — force re-login.
-  if (!isAuthenticated && user) {
-    setLocation('/signin');
-    return null;
-  }
-
-  // Server confirmed authenticated. Enforce role.
+  // Role check — server confirmed authenticated, now enforce level.
   const serverLevel = ROLE_HIERARCHY[serverRole as UserRole] ?? 1;
   const requiredLevel = ROLE_HIERARCHY[minRole] ?? 1;
 
   if (serverLevel < requiredLevel) {
-    setLocation(fallbackPath);
-    return null;
+    return <Redirect to={fallbackPath} />;
   }
 
   if (requiredDashboard && !dashboardsAllowed.includes(requiredDashboard)) {
-    setLocation(fallbackPath);
-    return null;
+    return <Redirect to={fallbackPath} />;
   }
 
   return children;

@@ -2,15 +2,21 @@
  * SYSTEM CONFIG SERVICE
  * PETWASH SYSTEM INTELLIGENCE SPEC — Admin Control System
  *
- * Singleton in-memory config store for runtime toggles.
- * Admins can adjust these via the admin panel without a code deploy.
+ * Release-blocker B1 (CEO 2026-09-02 release freeze): moved from a
+ * per-instance in-memory Map to a shared Postgres store
+ * (system_config, migration 0143). Every set() writes through Postgres
+ * first; every pod hydrates from Postgres on boot and refreshes every
+ * SYSTEM_CONFIG_REFRESH_MS (default 30 000 ms). Sync get() still reads
+ * from the local cache so hot paths pay no DB cost.
  *
- * On server restart values reset to defaults — this is intentional.
- * These toggles govern live operational behaviour (e.g. whether CAPTCHA
- * is strictly enforced) and should default to safe values.
+ * When Postgres is unavailable the service falls back to DEFAULTS +
+ * whatever was previously cached. Callers of hot paths never block on
+ * the DB. Writes without a working DB raise so an admin toggling a
+ * flag sees the failure instead of a silent per-pod change.
  */
 
 import { logger } from '../lib/logger';
+import { pool } from '../db';
 
 export interface SystemConfigMap {
   'captcha.strict_mode': boolean;
@@ -87,6 +93,128 @@ export interface SystemConfigMap {
   'sumit.mode': 'off' | 'email' | 'api' | 'csv_export';
   'recovery.signup_reminder_enabled': boolean;
   'recovery.booking_followup_enabled': boolean;
+  /**
+   * Auth-rebuild Phase 1 (CEO directive 2026-09-01) — canonical identity
+   * resolver. When ON, every session-mint feeder calls
+   * `server/identity/loginOrLink.ts` after Firebase verify to record the
+   * identity_accounts link and emit IDENTITY_SHADOW_WOULD_MERGE if a
+   * verified email collides with another users row.
+   *
+   * Default OFF: existing feeders keep their current byte-for-byte
+   * behaviour until every one is wired AND the dedup dry-run has been
+   * reviewed by support. Folds in the legacy IDENTITY_UNIFIED_ENABLED
+   * env gate — either enables the wiring.
+   *
+   * Turning this ON is safe: identity_accounts writes are additive and
+   * observation-only in Phase 1. No automatic linking, no merging.
+   */
+  'ff.returning_user.identity_unified.enabled': boolean;
+  /**
+   * Auth-rebuild Phase 3.b (CEO directive 2026-09-01, D3) — Pet Wash-
+   * owned session model observation.
+   *
+   * When ON, `POST /api/auth/session` (and other session-cookie mint
+   * sites) additionally calls `SessionService.mintSession()` to record
+   * a `sessions_pw` row. The Firebase `__session` cookie remains the
+   * authoritative session; the opaque Pet Wash session id is minted
+   * and hashed at rest but is NOT emitted to the client in Phase 3.b.
+   *
+   * Purpose: prove the mint mechanism, index shape, and cache-invalidation
+   * plumbing all behave correctly against real production login traffic
+   * before Phase 3.c makes the Pet Wash session cookie authoritative.
+   *
+   * Default OFF. Zero behaviour change. Turning ON is safe: SessionService
+   * is transaction-safe and never blocks the login response on write
+   * failure (all callers wrap it in try/catch).
+   */
+  'ff.returning_user.sessions_owned.enabled': boolean;
+  /**
+   * Auth-rebuild Phase 3.c.1 — EMIT the Pet Wash session cookie.
+   *
+   * When ON (in addition to `ff.returning_user.sessions_owned.enabled`),
+   * successful login responses set an HttpOnly `pw_session_id` cookie
+   * carrying the RAW opaque session id from SessionService.mintSession().
+   * The cookie is SameSite=Lax, Secure in prod, path=/, and max-age
+   * matches the sessions_pw expiry.
+   *
+   * NOTHING READS THE COOKIE YET. Phase 3.c.2 adds a shadow-verify
+   * middleware that compares the cookie-derived UID with the Firebase-
+   * decoded UID and logs disagreements. Phase 3.c.3 flips authority.
+   *
+   * Default OFF. Turning ON is safe: the cookie is emitted but no code
+   * path reads it, so login continues to run on the Firebase session
+   * cookie as before.
+   */
+  'ff.returning_user.sessions_owned.emit_cookie': boolean;
+  /**
+   * Auth-rebuild Phase 3.c.2 — SHADOW-VERIFY the Pet Wash session cookie.
+   *
+   * When ON, every request that carries both `__session` (Firebase) and
+   * `pw_session_id` (Pet Wash) resolves each independently and compares.
+   * On disagreement:
+   *   - Log a redacted `SECURITY_SESSION_MISMATCH` event
+   *   - Continue serving on the LESS-PRIVILEGED result (do NOT choose
+   *     the more privileged one on disagreement — fail closed on
+   *     authority even during shadow observation)
+   * When authority has not yet flipped (Phase 3.c.3), the request still
+   * proceeds via the Firebase path — this observation only surfaces the
+   * disagreement, it doesn't change auth decisions.
+   *
+   * Default OFF. Requires `sessions_owned.enabled` + `emit_cookie` to
+   * be ON to produce useful observations.
+   */
+  'ff.returning_user.sessions_owned.shadow_verify': boolean;
+  /**
+   * Auth-rebuild Phase 3.c.3 — AUTHORITY cutover.
+   *
+   * When ON (in addition to `shadow_verify`), a Firebase↔PW UID
+   * disagreement on ANY request causes the middleware to REFUSE the
+   * request rather than continue on the more-privileged side. Client
+   * sees 401 { error: 'SESSION_AUTHORITY_SKEW' }; server logs a
+   * redacted SECURITY_SESSION_AUTHORITY_DROP event.
+   *
+   * Fail-CLOSED by design (CEO §2): the less-privileged path in a
+   * disagreement is "refuse and force re-auth" — never "silently
+   * choose the more privileged result".
+   *
+   * Enabling this flag ONLY takes effect while
+   * `sessions_owned.enabled` + `.emit_cookie` + `.shadow_verify` are
+   * all ON — otherwise the cookies for comparison don't exist and
+   * the middleware short-circuits to next(). Default OFF; do not flip
+   * ON in production until shadow_verify has observed zero disagreements
+   * for a meaningful window.
+   */
+  'ff.returning_user.sessions_owned.authority': boolean;
+  /**
+   * Auth-rebuild Phase 11 (CEO D7 — /signin door flip).
+   *
+   * When ON, /signin renders the returning-user door (ReturnLogin,
+   * client/src/auth/ReturnLogin.tsx) when the browser reports a
+   * platform authenticator AND a `petwash_passkey_email` hint is
+   * present in localStorage. When any of those conditions fail, the
+   * door silently falls back to the legacy SignUpLuxury signin
+   * surface — no visible flicker, no dead-end.
+   *
+   * When OFF, /signin renders the legacy SignUpLuxury signin surface
+   * regardless. That is the default until CEO flips this flag as part
+   * of the cohort rollout (internal → staff → percentage → default).
+   *
+   * The client independently honours two per-viewer overrides that
+   * DO NOT need this flag set:
+   *   - URL param `?door=new`   — one-off preview / test cohort
+   *   - localStorage `pw_ff_new_door=1` — internal-user opt-in
+   * These are staff-facing preview knobs. Turning the server flag ON
+   * enables the door for all traffic that qualifies.
+   */
+  'ff.returning_user.new_door.enabled': boolean;
+  /**
+   * Percentage cohort (0..100) of returning-user traffic that gets the
+   * new door when `ff.returning_user.new_door.enabled` is ON. Used to
+   * stage: 0 → 1 → 10 → 50 → 100. Deterministic per-visitor via a
+   * stable hash of the passkey-email hint so a user does not flip
+   * between doors between visits. Ignored when the master flag is OFF.
+   */
+  'ff.returning_user.new_door.percent': number;
 }
 
 const DEFAULTS: SystemConfigMap = {
@@ -144,6 +272,24 @@ const DEFAULTS: SystemConfigMap = {
   'sumit.mode': 'off',
   'recovery.signup_reminder_enabled': true,
   'recovery.booking_followup_enabled': true,
+  // Auth-rebuild Phase 1 — canonical identity resolver. Default OFF.
+  // See interface docstring above.
+  'ff.returning_user.identity_unified.enabled': false,
+  // Auth-rebuild Phase 3.b — Pet Wash-owned session observation. OFF.
+  // See interface docstring above.
+  'ff.returning_user.sessions_owned.enabled': false,
+  // Auth-rebuild Phase 3.c.1 — emit HttpOnly pw_session_id cookie. OFF.
+  'ff.returning_user.sessions_owned.emit_cookie': false,
+  // Auth-rebuild Phase 3.c.2 — shadow-verify pw_session_id against Firebase. OFF.
+  'ff.returning_user.sessions_owned.shadow_verify': false,
+  // Auth-rebuild Phase 3.c.3 — authority cutover; fail-CLOSED on disagreement. OFF.
+  'ff.returning_user.sessions_owned.authority': false,
+  // Auth-rebuild Phase 11 — /signin door flip. Default OFF.
+  // Client-side ?door=new and localStorage pw_ff_new_door=1 still work
+  // as per-viewer previews even while the flag is OFF; see interface
+  // docstring above for the full rollout ladder.
+  'ff.returning_user.new_door.enabled': false,
+  'ff.returning_user.new_door.percent': 0,
 };
 
 export type ConfigKey = keyof SystemConfigMap;
@@ -152,30 +298,95 @@ class SystemConfigService {
   private store: SystemConfigMap = { ...DEFAULTS };
   private lastUpdated = new Date();
   private auditLog: Array<{ key: string; from: unknown; to: unknown; by: string; at: Date }> = [];
+  private hydrated = false;
+  private refreshTimer: NodeJS.Timeout | null = null;
+
+  /**
+   * Read the whole system_config table and update the in-memory cache.
+   * Called on boot AND every SYSTEM_CONFIG_REFRESH_MS. Fails safe:
+   * on DB error the cache stays as it was (defaults on first boot,
+   * last-good-hydrate on subsequent errors).
+   */
+  async hydrate(): Promise<void> {
+    try {
+      const r = await pool.query<{ key: string; value_json: unknown }>(
+        `SELECT key, value_json FROM system_config`,
+      );
+      const next: SystemConfigMap = { ...DEFAULTS };
+      for (const row of r.rows) {
+        if (row.key in DEFAULTS) {
+          (next as any)[row.key] = row.value_json;
+        }
+      }
+      this.store = next;
+      this.hydrated = true;
+      this.lastUpdated = new Date();
+    } catch (err: any) {
+      logger.warn('[SystemConfig] hydrate failed — keeping current cache', {
+        err: err?.message,
+        hydrated: this.hydrated,
+      });
+    }
+  }
+
+  /**
+   * Start the periodic refresh loop. Call once on boot. Does NOT block —
+   * the first hydrate is fire-and-forget so a slow DB never delays app
+   * boot. Every SYSTEM_CONFIG_REFRESH_MS the cache re-syncs from
+   * Postgres, so a flag flipped on another pod eventually reaches this
+   * one.
+   */
+  startRefreshLoop(): void {
+    if (this.refreshTimer) return;
+    const intervalMs = parseInt(process.env.SYSTEM_CONFIG_REFRESH_MS || '30000', 10);
+    // Fire the first hydrate in the background — boot must not block.
+    void this.hydrate();
+    this.refreshTimer = setInterval(() => {
+      void this.hydrate();
+    }, intervalMs);
+    (this.refreshTimer as any).unref?.();
+  }
 
   get<K extends ConfigKey>(key: K): SystemConfigMap[K] {
     return this.store[key];
   }
 
-  set<K extends ConfigKey>(key: K, value: SystemConfigMap[K], updatedBy: string): void {
+  /**
+   * Write-through to Postgres AND update the local cache. Throws on DB
+   * failure so an admin toggling a flag sees the error instead of a
+   * silent per-pod change that vanishes on redeploy.
+   */
+  async set<K extends ConfigKey>(
+    key: K,
+    value: SystemConfigMap[K],
+    updatedBy: string,
+  ): Promise<void> {
     const prev = this.store[key];
+    // Persist to Postgres first — if this throws, we don't stamp the
+    // cache, and the caller sees the failure.
+    await pool.query(
+      `INSERT INTO system_config (key, value_json, updated_at, updated_by)
+       VALUES ($1, $2::jsonb, now(), $3)
+       ON CONFLICT (key)
+       DO UPDATE SET value_json = EXCLUDED.value_json,
+                     updated_at = EXCLUDED.updated_at,
+                     updated_by = EXCLUDED.updated_by`,
+      [key, JSON.stringify(value), updatedBy],
+    );
     this.store[key] = value;
     this.lastUpdated = new Date();
     this.auditLog.push({ key, from: prev, to: value, by: updatedBy, at: new Date() });
 
-    logger.info('[SystemConfig] Config updated', {
-      key,
-      from: prev,
-      to: value,
-      by: updatedBy,
+    logger.info('[SystemConfig] Config updated (persisted)', {
+      key, from: prev, to: value, by: updatedBy,
     });
   }
 
-  patch(changes: Partial<SystemConfigMap>, updatedBy: string): void {
+  async patch(changes: Partial<SystemConfigMap>, updatedBy: string): Promise<void> {
     for (const [rawKey, value] of Object.entries(changes)) {
       const key = rawKey as ConfigKey;
       if (key in this.store) {
-        this.set(key, value as any, updatedBy);
+        await this.set(key, value as any, updatedBy);
       } else {
         logger.warn('[SystemConfig] Unknown config key ignored', { key });
       }
@@ -191,13 +402,14 @@ class SystemConfigService {
       lastUpdated: this.lastUpdated,
       auditLog: this.auditLog.slice(-20),
       defaults: DEFAULTS,
+      hydrated: this.hydrated,
     };
   }
 
-  reset(updatedBy: string): void {
+  async reset(updatedBy: string): Promise<void> {
     logger.warn('[SystemConfig] Full reset to defaults', { by: updatedBy });
     for (const key of Object.keys(DEFAULTS) as ConfigKey[]) {
-      this.set(key, DEFAULTS[key], updatedBy);
+      await this.set(key, DEFAULTS[key], updatedBy);
     }
   }
 }

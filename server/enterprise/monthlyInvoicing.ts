@@ -8,6 +8,7 @@ import type { Request, Response } from 'express';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { EmailService } from '../emailService';
 import PDFDocument from 'pdfkit';
 import { calculateVAT } from './israeliTax';
@@ -388,10 +389,6 @@ export async function triggerMonthlyInvoicing(
     });
     
   } catch (error: any) {
-    logger.error('[MonthlyInvoicing] Trigger failed:', error);
-    res.status(500).json({
-      error: 'Failed to trigger invoicing',
-      details: error.message
-    });
+    sendSanitizedError(res, error, 'MONTHLY_INVOICING_TRIGGER_FAILED', { logContext: { op: 'trigger-invoicing' } });
   }
 }

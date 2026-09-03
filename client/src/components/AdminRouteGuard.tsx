@@ -12,13 +12,28 @@ interface AdminRouteGuardProps {
 }
 
 export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
-  const { user: firebaseUser, loading: firebaseLoading, claims, claimsLoading } = useFirebaseAuth();
+  const { user: firebaseUser, loading: firebaseLoading } = useFirebaseAuth();
   const { admin, isLoading: adminLoading, isError } = useAdminAuth();
   const { whoami, isLoading: whoamiLoading, isSuperAdmin, role: whoamiRole } = useWhoami();
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
 
-  const allLoading = firebaseLoading || claimsLoading || (adminLoading && whoamiLoading);
+  // PHASE 8.c REFACTOR (CEO auth-rebuild directive 2026-09-01, D2):
+  //   Kill the Firebase-claims OR path. Server IS authority — the
+  //   client-side Firebase custom-claims cache can be stale after a
+  //   demotion (server revokes admin, but the cached ID token still
+  //   carries the old role until the next refresh). A stale claim
+  //   granting admin authority is exactly the "two-brains" defect
+  //   D2 flagged.
+  //
+  //   Remaining sources are BOTH server-authoritative:
+  //     - useWhoami() — the canonical /api/session/whoami surface
+  //     - useAdminAuth() — the legacy /api/admin/auth/me endpoint,
+  //       kept as a transition fallback until Phase 10 retires it
+  //
+  //   Both hit the server on demand. Neither can grant a stale
+  //   positive from local cache alone.
+  const allLoading = firebaseLoading || (adminLoading && whoamiLoading);
 
   useEffect(() => {
     if (allLoading) return;
@@ -32,14 +47,13 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
 
     const whoamiHasAccess = whoami && isAdminRole(whoamiRole);
     const adminHasAccess = admin && admin.isActive && isAdminRole(admin.role);
-    const claimsHasAccess = claims.role && isAdminRole(claims.role);
 
-    if (whoamiHasAccess || adminHasAccess || claimsHasAccess) return;
+    if (whoamiHasAccess || adminHasAccess) return;
 
     // Logged in but NOT an admin → do NOT bounce to /admin/login (that loops a
     // signed-in non-admin). Fall through to render the friendly access-denied
     // screen below (spec §21). Only the not-logged-in case redirects to login.
-  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, claims, claimsLoading, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading]);
+  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading]);
 
   if (allLoading) {
     return (
@@ -62,9 +76,8 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
 
   const whoamiHasAccess = whoami && isAdminRole(whoamiRole);
   const adminHasAccess = admin && admin.isActive && isAdminRole(admin.role);
-  const claimsHasAccess = claims.role && isAdminRole(claims.role);
 
-  if (whoamiHasAccess || adminHasAccess || claimsHasAccess) {
+  if (whoamiHasAccess || adminHasAccess) {
     return <>{children}</>;
   }
 

@@ -188,9 +188,12 @@ router.post('/guest', runUpload(upload.single('photo')), async (req, res) => {
   }
 });
 
-// AI GENERATION ENDPOINT: Generate avatar from preset (PUBLIC - No Auth Required)
-// Note: Currently returns placeholder; full implementation requires Gemini image generation model
-router.post('/generate-from-preset', async (req, res) => {
+// AI GENERATION ENDPOINT: Generate avatar from preset
+// Release freeze 2026-09-03 top-up (AI-2 / audit CRIT): was previously public
+// and unauth — trivially callable by anyone to run Gemini image generation on
+// PetWash's Vertex quota. Now requires validated Firebase identity so cost is
+// attributed and the per-uid AI budget applies.
+router.post('/generate-from-preset', validateFirebaseToken, async (req, res) => {
   try {
     const { presetId, petName } = req.body;
     

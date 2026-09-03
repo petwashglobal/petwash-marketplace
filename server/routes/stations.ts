@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { requireAdmin } from '../adminAuth';
 import { 
   stationSchema, 
@@ -687,8 +688,7 @@ router.post('/sheets/sync', requireAdmin, async (req: Request, res: Response) =>
     await syncStationsToGoogleSheets();
     res.json({ success: true, message: 'Stations, Inventory, and Alerts synced to Google Sheets' });
   } catch (error: any) {
-    logger.error('[Stations] Error syncing to Google Sheets', error);
-    res.status(500).json({ error: 'Failed to sync to Google Sheets', detail: error.message });
+    sendSanitizedError(res, error, 'STATIONS_SHEETS_SYNC_FAILED', { logContext: { op: 'sync-google-sheets' } });
   }
 });
 

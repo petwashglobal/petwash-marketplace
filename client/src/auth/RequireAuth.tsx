@@ -1,5 +1,6 @@
 import { Redirect, useLocation } from "wouter";
 import { useFirebaseAuth } from "./AuthProvider";
+import { buildReturnToParam } from "./returnTo";
 
 export default function RequireAuth({ children }: { children: JSX.Element }) {
   const { user, loading } = useFirebaseAuth();
@@ -14,10 +15,14 @@ export default function RequireAuth({ children }: { children: JSX.Element }) {
   }
 
   if (!user) {
-    // Preserve where the user was trying to go so after sign-in they land there,
-    // not on the generic /home page. Only preserve non-auth paths.
+    // Phase 8.b migration (2026-09-01): canonical ?returnTo= via
+    // buildReturnToParam. Also blocks open-redirect vectors (protocol-
+    // relative //evil, absolute URLs, javascript:, CRLF) and returns ''
+    // when the target is the default landing so no redundant query
+    // string. Preserves the pre-migration skip-list behaviour via the
+    // helper's own default-target rules.
     const skip = ['/', '/signin', '/signup', '/complete-profile'];
-    const returnParam = skip.includes(location) ? '' : `?from=${encodeURIComponent(location)}`;
+    const returnParam = skip.includes(location) ? '' : buildReturnToParam(location);
     return <Redirect to={`/signin${returnParam}`} />;
   }
 

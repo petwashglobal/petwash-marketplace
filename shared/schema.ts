@@ -44,6 +44,11 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   phone: varchar("phone").unique(),
+  // AUDIT-SMS-14 (#225): HMAC-SHA-256 lookup key over the normalised
+  // E.164 phone under PHONE_HMAC_SECRET (see server/lib/phoneHmac.ts).
+  // A leaked DB backup exposes only the hash — the raw phone stays for
+  // the sender path. Nullable until backfill lands.
+  phoneHash: varchar("phone_hash", { length: 64 }),
   dateOfBirth: varchar("date_of_birth"),
   address: text("address"),
   street: text("street"),
@@ -114,6 +119,18 @@ export const users = pgTable("users", {
   unsubscribedAt: timestamp("unsubscribed_at"), // When user unsubscribed from all marketing
   
   role: varchar("role").default("customer"),
+  // Auth-rebuild Phase 5 · which authorised role the user was operating
+  // in on their last session. Read on fresh-session mint to skip /mode
+  // when the role is still authorised. Never grants authority — the
+  // capabilities aggregator remains the source of truth. Migration 0136.
+  lastActiveRole: varchar("last_active_role", { length: 30 }),
+  // Auth-rebuild Phase 6 · SOFT-MERGE target (CEO D6). When non-NULL,
+  // this row is the SECONDARY of a super-admin merge and identity
+  // resolution should return the users row whose id = merged_into_uid.
+  // NEVER used to re-parent money / tax / booking / audit rows — those
+  // stay on their original uid as immutable evidence. Reversible by
+  // clearing this column. Migration 0138.
+  mergedIntoUid: varchar("merged_into_uid", { length: 64 }),
   userStatus: varchar("user_status").default("new"),
   signupIntent: varchar("signup_intent"),
   accessLevel: integer("access_level").default(1),
@@ -322,18 +339,113 @@ export const userPasskeys = pgTable("user_passkeys", {
   backedUp: boolean("backed_up").default(false).notNull(),
   transports: jsonb("transports").default(sql`'[]'::jsonb`).notNull(), // ["internal","hybrid",...]
   aaguid: varchar("aaguid", { length: 64 }), // authenticator model id
-  label: varchar("label", { length: 120 }), // user-friendly name, e.g. "iPhone Face ID"
+  label: varchar("label", { length: 120 }), // legacy user-friendly name; prefer deviceName below
   lastUsedAt: timestamp("last_used_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+
+  // ── Auth-rebuild Phase 2 · lossless-cutover columns (migration 0134) ──
+  // Every column below was identified by the field-audit as required to
+  // preserve full Firestore parity when the Postgres store becomes
+  // canonical. Additive-only; no reader is wired to these yet.
+
+  // WebAuthn L2 backup semantics — spec-precise BE and BS separately.
+  backupEligible: boolean("backup_eligible"),
+  backupState: boolean("backup_state"),
+  // Discoverable / resident credential flag.
+  isDiscoverable: boolean("is_discoverable").default(true).notNull(),
+  // Revocation state (Firestore soft-delete parity).
+  isRevoked: boolean("is_revoked").default(false).notNull(),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: varchar("revoked_reason", { length: 40 }),
+  revokedBy: varchar("revoked_by"),
+  // Live security gate — auth is refused if trustScore < threshold.
+  trustScore: integer("trust_score").default(50).notNull(),
+  // Usage / failure counters (unified web+mobile).
+  usageCount: integer("usage_count").default(0).notNull(),
+  consecutiveFailures: integer("consecutive_failures").default(0).notNull(),
+  lastAuthFailureAt: timestamp("last_auth_failure_at"),
+  // Attestation posture.
+  attestationFormat: varchar("attestation_format", { length: 40 }),
+  // Presentation / installation metadata.
+  platform: varchar("platform", { length: 16 }),
+  osVersion: varchar("os_version", { length: 32 }),
+  browserName: varchar("browser_name", { length: 32 }),
+  browserVersion: varchar("browser_version", { length: 32 }),
+  deviceName: varchar("device_name", { length: 120 }),
+  // Registration provenance (anti-phishing forensic snapshots).
+  registrationUserAgent: text("registration_user_agent"),
+  registrationIp: varchar("registration_ip", { length: 45 }),
+  registrationOrigin: varchar("registration_origin", { length: 255 }),
+  // Preserve Firestore's users/ vs employees/ realm split.
+  realm: varchar("realm", { length: 10 }).default("user").notNull(),
 }, (table) => [
   uniqueIndex("uq_user_passkeys_credential").on(table.credentialId),
   index("idx_user_passkeys_user").on(table.userId),
+  // Active-passkeys-per-user hot path.
+  index("idx_user_passkeys_active").on(table.userId).where(sql`is_revoked = false`),
+  // Realm-scoped user lookup (until unified role discriminator lives on users).
+  index("idx_user_passkeys_realm_user").on(table.realm, table.userId),
 ]);
 
 export const insertUserPasskeySchema = createInsertSchema(userPasskeys).omit({ id: true, createdAt: true, updatedAt: true });
 export type UserPasskey = typeof userPasskeys.$inferSelect;
 export type InsertUserPasskey = typeof userPasskeys.$inferInsert;
+
+// Sessions — first-class Pet Wash-owned session model (Phase 3).
+// Migration 0135. NO WRITER TODAY. Table exists so Phase 3.x service
+// can mint into it without needing a schema change alongside runtime
+// work. Cookie carries the raw opaque session id (32 bytes hex, HttpOnly,
+// Secure, SameSite Lax); server stores only SHA-256 hash. Per-session
+// revocation via revoked_at; Redis cache invalidation on revoke lives in
+// the service layer (not TTL drift). CEO D3.
+export const sessionsPw = pgTable("sessions_pw", {
+  id: bigserial("id", { mode: "bigint" }).primaryKey(),
+  sessionIdHash: varchar("session_id_hash", { length: 64 }).notNull(), // SHA-256(opaque_id)
+  userId: varchar("user_id").notNull(),
+  authMethod: varchar("auth_method", { length: 30 }), // google | apple | phone | email | password | passkey | pin | firebase-legacy
+  activeRole: varchar("active_role", { length: 30 }), // populated by Phase 5
+  deviceRef: varchar("device_ref"), // Phase 9 device link (unenforced FK)
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: varchar("revoked_reason", { length: 60 }),
+  registrationIp: varchar("registration_ip", { length: 45 }),
+  registrationUserAgent: varchar("registration_user_agent", { length: 400 }),
+  lastSeenIp: varchar("last_seen_ip", { length: 45 }),
+  lastSeenUserAgent: varchar("last_seen_user_agent", { length: 400 }),
+}, (table) => [
+  uniqueIndex("uq_sessions_pw_session_id_hash").on(table.sessionIdHash),
+  index("idx_sessions_pw_user_active").on(table.userId, table.lastSeenAt).where(sql`revoked_at IS NULL`),
+  index("idx_sessions_pw_expires_at").on(table.expiresAt).where(sql`revoked_at IS NULL`),
+]);
+export type SessionPw = typeof sessionsPw.$inferSelect;
+export type InsertSessionPw = typeof sessionsPw.$inferInsert;
+
+// Devices — installation trust model (Phase 9, CEO D4 correction).
+// Migration 0137. NO WRITER TODAY. A device is a known app/browser
+// installation — NOT a hardware fingerprint. Trust level is a UX
+// signal only, never an authentication factor. Passkeys still belong
+// to the user, not the device (synced credentials).
+export const devicesPw = pgTable("devices_pw", {
+  id: bigserial("id", { mode: "bigint" }).primaryKey(),
+  userId: varchar("user_id").notNull(),
+  installId: varchar("install_id", { length: 64 }).notNull(),
+  label: varchar("label", { length: 120 }),
+  platform: varchar("platform", { length: 16 }),
+  formFactor: varchar("form_factor", { length: 16 }),
+  trustLevel: varchar("trust_level", { length: 20 }).default("unknown").notNull(),
+  firstSeenAt: timestamp("first_seen_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+  revokedReason: varchar("revoked_reason", { length: 60 }),
+}, (table) => [
+  uniqueIndex("uq_devices_pw_user_install").on(table.userId, table.installId),
+  index("idx_devices_pw_user_active").on(table.userId, table.lastSeenAt).where(sql`revoked_at IS NULL`),
+]);
+export type DevicePw = typeof devicesPw.$inferSelect;
+export type InsertDevicePw = typeof devicesPw.$inferInsert;
 
 // Admin Invitations — invite-only admin/staff onboarding. NO public path can create
 // an admin: a super-admin issues an invite (token_hash, role, expiry); the invitee
@@ -13309,6 +13421,9 @@ export const otpEvents = pgTable("otp_events", {
   otpId: varchar("otp_id", { length: 100 }).notNull(), // UUID or event-scoped key
   eventType: varchar("event_type", { length: 30 }).notNull(), // OTP_SENT, OTP_VERIFIED, OTP_FAILED, OTP_EXPIRED
   phoneE164: varchar("phone_e164", { length: 20 }).notNull(),
+  // AUDIT-SMS-14 (#225): HMAC-SHA-256 lookup key over the normalised
+  // E.164 phone under PHONE_HMAC_SECRET. Nullable until backfill lands.
+  phoneHash: varchar("phone_hash", { length: 64 }),
   userId: varchar("user_id"), // nullable for pre-auth
   userTypeIntent: varchar("user_type_intent", { length: 20 }).notNull(), // PUBLIC, PROVIDER, STAFF_REQUEST
   otpHash: varchar("otp_hash", { length: 128 }), // SHA-256 hash, never store raw code
@@ -13344,6 +13459,9 @@ export const smsEvidence = pgTable("sms_evidence", {
   templateId: varchar("template_id", { length: 50 }),
   templateVersion: varchar("template_version", { length: 10 }).default("1.0"),
   toPhone: varchar("to_phone", { length: 20 }).notNull(),
+  // AUDIT-SMS-14 (#225): HMAC-SHA-256 lookup key over the normalised
+  // E.164 to_phone under PHONE_HMAC_SECRET. Nullable until backfill lands.
+  toPhoneHash: varchar("to_phone_hash", { length: 64 }),
   renderedText: text("rendered_text").notNull(), // Exact text sent (for legal evidence)
   contentHash: varchar("content_hash", { length: 128 }), // SHA-256 of rendered text
   provider: varchar("provider", { length: 30 }).default("twilio"),

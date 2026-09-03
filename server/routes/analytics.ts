@@ -3,9 +3,12 @@ import { getAuthFunnelMetrics, trackAuthFunnel, trackCustomEvent } from '../lib/
 import { logger } from '../lib/observability';
 import { requireAdmin } from '../adminAuth';
 import rateLimit from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 
 const router = Router();
 
+// Release-blocker B3 (CEO 2026-09-02): shared Redis store — per-pod
+// state let a caller multiply their permitted rate by pod count.
 const analyticsTrackLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
@@ -13,6 +16,7 @@ const analyticsTrackLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  store: redisRateLimitStore('analytics_track'),
 });
 
 const ALLOWED_EVENT_NAMES = /^[a-zA-Z0-9_]{1,100}$/;

@@ -22,7 +22,7 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { logger } from '../lib/logger';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { composeFiscalPassport, type FiscalSourceHint } from '../services/fiscalPassport/composer';
 import { listCustomerTransactions } from '../services/fiscalPassport/customerLister';
 import type { FiscalActor } from '@shared/lib/fiscalPassport/FiscalTransactionPassport';
@@ -45,8 +45,11 @@ function resolveViewer(req: Request): FiscalActor | null {
   const uid = (req as any).firebaseUser?.uid;
   const email = (req as any).firebaseUser?.email || '';
   if (!uid) return null;
+  // #240 migration: paired shape — allowlist + email_verified. An unverified
+  // Firebase account with an allowlisted email is treated as CUSTOMER, not
+  // PETWASH_STAFF, so it cannot see the staff-scoped fiscal envelope.
   return {
-    kind: isSuperAdmin(email) ? 'PETWASH_STAFF' : 'CUSTOMER',
+    kind: isSuperAdminVerified(req as any) ? 'PETWASH_STAFF' : 'CUSTOMER',
     uid,
     // Non-standard — kept for the eGift-purchase composer's email match.
     ...(email ? { ['email' as any]: email } : {}),

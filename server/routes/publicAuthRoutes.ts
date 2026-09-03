@@ -2,9 +2,11 @@ import express from "express";
 import crypto from 'crypto';
 import { z } from 'zod';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import { getCurrentUser } from "../simpleAuth";
 import { apiLimiter } from '../middleware/rateLimiter';
 import { logger } from "../lib/logger";
+import { phoneLookupHash } from "../lib/phoneHmac";
 import { verifyCaptchaToken } from "../lib/verifyCaptcha";
 import { verifyTurnstileToken } from "../lib/verifyTurnstile";
 import { twilioSMSService } from "../services/TwilioSMSService";
@@ -34,6 +36,9 @@ const phoneSendRateLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  // Release-blocker B3 (CEO 2026-09-02): shared Redis store — SMS
+  // bill blow-up cap must be fleet-wide, not per-pod.
+  store: redisRateLimitStore('public_phone_send'),
   handler: (_req, res) => {
     logger.warn('[PublicAuth] SMS rate limit hit', { ip: _req.ip });
     return res.status(429).json({
@@ -52,6 +57,9 @@ const phoneVerifyRateLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
   validate: { xForwardedForHeader: false, ip: false, default: false },
+  // Release-blocker B3: shared Redis store — brute-force lockout cap
+  // must be fleet-wide.
+  store: redisRateLimitStore('public_phone_verify'),
   handler: (_req, res) => {
     return res.status(429).json({
       ok: false,
@@ -413,6 +421,8 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       templateId: 'phone_login_v1',
       templateVersion: '1.0',
       toPhone: normalizedPhone,
+      // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+      toPhoneHash: phoneLookupHash(normalizedPhone),
       renderedText: smsText,
       contentHash: crypto.createHash('sha256').update(normalizedPhone + traceId).digest('hex'),
       provider: 'twilio',
@@ -428,6 +438,8 @@ publicAuthRouter.post("/api/auth/phone/send-code", phoneSendRateLimiter, async (
       otpId: traceId,
       eventType: 'OTP_SENT',
       phoneE164: normalizedPhone,
+      // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+      phoneHash: phoneLookupHash(normalizedPhone),
       userTypeIntent: 'PUBLIC',
       provider: 'twilio',
       providerMessageId: result.messageId || null,
@@ -682,11 +694,23 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     // user never reached activationStatus='active' and stayed blocked from
     // wallet/booking by requireActive. markEmailVerified sets the timestamp and,
     // with the mobile timestamp from phone-session, flips the account to active.
+    // Release-blocker B6 (CEO 2026-09-02): activation MUST succeed before
+    // we reply {ok:true, emailVerified:true}. Silently swallowing the
+    // advance failure previously left the account stuck at
+    // activationStatus != 'active' with the client believing signup was
+    // done, so wallet/booking silently failed with no retry surface.
     try {
       const { markEmailVerified } = await import('../services/ActivationService');
       await markEmailVerified(uid, { acceptTerms: true });
     } catch (vErr: any) {
-      logger.warn('[Signup] verify-signup-email activation advance failed (non-blocking)', { error: vErr?.message });
+      logger.error('[Signup] verify-signup-email activation advance FAILED', {
+        uid, error: vErr?.message,
+      });
+      return res.status(503).json({
+        ok: false,
+        error: 'activation_unavailable',
+        message: 'Email verified but activation could not complete; please retry.',
+      });
     }
     // Include twoFactorPersisted so the client can surface a follow-up toast
     // when the 2FA preference didn't stick (rather than being blocked entirely).
@@ -750,11 +774,22 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
     // Advance ACTIVATION: markMobileVerified sets mobileVerifiedAt + phoneVerified +
     // activationStatus together (verification-drift fix) so a social-then-mobile
     // dual-verified user reaches 'active'.
+    // Release-blocker B6 (CEO 2026-09-02): same rule as email path — the
+    // activation advance MUST succeed before we reply {ok:true}. Prior
+    // silent-catch left accounts wedged just short of `active` with no
+    // retry surface.
     try {
       const { markMobileVerified } = await import('../services/ActivationService');
       await markMobileVerified(uid);
     } catch (vErr: any) {
-      logger.warn('[Signup] verify-signup-mobile activation advance failed (non-blocking)', { error: vErr?.message });
+      logger.error('[Signup] verify-signup-mobile activation advance FAILED', {
+        uid, error: vErr?.message,
+      });
+      return res.status(503).json({
+        ok: false,
+        error: 'activation_unavailable',
+        message: 'Mobile verified but activation could not complete; please retry.',
+      });
     }
     return res.json({ ok: true });
   } catch (e: any) {
@@ -1085,6 +1120,31 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
 
     logger.info('[PhoneAuth] Custom token created for user:', user.uid);
 
+    // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+    // The pre-existing 409 EMAIL_HAS_ACCOUNT guard at line ~895 STAYS.
+    // Per D6 (no auto-linking on email collisions), loginOrLink here is
+    // observation only — records the phone provider link and emits
+    // IDENTITY_SHADOW_WOULD_MERGE if the supplied email collides.
+    try {
+      const { getFeatureFlag } = await import('../services/SystemConfig');
+      const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+      if (identityUnifiedOn) {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        await loginOrLink({
+          provider: 'phone',
+          providerAccountId: user.uid,
+          email: email || null,
+          emailVerified: false, // phone-session does not verify email
+          displayName: null,
+        });
+      }
+    } catch (identityErr) {
+      logger.warn('[PhoneAuth] loginOrLink probe failed (non-blocking)', {
+        uid: user.uid,
+        error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+      });
+    }
+
     return res.status(200).json({
       ok: true,
       userId: user.uid,
@@ -1270,6 +1330,30 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
 
     const customToken = await adminAuth.createCustomToken(user.uid, { email, authMethod: 'email' });
     logger.info('[EmailAuth] Custom token created', { uid: user.uid });
+
+    // ── Phase 1 canonical identity wiring — flag-gated, default OFF.
+    // Records the email provider link. This route mints only after a
+    // successful HMAC-signed email-OTP proof, so email is verified.
+    try {
+      const { getFeatureFlag } = await import('../services/SystemConfig');
+      const identityUnifiedOn = await getFeatureFlag('ff.returning_user.identity_unified.enabled');
+      if (identityUnifiedOn) {
+        const { loginOrLink } = await import('../identity/loginOrLink');
+        await loginOrLink({
+          provider: 'email',
+          providerAccountId: user.uid,
+          email: email || null,
+          emailVerified: true,
+          displayName: null,
+        });
+      }
+    } catch (identityErr) {
+      logger.warn('[EmailAuth] loginOrLink probe failed (non-blocking)', {
+        uid: user.uid,
+        error: identityErr instanceof Error ? identityErr.message : String(identityErr),
+      });
+    }
+
     return res.status(200).json({
       ok: true,
       userId: user.uid,
@@ -1827,7 +1911,12 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, asyn
         if (isNewUser && firstName && metadata.phoneE164 && metadata.phoneE164 !== 'N/A') {
           const smsBody = renderWelcomeSMS(smsType, { firstName, membershipId: displayId, language });
           const templateId = getTemplateId(smsType);
-          const smsResult = await twilioSMSService.sendSMS(metadata.phoneE164, smsBody);
+          // AUDIT-SMS-5 (#221): welcome-SMS per-UID budget (onboarding purpose).
+          const { SMS_PURPOSES: _SPWelcome } = await import('../lib/perUidSmsBudget');
+          const smsResult = await twilioSMSService.sendSMS(metadata.phoneE164, smsBody, {
+            userId: firebaseUser2?.uid,
+            purpose: _SPWelcome.ONBOARDING,
+          });
 
           await db.insert(smsEvidence).values({
             userId: firebaseUser2?.uid || null,
@@ -1836,6 +1925,8 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, asyn
             templateId,
             templateVersion: '1.0',
             toPhone: metadata.phoneE164,
+            // AUDIT-SMS-14 (#225): stamp the HMAC lookup key on write.
+            toPhoneHash: phoneLookupHash(metadata.phoneE164),
             renderedText: smsBody,
             contentHash: crypto.createHash('sha256').update(smsBody).digest('hex'),
             provider: 'twilio',
@@ -1887,6 +1978,9 @@ const clientEventRateLimiter = rateLimit({
   // IPv6 address-rotation bypass). Trust-proxy is set to 1 in index.ts so
   // req.ip is the real client IP from the GCP/Firebase load-balancer header.
   keyGenerator: ipKeyGenerator,
+  // Release-blocker B3: shared Redis store — event-flood cap must be
+  // fleet-wide.
+  store: redisRateLimitStore('public_client_event'),
   handler: (_req, res) => res.status(429).json({ ok: false, error: 'TOO_MANY_EVENTS' }),
 });
 

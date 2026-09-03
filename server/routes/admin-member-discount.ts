@@ -22,7 +22,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { memberWashDiscounts, memberDiscountApplications, MEMBER_DISCOUNT_MAX_PERCENT } from '../../shared/schema';
 import { and, eq, desc } from 'drizzle-orm';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
 import { clearLoyaltyCache } from '../services/loyalty';
 import { decryptField } from '../services/secretFieldCrypto';
@@ -31,8 +31,8 @@ import { logger } from '../lib/logger';
 const router = Router();
 
 function requireAdmin(req: any, res: any, next: any) {
-  const email = (req.firebaseUser?.email || '').toLowerCase();
-  if (!isSuperAdmin(email)) {
+  // #240 migration: paired shape — allowlist + email_verified.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: 'Full admin access required' });
   }
   next();

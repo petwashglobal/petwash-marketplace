@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { randomBytes } from 'node:crypto';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
@@ -146,7 +147,12 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
     }
 
     const total = (settlements.rows as any[]).reduce((sum, s) => sum + (s.station_amount_cents ?? 0), 0);
-    const batchRef = `BATCH-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    // AUDIT-MONEY-7 (#231, 2026-09-01): batch reference id was
+    // `Math.random().toString(36).slice(2,7)` — 5 chars of Math.random
+    // is guessable / low-entropy, and the id anchors an audit chain for
+    // provider payout batches. Use crypto.randomBytes so the id cannot
+    // be predicted from adjacent batches.
+    const batchRef = `BATCH-${Date.now()}-${randomBytes(4).toString('hex').toUpperCase()}`;
 
     if (!assertOperatingControl(req, res, {
       actionType: 'PROVIDER_PAYOUT',
