@@ -39,7 +39,10 @@ export default function ChoosePath({ language }: ChoosePathProps) {
         ? 'הזמנת שירותים, ארנק, שוברי מתנה ותגמולים. הכול מוכן — אין צורך בעוד פרטים.'
         : 'Book services, wallet, gift cards and rewards. You’re all set — nothing more needed.',
       cta: he ? 'למסך הבית' : 'Go to home',
-      onClick: () => navigate('/home'),
+      // Lane A (CEO 2026-09-03): canonical customer workspace.
+      // `/home` renders the MARKETING page for signed-in web users —
+      // a customer picking "Pet Parent" must land on the workspace.
+      onClick: () => navigate('/pet-parent/home'),
       primary: true,
     },
     {
@@ -96,7 +99,8 @@ export default function ChoosePath({ language }: ChoosePathProps) {
           })}
         </div>
 
-        <button type="button" onClick={() => navigate('/home')}
+        <button type="button" onClick={() => navigate('/pet-parent/home')}
+          data-testid="choosepath-decide-later"
           style={{ display: 'block', margin: '22px auto 0', background: 'none', border: 'none', color: 'inherit', opacity: 0.6, fontSize: 13.5, cursor: 'pointer', textDecoration: 'underline' }}>
           {he ? 'אחליט/ה מאוחר יותר' : 'I’ll decide later'}
         </button>

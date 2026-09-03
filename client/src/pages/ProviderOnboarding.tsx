@@ -106,11 +106,15 @@ export default function ProviderOnboarding() {
         // OneTap / Account-tap call instead of firing a duplicate request.
         const data = await resolvePostLogin();
         if (cancelled) return;
-        const nextUrl = data.nextUrl || data.redirectTo || '/home';
+        // Lane A (CEO 2026-09-03): canonical customer workspace fallback.
+        // /home is the marketing page — signed-in customers must land on
+        // the workspace. The server post-login decider is the source of
+        // truth; this fallback only fires if the server has no opinion.
+        const nextUrl = data.nextUrl || data.redirectTo || '/pet-parent/home';
         navigate(nextUrl);
       } catch {
         if (cancelled) return;
-        navigate('/home');
+        navigate('/pet-parent/home');
       }
     })();
     return () => { cancelled = true; };
