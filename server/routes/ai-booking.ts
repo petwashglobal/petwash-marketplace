@@ -32,6 +32,11 @@ import { z } from 'zod';
 import { and, eq, gte, inArray, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { safeGenerate } from '../lib/gemini-client';
+// Post-release 2026-09-03 (backlog P1): AI-3/4/5/7 — wire the shared
+// aiChatLimiter + per-uid aiUserBudget onto every Gemini-backed
+// endpoint so a single caller can't burn PetWash's Vertex quota.
+import { aiChatLimiter } from '../middleware/rateLimiter';
+import { aiUserBudget } from '../middleware/aiUserBudget';
 import { getFeatureFlag } from '../services/SystemConfig';
 import { db } from '../db';
 import { availabilitySlots, octopusProviders, providerProfiles } from '@shared/schema';
@@ -192,7 +197,7 @@ async function requireBookingIntakeFlag(_req: Request, res: Response, next: Next
   }
 }
 
-router.post('/parse', requireBookingIntakeFlag, async (req: Request, res: Response) => {
+router.post('/parse', aiChatLimiter, aiUserBudget({ endpointTag: 'ai_booking_parse' }), requireBookingIntakeFlag, async (req: Request, res: Response) => {
   const body = RequestBodySchema.safeParse(req.body);
   if (!body.success) {
     return res.status(400).json({ ok: false, error: 'invalid_body', details: body.error.flatten() });
@@ -450,7 +455,7 @@ async function requireMatchingFlag(_req: Request, res: Response, next: NextFunct
   }
 }
 
-router.post('/match-score', requireMatchingFlag, async (req: Request, res: Response) => {
+router.post('/match-score', aiChatLimiter, aiUserBudget({ endpointTag: 'ai_booking_match_score' }), requireMatchingFlag, async (req: Request, res: Response) => {
   const body = MatchScoreBodySchema.safeParse(req.body);
   if (!body.success) {
     return res.status(400).json({ ok: false, error: 'invalid_body', details: body.error.flatten() });
@@ -686,7 +691,7 @@ async function requireSlotSuggestionsFlag(_req: Request, res: Response, next: Ne
   }
 }
 
-router.post('/slot-suggestions', requireSlotSuggestionsFlag, async (req: Request, res: Response) => {
+router.post('/slot-suggestions', aiChatLimiter, aiUserBudget({ endpointTag: 'ai_booking_slot_suggestions' }), requireSlotSuggestionsFlag, async (req: Request, res: Response) => {
   const body = SlotSuggestBodySchema.safeParse(req.body);
   if (!body.success) {
     return res.status(400).json({ ok: false, error: 'invalid_body', details: body.error.flatten() });
@@ -885,7 +890,7 @@ async function requireCareTagsFlag(_req: Request, res: Response, next: NextFunct
   }
 }
 
-router.post('/care-tags', requireCareTagsFlag, async (req: Request, res: Response) => {
+router.post('/care-tags', aiChatLimiter, aiUserBudget({ endpointTag: 'ai_booking_care_tags' }), requireCareTagsFlag, async (req: Request, res: Response) => {
   const body = CareTagsBodySchema.safeParse(req.body);
   if (!body.success) {
     return res.status(400).json({ ok: false, error: 'invalid_body', details: body.error.flatten() });
