@@ -12,40 +12,40 @@ covered by a behavioural test.
 
 ## A · Fail-safe corrections — money / legal / auth invariants
 
-- [ ] **A1 · Prestige kill-switch fails CLOSED on DB error**
+- [x] **A1 · Prestige kill-switch fails CLOSED on DB error**
       `server/routes/prestige-pass.ts:~16994 getKillSwitch()`
       Any Postgres failure MUST mean "kill switch active / dangerous
       operation denied". Never treat a DB blip as "flags default back
       on". Behavioural test proves that a thrown DB call returns the
       denied path.
 
-- [ ] **A2 · Prestige idempotency fails CLOSED on DB error**
+- [x] **A2 · Prestige idempotency fails CLOSED on DB error**
       `server/routes/prestige-pass.ts:~17002 checkIdempotency() / :17012 recordIdempotency()`
       DB / idempotency-infrastructure failure MUST NOT return
       `{hit:false}` (which the caller reads as "new mutation, proceed").
       For money mutations, uncertainty fails safely with an error the
       caller must surface, not swallow.
 
-- [ ] **A3 · VAT ledger write is durable**
+- [x] **A3 · VAT ledger write is durable**
       `server/routes/sitter-suite.ts:1605-1607` (booking-completion path)
       Booking completion cannot silently succeed financially while the
       VAT row disappears into a `.catch()`. Route the write through an
       outbox / retry queue that either completes or surfaces a stuck
       state for ops.
 
-- [ ] **A4 · Academy receipt is durable**
+- [x] **A4 · Academy receipt is durable**
       `server/routes/academy.ts:830-832`
       A legal digital receipt is not "best effort". Persist the
       fiscal-document work and retry it until success or explicit
       operator intervention.
 
-- [ ] **A5 · Walk-My-Pet legacy-bridge transition is durable**
+- [x] **A5 · Walk-My-Pet legacy-bridge transition is durable**
       `server/routes/walk-my-pet.ts:829 bridgeLegacyBooking(...)`
       If a bridge failure leaves paid bookings stuck at
       `pending_provider` (which the same file's :793 comment warns
       about), it is not best-effort. Retryable + observable.
 
-- [ ] **A6 · Wallet top-up limiter uses shared Redis store**
+- [x] **A6 · Wallet top-up limiter uses shared Redis store**
       `server/routes/credit-wallet.ts:74-82 topupRateLimiter`
       Per-process in-memory limiter scales with pod count today —
       N pods = 5N top-ups/hour per user. Move to a Redis-backed store
@@ -55,19 +55,19 @@ covered by a behavioural test.
 
 ## B · Authority / consistency P1s that ride this release
 
-- [ ] **B1 · Feature flags live in shared store, not per-pod Map**
+- [x] **B1 · Feature flags live in shared store, not per-pod Map**
       `server/services/SystemConfig.ts`
       Admin flag flips must be visible to every pod and survive a
       redeploy. Move the in-memory Map to a durable store the whole
       fleet reads.
 
-- [ ] **B2 · Provider reconfirmation + Provider-Declarations gates fail CLOSED**
+- [x] **B2 · Provider reconfirmation + Provider-Declarations gates fail CLOSED**
       `server/routes/booking-requests.ts:1550, 1576`
       Neither gate may `catch { /* fail-open */ }`. Infra failure means
       the provider is treated as ungated for THIS request, not "let it
       through".
 
-- [ ] **B3 · Remaining security-sensitive limiters use shared store**
+- [x] **B3 · Remaining security-sensitive limiters use shared store**
       `server/routes/publicAuthRoutes.ts:31-45, 49-62`
       `server/routes/auth.ts:40-45`
       `server/routes/sumit-webhook.ts:61-72`
@@ -77,31 +77,31 @@ covered by a behavioural test.
       Same treatment as A6 — Redis store, effective across the whole
       fleet.
 
-- [ ] **B4 · One canonical profile-write authority**
+- [x] **B4 · One canonical profile-write authority**
       `server/routes.ts:3165 (PUT → Firestore)`
       `server/routes.ts:5318 (PATCH → Postgres via storage.updateUser)`
       Two writers today with different allowlists and different stores.
       Pick one canonical writer; retire the other and rewire callers.
 
-- [ ] **B5 · One correctly authenticated `/api/finance` mount**
+- [x] **B5 · One correctly authenticated `/api/finance` mount**
       `server/routes.ts:12260 (with validateFirebaseToken) vs :13340 (adminLimiter only)`
       Second mount is anonymously reachable for any handler added
       without inline `requireRole`. Consolidate to one mount that
       always validates.
 
-- [ ] **B6 · Activation APIs never return success before activation succeeded**
+- [x] **B6 · Activation APIs never return success before activation succeeded**
       `server/routes/publicAuthRoutes.ts:690-695, 758-762`
       `markEmailVerified` / `markMobileVerified` failure must surface
       as a non-2xx to the client, not a silent `{ok:true}` that leaves
       the account stuck.
 
-- [ ] **B7 · Idempotency finalize UPDATE must not silently strand rows**
+- [x] **B7 · Idempotency finalize UPDATE must not silently strand rows**
       `server/middleware/idempotency.ts:185-187`
       On finalize-UPDATE failure the row stays `pending` and blocks
       real retries with 409 for the full lease window. Surface the
       failure OR release the lease.
 
-- [ ] **B8 · `me-capabilities` distinguishes infra failure from "member only"**
+- [x] **B8 · `me-capabilities` distinguishes infra failure from "member only"**
       `server/routes/me-capabilities.ts:34-39`
       DB error must not silently return least-privilege capabilities.
       Return an unavailable / error state; the client fails privileged
@@ -113,26 +113,26 @@ covered by a behavioural test.
 
 Complete each criterion or explicitly justify why it's already met:
 
-- [ ] C1  One canonical user identity
-- [ ] C2  Returning user can sign back in
-- [ ] C3  Valid session restores automatically
-- [ ] C4  Passkey / Face ID return login works
-- [ ] C5  Apple / Google fallback works where linked
-- [ ] C6  No unnecessary SMS
-- [ ] C7  One canonical Pet Wash session architecture
-- [ ] C8  Current-session logout works
-- [ ] C9  Selected-session revoke works
-- [ ] C10 Logout-all works
-- [ ] C11 Server controls roles/capabilities
-- [ ] C12 Multi-role switch works without re-authenticating as another person
-- [ ] C13 Unauthorised role escalation fails
-- [ ] C14 `activeRole` is UX state only
-- [ ] C15 `returnTo` preserves safe internal deep links
-- [ ] C16 No redirect loops
-- [ ] C17 No duplicate identity creation
-- [ ] C18 Account linking is safe
-- [ ] C19 Step-up auth works for sensitive actions
-- [ ] C20 Legacy auth paths retired once proven unused
+- [x] C1  One canonical user identity
+- [x] C2  Returning user can sign back in
+- [x] C3  Valid session restores automatically
+- [x] C4  Passkey / Face ID return login works
+- [x] C5  Apple / Google fallback works where linked
+- [x] C6  No unnecessary SMS
+- [x] C7  One canonical Pet Wash session architecture
+- [x] C8  Current-session logout works
+- [x] C9  Selected-session revoke works
+- [x] C10 Logout-all works
+- [x] C11 Server controls roles/capabilities
+- [x] C12 Multi-role switch works without re-authenticating as another person
+- [x] C13 Unauthorised role escalation fails
+- [x] C14 `activeRole` is UX state only
+- [x] C15 `returnTo` preserves safe internal deep links
+- [x] C16 No redirect loops
+- [x] C17 No duplicate identity creation
+- [x] C18 Account linking is safe
+- [x] C19 Step-up auth works for sensitive actions
+- [x] C20 Legacy auth paths retired once proven unused
 
 ---
 
