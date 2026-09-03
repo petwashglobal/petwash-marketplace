@@ -12907,6 +12907,16 @@ self.addEventListener('notificationclick', (event) => {
   // Phase 11.b — public config surface for the /signin door cohort.
   // Whitelist-only; exposes ONLY ff.returning_user.new_door.{enabled,percent}.
   app.use('/api/config', apiLimiter, configPublicRoutes);
+  // Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 write
+  // surface:
+  //   POST   /api/journey/checkpoint       — save a wizard's step state
+  //   GET    /api/journey/checkpoint/:dom  — hydrate on resume
+  //   GET    /api/journey/checkpoints      — list active
+  //   DELETE /api/journey/checkpoint/:dom  — clear on successful completion
+  // Auth is validateFirebaseToken; uid never comes from the body.
+  // Rejects payment-truth-looking payload keys as defence-in-depth.
+  const journeyCheckpointsRoutes = (await import('./routes/journey-checkpoints')).default;
+  app.use('/api/journey', apiLimiter, journeyCheckpointsRoutes);
   // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
   //   GET  /api/identity/links           — list linked providers (live)
   //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c
