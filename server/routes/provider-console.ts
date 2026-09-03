@@ -19,6 +19,9 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { GoogleGenAI } from '@google/genai';
 import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from '../middleware/aiUserBudget';
+// Post-release 2026-09-03 (backlog P1): shared IP burst + hourly ceiling
+// in front of the per-uid daily budget.
+import { aiChatLimiter } from '../middleware/rateLimiter';
 import { getVertexAIConfig } from '../lib/gemini-client';
 
 const router = Router();
@@ -431,7 +434,11 @@ router.get('/performance', async (req, res) => {
 });
 
 // ─── GEMINI AI ASSISTANT ─────────────────────────────────────
-router.post('/ai/query', aiUserBudget({
+// Post-release 2026-09-03 (backlog P1): AI-3 expansion — add the
+// shared aiChatLimiter in front of the per-uid aiUserBudget so this
+// endpoint gets the same IP-burst + hourly ceiling that /api/ai/chat
+// carries. Order: cheapest reject first (IP → per-uid budget).
+router.post('/ai/query', aiChatLimiter, aiUserBudget({
   endpointTag: 'provider_console_ai_query',
   dailyLimitAuthenticated: AI_BUDGET_DEFAULT_AUTH,
   dailyLimitAnonymous: AI_BUDGET_DEFAULT_ANON,
