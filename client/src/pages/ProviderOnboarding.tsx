@@ -1164,8 +1164,12 @@ export default function ProviderOnboarding() {
                       {isHebrew ? 'ניתן לבחור יותר מפלטפורמה אחת' : 'You can select more than one platform'}
                     </p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-walker"
+                        data-selected={hasProviderType('walker') ? 'true' : 'false'}
+                        role="button"
+                        aria-pressed={hasProviderType('walker')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('walker') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('walker')}
                       >
                         <div className="flex items-center gap-3">
@@ -1180,8 +1184,12 @@ export default function ProviderOnboarding() {
                           </Label>
                         </div>
                       </div>
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-sitter"
+                        data-selected={hasProviderType('sitter') ? 'true' : 'false'}
+                        role="button"
+                        aria-pressed={hasProviderType('sitter')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('sitter') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('sitter')}
                       >
                         <div className="flex items-center gap-3">
@@ -1196,8 +1204,12 @@ export default function ProviderOnboarding() {
                           </Label>
                         </div>
                       </div>
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-driver"
+                        data-selected={hasProviderType('driver') ? 'true' : 'false'}
+                        role="button"
+                        aria-pressed={hasProviderType('driver')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('driver') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('driver')}
                       >
                         <div className="flex items-center gap-3">
@@ -1212,8 +1224,12 @@ export default function ProviderOnboarding() {
                           </Label>
                         </div>
                       </div>
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`} 
+                      <div
+                        data-testid="provider-type-trainer"
+                        data-selected={hasProviderType('trainer') ? 'true' : 'false'}
+                        role="button"
+                        aria-pressed={hasProviderType('trainer')}
+                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('trainer') ? 'ring-2 ring-black bg-black/5' : ''}`}
                         onClick={() => toggleProviderType('trainer')}
                       >
                         <div className="flex items-center gap-3">

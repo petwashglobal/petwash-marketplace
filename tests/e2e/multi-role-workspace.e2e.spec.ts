@@ -4,7 +4,8 @@
  * Full multi-role Rover-style E2E. The account is BOTH a Pet Parent
  * (customer, always) AND an approved Provider. The spec proves:
  *   1. Post-login without an explicit intent → /mode picker.
- *   2. Picking "Continue as Pet Parent" lands on /prestige/home with
+ *   2. Picking "Continue as Pet Parent" lands on /pet-parent/home with
+ *      (Lane A CEO ruling 2026-09-03 — canonical customer workspace)
  *      the customer nav.
  *   3. The header ModeSwitch pill exists and flips to the Provider
  *      workspace (/provider-os / /provider/today).
@@ -50,13 +51,13 @@ async function stubAuth(page: import('@playwright/test').Page) {
   await page.route('**/api/me/capabilities', (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(CAPABILITIES_BOTH_PLUS_PRESTIGE) }));
   await page.route('**/api/auth/post-login', (route) => {
-    // Server-honored intent: 'provider' → /provider-os, 'customer' → /prestige/home,
+    // Server-honored intent: 'provider' → /provider-os, 'customer' → /pet-parent/home,
     // no intent → /mode picker.
     const body = route.request().postDataJSON() || {};
     const intent = body?.intent;
     const next =
       intent === 'provider' ? '/provider-os' :
-      intent === 'customer' ? '/prestige/home' :
+      intent === 'customer' ? '/pet-parent/home' :
       '/mode';
     return route.fulfill({
       status: 200,
@@ -77,7 +78,7 @@ test.describe('CEO backlog #19 — multi-role Pet Parent ↔ Provider workspace'
     await expect(page.getByTestId('choose-mode-prestige-badge')).toBeVisible();
 
     await page.getByTestId('choose-mode-pet-parent').click();
-    await page.waitForURL('**/prestige/home', { timeout: 5000 });
+    await page.waitForURL('**/pet-parent/home', { timeout: 5000 });
   });
 
   test('deep link /mode?returnTo=/provider/jobs/X auto-routes without picker', async ({ page }) => {
@@ -105,11 +106,11 @@ test.describe('CEO backlog #19 — multi-role Pet Parent ↔ Provider workspace'
         },
       }) }));
     await page.route('**/api/auth/post-login', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, nextUrl: '/prestige/home' }) }));
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, nextUrl: '/pet-parent/home' }) }));
 
     await page.goto('/mode');
     // Auto-route straight to the customer home — never a picker.
-    await page.waitForURL('**/prestige/home', { timeout: 5000 });
+    await page.waitForURL('**/pet-parent/home', { timeout: 5000 });
   });
 
   test('non-enrolled Pet Parent sees Join CTA on PrestigeHome, no wordmark', async ({ page }) => {
@@ -124,7 +125,7 @@ test.describe('CEO backlog #19 — multi-role Pet Parent ↔ Provider workspace'
         tier: 'none', cashCents: 0, giftCents: 0, giftCount: 0,
       }) }));
 
-    await page.goto('/prestige/home');
+    await page.goto('/pet-parent/home');
     // Wordmark hidden — no stolen valor.
     await expect(page.getByTestId('prestige-wordmark')).toHaveCount(0);
     // Join CTA offered — honest path forward.
