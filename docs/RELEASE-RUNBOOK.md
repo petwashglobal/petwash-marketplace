@@ -57,6 +57,24 @@ already has:
 **Two migrations land this release. Both are additive (no drop, no
 column rename).**
 
+**Applying them via CI (preferred):**
+
+Option A — an operator with the GitHub API `actions:write` scope
+dispatches the workflow explicitly:
+`gh workflow run petwash-ci.yml -f run_migrations=true`.
+
+Option B (release-freeze 2026-09-03 top-up) — push a commit whose
+head-commit message contains `[apply-pending-migrations]`. The
+`apply-migrations` job's `if:` was extended to accept that marker, and
+`deploy-backend` now requires `apply-migrations` to be success OR
+skipped. Absent the marker, the twice-burned M-DEPLOY-2 discipline
+holds: pushes do NOT auto-apply migrations.
+
+Both options invoke the same `scripts/apply-pending-migrations.ts
+--lenient`, which is idempotent (uses its own `_petwash_migrations`
+tracking table; safe to re-run).
+
+
 | # | File                                                    | What it adds                                                  |
 | - | ------------------------------------------------------- | ------------------------------------------------------------- |
 | 1 | `migrations/0142_fiscal_document_outbox_2026_09_02.sql` | `fiscal_document_outbox` table + UNIQUE (kind, source_key) + drainer index. |

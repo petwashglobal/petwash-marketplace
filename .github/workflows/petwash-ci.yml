@@ -405,7 +405,16 @@ jobs:
     #       single source of truth (no drizzle-kit push usage)
     #   (2) _journal.json tracks every file (no hand-written migrations
     #       outside the journal)
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_migrations == true }}
+    # Release freeze 2026-09-03: also runs on a push whose head commit
+    # message carries the explicit opt-in marker `[apply-pending-migrations]`.
+    # This is the "small one-time CI release commit" path the runbook allows
+    # when an operator lacks the workflow_dispatch API grant needed to fire
+    # `gh workflow run petwash-ci.yml -f run_migrations=true` directly. Absent
+    # the marker, the twice-burned M-DEPLOY-2 discipline still holds: pushes
+    # do NOT auto-apply migrations.
+    if: >-
+      ${{ (github.event_name == 'workflow_dispatch' && inputs.run_migrations == true)
+        || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apply-pending-migrations]')) }}
     permissions:
       contents: read
       id-token: write
@@ -468,11 +477,21 @@ jobs:
   deploy-backend:
     name: Build & Deploy Backend (Cloud Run)
     runs-on: ubuntu-latest
-    # M-DEPLOY-2: apply-migrations removed from needs[]. That job is now
-    # workflow_dispatch-only — on a normal push it never runs, so listing
-    # it in needs[] would skip deploy-backend forever. The two pre-deploy
-    # gates (routes-load smoke + env-var audit) remain required.
-    needs: [gate-smoke-test-startup, gate-money-tests, gate-audit-env-vars, gate-workflow-self-lint]
+    # M-DEPLOY-2 + release-freeze 2026-09-03: apply-migrations is now in
+    # needs[] but the deploy job's if: only requires it to be success OR
+    # skipped. Skipped is the normal push case (no marker); success is the
+    # opt-in case where a push carries `[apply-pending-migrations]` in its
+    # head commit message or an operator dispatched run_migrations=true.
+    # Failure of apply-migrations blocks the deploy — a half-migrated prod
+    # is worse than no deploy at all.
+    needs: [gate-smoke-test-startup, gate-money-tests, gate-audit-env-vars, gate-workflow-self-lint, apply-migrations]
+    if: >-
+      ${{ always() && !cancelled()
+        && needs.gate-smoke-test-startup.result == 'success'
+        && needs.gate-money-tests.result == 'success'
+        && needs.gate-audit-env-vars.result == 'success'
+        && needs.gate-workflow-self-lint.result == 'success'
+        && (needs.apply-migrations.result == 'success' || needs.apply-migrations.result == 'skipped') }}
     permissions:
       contents: read
       id-token: write

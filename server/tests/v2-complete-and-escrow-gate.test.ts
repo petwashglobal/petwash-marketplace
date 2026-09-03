@@ -58,8 +58,14 @@ describe('Escrow time-based release forces the payout gate (#2a)', () => {
     expect(ESCROW).toMatch(/opts\?:\s*\{\s*bypassGate\?:\s*boolean;\s*enforceGate\?:\s*boolean\s*\}/);
   });
 
-  it('enforce is forced when enforceGate is true (independent of the env flag)', () => {
-    expect(ESCROW).toMatch(/opts\?\.enforceGate === true \|\| process\.env\.ESCROW_PAYOUT_GATE_ENFORCE === "true"/);
+  it('enforce is forced when enforceGate is true; env default is FAIL-CLOSED (only "false" opts back into shadow)', () => {
+    // Release freeze 2026-09-03 top-up (MONEY-1 CRIT): the default flipped from
+    // shadow ("=== \"true\"") to enforce ("!== \"false\""). Any per-call
+    // enforceGate:true still forces the gate independent of the env; and the
+    // env-driven path now only opts *out* explicitly.
+    expect(ESCROW).toMatch(/opts\?\.enforceGate === true \|\| process\.env\.ESCROW_PAYOUT_GATE_ENFORCE !== "false"/);
+    // The prior shadow-default shape must not sneak back.
+    expect(ESCROW).not.toMatch(/ESCROW_PAYOUT_GATE_ENFORCE === "true"/);
   });
 
   it('the time-based orphan auto-release passes enforceGate:true', () => {
