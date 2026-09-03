@@ -3,6 +3,7 @@ import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { AuthRouteErrorBoundary } from "@/components/AuthRouteErrorBoundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { FloatingStack } from "@/components/FloatingStack";
 import { AiChatWidget } from "@/components/AiChatWidget";
@@ -965,13 +966,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => renderRootForApp()}
         </Route>
         <Route path="/signin">
-          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
+          {() => (
+            <AuthRouteErrorBoundary surface="signin">
+              <SigninDoor language={language} onLanguageChange={handleLanguageChange} />
+            </AuthRouteErrorBoundary>
+          )}
         </Route>
         <Route path="/sign-in">
-          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
+          {() => (
+            <AuthRouteErrorBoundary surface="signin">
+              <SigninDoor language={language} onLanguageChange={handleLanguageChange} />
+            </AuthRouteErrorBoundary>
+          )}
         </Route>
         <Route path="/login">
-          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
+          {() => (
+            <AuthRouteErrorBoundary surface="signin">
+              <SigninDoor language={language} onLanguageChange={handleLanguageChange} />
+            </AuthRouteErrorBoundary>
+          )}
         </Route>
         <Route path="/booking-chat/inbox">
           {() => (
@@ -995,7 +1008,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signin-advanced">
-          {() => <SigninDoor language={language} onLanguageChange={handleLanguageChange} />}
+          {() => (
+            <AuthRouteErrorBoundary surface="signin-advanced">
+              <SigninDoor language={language} onLanguageChange={handleLanguageChange} />
+            </AuthRouteErrorBoundary>
+          )}
         </Route>
         <Route path="/account/security">
           {() => (
@@ -1005,7 +1022,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signup">
-          {() => <Layout language={language} onLanguageChange={handleLanguageChange}><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></Layout>}
+          {() => (
+            <AuthRouteErrorBoundary surface="signup">
+              <Layout language={language} onLanguageChange={handleLanguageChange}>
+                <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />
+              </Layout>
+            </AuthRouteErrorBoundary>
+          )}
         </Route>
         {/* /signup is the single canonical door — every alias hard-redirects to it,
             preserving the query string (?flow=provider|prestige|guest|booking). */}
