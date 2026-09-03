@@ -1123,11 +1123,20 @@ router.post('/admin-send', async (req, res) => {
     }
     const { auth: firebaseAuth } = await import('../lib/firebase-admin');
     let callerEmail: string | undefined;
+    let callerEmailVerified = false;
     try {
       const decoded = await firebaseAuth.verifyIdToken(authHeader.split('Bearer ')[1], true);
       callerEmail = decoded.email;
+      callerEmailVerified = decoded.email_verified === true;
     } catch {
       return res.status(401).json({ error: 'Invalid Firebase token' });
+    }
+    // Release freeze 2026-09-03 top-up (AUTH-2 HIGH): an unverified email in
+    // the allowlist could be a stale claim; require a verified Firebase email
+    // before any admin-send action. Matches the isSuperAdminUser contract
+    // shipped by B6 elsewhere in the release.
+    if (!callerEmailVerified) {
+      return res.status(403).json({ error: 'Verified email required for admin action' });
     }
     if (!callerEmail || !SUPER_ADMIN_EMAILS.includes(callerEmail.toLowerCase())) {
       return res.status(403).json({ error: 'Admin access required' });

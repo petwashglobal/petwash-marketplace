@@ -40,6 +40,7 @@ import { nayaxSitterMarketplace } from '../services/NayaxSitterMarketplaceServic
 import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember, enrichWithLoyalty } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { withOwnerMedicalFields, filterPetForProvider } from '../lib/petPrivacy';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
@@ -362,9 +363,14 @@ router.get('/sitters/:id', async (req, res) => {
 });
 
 /**
- * POST /api/sitter-suite/sitters - Create sitter profile
+ * POST /api/sitter-suite/sitters - Create sitter profile.
+ *
+ * Release freeze 2026-09-03 top-up (AUTH-1 HIGH): previously anonymous +
+ * captcha-only, which created orphan sitter rows with no owner identity.
+ * Now requires a validated Firebase caller — anyone can still apply
+ * (registration is public), but the row is stamped to a real identity.
  */
-router.post('/sitters', async (req, res) => {
+router.post('/sitters', validateFirebaseToken, async (req, res) => {
   try {
     const { captchaToken, turnstileToken: sitterTurnstileToken, ...bodyWithoutToken } = req.body;
     if (!captchaToken) {

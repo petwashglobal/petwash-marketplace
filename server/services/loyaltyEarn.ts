@@ -132,6 +132,16 @@ export async function awardLoyaltyPoints(input: AwardPointsInput): Promise<Award
       newTier: tierCheck.upgraded ? tierCheck.newTier : undefined,
     };
   } catch (err: any) {
+    // Race protection (release freeze 2026-09-03 top-up): two concurrent identical
+    // (userId, source, sourceId) calls could both pass the pre-check above; the
+    // uq_points_tx_user_source_sourceid unique index on pointsTransactions makes
+    // the second insert fail with Postgres 23505 (unique_violation). Collapse
+    // that to a benign 'duplicate' skip so the caller sees the same result it
+    // would have for a sequentially-observed retry — never a 500.
+    if (err?.code === '23505') {
+      logger.info('[LoyaltyEarn] concurrent duplicate collapsed', { userId, source, sourceId });
+      return { awarded: false, skipped: 'duplicate' };
+    }
     logger.error('[LoyaltyEarn] Failed to award points', { error: err?.message, userId, source, sourceId });
     return { awarded: false, skipped: 'error' };
   }

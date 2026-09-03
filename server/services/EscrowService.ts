@@ -211,9 +211,9 @@ class EscrowService {
 
     // ── §7 payout gate (fail-CLOSED) — applied to this Firestore rail so it
     // matches the SQL rails. Runs BEFORE the release transaction. An explicit
-    // audited admin override (opts.bypassGate) can skip it. Enforcement is
-    // gated by ESCROW_PAYOUT_GATE_ENFORCE: default OFF = shadow mode (log only,
-    // behavior unchanged); ON = HOLD (throw) on any failed gate. ──────────────
+    // audited admin override (opts.bypassGate) can skip it. Release freeze
+    // 2026-09-03 (A3): default is ENFORCE. Ops set
+    // ESCROW_PAYOUT_GATE_ENFORCE=false to opt back into shadow. ──────────────
     if (!opts?.bypassGate) {
       // Peek the escrow to resolve provider/booking for the gate (no mutation).
       const peek = await escrowRef.get();
@@ -233,7 +233,11 @@ class EscrowService {
             // behavior for explicit, already-authorized releases (owner-confirm,
             // manual party release, octopus completion), which release now and
             // must not be blocked by the 48h refund-window gate.
-            const enforce = opts?.enforceGate === true || process.env.ESCROW_PAYOUT_GATE_ENFORCE === "true";
+            // Release-freeze 2026-09-03 (A3 top-up): flip default to ENFORCE.
+            // Prior default was SHADOW (log-only) — money released before the
+            // refund window closed. Now the release ships fail-CLOSED by default;
+            // ops set ESCROW_PAYOUT_GATE_ENFORCE=false to opt back into shadow.
+            const enforce = opts?.enforceGate === true || process.env.ESCROW_PAYOUT_GATE_ENFORCE !== "false";
             console.warn(
               `[Escrow] payout gate ${enforce ? "HELD" : "WOULD HOLD (shadow)"} ` +
                 `escrow ${escrowId} — ${gate.reason}: ${gate.message}`,

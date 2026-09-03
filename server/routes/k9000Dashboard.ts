@@ -20,14 +20,16 @@
 
 import express from 'express';
 import { db } from '../db';
-import { 
-  nayaxTelemetry, 
-  nayaxTransactions, 
+import {
+  nayaxTelemetry,
+  nayaxTransactions,
   auditLedger,
-  nayaxTerminals 
+  nayaxTerminals
 } from '@shared/schema';
 import { eq, and, desc, sql, gte, lt } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
@@ -674,9 +676,17 @@ router.get('/dashboard/stats', async (req, res) => {
 // ==================== MAINTENANCE NOTIFICATIONS ====================
 /**
  * POST /api/k9000/dashboard/send-maintenance-alert
- * Send push notification for maintenance issue
+ * Send push notification for maintenance issue.
+ *
+ * Release freeze 2026-09-03 top-up (SMS-1 CRIT): this route triggers
+ * notifications (SMS/push) tied to a station. Previously unauthenticated —
+ * anyone could burn PetWash's notification quota. Locked to a verified
+ * super-admin.
  */
-router.post('/dashboard/send-maintenance-alert', async (req, res) => {
+router.post('/dashboard/send-maintenance-alert', validateFirebaseToken, async (req, res) => {
+  if (!isSuperAdminVerified(req as any)) {
+    return res.status(403).json({ success: false, error: 'Admin access required' });
+  }
   try {
     const { stationId, alertType, message, severity } = req.body;
     

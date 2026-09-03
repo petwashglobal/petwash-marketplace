@@ -3,6 +3,7 @@
  * Uses LOG_LEVEL from environment
  */
 import * as Sentry from '@sentry/node';
+import { redactLogContext } from './redaction';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -32,20 +33,30 @@ class ServerLogger {
 
   private formatLog(level: LogLevel, message: string, context?: LogContext) {
     const timestamp = new Date().toISOString();
+    // Release freeze 2026-09-03 top-up (doctrine #208): sanitize every context
+    // spread through the logger so secrets/PII cannot reach stdout/Sentry via
+    // an accidental `{ body: req.body }` or `{ token }` shape. redactLogContext
+    // never throws — a bad input yields a placeholder string, never a log break.
+    let safeContext: LogContext | undefined = context;
+    try {
+      safeContext = context ? redactLogContext(context) : undefined;
+    } catch {
+      safeContext = { redactionError: true };
+    }
     const log = {
       timestamp,
       level: level.toUpperCase(),
       message,
-      ...context
+      ...safeContext
     };
 
     // In production (LOG_LEVEL=info or higher), output structured JSON
     if (process.env.APP_ENV === 'production') {
       return JSON.stringify(log);
     }
-    
+
     // In development, output human-readable format
-    return `[${timestamp}] [${level.toUpperCase()}] ${message}${context ? ' ' + JSON.stringify(context) : ''}`;
+    return `[${timestamp}] [${level.toUpperCase()}] ${message}${safeContext ? ' ' + JSON.stringify(safeContext) : ''}`;
   }
 
   debug(message: string, context?: LogContext) {
