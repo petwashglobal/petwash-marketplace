@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import {
+  initialRequestedServices,
+  setRequestedProviderServices,
+  clearRequestedProviderServices,
+} from '@/lib/requestedProviderService';
 import { useLanguage } from '@/lib/languageStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -113,15 +118,26 @@ export default function ProviderOnboarding() {
 
   // Form state
   const [step, setStep] = useState(1);
-  const [providerTypes, setProviderTypes] = useState<Array<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>>([]);
-  
-  // Toggle a provider type in the multi-select list
+  // Post-release 2026-09-03 (backlog P1): hydrate providerTypes from URL
+  // + sessionStorage so "Become a Pet Sitter" (?type=sitter / ?role=sitter
+  // / ?requestedService=pet_sitting) actually lands with sitter pre-picked.
+  // Previously initialized [] and silently dropped the CTA intent.
+  const [providerTypes, setProviderTypes] = useState<
+    Array<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>
+  >(() => initialRequestedServices());
+
+  // Toggle a provider type in the multi-select list. Persists the union so
+  // a refresh mid-wizard doesn't demote picks.
   const toggleProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') => {
-    setProviderTypes(prev => 
-      prev.includes(type) 
+    setProviderTypes(prev => {
+      const next = prev.includes(type)
         ? prev.filter(t => t !== type)
-        : [...prev, type]
-    );
+        : [...prev, type];
+      // Keep sessionStorage in sync with the additive-union model so
+      // reload picks up the current selection, not just the URL intent.
+      setRequestedProviderServices(next);
+      return next;
+    });
   };
   
   // Helper to check if a type is selected
@@ -913,6 +929,10 @@ export default function ProviderOnboarding() {
       if (response.ok) {
         setApplicationSubmitted(true);
         setBiometricScore(data.biometricMatchScore);
+        // Post-release 2026-09-03 (backlog P1): the CTA intent was
+        // consumed successfully. Clear the sessionStorage marker so a
+        // return visit doesn't re-inject the same service.
+        clearRequestedProviderServices();
         toast({
           title: t.applicationSuccess,
           description: t.successMessage
