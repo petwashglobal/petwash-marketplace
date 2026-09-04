@@ -934,6 +934,31 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // 403 in production — the public lead-capture pipeline was silently dead.
     if (/^\/api\/global-forms\//.test(req.path)) return true;
     if (req.path === '/api/franchise/inquiry') return true;
+    // PUBLIC careers / CV application (client/src/pages/Careers.tsx → the
+    // four anonymous POSTs of the apply flow). /careers is an open page and
+    // every one of these routes is deliberately unauthenticated
+    // (server/routes/careers.ts: /apply, /start-application, and the two
+    // /applications/:id/* draft routes carry NO validateFirebaseToken), so an
+    // applicant who is not signed in sends NO Bearer — and without a Bearer the
+    // global gate 403'd EBADCSRFTOKEN on every step. Net effect: the entire
+    // public job-application funnel, CV upload included, was silently dead for
+    // exactly the people it exists for. The classic
+    // [[csrf-public-post-regression-class]] failure.
+    //
+    // Safe to exempt: the two /applications/:id/* routes require `sessionId`,
+    // a server-issued UUID handed out by /start-application and checked with
+    // sessionIdOwns() (careers.ts:30) — a cross-origin attacker cannot read it,
+    // so a forged POST is rejected 403 on ownership regardless of CSRF. /apply
+    // and /start-application are Zod-validated, rate-limited (apiLimiter at the
+    // mount) lead-capture with no auth-sensitive state — the same profile as
+    // /api/contact and /api/franchise/inquiry above.
+    //
+    // Scoped deliberately: /api/careers/admin/* (applicant PII, shortlist and
+    // status mutations, positions CRUD) is NOT matched and keeps full CSRF
+    // protection.
+    if (req.path === '/api/careers/apply') return true;
+    if (req.path === '/api/careers/start-application') return true;
+    if (/^\/api\/careers\/applications\/[^/]+\/(autosave|documents)$/.test(req.path)) return true;
     // PUBLIC guest eGift checkout (server/routes/egift-guest.ts → POST
     // /api/egift/guest/start). A stranger buys a gift WITHOUT signing up, so
     // there is no Firebase Bearer and — on a first visit — no pw.csrf cookie to
