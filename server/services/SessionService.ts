@@ -65,6 +65,11 @@ export type RevokeReason =
   | 'user_logout'
   | 'user_logout_all'
   | 'password_change'
+  // 2026-09-05 auth/identity sprint: a verified email or mobile change is a
+  // credential change. Every OTHER device still holds a session minted against
+  // the previous contact identity, so those rows are revoked and tagged with
+  // this reason (distinct from 'password_change' so the audit trail stays true).
+  | 'contact_change'
   | 'device_lost'
   | 'suspicious_activity'
   | 'admin_action'
