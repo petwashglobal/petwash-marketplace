@@ -95,7 +95,13 @@ export type CtaAction =
   // JourneyCheckpoint. Emitted from the NextBestActionCard when
   // the server picks a resume hint as primary or secondary. The
   // wizard itself owns hydrate + revalidation on arrival.
-  | 'RESUME_JOURNEY';
+  | 'RESUME_JOURNEY'
+
+  // Journey Brain Phase 6 — user tapped the dismiss (X) button
+  // on the NextBestActionCard primary. Fires alongside the
+  // 'not_interested' feedback POST so analytics can see the
+  // suppression pathway even if the network call fails.
+  | 'DISMISS_NEXT_BEST_ACTION';
 
 /**
  * Every provider service maps to a `{ select, add }` pair — the picker
