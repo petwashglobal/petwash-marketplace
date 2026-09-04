@@ -8,3 +8,6 @@ Total open PRs at scan time: **9** (verified via REST `pulls?state=open`, pages 
 
 The suspected large clusters from the sprint brief are **ALL ALREADY CLOSED**:
 `#1758`, `#1819`-`#1828`, `#1846`-`#1854`, `#1857`-`#1861`, `#1863`-`#1869`.
+
+## Working note (in progress)
+- #2239 auth pin-auth: VERIFIED-SOURCE — main is a strict SUPERSET. Merging would REVERT two later fixes.
