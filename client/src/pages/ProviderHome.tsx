@@ -22,6 +22,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
+import { NextBestActionCard } from '@/components/NextBestActionCard';
 import { ProviderMoneyCard } from '@/components/ProviderMoneyCard';
 import {
   Bell, MessageCircle, Power, ShieldCheck, Star, ChevronRight, TrendingUp,
@@ -191,6 +192,12 @@ export default function ProviderHome() {
             (CEO 2026-08-26 §28). Provider sees the next real action
             (accept/decline, start, complete, ...) top-of-fold before
             any static tiles. Hides itself when the feed is empty. */}
+        {/* Journey Brain Phase 5 — the "Your next step" card sits
+            ABOVE the attention list so the one loudest action on
+            home is picked by the server-side selection rules
+            (urgent > resume > due_soon > informational). Hides
+            itself when the projection is empty. */}
+        <NextBestActionCard actor="provider" />
         <AttentionList actor="provider" />
 
         {/* "Your money" — canonical expected/pending/available/paid
