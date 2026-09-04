@@ -28,7 +28,7 @@
  * blip cannot silently grant privilege.
  */
 
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import {
   users,
@@ -41,6 +41,7 @@ import { providerServices } from '../../shared/schema-provider-services';
 import { logger } from './logger';
 import {
   emptyCapabilities,
+  PROVIDER_APPLICANT_STATUSES,
   type ProviderApplicationStatus,
   type ProviderServiceType,
   type UserCapabilities,
@@ -57,11 +58,50 @@ const APPROVED_SERVICE_STATUSES = ['approved_for_booking', 'approved_for_payout'
 
 // Application rows in these statuses mean "user has an in-flight application"
 // (applicant = true) but is NOT yet an active provider.
-const APPLICANT_STATUSES = new Set<ProviderApplicationStatus>([
-  'draft',
-  'pending_review',
-  'under_review',
-]);
+//
+// 2026-09-05 CORRECTNESS FIX — this set used to be the three-value literal
+// ['draft','pending_review','under_review'], which did NOT contain 'pending'
+// — the ONLY status POST /api/provider-onboarding/apply ever writes
+// (provider-onboarding.ts `status: 'pending'`). So EVERY provider who
+// actually submitted an application came back `applicant: false`, and the
+// Become-Provider router could not tell "already applied, waiting" from
+// "never applied" — it pushed them back into the wizard, where the
+// duplicate-submit guard 409s them (APPLICATION_EXISTS). Dead end.
+// It also missed 'processing', 'pending_resubmission' and 'on_hold'.
+// The list now lives in shared/ next to the status union so the two
+// cannot drift again.
+const APPLICANT_STATUSES = new Set<ProviderApplicationStatus>(PROVIDER_APPLICANT_STATUSES);
+
+/**
+ * Pick the ONE authoritative provider_applications row out of however many
+ * a user happens to hold. Pure so it can be tested without a database.
+ *
+ * @param rows statuses ALREADY ordered newest-first
+ *             (createdAt DESC, id DESC — see the caller).
+ *
+ * Rule: newest NON-draft row wins; if the user has only draft placeholders,
+ * the newest draft is used. Never "any row with status approved" — that
+ * would make provider authority survive a later rejection.
+ */
+export function resolveAuthoritativeApplicationStatus(
+  rows: ReadonlyArray<{ status: string | null }>,
+): ProviderApplicationStatus | null {
+  const row = rows.find((r) => r.status && r.status !== 'draft') ?? rows[0] ?? null;
+  return (row?.status ?? null) as ProviderApplicationStatus | null;
+}
+
+/**
+ * Map an application status to the two provider capability booleans.
+ * Fail-closed: an unrecognised status grants neither.
+ */
+export function deriveProviderStates(
+  status: ProviderApplicationStatus | null,
+): { active: boolean; applicant: boolean } {
+  return {
+    active: status === 'approved',
+    applicant: !!status && APPLICANT_STATUSES.has(status),
+  };
+}
 
 function isSuperAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
@@ -157,14 +197,38 @@ export async function getUserCapabilities(
     // ── PROVIDER ─────────────────────────────────────────────────────────
     (async () => {
       try {
-        const [row] = await db
+        // AUTHORITY ROW SELECTION — deterministic, fail-closed.
+        //
+        // `provider_applications` has NO unique index on user_id (see
+        // migrations/0003_thin_strong_guy.sql — only application_id is
+        // unique) and the submit guard in provider-onboarding.ts only
+        // blocks re-apply while a row is IN FLIGHT. So one user can hold
+        // several rows: {rejected, pending}, {approved, draft}, …
+        //
+        // This query used to be a bare `.limit(1)` with NO ORDER BY. With
+        // several rows, Postgres is free to return ANY of them, so provider
+        // authority was effectively arbitrary:
+        //   • rejected-then-re-applied → could still read the stale
+        //     'rejected' row and hide the live application, or
+        //   • approved-then-decided-again → could keep reading the OLD
+        //     'approved' row, so the newer decision never revoked
+        //     `provider.active`. Authority surviving a revocation.
+        //
+        // Rule now: the AUTHORITATIVE row is the most recently created
+        // NON-DRAFT row. Drafts are placeholders the post-login flow
+        // auto-creates on provider intent (see the "Replace any
+        // auto-created draft" delete in provider-onboarding.ts); letting a
+        // fresh placeholder be "latest" would silently demote a live
+        // approved provider on their next sign-in. When only drafts exist
+        // the newest draft is used (applicant = true, active = false).
+        const rows = await db
           .select({ status: providerApplications.status })
           .from(providerApplications)
           .where(eq(providerApplications.userId, userId))
-          .limit(1);
-        const status = (row?.status ?? null) as ProviderApplicationStatus | null;
-        const active = status === 'approved';
-        const applicant = !!status && APPLICANT_STATUSES.has(status);
+          .orderBy(desc(providerApplications.createdAt), desc(providerApplications.id));
+
+        const status = resolveAuthoritativeApplicationStatus(rows);
+        const { active, applicant } = deriveProviderStates(status);
         caps.provider.applicationStatus = status;
         caps.provider.active = active;
         caps.provider.applicant = applicant;
