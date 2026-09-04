@@ -104,6 +104,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { identityErrorMessage, isReauthRequired } from '@/lib/identityChangeErrors';
+import { normalizePhoneE164 } from '@/lib/authUtils';
 import { usePhoneVerification } from '@/hooks/usePhoneVerification';
 import { PhoneInput } from '@/components/PhoneInput';
 import { NativeDateSelect } from '@/components/ui/native-date-select';
@@ -1513,7 +1514,24 @@ export default function MyAccount() {
 
   const handleSendPhoneCode = async () => {
     if (!phoneNumber) return;
-    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+972${phoneNumber.replace(/^0/, '')}`;
+    // BUG FIXED 2026-09-05: this hand-rolled `+972${phone.replace(/^0/,'')}`
+    // prefixed +972 onto ANY number that did not start with '+'. A user typing
+    // their UK mobile as 447700900123 was sent to +972447700900123 — a
+    // non-existent Israeli number, so the code silently never arrived and the
+    // only feedback was a generic Firebase error. Use the canonical client
+    // normaliser, which already handles 00-prefixes, bare country codes,
+    // Israeli local format and Israeli mobiles typed without the leading 0.
+    const formattedPhone = normalizePhoneE164(phoneNumber);
+    if (!/^\+[1-9]\d{7,14}$/.test(formattedPhone)) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'מספר לא תקין' : 'Invalid number',
+        description: isHebrew
+          ? 'הזן מספר נייד תקין, לדוגמה 0541234567 או ‎+972541234567.'
+          : 'Enter a valid mobile number, e.g. 0541234567 or +972541234567.',
+      });
+      return;
+    }
     await phoneVerification.sendVerificationCode(formattedPhone);
   };
 
