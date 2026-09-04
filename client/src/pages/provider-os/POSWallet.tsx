@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { posFetch } from './posFetch';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -21,9 +22,10 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 const FMT_ILS = (n: number) => `₪${n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-function fetchWithAuth(url: string) {
-  return fetch(url, { credentials: 'include' }).then(r => r.json());
-}
+// Bearer token + fail-loud. Cookie-only meant provider-dashboard-v2 (Bearer
+// ONLY) 401'd every earnings read, and the missing res.ok check turned that
+// 401 body into "no earnings" instead of an error.
+const fetchWithAuth = posFetch;
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 function EmptyEarnings() {
@@ -110,14 +112,14 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
     if (isNaN(amount) || amount <= 0) { toast({ title: 'Enter a valid payout amount', variant: 'destructive' }); return; }
     setPayoutLoading(true);
     try {
-      const res = await fetch('/api/provider-dashboard/v2/payout-request', {
+      // posFetch attaches the Firebase Bearer token and throws on non-2xx.
+      // Cookie-only meant this endpoint 401'd every time. No payout amount,
+      // gate or window is changed here — only how the request authenticates.
+      await posFetch('/api/provider-dashboard/v2/payout-request', {
         method: 'POST',
-        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amountIls: amount, iban, bankName }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || 'Payout request failed');
       toast({ title: 'Payout request submitted', description: `₪${payoutAmount} request received. Processing within 3 business days.` });
       setPayoutAmount('');
       setIban('');

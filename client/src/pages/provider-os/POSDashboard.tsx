@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { posFetch } from './posFetch';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -40,9 +41,9 @@ const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }
   dispute:              { label: 'Dispute',     color: '#92400e', bg: '#fef3c7' },
 };
 
-function fetchWithAuth(url: string, opts?: RequestInit) {
-  return fetch(url, { ...opts, credentials: 'include' }).then(r => r.json());
-}
+// Bearer token + fail-loud (provider-dashboard-v2 accepts Bearer ONLY, and
+// the missing res.ok check rendered 401 bodies as empty stats).
+const fetchWithAuth = posFetch;
 
 function isToday(dateStr: string | null | undefined): boolean {
   if (!dateStr) return false;

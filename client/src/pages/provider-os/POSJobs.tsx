@@ -11,6 +11,7 @@
  *   v1_status:          All V1 action routes deprecated 2026-03-19. Sunset 2026-04-30.
  */
 import { useState } from 'react';
+import { posFetch } from './posFetch';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -92,9 +93,11 @@ const EMPTY_STATES: Record<string, { icon: any; title: string; sub: string }> = 
   all:         { icon: Dog,         title: 'No jobs found',         sub: 'Jobs will appear here when clients book you' },
 };
 
-function fetchWithAuth(url: string, opts?: RequestInit) {
-  return fetch(url, { ...opts, credentials: 'include' }).then(r => r.json());
-}
+// Bearer token + fail-loud on non-2xx. The old local helper sent the cookie
+// only (provider-dashboard-v2 accepts Bearer ONLY -> 401) and never checked
+// res.ok, so every 401 fired onSuccess and toasted "Job accepted" while the
+// server wrote nothing.
+const fetchWithAuth = posFetch;
 
 interface FinishModal { booking: any; amountILS: string; paymentMethod: string; }
 
@@ -143,6 +146,21 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
       toast({ title: labels[vars.action] || 'Done' });
       setCancelJobId(null);
       setDeclineJobId(null);
+    },
+    // Without this the mutation failed silently: the dialog stayed open, no
+    // message appeared, and the job list was left showing the old status.
+    onError: (err: any, vars) => {
+      const labels: Record<string, string> = {
+        accept: "Couldn't accept the job", decline: "Couldn't decline the request",
+        start: "Couldn't start the job", cancel: "Couldn't cancel the job",
+        report: "Couldn't report the issue", complete: "Couldn't complete the job",
+      };
+      toast({
+        title: labels[vars.action] || 'Action failed',
+        description: err?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+      invalidateAll();
     },
   });
 
