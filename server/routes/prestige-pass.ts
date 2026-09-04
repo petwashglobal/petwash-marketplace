@@ -1705,6 +1705,14 @@ router.post('/redeem-online', auditLogMiddleware('EGIFT_REDEEM'), async (req: Re
     };
 
     // Atomic deduction via WalletEngine (PostgreSQL only — no Firestore split)
+    //
+    // Redeem audit R1 — the idempotency key is LOAD-BEARING, not optional.
+    // deductFromWallet() only dedups when ctx.idempotencyKey is supplied
+    // (WalletLedger.ts "Layer 2"); the FOR UPDATE row lock serializes
+    // concurrent writers but does NOT collapse a replay. Without a key a
+    // double-tap / client retry on "Pay with Prestige Pass" debits the wallet
+    // TWICE for one booking. Keyed on (userId, bookingId) so it is stable
+    // across retries of the same booking and distinct between bookings.
     const result = await applyDeduction({
       userId,
       amountCents:  amountGross,
@@ -1712,6 +1720,8 @@ router.post('/redeem-online', auditLogMiddleware('EGIFT_REDEEM'), async (req: Re
       serviceType,
       bookingId,
       description: `Online redemption — ${serviceType}`,
+      idempotencyKey: `prestige:redeem-online:${userId}:${bookingId}`,
+      endpoint:     'prestige-pass/redeem-online',
       divisionCode: DIVISION_MAP[serviceType] ?? 'general',
       sourceType:   'booking',
     });
@@ -2332,6 +2342,12 @@ const staffChargeSchema = z.object({
   serviceType: z.enum(['grooming', 'full_wash', 'quick_wash', 'vet', 'academy', 'retail', 'transport', 'other']),
   amountCents: z.number().int().min(100).max(100_000),
   staffNote:   z.string().max(200).optional(),
+  // Redeem audit R6 — per-ring-up token minted ONCE by the POS client when the
+  // cashier opens the charge screen, replayed unchanged on every retry. This is
+  // the only value that can make a staff charge idempotent: the server-side
+  // fallback below embeds Date.now(), so it is fresh on every request and
+  // therefore dedups nothing.
+  idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
 router.post('/staff/charge', async (req: Request, res: Response) => {
@@ -2344,6 +2360,7 @@ router.post('/staff/charge', async (req: Request, res: Response) => {
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
 
     let { cardId, serviceType, amountCents, staffNote } = parsed.data;
+    const clientIdemKey = parsed.data.idempotencyKey;
     cardId = cardId.replace(/^petwash:\/\/card\//i, '').trim().toUpperCase();
 
     // Find customer by cardId
@@ -2381,7 +2398,11 @@ router.post('/staff/charge', async (req: Request, res: Response) => {
       bookingId,
       description:     `Staff POS charge — ${serviceType}${staffNote ? `: ${staffNote}` : ''}`,
       // Anti-fraud context
-      idempotencyKey:  `STAFF-${staffUserId}-${bookingId}`,
+      // Prefer the client's stable per-ring-up token. The bookingId fallback
+      // embeds Date.now() (see above), so it changes on every retry and gives
+      // NO replay protection — it is kept only so an old POS build still works.
+      idempotencyKey:  clientIdemKey ? `STAFF-${staffUserId}-${clientIdemKey}`
+                                     : `STAFF-${staffUserId}-${bookingId}`,
       ipAddress:       clientIp,
       userAgent:       clientUa,
       staffId:         staffUserId,
