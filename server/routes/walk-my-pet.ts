@@ -1310,7 +1310,11 @@ router.get('/walks/:bookingId', requireAuth, async (req, res) => {
 
     const isOwner = booking.ownerId === callerUid;
     const isWalker = walker?.userId === callerUid;
-    const isAdmin = await isSuperAdminVerified((req as any).user?.email || '').catch(() => false);
+    // #240 follow-up: isSuperAdminVerified is SYNCHRONOUS and takes the
+    // Request (it must read req.firebaseUser.email_verified). Passing an
+    // email string returned `false` and then threw
+    // `TypeError: false.catch is not a function` — a 500 on every caller.
+    const isAdmin = isSuperAdminVerified(req as any);
     if (!isOwner && !isWalker && !isAdmin) {
       logger.warn('[Walk My Pet] Unauthorized booking read', { bookingId, callerUid });
       return res.status(404).json({ error: 'Booking not found' });
