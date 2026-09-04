@@ -100,20 +100,28 @@ export default function MarketplaceIntelligenceDashboard() {
   });
 
   // ── Audit log for expanded provider ────────────────────────────────────────
-  // queryKey drop fix: default queryFn used queryKey[0] verbatim, so the
-  // panel showed the top-level audit LIST payload (all providers) inside
-  // the per-provider expand row instead of that provider's own audit
-  // trail. Explicit queryFn scopes to the expanded userId.
-
+  // CONTRACT FIX (Lane E D9), second pass. Two bugs, one after the other:
+  //   1. Originally no queryFn at all, so the default one fetched queryKey[0]
+  //      and dropped the provider id entirely.
+  //   2. The first repair added a queryFn but invented a QUERYSTRING contract
+  //      (`/audit?userId=…`). The canonical owner takes a PATH param —
+  //      `GET /api/marketplace/rankings/audit/:userId`
+  //      (server/routes/marketplace-ranking.ts:465) — and there is no bare
+  //      `/audit` route to fall through to, so this still 404'd and the panel
+  //      still rendered "no history" over real override evidence. (The comment
+  //      it carried, claiming the panel showed a top-level audit LIST, was
+  //      wrong: no such list route exists.)
+  //   3. That queryFn also used raw `fetch`, which sends neither the Firebase
+  //      bearer token nor the App Check header that `apiRequest` attaches —
+  //      so even at the right path it was relying on cookie auth alone.
   const { data: auditData, isLoading: auditLoading } = useQuery<{ entries: AuditEntry[]; total: number }>({
     queryKey: ['/api/marketplace/rankings/audit', expandedAudit],
     enabled: !!expandedAudit && !!user,
     queryFn: async () => {
-      const res = await fetch(
-        `/api/marketplace/rankings/audit?userId=${encodeURIComponent(expandedAudit!)}`,
-        { credentials: 'include' },
+      const res = await apiRequest(
+        'GET',
+        `/api/marketplace/rankings/audit/${encodeURIComponent(expandedAudit!)}`,
       );
-      if (!res.ok) throw new Error(`Failed to load audit entries: ${res.status}`);
       return res.json();
     },
   });
