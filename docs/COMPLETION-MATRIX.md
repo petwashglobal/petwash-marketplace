@@ -142,7 +142,7 @@ Then the site moves to normal continuous improvement.
 | Phase 3 · Saved Searches + Favourite Providers + Rebooking prefill | `TESTED` | #153 FAVOURITE_REBOOK. |
 | Phase 4 · NextBestAction service | `TESTED` | #2208 endpoint + #2213 route integration test (9 real-supertest pins). |
 | Phase 5 · rendering surface | `TESTED` | #2212 hook + card + #2215 home mount + #2216 real-browser E2E (5 scenarios). |
-| Phase 6 · feedback loop / personalization timing | `NOT REVIEWED` | Not started. |
+| Phase 6 · feedback loop / personalization timing | `TESTED` | Full closed loop shipped in #2218 (storage + service) → #2219 (endpoint) → #2220 (composer suppression) → #2221 (client dismiss button + hook). Retention pruner cron deferred. |
 | Cancellation legal engine | `TESTED` | #146 CancellationPolicyRegistry, versioned. |
 | Failure recovery (battery-dies / GPS-lost) | `TESTED` | #147. |
 | AI context authorization + PII minimization | `TESTED` | #148 CEO §78/79. |
@@ -222,12 +222,27 @@ Then the site moves to normal continuous improvement.
 
 ## Open engineering lanes (this session)
 
-- **Lane C · Journey Brain** — Phases 1-5 all TESTED; Phase 6 (feedback loop + personalization timing) not started.
-- **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed (#2210, #2211); NextBestActionCard end-to-end (#2216).
+- **Lane C · Journey Brain** — Phases 1-6 ALL TESTED. The whole personal-AI surface (attentionFeed / JourneyCheckpoint / SavedSearches+Favourites / NextBestAction / rendering / feedback loop) is now on `main`.
+- **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed; NextBestActionCard end-to-end (#2216). More provider / customer journeys can still be added.
 - **Lane E · money/fiscal** — Nayax letter (#166) blocked on non-code business step.
-- **Lane D · CTA registry** — BOOK_CONFIRM (#2209) + RESUME_JOURNEY (#2212, E2E in #2216) TESTED.
+- **Lane D · CTA registry** — BOOK_CONFIRM (#2209) + RESUME_JOURNEY (#2212) + DISMISS_NEXT_BEST_ACTION (#2221) TESTED.
 - **Lane F · mobile/RTL** — audit not yet run.
 - **Lane H · deployment/observability** — pipeline routinely green; smoke workflow_run wired.
+
+## Journey Brain — CEO scoreboard
+
+| Phase | Status | Evidence |
+| --- | --- | --- |
+| 1 · attentionFeed probes | TESTED | wallet / eGift / Prestige / KYA-stale / provider KYC / doc-expiry probes shipped. |
+| 2 · JourneyCheckpoint | TESTED | 6/6 write-side + 6/6 real-browser matrix. |
+| 3 · Saved Searches / Favourites / Rebooking | TESTED | FAVOURITE_REBOOK forward-looking recommendation (#153). |
+| 4 · NextBestAction service | TESTED | endpoint (#2208) + supertest (#2213). |
+| 5 · rendering surface | TESTED | hook + card (#2212) + home mount (#2215) + end-to-end E2E (#2216). |
+| 6 · feedback loop | TESTED | storage (#2218) + endpoint (#2219) + composer suppression (#2220) + client dismiss (#2221). |
+| Cancellation legal engine | TESTED | CancellationPolicyRegistry, versioned. |
+| Failure recovery (battery-dies / GPS-lost) | TESTED | invariants suite. |
+| AI context authorization + PII minimization | TESTED | CEO §78/79. |
+| 20 real product scenarios E2E | TESTED | CEO §81. |
 
 ## How to update this matrix
 
