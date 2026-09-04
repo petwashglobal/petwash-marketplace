@@ -43,6 +43,7 @@ import { nanoid } from "nanoid";
 import { createHash } from "crypto";
 import { requireAuth, requireRole } from "../middleware/gates";
 
+import { clientSafeErrorMessage } from "../lib/sanitizeErrorResponse";
 const router = Router();
 
 // ── SECURITY: All compliance routes require authentication + admin/compliance role ──
@@ -283,7 +284,7 @@ router.patch("/authority-documents/:id/review", async (req: Request, res: Respon
     res.json(updated);
   } catch (error: any) {
     console.error("Error reviewing authority document:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: clientSafeErrorMessage(error, "Could not review the authority document.") });
   }
 });
 

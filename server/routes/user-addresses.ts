@@ -5,6 +5,7 @@ import { requireAuth } from "../customAuth";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "../lib/logger";
+import { clientSafeErrorMessage } from "../lib/sanitizeErrorResponse";
 import { geocodeAddress } from "../lib/geocode";
 
 const router = Router();
@@ -173,7 +174,7 @@ router.post("/", requireAuth, async (req, res) => {
     res.status(201).json(inserted);
   } catch (err: any) {
     logger.error("POST /addresses error:", err);
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: clientSafeErrorMessage(err, "Could not save the address.") });
   }
 });
 
@@ -220,7 +221,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     res.json(updated);
   } catch (err: any) {
     logger.error("PATCH /addresses/:id error:", err);
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: clientSafeErrorMessage(err, "Could not update the address.") });
   }
 });
 
@@ -239,7 +240,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (err: any) {
     logger.error("DELETE /addresses/:id error:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Could not delete the address." });
   }
 });
 

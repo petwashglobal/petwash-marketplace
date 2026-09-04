@@ -31,6 +31,7 @@ import { EmailService } from '../emailService';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 import type { Request, Response, NextFunction } from 'express';
 
+import { clientSafeErrorMessage } from '../lib/sanitizeErrorResponse';
 const router = Router();
 
 /**
@@ -215,7 +216,7 @@ router.post('/quote', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Quote error', { error: error.message });
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(error, 'Could not price this booking.') });
   }
 });
 
@@ -805,7 +806,7 @@ router.post('/:bookingId/transition', requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Transition error', { error: error.message });
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(error, 'Could not update the booking status.') });
   }
 });
 
@@ -836,7 +837,7 @@ router.post('/:bookingId/confirm', requireAuth, async (req, res) => {
     res.json({ success: true, status: targetStatus });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Confirm error', { error: error.message });
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(error, 'Could not confirm the booking.') });
   }
 });
 
@@ -874,7 +875,7 @@ router.post('/:bookingId/start', requireAuth, async (req, res) => {
     res.json({ success: true, status: 'in_progress' });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Start error', { error: error.message });
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(error, 'Could not start the booking.') });
   }
 });
 
@@ -931,7 +932,7 @@ router.post('/:bookingId/complete', requireAuth, async (req, res) => {
     res.json({ success: true, booking: updatedBooking });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Complete error', { error: error.message });
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(error, 'Could not complete the booking.') });
   }
 });
 
@@ -973,7 +974,7 @@ router.post('/:bookingId/cancel', requireAuth, async (req, res) => {
     res.json({ success: true, status: 'cancelled' });
   } catch (error: any) {
     logger.error('[MarketplaceBookings] Cancel error', { error: error.message });
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(error, 'Could not cancel the booking.') });
   }
 });
 

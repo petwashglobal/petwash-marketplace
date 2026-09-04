@@ -44,6 +44,7 @@ import { discountOwnershipService } from '../services/DiscountOwnershipService';
 import { logger } from '../lib/logger';
 import type { AuthenticatedRequest } from '../middleware/rbac';
 
+import { clientSafeErrorMessage } from '../lib/sanitizeErrorResponse';
 const router = Router();
 
 // ─────────────────────────────────────────────────────────────
@@ -272,7 +273,8 @@ router.post('/kiosk-token/create', async (req: AuthenticatedRequest, res: Respon
     const result = await kioskCouponService.createToken({ ...parsed.data, userId, ipAddress: ip });
     return res.status(201).json(result);
   } catch (err: any) {
-    return res.status(err?.httpStatus ?? 500).json({ error: err.message, errorCode: err?.code });
+    logger.error('[Pricing] kiosk-token create error', { err: err?.message, code: err?.code });
+    return res.status(err?.httpStatus ?? 500).json({ error: clientSafeErrorMessage(err, 'Could not create the kiosk token.'), errorCode: err?.code });
   }
 });
 
@@ -284,7 +286,8 @@ router.post('/kiosk-token/confirm', async (req: Request, res: Response) => {
     const result = await kioskCouponService.confirmToken(token, sessionId);
     return res.json({ success: true, ...result });
   } catch (err: any) {
-    return res.status(err?.httpStatus ?? 500).json({ error: err.message, errorCode: err?.code });
+    logger.error('[Pricing] kiosk-token confirm error', { err: err?.message, code: err?.code });
+    return res.status(err?.httpStatus ?? 500).json({ error: clientSafeErrorMessage(err, 'Could not confirm the kiosk token.'), errorCode: err?.code });
   }
 });
 
@@ -384,7 +387,8 @@ router.post('/admin/discount-ownership', async (req: AuthenticatedRequest, res: 
     await discountOwnershipService.setRule(parsed.data);
     return res.json({ success: true });
   } catch (err: any) {
-    return res.status(400).json({ error: err.message });
+    logger.error('[Pricing] setRule error', { err: err?.message });
+    return res.status(400).json({ error: clientSafeErrorMessage(err, 'Could not save the discount rule.') });
   }
 });
 

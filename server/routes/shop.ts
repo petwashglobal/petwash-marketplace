@@ -60,6 +60,7 @@ import { purchases } from '@shared/schema';
 import { apiLimiter, paymentLimiter, adminLimiter } from '../middleware/rateLimiter';
 import { logAuditEvent } from '../middleware/auditLog';
 
+import { clientSafeErrorMessage } from '../lib/sanitizeErrorResponse';
 const router = Router();
 const shopService = new ShopService();
 
@@ -204,7 +205,8 @@ router.get('/delivery/estimate', async (req: Request, res: Response) => {
           const estimate = shopService.estimateDelivery({ city, zipCode, totalGrams, subtotalCents, wantsFast });
           res.json(estimate);
     } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    logger.error('[Shop] delivery estimate error', { err: err?.message });
+    res.status(400).json({ error: clientSafeErrorMessage(err, 'Could not estimate delivery.') });
     }
 });
 
@@ -238,7 +240,7 @@ router.post('/cart/items', apiLimiter, requireAuth, async (req: Request, res: Re
     } catch (err: any) {
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: err.errors });
           logger.error('[Shop] addToCart error', { err: err.message });
-          res.status(400).json({ error: err.message || 'Failed to add item' });
+          res.status(400).json({ error: clientSafeErrorMessage(err, 'Failed to add item') });
     }
 });
 
@@ -256,7 +258,8 @@ router.patch('/cart/items/:itemId', apiLimiter, requireAuth, async (req: Request
           res.json(cart);
     } catch (err: any) {
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: err.errors });
-          res.status(400).json({ error: err.message || 'Failed to update item' });
+          logger.error('[Shop] updateCartItem error', { err: err?.message });
+          res.status(400).json({ error: clientSafeErrorMessage(err, 'Failed to update item') });
     }
 });
 
@@ -272,7 +275,8 @@ router.delete('/cart/items/:itemId', apiLimiter, requireAuth, async (req: Reques
           const cart = await shopService.updateCartItem(uid, itemId, 0);
           res.json(cart);
     } catch (err: any) {
-    res.status(400).json({ error: err.message || 'Failed to remove item' });
+    logger.error('[Shop] removeCartItem error', { err: err?.message });
+    res.status(400).json({ error: clientSafeErrorMessage(err, 'Failed to remove item') });
     }
 });
 
