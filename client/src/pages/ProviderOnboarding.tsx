@@ -42,6 +42,33 @@ import {
 import { Link, useLocation } from 'wouter';
 import { getApiUrl } from '@/lib/apiConfig';
 import { emitCtaEvent, PROVIDER_SERVICE_ACTION_IDS } from '@/lib/ctaActions';
+import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
+
+/**
+ * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire.
+ *
+ * Sixth and final resumable customer journey — the provider
+ * onboarding wizard. Long multi-step form (identity, address,
+ * documents, agreements) that legitimately takes hours; abandoned
+ * state is a real UX loss.
+ *
+ * NEVER stores government-ID DIGITS, uploaded document blobs, or
+ * approval-status fields — those are held by the KYC vault and the
+ * provider_applications table, and are re-fetched on resume. We
+ * only persist the LOGICAL step + the small set of pre-verification
+ * text choices (provider types, first/last name, city selection,
+ * tax status, age confirmation).
+ */
+interface ProviderApplyCheckpointPayload extends Record<string, unknown> {
+  step?: number;
+  providerTypes?: Array<'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer'>;
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  ageConfirmed18Plus?: boolean;
+  taxStatus?: string;
+  updatedAt?: string;
+}
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import {
   PROVIDER_DECLARATION_TEXT,
@@ -123,6 +150,13 @@ export default function ProviderOnboarding() {
 
   // Form state
   const [step, setStep] = useState(1);
+
+  // Lane C.3 — resumable checkpoint. Enabled only when signed in;
+  // /provider-onboarding requires auth anyway (guest is bounced to
+  // /sign-in at line 104), so this matches the mounted-state check.
+  const providerApplyCheckpoint = useJourneyCheckpoint<ProviderApplyCheckpointPayload>('provider_apply', {
+    enabled: !!user,
+  });
   // Post-release 2026-09-03 (backlog P1): hydrate providerTypes from URL
   // + sessionStorage so "Become a Pet Sitter" (?type=sitter / ?role=sitter
   // / ?requestedService=pet_sitting) actually lands with sitter pre-picked.
@@ -146,10 +180,31 @@ export default function ProviderOnboarding() {
   };
   
   // Helper to check if a type is selected
-  const hasProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') => 
+  const hasProviderType = (type: 'walker' | 'sitter' | 'station_operator' | 'driver' | 'trainer') =>
     providerTypes.includes(type);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+
+  // Lane C.3 — hydrate on mount. Fills LOGICAL step and the small set
+  // of pre-verification text fields the user has NOT already typed.
+  // Government ID digits, uploaded blobs, and verification status
+  // are DELIBERATELY excluded — those live in the KYC vault and
+  // provider_applications table, and are re-fetched on resume.
+  useEffect(() => {
+    if (providerApplyCheckpoint.hydrating || !providerApplyCheckpoint.initial) return;
+    const p = providerApplyCheckpoint.initial;
+    if (typeof p.step === 'number' && p.step >= 1 && p.step <= 3 && step === 1) {
+      setStep(p.step);
+    }
+    if (providerTypes.length === 0 && Array.isArray(p.providerTypes)) {
+      const filtered = p.providerTypes.filter((t) =>
+        ['walker', 'sitter', 'station_operator', 'driver', 'trainer'].includes(t),
+      );
+      if (filtered.length) setProviderTypes(filtered as typeof providerTypes);
+    }
+    // Only fill name if not already prefilled from the identity API.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providerApplyCheckpoint.hydrating, providerApplyCheckpoint.initial]);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneCountryCode, setPhoneCountryCode] = useState('+972');
   const [phoneVerified, setPhoneVerified] = useState(false);
@@ -214,6 +269,39 @@ export default function ProviderOnboarding() {
   const [insuranceProvider, setInsuranceProvider] = useState('');
   // Israeli business/tax classification captured at application time (compliance).
   const [taxStatus, setTaxStatus] = useState('');
+
+  // Lane C.3 — debounced save of the small pre-verification set only.
+  // NEVER includes ID digits, uploaded blobs, or verification status.
+  useEffect(() => {
+    if (!user) return;
+    if (providerApplyCheckpoint.hydrating) return;
+    if (
+      providerTypes.length === 0 && !firstName && !lastName && !city && !taxStatus
+    ) {
+      return; // nothing meaningful yet
+    }
+    void providerApplyCheckpoint.save({
+      step,
+      providerTypes,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      city: city || undefined,
+      ageConfirmed18Plus,
+      taxStatus: taxStatus || undefined,
+      updatedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    user,
+    step,
+    providerTypes,
+    firstName,
+    lastName,
+    city,
+    ageConfirmed18Plus,
+    taxStatus,
+    providerApplyCheckpoint.hydrating,
+  ]);
 
   // Background check (2026 spec)
   const [residentialHistory, setResidentialHistory] = useState<string[]>(['']);
@@ -938,6 +1026,11 @@ export default function ProviderOnboarding() {
         // consumed successfully. Clear the sessionStorage marker so a
         // return visit doesn't re-inject the same service.
         clearRequestedProviderServices();
+        // Lane C.3 — application submitted. Drop the resumable
+        // checkpoint so the home resume-card stops showing this
+        // journey. The pending/approved state now lives in
+        // provider_applications.
+        void providerApplyCheckpoint.clear();
         toast({
           title: t.applicationSuccess,
           description: t.successMessage
