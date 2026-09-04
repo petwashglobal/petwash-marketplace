@@ -10,8 +10,8 @@
  *   - commit or release reservations they don't own.
  *
  * Fix: assertEgiftOwnership loads e_vouchers.owner_uid /
- * purchaser_uid and confirms one matches the caller (super-admin
- * passes through for ops). Unknown eGifts and non-owner attempts both
+ * purchaser_uid and confirms one matches the caller (a VERIFIED
+ * super-admin passes through for ops). Unknown eGifts and non-owner attempts both
  * return 404 (never 403) so the endpoint doesn't leak whether the id
  * exists to a non-owner. Fail-safe: DB error on the ACL read returns
  * 500 with a distinct code — a Postgres hiccup must NEVER downgrade
@@ -36,8 +36,15 @@ describe('egift-balance routes enforce eGift ownership ACL (CEO §30 audit)', ()
     expect(SRC).toMatch(/row\.owner_uid === callerUid \|\| row\.purchaser_uid === callerUid/);
   });
 
-  it('super-admin passes the ACL for ops (isSuperAdmin(email))', () => {
-    expect(SRC).toMatch(/if \(callerEmail && isSuperAdmin\(callerEmail\)\) return \{ ok: true \}/);
+  it('super-admin passes the ACL for ops — via the VERIFIED paired shape (#240)', () => {
+    // Hardened 2026: the ops bypass used to be a bare allowlist match on a
+    // caller-supplied email string. It is now isSuperAdminVerified(req),
+    // which additionally requires firebaseUser.email_verified === true.
+    // Pin the stronger shape, and pin OUT the weaker one so a future
+    // refactor cannot silently downgrade the bypass back to email-only.
+    expect(SRC).toMatch(/if \(isSuperAdminVerified\(req\)\) return \{ ok: true \}/);
+    expect(SRC).toMatch(/isSuperAdminVerified.*from '\.\.\/middleware\/rbac'/);
+    expect(SRC).not.toMatch(/isSuperAdmin\(callerEmail\)/);
   });
 
   it('non-owner + unknown egiftId BOTH return 404 — the endpoint does not confirm existence to a non-owner', () => {
