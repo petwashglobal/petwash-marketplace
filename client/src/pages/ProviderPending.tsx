@@ -170,7 +170,7 @@ export default function ProviderPending() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-spin w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-2 border-amber-600 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -180,7 +180,7 @@ export default function ProviderPending() {
       <div className="min-h-screen flex items-center justify-center p-4 bg-white">
         <Card className="max-w-md w-full mx-auto bg-white">
           <CardContent className="text-center py-8 space-y-4">
-            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+            <AlertCircle className="w-12 h-12 text-amber-600 mx-auto" />
             <p className="text-muted-foreground text-sm">
               {he ? "לא נמצאה בקשה. אנא מלא את טופס ההרשמה." : "No application found. Please complete the registration form."}
             </p>
@@ -199,7 +199,7 @@ export default function ProviderPending() {
         <Card className="max-w-md w-full mx-auto bg-white">
           <CardHeader className="text-center pb-2">
             <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-              <XCircle className="w-8 h-8 text-red-500" />
+              <XCircle className="w-8 h-8 text-red-600" />
             </div>
             <CardTitle className="text-xl">{he ? "הבקשה לא אושרה" : "Application Not Approved"}</CardTitle>
           </CardHeader>
@@ -241,8 +241,8 @@ export default function ProviderPending() {
                 isDocumentsPending && !allDocsUploaded ? "bg-amber-50" : "bg-green-50"
               }`}>
                 {isDocumentsPending && !allDocsUploaded
-                  ? <AlertCircle className="w-8 h-8 text-amber-500" />
-                  : <CheckCircle className="w-8 h-8 text-green-500" />
+                  ? <AlertCircle className="w-8 h-8 text-amber-700" />
+                  : <CheckCircle className="w-8 h-8 text-green-700" />
                 }
               </div>
             </div>
@@ -268,7 +268,7 @@ export default function ProviderPending() {
             ) : (
               <div className="space-y-3">
                 <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
-                  <Clock className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                  <Clock className="w-5 h-5 text-green-700 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-green-900">
                       {he ? "זמן בדיקה משוער: עד 24 שעות עסקיות" : "Estimated review time: up to 24 business hours"}
@@ -278,9 +278,9 @@ export default function ProviderPending() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-[#D4AF37] rounded-lg border border-[#D4AF37]">
-                  <CheckCircle className="w-5 h-5 text-[#B8932F] mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-[#B8932F]">
+                <div className="flex items-start gap-3 p-3 bg-[#D4AF37] rounded-lg border border-[#B8932F]">
+                  <CheckCircle className="w-5 h-5 text-black mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-black">
                     {he
                       ? "תקבל הודעת אימייל ו-SMS ברגע שהבקשה תאושר"
                       : "You will receive an email and SMS the moment your application is approved"}
@@ -300,8 +300,8 @@ export default function ProviderPending() {
                   };
                   return (
                     <div key={stage} className="flex flex-col items-center gap-1 flex-1">
-                      <div className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-white"}`} />
-                      <span className={`text-xs ${active ? "text-amber-700 font-medium" : "text-gray-400"}`}>
+                      <div className={`w-3 h-3 rounded-full ${active ? "bg-amber-600" : "bg-white border-2 border-gray-500"}`} />
+                      <span className={`text-xs ${active ? "text-amber-700 font-medium" : "text-gray-600"}`}>
                         {he ? labels.he[i] : labels.en[i]}
                       </span>
                       {i < 3 && (
@@ -314,8 +314,8 @@ export default function ProviderPending() {
               <div className="flex items-center gap-1 justify-center">
                 {["documents_pending", "documents_under_review", "background_check_pending", "approved"].map((stage, i) => (
                   <div key={stage} className="flex items-center gap-1">
-                    <div className={`w-3 h-3 rounded-full ${stageIndex >= STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-white"}`} />
-                    {i < 3 && <div className={`w-8 h-0.5 ${stageIndex > STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-white"}`} />}
+                    <div className={`w-3 h-3 rounded-full ${stageIndex >= STAGE_ORDER.indexOf(stage) ? "bg-amber-600" : "bg-white border-2 border-gray-500"}`} />
+                    {i < 3 && <div className={`w-8 h-0.5 ${stageIndex > STAGE_ORDER.indexOf(stage) ? "bg-amber-600" : "bg-gray-500"}`} />}
                   </div>
                 ))}
               </div>
@@ -341,7 +341,7 @@ export default function ProviderPending() {
               </p>
               <a
                 href="mailto:support@petwash.co.il"
-                className="text-sm text-amber-600 font-medium underline underline-offset-2"
+                className="text-sm text-amber-700 font-medium underline underline-offset-2"
               >
                 support@petwash.co.il
               </a>
@@ -365,7 +365,7 @@ export default function ProviderPending() {
                   {he ? "מסמכים נדרשים" : "Required Documents"}
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <Badge variant={allDocsUploaded ? "default" : "secondary"} className={allDocsUploaded ? "bg-green-500" : ""}>
+                  <Badge variant={allDocsUploaded ? "default" : "secondary"} className={allDocsUploaded ? "bg-green-700 text-white" : ""}>
                     {uploadedTypes.size}/{requiredDocs.length}
                   </Badge>
                   {expandedDocs ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -394,11 +394,11 @@ export default function ProviderPending() {
                       }`}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        uploaded ? "bg-green-100" : "bg-white border border-gray-200"
+                        uploaded ? "bg-green-100" : "bg-white border-2 border-gray-500"
                       }`}>
                         {uploaded
-                          ? <CheckCircle className="w-4 h-4 text-green-600" />
-                          : <Upload className="w-4 h-4 text-gray-400" />
+                          ? <CheckCircle className="w-4 h-4 text-green-700" />
+                          : <Upload className="w-4 h-4 text-gray-600" />
                         }
                       </div>
                       <div className="flex-1 min-w-0">
@@ -406,7 +406,7 @@ export default function ProviderPending() {
                           {he ? label.he : label.en}
                         </p>
                         {uploaded && uploadedDoc?.fileName && (
-                          <p className="text-xs text-green-600 truncate">{uploadedDoc.fileName}</p>
+                          <p className="text-xs text-green-700 truncate">{uploadedDoc.fileName}</p>
                         )}
                         {!uploaded && (
                           <p className="text-xs text-gray-500">
@@ -429,7 +429,7 @@ export default function ProviderPending() {
                         <Button
                           size="sm"
                           variant={uploaded ? "outline" : "default"}
-                          className={`text-xs ${uploaded ? "border-green-300 text-green-700" : "bg-amber-600 hover:bg-amber-700 text-white"}`}
+                          className={`text-xs ${uploaded ? "border-green-600 text-green-800" : "bg-amber-700 hover:bg-amber-800 text-white"}`}
                           disabled={isUploading || (!!uploading && !isUploading)}
                           onClick={() => fileInputRefs.current[docType]?.click()}
                         >
@@ -447,7 +447,7 @@ export default function ProviderPending() {
 
                 {allDocsUploaded && (
                   <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    <CheckCircle className="w-5 h-5 text-green-700 flex-shrink-0" />
                     <p className="text-sm text-green-800 font-medium">
                       {he ? "כל המסמכים הועלו. הצוות שלנו יבדוק אותם תוך 48 שעות." : "All documents uploaded. Our team will review them within 48 hours."}
                     </p>
