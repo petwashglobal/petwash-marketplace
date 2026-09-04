@@ -38,7 +38,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { db } from '../db';
 import { sessionsPw } from '@shared/schema';
 import type { SessionPw } from '@shared/schema';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, ne, and, isNull, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 /** 32 random bytes → 64-char lowercase hex. */
@@ -268,6 +268,45 @@ export async function revokeAllForUser(
     userId,
     count: result.length,
     reason,
+  });
+  return result.length;
+}
+
+/**
+ * "Sign out every OTHER device" — revoke every active session for the user
+ * EXCEPT the one whose raw session id is supplied (normally the caller's own
+ * `pw_session_id` cookie). Returns the count of rows revoked.
+ *
+ * Added 2026-09-05 for the verified email / mobile change flows. Changing a
+ * contact identity is a credential change, so every session minted against the
+ * previous identity must die — but killing the CALLER'S session too would bounce
+ * the user to the sign-in screen the instant they finished a change they had
+ * just re-authenticated for. That is a UX regression, not a security win: the
+ * caller is the party that proved ownership of the new address or handset.
+ *
+ * When `currentRawSessionId` is null/absent (Bearer-token-only clients that
+ * never got a cookie) this degrades to revoking ALL sessions, which is the
+ * fail-safe direction.
+ */
+export async function revokeAllExceptForUser(
+  userId: string,
+  currentRawSessionId: string | null | undefined,
+  reason: RevokeReason = 'user_logout_all',
+): Promise<number> {
+  const conditions = [eq(sessionsPw.userId, userId), isNull(sessionsPw.revokedAt)];
+  if (currentRawSessionId && typeof currentRawSessionId === 'string' && currentRawSessionId.length >= 32) {
+    conditions.push(ne(sessionsPw.sessionIdHash, hashSessionId(currentRawSessionId)));
+  }
+  const result = await db
+    .update(sessionsPw)
+    .set({ revokedAt: new Date(), revokedReason: reason })
+    .where(and(...conditions))
+    .returning({ id: sessionsPw.id });
+  logger.info('[SessionService] Other sessions revoked for user', {
+    userId,
+    count: result.length,
+    reason,
+    keptCurrent: Boolean(currentRawSessionId),
   });
   return result.length;
 }

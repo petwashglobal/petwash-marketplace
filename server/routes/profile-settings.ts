@@ -18,7 +18,7 @@ import {
 } from '../services/UnifiedVerificationService';
 import { sendVerificationEmailCode } from '../services/VerificationEmailDelivery';
 import { normalizePhoneE164, isE164 } from '../lib/phoneE164';
-import { revokeAllForUser } from '../services/SessionService';
+import { revokeAllExceptForUser } from '../services/SessionService';
 
 const router = Router();
 const photoUpload = multer({
@@ -177,6 +177,8 @@ export async function applyVerifiedEmailChange(params: {
   uid: string;
   newEmail: string;
   oldEmail: string;
+  /** Raw pw_session_id cookie of the caller — that session is KEPT. */
+  currentRawSessionId?: string | null;
 }): Promise<ApplyEmailResult> {
   const { uid, oldEmail } = params;
   const newEmail = normalizeEmail(params.newEmail);
@@ -244,12 +246,15 @@ export async function applyVerifiedEmailChange(params: {
     };
   }
 
-  // (4) A credential changed — every other device holds a session minted
-  //     against the previous identity. Fail-soft: the identity change already
-  //     landed, so a revoke error must not turn a success into a 500.
+  // (4) A credential changed — every OTHER device holds a session minted
+  //     against the previous identity. The caller's own session is kept: they
+  //     just re-authenticated and proved ownership of the new address, so
+  //     bouncing them to the sign-in screen would be a UX regression, not a
+  //     security win. Fail-soft: the identity change already landed, so a
+  //     revoke error must not turn a success into a 500.
   try {
-    const revoked = await revokeAllForUser(uid, 'contact_change');
-    logger.info('[ProfileSettings] Sessions revoked after email change', { uid, revoked });
+    const revoked = await revokeAllExceptForUser(uid, params.currentRawSessionId, 'contact_change');
+    logger.info('[ProfileSettings] Other sessions revoked after email change', { uid, revoked });
   } catch (e: any) {
     logger.error('[ProfileSettings] Session revoke after email change failed (non-blocking)', {
       uid,
@@ -767,6 +772,7 @@ router.post('/settings/email/confirm-change', async (req, res) => {
         uid,
         newEmail,
         oldEmail: metadata.oldEmail || firebaseUser.email || '',
+        currentRawSessionId: req.cookies?.pw_session_id,
       });
       if (!applied.ok) {
         await firestore.collection('email_change_audit').add({
@@ -851,6 +857,7 @@ router.post('/settings/email/confirm-change', async (req, res) => {
       uid,
       newEmail: pending.newEmail,
       oldEmail: pending.oldEmail || '',
+      currentRawSessionId: req.cookies?.pw_session_id,
     });
     if (!applied.ok) {
       await firestore.collection('email_change_audit').add({
@@ -1055,9 +1062,9 @@ router.post('/settings/phone/confirm-verification', async (req, res) => {
     let sessionsRevoked = false;
     if (previousPhone && normalizePhoneE164(previousPhone) !== verifiedPhone) {
       try {
-        const count = await revokeAllForUser(uid, 'contact_change');
+        const count = await revokeAllExceptForUser(uid, req.cookies?.pw_session_id, 'contact_change');
         sessionsRevoked = true;
-        logger.info('[ProfileSettings] Sessions revoked after mobile change', { uid, count });
+        logger.info('[ProfileSettings] Other sessions revoked after mobile change', { uid, count });
       } catch (e: any) {
         logger.error('[ProfileSettings] Session revoke after mobile change failed (non-blocking)', {
           uid,
