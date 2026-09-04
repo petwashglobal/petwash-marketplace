@@ -98,6 +98,7 @@ const DOMAIN_META: Readonly<
   walk_book:        { destination: '/walk-my-pet',        he: 'הזמנת הליכה',           en: 'walk booking' },
   sitter_book:      { destination: '/sitter-suite',       he: 'הזמנת פט-סיטר',         en: 'sitter booking' },
   marketplace_book: { destination: '/marketplace',        he: 'הזמנה מהמרקטפלייס',     en: 'marketplace booking' },
+  academy_book:     { destination: '/academy',            he: 'הזמנת שיעור באקדמיה',    en: 'academy booking' },
   shop_checkout:    { destination: '/shop/checkout',      he: 'רכישה בחנות',           en: 'shop purchase' },
   egift:            { destination: '/wallet/egift/buy',   he: 'רכישת eGift',           en: 'eGift purchase' },
   provider_apply:   { destination: '/provider-onboarding', he: 'רישום ספק',            en: 'provider application' },
