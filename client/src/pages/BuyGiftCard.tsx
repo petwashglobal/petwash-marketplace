@@ -18,6 +18,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PhoneInput } from '@/components/PhoneInput';
 import { usePaymentStatus } from '@/hooks/use-payment-status';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
+
+/**
+ * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire.
+ *
+ * Fifth resumable customer journey (sitter/walk/marketplace/shop
+ * + egift). BuyGiftCard is a single-page form for a gift purchase.
+ * The submit navigates the browser to SUMIT's hosted page after
+ * POST /api/egift/guest/start, which terminates the JS context.
+ *
+ * Guest checkout is allowed by the endpoint (no auth required for
+ * /api/egift/guest/start) — but the checkpoint endpoint DOES
+ * require a Firebase session. Signed-out browsers simply don't
+ * save; their draft lives in the form state only.
+ *
+ * Personal details of the RECIPIENT (email, phone, address) are
+ * safe to persist as resumable intent — they are not payment
+ * truth and the gift is only issued after SUMIT verifies the
+ * charge (pay-then-issue).
+ */
+interface EgiftCheckpointPayload extends Record<string, unknown> {
+  senderName?: string;
+  senderEmail?: string;
+  recipientName?: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+  amount?: string;
+  message?: string;
+  deliveryDate?: string;
+  updatedAt?: string;
+}
 
 interface BuyGiftCardProps {
   language: Language;
@@ -30,7 +62,15 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
   const { paymentsEnabled, isLoading: paymentStatusLoading } = usePaymentStatus();
+  const { user } = useFirebaseAuth();
   const isRTL = language === 'he' || language === 'ar';
+
+  // Lane C.3 — resumable checkpoint. Enabled only when signed in;
+  // guests continue to work without server persistence (form state
+  // only). Anonymous save would 401 anyway.
+  const checkpoint = useJourneyCheckpoint<EgiftCheckpointPayload>('egift', {
+    enabled: !!user,
+  });
   
   const [formData, setFormData] = useState({
     // Sender info (optional - can be anonymous gift)
@@ -84,6 +124,55 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
       }));
     }
   }, [userProfile]);
+
+  // Lane C.3 — hydrate on mount. Only fills fields the user has NOT
+  // already touched; the profile pre-fill above still wins where it
+  // has value.
+  useEffect(() => {
+    if (checkpoint.hydrating || !checkpoint.initial) return;
+    const p = checkpoint.initial;
+    setFormData((prev) => ({
+      ...prev,
+      senderName:     prev.senderName     || (typeof p.senderName === 'string' ? p.senderName : ''),
+      senderEmail:    prev.senderEmail    || (typeof p.senderEmail === 'string' ? p.senderEmail : ''),
+      recipientName:  prev.recipientName  || (typeof p.recipientName === 'string' ? p.recipientName : ''),
+      recipientEmail: prev.recipientEmail || (typeof p.recipientEmail === 'string' ? p.recipientEmail : ''),
+      recipientPhone: prev.recipientPhone || (typeof p.recipientPhone === 'string' ? p.recipientPhone : ''),
+      amount:         prev.amount         || (typeof p.amount === 'string' ? p.amount : ''),
+      message:        prev.message        || (typeof p.message === 'string' ? p.message : ''),
+      deliveryDate:   prev.deliveryDate   || (typeof p.deliveryDate === 'string' ? p.deliveryDate : prev.deliveryDate),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkpoint.hydrating, checkpoint.initial]);
+
+  // Lane C.3 — debounced save whenever any resumable form field
+  // changes. Skipped while loading === true (SUMIT redirect in flight)
+  // and on the empty case.
+  useEffect(() => {
+    if (!user) return;
+    if (checkpoint.hydrating) return;
+    if (loading) return;
+    if (
+      !formData.senderName && !formData.senderEmail &&
+      !formData.recipientName && !formData.recipientEmail &&
+      !formData.recipientPhone && !formData.amount &&
+      !formData.message
+    ) {
+      return; // nothing meaningful yet
+    }
+    void checkpoint.save({
+      senderName: formData.senderName || undefined,
+      senderEmail: formData.senderEmail || undefined,
+      recipientName: formData.recipientName || undefined,
+      recipientEmail: formData.recipientEmail || undefined,
+      recipientPhone: formData.recipientPhone || undefined,
+      amount: formData.amount || undefined,
+      message: formData.message || undefined,
+      deliveryDate: formData.deliveryDate,
+      updatedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, formData, loading, checkpoint.hydrating]);
 
   const predefinedAmounts = [50, 100, 200, 500, 1000];
 
@@ -147,6 +236,10 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
       const url = data.redirectUrl || data.paymentUrl;
       if (url) {
+        // Lane C.3 — drop the resumable checkpoint BEFORE handing off
+        // to SUMIT. The redirect terminates this JS context; a
+        // post-redirect clear would never run.
+        void checkpoint.clear();
         window.location.href = url; // SUMIT hosted payment page
       } else {
         throw new Error('Payment URL not provided');
