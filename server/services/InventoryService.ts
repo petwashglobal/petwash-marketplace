@@ -4,6 +4,7 @@ import {
   stationSupplies, 
   inventoryRefills,
   stations,
+  locations,
   type Supply,
   type InsertSupply,
   type StationSupply,
@@ -368,6 +369,61 @@ export class InventoryService {
     } catch (error: any) {
       logger.error('[InventoryService] Failed to get station inventory', {
         stationId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get EVERY station-supply row across the network (not only the low-stock
+   * subset).
+   *
+   * READ-ONLY. Added because the admin Inventory screen (/admin/inventory) needs
+   * the full ok / low / critical / empty picture, and was calling
+   * `GET /api/k9000/inventory` — a route that has never existed, so the page sat
+   * on a permanent skeleton loader (Lane E D14).
+   *
+   * This service already owns `station_supplies`; this adds no new write
+   * authority and no second source of truth — it is the network-wide sibling of
+   * `getStationInventory(stationId)`, sharing the same reorder-threshold
+   * COALESCE that `getLowStockStations` and `generatePurchaseOrder` use.
+   */
+  async getAllStationSupplies(): Promise<any[]> {
+    try {
+      const rows = await db
+        .select({
+          id: stationSupplies.id,
+          stationId: stationSupplies.stationId,
+          supplyId: stationSupplies.supplyId,
+          currentLevel: stationSupplies.currentLevel,
+          reorderThreshold: sql<number>`COALESCE(${stationSupplies.reorderThreshold}, ${supplies.reorderThreshold}, 10)`,
+          lastRefillAt: stationSupplies.lastRefillAt,
+          lastRefillAmount: stationSupplies.lastRefillAmount,
+          stationCode: stations.stationCode,
+          stationName: stations.name,
+          city: locations.city,
+          supply: {
+            id: supplies.id,
+            sku: supplies.sku,
+            name: supplies.name,
+            category: supplies.category,
+            unitType: supplies.unitType,
+            supplier: supplies.supplier,
+          },
+        })
+        .from(stationSupplies)
+        .leftJoin(supplies, eq(stationSupplies.supplyId, supplies.id))
+        .leftJoin(stations, eq(stationSupplies.stationId, stations.id))
+        .leftJoin(locations, eq(stations.locationId, locations.id));
+
+      logger.info('[InventoryService] All station supplies retrieved', {
+        count: rows.length,
+      });
+
+      return rows;
+    } catch (error: any) {
+      logger.error('[InventoryService] Failed to get all station supplies', {
         error: error.message,
       });
       throw error;

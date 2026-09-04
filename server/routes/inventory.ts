@@ -304,6 +304,31 @@ router.post('/station-supplies/:id/refill', requireAdmin, async (req, res) => {
 });
 
 /**
+ * GET /api/inventory/station-supplies
+ * Every station-supply row across the network (read-only).
+ *
+ * Backs the admin Inventory screen (/admin/inventory), which needs the whole
+ * ok/low/critical/empty picture rather than the low-stock subset that
+ * /low-stock returns. Read-only — the canonical writes stay
+ * PATCH /station-supplies/:id/level and POST /station-supplies/:id/refill.
+ *
+ * Requires admin authentication
+ */
+router.get('/station-supplies', requireAdmin, async (_req, res) => {
+  try {
+    const items = await inventoryService.getAllStationSupplies();
+
+    res.json({ items });
+  } catch (error: any) {
+    logger.error('[Inventory Routes] Failed to get all station supplies', {
+      error: error.message,
+    });
+
+    res.status(500).json({ error: 'Failed to get station supplies' });
+  }
+});
+
+/**
  * GET /api/inventory/low-stock
  * Get all stations with low stock items
  * Requires admin authentication
