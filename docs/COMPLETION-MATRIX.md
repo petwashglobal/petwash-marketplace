@@ -91,7 +91,7 @@ Then the site moves to normal continuous improvement.
 | Mobile navigation | `TESTED` | #101 nav-header hygiene. |
 | Hebrew RTL | `TESTED` | 25-pin cross-flow direction contract (#2228) across 11 customer surfaces — every root container carries a dynamic `dir={<expr> ? 'rtl' : 'ltr'}` toggle; hard-locked `dir="ltr"` on a page shell is rejected. Inline LTR on numeric IDs / `<bdi>` wrappers / font-mono blocks is allowed (bidi-correct). |
 | English fallback | `TESTED` | Same pin — the direction ternary evaluates to `'ltr'` when the language is `en`. Language-store shape (`language`) is pinned so a rename can't silently break every toggle. |
-| Loading / empty / error / offline states | `NOT REVIEWED` | — |
+| Loading / empty / error / offline states | `TESTED` | 10-pin home-surface fail-soft contract (#2230). Every useQuery on PrestigeHome + ProviderHome has try/catch OR .catch OR delegates to fetchJson. AttentionList hides on empty items. NextBestActionCard hides on null primary OR while loading. |
 
 ---
 
