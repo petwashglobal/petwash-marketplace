@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 import { queryClient, apiRequest } from '@/lib/queryClient';
-import { getApiUrl } from '@/lib/apiConfig';
 import {
   Package,
   AlertTriangle,
@@ -42,6 +41,53 @@ interface InventoryItem {
   status: 'ok' | 'low' | 'critical' | 'empty';
 }
 
+/** Raw row from GET /api/inventory/station-supplies (InventoryService.getAllStationSupplies). */
+interface StationSupplyRow {
+  id: number;
+  stationId: number;
+  currentLevel: number | null;
+  reorderThreshold: number | null;
+  lastRefillAt: string | null;
+  stationCode: string | null;
+  stationName: string | null;
+  city: string | null;
+  supply: { id: number; sku: string; name: string; category: string; unitType: string; supplier: string } | null;
+}
+
+/**
+ * Status is derived here rather than read off the row: `station_supplies` stores
+ * a level and a reorder threshold, not a status column. Same COALESCE'd
+ * threshold the server uses for low-stock and purchase orders.
+ */
+function deriveStatus(level: number, threshold: number): InventoryItem['status'] {
+  if (level <= 0) return 'empty';
+  if (level < threshold * 0.5) return 'critical';
+  if (level < threshold) return 'low';
+  return 'ok';
+}
+
+function toInventoryItem(row: StationSupplyRow): InventoryItem {
+  const currentLevel = row.currentLevel ?? 0;
+  const minThreshold = row.reorderThreshold ?? 10;
+  return {
+    id: row.id,
+    stationId: row.stationId,
+    stationCode: row.stationCode ?? '—',
+    stationName: row.stationName ?? `Station ${row.stationId}`,
+    city: row.city ?? '—',
+    itemType: row.supply?.name ?? row.supply?.category ?? '—',
+    currentLevel,
+    minThreshold,
+    // `station_supplies` has no capacity column. Treat "full" as twice the
+    // reorder threshold so the progress bar and the top-up amount are at least
+    // derived from a real number instead of an invented one.
+    maxCapacity: minThreshold * 2,
+    unit: row.supply?.unitType ?? '',
+    lastRestocked: row.lastRefillAt ?? '',
+    status: deriveStatus(currentLevel, minThreshold),
+  };
+}
+
 export default function InventoryManagement() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
@@ -50,52 +96,74 @@ export default function InventoryManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
 
-  const { data: rawInventoryData, isLoading } = useQuery<{ items: InventoryItem[] }>({
-    queryKey: ['/api/k9000/inventory'],
+  // CONTRACT FIX (Lane E D14): this page queried `/api/k9000/inventory` and
+  // `/api/k9000/inventory/summary`. Neither has ever existed — `/api/k9000`
+  // mounts the IoT, supplier and dashboard routers, none of which expose
+  // `/inventory` — so BOTH queries 404'd and the whole screen sat on a
+  // permanent skeleton loader.
+  // The canonical owner of `station_supplies` is InventoryService, mounted at
+  // `/api/inventory`. Reading the network-wide list from it (new read-only
+  // sibling of the existing per-station route; no new write authority).
+  const { data: rawInventoryData, isLoading } = useQuery<{ items: StationSupplyRow[] }>({
+    queryKey: ['/api/inventory/station-supplies'],
     refetchInterval: 60000,
   });
 
-  // Fetch inventory summary
-  const { data: summaryData } = useQuery<any>({
-    queryKey: ['/api/k9000/inventory/summary'],
-    refetchInterval: 60000,
-  });
+  // The summary cards used to be a SECOND request to a second phantom endpoint.
+  // They are now derived from the very same rows the table renders, so the
+  // headline counts can never disagree with the list beneath them.
 
-  // Request restock mutation
-  const requestRestockMutation = useMutation({
-    mutationFn: async (data: { stationId: number; itemType: string; quantity: number }) => {
-      const response = await fetch(getApiUrl('/api/k9000/restock-request'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to request restock');
+  // CONTRACT FIX (Lane E D1): "Request Restock" POSTed to
+  // `/api/k9000/restock-request`, which no router serves — every click 404'd
+  // and the ops team never received a signal.
+  // There is no canonical "ask the supplier for stock" operation reachable from
+  // this screen. The nearest one, `POST /api/k9000/orders`
+  // (franchise_order_requests), requires a NOT NULL `franchiseeId` plus
+  // requester name/email, and its `stationId` points at `pet_wash_stations` —
+  // a different table from the `stations` rows behind `station_supplies`. There
+  // is no safe mapping from here, and it emails the supplier, so inventing one
+  // would be a guess with real-world consequences.
+  // What the canonical service DOES own is recording a refill that actually
+  // happened: POST /api/inventory/station-supplies/:id/refill, which writes an
+  // `inventory_refills` row, raises the level and emits INVENTORY_REFILLED.
+  // The button is therefore relabelled to what it really does — see the confirm
+  // gate in `handleRecordRefill`. Supplier ordering is flagged as a product gap
+  // rather than faked here.
+  const recordRefillMutation = useMutation({
+    mutationFn: async ({ stationSupplyId, amount }: { stationSupplyId: number; amount: number }) => {
+      const response = await apiRequest(
+        'POST',
+        `/api/inventory/station-supplies/${stationSupplyId}/refill`,
+        { amount, notes: 'Recorded from the admin Inventory screen' },
+      );
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/k9000/inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/inventory/station-supplies'] });
       toast({
-        title: isHebrew ? 'בקשה נשלחה' : 'Request Sent',
-        description: isHebrew ? 'בקשת מילוי מלאי נשלחה בהצלחה' : 'Restock request sent successfully',
+        title: isHebrew ? 'המילוי נרשם' : 'Refill Recorded',
+        description: isHebrew ? 'רמת המלאי עודכנה' : 'Stock level updated',
       });
     },
-    onError: () => {
+    onError: (e: any) => {
       toast({
         title: isHebrew ? 'שגיאה' : 'Error',
-        description: isHebrew ? 'נכשל לשלוח בקשת מילוי' : 'Failed to send restock request',
+        description: e?.message ?? (isHebrew ? 'נכשל לרשום מילוי' : 'Failed to record refill'),
         variant: 'destructive',
       });
     },
   });
 
-  const handleRequestRestock = (item: InventoryItem) => {
-    const quantity = item.maxCapacity - item.currentLevel;
-    requestRestockMutation.mutate({
-      stationId: item.stationId,
-      itemType: item.itemType,
-      quantity,
-    });
+  const handleRecordRefill = (item: InventoryItem) => {
+    const amount = Math.max(item.maxCapacity - item.currentLevel, 1);
+    // This WRITES the stock level — it is not a request to somebody else.
+    // Make the operator confirm that the refill physically happened, so the
+    // button cannot quietly fabricate inventory.
+    const question = isHebrew
+      ? `לרשום מילוי של ${amount} ${item.unit} עבור ${item.itemType} ב${item.stationName}? רשמו זאת רק אם המילוי בוצע בפועל.`
+      : `Record a refill of ${amount} ${item.unit} for ${item.itemType} at ${item.stationName}? Only record this if the refill actually happened.`;
+    if (!window.confirm(question)) return;
+    recordRefillMutation.mutate({ stationSupplyId: item.id, amount });
   };
 
   const getItemIcon = (itemType: string) => {
@@ -164,7 +232,11 @@ export default function InventoryManagement() {
   };
 
   const formatDate = (dateString: string): string => {
+    // `last_refill_at` is null until a supply has been refilled at least once —
+    // say "never" rather than rendering "Invalid Date".
+    if (!dateString) return isHebrew ? 'מעולם לא' : 'Never';
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) return isHebrew ? 'מעולם לא' : 'Never';
     return date.toLocaleDateString(isHebrew ? 'he-IL' : 'en-US', {
       year: 'numeric',
       month: 'short',
@@ -172,7 +244,15 @@ export default function InventoryManagement() {
     });
   };
 
-  const allItems = rawInventoryData?.items || [];
+  const allItems: InventoryItem[] = (rawInventoryData?.items || []).map(toInventoryItem);
+  // Derived from the same rows as the table (see the query above).
+  const summaryData = {
+    totalItems: allItems.length,
+    okCount: allItems.filter(i => i.status === 'ok').length,
+    lowCount: allItems.filter(i => i.status === 'low').length,
+    criticalCount: allItems.filter(i => i.status === 'critical').length,
+    emptyCount: allItems.filter(i => i.status === 'empty').length,
+  };
   const cities = Array.from(new Set(allItems.map(item => item.city)));
   const items = allItems.filter((item: InventoryItem) => {
     if (searchQuery) {
@@ -395,12 +475,12 @@ export default function InventoryManagement() {
                     {(item.status === 'low' || item.status === 'critical' || item.status === 'empty') && (
                       <button
                         className="luxury-btn-primary w-full text-sm"
-                        onClick={() => handleRequestRestock(item)}
-                        disabled={requestRestockMutation.isPending}
+                        onClick={() => handleRecordRefill(item)}
+                        disabled={recordRefillMutation.isPending}
                         data-testid={`button-restock-${item.id}`}
                       >
                         <Bell className="w-4 h-4 mr-2" />
-                        {isHebrew ? 'בקש מילוי' : 'Request Restock'}
+                        {isHebrew ? 'רישום מילוי' : 'Record Refill'}
                       </button>
                     )}
                   </div>
