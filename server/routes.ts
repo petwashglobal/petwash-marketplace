@@ -484,9 +484,47 @@ export async function registerRoutes(app: Express): Promise<void> {
   }
 
   // Serve user-uploaded files (paw-finder pet photos, etc.)
+  //
+  // SECURITY: this directory holds files an authenticated user uploaded, and
+  // it is served from the PRIMARY origin — so anything served here as an
+  // active content type is same-origin stored XSS. The upload path itself now
+  // controls the extension and sniffs the magic bytes (see
+  // server/routes/paw-finder.ts), but this is the second, independent layer:
+  //
+  //   1. Only known-safe image extensions are served at all; everything else
+  //      404s even if it somehow reached the disk.
+  //   2. `X-Content-Type-Options: nosniff` stops the browser from re-typing a
+  //      response as HTML/JS on its own.
+  //   3. A `default-src 'none'; sandbox` CSP neuters any markup that is still
+  //      somehow rendered.
+  //   4. `Content-Disposition: inline` + an explicit image Content-Type keep
+  //      the response a picture, never a document.
+  const UPLOADS_SERVE_TYPES: Record<string, string> = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp',
+    '.gif': 'image/gif',
+    '.heic': 'image/heic',
+  };
+  app.use('/uploads', (req, res, next) => {
+    const ext = path.extname(req.path).toLowerCase();
+    if (!Object.prototype.hasOwnProperty.call(UPLOADS_SERVE_TYPES, ext)) {
+      return res.status(404).end();
+    }
+    return next();
+  });
   app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads'), {
     maxAge: '7d',
-    setHeaders: (res) => {
+    index: false,
+    dotfiles: 'deny',
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath).toLowerCase();
+      const type = UPLOADS_SERVE_TYPES[ext];
+      if (type) res.set('Content-Type', type);
+      res.set('X-Content-Type-Options', 'nosniff');
+      res.set('Content-Security-Policy', "default-src 'none'; sandbox");
+      res.set('Content-Disposition', 'inline');
       res.set('Cache-Control', 'public, max-age=604800');
     },
   }));

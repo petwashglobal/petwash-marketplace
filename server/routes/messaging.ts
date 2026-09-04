@@ -20,6 +20,7 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { broadcastNewMessage, notifyConversationUpdate } from '../websocket';
+import { sanitizeFilenameForStorage, safeContentDisposition } from '../lib/safeStorageName';
 
 const router = Router();
 
@@ -363,13 +364,21 @@ router.post('/conversations/:id/messages', upload.array('attachments', 10), asyn
 
       for (const file of files) {
         const attachmentId = nanoid();
-        const fileName = `${conversationId}/${attachmentId}-${file.originalname}`;
+        // SECURITY: `originalname` is attacker-controlled and was previously
+        // interpolated raw into both the object key and the
+        // Content-Disposition header. A `/` re-parented the object inside the
+        // bucket, `..` segments were normalised away by any HTTP client
+        // fetching the resulting public URL, and a `"` or CRLF broke out of
+        // the quoted filename parameter. Flatten it to a safe token; the
+        // nanoid above is what provides uniqueness.
+        const safeName = sanitizeFilenameForStorage(file.originalname);
+        const fileName = `${conversationId}/${attachmentId}-${safeName}`;
         const gcsFile = bucket.file(fileName);
 
         // Security: Force attachment download for SVG/HTML to prevent XSS
         const dangerousMimeTypes = ['image/svg+xml', 'text/html', 'application/xhtml+xml'];
         const contentDisposition = dangerousMimeTypes.includes(file.mimetype)
-          ? `attachment; filename="${file.originalname}"`
+          ? safeContentDisposition('attachment', file.originalname)
           : 'inline';
 
         await gcsFile.save(file.buffer, {

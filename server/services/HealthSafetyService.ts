@@ -17,6 +17,7 @@ import {
 import { storage } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { eventPublisher } from './EventPublisher';
+import { sanitizeFilenameForStorage } from '../lib/safeStorageName';
 
 export interface ReportIncidentParams {
   stationId: number;
@@ -193,7 +194,10 @@ export class HealthSafetyService {
 
         // Generate unique filename
         const timestamp = Date.now();
-        const fileName = `health-safety/${incidentId}/${timestamp}_${file.originalname}`;
+        // SECURITY: originalname is caller-controlled — a `/` or `..` in it
+        // re-parents the object inside the bucket and is normalised away by any
+        // HTTP client that later fetches the URL. Flatten it to a safe token.
+        const fileName = `health-safety/${incidentId}/${timestamp}_${sanitizeFilenameForStorage(file.originalname)}`;
         const fileUpload = bucket.file(fileName);
 
         // Upload to Firebase Storage

@@ -22,6 +22,7 @@ import {
 } from '@shared/schema';
 import { storage } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sanitizeFilenameForStorage } from '../lib/safeStorageName';
 
 export interface CreateFieldUpdateParams {
   stationId: number;
@@ -147,7 +148,8 @@ export class FieldOperationsService {
 
         // Generate unique filename
         const timestamp = Date.now();
-        const fileName = `field-updates/${fieldUpdateId}/${timestamp}_${file.originalname}`;
+        // SECURITY: originalname is caller-controlled — see safeStorageName.
+        const fileName = `field-updates/${fieldUpdateId}/${timestamp}_${sanitizeFilenameForStorage(file.originalname)}`;
         const fileUpload = bucket.file(fileName);
 
         // Upload to Firebase Storage
