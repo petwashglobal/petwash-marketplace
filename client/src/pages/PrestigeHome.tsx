@@ -24,6 +24,7 @@ import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
+import { NextBestActionCard } from '@/components/NextBestActionCard';
 import { emitCtaEvent, type CtaAction } from '@/lib/ctaActions';
 import { getTierDisplay } from '@/lib/loyalty';
 import {
@@ -270,6 +271,12 @@ export default function PrestigeHome() {
             (CEO 2026-08-26 §27). Renders top-of-fold so the Pet Parent
             sees the next real action (pay, confirm, track, review, ...)
             before any static tiles. Hides itself when the feed is empty. */}
+        {/* Journey Brain Phase 5 — the "Your next step" card sits
+            ABOVE the attention list so the one loudest action on
+            home is picked by the server-side selection rules
+            (urgent > resume > due_soon > informational). Hides
+            itself when the projection is empty. */}
+        <NextBestActionCard actor="pet_parent" />
         <AttentionList actor="pet_parent" />
 
         {/* Phase 3: campaign offer banner — the user's own code, ready to use */}
