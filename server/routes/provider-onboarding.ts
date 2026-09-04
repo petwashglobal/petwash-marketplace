@@ -39,6 +39,7 @@ import { DocumentEncryption } from '../document-security-2025';
 import { isValidIsraeliId, looksLikeIsraeliId, maskId, lastFour as israeliIdLastFour } from '../lib/israeliId';
 import { buildSealedDeclarationAttestation } from '../lib/providerDeclarationAttestation';
 import { requireValidFileContent } from '../lib/fileMagicValidation';
+import { claimBusinessOnce, finalizeBusinessClaim } from '../lib/businessIdempotency';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import {
   buildAdminReviewAlertEmail,
@@ -535,6 +536,50 @@ router.post('/apply', wrapUpload(upload.fields([
       return res.status(401).json({ error: 'Unauthorized - Invalid token', errorCode: 'INVALID_TOKEN' });
     }
 
+    // ── DOUBLE-SUBMIT GUARD (2026-09-05) ─────────────────────────────────────
+    // This is THE live submit endpoint — the wizard posts here
+    // (client/src/pages/ProviderOnboarding.tsx). It had NO idempotency at all,
+    // only a SELECT-then-INSERT existing-application check, which is a textbook
+    // TOCTOU: two concurrent submits (double-tap on a slow network, two tabs,
+    // a client retry) both pass the SELECT before either INSERTs, and
+    // provider_applications has NO unique index on user_id — so both rows land.
+    // The user then owns two applications, the admin queue shows two cards, and
+    // the capability aggregator has to arbitrate between them.
+    //
+    // The sibling legacy endpoint (POST /api/provider-applications) has had the
+    // atomic business-idempotency claim since fire-order task 21; the endpoint
+    // people actually use did not. Same helper, same semantics, same key shape.
+    //
+    // The claim is released (retry allowed) on every non-2xx exit and marked
+    // DONE on success, via one `res.on('finish')` hook rather than a
+    // finalize() call bolted onto each of the ~20 early returns below — that
+    // list drifts, a `finish` hook cannot.
+    const idempKey = `provider_onboarding_apply:${authenticatedUser.uid}`;
+    const claim = await claimBusinessOnce(idempKey, 'POST /api/provider-onboarding/apply');
+    if (claim === 'DB_ERROR') {
+      // FAIL-CLOSED: never let a duplicate through because the guard is down.
+      return res.status(503).json({
+        error: 'Submission service temporarily unavailable. Please retry in a moment.',
+        errorCode: 'IDEMPOTENCY_UNAVAILABLE',
+      });
+    }
+    if (claim === 'IN_FLIGHT') {
+      return res.status(409).json({
+        error: 'Your application is already being submitted. Please wait a moment.',
+        errorCode: 'DUPLICATE_SUBMISSION_IN_FLIGHT',
+      });
+    }
+    if (claim === 'DONE') {
+      return res.status(409).json({
+        error: 'You have already submitted an application.',
+        errorCode: 'ALREADY_SUBMITTED',
+      });
+    }
+    res.on('finish', () => {
+      const ok = res.statusCode >= 200 && res.statusCode < 300;
+      void finalizeBusinessClaim(idempKey, ok).catch(() => { /* logged inside */ });
+    });
+
     const {
       inviteCode,
       firstName,
@@ -877,19 +922,39 @@ router.post('/apply', wrapUpload(upload.fields([
     // provider who signed up through the decider was 409'd on their OWN draft
     // and could never submit — the exact opposite of the comment's intent. Only
     // genuinely-SUBMITTED statuses block a re-apply; a draft is replaced below.
+    // 2026-09-05: 'approved' and 'on_hold' were MISSING from this list.
+    //   • 'approved' — an already-approved provider could submit a brand new
+    //     application, creating a SECOND provider_applications row. Because
+    //     the capability aggregator resolves authority from the newest
+    //     non-draft row, that new 'pending' row instantly demotes a live
+    //     provider to applicant (loses the dashboard, the mode switch, and
+    //     every provider gate) with no admin action and no way back except
+    //     a second approval. The sibling handler in provider-applications.ts
+    //     has always 409'd this case ("You are already an approved
+    //     provider"); this path did not. Same rule, both paths.
+    //   • 'on_hold' — an admin-initiated hold is an in-flight decision;
+    //     re-applying must not let the applicant escape it.
+    // 'rejected' and 'withdrawn' stay OUT of the list: re-applying after a
+    // rejection or a withdrawal is deliberately allowed.
     const existingApp = await db
       .select({ status: providerApplications.status })
       .from(providerApplications)
       .where(
         and(
           eq(providerApplications.userId, authenticatedUser.uid),
-          inArray(providerApplications.status, ['pending', 'pending_review', 'under_review', 'processing', 'pending_resubmission'])
+          inArray(providerApplications.status, ['pending', 'pending_review', 'under_review', 'processing', 'pending_resubmission', 'on_hold', 'approved'])
         )
       )
       .limit(1);
 
     if (existingApp.length > 0) {
-      return res.status(409).json({ 
+      if (existingApp[0].status === 'approved') {
+        return res.status(409).json({
+          error: 'You are already an approved provider',
+          errorCode: 'ALREADY_APPROVED',
+        });
+      }
+      return res.status(409).json({
         error: 'You already have a pending application',
         errorCode: 'APPLICATION_EXISTS'
       });
