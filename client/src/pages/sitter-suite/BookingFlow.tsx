@@ -19,6 +19,7 @@ import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { Calendar } from "@/components/ui/calendar";
 import { useJourneyCheckpoint } from "@/hooks/useJourneyCheckpoint";
+import { emitCtaEvent } from "@/lib/ctaActions";
 import type { DateRange } from "react-day-picker";
 
 /**
@@ -999,8 +1000,12 @@ export default function SitterBookingFlow() {
               </Button>
               <Button
                 className="flex-1 h-14 rounded-xl text-base font-semibold bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg touch-manipulation"
-                onClick={handleConfirmBooking}
+                onClick={() => {
+                  emitCtaEvent('BOOK_CONFIRM', { domain: 'sitter_book' });
+                  handleConfirmBooking();
+                }}
                 disabled={isSubmitting}
+                data-action-id="BOOK_CONFIRM"
                 data-testid="button-confirm"
               >
                 {isSubmitting ? "שולח..." : "אישור הזמנה"}
