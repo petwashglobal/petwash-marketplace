@@ -1310,7 +1310,13 @@ router.get('/walks/:bookingId', requireAuth, async (req, res) => {
 
     const isOwner = booking.ownerId === callerUid;
     const isWalker = walker?.userId === callerUid;
-    const isAdmin = await isSuperAdminVerified((req as any).user?.email || '').catch(() => false);
+    // isSuperAdminVerified(req: Request): boolean — SYNCHRONOUS, and it takes
+    // the Request (it reads req.firebaseUser.email_verified). It was being
+    // called as `await isSuperAdminVerified(email).catch(...)`, i.e. `.catch`
+    // on a plain boolean → TypeError on EVERY request → the outer catch turned
+    // the whole booking read into a 500. WalkTracking.tsx polls this endpoint
+    // every 5s, so live walk tracking never loaded for anyone, owner included.
+    const isAdmin = isSuperAdminVerified(req as any);
     if (!isOwner && !isWalker && !isAdmin) {
       logger.warn('[Walk My Pet] Unauthorized booking read', { bookingId, callerUid });
       return res.status(404).json({ error: 'Booking not found' });
