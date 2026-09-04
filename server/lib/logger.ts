@@ -91,7 +91,19 @@ class ServerLogger {
         errorFields = { error: typeof error === 'string' ? error : JSON.stringify(error) };
       }
       const errorContext = { ...context, ...errorFields };
-      console.error(this.formatLog('error', message, errorContext));
+      // AGENT-14 privacy lane (2026-09-05): formatLog redacts internally, but
+      // the Sentry call below used to receive the RAW errorContext — so a
+      // `logger.error('x', err, { body: req.body })` shipped the whole request
+      // body (password / OTP / Firebase token) to a third-party service even
+      // though stdout was clean. Redact ONCE here and use the same safe object
+      // for both sinks.
+      let safeErrorContext: Record<string, any>;
+      try {
+        safeErrorContext = redactLogContext(errorContext);
+      } catch {
+        safeErrorContext = { redactionError: true };
+      }
+      console.error(this.formatLog('error', message, safeErrorContext));
       // F1 (2026-08-06 hidden-failure hunt): logger.error was stdout-ONLY. ~4,000
       // call sites — none reached Sentry — so money/fiscal failures ("logged loudly
       // for reconciliation") were invisible unless someone tailed Cloud Run. Forward
@@ -99,7 +111,7 @@ class ServerLogger {
       // Sentry has no DSN; wrapped so telemetry can NEVER break logging itself.
       try {
         const err = error instanceof Error ? error : new Error(message);
-        Sentry.captureException(err, { level: 'error', extra: errorContext, tags: { source: 'logger.error' } });
+        Sentry.captureException(err, { level: 'error', extra: safeErrorContext, tags: { source: 'logger.error' } });
       } catch { /* telemetry must never throw into the logger */ }
 
       // Modernity SEV-1 #4 (2026-08-20 audit): every logger.error already reaches
