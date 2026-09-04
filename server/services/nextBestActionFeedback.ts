@@ -157,3 +157,39 @@ export async function recentFeedback(
     return [];
   }
 }
+
+/**
+ * Retention pruner — physically delete rows older than the retention
+ * window. Returns the number of rows deleted (0 on any error). Called
+ * from the hourly cron in server/cron/next-best-action-feedback-prune.ts.
+ *
+ * Retention: 90 days by default. A row older than that is no longer
+ * useful for the 7-day suppression cooldown, and the analytics job
+ * has already aggregated older rows into its rollup table.
+ *
+ * Fail-soft: any pg error is logged and the returned count is 0,
+ * so the cron never crashes and never bubbles a partial delete
+ * error back to caller.
+ */
+export async function pruneOldFeedback(
+  pool: Pool,
+  args?: { olderThanDays?: number },
+): Promise<number> {
+  const olderThanDays = Math.max(1, Math.min(3650, args?.olderThanDays ?? 90));
+  try {
+    const res = await pool.query(
+      `
+      DELETE FROM next_best_action_feedback
+       WHERE created_at < now() - ($1::int * interval '1 day')
+      `,
+      [olderThanDays],
+    );
+    // pg's DELETE returns rowCount even without RETURNING.
+    return typeof res.rowCount === 'number' ? res.rowCount : 0;
+  } catch (err) {
+    logger.warn('[NextBestActionFeedback] pruneOldFeedback failed', {
+      err: (err as Error)?.message,
+    });
+    return 0;
+  }
+}

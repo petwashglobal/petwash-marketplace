@@ -1890,6 +1890,12 @@ if (isProduction) {
       // wizard state never accumulates on disk indefinitely.
       const { startJourneyCheckpointsPrunerCron } = await import("./cron/journey-checkpoints-prune");
       startJourneyCheckpointsPrunerCron();
+      // Journey Brain Phase 6 (post-release 2026-09-04):
+      // hourly sweep of next_best_action_feedback rows older than
+      // 90 days. Composer suppression only ever looks back 7 days,
+      // so old feedback is dead weight in the primary table.
+      const { startNextBestActionFeedbackPrunerCron } = await import("./cron/next-best-action-feedback-prune");
+      startNextBestActionFeedbackPrunerCron();
       console.log('[Cron] All cron jobs initialized successfully');
     } catch (error) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);

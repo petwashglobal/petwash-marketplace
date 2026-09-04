@@ -20,6 +20,7 @@ import {
   deriveActionKey,
   recordFeedback,
   recentFeedback,
+  pruneOldFeedback,
   type FeedbackVerdict,
 } from '../services/nextBestActionFeedback';
 
@@ -218,5 +219,44 @@ describe('nextBestActionFeedback · recentFeedback', () => {
     const pool = { query: makePoolQuery([], true) } as any;
     const rows = await recentFeedback(pool, { userUid: 'usr_1' });
     expect(rows).toEqual([]);
+  });
+});
+
+describe('nextBestActionFeedback · pruneOldFeedback (retention)', () => {
+  it('returns the rowCount from the DELETE', async () => {
+    const pool = { query: vi.fn(async () => ({ rowCount: 42 })) } as any;
+    const deleted = await pruneOldFeedback(pool, { olderThanDays: 90 });
+    expect(deleted).toBe(42);
+  });
+
+  it('defaults to 90-day retention when no arg is passed', async () => {
+    const pool = { query: vi.fn(async () => ({ rowCount: 0 })) } as any;
+    await pruneOldFeedback(pool);
+    const args = pool.query.mock.calls[0][1];
+    expect(args[0]).toBe(90);
+  });
+
+  it('clamps olderThanDays into [1, 3650]', async () => {
+    const pool = { query: vi.fn(async () => ({ rowCount: 0 })) } as any;
+    await pruneOldFeedback(pool, { olderThanDays: -100 });
+    await pruneOldFeedback(pool, { olderThanDays: 999999 });
+    expect(pool.query.mock.calls[0][1][0]).toBe(1);
+    expect(pool.query.mock.calls[1][1][0]).toBe(3650);
+  });
+
+  it('fails-soft to 0 on pool throw (never crashes the cron)', async () => {
+    const pool = {
+      query: vi.fn(async () => {
+        throw new Error('table locked');
+      }),
+    } as any;
+    const deleted = await pruneOldFeedback(pool);
+    expect(deleted).toBe(0);
+  });
+
+  it('handles null rowCount by returning 0', async () => {
+    const pool = { query: vi.fn(async () => ({ rowCount: null })) } as any;
+    const deleted = await pruneOldFeedback(pool);
+    expect(deleted).toBe(0);
   });
 });
