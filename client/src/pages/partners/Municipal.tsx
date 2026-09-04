@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { Building2, Users, TreePine, Shield } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
+import { PartnerEnquiryForm } from '@/components/partners/PartnerEnquiryForm';
 
 export default function MunicipalPartners() {
   useSEO(pageSEO.partnersMunicipal);
   const { language } = useLanguage();
   const isHe = language === 'he';
+  // PR-NAV-3: this CTA was a <Button> with no onClick — a council clerk could
+  // tap "Submit Council Enquiry" forever and nothing was ever sent.
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
 
   return (
     <div className="min-h-screen luxury-bg-mesh py-12">
@@ -84,10 +89,21 @@ export default function MunicipalPartners() {
               ? 'גלו הזדמנויות שותפות ציבורי-פרטי עבור הרשות שלכם.'
               : 'Explore public-private partnership opportunities for your municipality'}
           </p>
-          <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-council-enquiry">
+          <Button
+            className="luxury-btn-primary luxury-shadow-xl px-8 py-4"
+            onClick={() => setEnquiryOpen(true)}
+            data-testid="button-council-enquiry"
+          >
             {isHe ? 'שלחו בקשה מטעם הרשות' : 'Submit Council Enquiry'}
           </Button>
         </div>
+
+        <PartnerEnquiryForm
+          kind="municipal"
+          isHe={isHe}
+          open={enquiryOpen}
+          onClose={() => setEnquiryOpen(false)}
+        />
       </div>
     </div>
   );

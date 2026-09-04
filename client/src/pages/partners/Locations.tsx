@@ -1,12 +1,17 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { MapPin, Building, ShoppingCart, Fuel, Coffee } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
+import { PartnerEnquiryForm } from '@/components/partners/PartnerEnquiryForm';
 
 export default function LocationPartners() {
   useSEO(pageSEO.partnersLocations);
   const { language } = useLanguage();
   const isHe = language === 'he';
+  // PR-NAV-3: this CTA was a <Button> with no onClick — a dead control on a
+  // public partner-acquisition page. It now opens the real enquiry form.
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
 
   const locationTypes = [
     {
@@ -70,10 +75,21 @@ export default function LocationPartners() {
               ? 'הוסיפו ערך לנכס שלכם עם פתרון טיפוח חיות מחמד פרימיום.'
               : 'Add value to your property with premium pet care amenities'}
           </p>
-          <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-submit-enquiry">
+          <Button
+            className="luxury-btn-primary luxury-shadow-xl px-8 py-4"
+            onClick={() => setEnquiryOpen(true)}
+            data-testid="button-submit-enquiry"
+          >
             {isHe ? 'שלחו בקשת שותפות' : 'Submit Partnership Enquiry'}
           </Button>
         </div>
+
+        <PartnerEnquiryForm
+          kind="location"
+          isHe={isHe}
+          open={enquiryOpen}
+          onClose={() => setEnquiryOpen(false)}
+        />
       </div>
     </div>
   );
