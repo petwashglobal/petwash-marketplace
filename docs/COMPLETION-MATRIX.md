@@ -32,7 +32,7 @@ Then the site moves to normal continuous improvement.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Public homepage | `NOT REVIEWED` | Manual walk pending. |
+| Public homepage | `TESTED` | 7-pin Landing contract (#2232) — LandingLiveBayStrip never mounted (CEO 2026-08-22 back-office ruling), 4 canonical marketing sections preserved, `language` prop threads through every child, greeting-context fetch is auth-gated + fail-soft, Kfar Saba station photo asset path pinned, AccountNavigation '#' sentinel short-circuit preserved. |
 | Station finder | `NOT REVIEWED` | — |
 | Signup (unified `/signup`) | `TESTED` | #66, dual-verify #65, signup coverage E2E `tests/e2e/signup-coverage.e2e.spec.ts`. |
 | Returning sign-in | `TESTED` | #131 audit; ReturnLogin door pending (#253). |
