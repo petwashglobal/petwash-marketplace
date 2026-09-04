@@ -19,6 +19,7 @@ import {
 } from '../services/PawFinderService';
 import { logger } from '../lib/logger';
 import { escapeLike } from '../lib/sqlLike';
+import { requireValidFileContentDisk } from '../lib/fileMagicValidation';
 
 const router = Router();
 
@@ -49,20 +50,68 @@ function isSafeUploadPath(filePath: string): boolean {
   return resolved.startsWith(prefix);
 }
 
+/**
+ * The ONLY mime types this endpoint accepts. Allowlist, never a denylist.
+ * Deliberately excludes image/svg+xml — an SVG is a script-bearing document,
+ * not a picture.
+ */
+export const PAW_FINDER_ALLOWED_MIMES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+] as const;
+
+/** mime → stored extension. The stored name is built ONLY from this map. */
+const EXT_BY_MIME: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/heic': '.heic',
+  'image/heif': '.heic',
+};
+
+/**
+ * Derive the stored file extension WITHOUT ever consulting the user-supplied
+ * filename.
+ *
+ * SECURITY (P0, 2026-09-05): this used to be
+ * `path.extname(file.originalname)`. multer's fileFilter only sees the
+ * client-declared `Content-Type`, so an attacker could send
+ * `Content-Type: image/jpeg` (passes the filter) with
+ * `filename="payload.html"` and land `pf-<ts>-<rand>.html` in
+ * `uploads/paw-finder/`. That directory is served by
+ * `app.use('/uploads', express.static(...))` (server/routes.ts), which types
+ * responses by EXTENSION — so the payload came back as `text/html` from
+ * `https://petwash.co.il/...`, i.e. SAME-ORIGIN stored XSS with full access
+ * to the victim's session. `compressIfNeeded()` did not help: sharp throws on
+ * non-image bytes and the function is fail-soft.
+ *
+ * `originalname` is accepted as an argument only so the signature documents
+ * that it is deliberately ignored; it is never read.
+ */
+export function safeUploadExtension(mimetype: string, _originalname?: string): string {
+  return EXT_BY_MIME[(mimetype || '').toLowerCase()] ?? '.jpg';
+}
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
   filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    // Random basename + allowlisted extension. Nothing the caller controls
+    // reaches this string.
+    const ext = safeUploadExtension(file.mimetype, file.originalname);
     cb(null, `pf-${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB raw; sharp will compress
+  limits: { fileSize: 15 * 1024 * 1024, files: 1 }, // 15 MB raw; sharp will compress
   fileFilter: (_req, file, cb) => {
-    const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
-    cb(null, allowed.includes(file.mimetype));
+    cb(null, (PAW_FINDER_ALLOWED_MIMES as readonly string[]).includes(file.mimetype));
   },
 });
 
@@ -177,7 +226,16 @@ async function pushNotification(
    Auth: any authenticated user
 ----------------------------------------------------------------------- */
 
-router.post('/upload', requireAuth, upload.single('photo'), async (req: any, res) => {
+router.post(
+  '/upload',
+  requireAuth,
+  upload.single('photo'),
+  // Sniff the REAL magic bytes off disk. multer's fileFilter only saw the
+  // spoofable Content-Type header; this rejects (and deletes) anything whose
+  // actual content is not one of the image families above — HTML, SVG,
+  // scripts, archives, executables. Runs before any FS/Gemini work below.
+  requireValidFileContentDisk(['image/jpeg', 'image/png', 'image/webp', 'image/heic']),
+  async (req: any, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'NO_FILE', message: 'Upload a photo (JPEG/PNG/WebP/HEIC max 15MB)' });
@@ -227,12 +285,13 @@ router.post('/upload', requireAuth, upload.single('photo'), async (req: any, res
       }
     }
 
-    res.json({ filePath, hash, duplicate, fileSize, identification });
-  } catch (err: any) {
-    logger.error('[PawFinder] upload failed', { error: err.message });
-    res.status(500).json({ error: 'upload_failed' });
-  }
-});
+      res.json({ filePath, hash, duplicate, fileSize, identification });
+    } catch (err: any) {
+      logger.error('[PawFinder] upload failed', { error: err.message });
+      res.status(500).json({ error: 'upload_failed' });
+    }
+  },
+);
 
 /* -----------------------------------------------------------------------
    PUBLIC ROUTES — no auth required
