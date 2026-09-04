@@ -271,7 +271,6 @@ const AdminBayMap = lazy(() => import("@/pages/AdminBayMap"));
 const AdminCommandLog = lazy(() => import("@/pages/AdminCommandLog"));
 const AdminCompensation = lazy(() => import("@/pages/AdminCompensation"));
 const CustomerTimeline = lazy(() => import("@/pages/CustomerTimeline"));
-const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
 const AdminTeamInvitations = lazy(() => import("@/pages/AdminTeamInvitations"));
 const TeamInbox = lazy(() => import("@/pages/TeamInbox"));
 const MobileStationHub = lazy(() => import("@/pages/MobileStationHub"));
@@ -3845,7 +3844,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         {/* RETIRED generation: AdminUsers called /api/admin/users list/update/
             delete — endpoints that never existed (its buttons could never
-            work). The live user-management surface is /admin/customers. */}
+            work). The live user-management surface is /admin/customers.
+            2026-09-05: the orphaned page file itself is now deleted. It was
+            still being lazy-imported (and therefore still emitted as a bundle
+            chunk) even though no <Route> rendered it, and it remained a
+            copy-paste source for a "Delete User" button wired to a
+            DELETE /api/admin/users/:userId that no handler serves. */}
         <Route path="/admin/users">{() => <Redirect to="/admin/customers" />}</Route>
         <Route path="/admin/team">
           {() => (
