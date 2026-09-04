@@ -28,12 +28,29 @@ import { describe, expect, it } from 'vitest';
 
 const ROOT = join(__dirname, '..', '..');
 
-function grepRepo(pattern: string): string[] {
+function hasRipgrep(): boolean {
   try {
-    const out = execSync(
-      `rg --no-heading -n -g '*.ts' -g '!server/tests/**' -g '!**/node_modules/**' ${JSON.stringify(pattern)} ${ROOT}`,
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
-    );
+    execSync('rg --version', { stdio: ['pipe', 'pipe', 'pipe'] });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Search the tree for `pattern`, preferring ripgrep but falling back to POSIX
+ * grep. Previously this shelled out to `rg` unconditionally, so on any machine
+ * without ripgrep the spawn failed with status 127 and the whole security pin
+ * threw instead of running — a RED that looks identical to a real regression.
+ * Exit status 1 means "no matches" for both tools; anything else is a genuine
+ * tool error and must still throw (never swallow it into a passing []).
+ */
+function grepRepo(pattern: string): string[] {
+  const cmd = hasRipgrep()
+    ? `rg --no-heading -n -g '*.ts' -g '!server/tests/**' -g '!**/node_modules/**' ${JSON.stringify(pattern)} ${ROOT}`
+    : `grep -rnE --include='*.ts' --exclude-dir=node_modules --exclude-dir=tests ${JSON.stringify(pattern)} ${ROOT}`;
+  try {
+    const out = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
     return out.split('\n').filter(Boolean);
   } catch (err: any) {
     if (err?.status === 1) return [];

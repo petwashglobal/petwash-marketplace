@@ -127,12 +127,17 @@ describe('CEO P0 §4 — enrollment reuses canonical account data', () => {
     );
   });
 
-  it('post-success navigation defaults to /pet-parent/home and safely honors ?redirect=', () => {
+  it('post-success navigation defaults to /pet-parent/home and safely honors ?returnTo=', () => {
     expect(ENROLL).toMatch(/\/pet-parent\/home/);
-    // Open-redirect guard: only same-origin (path-only) redirects are honored.
-    expect(ENROLL).toMatch(
-      /startsWith\(['"]\/['"]\)\s*&&\s*!redirect\.startsWith\(['"]\/\/['"]\)/,
-    );
+    // Open-redirect guard: the hand-rolled inline check
+    //   redirect.startsWith('/') && !redirect.startsWith('//')
+    // was replaced (Phase 8.b, 2026-09-01) by the shared readReturnTo() helper
+    // in client/src/auth/returnTo.ts, which runs isSafeReturnTarget():
+    // rejects protocol-relative '//', an embedded '/https:' scheme, CRLF
+    // header-splitting chars, and over-long targets. Strictly stronger than
+    // the two-clause inline test, and one implementation for every surface.
+    expect(ENROLL).toMatch(/readReturnTo\(window\.location\.search\)\s*\|\|\s*['"]\/pet-parent\/home['"]/);
+    expect(ENROLL).toMatch(/from\s+['"]@\/auth\/returnTo['"]|from\s+['"].*auth\/returnTo['"]/);
   });
 
   it('emits PRESTIGE_ENROLLMENT_OPENED + _SUBMITTED analytics markers (CEO §16)', () => {

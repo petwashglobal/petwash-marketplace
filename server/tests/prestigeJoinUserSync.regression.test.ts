@@ -22,9 +22,18 @@ describe('prestige-join users-row reconciliation', () => {
     expect(src).toMatch(/alreadyEnrolled\s*\?\s*\{\}\s*:\s*\{\s*loyaltyPoints/);
     expect(src).toMatch(/loyaltyPoints:\s*sql`/);
   });
-  it('promotes role to loyalty only from a plain customer/public — never downgrades staff/provider', () => {
-    expect(src).toMatch(/promotableRoles/);
-    expect(src).toMatch(/'customer'.*'public'/s);
-    expect(src).toMatch(/role:\s*'loyalty'/);
+  it('never writes users.role at all — loyalty is an ADDITIVE capability (PR-AUTH-MULTIROLE-5)', () => {
+    // Superseded design. The old rule was "promote role to 'loyalty' only from
+    // customer/public", which still overwrote the single role column and so
+    // erased a customer/provider identity the moment they joined Prestige.
+    // The account now carries loyalty ALONGSIDE its role: membership of record
+    // lives in loyalty_profiles + privilege_members, and
+    // server/lib/userCapabilities.ts derives the capability from those.
+    // Not writing the column at all is strictly safer than conditionally
+    // writing it, so the pin is now a NEGATIVE one.
+    expect(src).not.toMatch(/role:\s*'loyalty'/);
+    expect(src).toMatch(/does\s+\n?\s*\/\/\s*NOT touch users\.role|NOT touch users\.role/);
+    // The users-row sync must still carry the non-identity loyalty fields.
+    expect(src).toMatch(/isClubMember:\s*true/);
   });
 });

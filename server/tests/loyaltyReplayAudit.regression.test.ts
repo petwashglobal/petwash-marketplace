@@ -88,16 +88,26 @@ describe('awardLoyaltyPoints — surface stability (money-adjacent)', () => {
   });
 });
 
-describe('race-window flag (audit-only)', () => {
-  it('pointsTransactions has NO unique constraint on (userId, source, sourceId)', () => {
+describe('race window is CLOSED at the storage layer (was audit-only flag)', () => {
+  // History: this block used to ASSERT THE ABSENCE of a unique constraint and
+  // said "if a future PR adds one, this test breaks and the audit comment can
+  // be updated to remove the race caveat". Item 222 (2026-08-18, MONEY-CODE)
+  // added it, so the caveat is retired and the pin is inverted: the guard must
+  // now stay present.
+  //
+  // Callers dedupe with SELECT-then-INSERT on (userId, source, sourceId), which
+  // races under concurrent webhook retries. The partial unique index makes
+  // exactly-once a DB-enforced property rather than a caller convention.
+  it('pointsTransactions HAS a partial unique index on (userId, source, sourceId)', () => {
     const schema = R('../shared/schema-loyalty.ts');
-    // The current declaration has no `.unique()` on sourceId + no composite
-    // index. If a future PR adds one, this test breaks and the audit
-    // comment above can be updated to remove the race caveat.
     const start = schema.indexOf("pointsTransactions = pgTable('points_transactions'");
-    const end   = schema.indexOf('});', start);
+    expect(start).toBeGreaterThan(-1);
+    const end   = schema.indexOf('}));', start);
     const region = schema.slice(start, end);
-    expect(region).not.toMatch(/\.unique\(\)/);
-    expect(region).not.toMatch(/uniqueIndex/);
+    expect(region).toMatch(/uniqueIndex\('points_transactions_user_source_ref_uniq_idx'\)/);
+    expect(region).toMatch(/\.on\(table\.userId, table\.source, table\.sourceId\)/);
+    // Partial: bonus events with no stable ref (NULL source_id) stay unconstrained,
+    // otherwise a second ref-less bonus for the same user would be rejected.
+    expect(region).toMatch(/IS NOT NULL/);
   });
 });
