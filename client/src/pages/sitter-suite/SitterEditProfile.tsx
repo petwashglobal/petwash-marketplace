@@ -31,6 +31,11 @@ interface SitterProfile {
   rating: string;
   isActive: boolean;
   isVerified: boolean;
+  // GET /sitters/:id does not SELECT these today; PATCH /sitters/:id does accept
+  // them (set from the CityPicker / Places selection). Optional so the loaded
+  // profile and the editable form can disagree honestly.
+  latitude?: string | number | null;
+  longitude?: string | number | null;
 }
 
 export default function SitterEditProfile() {
@@ -48,18 +53,26 @@ export default function SitterEditProfile() {
   // endpoint), returning ALL sitters instead of the caller's own profile —
   // the edit form then bound to whichever sitter came first. Explicit
   // queryFn hits the by-uid detail route.
-  const { data: profile, isLoading } = useQuery<SitterProfile>({
+  // CONTRACT FIX (Lane E D8), response-shape pass. The path was already
+  // corrected to the by-uid detail route, but the RESPONSE SHAPE was still
+  // wrong: `GET /sitters/:id` answers `{ sitter, reviews }`, not a bare sitter
+  // (server/routes/sitter-suite.ts:354). Typing it as `SitterProfile` meant
+  // every read — `profile.firstName`, `profile.city`, and critically
+  // `profile.id` — was `undefined`. Consequences, both live on main:
+  //   * the edit form rendered completely empty for a sitter who has a profile;
+  //   * "Save" PATCHed `/api/sitter-suite/sitters/undefined`, which the server
+  //     resolves as `eq(userId, 'undefined')` → 404 "Sitter not found".
+  const { data: profileResponse, isLoading } = useQuery<{ sitter: SitterProfile }>({
     queryKey: ['/api/sitter-suite/sitters', user?.uid],
     enabled: !!user?.uid,
     queryFn: async () => {
       // Was bare fetch() with only credentials:'include' — missing the
-      // Firebase Bearer + App Check that apiRequest attaches. The PATCH
-      // on line 93 already uses apiRequest; the GET drifted.
+      // Firebase Bearer + App Check that apiRequest attaches.
       const res = await apiRequest('GET', `/api/sitter-suite/sitters/${user!.uid}`);
-      if (!res.ok) throw new Error(`Failed to load sitter profile: ${res.status}`);
       return res.json();
     },
   });
+  const profile = profileResponse?.sitter;
 
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
 
@@ -75,9 +88,19 @@ export default function SitterEditProfile() {
     longitude: null as number | null,
   });
 
+  // Snapshot of what the server actually gave us, so `handleSave` can send ONLY
+  // the fields the sitter really changed.
+  // This is load-bearing, not tidiness: `GET /sitters/:id` deliberately withholds
+  // `phone` and `email` (they are PII on a public, no-auth listing route — see the
+  // SECURITY note on the handler's SELECT). So `formData.phone` initialises to ''.
+  // Blind-sending the whole form made every save PATCH `phone: ''`, and the
+  // handler's `if (phone !== undefined)` would happily persist it — silently
+  // WIPING the sitter's phone number the first time they edited anything else.
+  const loadedFormRef = useRef<Record<string, any> | null>(null);
+
   useEffect(() => {
     if (profile) {
-      setFormData({
+      const loaded = {
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
         phone: profile.phone || '',
@@ -87,16 +110,23 @@ export default function SitterEditProfile() {
         pricePerDayCents: profile.pricePerDayCents || 0,
         latitude: profile.latitude ? parseFloat(String(profile.latitude)) : null,
         longitude: profile.longitude ? parseFloat(String(profile.longitude)) : null,
-      });
+      };
+      loadedFormRef.current = { ...loaded };
+      setFormData(loaded);
     }
   }, [profile]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<SitterProfile>) => {
-      const response = await apiRequest('PATCH', `/api/sitter-suite/sitters/${profile?.id}`, data);
+      // Fail loudly instead of PATCHing `/sitters/undefined` and calling it a save.
+      if (!profile?.id) throw new Error('SITTER_PROFILE_NOT_LOADED');
+      const response = await apiRequest('PATCH', `/api/sitter-suite/sitters/${profile.id}`, data);
       return response.json();
     },
     onSuccess: () => {
+      // Refetch THIS sitter (the detail key), not just the browse list — without
+      // it the form kept showing pre-save values until a hard reload.
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/sitters', user?.uid] });
       queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/sitters'] });
       toast({
         title: isHebrew ? 'הפרופיל עודכן בהצלחה' : 'Profile Updated',
@@ -136,9 +166,32 @@ export default function SitterEditProfile() {
   };
 
   const handleSave = () => {
-    const updateData: Record<string, any> = { ...formData };
+    if (!profile?.id) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew
+          ? 'הפרופיל עדיין נטען — נסו שוב בעוד רגע'
+          : 'Profile is still loading — please try again in a moment',
+      });
+      return;
+    }
+    // Send only genuinely changed fields — see `loadedFormRef` above for why
+    // sending the whole form wiped the sitter's phone number.
+    const loaded = loadedFormRef.current ?? {};
+    const updateData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(formData)) {
+      if (loaded[key] !== value) updateData[key] = value;
+    }
     if (profilePhoto) {
       updateData.profilePictureUrl = profilePhoto;
+    }
+    if (Object.keys(updateData).length === 0) {
+      toast({
+        title: isHebrew ? 'אין שינויים' : 'No changes',
+        description: isHebrew ? 'לא שיניתם דבר לשמירה' : 'Nothing to save',
+      });
+      return;
     }
     updateMutation.mutate(updateData);
   };
