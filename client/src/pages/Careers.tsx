@@ -343,6 +343,10 @@ export default function Careers() {
   
   const handleSubmitApplication = () => {
     if (!selectedPosition) return;
+    // Double-submit guard. `disabled={applyMutation.isPending}` on the button
+    // only takes effect after React re-renders; a fast double-tap on mobile
+    // can fire this handler twice before that and create two applications.
+    if (applyMutation.isPending) return;
     
     if (!formData.consentDataProcessing || !formData.consentBackgroundCheck || 
         !formData.consentTermsOfService || !formData.consentPrivacyPolicy) {
@@ -368,7 +372,10 @@ export default function Careers() {
   // Handle resume file upload
   const handleResumeUpload = async () => {
     if (!resumeFile || !submittedApplicationId) return;
-    
+    // Double-submit guard — without it a double-tap uploads the same CV twice
+    // and inserts two staff_documents rows for one application.
+    if (isUploadingResume) return;
+
     setIsUploadingResume(true);
     try {
       const formDataUpload = new FormData();

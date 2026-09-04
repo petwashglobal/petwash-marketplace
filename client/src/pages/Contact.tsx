@@ -105,7 +105,12 @@ export default function Contact({ language }: ContactProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Double-submit guard — `disabled={submitting}` on the button only applies
+    // after React re-renders; a fast double-tap can fire this handler twice
+    // first and send the same message to the support inbox twice.
+    if (submitting) return;
+
     if (!validateForm()) {
       return;
     }
