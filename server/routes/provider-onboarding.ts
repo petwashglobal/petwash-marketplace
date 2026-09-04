@@ -1912,6 +1912,10 @@ router.get('/application/status', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid token', errorCode: 'INVALID_TOKEN' });
     }
 
+    // NOTE: this SELECT * is deliberately kept — `sectionStatus` below has to
+    // read internalNotes / bankIban / governmentIdUrl / … to compute its
+    // booleans. What must NOT happen is shipping the raw rows to the client;
+    // see the projection at the response.
     const applications = await db
       .select()
       .from(providerApplications)
@@ -1953,7 +1957,68 @@ router.get('/application/status', async (req: Request, res: Response) => {
       };
     });
 
-    res.json({ applications, sectionStatus });
+    // PRIVACY 2026-09-05 — this endpoint used to `res.json({ applications })`
+    // with the RAW rows straight out of `SELECT *`. That handed the applicant
+    // every admin-only column on their own record:
+    //   internal_notes            ("Only visible to admins" per the schema)
+    //   background_check_notes, rejection notes-in-progress
+    //   reviewed_by               (the reviewing admin's Firebase UID)
+    //   trust_score_internal      (our private risk score)
+    //   israeli_id_encrypted      (the AES blob)
+    //   bank_iban / bank_account_holder / bank_branch_code
+    //   government_id_url / selfie_photo_url / insurance_cert_url /
+    //   business_license_url      (KYC vault storage paths)
+    // The sibling applicant endpoint (/my/status, ~1100 lines below) had
+    // already been hardened to an explicit column list for exactly this
+    // reason — the two endpoints served the same data subject under opposite
+    // policies. Same allow-list here, and it stays an allow-list so a new
+    // column cannot leak by simply existing.
+    const safeApplications = applications.map((app: any) => ({
+      id: app.id,
+      applicationId: app.applicationId,
+      status: app.status,
+      subStatus: app.subStatus ?? null,
+      providerType: app.providerType,
+      firstName: app.firstName,
+      lastName: app.lastName,
+      email: app.email,
+      phoneNumber: app.phoneNumber,
+      city: app.city,
+      country: app.country,
+      dateOfBirth: app.dateOfBirth ?? null,
+      ageConfirmed18Plus: app.ageConfirmed18Plus ?? null,
+      biometricStatus: app.biometricStatus ?? null,
+      biometricMatchScore: app.biometricMatchScore ?? null,
+      biometricVerifiedAt: app.biometricVerifiedAt ?? null,
+      // Structured KYC signals the applicant supplied — never the raw
+      // document, never the encrypted ID blob, never a storage path.
+      kycDocumentType: app.kycDocumentType ?? null,
+      kycDocumentExpiry: app.kycDocumentExpiry ?? null,
+      kycIdLastFour: app.kycIdLastFour ?? null,
+      taxStatus: app.taxStatus ?? null,
+      insurancePolicyNumber: app.insurancePolicyNumber ?? null,
+      insuranceProvider: app.insuranceProvider ?? null,
+      insuranceExpiresAt: app.insuranceExpiresAt ?? null,
+      insuranceCoverageAmount: app.insuranceCoverageAmount ?? null,
+      selfDeclarationNoRelevantConvictions: app.selfDeclarationNoRelevantConvictions ?? null,
+      selfDeclarationAt: app.selfDeclarationAt ?? null,
+      requiresEnhancedVerification: app.requiresEnhancedVerification ?? null,
+      enhancedVerificationReasons: app.enhancedVerificationReasons ?? null,
+      declarationSignatureSha256: app.declarationSignatureSha256 ?? null,
+      petFirstAidExpiresAt: app.petFirstAidExpiresAt ?? null,
+      resubmissionCount: app.resubmissionCount ?? null,
+      lastRequestedResubmissionAt: app.lastRequestedResubmissionAt ?? null,
+      lastResubmittedAt: app.lastResubmittedAt ?? null,
+      submittedAt: app.submittedAt ?? null,
+      reviewedAt: app.reviewedAt ?? null,
+      // rejectionReason IS shown — the applicant is entitled to the reason
+      // for the decision. reviewedBy (the admin's uid) is NOT.
+      rejectionReason: app.rejectionReason ?? null,
+      createdAt: app.createdAt,
+      updatedAt: app.updatedAt,
+    }));
+
+    res.json({ applications: safeApplications, sectionStatus });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Get application status error', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch application status', errorCode: 'STATUS_CHECK_FAILED' });

@@ -5,7 +5,7 @@ import { requireAuth } from '../customAuth';
 import { requireAdmin } from '../middleware/rbac';
 import { db } from '../db';
 import { providerIntakeQueue, biometricCertificateVerifications } from '@shared/schema';
-import { eq, desc } from 'drizzle-orm';
+import { and, eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { createHash, randomUUID, randomBytes, createCipheriv } from 'crypto';
@@ -599,12 +599,53 @@ router.post('/submit-documents', requireAuth, async (req, res) => {
       });
     }
 
-    // Update intake status to 'reviewing' if intakeId provided
+    // Update intake status to 'reviewing' if intakeId provided.
+    //
+    // SECURITY 2026-09-05 (cross-user write IDOR): this UPDATE used to be
+    // scoped by the CLIENT-SUPPLIED `intakeId` alone, with no ownership
+    // predicate — so any authenticated user could flip ANY applicant's
+    // intake row to 'reviewing' just by posting someone else's intakeId.
+    // The id is not a secret either: it is handed back to the submitter
+    // (`intakeId` in the /submit response) and is only
+    // `INTAKE-<Date.now()>-<6 hex>`, i.e. guessable in bulk.
+    // Everything else in this handler already used the server-verified
+    // uid (and deliberately ignores body.firebaseUid); this one write was
+    // missed.
+    //
+    // provider_intake_queue has no user_id column — the only ownership
+    // link is the applicant's email (written lower-cased at /submit), so
+    // that is the predicate. A row that is not the caller's simply does
+    // not match: 0 rows updated, and we say so rather than reporting a
+    // success the server did not perform.
     if (data.intakeId) {
-      await db
-        .update(providerIntakeQueue)
-        .set({ status: 'reviewing', updatedAt: new Date() })
-        .where(eq(providerIntakeQueue.intakeId, data.intakeId));
+      const callerEmail = ((req as any).user?.email || '').trim().toLowerCase();
+      if (!callerEmail) {
+        logger.warn('[Provider Intake] status update skipped — no verified email on the session', {
+          intakeId: data.intakeId, uid: authenticatedUid,
+        });
+      } else {
+        const updated = await db
+          .update(providerIntakeQueue)
+          .set({ status: 'reviewing', updatedAt: new Date() })
+          .where(and(
+            eq(providerIntakeQueue.intakeId, data.intakeId),
+            eq(providerIntakeQueue.email, callerEmail),
+          ))
+          .returning({ id: providerIntakeQueue.id });
+
+        if (updated.length === 0) {
+          // Either the id does not exist or it belongs to somebody else.
+          // Do not distinguish the two — that would make the endpoint an
+          // existence oracle for other people's applications.
+          logger.warn('[Provider Intake] status update denied — intake row is not the callers', {
+            intakeId: data.intakeId, uid: authenticatedUid,
+          });
+          return res.status(403).json({
+            error: 'This application does not belong to your account.',
+            errorCode: 'INTAKE_NOT_OWNED',
+          });
+        }
+      }
     }
 
     logger.info('[Provider Intake] Documents submitted post-application', {
