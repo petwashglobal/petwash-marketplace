@@ -45,9 +45,9 @@ Then the site moves to normal continuous improvement.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Customer home (`/pet-parent/home` → PrestigeHome) | `IN PROGRESS` | Card mount PR held locally on `claude/next-best-action-mount-home` until #2212 lands. |
+| Customer home (`/pet-parent/home` → PrestigeHome) | `TESTED` | `<NextBestActionCard actor="pet_parent" />` mounted above `AttentionList` (#2215). |
 | Attention feed (top-of-fold) | `TESTED` | `AttentionList.tsx` + attentionFeed composer; Prestige home §27-29. |
-| Next-best-action ("Your next step") | `IN PROGRESS` | #2208 (endpoint) merged; #2212 (client hook + card) awaiting merge; mount branch queued. |
+| Next-best-action ("Your next step") | `TESTED` | #2208 endpoint + #2212 hook + card + #2213 route integration test + #2215 home mount + #2216 real-browser end-to-end (5 scenarios). |
 | Pets | `TESTED` | Pets PATCH mass-assign fixed (#126). |
 | Prestige | `TESTED` | #110 privilege_members read; #47 enrollment guard. |
 | Wallet | `TESTED` | Nayax station key #19, wallet DTO privacy. |
@@ -66,7 +66,7 @@ Then the site moves to normal continuous improvement.
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Provider home | `IN PROGRESS` | Card mount PR held locally on `claude/next-best-action-mount-home` until #2212 lands. |
+| Provider home | `TESTED` | `<NextBestActionCard actor="provider" />` mounted above `AttentionList` (#2215). |
 | Provider onboarding | `TESTED` | Journey resume E2E for `provider_apply` (#2211) — strictest wire (no KYC blobs). |
 | Provider dashboard v2 | `TESTED` | #106 requireProviderActive server gate; #82 apiRequest sweep. |
 | Provider service management | `TESTED` | #157 requestedService preservation E2E. |
@@ -140,8 +140,8 @@ Then the site moves to normal continuous improvement.
 | Phase 1 · attentionFeed | `TESTED` | Wallet / eGift / Prestige / KYA-stale / provider KYC / doc-expiry probes shipped. |
 | Phase 2 · JourneyCheckpoint | `TESTED` | 6/6 write-side; 6/6 browser matrix. |
 | Phase 3 · Saved Searches + Favourite Providers + Rebooking prefill | `TESTED` | #153 FAVOURITE_REBOOK. |
-| Phase 4 · NextBestAction service | `IN PROGRESS` | #2208 merged; awaiting deploy+smoke. #2213 route integration test open. |
-| Phase 5 · rendering surface | `IN PROGRESS` | #2212 hook + card open; mount PR queued locally. |
+| Phase 4 · NextBestAction service | `TESTED` | #2208 endpoint + #2213 route integration test (9 real-supertest pins). |
+| Phase 5 · rendering surface | `TESTED` | #2212 hook + card + #2215 home mount + #2216 real-browser E2E (5 scenarios). |
 | Phase 6 · feedback loop / personalization timing | `NOT REVIEWED` | Not started. |
 | Cancellation legal engine | `TESTED` | #146 CancellationPolicyRegistry, versioned. |
 | Failure recovery (battery-dies / GPS-lost) | `TESTED` | #147. |
@@ -155,7 +155,7 @@ Then the site moves to normal continuous improvement.
 | Auth CTAs | `TESTED` | #257 CTA action-id registry. |
 | Provider funnel CTAs | `TESTED` | PROVIDER_SERVICE_ACTION_IDS. |
 | BOOK_CONFIRM on booking submits | `TESTED` | #2209 merged (sitter/walk/marketplace). |
-| RESUME_JOURNEY (NextBestActionCard) | `IN PROGRESS` | #2212 open. |
+| RESUME_JOURNEY (NextBestActionCard) | `TESTED` | #2212 registry addition + #2216 E2E asserts `data-action-id="RESUME_JOURNEY"` on resume tap. |
 
 ### Notifications + AI
 
@@ -198,6 +198,7 @@ Then the site moves to normal continuous improvement.
 | JourneyCheckpoint · sitter | `journey-checkpoint-resume.e2e.spec.ts` | `TESTED` |
 | JourneyCheckpoint · walk / marketplace / shop | `journey-checkpoint-resume-extended.e2e.spec.ts` | `TESTED` |
 | JourneyCheckpoint · egift / provider_apply | `journey-checkpoint-resume-egift-provider.e2e.spec.ts` | `TESTED` |
+| NextBestActionCard on home | `next-best-action-home.e2e.spec.ts` | `TESTED` |
 | Prestige enrollment loop | `prestige-enrollment-loop.e2e.spec.ts` | `TESTED` |
 | Customer owes | `customer-owes.e2e.spec.ts` | `TESTED` |
 | Mobile account routing | `mobile-account-routing.spec.ts` | `TESTED` |
@@ -221,10 +222,10 @@ Then the site moves to normal continuous improvement.
 
 ## Open engineering lanes (this session)
 
-- **Lane C · Journey Brain** — #2212 rendering surface open, mount PR queued, Phase 6 (feedback loop) not started.
-- **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed (#2210, #2211); more customer/provider journeys can be added.
+- **Lane C · Journey Brain** — Phases 1-5 all TESTED; Phase 6 (feedback loop + personalization timing) not started.
+- **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed (#2210, #2211); NextBestActionCard end-to-end (#2216).
 - **Lane E · money/fiscal** — Nayax letter (#166) blocked on non-code business step.
-- **Lane D · CTA registry** — BOOK_CONFIRM landed (#2209); RESUME_JOURNEY in flight (#2212).
+- **Lane D · CTA registry** — BOOK_CONFIRM (#2209) + RESUME_JOURNEY (#2212, E2E in #2216) TESTED.
 - **Lane F · mobile/RTL** — audit not yet run.
 - **Lane H · deployment/observability** — pipeline routinely green; smoke workflow_run wired.
 
