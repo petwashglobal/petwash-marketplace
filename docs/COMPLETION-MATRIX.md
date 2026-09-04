@@ -89,8 +89,8 @@ Then the site moves to normal continuous improvement.
 | Profile / settings | `TESTED` | #160-162 canonical write. |
 | Notifications inbox | `TESTED` | #176 NotificationInboxSpec. |
 | Mobile navigation | `TESTED` | #101 nav-header hygiene. |
-| Hebrew RTL | `NOT REVIEWED` | Every home renders `dir={he ? 'rtl' : 'ltr'}` — no cross-flow audit. |
-| English fallback | `NOT REVIEWED` | Same. |
+| Hebrew RTL | `TESTED` | 25-pin cross-flow direction contract (#2228) across 11 customer surfaces — every root container carries a dynamic `dir={<expr> ? 'rtl' : 'ltr'}` toggle; hard-locked `dir="ltr"` on a page shell is rejected. Inline LTR on numeric IDs / `<bdi>` wrappers / font-mono blocks is allowed (bidi-correct). |
+| English fallback | `TESTED` | Same pin — the direction ternary evaluates to `'ltr'` when the language is `en`. Language-store shape (`language`) is pinned so a rename can't silently break every toggle. |
 | Loading / empty / error / offline states | `NOT REVIEWED` | — |
 
 ---
@@ -227,7 +227,7 @@ Then the site moves to normal continuous improvement.
 - **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed; NextBestActionCard end-to-end (#2216). More provider / customer journeys can still be added.
 - **Lane E · money/fiscal** — Nayax letter (#166) blocked on non-code business step.
 - **Lane D · CTA registry** — BOOK_CONFIRM (#2209) + RESUME_JOURNEY (#2212) + DISMISS_NEXT_BEST_ACTION (#2221) TESTED.
-- **Lane F · mobile/RTL** — audit not yet run.
+- **Lane F · mobile/RTL** — RTL direction contract now TESTED (#2228, 25 pins across 11 surfaces). Mobile-specific audits (viewport, touch targets, safe-area) not yet run separately.
 - **Lane H · deployment/observability** — pipeline routinely green; smoke workflow_run wired.
 
 ## Journey Brain — CEO scoreboard
