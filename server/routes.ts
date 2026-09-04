@@ -12925,6 +12925,16 @@ self.addEventListener('notificationclick', (event) => {
   //   empty projection so a partial outage never breaks home.
   const nextBestActionRoutes = (await import('./routes/next-best-action')).default;
   app.use('/api/next-best-action', apiLimiter, nextBestActionRoutes);
+  // Journey Brain Phase 6 (post-release 2026-09-04):
+  //   POST /api/next-best-action/feedback — record ONE user
+  //   verdict per tap on a NextBestActionCard action (act,
+  //   dismiss, not_interested, fewer_like_this). Uid is
+  //   server-verified. The composer follow-up reads recent
+  //   verdicts to suppress an action_key that got a
+  //   "not_interested" verdict inside the cooldown window
+  //   (CEO §24 §60 — adaptive, no dark patterns).
+  const nextBestActionFeedbackRoutes = (await import('./routes/next-best-action-feedback')).default;
+  app.use('/api/next-best-action/feedback', apiLimiter, nextBestActionFeedbackRoutes);
   // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
   //   GET  /api/identity/links           — list linked providers (live)
   //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c
