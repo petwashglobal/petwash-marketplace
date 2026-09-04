@@ -199,6 +199,44 @@ function parseModule(root, rel) {
     if (starM) imports.set(starM[1], { file: target, exported: '*' });
   }
 
+  // Dynamic imports — this repo lazily loads a LOT of routers:
+  //   const authSmsRoutes = (await import('./routes/auth-sms')).default;
+  //   const x = (await import('./routes/y')).someRouter;
+  //   const { default: x } = await import('./routes/y');
+  const dynRe = /(?:const|let|var)\s+(?:\{\s*default\s*:\s*([A-Za-z_$][\w$]*)\s*\}|([A-Za-z_$][\w$]*))\s*=\s*\(?\s*await\s+import\s*\(\s*['"]([^'"]+)['"]\s*\)\s*\)?\s*(?:\.\s*([A-Za-z_$][\w$]*))?/g;
+  while ((m = dynRe.exec(src))) {
+    const name = m[1] || m[2];
+    const target = resolveImport(root, rel, m[3]);
+    if (!name || !target) continue;
+    const exported = m[1] ? 'default' : (m[4] || 'default');
+    imports.set(name, { file: target, exported });
+  }
+
+  //   const { providerPhoneRouter, other } = await import('./routes/provider-phone');
+  const dynDestrRe = /(?:const|let|var)\s*\{([^}]*)\}\s*=\s*await\s+import\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
+  while ((m = dynDestrRe.exec(src))) {
+    const target = resolveImport(root, rel, m[2]);
+    if (!target) continue;
+    for (const piece of m[1].split(',')) {
+      const p = piece.trim();
+      if (!p) continue;
+      const asM = p.match(/^([A-Za-z_$][\w$]*)\s*:\s*([A-Za-z_$][\w$]*)$/);
+      if (asM) imports.set(asM[2], { file: target, exported: asM[1] });
+      else if (/^[A-Za-z_$][\w$]*$/.test(p)) imports.set(p, { file: target, exported: p });
+    }
+  }
+
+  // Router FACTORIES: `const ledRouter = createLedRouter({ … })`. The routes
+  // live on a Router() declared inside the factory's module, so bind the
+  // local name to that module and let resolution fall through to its single
+  // Router() declaration.
+  const factoryRe = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*((?:create|make|build)[A-Za-z0-9_$]*Router)\s*\(/g;
+  while ((m = factoryRe.exec(src))) {
+    if (imports.has(m[1])) continue;
+    const src2 = imports.get(m[2]);
+    if (src2) imports.set(m[1], { file: src2.file, exported: '__factoryRouter__' });
+  }
+
   /** Local `const x = Router()` / `express.Router()`. */
   const routers = new Set();
   const routerRe = /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=]+)?=\s*(?:express\s*\.\s*)?Router\s*\(/g;
@@ -323,6 +361,14 @@ export function buildServerRouteTable(root) {
       return null;
     }
     if (target.routers.has(imp.exported)) return { file: target.rel, obj: imp.exported };
+    if (imp.exported === '__factoryRouter__' && target.routers.size === 1) {
+      return { file: target.rel, obj: [...target.routers][0] };
+    }
+    // named export that is a router assigned indirectly, e.g.
+    // `const r = Router(); … export { r as providerPhoneRouter }`
+    if (target.namedExports.has(imp.exported) && target.routers.size === 1) {
+      return { file: target.rel, obj: [...target.routers][0] };
+    }
     return null;
   }
 
