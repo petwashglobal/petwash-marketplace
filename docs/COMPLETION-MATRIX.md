@@ -36,7 +36,7 @@ Then the site moves to normal continuous improvement.
 | Station finder | `NOT REVIEWED` | — |
 | Signup (unified `/signup`) | `TESTED` | #66, dual-verify #65, signup coverage E2E `tests/e2e/signup-coverage.e2e.spec.ts`. |
 | Returning sign-in | `TESTED` | #131 audit; ReturnLogin door pending (#253). |
-| Password / recovery | `NOT REVIEWED` | Regex pin `authCompletionRoutes.regression.test.ts` covers the endpoint side. |
+| Password / recovery | `TESTED` | Firebase-Auth SDK path (`sendPasswordResetEmail`); 12-pin anti-enumeration contract (#2224) covers both `AUTH_FORGOT_PASSWORD` button and returning-user link — swallowed errors, generic HE+EN toast, double-submit guard, RFC email pre-check. |
 | Passkey / Face ID | `TESTED` | #68 (real account-bound onboarding + login), #7 race fix. |
 | Magic link | `TESTED` | #8 AuthAction magic-link mode. |
 | Dead-end screens (AccessPending / VerifyEmail signed-out) | `TESTED` | #23. |
@@ -142,7 +142,7 @@ Then the site moves to normal continuous improvement.
 | Phase 3 · Saved Searches + Favourite Providers + Rebooking prefill | `TESTED` | #153 FAVOURITE_REBOOK. |
 | Phase 4 · NextBestAction service | `TESTED` | #2208 endpoint + #2213 route integration test (9 real-supertest pins). |
 | Phase 5 · rendering surface | `TESTED` | #2212 hook + card + #2215 home mount + #2216 real-browser E2E (5 scenarios). |
-| Phase 6 · feedback loop / personalization timing | `TESTED` | Full closed loop shipped in #2218 (storage + service) → #2219 (endpoint) → #2220 (composer suppression) → #2221 (client dismiss button + hook). Retention pruner cron deferred. |
+| Phase 6 · feedback loop / personalization timing | `TESTED` | Full closed loop shipped in #2218 (storage + service) → #2219 (endpoint) → #2220 (composer suppression) → #2221 (client dismiss button + hook) → #2223 (retention pruner cron). |
 | Cancellation legal engine | `TESTED` | #146 CancellationPolicyRegistry, versioned. |
 | Failure recovery (battery-dies / GPS-lost) | `TESTED` | #147. |
 | AI context authorization + PII minimization | `TESTED` | #148 CEO §78/79. |
@@ -171,7 +171,7 @@ Then the site moves to normal continuous improvement.
 | Area | Status | Evidence |
 | --- | --- | --- |
 | Rate limits (per-UID, Redis) | `IN PROGRESS` | Lane E #246 Redis shared state in flight. |
-| Cron / background jobs | `NOT REVIEWED` | — |
+| Cron / background jobs | `TESTED` | JourneyCheckpoints pruner (#2168) + NextBestActionFeedback retention pruner (#2223) both hourly, both `.unref()`-safe with kill switches. |
 | Logging / PII | `TESTED` | #208 redactor wire, #263 port to release. |
 | Migrations gate | `TESTED` | Migration Test (prod-baseline) workflow; #272 self-healing gate. |
 | Monitoring / deploy / smoke | `TESTED` | Release Smoke workflow_run gate. |
