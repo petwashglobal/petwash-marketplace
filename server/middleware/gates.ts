@@ -3,6 +3,7 @@ import { storage } from '../storage';
 import { logger } from '../lib/logger';
 import { logSecurityEvent } from '../services/securityEventsService';
 import { isReadOnlyAdminRole } from '@shared/adminRoles';
+import { isSuperAdminVerified } from './rbac';
 
 // SECURITY: Super-admin email list loaded from environment variable.
 // BEFORE: Hard-coded personal Gmail addresses — if any leaked (GitHub, CI logs,
@@ -87,7 +88,9 @@ export function requireRole(...roles: string[]) {
 
       // Super admins bypass all role checks regardless of Firebase claims
       const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
-      if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
+      // #240 follow-up: allowlist match ALONE is not authority — require
+      // Firebase email_verified === true too (canonical rbac primitive).
+      if (isSuperAdminVerified(req)) {
         logger.debug(`[requireRole] Super admin ${reqEmail} bypassing role check for [${roles.join(',')}]`);
         return next();
       }
@@ -166,7 +169,9 @@ export function enforceReadOnlyMutations(req: Request, res: Response, next: Next
 
   // Super admins are never read-only.
   const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
-  if (reqEmail && SUPER_ADMINS.includes(reqEmail)) return next();
+  // #240 follow-up: only a VERIFIED super-admin may write past the
+  // read-only-viewer block. The viewer role's own semantics are unchanged.
+  if (isSuperAdminVerified(req)) return next();
 
   const fbUser = (req as any).firebaseUser;
   const claimsRole: string = fbUser?.claims?.role || fbUser?.role || '';
@@ -285,7 +290,8 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
 
     // Super admins bypass staff approval requirement
     const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
-    if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
+    // #240 follow-up: allowlist + Firebase email_verified === true.
+    if (isSuperAdminVerified(req)) {
       logger.debug(`[requireStaffApproved] Super admin ${reqEmail} bypassing staff approval check`);
       return next();
     }
@@ -345,7 +351,9 @@ export async function requireMfaEnrolled(req: Request, res: Response, next: Next
 
     // Super admins bypass MFA check so they can access settings to enroll
     const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
-    if (reqEmail && SUPER_ADMINS.includes(reqEmail)) {
+    // #240 follow-up: allowlist + Firebase email_verified === true. An
+    // UNVERIFIED allowlisted account must not skip the MFA requirement.
+    if (isSuperAdminVerified(req)) {
       logger.debug(`[requireMfaEnrolled] Super admin ${reqEmail} bypassing MFA enrolled check`);
       return next();
     }
@@ -419,7 +427,11 @@ export async function requireSuperAdmin(req: Request, res: Response, next: NextF
     }
 
     const userEmail = (user as any).email;
-    if (!userEmail || !SUPER_ADMINS.includes(userEmail)) {
+    // #240 follow-up: BOTH must hold — the stored user row must be on the
+    // allowlist AND the live request must be a Firebase-verified
+    // super-admin. Belt-and-braces: the row check alone trusts a DB column,
+    // the request check alone trusts a token; a privileged gate wants both.
+    if (!userEmail || !SUPER_ADMINS.includes(userEmail) || !isSuperAdminVerified(req)) {
       logger.debug(`[requireSuperAdmin] User ${userId} (${userEmail}) is not a super admin`);
       logSecurityEvent({ userId, eventType: 'super_admin_escalation_attempt', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 90, metadata: { email: userEmail, endpoint: req.originalUrl } });
       return res.status(403).json({ error: 'SUPER_ADMIN_REQUIRED' });
