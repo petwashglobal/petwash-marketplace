@@ -12917,6 +12917,14 @@ self.addEventListener('notificationclick', (event) => {
   // Rejects payment-truth-looking payload keys as defence-in-depth.
   const journeyCheckpointsRoutes = (await import('./routes/journey-checkpoints')).default;
   app.use('/api/journey', apiLimiter, journeyCheckpointsRoutes);
+  // Lane C.4 (post-release 2026-09-03) — Journey Brain Phase 4:
+  //   GET /api/next-best-action — server projection over attention
+  //   feed + active JourneyCheckpoints. Returns ONE canonical
+  //   `{ primaryAction, secondaryActions }` object the client
+  //   renders on Pet-Parent or Provider home. Fails-CLOSED to an
+  //   empty projection so a partial outage never breaks home.
+  const nextBestActionRoutes = (await import('./routes/next-best-action')).default;
+  app.use('/api/next-best-action', apiLimiter, nextBestActionRoutes);
   // Phase 6 identity linking (CEO D6, auth-rebuild 2026-09-01):
   //   GET  /api/identity/links           — list linked providers (live)
   //   POST /api/identity/link/initiate   — 501 stub until Phase 6.c
