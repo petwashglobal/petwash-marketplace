@@ -1201,9 +1201,18 @@ export default function AdminWalletDashboard() {
     onSuccess: (d) => { toast({ title: "Replay approved & executing", description: `Run: ${d.executeRunId}, sig: ${d.signature?.slice(0,8)}…` }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/replay/approvals/pending'] }); refetchReplayRuns(); },
     onError: (e) => toast({ title: "Approve failed", description: e.message, variant: "destructive" }),
   });
+  // CONTRACT FIX (Lane E D4): no custom queryFn meant the default queryFn in
+  // client/src/lib/queryClient.ts fetched `queryKey[0]` verbatim — the runId was
+  // dropped and this GET hit `/replay/reports` bare. The canonical owner is
+  // `GET /admin/wallet/replay/reports/:runId` (server/routes/prestige-pass.ts),
+  // so "Load Report" 404'd for every run and the viewer stayed blank.
   const { data: replayReportData, isLoading: replayReportLoading, refetch: refetchReplayReport } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/replay/reports', viewingReportRunId],
     enabled: !!viewingReportRunId,
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/prestige-pass/admin/wallet/replay/reports/${viewingReportRunId}`);
+      return res.json();
+    },
   });
 
   // ── Phase 3.6A: Forecast Model Weights ────────────────────────────────────
@@ -1213,10 +1222,14 @@ export default function AdminWalletDashboard() {
   const { data: forecastWeights, isLoading: forecastWeightsLoading, refetch: refetchForecastWeights } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast/weights', weightHorizon],
   });
-  const { data: recomputeResult, isLoading: recomputeLoading, refetch: refetchRecompute } = useQuery<any>({
-    queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast/recompute', weightHorizon],
-    enabled: false,
-  });
+  // CONTRACT FIX (Lane E D5): a `useQuery` here would GET
+  // `/cash-forecast/recompute`, but the canonical operation is
+  // `POST /admin/wallet/cash-forecast/recompute` — a GET has never existed.
+  // VERIFIED: `refetchRecompute`/`recomputeResult` had ZERO references anywhere
+  // in this file, so the hook never fired and no operator ever saw the 404.
+  // The live "Recompute" button uses the `recomputeForecast` POST mutation
+  // further down (Phase 3.6A UI). Removing dead code rather than inventing a
+  // second, GET-shaped write authority for the same operation.
   const { mutate: createForecastWeight, isPending: createWeightPending } = useMutation<any, any, any>({
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/weights', body),
     onSuccess: () => { toast({ title: 'Weight added' }); refetchForecastWeights(); setNewWeight({ horizonDays: 7, factorName: 'payouts', weight: '1.0' }); },
@@ -1285,9 +1298,18 @@ export default function AdminWalletDashboard() {
   // ── Phase 3.6E: Replay Diff ────────────────────────────────────────────────
   const [diffRunId, setDiffRunId] = useState<string>('');
   const [diffEntityFilter, setDiffEntityFilter] = useState('');
-  const { data: replayDiffData, isLoading: replayDiffLoading, refetch: refetchReplayDiff } = useQuery<any>({
+  // CONTRACT FIX (Lane E D3 + D4-b): the default queryFn dropped the runId and
+  // fetched `/replay/diff` bare. Canonical owner is
+  // `GET /admin/wallet/replay/diff/:runId` (server/routes/prestige-pass.ts),
+  // which answers `{ ok, runId, totalDiffs, diffs: [{ entityType, entityId,
+  // before, after, changedFields }] }`.
+  const { data: replayDiffData, isLoading: replayDiffLoading, error: replayDiffError } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/replay/diff', diffRunId],
     enabled: !!diffRunId,
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/prestige-pass/admin/wallet/replay/diff/${diffRunId}`);
+      return res.json();
+    },
   });
 
   // ── Phase 3.6F: Finance Policy Engine ─────────────────────────────────────
@@ -1310,9 +1332,22 @@ export default function AdminWalletDashboard() {
   // ── Phase 3.6G: Period Close Packs ────────────────────────────────────────
   const [packType, setPackType] = useState<'quarter' | 'year'>('quarter');
   const [packPeriod, setPackPeriod] = useState('2026-Q1');
-  const { data: periodPackData, isLoading: periodPackLoading, refetch: refetchPeriodPack } = useQuery<any>({
+  // CONTRACT FIX (Lane E D2): `GET /admin/wallet/period-pack?type=&period=` IS
+  // the canonical generate-and-cache operation — it aggregates the finance close
+  // records, SHA-256-signs the pack and INSERTs it into `period_close_packs`
+  // (the export route says so verbatim: "generate it first via GET /period-pack").
+  // The default queryFn dropped both params, so this fetched `/period-pack` bare
+  // and the server answered 400 "type and period required".
+  const { data: periodPackData, isLoading: periodPackLoading, error: periodPackError, refetch: refetchPeriodPack } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/period-pack', packType, packPeriod],
     enabled: false,
+    queryFn: async () => {
+      const res = await apiRequest(
+        'GET',
+        `/api/prestige-pass/admin/wallet/period-pack?type=${encodeURIComponent(packType)}&period=${encodeURIComponent(packPeriod)}`,
+      );
+      return res.json();
+    },
   });
 
   // ── Phase 3.7A: Policy Simulation ─────────────────────────────────────────
@@ -2994,9 +3029,31 @@ export default function AdminWalletDashboard() {
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/weights', body),
     onSuccess: () => { toast({ title: 'Weight saved' }); refetchForecastWeights(); setWeightForm({ signalKey: '', divisionCode: '', weight: '' }); },
   });
+  // CONTRACT FIX (live defect, missed by the Lane E scan): this button DID reach
+  // the server (200), but the contract was wrong in two ways and the operator
+  // could not tell:
+  //   1. the horizon was sent as a JSON body `{ horizonDays: 30 }` while the
+  //      handler reads `req.query.horizon` — so every "Recompute" silently
+  //      recomputed the 7-day default, never the 30-day forecast the panel
+  //      copy promises.
+  //   2. `apiRequest` resolves to a `Response`, not parsed JSON, so `d.horizonDays`
+  //      was always `undefined` and the toast read "Horizon: undefinedd".
+  // Server returns `{ ok, horizon, weights, forecast }`.
   const { mutate: recomputeForecast, isPending: recomputeForecastPending } = useMutation<any, any, void>({
-    mutationFn: () => apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/recompute', { horizonDays: 30 }),
-    onSuccess: (d) => { toast({ title: 'Forecast recomputed', description: `Horizon: ${d.horizonDays}d` }); },
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/recompute?horizon=30');
+      return res.json();
+    },
+    onSuccess: (d) => {
+      toast({
+        title: 'Forecast recomputed',
+        description: d?.forecast
+          ? `Horizon: ${d.horizon}d · net ₪${(d.forecast.netCents / 100).toLocaleString('he-IL')}`
+          : (d?.message ?? `Horizon: ${d?.horizon}d`),
+      });
+      refetchForecastWeights();
+    },
+    onError: (e: any) => toast({ title: 'Recompute failed', description: e?.message, variant: 'destructive' }),
   });
   // 3.6C — single upsert helper that always POSTs (backend handles UPSERT)
   const { mutate: upsertDigestPref } = useMutation<any, any, { key: string; value: any }>({
@@ -3012,14 +3069,16 @@ export default function AdminWalletDashboard() {
     onSuccess: (d) => { toast({ title: 'Retrieval requested', description: `ID: ${d.retrieval?.id}` }); refetchArchiveRetrievals(); setRetrievalForm({ entityType: '', entityId: '', reason: '', dateRange: '' }); },
   });
   const markRetrievalReadyPending = markReadyPending;
-  // 3.6E — diff viewer state (two run IDs comparison)
-  const [diffRunA, setDiffRunA] = useState('');
-  const [diffRunB, setDiffRunB] = useState('');
-  const [replayDiff, setReplayDiff] = useState<any>(null);
-  const { mutate: computeReplayDiff, isPending: computeDiffPending } = useMutation<any, any, { runAId: number; runBId: number }>({
-    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/replay/diff', body),
-    onSuccess: (d) => { setReplayDiff(d); toast({ title: 'Diff computed', description: `${d.divergenceCount ?? 0} divergence(s)` }); },
-  });
+  // 3.6E — REMOVED (Lane E D3): a `POST /replay/diff` two-run comparison
+  // ({ runAId, runBId }) that no server route has ever implemented — every
+  // "Compare Runs" click 404'd. There is no canonical two-run comparison
+  // operation anywhere in the finance stack, so rather than inventing a second
+  // write authority for replay analysis, the panel now uses the operation the
+  // server actually owns: a single-run diff
+  // (`GET /admin/wallet/replay/diff/:runId`, wired as `replayDiffData` above),
+  // which reads `finance_replay_diffs` and falls back to the run's report
+  // findings. If per-pair comparison is genuinely wanted it needs a real
+  // server-side operation — flagged for product, not faked in the client.
   // 3.6F — policy engine aliases
   const policyRules = financePolicies;
   const policyRulesLoading = financePoliciesLoading;
@@ -3028,19 +3087,44 @@ export default function AdminWalletDashboard() {
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/policies', body),
     onSuccess: () => { toast({ title: 'Policy rule saved' }); refetchFinancePolicies(); setNewRuleForm({ policyKey: '', value: '', divisionCode: '', description: '' }); },
   });
-  // 3.6G — period close pack aliases
-  const periodPacks = periodPackData;
-  const periodPacksLoading = periodPackLoading;
-  const [closePeriodType, setClosePeriodType] = useState<'quarter' | 'year'>('quarter');
-  const [closePeriodValue, setClosePeriodValue] = useState('');
-  const { mutate: generatePeriodPack, isPending: generatePeriodPackPending } = useMutation<any, any, { type: string; period: string }>({
-    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/period-pack/generate', body),
-    onSuccess: (d) => { toast({ title: 'Period pack generated', description: `${d.pack?.period} — ${d.pack?.recordCount} records` }); refetchPeriodPack(); },
-  });
-  const { mutate: exportPeriodPack, isPending: exportPeriodPackPending } = useMutation<any, any, void>({
-    mutationFn: () => apiRequest('GET', '/api/prestige-pass/admin/wallet/period-pack/export'),
-    onSuccess: (d) => { toast({ title: 'Export ready', description: d.filename ?? 'period-pack.json' }); },
-  });
+  // 3.6G — period close packs.
+  // REMOVED (Lane E D2): `POST /period-pack/generate` — no such route has ever
+  // existed, so "Generate Pack" 404'd every time. The generate operation is the
+  // canonical `GET /period-pack?type=&period=` already wired above as
+  // `refetchPeriodPack`, so the button now drives that instead of a second,
+  // invented write authority. `packType` / `packPeriod` are the single source of
+  // truth for the panel (the old `closePeriodType` / `closePeriodValue` pair fed
+  // only the dead POST and were never read by the query).
+  const generatePeriodPackPending = periodPackLoading;
+  // CONTRACT FIX: export sent no `type`/`period`, so the handler answered 400
+  // "type and period required" and nothing was ever downloaded; the toast also
+  // read `d.filename` off a raw `Response` (always undefined). The route streams
+  // a file with Content-Disposition, so take the blob and save it for real.
+  const [exportPeriodPackPending, setExportPeriodPackPending] = useState(false);
+  const exportPeriodPack = async () => {
+    setExportPeriodPackPending(true);
+    try {
+      const res = await apiRequest(
+        'GET',
+        `/api/prestige-pass/admin/wallet/period-pack/export?type=${encodeURIComponent(packType)}&period=${encodeURIComponent(packPeriod)}`,
+      );
+      const blob = await res.blob();
+      const filename = `period-pack-${packType}-${packPeriod}.json`;
+      const href = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = href;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(href);
+      toast({ title: 'Export downloaded', description: filename });
+    } catch (e: any) {
+      toast({ title: 'Export failed', description: e?.message, variant: 'destructive' });
+    } finally {
+      setExportPeriodPackPending(false);
+    }
+  };
 
   function handleAuditSearch() {
     if (!auditId.trim()) return;
@@ -8629,37 +8713,58 @@ export default function AdminWalletDashboard() {
                 </div>
                 {/* Generate form */}
                 <div className="flex flex-wrap gap-2">
-                  <select value={closePeriodType} onChange={e=>setClosePeriodType(e.target.value as any)}
+                  <select value={packType} onChange={e=>setPackType(e.target.value as any)}
                     className="border rounded px-2 py-1 text-xs">
                     <option value="quarter">Quarter</option>
                     <option value="year">Year</option>
                   </select>
-                  <input placeholder={closePeriodType==='quarter' ? '2026-Q1' : '2026'} value={closePeriodValue} onChange={e=>setClosePeriodValue(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
-                  <button disabled={generatePeriodPackPending || !closePeriodValue} onClick={() => generatePeriodPack({ type: closePeriodType, period: closePeriodValue })}
+                  <input placeholder={packType==='quarter' ? '2026-Q1' : '2026'} value={packPeriod} onChange={e=>setPackPeriod(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
+                  <button disabled={generatePeriodPackPending || !packPeriod} onClick={() => refetchPeriodPack()}
                     className="text-xs px-3 py-1.5 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-40">
                     {generatePeriodPackPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Generate Pack'}
                   </button>
                 </div>
-                {periodPacksLoading ? <div className="h-20 bg-white animate-pulse rounded"/> :
-                  !periodPacks?.packs?.length ? (
-                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No close packs generated yet</div>
-                  ) : (
-                    <div className="border rounded-lg overflow-hidden">
-                      <table className="w-full text-xs"><thead className="bg-white">
-                        <tr className="text-gray-500"><th className="text-left p-2">Period</th><th className="text-left p-2">Type</th><th className="text-left p-2">Records</th><th className="text-left p-2">Signature</th><th className="text-left p-2">Generated</th></tr>
-                      </thead><tbody>
-                        {periodPacks.packs.map((pk: any) => (
-                          <tr key={pk.id} className="border-t hover:bg-white">
-                            <td className="p-2 font-mono text-gray-700">{pk.period}</td>
-                            <td className="p-2"><span className={`px-1.5 py-0.5 rounded text-xs ${pk.packType === 'year' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{pk.packType}</span></td>
-                            <td className="p-2 text-gray-600">{pk.recordCount}</td>
-                            <td className="p-2 font-mono text-gray-400 text-[10px]">{pk.signatureHash?.slice(0,16)}…</td>
-                            <td className="p-2 text-gray-400">{new Date(pk.generatedAt).toLocaleString('he-IL')}</td>
-                          </tr>
-                        ))}
-                      </tbody></table>
-                    </div>
-                  )
+                {periodPackError && (
+                  <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                    Could not generate pack: {(periodPackError as any)?.message}
+                  </div>
+                )}
+                {/* CONTRACT FIX: the server answers ONE signed pack object
+                    ({ ok, cached, pack }) — never a `packs[]` list. The old table
+                    read `pk.period` / `pk.recordCount` / `pk.signatureHash`, none
+                    of which the handler emits, so even a 200 would have rendered
+                    an empty row. Render the fields the server actually returns. */}
+                {periodPackLoading ? <div className="h-20 bg-white animate-pulse rounded"/> :
+                  !periodPackData?.pack ? (
+                    <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No close pack generated yet — choose a period and click Generate Pack</div>
+                  ) : (() => {
+                    const pk = periodPackData.pack;
+                    const shekels = (c: number) => `₪${((c ?? 0) / 100).toLocaleString('he-IL')}`;
+                    return (
+                      <div className="border rounded-lg p-3 bg-white text-xs space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-gray-700 font-mono">{pk.periodKey}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-xs ${pk.periodType === 'year' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{pk.periodType}</span>
+                          <span className="text-gray-500">{pk.dateRange?.startDate} → {pk.dateRange?.endDate}</span>
+                          <span className="text-gray-500">{pk.closedMonths} closed month{pk.closedMonths !== 1 ? 's' : ''}</span>
+                          {periodPackData.cached && <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">a previous pack existed for this period</span>}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                          <div><div className="text-gray-400">Gross</div><div className="font-mono text-gray-700">{shekels(pk.totals?.grossCents)}</div></div>
+                          <div><div className="text-gray-400">Payouts</div><div className="font-mono text-gray-700">{shekels(pk.totals?.payoutsCents)}</div></div>
+                          <div><div className="text-gray-400">Refunds</div><div className="font-mono text-gray-700">{shekels(pk.totals?.refundsCents)}</div></div>
+                          <div><div className="text-gray-400">VAT</div><div className="font-mono text-gray-700">{shekels(pk.totals?.vatCents)}</div></div>
+                          <div><div className="text-gray-400">Margin</div><div className="font-mono text-gray-700">{pk.marginPct}%</div></div>
+                        </div>
+                        <div className="text-gray-500">Sign-off coverage: {pk.signoffCoverage} · Disputes: {Object.entries(pk.disputes ?? {}).map(([k,v]) => `${k}: ${v}`).join(', ') || 'none'} · Recon exceptions: {Object.entries(pk.reconExceptions ?? {}).map(([k,v]) => `${k}: ${v}`).join(', ') || 'none'}</div>
+                        {pk.varianceCommentary?.length > 0 && (
+                          <div className="text-gray-600"><span className="text-gray-400">Commentary:</span> {pk.varianceCommentary.join(' · ')}</div>
+                        )}
+                        <div className="font-mono text-gray-400 text-[10px] break-all">SHA-256: {pk.signature}</div>
+                        <div className="text-gray-400">Generated: {pk.generatedAt ? new Date(pk.generatedAt).toLocaleString('he-IL') : '—'}</div>
+                      </div>
+                    );
+                  })()
                 }
               </CardContent>
             </Card>
@@ -9067,45 +9172,65 @@ export default function AdminWalletDashboard() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded p-2">
-                  Compare two replay runs to identify divergent computation paths, changed amounts, or missing records. Useful for validating close-record idempotency.
+                  Inspect what a replay run changed: every record whose recomputed value diverged from the stored value, field by field. Useful for validating close-record idempotency before approving an execute.
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <input type="number" placeholder="Run A ID" value={diffRunA} onChange={e=>setDiffRunA(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
-                  <input type="number" placeholder="Run B ID" value={diffRunB} onChange={e=>setDiffRunB(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
-                  <button disabled={computeDiffPending || !diffRunA || !diffRunB} onClick={() => computeReplayDiff({ runAId: parseInt(diffRunA, 10), runBId: parseInt(diffRunB, 10) })}
-                    className="text-xs px-3 py-1.5 bg-rose-600 text-white rounded hover:bg-rose-700 disabled:opacity-40">
-                    {computeDiffPending ? <Loader2 className="w-3 h-3 animate-spin inline"/> : 'Compare Runs'}
-                  </button>
+                  <input type="number" placeholder="Run ID" value={diffRunId} onChange={e=>setDiffRunId(e.target.value)} className="border rounded px-2 py-1 text-xs w-28"/>
+                  <input type="text" placeholder="Filter entity type (opt)" value={diffEntityFilter} onChange={e=>setDiffEntityFilter(e.target.value)} className="border rounded px-2 py-1 text-xs w-44"/>
+                  {replayDiffLoading && <Loader2 className="w-4 h-4 animate-spin text-rose-600 self-center"/>}
                 </div>
-                {replayDiff?.ok && (
-                  <div className="border rounded-lg p-3 bg-rose-50 border-rose-200 text-xs space-y-2">
-                    <div className="flex items-center gap-3 font-semibold text-rose-800">
-                      <span>Run #{replayDiff.runA} vs Run #{replayDiff.runB}</span>
-                      <span className={`px-1.5 py-0.5 rounded ${replayDiff.divergenceCount > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                        {replayDiff.divergenceCount} divergence{replayDiff.divergenceCount !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    {replayDiff.diffs?.length > 0 && (
-                      <div className="border rounded-lg overflow-hidden bg-white">
-                        <table className="w-full text-xs"><thead className="bg-white">
-                          <tr className="text-gray-500"><th className="text-left p-2">Record</th><th className="text-left p-2">Field</th><th className="text-right p-2">Run A</th><th className="text-right p-2">Run B</th></tr>
-                        </thead><tbody>
-                          {replayDiff.diffs.map((d: any, i: number) => (
-                            <tr key={i} className="border-t hover:bg-rose-50">
-                              <td className="p-2 font-mono text-gray-700">{d.recordKey}</td>
-                              <td className="p-2 text-gray-600">{d.field}</td>
-                              <td className="p-2 text-right font-mono text-red-600">{d.valueA ?? '—'}</td>
-                              <td className="p-2 text-right font-mono text-green-700">{d.valueB ?? '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody></table>
-                      </div>
-                    )}
-                    {replayDiff.divergenceCount === 0 && (
-                      <div className="text-center text-green-700 py-2">Runs are identical — no divergence detected</div>
-                    )}
+                {replayDiffError && (
+                  <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                    Could not load diff for run #{diffRunId}: {(replayDiffError as any)?.message}
                   </div>
                 )}
+                {replayDiffData?.ok && (() => {
+                  const allDiffs: any[] = replayDiffData.diffs ?? [];
+                  const filter = diffEntityFilter.trim().toLowerCase();
+                  const diffs = filter
+                    ? allDiffs.filter((d) => String(d.entityType ?? '').toLowerCase().includes(filter))
+                    : allDiffs;
+                  return (
+                    <div className="border rounded-lg p-3 bg-rose-50 border-rose-200 text-xs space-y-2">
+                      <div className="flex items-center gap-3 font-semibold text-rose-800">
+                        <span>Run #{replayDiffData.runId}</span>
+                        <span className={`px-1.5 py-0.5 rounded ${replayDiffData.totalDiffs > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                          {replayDiffData.totalDiffs} divergence{replayDiffData.totalDiffs !== 1 ? 's' : ''}
+                        </span>
+                        {filter && <span className="text-gray-500 font-normal">showing {diffs.length} matching “{diffEntityFilter}”</span>}
+                      </div>
+                      {diffs.length > 0 && (
+                        <div className="border rounded-lg overflow-hidden bg-white">
+                          <table className="w-full text-xs"><thead className="bg-white">
+                            <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Changed fields</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th></tr>
+                          </thead><tbody>
+                            {diffs.map((d: any, i: number) => {
+                              const fields: string[] = d.changedFields ?? [];
+                              return (
+                                <tr key={d.id ?? i} className="border-t hover:bg-rose-50 align-top">
+                                  <td className="p-2 font-mono text-gray-700">{d.entityType}#{d.entityId}</td>
+                                  <td className="p-2 text-gray-600">{fields.join(', ') || '—'}</td>
+                                  <td className="p-2 text-right font-mono text-red-600 break-all max-w-40">
+                                    {fields.map((f) => <div key={f}>{JSON.stringify(d.before?.[f]) ?? '—'}</div>)}
+                                  </td>
+                                  <td className="p-2 text-right font-mono text-green-700 break-all max-w-40">
+                                    {fields.map((f) => <div key={f}>{JSON.stringify(d.after?.[f]) ?? '—'}</div>)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody></table>
+                        </div>
+                      )}
+                      {allDiffs.length === 0 && (
+                        <div className="text-center text-green-700 py-2">No divergence recorded for this run</div>
+                      )}
+                      {allDiffs.length > 0 && diffs.length === 0 && (
+                        <div className="text-center text-gray-500 py-2">No divergence matches that entity-type filter</div>
+                      )}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
 
