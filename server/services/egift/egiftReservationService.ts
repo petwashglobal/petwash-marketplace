@@ -159,7 +159,7 @@ export async function reserveFromEgift(input: {
     // both saw "enough", one drives available negative — roll it back.
     const afterProjection = await projectEgiftBalance(input.egiftId);
     if (afterProjection.availableCents < 0) {
-      await releaseByReservationId(reservationId, /*silent=*/ true);
+      await releaseByReservationId(reservationId, input.egiftId, /*silent=*/ true);
       logger.warn('[EgiftReservation] race detected — rolling back', {
         egiftIdTail: input.egiftId.slice(-6),
         available: afterProjection.availableCents,
@@ -195,6 +195,23 @@ export async function reserveFromEgift(input: {
  */
 export async function commitReservation(input: {
   reservationId: string;
+  /**
+   * The eGift the CALLER was authorised against. REQUIRED — it is the
+   * authorisation scope, not a convenience field.
+   *
+   * P0 (CEO closure sprint): the HTTP routes are
+   *   /api/egift/:egiftId/reservations/:reservationId/commit|release
+   * and they authorise :egiftId, but this function used to load the row by
+   * :reservationId ALONE. Owning any eGift therefore authorised committing or
+   * releasing a reservation held against SOMEONE ELSE'S eGift — burning or
+   * cancelling a stranger's held value. Reservation ids are also derivable:
+   * RES- + sha256(egiftId + ':' + idempotencyKey), and the client chooses the
+   * idempotencyKey.
+   *
+   * Binding it here rather than only in the route means every future caller
+   * inherits the check and the compiler refuses to let anyone omit it.
+   */
+  egiftId: string;
   externalRef?: string;
 }): Promise<
   | { ok: true; reservation: ReservationHandle }
@@ -204,8 +221,15 @@ export async function commitReservation(input: {
     const [row] = await db
       .select()
       .from(egiftReservations)
-      .where(eq(egiftReservations.reservationId, input.reservationId))
+      .where(and(
+        eq(egiftReservations.reservationId, input.reservationId),
+        // Authorisation scope — see the egiftId doc above.
+        eq(egiftReservations.egiftId, input.egiftId),
+      ))
       .limit(1);
+    // A reservation that exists but belongs to another eGift is reported as
+    // NOT_FOUND, never as a distinct "wrong owner" code — the caller must not
+    // be able to probe which reservation ids exist.
     if (!row) return { ok: false, errorCode: 'RESERVATION_NOT_FOUND' };
     if (row.status !== 'RESERVED') return { ok: false, errorCode: 'RESERVATION_NOT_ACTIVE' };
 
@@ -215,6 +239,7 @@ export async function commitReservation(input: {
       .set({ status: 'COMMITTED', committedAt: now })
       .where(and(
         eq(egiftReservations.reservationId, input.reservationId),
+        eq(egiftReservations.egiftId, input.egiftId),
         eq(egiftReservations.status, 'RESERVED'),
       ));
 
@@ -257,6 +282,8 @@ export async function commitReservation(input: {
  */
 export async function releaseByReservationId(
   reservationId: string,
+  /** Authorisation scope — see commitReservation's egiftId doc. REQUIRED. */
+  egiftId: string,
   silent = false,
 ): Promise<
   | { ok: true; reservation: ReservationHandle }
@@ -266,8 +293,12 @@ export async function releaseByReservationId(
     const [row] = await db
       .select()
       .from(egiftReservations)
-      .where(eq(egiftReservations.reservationId, reservationId))
+      .where(and(
+        eq(egiftReservations.reservationId, reservationId),
+        eq(egiftReservations.egiftId, egiftId),
+      ))
       .limit(1);
+    // Cross-eGift reservation ids report NOT_FOUND — no existence oracle.
     if (!row) return { ok: false, errorCode: 'RESERVATION_NOT_FOUND' };
     if (row.status !== 'RESERVED') return { ok: false, errorCode: 'RESERVATION_NOT_ACTIVE' };
 
@@ -277,6 +308,7 @@ export async function releaseByReservationId(
       .set({ status: 'RELEASED', releasedAt: now })
       .where(and(
         eq(egiftReservations.reservationId, reservationId),
+        eq(egiftReservations.egiftId, egiftId),
         eq(egiftReservations.status, 'RESERVED'),
       ));
 
