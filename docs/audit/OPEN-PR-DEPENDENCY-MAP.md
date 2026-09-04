@@ -11,3 +11,5 @@ The suspected large clusters from the sprint brief are **ALL ALREADY CLOSED**:
 
 ## Working note (in progress)
 - #2239 auth pin-auth: VERIFIED-SOURCE — main is a strict SUPERSET. Merging would REVERT two later fixes.
+- #2238 money M1-M4: VERIFIED-SOURCE — substance NOT in main (no EscrowConcurrentTransitionError, no ATOMIC CLAIM in booking-expiry, no derivedIdempotencyKey). Genuine new work, mergeable=clean.
+- #2241 k9000: VERIFIED-SOURCE — 2 of 3 fixes still needed; the Cortina inbound-secret fix is ALREADY in main (assertCortinaSecret on all 4 callback routes) and is the conflict source.
