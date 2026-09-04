@@ -39,6 +39,29 @@ function toIsraelDateTime(dateStr: string, time: string): Date {
   return new Date(`${dateStr}T${time}${offset}`);
 }
 
+// GET /api/provider-availability/slots — list this provider's slots
+router.get('/slots', async (req, res) => {
+  try {
+    const userId: string | undefined = (req as any).user?.uid || (req as any).userId;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const [provider] = await db.select({ id: providers.id })
+      .from(providers)
+      .where(eq(providers.userId, userId));
+
+    if (!provider) return res.status(403).json({ error: 'Provider profile not found' });
+
+    const slots = await db.select()
+      .from(availabilitySlots)
+      .where(eq(availabilitySlots.providerId, provider.id));
+
+    return res.json({ success: true, slots });
+  } catch (error: any) {
+    logger.error('[ProviderAvailability] Slot list error', { error: error.message });
+    return res.status(500).json({ error: 'Failed to list slots' });
+  }
+});
+
 router.get('/:providerId', async (req, res) => {
   try {
     const { providerId } = req.params;
@@ -536,28 +559,6 @@ router.post('/slots', async (req, res) => {
   }
 });
 
-// GET /api/provider-availability/slots — list this provider's slots
-router.get('/slots', async (req, res) => {
-  try {
-    const userId: string | undefined = (req as any).user?.uid || (req as any).userId;
-    if (!userId) return res.status(401).json({ error: 'Authentication required' });
-
-    const [provider] = await db.select({ id: providers.id })
-      .from(providers)
-      .where(eq(providers.userId, userId));
-
-    if (!provider) return res.status(403).json({ error: 'Provider profile not found' });
-
-    const slots = await db.select()
-      .from(availabilitySlots)
-      .where(eq(availabilitySlots.providerId, provider.id));
-
-    return res.json({ success: true, slots });
-  } catch (error: any) {
-    logger.error('[ProviderAvailability] Slot list error', { error: error.message });
-    return res.status(500).json({ error: 'Failed to list slots' });
-  }
-});
 
 // DELETE /api/provider-availability/slots/:slotId — cancel a slot
 router.delete('/slots/:slotId', async (req, res) => {
