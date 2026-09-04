@@ -28,11 +28,12 @@
 import { useLocation } from 'wouter';
 import { useLanguage } from '@/lib/languageStore';
 import { useNextBestAction, isResumeAction, type NextAction } from '@/hooks/useNextBestAction';
+import { useNextBestActionFeedback, actionKeyFor } from '@/hooks/useNextBestActionFeedback';
 import type { AttentionActor, AttentionItem } from '@shared/lib/attentionFeed';
 import { emitCtaEvent } from '@/lib/ctaActions';
 import {
   ArrowRight, ArrowLeft, CreditCard, CheckCircle2, Star, Bell, PlayCircle,
-  Flag, Navigation, MessageCircle, FileText, Wallet, Gift, Upload, Eye, RotateCw,
+  Flag, Navigation, MessageCircle, FileText, Wallet, Gift, Upload, Eye, RotateCw, X,
 } from 'lucide-react';
 
 interface Props {
@@ -78,6 +79,7 @@ export function NextBestActionCard({ actor, secondaryLimit = 3 }: Props) {
   const { language } = useLanguage();
   const he = language === 'he';
   const { primaryAction, secondaryActions, isLoading } = useNextBestAction(actor);
+  const { submit: submitFeedback } = useNextBestActionFeedback();
 
   if (isLoading) return null;
   if (!primaryAction) return null;
@@ -106,7 +108,32 @@ export function NextBestActionCard({ actor, secondaryLimit = 3 }: Props) {
         priority: (action as any).priority,
       });
     }
+    // Positive telemetry — "act" verdict lets the composer distinguish
+    // a click-through from a dismissal in later personalization.
+    const key = actionKeyFor(action);
+    if (key) submitFeedback(key, 'act');
     navigate((action as any).destination);
+  };
+
+  /**
+   * Dismiss handler for the primary card. Stops propagation so the
+   * dismiss X does NOT also fire the primary tap. Sends the
+   * "not_interested" verdict — the server suppresses that same
+   * action_key for a 7-day cooldown (CEO §24 §60 — adaptive, no
+   * dark patterns). The mutation invalidates the next-best-action
+   * cache, so the composer re-runs and the next non-suppressed
+   * action takes the primary slot.
+   */
+  const handleDismissPrimary = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    emitCtaEvent('DISMISS_NEXT_BEST_ACTION', {
+      source: 'next_best_action',
+      actor,
+      kind: isResumeAction(primaryAction) ? 'resume' : 'attention',
+    });
+    const key = actionKeyFor(primaryAction);
+    if (key) submitFeedback(key, 'not_interested');
   };
 
   const visibleSecondary = secondaryActions
@@ -122,27 +149,41 @@ export function NextBestActionCard({ actor, secondaryLimit = 3 }: Props) {
       <h2 className="text-sm font-semibold text-gray-900 mb-2">
         {he ? 'הצעד הבא שלך' : 'Your next step'}
       </h2>
-      {/* Primary — one loud, gold-accented tap surface. */}
-      <button
-        type="button"
-        onClick={() => handleTap(primaryAction)}
-        className="w-full text-start rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-br from-white to-[#faf6ea] p-4 flex items-center gap-3 shadow-md transition-transform active:scale-[0.99] hover:shadow-lg"
-        data-testid="next-best-action-primary"
-        data-action-id={isResumeAction(primaryAction) ? 'RESUME_JOURNEY' : 'BOOK_CONFIRM'}
-      >
-        <span className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-[#D4AF37]/10">
-          <PrimaryIcon className="w-5 h-5 text-[#9a7d2e]" />
-        </span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-[15px] font-bold text-gray-900 truncate">
-            {(primaryAction as any).title}
+      {/* Primary — one loud, gold-accented tap surface. Wraps the
+          dismiss X in a positioned container so the X sits in the
+          top corner of the card but doesn't hijack the tap area. */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => handleTap(primaryAction)}
+          className="w-full text-start rounded-2xl border-2 border-[#D4AF37] bg-gradient-to-br from-white to-[#faf6ea] p-4 flex items-center gap-3 shadow-md transition-transform active:scale-[0.99] hover:shadow-lg"
+          data-testid="next-best-action-primary"
+          data-action-id={isResumeAction(primaryAction) ? 'RESUME_JOURNEY' : 'BOOK_CONFIRM'}
+        >
+          <span className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 bg-[#D4AF37]/10">
+            <PrimaryIcon className="w-5 h-5 text-[#9a7d2e]" />
           </span>
-          <span className="block text-[12px] text-gray-600 line-clamp-2">
-            {(primaryAction as any).reason}
+          <span className="flex-1 min-w-0">
+            <span className="block text-[15px] font-bold text-gray-900 truncate">
+              {(primaryAction as any).title}
+            </span>
+            <span className="block text-[12px] text-gray-600 line-clamp-2">
+              {(primaryAction as any).reason}
+            </span>
           </span>
-        </span>
-        <Chevron className="w-5 h-5 text-[#9a7d2e] shrink-0" />
-      </button>
+          <Chevron className="w-5 h-5 text-[#9a7d2e] shrink-0" />
+        </button>
+        <button
+          type="button"
+          onClick={handleDismissPrimary}
+          className={`absolute top-1 ${he ? 'left-1' : 'right-1'} w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-black/5 transition-colors`}
+          aria-label={he ? 'לא מעניין אותי' : 'Not interested'}
+          data-testid="next-best-action-dismiss"
+          data-action-id="DISMISS_NEXT_BEST_ACTION"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
       {/* Secondary — quieter, no gold border. */}
       {visibleSecondary.length > 0 && (
         <ul className="space-y-2 mt-2" data-testid="next-best-action-secondary-list">
