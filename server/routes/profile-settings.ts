@@ -693,6 +693,31 @@ router.get('/settings/email/pending-change', async (req, res) => {
     const uid = decodedToken.uid;
 
     const firestore = admin.firestore();
+
+    // UNIFIED runtime: the challenge lives in UnifiedVerificationService, not in
+    // pending_email_changes. The 'requested' audit doc we already write carries
+    // the challengeId, so resume works there too — no new storage needed.
+    // (The change-email unified flag is OFF in production today; this branch is
+    // here so the resume does not silently stop working when it is flipped on.)
+    if (isUnifiedVerificationChangeEmailEnabled()) {
+      const recent = await firestore
+        .collection('email_change_audit')
+        .where('userId', '==', uid)
+        .orderBy('timestamp', 'desc')
+        .limit(1)
+        .get();
+      const doc = recent.docs[0]?.data() as any | undefined;
+      if (!doc || doc.status !== 'requested' || !doc.challengeId) {
+        return res.json({ pending: false, runtime: 'unified_verification' });
+      }
+      return res.json({
+        pending: true,
+        runtime: 'unified_verification',
+        verificationChallengeId: doc.challengeId,
+        maskedNewEmail: maskEmail(doc.newEmail || ''),
+      });
+    }
+
     const pendingDoc = await firestore.collection('pending_email_changes').doc(uid).get();
 
     if (!pendingDoc.exists) {
@@ -709,6 +734,7 @@ router.get('/settings/email/pending-change', async (req, res) => {
 
     return res.json({
       pending: true,
+      runtime: 'legacy',
       maskedNewEmail: maskEmail(pending.newEmail || ''),
       expiresAt: expiresAt.toISOString(),
       attemptsRemaining: Math.max(
