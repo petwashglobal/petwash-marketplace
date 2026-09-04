@@ -135,6 +135,11 @@ router.post('/:egiftId/reservations/:reservationId/commit', async (req: Request,
   if (!acl.ok) return res.status(acl.status).json({ ok: false, error: acl.status === 500 ? 'ACL_LOOKUP_FAILED' : 'NOT_FOUND' });
   const result = await commitReservation({
     reservationId,
+    // Pass the AUTHORISED egiftId, not one from the body: assertEgiftOwnership
+    // above proved the caller owns THIS egiftId, and the service binds the
+    // reservation to it. Without this the ACL guards :egiftId while the write
+    // lands on whatever :reservationId names.
+    egiftId,
     externalRef: req.body?.externalRef,
   });
   if (!result.ok) return res.status(400).json({ ok: false, errorCode: result.errorCode });
@@ -150,7 +155,7 @@ router.post('/:egiftId/reservations/:reservationId/release', async (req: Request
   if (!egiftId) return res.status(400).json({ ok: false, error: 'EGIFT_ID_REQUIRED' });
   const acl = await assertEgiftOwnership(egiftId, uid, req);
   if (!acl.ok) return res.status(acl.status).json({ ok: false, error: acl.status === 500 ? 'ACL_LOOKUP_FAILED' : 'NOT_FOUND' });
-  const result = await releaseByReservationId(reservationId);
+  const result = await releaseByReservationId(reservationId, egiftId);
   if (!result.ok) return res.status(400).json({ ok: false, errorCode: result.errorCode });
   return res.json({ ok: true, reservation: result.reservation });
 });
