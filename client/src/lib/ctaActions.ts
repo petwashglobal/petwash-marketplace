@@ -89,7 +89,13 @@ export type CtaAction =
   // Pets + KYA (personal safety)
   | 'PET_ADD'
   | 'PET_EDIT'
-  | 'PET_KYA_UPDATE';
+  | 'PET_KYA_UPDATE'
+
+  // Journey Brain — resume an abandoned wizard from a saved
+  // JourneyCheckpoint. Emitted from the NextBestActionCard when
+  // the server picks a resume hint as primary or secondary. The
+  // wizard itself owns hydrate + revalidation on arrival.
+  | 'RESUME_JOURNEY';
 
 /**
  * Every provider service maps to a `{ select, add }` pair — the picker
