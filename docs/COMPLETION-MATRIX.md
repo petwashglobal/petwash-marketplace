@@ -33,7 +33,8 @@ Then the site moves to normal continuous improvement.
 | Area | Status | Evidence |
 | --- | --- | --- |
 | Public homepage | `TESTED` | 7-pin Landing contract (#2232) — LandingLiveBayStrip never mounted (CEO 2026-08-22 back-office ruling), 4 canonical marketing sections preserved, `language` prop threads through every child, greeting-context fetch is auth-gated + fail-soft, Kfar Saba station photo asset path pinned, AccountNavigation '#' sentinel short-circuit preserved. |
-| Station finder | `NOT REVIEWED` | — |
+| Station finder (`/map`) | `BROKEN` | Deliberately-gutted stub with regression pin (`client/src/__tests__/station-map-no-dead-controls.test.ts`) — real Google Maps integration + station pins never landed. Hamburger nav still points here as "Find a station" (task #281). |
+| Station directory (`/locations`) | `TESTED` | Live-backed via `GET /api/public/stations` (Redis 120s + rate-limited); Playwright E2E `tests/e2e/station-proximity-live.e2e.spec.ts`. Caveats: `ANNOUNCED_LOCATIONS` hardcode at Locations.tsx:93-146 (two Kfar Saba sites) awaits DB seed; wayfinding CTAs pulled by CEO 2026-08-23 pending precise-coordinate audit (task #282). |
 | Signup (unified `/signup`) | `TESTED` | #66, dual-verify #65, signup coverage E2E `tests/e2e/signup-coverage.e2e.spec.ts`. |
 | Returning sign-in | `TESTED` | #131 audit; ReturnLogin door pending (#253). |
 | Password / recovery | `TESTED` | Firebase-Auth SDK path (`sendPasswordResetEmail`); 12-pin anti-enumeration contract (#2224) covers both `AUTH_FORGOT_PASSWORD` button and returning-user link — swallowed errors, generic HE+EN toast, double-submit guard, RFC email pre-check. |
@@ -53,7 +54,7 @@ Then the site moves to normal continuous improvement.
 | Wallet | `TESTED` | Nayax station key #19, wallet DTO privacy. |
 | eGift buy | `TESTED` | #98/99 SUMIT phase 2 audit; JourneyCheckpoint E2E for `egift` (#2211). |
 | eGift redeem | `TESTED` | #53 replay audit, `tests/e2e/egift-redeem.e2e.spec.ts`. |
-| Packages | `NOT REVIEWED` | — |
+| Packages | `BROKEN` | Real, revenue-live checkout wire (`/packages` → `/api/checkout` → Nayax webhook). BUT `client/src/pages/Packages.tsx:68-126` hardcodes the 4-tier catalog + WASH_COUNT_TO_PACKAGE_ID map (lines 135-140) instead of reading `/api/packages` like `WashPackages.tsx:129` does. Divergence: admin edits at `/admin/wash-packages` don't reflect on `/packages`. Task #280 to collapse onto `/api/packages` + add missing E2E for the happy path. |
 | Pet Sitter booking | `TESTED` | Sitter booking flow #133; Journey resume E2E for `sitter_book`. |
 | Walk My Pet booking | `TESTED` | Walk booking; Journey resume E2E for `walk_book` (#2210). |
 | Marketplace booking | `TESTED` | Journey resume E2E for `marketplace_book` (#2210). |
