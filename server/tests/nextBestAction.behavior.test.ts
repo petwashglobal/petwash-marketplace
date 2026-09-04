@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Mock the two data sources with a fixture we control per test.
 const mockFeedItems: any[] = [];
 const mockCheckpoints: any[] = [];
+const mockSuppressedRows: any[] = [];
 let composeFeedThrows = false;
 let listCheckpointsThrows = false;
 
@@ -37,12 +38,23 @@ vi.mock('../services/journeyCheckpoints', async () => {
   };
 });
 
+vi.mock('../services/nextBestActionFeedback', async () => {
+  const actual = await vi.importActual<typeof import('../services/nextBestActionFeedback')>(
+    '../services/nextBestActionFeedback',
+  );
+  return {
+    ...actual,
+    recentFeedback: vi.fn(async () => mockSuppressedRows.slice()),
+  };
+});
+
 // Import AFTER mocks so the module binds to the mocked versions.
 import { composeNextBestAction } from '../services/nextBestAction';
 
 beforeEach(() => {
   mockFeedItems.length = 0;
   mockCheckpoints.length = 0;
+  mockSuppressedRows.length = 0;
   composeFeedThrows = false;
   listCheckpointsThrows = false;
 });
@@ -150,6 +162,79 @@ describe('composeNextBestAction · selection rules', () => {
     const en = await composeNextBestAction({} as any, { userUid: 'usr_a', actor: 'pet_parent', he: false });
     expect((en.primaryAction as any).title).toContain('walk booking');
     expect((en.primaryAction as any).reason).toContain('We saved where you left off');
+  });
+});
+
+describe('composeNextBestAction · Phase 6 suppression (not_interested cooldown)', () => {
+  it('a suppressed attention id (attn:<id>) never becomes primary even if urgent', async () => {
+    mockFeedItems.push(makeFeedItem('urgent', 'pay-me'));
+    mockFeedItems.push(makeFeedItem('due_soon', 'confirm-me'));
+    mockSuppressedRows.push({
+      id: 'fb_1',
+      userUid: 'usr_a',
+      actionKey: 'attn:pay-me',
+      verdict: 'not_interested',
+      createdAt: new Date(),
+    });
+    const r = await composeNextBestAction({} as any, {
+      userUid: 'usr_a',
+      actor: 'pet_parent',
+      he: true,
+    });
+    // Urgent 'pay-me' was suppressed; the next non-suppressed item is due_soon 'confirm-me'.
+    expect(r.primaryAction).toMatchObject({ id: 'confirm-me' });
+    // The suppressed item never appears in secondaryActions either.
+    expect(r.secondaryActions.some((x: any) => x.id === 'pay-me')).toBe(false);
+  });
+
+  it('a suppressed resume domain (resume:<domain>) never becomes primary', async () => {
+    mockCheckpoints.push(makeCheckpoint('sitter_book', 1)); // suppressed
+    mockCheckpoints.push(makeCheckpoint('walk_book', 5));   // still eligible
+    mockSuppressedRows.push({
+      id: 'fb_2',
+      userUid: 'usr_a',
+      actionKey: 'resume:sitter_book',
+      verdict: 'not_interested',
+      createdAt: new Date(),
+    });
+    const r = await composeNextBestAction({} as any, {
+      userUid: 'usr_a',
+      actor: 'pet_parent',
+      he: true,
+    });
+    // sitter_book suppressed → the next resume (walk_book) is primary.
+    expect(r.primaryAction).toMatchObject({ kind: 'resume', domain: 'walk_book' });
+    // sitter_book NEVER appears anywhere in the projection.
+    expect(
+      r.secondaryActions.some((x: any) => x.kind === 'resume' && x.domain === 'sitter_book'),
+    ).toBe(false);
+  });
+
+  it('empty suppression set → normal selection rules (no false suppressions)', async () => {
+    mockFeedItems.push(makeFeedItem('urgent', 'pay-me'));
+    const r = await composeNextBestAction({} as any, {
+      userUid: 'usr_a',
+      actor: 'pet_parent',
+      he: true,
+    });
+    expect(r.primaryAction).toMatchObject({ id: 'pay-me' });
+  });
+
+  it('suppression on unrelated key → does NOT affect the primary', async () => {
+    mockFeedItems.push(makeFeedItem('urgent', 'pay-me'));
+    mockSuppressedRows.push({
+      id: 'fb_x',
+      userUid: 'usr_a',
+      actionKey: 'attn:some_other_id',
+      verdict: 'not_interested',
+      createdAt: new Date(),
+    });
+    const r = await composeNextBestAction({} as any, {
+      userUid: 'usr_a',
+      actor: 'pet_parent',
+      he: true,
+    });
+    expect(r.primaryAction).toMatchObject({ id: 'pay-me' });
   });
 });
 

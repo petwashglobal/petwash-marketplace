@@ -50,7 +50,22 @@ import type { Pool } from 'pg';
 import type { AttentionActor, AttentionItem } from '@shared/lib/attentionFeed';
 import { composeAttentionFeed } from './attentionFeed';
 import { listActiveCheckpoints, type JourneyDomain, type JourneyCheckpointRow } from './journeyCheckpoints';
+import { recentFeedback } from './nextBestActionFeedback';
 import { logger } from '../lib/logger';
+
+/**
+ * Journey Brain Phase 6 · CEO §24 §60 (adaptive, no dark patterns).
+ *
+ * When a user tells us "not interested" on an action, we suppress
+ * that same action_key for a cooldown window so home stops nagging.
+ * NEVER a permanent block — the cooldown expires and the composer
+ * is free to re-surface the action later if it's still relevant.
+ *
+ * 7 days is the initial cooldown. A later change can tune it based
+ * on feedback verdict density (dismiss <<< not_interested <<<
+ * fewer_like_this in aggressiveness).
+ */
+const NOT_INTERESTED_COOLDOWN_DAYS = 7;
 
 /**
  * A resume-your-journey card. Mirrors the shape of the AttentionItem
@@ -120,28 +135,49 @@ export async function composeNextBestAction(
   if (!args.userUid) return emptyResult;
 
   try {
-    const [feed, activeCheckpoints] = await Promise.all([
+    // Phase 6 · read feed + checkpoints + recent "not_interested"
+    // verdicts in parallel. recentFeedback is fail-CLOSED (returns
+    // [] on any pool error) so a broken feedback read NEVER
+    // suppresses valid actions — the worst it can do is skip
+    // the cooldown, not block a legitimate primary.
+    const [feed, activeCheckpoints, suppressedRows] = await Promise.all([
       composeAttentionFeed(args.actor, args.userUid, args.he),
       listActiveCheckpoints(pool, { userUid: args.userUid }),
+      recentFeedback(pool, {
+        userUid: args.userUid,
+        lookbackDays: NOT_INTERESTED_COOLDOWN_DAYS,
+        verdicts: ['not_interested'],
+      }),
     ]);
 
-    // Bucket the attention items.
+    // Build the suppression set once. Keys are the same stable
+    // identity the feedback endpoint accepts:
+    //   AttentionItem → `attn:<id>`
+    //   ResumeAction  → `resume:<domain>`
+    const suppressed = new Set<string>(suppressedRows.map((r) => r.actionKey));
+
+    // Bucket the attention items. Suppressed keys drop out here,
+    // so the picker never sees them at all.
     const urgent: AttentionItem[] = [];
     const dueSoon: AttentionItem[] = [];
     const informational: AttentionItem[] = [];
     for (const item of feed.items) {
+      if (suppressed.has(`attn:${item.id}`)) continue;
       if (item.priority === 'urgent') urgent.push(item);
       else if (item.priority === 'due_soon') dueSoon.push(item);
       else informational.push(item);
     }
 
     // Resume hints — most-recently-updated first so a mid-flow user
-    // sees their most recent draft on top.
+    // sees their most recent draft on top. Suppressed domains drop
+    // out here (the user can still resume from the wizard page
+    // directly — this only removes the home surface nag).
     const resumeActions = activeCheckpoints
       .slice()
       .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
       .map((row) => toResumeAction(row, args.he))
-      .filter((x): x is ResumeAction => x !== null);
+      .filter((x): x is ResumeAction => x !== null)
+      .filter((r) => !suppressed.has(`resume:${r.domain}`));
 
     // Selection rules — see file-level doc.
     let primaryAction: AttentionItem | ResumeAction | null = null;
