@@ -128,8 +128,9 @@ Then the site moves to normal continuous improvement.
 | Wallet | `TESTED` | #19 Nayax station key; wallet burn routes hardened. |
 | Payouts / escrow | `TESTED` | #226 payoutGate ENFORCE default; #237 escrow header secret hardened. |
 | Refunds | `TESTED` | #38 idempotent complete; #230 Nayax refund gaps closed. |
-| Nayax | `IN PROGRESS` | #166 letter to account manager pending; 5 open questions in BusinessDecisionRegistry (#167). |
-| SUMIT | `TESTED` | #229 webhook inbox dedup. |
+| Nayax | `IN PROGRESS` | #166 letter to account manager pending; 5 open questions in BusinessDecisionRegistry (#167). **Fiscal path is out of this repo** — see the separate `petwash-nayax-sumit-fiscal` bridge (v0.2, verified against SUMIT Swagger 2026-08-31). |
+| SUMIT | `TESTED` | #229 webhook inbox dedup here. Fiscal document creation for K9000 station washes is owned by the external `petwash-nayax-sumit-fiscal` bridge — the marketplace is NOT on the fiscal path. |
+| Fiscal bridge (Nayax → SUMIT) | `IN PROGRESS` | External repo `petwash-nayax-sumit-fiscal` v0.2. 19 no-network tests, VAT-inclusive, idempotent (`NAYAX:<TransactionID>`), approved fleet `182374 / 182403 / 182443 / 182462`, cutover flag `NAYAX_SUMIT_CUTOVER_AT`. Blocked on human items: set cutover date with accountant, Michal to confirm Digital(6) vs Other(8) for Monyx redemption, Cloud Scheduler → Cloud Run job deploy. |
 | Fiscal receipts / credit notes | `TESTED` | #168 NayaxFiscalDocumentGuard; #169 no retroactive fiscal generation. |
 | Webhooks / idempotency | `TESTED` | #60 atomic strict idempotency middleware. |
 
@@ -243,6 +244,14 @@ Then the site moves to normal continuous improvement.
 | Failure recovery (battery-dies / GPS-lost) | TESTED | invariants suite. |
 | AI context authorization + PII minimization | TESTED | CEO §78/79. |
 | 20 real product scenarios E2E | TESTED | CEO §81. |
+
+## Related repos (out of this codebase by design)
+
+| Repo | What it does | Why it's separate |
+| --- | --- | --- |
+| `petwash-nayax-sumit-fiscal` | K9000 / Nayax terminal → Nayax Core (SQS / Lynx) → this service → SUMIT → חשבונית מס/קבלה. Approved fleet only (`182374 / 182403 / 182443 / 182462`), VAT-inclusive, idempotent via `NAYAX:<TransactionID>`, cutover-gated. | Accounting infrastructure. The website has NO fiscal transaction path. Nothing in this marketplace can create, modify, delete, or renumber a K9000 fiscal document. A marketplace outage cannot break receipts; a fiscal-bridge outage cannot break the website. `PENDING_FISCAL` + retry when SUMIT is down. |
+
+Anything K9000-station / SUMIT-document related belongs in that repo — never here.
 
 ## How to update this matrix
 
