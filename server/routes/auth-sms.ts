@@ -26,6 +26,7 @@ import { UnifiedVerificationError, unifiedVerificationService } from '../service
 import { logger } from '../lib/logger';
 import { logAuditEvent } from '../middleware/auditLog';
 import { turnstileGuard } from '../lib/turnstileGuard';
+import { normalizePhoneE164 } from '../lib/phoneE164';
 
 // Last-4 only — never log a full phone number (PII) or the OTP code.
 function maskPhone(phone: unknown): string | undefined {
@@ -38,14 +39,15 @@ function maskPhone(phone: unknown): string | undefined {
 // a number like "541234567" (Israeli mobile, no leading 0) reached Twilio as
 // "+541234567" → wrong country → code silently never arrived. Normalize here too so
 // EVERY entry point is covered. Mirrors the client logic.
+//
+// 2026-09-05 (auth/identity sprint): the implementation moved to
+// server/lib/phoneE164.ts so that the profile / booking-contact writers of
+// `users.phone` share ONE normaliser with the login path. Two normalisers meant
+// `0541234567` and `+972541234567` produced different `users.phone_hash` values,
+// so an OTP login could not find a row written by the profile path. This alias
+// is kept so existing call sites in this file stay untouched.
 function normalizePhoneServer(raw: string): string {
-  const digits = raw.trim().replace(/[\s\-().]/g, '');
-  if (digits.startsWith('+')) return digits;
-  if (digits.startsWith('00')) return '+' + digits.slice(2);
-  if (/^972\d{8,9}$/.test(digits)) return '+' + digits;
-  if (/^0[1-9]\d{7,8}$/.test(digits)) return '+972' + digits.slice(1); // 0X… Israeli local
-  if (/^5\d{8}$/.test(digits)) return '+972' + digits;                 // 5X… Israeli mobile w/o 0
-  return digits || raw;
+  return normalizePhoneE164(raw);
 }
 
 // All flow values the client actually hands to /api/auth/sms/*.
