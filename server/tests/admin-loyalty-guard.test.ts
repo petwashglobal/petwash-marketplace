@@ -35,14 +35,20 @@ describe('admin-loyalty — Issue #148 P5 regression pin', () => {
     expect(SRC).not.toMatch(/router\.(get|post|put|patch|delete)\([^)]+,\s*requireAdmin\s*,/);
   });
 
-  it('still defines the local requireAdmin (super-admin email check)', () => {
-    expect(SRC).toMatch(/function requireAdmin\([^)]*\)\s*\{[\s\S]*isSuperAdmin\(/);
+  it('still defines the local requireAdmin (VERIFIED super-admin check)', () => {
+    expect(SRC).toMatch(/function requireAdmin\([^)]*\)\s*\{[\s\S]*isSuperAdminVerified\(/);
   });
 
-  it('still uses isSuperAdmin from middleware/rbac (super-admin contract preserved)', () => {
+  it('uses the VERIFIED super-admin helper from middleware/rbac (#240 paired shape)', () => {
+    // Hardened: the gate used to be isSuperAdmin(email) — an allowlist match on
+    // a caller-supplied email string. It is now isSuperAdminVerified(req), which
+    // additionally requires firebaseUser.email_verified === true before the
+    // allowlist match (rbac.ts:105). Pin the strong shape and pin OUT the weak
+    // one so the gate cannot be silently downgraded back to email-only.
     expect(SRC).toMatch(
-      /import\s*\{\s*isSuperAdmin\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/,
+      /import\s*\{\s*isSuperAdminVerified\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/,
     );
+    expect(SRC).not.toMatch(/\bisSuperAdmin\(/);
   });
 
   it('still mounts adminLoyaltyAuditMiddleware (PR-W34d audit coverage preserved)', () => {
