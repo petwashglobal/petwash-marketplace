@@ -32,6 +32,7 @@ import { BookingCalendar } from '@/components/marketplace/BookingCalendar';
 import { MobileDatePicker } from '@/components/ui/mobile-date-picker';
 import { CreditWalletCard } from '@/components/wallet/CreditWalletCard';
 import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
+import { emitCtaEvent } from '@/lib/ctaActions';
 
 /**
  * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire.
@@ -1061,8 +1062,12 @@ export default function MarketplaceBookingFlow() {
                         {isHebrew ? 'אחורה' : 'Back'}
                       </Button>
                       <Button
-                        onClick={handleSubmitBooking}
+                        onClick={() => {
+                          emitCtaEvent('BOOK_CONFIRM', { domain: 'marketplace_book' });
+                          handleSubmitBooking();
+                        }}
                         className="flex-1 luxury-btn-primary luxury-shadow-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                        data-action-id="BOOK_CONFIRM"
                         data-testid="button-proceed-payment"
                         disabled={isSubmitting || checkoutMutation.isPending || quoteMutation.isPending || lockSecondsLeft <= 0}
                       >

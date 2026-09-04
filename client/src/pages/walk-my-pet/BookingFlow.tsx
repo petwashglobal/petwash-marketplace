@@ -22,6 +22,7 @@ import { AddressPicker } from "@/components/ui/address-picker";
 import { NavigationButton } from "@/components/NavigationButton";
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { useJourneyCheckpoint } from "@/hooks/useJourneyCheckpoint";
+import { emitCtaEvent } from "@/lib/ctaActions";
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
 
@@ -925,8 +926,12 @@ export default function WalkBookingFlow() {
               </Button>
               <Button
                 className="luxury-btn-primary luxury-shadow-xl flex-1 h-14"
-                onClick={handleConfirmBooking}
+                onClick={() => {
+                  emitCtaEvent('BOOK_CONFIRM', { domain: 'walk_book' });
+                  handleConfirmBooking();
+                }}
                 disabled={isSubmitting}
+                data-action-id="BOOK_CONFIRM"
                 data-testid="button-confirm"
               >
                 {isSubmitting ? "שולח..." : "אישור והמשך"}
