@@ -75,24 +75,50 @@ export function buildReturnToParam(target: string): string {
 }
 
 /**
- * Safety check — the target MUST be an internal relative path. Blocks:
- *   - protocol-relative URLs (`//evil.com/oops`)
- *   - absolute URLs (`https://evil.com`)
- *   - javascript: / data: / any-scheme URLs
+ * Safety check — the target MUST be an internal, same-origin relative path.
+ *
+ * An open redirect on the post-login return is a credential-phishing vector:
+ * the victim sees a genuine petwash.co.il sign-in URL, authenticates, and is
+ * then handed to the attacker's look-alike page. So this guard is deliberately
+ * an ALLOWlist of "one slash then a normal path", not a denylist of bad hosts.
+ *
+ * Blocks:
+ *   - absolute URLs (`https://evil.com`) and any scheme (`javascript:`, `data:`)
+ *   - protocol-relative URLs (`//evil.com`, `///evil.com`)
+ *   - BACKSLASH variants (`/\evil.com`, `\\evil.com`, `/\/evil.com`) — the
+ *     WHATWG URL parser treats `\` as `/` for special schemes, so browsers
+ *     read `/\evil.com` as `//evil.com` → https://evil.com. This was the
+ *     first live bypass of the previous `/^\/(?!\/)/`-only guard.
+ *   - TAB/CR/LF and every other C0 control char, DEL, and Unicode line/para
+ *     separators — the URL parser STRIPS U+0009/U+000A/U+000D before parsing,
+ *     so `/<TAB>/evil.com` also collapses to `//evil.com`. This was the second
+ *     live bypass. Control chars are additionally a header-splitting risk.
  *   - fragment-only targets (`#`) and empty strings
  *
- * The current `SignUpLuxury.tsx` uses the equivalent regex
- * `/^\/(?!\/)/` — this is the shared, testable version.
+ * Callers must pass the DECODED target (readReturnTo percent-decodes first),
+ * so `%2F%5Cevil.com` is validated as `/\evil.com` and rejected.
  */
 export function isSafeReturnTarget(target: string): boolean {
   if (!target || typeof target !== 'string') return false;
   if (target.length > 2048) return false; // sanity cap
-  // Must start with exactly one slash — not `//` (protocol-relative)
-  // and not `/` followed by nothing.
-  if (!/^\/(?!\/)/.test(target)) return false;
-  // No embedded scheme after the leading slash.
-  if (/^\/https?:/i.test(target)) return false;
-  // No newlines / control chars that could split HTTP headers.
-  if (/[\r\n]/.test(target)) return false;
+
+  // 1. No C0 controls, DEL, or Unicode line/paragraph separators anywhere.
+  //    TAB/LF/CR are stripped by the URL parser and would re-form `//evil.com`;
+  //    the rest are header-splitting / homograph noise with no legitimate use
+  //    in an internal path.
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001F\u007F\u2028\u2029]/.test(target)) return false;
+
+  // 2. Treat backslash exactly as the URL parser does — as a slash. Normalise
+  //    then re-check, so `/\evil.com` is judged as `//evil.com`.
+  const normalised = target.replace(/\\/g, '/');
+
+  // 3. Must start with exactly one slash — not `//` (protocol-relative),
+  //    and not a bare `/` followed by nothing.
+  if (!/^\/(?!\/)/.test(normalised)) return false;
+
+  // 4. No embedded scheme immediately after the leading slash.
+  if (/^\/[a-z][a-z0-9+.-]*:/i.test(normalised)) return false;
+
   return true;
 }
