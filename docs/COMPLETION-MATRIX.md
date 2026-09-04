@@ -1,0 +1,234 @@
+# PetWash Completion Matrix
+
+**Purpose.** The single tracker of whole-product state. Each area gets one of:
+
+| Status | Meaning |
+| --- | --- |
+| `NOT REVIEWED` | We have not audited this surface in the current sprint. |
+| `BROKEN` | Known P0/P1 defect open — the surface does not work for a real user. |
+| `IN PROGRESS` | Under active engineering — PR open or in flight. |
+| `TESTED` | Code + tests green on main; not yet validated on production. |
+| `PRODUCTION VERIFIED` | Deployed AND smoke green AND spot-checked in real production. |
+
+**Definition of finished (CEO).** The website is production-complete when:
+
+1. Every critical area below is at least `TESTED`.
+2. No known P0/P1 defects remain.
+3. Core P2 defects are materially exhausted.
+4. Customer journeys pass browser E2E.
+5. Provider journeys pass browser E2E.
+6. Money/fiscal invariants pass.
+7. Mobile + Hebrew RTL work.
+8. Production deploy/smoke is routinely green.
+9. Remaining work is genuinely optional enhancement/backlog.
+
+Then the site moves to normal continuous improvement.
+
+---
+
+## Frontend
+
+### Public / unauthenticated
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Public homepage | `NOT REVIEWED` | Manual walk pending. |
+| Station finder | `NOT REVIEWED` | — |
+| Signup (unified `/signup`) | `TESTED` | #66, dual-verify #65, signup coverage E2E `tests/e2e/signup-coverage.e2e.spec.ts`. |
+| Returning sign-in | `TESTED` | #131 audit; ReturnLogin door pending (#253). |
+| Password / recovery | `NOT REVIEWED` | Regex pin `authCompletionRoutes.regression.test.ts` covers the endpoint side. |
+| Passkey / Face ID | `TESTED` | #68 (real account-bound onboarding + login), #7 race fix. |
+| Magic link | `TESTED` | #8 AuthAction magic-link mode. |
+| Dead-end screens (AccessPending / VerifyEmail signed-out) | `TESTED` | #23. |
+
+### Customer (Pet Parent)
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Customer home (`/pet-parent/home` → PrestigeHome) | `IN PROGRESS` | Card mount PR held locally on `claude/next-best-action-mount-home` until #2212 lands. |
+| Attention feed (top-of-fold) | `TESTED` | `AttentionList.tsx` + attentionFeed composer; Prestige home §27-29. |
+| Next-best-action ("Your next step") | `IN PROGRESS` | #2208 (endpoint) merged; #2212 (client hook + card) awaiting merge; mount branch queued. |
+| Pets | `TESTED` | Pets PATCH mass-assign fixed (#126). |
+| Prestige | `TESTED` | #110 privilege_members read; #47 enrollment guard. |
+| Wallet | `TESTED` | Nayax station key #19, wallet DTO privacy. |
+| eGift buy | `TESTED` | #98/99 SUMIT phase 2 audit; JourneyCheckpoint E2E for `egift` (#2211). |
+| eGift redeem | `TESTED` | #53 replay audit, `tests/e2e/egift-redeem.e2e.spec.ts`. |
+| Packages | `NOT REVIEWED` | — |
+| Pet Sitter booking | `TESTED` | Sitter booking flow #133; Journey resume E2E for `sitter_book`. |
+| Walk My Pet booking | `TESTED` | Walk booking; Journey resume E2E for `walk_book` (#2210). |
+| Marketplace booking | `TESTED` | Journey resume E2E for `marketplace_book` (#2210). |
+| Academy booking | `NOT REVIEWED` | Not yet on JourneyCheckpoint 6/6 (no `academy_book` domain). |
+| Shop checkout | `TESTED` | Shop flow #134; Journey resume E2E for `shop_checkout` (#2210). |
+| Lost pets / Paw Finder | `BROKEN` | Task #135 pending — CEO said off-instructions. |
+| My Account | `TESTED` | #160-165 canonical write + fan-out + E2E + MOBILE contact-change. |
+
+### Provider
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Provider home | `IN PROGRESS` | Card mount PR held locally on `claude/next-best-action-mount-home` until #2212 lands. |
+| Provider onboarding | `TESTED` | Journey resume E2E for `provider_apply` (#2211) — strictest wire (no KYC blobs). |
+| Provider dashboard v2 | `TESTED` | #106 requireProviderActive server gate; #82 apiRequest sweep. |
+| Provider service management | `TESTED` | #157 requestedService preservation E2E. |
+| Provider today card (meet-greet aware) | `TESTED` | #105. |
+
+### Staff / Admin
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Admin dashboard | `TESTED` | #71 Google-only + MFA, #17 requireAdmin dedup. |
+| HR admin PATCH allowlist | `TESTED` | #75 strict allowlist + payroll status enum. |
+| Compliance | `TESTED` | #80 reviewer/submitter split. |
+| Stations PATCH | `TESTED` | #81 metadata vs money/security split. |
+
+### Cross-cutting UX
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Account Security page | `TESTED` | #73 Remember-me + password-manager semantics. |
+| Profile / settings | `TESTED` | #160-162 canonical write. |
+| Notifications inbox | `TESTED` | #176 NotificationInboxSpec. |
+| Mobile navigation | `TESTED` | #101 nav-header hygiene. |
+| Hebrew RTL | `NOT REVIEWED` | Every home renders `dir={he ? 'rtl' : 'ltr'}` — no cross-flow audit. |
+| English fallback | `NOT REVIEWED` | Same. |
+| Loading / empty / error / offline states | `NOT REVIEWED` | — |
+
+---
+
+## Backend
+
+### Identity + Session
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Canonical identity | `TESTED` | UpdateProfileService atomic write + fan-out (#160). |
+| Sessions | `TESTED` | ReturnLogin door pending (#253). |
+| Passkeys | `TESTED` | #68 real account-bound. |
+| OAuth | `TESTED` | #71 Google-only admin. |
+| OTP / SMS | `TESTED` | OTPPurposeRegistry #171, SMS abuse #14/#217-#225. |
+| RBAC / capabilities | `TESTED` | #108 shared resolver, #17 requireAdmin. |
+| Role switching | `TESTED` | #130 role-mode picker, #70 additive capabilities. |
+| Account linking / merge | `TESTED` | #174 AnonymousProfileReconciler. |
+| Recovery / step-up | `TESTED` | #171 purpose-scoped OTP, SENSITIVE_ACCOUNT_CHANGE. |
+| Admin gates | `TESTED` | #249 canonical privileged middleware; #252 ratchet in flight. |
+
+### Booking + Provider state
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Booking state machines | `TESTED` | Sitter/walk/marketplace/academy audits (#133/§B). |
+| Provider state machines | `TESTED` | #109 state-aware /become-provider; #106 requireProviderActive. |
+| JourneyCheckpoint (Phase 2) | `TESTED` | 6/6 domains wired + 6/6 real-browser E2E proof (#2210, #2211). |
+| Payment-state resolver on resume | `TESTED` | #151 CEO §12. |
+
+### Money / Fiscal
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Wallet | `TESTED` | #19 Nayax station key; wallet burn routes hardened. |
+| Payouts / escrow | `TESTED` | #226 payoutGate ENFORCE default; #237 escrow header secret hardened. |
+| Refunds | `TESTED` | #38 idempotent complete; #230 Nayax refund gaps closed. |
+| Nayax | `IN PROGRESS` | #166 letter to account manager pending; 5 open questions in BusinessDecisionRegistry (#167). |
+| SUMIT | `TESTED` | #229 webhook inbox dedup. |
+| Fiscal receipts / credit notes | `TESTED` | #168 NayaxFiscalDocumentGuard; #169 no retroactive fiscal generation. |
+| Webhooks / idempotency | `TESTED` | #60 atomic strict idempotency middleware. |
+
+### Journey Brain
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Phase 1 · attentionFeed | `TESTED` | Wallet / eGift / Prestige / KYA-stale / provider KYC / doc-expiry probes shipped. |
+| Phase 2 · JourneyCheckpoint | `TESTED` | 6/6 write-side; 6/6 browser matrix. |
+| Phase 3 · Saved Searches + Favourite Providers + Rebooking prefill | `TESTED` | #153 FAVOURITE_REBOOK. |
+| Phase 4 · NextBestAction service | `IN PROGRESS` | #2208 merged; awaiting deploy+smoke. #2213 route integration test open. |
+| Phase 5 · rendering surface | `IN PROGRESS` | #2212 hook + card open; mount PR queued locally. |
+| Phase 6 · feedback loop / personalization timing | `NOT REVIEWED` | Not started. |
+| Cancellation legal engine | `TESTED` | #146 CancellationPolicyRegistry, versioned. |
+| Failure recovery (battery-dies / GPS-lost) | `TESTED` | #147. |
+| AI context authorization + PII minimization | `TESTED` | #148 CEO §78/79. |
+| 20 real product scenarios E2E | `TESTED` | #149 CEO §81. |
+
+### CTA registry (Lane D)
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Auth CTAs | `TESTED` | #257 CTA action-id registry. |
+| Provider funnel CTAs | `TESTED` | PROVIDER_SERVICE_ACTION_IDS. |
+| BOOK_CONFIRM on booking submits | `TESTED` | #2209 merged (sitter/walk/marketplace). |
+| RESUME_JOURNEY (NextBestActionCard) | `IN PROGRESS` | #2212 open. |
+
+### Notifications + AI
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Push permission gate | `TESTED` | #172 PushPermissionValueGate. |
+| Communication preferences | `TESTED` | #173 granular per-channel per-purpose. |
+| Persistent inbox | `TESTED` | #176 NotificationInboxSpec. |
+| AI controls (limits, tokens, per-UID budget) | `TESTED` | #196-207 AI audit lane; #242 Redis budget. |
+
+### Rate limits / cron / observability
+
+| Area | Status | Evidence |
+| --- | --- | --- |
+| Rate limits (per-UID, Redis) | `IN PROGRESS` | Lane E #246 Redis shared state in flight. |
+| Cron / background jobs | `NOT REVIEWED` | — |
+| Logging / PII | `TESTED` | #208 redactor wire, #263 port to release. |
+| Migrations gate | `TESTED` | Migration Test (prod-baseline) workflow; #272 self-healing gate. |
+| Monitoring / deploy / smoke | `TESTED` | Release Smoke workflow_run gate. |
+
+---
+
+## Real-browser E2E coverage (Lane G)
+
+| Journey | Spec | Status |
+| --- | --- | --- |
+| Signup coverage | `signup-coverage.e2e.spec.ts` | `TESTED` |
+| New provider | `provider-onboarding.e2e.spec.ts` | `TESTED` |
+| Book with pets | `booking-with-pets.e2e.spec.ts` | `TESTED` |
+| Station proximity live | `station-proximity-live.e2e.spec.ts` | `TESTED` |
+| Shop checkout | `shop-checkout.e2e.spec.ts` | `TESTED` |
+| Egift purchase | `egift-purchase.e2e.spec.ts` | `TESTED` |
+| Egift redeem | `egift-redeem.e2e.spec.ts` | `TESTED` |
+| Receipts | `receipts.e2e.spec.ts` | `TESTED` |
+| My transactions | `my-transactions.e2e.spec.ts` | `TESTED` |
+| Passkey returning user | `returning-user-passkey.e2e.spec.ts` | `TESTED` |
+| Provider second device | `provider-second-device.e2e.spec.ts` | `TESTED` |
+| Multi-role workspace | `multi-role-workspace.e2e.spec.ts` | `TESTED` |
+| Canonical destination + requested service | `canonical-destination-and-requested-service.e2e.spec.ts` | `TESTED` |
+| JourneyCheckpoint · sitter | `journey-checkpoint-resume.e2e.spec.ts` | `TESTED` |
+| JourneyCheckpoint · walk / marketplace / shop | `journey-checkpoint-resume-extended.e2e.spec.ts` | `TESTED` |
+| JourneyCheckpoint · egift / provider_apply | `journey-checkpoint-resume-egift-provider.e2e.spec.ts` | `TESTED` |
+| Prestige enrollment loop | `prestige-enrollment-loop.e2e.spec.ts` | `TESTED` |
+| Customer owes | `customer-owes.e2e.spec.ts` | `TESTED` |
+| Mobile account routing | `mobile-account-routing.spec.ts` | `TESTED` |
+| Public CTA crawler | `public-cta-crawler.spec.ts` | `TESTED` |
+| Launch defects | `launch-defects.spec.ts` | `TESTED` |
+| Marketplace benchmark journey | `marketplace-benchmark/journey.spec.ts` | `TESTED` |
+| Pettrek my-transactions | `my-transactions-pettrek.e2e.spec.ts` | `TESTED` |
+
+---
+
+## Priority (CEO)
+
+1. Broken production journeys
+2. Auth / account integrity
+3. Money / fiscal correctness
+4. Customer / provider workflows
+5. Mobile / RTL
+6. Browser E2E
+7. Reliability / performance
+8. Cosmetic / code hygiene
+
+## Open engineering lanes (this session)
+
+- **Lane C · Journey Brain** — #2212 rendering surface open, mount PR queued, Phase 6 (feedback loop) not started.
+- **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed (#2210, #2211); more customer/provider journeys can be added.
+- **Lane E · money/fiscal** — Nayax letter (#166) blocked on non-code business step.
+- **Lane D · CTA registry** — BOOK_CONFIRM landed (#2209); RESUME_JOURNEY in flight (#2212).
+- **Lane F · mobile/RTL** — audit not yet run.
+- **Lane H · deployment/observability** — pipeline routinely green; smoke workflow_run wired.
+
+## How to update this matrix
+
+Edit this file in the same PR that changes a surface's real status. Never mark `PRODUCTION VERIFIED` until:
+merged → deploy pipeline green → Cloud Run revision promoted → Release Smoke green → spot-check in real production.
