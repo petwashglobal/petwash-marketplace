@@ -26,9 +26,28 @@ import { useToast } from '@/hooks/use-toast';
 import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest } from '@/lib/queryClient';
 import { startSkuCheckout, type SumitSku } from '@/lib/sumitCheckout';
+import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
 
 const GOLD = '#D4AF37';
 const DEEP = '#063B22';
+
+/**
+ * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire.
+ *
+ * Fourth resumable customer journey (sitter/walk/marketplace + shop).
+ * The canonical web checkout persists only the SKU + coupon code —
+ * both are pre-charge inputs; the real charge happens on SUMIT's
+ * hosted page after a browser navigation.
+ *
+ * NEVER stores payment truth (chargeId, paidAt, refundId, SUMIT
+ * transaction id, redirectUrl, etc.) — the wizard re-quotes on
+ * resume against the server-owned catalog + /api/coupons/validate.
+ */
+interface ShopCheckoutCheckpointPayload extends Record<string, unknown> {
+  selectedSku?: string;
+  couponCode?: string;
+  updatedAt?: string;
+}
 
 interface CatalogProduct {
   sku: SumitSku;
@@ -138,6 +157,45 @@ export default function CheckoutCanon() {
 
   // ── Pay ──
   const [paying, setPaying] = useState(false);
+
+  // Lane C.3 — resumable checkpoint. Enabled only when signed in;
+  // guest checkout redirects to /signup before it reaches pay().
+  const checkpoint = useJourneyCheckpoint<ShopCheckoutCheckpointPayload>('shop_checkout', {
+    enabled: !!user,
+  });
+
+  // Hydrate on mount — fill only fields the user has NOT already
+  // touched. A ?sku= URL param still wins over a saved SKU.
+  useEffect(() => {
+    if (checkpoint.hydrating || !checkpoint.initial) return;
+    const p = checkpoint.initial;
+    // Only take saved SKU when there is no URL intent AND we have not
+    // already picked a valid one from the catalog.
+    if (!urlSku && !selectedSku && typeof p.selectedSku === 'string') {
+      setSelectedSku(p.selectedSku);
+    }
+    if (!couponInput && typeof p.couponCode === 'string') {
+      setCouponInput(p.couponCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkpoint.hydrating, checkpoint.initial]);
+
+  // Debounced save whenever SKU or coupon code changes. Skipped once
+  // pay() has fired (paying === true) so the state during the SUMIT
+  // redirect window is not re-saved on top of the clear().
+  useEffect(() => {
+    if (!user) return;
+    if (checkpoint.hydrating) return;
+    if (paying) return;
+    if (!selectedSku && !couponInput) return; // nothing meaningful yet
+    void checkpoint.save({
+      selectedSku,
+      couponCode: couponInput || undefined,
+      updatedAt: new Date().toISOString(),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, selectedSku, couponInput, paying, checkpoint.hydrating]);
+
   const pay = async () => {
     if (!product || paying) return;
     if (!user) {
@@ -145,6 +203,10 @@ export default function CheckoutCanon() {
       return;
     }
     setPaying(true);
+    // Lane C.3 — drop the resumable checkpoint BEFORE handing off to
+    // SUMIT. The SUMIT redirect terminates this JS context; a post-
+    // redirect clear would never run.
+    void checkpoint.clear();
     const result = await startSkuCheckout({
       sku: product.sku,
       ...(coupon ? { couponCode: coupon.code } : {}),
