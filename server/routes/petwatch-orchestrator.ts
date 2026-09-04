@@ -13,9 +13,69 @@ import { z } from 'zod';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { isSuperAdminVerified } from '../middleware/rbac';
+import { getUserCapabilities } from '../lib/userCapabilities';
+import { hasProviderCapability } from '../../shared/lib/userCapabilities';
 import { logger } from '../lib/logger';
 
 const router = Router();
+
+/**
+ * SECURITY (booking-journey audit): every route in this file mutates real
+ * business state — /job-complete issues a חשבונית מס + קבלה through SUMIT —
+ * yet only /generate-statement carried `validateFirebaseToken`. The rest were
+ * mounted with `apiLimiter` alone (server/routes.ts), so ANY anonymous caller
+ * could POST a client-supplied `amountILS` + `customerEmail` and mint a real
+ * tax document, or push a KYC / onboarding-approved / e-sign event.
+ *
+ * `validateFirebaseToken` is now applied to the whole router (below), and the
+ * fiscal endpoint additionally requires an active provider capability or a
+ * verified super-admin. This only ever REMOVES access that should never have
+ * existed; no amount, VAT rule, or document mapping is changed here.
+ */
+// Public liveness probe — no business data, registered BEFORE the auth gate
+// so uptime monitoring keeps working.
+router.get('/health', (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'PetWash™ Operations Orchestrator API',
+    version: '2.0',
+    handlers: [
+      'POST /job-complete → חשבונית מס + קבלה + Drive + Sheets',
+      'POST /calendar/booking → Google Calendar + Email + Drive',
+      'POST /generate-statement → חשבון עסקה + Sheets',
+      'POST /kyc-submit → KYC Sheets + Drive + Compliance alert',
+      'POST /kyb-submit → KYB Sheets + Drive + Compliance alert',
+      'POST /booking-confirmed → Calendar + Sheets + Customer email',
+      'POST /esign-complete → Drive + E-Sig Sheets + Signer email',
+      'POST /onboarding-approved → Drive + Sheets + Calendar + Welcome email',
+      'POST /contract-generated → Drive + Sheets + Party email',
+    ],
+  });
+});
+
+router.use(validateFirebaseToken);
+
+/** Fiscal endpoints: only an approved provider (or a verified admin) may mint. */
+async function requireProviderOrAdmin(req: any, res: any, next: any) {
+  try {
+    if (isSuperAdminVerified(req)) return next();
+    const uid = req.user?.uid || req.firebaseUser?.uid;
+    if (!uid) return res.status(401).json({ error: 'Authentication required' });
+    const caps = await getUserCapabilities(uid);
+    if (!hasProviderCapability(caps)) {
+      logger.warn('[Orchestrator API] Non-provider blocked from fiscal endpoint', {
+        uid, path: req.path,
+      });
+      return res.status(403).json({ error: 'Provider access required' });
+    }
+    return next();
+  } catch (err: any) {
+    // Fail CLOSED — a capability lookup blip must not mint a tax document.
+    logger.error('[Orchestrator API] Capability check failed; denying', { error: err?.message });
+    return res.status(403).json({ error: 'Provider access required' });
+  }
+}
 
 // ─────────────────────────────────────────────
 // POST /api/orchestrator/job-complete
@@ -36,7 +96,7 @@ const jobCompleteSchema = z.object({
   notes: z.string().optional(),
 });
 
-router.post('/job-complete', async (req, res) => {
+router.post('/job-complete', requireProviderOrAdmin, async (req, res) => {
   try {
     const data = jobCompleteSchema.parse(req.body);
     const result = await petWashOrchestrator.handleJobCompletion(data);
@@ -312,23 +372,4 @@ router.post('/contract-generated', async (req, res) => {
 // ─────────────────────────────────────────────
 // GET /api/orchestrator/health
 // ─────────────────────────────────────────────
-router.get('/health', (_req, res) => {
-  res.json({
-    status: 'ok',
-    service: 'PetWash™ Operations Orchestrator API',
-    version: '2.0',
-    handlers: [
-      'POST /job-complete → חשבונית מס + קבלה + Drive + Sheets',
-      'POST /calendar/booking → Google Calendar + Email + Drive',
-      'POST /generate-statement → חשבון עסקה + Sheets',
-      'POST /kyc-submit → KYC Sheets + Drive + Compliance alert',
-      'POST /kyb-submit → KYB Sheets + Drive + Compliance alert',
-      'POST /booking-confirmed → Calendar + Sheets + Customer email',
-      'POST /esign-complete → Drive + E-Sig Sheets + Signer email',
-      'POST /onboarding-approved → Drive + Sheets + Calendar + Welcome email',
-      'POST /contract-generated → Drive + Sheets + Party email',
-    ],
-  });
-});
-
 export default router;
