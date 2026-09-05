@@ -99,9 +99,22 @@ export default function FinanceSettlementsView() {
       : "/api/finance/settlements"],
   });
 
-  // Fetch commissions — same class: "recent" was dropped.
-  const { data: commissionsData } = useQuery<CommissionsResponse>({
+  // Fetch commissions. NOTE (Lane E D12, 2026-09-05): no server route exists
+  // at GET /api/finance/commissions — server/routes/finance.ts only exposes
+  // /profitability/*, /capital-signals, /ownership-comparison,
+  // /friction-analytics, /summary. No canonical commissions-list endpoint
+  // exists anywhere in the server (checked finance/*.ts, admin.ts,
+  // admin-escrow-reconciliation.ts). Per-transaction commission+VAT
+  // aggregation with invoice download is a real feature gap, not a wiring
+  // typo — do not fabricate a query against unaudited tables here. Until a
+  // real endpoint is built, surface this honestly (distinct from "zero
+  // commissions this period") instead of silently rendering an empty list.
+  const {
+    data: commissionsData,
+    isError: commissionsErrored,
+  } = useQuery<CommissionsResponse>({
     queryKey: ["/api/finance/commissions?period=recent"],
+    retry: false,
   });
 
   // Fetch financial summary
@@ -332,7 +345,14 @@ export default function FinanceSettlementsView() {
           <CardDescription>Latest marketplace commissions with Israeli VAT</CardDescription>
         </CardHeader>
         <CardContent>
-          {commissions.length === 0 ? (
+          {commissionsErrored ? (
+            <div className="text-center py-8">
+              <Receipt className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">
+                Commission detail is not available yet — this view is not wired to a live data source.
+              </p>
+            </div>
+          ) : commissions.length === 0 ? (
             <div className="text-center py-8">
               <Receipt className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground">No recent commissions</p>
