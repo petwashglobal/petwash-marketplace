@@ -110,6 +110,16 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
   const [declineJobId, setDeclineJobId]   = useState<string | null>(null);
   const [declineReason, setDeclineReason] = useState('Not available on this date');
   const [finishModal, setFinishModal]   = useState<FinishModal | null>(null);
+  // 2026-09-05: finishMutation.isPending only covers the FIRST leg
+  // (POST /api/orchestrator/job-complete). It flips back to false the
+  // instant that resolves — BEFORE the second leg (marking the booking
+  // 'complete' via actionMutation.mutateAsync inside onSuccess) has even
+  // started. The "Finish & Invoice" button was disabled=isPending only, so
+  // it re-enabled itself mid-flight: a provider who tapped again while the
+  // second leg was still running could fire a SECOND
+  // /api/orchestrator/job-complete call — a duplicate invoice — for a job
+  // that was, from their view, already "done". This flag spans both legs.
+  const [finishing, setFinishing] = useState(false);
 
   const statusParam = statusFilter === 'all' ? '' : statusFilter;
   const { data, isLoading, refetch } = useQuery({
@@ -184,15 +194,34 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
       });
     },
     onSuccess: async (res: any, modal) => {
-      await actionMutation.mutateAsync({ bookingId: modal.booking.id, action: 'complete' });
-      setFinishModal(null);
+      // The invoice (this leg) already succeeded — do NOT let a failure in
+      // the second leg look like the whole action silently vanished, and
+      // do NOT re-enable the button while it's still running (see the
+      // `finishing` flag above).
       const invoiceNum = res?.invoiceNumber || '';
-      toast({
-        title: '✅ Job completed!',
-        description: invoiceNum ? `Invoice ${invoiceNum} sent to client.` : 'Invoice sent to client.',
-      });
+      try {
+        await actionMutation.mutateAsync({ bookingId: modal.booking.id, action: 'complete' });
+        setFinishModal(null);
+        toast({
+          title: '✅ Job completed!',
+          description: invoiceNum ? `Invoice ${invoiceNum} sent to client.` : 'Invoice sent to client.',
+        });
+      } catch (err: any) {
+        // Invoice was created; only the booking-status flip failed. Say so
+        // explicitly so the provider doesn't re-tap and double-invoice —
+        // actionMutation's own onError already retried invalidateAll(), so
+        // the list will reflect the real current status on next load.
+        toast({
+          title: invoiceNum ? `Invoice ${invoiceNum} sent, but job status didn't update` : 'Invoice sent, but job status didn’t update',
+          description: (err?.message || 'Please refresh and mark the job complete again if it still shows Active.'),
+          variant: 'destructive',
+        });
+      } finally {
+        setFinishing(false);
+      }
     },
     onError: (err: any) => {
+      setFinishing(false);
       toast({ title: 'Error completing job', description: err.message, variant: 'destructive' });
     },
   });
@@ -411,14 +440,14 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
               </div>
             </div>
             <div className="px-5 pb-5 flex gap-3">
-              <button onClick={() => setFinishModal(null)} disabled={finishMutation.isPending}
+              <button onClick={() => setFinishModal(null)} disabled={finishing}
                 className="flex-1 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-white transition-colors">
                 Cancel
               </button>
-              <button onClick={() => finishMutation.mutate(finishModal!)}
-                disabled={finishMutation.isPending || !finishModal.amountILS || Number(finishModal.amountILS) <= 0}
+              <button onClick={() => { setFinishing(true); finishMutation.mutate(finishModal!); }}
+                disabled={finishing || !finishModal.amountILS || Number(finishModal.amountILS) <= 0}
                 className="flex-1 py-3 bg-[#B8932F] text-white rounded-xl text-sm font-semibold hover:bg-[#B8932F] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
-                {finishMutation.isPending
+                {finishing
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
                   : <><CheckCircle2 className="w-4 h-4" /> Finish & Invoice</>}
               </button>
