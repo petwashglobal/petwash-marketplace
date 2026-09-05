@@ -17,8 +17,38 @@ import { useUserCapabilities } from '@/hooks/useUserCapabilities';
 import { hasCustomerCapability, hasProviderCapability } from '@shared/lib/userCapabilities';
 import { useUiMode } from '@/lib/uiMode';
 
-const GOLD = '#D9B84C';
-const GRAY = '#9CA3AF';
+/**
+ * A11Y CONTRAST (agent-13, 2026-09-05) — WCAG 2.1 AA, petwash-ui-ux §6.1.
+ *
+ * The bar paints on solid #FFFFFF. The previous pair failed badly, and the
+ * ACTIVE tab — the "you are here" signal — was the worst of the two:
+ *
+ *   old active  #D9B84C on #FFF = 1.92:1   (needs 4.5:1 text / 3:1 icon)
+ *   old inactive #9CA3AF on #FFF = 2.55:1  (needs 4.5:1)
+ *
+ * The labels are 10px, so the large-text 3:1 allowance does not apply, and
+ * the 22px icons are UI components that still owe 3:1. No hue in the brand
+ * gold family clears 4.5:1 on white — #D4AF37 itself is only 2.11:1 — so
+ * gold cannot carry the text on a white bar at any usable saturation.
+ *
+ * Resolution that keeps gold as the brand signal without failing AA:
+ *   • ACTIVE   → GOLD_DEEP #8A6D1F, the same gold hue darkened to 4.94:1.
+ *                Reads unmistakably as gold next to the neutral grey, and
+ *                the active tab additionally carries a solid bright-gold
+ *                #D9B84C indicator bar on its top edge — that bar is
+ *                decorative, adjacent to the AA-compliant glyph, and is
+ *                what actually catches the eye.
+ *   • INACTIVE → #6B7280 (grey-500) = 4.92:1.
+ *
+ * NOTE FOR CEO: this darkens the gold ON THIS BAR ONLY. Gold on dark
+ * surfaces is untouched (#D8AD55 on #000 is 7.2:1 and already passes).
+ * If the brighter gold glyph is wanted back, the accessible alternative is
+ * to invert the bar to the dark shell — say the word and it is a one-line
+ * token swap here.
+ */
+const GOLD_BRIGHT = '#D9B84C';   // indicator bar only (decorative)
+const GOLD_DEEP = '#8A6D1F';     // active icon + label — 4.94:1 on white
+const GRAY = '#6B7280';          // inactive icon + label — 4.92:1 on white
 
 interface NavItem {
   path: string;
@@ -169,7 +199,7 @@ export function MobileBottomNav() {
                 || (path === '/paw-finder' && pawFinderAliases.some(a => location === a || location.startsWith(a + '/')))
               );
           const label = isRTL ? labelHe : labelEn;
-          const color = isActive ? GOLD : GRAY;
+          const color = isActive ? GOLD_DEEP : GRAY;
           const inner = (
             <button
               type="button"
@@ -177,8 +207,19 @@ export function MobileBottomNav() {
               aria-current={isActive ? 'page' : undefined}
               aria-busy={isAccountTab && isResolvingAccount ? true : undefined}
               onClick={isAccountTab ? handleAccountTap : undefined}
-              className="flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors"
+              className="relative flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors"
             >
+              {/* Bright-gold active indicator. Decorative (the state is
+                  already conveyed by aria-current and by the deep-gold
+                  glyph), so it carries no contrast obligation of its own
+                  and keeps the brand gold visible on the bar. */}
+              {isActive && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-0 inset-x-0 h-0.5"
+                  style={{ background: GOLD_BRIGHT }}
+                />
+              )}
               <Icon
                 size={22}
                 strokeWidth={isActive ? 2.2 : 1.8}

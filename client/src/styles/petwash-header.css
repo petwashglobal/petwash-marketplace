@@ -1427,3 +1427,64 @@
     height: 3.5rem;
   }
 }
+
+/* ===========================================================================
+   TAP-TARGET FLOOR — Apple HIG 44×44pt / WCAG 2.5.8 (agent-13, 2026-09-05)
+
+   Measured live at 375×812 on the rendered header (Chrome, dev build):
+
+     .pw-burger-luxury      26 × 26   ← primary mobile navigation control
+     .pw-language-select    48 × 14   (header)  /  46 × 17  (drawer)
+     .pw-mobile-close       40 × 40
+     .pw-header-profile-btn 24 × 48
+
+   All are below the 44pt floor the petwash-ui-ux skill §4 makes mandatory,
+   and the two selects are below it on the axis that matters most for a
+   thumb (height).
+
+   These controls are deliberately small VISUALLY — the 2rem gold-bordered
+   burger circle and the compact language pill are part of the luxury
+   header, and enlarging the painted box would be a brand change. So the
+   painted box is left exactly as-is and the TOUCH area is expanded with a
+   transparent centred ::after overlay. Nothing moves, nothing repaints;
+   only the hit region grows. `position: relative` is added so the overlay
+   has a containing block, and `pointer-events` stays on the button.
+   =========================================================================== */
+.pw-burger,
+.pw-burger-luxury,
+.pw-language-select,
+.pw-language-luxury,
+.pw-mobile-close,
+.pw-header-profile-btn {
+  position: relative;
+}
+
+.pw-burger::after,
+.pw-burger-luxury::after,
+.pw-mobile-close::after,
+.pw-header-profile-btn::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  /* Transparent: purely a hit-area expander, never a visible box. */
+  background: transparent;
+  border-radius: inherit;
+}
+
+/* <select> renders its own native control; a ::after child is not painted
+   reliably across engines, so the floor is applied to the box itself.
+   min-height alone (no width change) keeps the pill's horizontal rhythm. */
+.pw-language-select,
+.pw-language-luxury {
+  min-height: 44px;
+}
+
+/* The luxury variant sets every box property with !important, so the floor
+   has to match that specificity to land. */
+.pw-language-luxury {
+  min-height: 44px !important;
+}

@@ -163,6 +163,12 @@ const T: Record<string, Record<string, string>> = {
   "contact.label": { en: "Contact & WhatsApp", he: "צור קשר ו-WhatsApp", ru: "Контакты и WhatsApp", fr: "Contact et WhatsApp", es: "Contacto y WhatsApp", ar: "اتصل بنا وواتساب" },
   "status.label": { en: "System status", he: "סטטוס מערכת", ru: "Статус системы", fr: "État du système", es: "Estado del sistema", ar: "حالة النظام" },
   "nav.platforms": { en: "Platforms", he: "פלטפורמות", ru: "Платформы", fr: "Plateformes", es: "Plataformas", ar: "المنصات" },
+  // A11Y (agent-13, 2026-09-05): accessible name for the header + drawer
+  // language <select>s, which previously announced as unnamed combo boxes.
+  // NOTE: this component resolves strings through its OWN local T table
+  // below, not @/lib/i18n — a key added only to i18n.ts renders as the raw
+  // key string ("nav.language"), which is what the first attempt shipped.
+  "nav.language": { en: "Language", he: "שפה", ru: "Язык", fr: "Langue", es: "Idioma", ar: "اللغة" },
   "nav.loyalty": { en: "PetWash Prestige", he: "PetWash Prestige", ru: "PetWash Prestige", fr: "PetWash Prestige", es: "PetWash Prestige", ar: "PetWash Prestige" },
   "nav.giftCards": { en: "e-Gift", he: "תווי שי דיגיטליים", ru: "Электронные ваучеры", fr: "Bons cadeaux", es: "Vales regalo", ar: "قسائم رقمية" },
   "nav.about": { en: "About", he: "אודות", ru: "О нас", fr: "À propos", es: "Acerca de", ar: "حول" },
@@ -662,8 +668,13 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               <span />
               <span />
             </button>
+            {/* A11Y (agent-13, 2026-09-05): this <select> had no accessible
+                name — no <label>, no aria-label. A screen reader announced
+                only "English, combo box", giving no clue it switches the
+                site language. Measured named=false on the rendered header. */}
             <select
               className="pw-language-select pw-language-luxury"
+              aria-label={t('nav.language', currentLanguage)}
               value={currentLanguage}
               onChange={(e) => handleLanguageChange(e.target.value)}
               data-testid="select-language"
@@ -745,8 +756,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
 
         {/* Language + account row */}
         <div className="pw-mobile-lang-row">
+          {/* A11Y (agent-13, 2026-09-05): same unnamed <select> in the drawer. */}
           <select
             className="pw-language-select"
+            aria-label={t('nav.language', currentLanguage)}
             value={currentLanguage}
             onChange={(e) => handleLanguageChange(e.target.value)}
           >
