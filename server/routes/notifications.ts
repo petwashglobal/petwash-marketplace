@@ -18,8 +18,18 @@ const router = express.Router();
 /**
  * POST /api/notifications/send
  * Send notification using template
+ *
+ * P0-FIX (cross-tenant sweep, 2026-09-05): this took an arbitrary `userId` /
+ * `email` / `phone` in the body and required only requireAuth — ANY logged-in
+ * user (not just admins) could trigger a real email/SMS/WhatsApp/push send,
+ * with arbitrary template variables, to any other user or contact. That's a
+ * paid-channel spam/impersonation vector (SMS/WhatsApp cost money) using a
+ * completely unrelated caller's identity as the "from". Every sibling route
+ * in this file (templates, logs, stats) is already requireAdmin; this one
+ * was the odd one out. No first-party caller (client or server) invokes this
+ * HTTP endpoint — internal sends go through NotificationService directly.
  */
-router.post("/send", requireAuth, async (req, res) => {
+router.post("/send", requireAdmin, async (req, res) => {
   try {
     const schema = z.object({
       templateKey: z.string(),
@@ -284,22 +294,37 @@ router.get("/", requireAuth, async (req, res) => {
 /**
  * POST /api/notifications/:logId/read
  * Mark a notification log as read
+ *
+ * P0-FIX (cross-tenant sweep, 2026-09-05): this updated notification_logs by
+ * `id` ALONE — no predicate tying the row to the caller. Any authenticated
+ * user could mark ANY other user's notification as read by walking small
+ * integer ids (suppressing a victim's unread badge / hiding a real alert).
+ * Fix: AND recipientUserId = caller uid into the WHERE, and report the same
+ * generic outcome whether the id doesn't exist or belongs to someone else
+ * (no existence oracle).
  */
 router.post("/:logId/read", requireAuth, async (req, res) => {
   try {
     const { logId } = req.params;
     const id = parseInt(logId, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid logId' });
+    const userId = req.user!.uid;
 
     const { db } = await import('../db');
     const { notificationLogs } = await import('@shared/schema');
-    const { eq } = await import('drizzle-orm');
+    const { eq, and } = await import('drizzle-orm');
 
-    await db.update(notificationLogs)
+    const updated = await db.update(notificationLogs)
       .set({ isRead: true, readAt: new Date() })
-      .where(eq(notificationLogs.id, id));
+      .where(and(eq(notificationLogs.id, id), eq(notificationLogs.recipientUserId, userId)))
+      .returning({ id: notificationLogs.id });
 
-    logger.info("[Notifications] Marked as read", { logId: id });
+    if (updated.length === 0) {
+      // Same response for "doesn't exist" and "not yours" — no existence oracle.
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    logger.info("[Notifications] Marked as read", { logId: id, userId });
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Notifications] Error marking as read:", error);
