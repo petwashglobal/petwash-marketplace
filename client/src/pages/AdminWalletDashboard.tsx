@@ -1338,7 +1338,7 @@ export default function AdminWalletDashboard() {
   // (the export route says so verbatim: "generate it first via GET /period-pack").
   // The default queryFn dropped both params, so this fetched `/period-pack` bare
   // and the server answered 400 "type and period required".
-  const { data: periodPackData, isLoading: periodPackLoading, error: periodPackError, refetch: refetchPeriodPack } = useQuery<any>({
+  const { data: periodPackData, isFetching: periodPackFetching, error: periodPackError, refetch: refetchPeriodPack } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/period-pack', packType, packPeriod],
     enabled: false,
     queryFn: async () => {
@@ -3095,7 +3095,7 @@ export default function AdminWalletDashboard() {
   // invented write authority. `packType` / `packPeriod` are the single source of
   // truth for the panel (the old `closePeriodType` / `closePeriodValue` pair fed
   // only the dead POST and were never read by the query).
-  const generatePeriodPackPending = periodPackLoading;
+  const generatePeriodPackPending = periodPackFetching;
   // CONTRACT FIX: export sent no `type`/`period`, so the handler answered 400
   // "type and period required" and nothing was ever downloaded; the toast also
   // read `d.filename` off a raw `Response` (always undefined). The route streams
@@ -8734,7 +8734,7 @@ export default function AdminWalletDashboard() {
                     read `pk.period` / `pk.recordCount` / `pk.signatureHash`, none
                     of which the handler emits, so even a 200 would have rendered
                     an empty row. Render the fields the server actually returns. */}
-                {periodPackLoading ? <div className="h-20 bg-white animate-pulse rounded"/> :
+                {periodPackFetching ? <div className="h-20 bg-white animate-pulse rounded"/> :
                   !periodPackData?.pack ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No close pack generated yet — choose a period and click Generate Pack</div>
                   ) : (() => {
