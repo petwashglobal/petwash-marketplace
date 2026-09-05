@@ -131,10 +131,16 @@ function blankComments(src) {
   return out.join('');
 }
 
-function lineOf(src, index) {
-  let line = 1;
-  for (let i = 0; i < index && i < src.length; i++) if (src[i] === '\n') line++;
-  return line;
+/** O(log n) line lookup. The naive O(n) scan is quadratic on the 14k-line
+ *  server/routes.ts and dominated the whole scan's runtime. */
+function makeLineIndex(src) {
+  const nl = [0];
+  for (let i = 0; i < src.length; i++) if (src[i] === '\n') nl.push(i + 1);
+  return (idx) => {
+    let lo = 0, hi = nl.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (nl[mid] <= idx) lo = mid; else hi = mid - 1; }
+    return lo + 1;
+  };
 }
 
 /** Grab the raw argument text of a call starting at the `(` index. */
@@ -171,6 +177,7 @@ function detectAuth(argText) {
 function parseModule(root, rel) {
   const raw = fs.readFileSync(path.join(root, rel), 'utf8');
   const src = blankComments(raw);
+  const lineOf = makeLineIndex(src);
 
   /** binding name -> { file, exported } */
   const imports = new Map();
@@ -281,7 +288,7 @@ function parseModule(root, rel) {
   while ((m = useRe.exec(src))) {
     const open = useRe.lastIndex - 1;
     const args = readArgs(src, open);
-    const line = lineOf(src, m.index);
+    const line = lineOf(m.index);
     const pathM = args.match(/^\s*(['"])([^'"]*)\1\s*(,|$)/);
     const mountPath = pathM ? pathM[2] : null;
     const rest = pathM ? args.slice(pathM[0].length) : args;
@@ -301,7 +308,7 @@ function parseModule(root, rel) {
       obj: m[1],
       method: m[2].toUpperCase(),
       path: pathM[2],
-      line: lineOf(src, m.index),
+      line: lineOf(m.index),
       auth: detectAuth(args.slice(0, 400)),
       is410: /\b410\b/.test(args.slice(0, 800)) && /(V1_DEPRECATED|ENDPOINT_RETIRED|Gone|RETIRED|DEPRECATED)/i.test(args.slice(0, 800)),
     });
@@ -310,7 +317,7 @@ function parseModule(root, rel) {
   /** Calls like `registerStaffOnboardingRoutes(app)`. */
   const registrarCalls = [];
   const callRe = /\b([A-Za-z_$][\w$]*)\s*\(\s*([A-Za-z_$][\w$]*)\s*[,)]/g;
-  while ((m = callRe.exec(src))) registrarCalls.push({ fn: m[1], arg: m[2], line: lineOf(src, m.index) });
+  while ((m = callRe.exec(src))) registrarCalls.push({ fn: m[1], arg: m[2], line: lineOf(m.index) });
 
   return { rel, imports, routers, defaultExport, namedExports, registrars, uses, handlers, registrarCalls };
 }
@@ -469,9 +476,16 @@ export function normalizePattern(p) {
     || '/';
 }
 
-/** Segment list with `:p` for params and `*` for wildcards. */
+/** Segment list with `:p` for params and `*` for wildcards. Memoised — the
+ *  matcher calls this millions of times across the 3k x 1.5k cross-product. */
+const _segCache = new Map();
 export function segments(p) {
-  return normalizePattern(p).split('/').filter((s) => s.length > 0);
+  let v = _segCache.get(p);
+  if (v === undefined) {
+    v = normalizePattern(p).split('/').filter((s) => s.length > 0);
+    _segCache.set(p, v);
+  }
+  return v;
 }
 
 /**

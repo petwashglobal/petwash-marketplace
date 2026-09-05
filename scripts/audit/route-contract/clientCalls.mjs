@@ -75,7 +75,16 @@ function blankComments(src) {
   return out.join('');
 }
 
-function lineOf(src, idx) { let l = 1; for (let i = 0; i < idx; i++) if (src[i] === '\n') l++; return l; }
+/** O(log n) line lookup — the naive O(n) scan makes a 900-file sweep quadratic. */
+function makeLineIndex(src) {
+  const nl = [0];
+  for (let i = 0; i < src.length; i++) if (src[i] === '\n') nl.push(i + 1);
+  return (idx) => {
+    let lo = 0, hi = nl.length - 1;
+    while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (nl[mid] <= idx) lo = mid; else hi = mid - 1; }
+    return lo + 1;
+  };
+}
 
 function readArgs(src, openParen) {
   let depth = 0;
@@ -144,12 +153,38 @@ export function toPath(expr) {
   if (plain) return normalise(plain[2]);
 
   const tpl = e.match(/^`([\s\S]*)`$/);
-  if (tpl) {
-    // ${…} -> :p  (a whole interpolation is at most one path segment)
-    const body = tpl[1].replace(/\$\{[\s\S]*?\}/g, ':p');
-    return normalise(body);
-  }
+  if (tpl) return normalise(collapseTemplate(tpl[1]));
   return null;
+}
+
+/**
+ * Replace every `${…}` in a template body with `:p`, matching BRACES
+ * PROPERLY. A naive /\$\{.*?\}/ stops at the first `}` and mangles
+ * nested templates such as
+ *   `/api/admin/suppliers${q ? `?limit=${n}` : ''}`
+ * into the garbage path `/api/admin/suppliers:p` : ''}` — a guaranteed
+ * false positive. If an interpolation itself contains a `?`, everything
+ * from that point is a QUERY STRING, so the path ends there.
+ */
+export function collapseTemplate(body) {
+  let out = '';
+  for (let i = 0; i < body.length; i++) {
+    if (body[i] === '$' && body[i + 1] === '{') {
+      let depth = 0, j = i + 1;
+      for (; j < body.length; j++) {
+        if (body[j] === '{') depth++;
+        else if (body[j] === '}') { depth--; if (depth === 0) break; }
+      }
+      const inner = body.slice(i + 2, j);
+      if (inner.includes('?') && /['"`]\s*\?/.test(inner)) return out; // query-string tail
+      out += ':p';
+      i = j;
+      continue;
+    }
+    if (body[i] === '?') return out; // literal query string starts here
+    out += body[i];
+  }
+  return out;
 }
 
 function normalise(p) {
@@ -163,6 +198,9 @@ function normalise(p) {
   p = p.split('?')[0].split('#')[0];
   if (!p.startsWith('/')) return null;
   p = p.replace(/\/{2,}/g, '/').replace(/\/+$/, '') || '/';
+  // A `:p` glued inside a segment (`user_${id}` -> `user_:p`) still denotes
+  // ONE dynamic segment — normalise it so positional matching works.
+  p = p.split('/').map((seg) => (seg.includes(':p') ? ':p' : seg)).join('/');
   return p;
 }
 
@@ -193,13 +231,14 @@ export function extractClientCalls(root, files) {
     const rel = path.relative(root, abs);
     const raw = fs.readFileSync(abs, 'utf8');
     const src = blankComments(raw);
+    const lineOf = ((f) => (i) => f(i))(makeLineIndex(src));
     const push = (o) => { if (o.path && o.path.startsWith('/api')) calls.push({ file: rel, ...o }); };
 
     // ── apiRequest(...) ────────────────────────────────────────────────
     for (const m of src.matchAll(/\bapiRequest\s*\(/g)) {
       const open = m.index + m[0].length - 1;
       const args = splitArgs(readArgs(src, open));
-      const line = lineOf(src, m.index);
+      const line = lineOf(m.index);
       if (!args.length) continue;
       const a0 = args[0], a1 = args[1], a2 = args[2];
       const a0Lit = a0.match(/^(['"])([\s\S]*?)\1$/);
@@ -223,7 +262,7 @@ export function extractClientCalls(root, files) {
     for (const m of src.matchAll(/(?<![.\w])fetch(?:WithRetry)?\s*\(/g)) {
       const open = m.index + m[0].length - 1;
       const args = splitArgs(readArgs(src, open));
-      const line = lineOf(src, m.index);
+      const line = lineOf(m.index);
       if (!args.length) continue;
       const opts = args[1] ?? '';
       const mm = opts.match(/method\s*:\s*['"]([A-Za-z]+)['"]/);
@@ -238,7 +277,7 @@ export function extractClientCalls(root, files) {
     for (const m of src.matchAll(/\baxios\s*\.\s*(get|post|put|patch|delete|head|options)\s*\(/g)) {
       const open = m.index + m[0].length - 1;
       const args = splitArgs(readArgs(src, open));
-      push({ method: m[1].toUpperCase(), path: toPath(args[0]), line: lineOf(src, m.index), kind: 'axios', raw: args[0], hasQuery: hasQuery(args[0]), hasBody: args.length > 1 });
+      push({ method: m[1].toUpperCase(), path: toPath(args[0]), line: lineOf(m.index), kind: 'axios', raw: args[0], hasQuery: hasQuery(args[0]), hasBody: args.length > 1 });
     }
 
     // ── EventSource / WebSocket ───────────────────────────────────────
@@ -247,7 +286,7 @@ export function extractClientCalls(root, files) {
       const args = splitArgs(readArgs(src, open));
       const p = toPath(args[0]);
       if (!p) continue;
-      push({ method: 'GET', path: p, line: lineOf(src, m.index), kind: m[1] === 'EventSource' ? 'sse' : 'ws', raw: args[0], hasQuery: hasQuery(args[0]), hasBody: false });
+      push({ method: 'GET', path: p, line: lineOf(m.index), kind: m[1] === 'EventSource' ? 'sse' : 'ws', raw: args[0], hasQuery: hasQuery(args[0]), hasBody: false });
     }
 
     // ── TanStack queryKey with NO sibling queryFn -> default GET ───────
@@ -265,7 +304,7 @@ export function extractClientCalls(root, files) {
       if (!p) continue;
       const obj = enclosingObject(src, m.index);
       const hasFn = /\bqueryFn\s*[:(]/.test(obj);
-      const line = lineOf(src, m.index);
+      const line = lineOf(m.index);
       if (hasFn) {
         calls.push({ file: rel, method: 'GET', path: p, line, kind: 'queryKey-with-queryFn', raw: first, hasQuery: false, hasBody: false, informational: true });
         continue;
