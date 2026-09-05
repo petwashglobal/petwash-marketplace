@@ -239,8 +239,32 @@ router.get('/station/:stationId', optionalAuth, async (req: Request, res: Respon
 router.get('/my-reviews', requireAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).userId;
+    // AGENT-14 privacy lane (2026-09-05): was SELECT *, which handed the
+    // customer the internal moderation trail on their own review —
+    // isFlagged, flaggedReason, isVisible and adminRespondedBy (a staff id).
+    // Explicit projection; matches the fields the PUBLIC station listing
+    // already uses, plus the owner-only visibility flags they may act on.
     const reviews = await db
-      .select()
+      .select({
+        id: groomingFeedback.id,
+        feedbackId: groomingFeedback.feedbackId,
+        stationId: groomingFeedback.stationId,
+        petName: groomingFeedback.petName,
+        petType: groomingFeedback.petType,
+        serviceType: groomingFeedback.serviceType,
+        overallRating: groomingFeedback.overallRating,
+        cleanlinessRating: groomingFeedback.cleanlinessRating,
+        equipmentRating: groomingFeedback.equipmentRating,
+        valueRating: groomingFeedback.valueRating,
+        easeOfUseRating: groomingFeedback.easeOfUseRating,
+        comment: groomingFeedback.comment,
+        photos: groomingFeedback.photos,
+        wouldRecommend: groomingFeedback.wouldRecommend,
+        isPublic: groomingFeedback.isPublic,
+        adminResponse: groomingFeedback.adminResponse,
+        adminRespondedAt: groomingFeedback.adminRespondedAt,
+        createdAt: groomingFeedback.createdAt,
+      })
       .from(groomingFeedback)
       .where(eq(groomingFeedback.customerId, userId))
       .orderBy(desc(groomingFeedback.createdAt))
