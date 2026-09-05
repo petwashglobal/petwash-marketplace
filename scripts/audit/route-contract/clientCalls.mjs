@@ -204,6 +204,26 @@ function normalise(p) {
   return p;
 }
 
+/**
+ * A GLUED trailing interpolation is ambiguous: in `\`/api/expenses${qs}\`` the
+ * interpolation is a QUERY STRING (path = /api/expenses), while in
+ * `\`/api/users/user_${id}\`` it is a path segment (path = /api/users/:p).
+ * Static analysis cannot tell them apart, so we emit BOTH readings and the
+ * matcher accepts the call if EITHER resolves. Without this, /api/expenses
+ * collapsed to the nonsense path /api/:p — a guaranteed false positive.
+ */
+export function altPathsFor(rawExpr) {
+  const tpl = (rawExpr ?? '').trim().match(/^`([\s\S]*)`$/);
+  if (!tpl) return [];
+  const body = tpl[1];
+  const glued = body.match(/^([\s\S]*[^/{]?)\$\{[\s\S]*\}$/);
+  if (!glued) return [];
+  const prefix = collapseTemplate(glued[1]);
+  if (!prefix || prefix.endsWith('/')) return [];
+  const n = normalise(prefix);
+  return n ? [n] : [];
+}
+
 function hasQuery(expr) { return /\?/.test(expr ?? ''); }
 
 /** Find the object literal enclosing `idx` and return its text. */
@@ -232,7 +252,11 @@ export function extractClientCalls(root, files) {
     const raw = fs.readFileSync(abs, 'utf8');
     const src = blankComments(raw);
     const lineOf = ((f) => (i) => f(i))(makeLineIndex(src));
-    const push = (o) => { if (o.path && o.path.startsWith('/api')) calls.push({ file: rel, ...o }); };
+    const push = (o) => {
+      if (!o.path || !o.path.startsWith('/api')) return;
+      const alts = altPathsFor(o.raw).filter((a) => a !== o.path && a.startsWith('/api'));
+      calls.push({ file: rel, ...o, ...(alts.length ? { altPaths: alts } : {}) });
+    };
 
     // ── apiRequest(...) ────────────────────────────────────────────────
     for (const m of src.matchAll(/\bapiRequest\s*\(/g)) {
@@ -255,7 +279,21 @@ export function extractClientCalls(root, files) {
           bodyExpr = /\bbody\s*:/.test(a1) ? a1 : undefined;
         } else method = 'GET';
       }
-      push({ method: method ?? 'GET', path: toPath(pathExpr), line, kind: 'apiRequest', raw: pathExpr, hasQuery: hasQuery(pathExpr), hasBody: !!bodyExpr });
+      // `undefined` / `null` / `{}` in the data slot is NOT a body — treating
+      // it as one produced a false BODY_MISMATCH on every
+      // apiRequest('GET', url, undefined) call.
+      // NOTE `{}` still counts: apiRequest does `data ? JSON.stringify(data)`
+      // and {} is truthy, so an empty object IS serialised onto the request.
+      const bodyIsReal = !!bodyExpr && !/^(undefined|null|)$/.test(bodyExpr.trim());
+      // apiRequest(methodOrUrl, urlOrOptions, data) takes exactly THREE
+      // parameters. A 4th argument (callers pass a headers object) is
+      // silently DROPPED by the wrapper — the header never reaches the server.
+      const droppedArgs = args.length > 3 ? args.slice(3) : [];
+      push({
+        method: method ?? 'GET', path: toPath(pathExpr), line, kind: 'apiRequest',
+        raw: pathExpr, hasQuery: hasQuery(pathExpr), hasBody: bodyIsReal,
+        droppedArgs: droppedArgs.length ? droppedArgs : undefined,
+      });
     }
 
     // ── raw fetch(...) ────────────────────────────────────────────────

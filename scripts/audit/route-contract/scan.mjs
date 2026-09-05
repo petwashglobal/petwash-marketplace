@@ -171,6 +171,13 @@ export function run(root = ROOT) {
   const matchedServer = new Set();
 
   for (const call of calls) {
+    // An ambiguous glued interpolation (`/api/expenses${qs}`) has a second
+    // legitimate reading. If that one resolves cleanly, the call is fine.
+    if (call.altPaths?.length) {
+      const altOk = call.altPaths.some((ap) =>
+        (candidatesFor(ap) ?? []).some((r) => matchScore(ap, r.path).ok && verbMatches(call.method, r.method)));
+      if (altOk) continue;
+    }
     const cands = candidatesFor(call.path);
     const pathHits = [];
     let paramShort = null;
@@ -202,8 +209,15 @@ export function run(root = ROOT) {
           findings.push(mk('PATH_MISMATCH', call, verbHit, `handler is SHADOWED — ${shadow.method} ${shadow.path} is registered earlier in the same router (${shadow.file}:${shadow.line}) and swallows this path`));
           continue;
         }
+        if (call.droppedArgs) {
+          const dropped = call.droppedArgs.join(', ').replace(/\s+/g, ' ').slice(0, 120);
+          findings.push(mk(/authorization|token|bearer/i.test(dropped) ? 'AUTH_MISMATCH' : 'BODY_MISMATCH', call, verbHit,
+            `apiRequest() takes 3 parameters; this call passes ${3 + call.droppedArgs.length}. The extra argument is SILENTLY DROPPED and never reaches the server: ${dropped}`));
+          continue;
+        }
         if (call.method === 'GET' && call.hasBody) {
-          findings.push(mk('BODY_MISMATCH', call, verbHit, 'client attaches a request body to a GET'));
+          findings.push(mk('BODY_MISMATCH', call, verbHit,
+            'client attaches a request body to a GET — fetch() throws "Request with GET/HEAD method cannot have body", so this call never leaves the browser'));
           continue;
         }
         continue; // MATCH — not reported
@@ -232,12 +246,26 @@ export function run(root = ROOT) {
       continue;
     }
 
-    // same tail segment mounted under a different prefix?
-    const tail = segments(call.path).slice(-2).join('/');
-    const elsewhere = (byTail.get(tail) ?? []).filter((r) => verbMatches(call.method, r.method));
-    if (elsewhere.length) {
-      findings.push(mk('PATH_MISMATCH', call, elsewhere[0],
-        `no route at ${call.path}; the same handler is mounted at ${elsewhere[0].path}`));
+    // Same handler RELOCATED under a different mount prefix? The reliable
+    // signal is a shared TAIL: the last N segments line up (params included)
+    // and at least one of them is a literal. Weaker heuristics (any two
+    // shared segments, or a bare `:p/:p` tail) invent nonsense suggestions —
+    // they pointed /api/k9000/restock-request at /api/k9000/start-session.
+    const cSeg = segments(call.path);
+    let best = null, bestSuffix = 1;
+    for (const r of live) {
+      if (!verbMatches(call.method, r.method)) continue;
+      const rSeg = segments(r.path);
+      let k = 0;
+      while (k < cSeg.length && k < rSeg.length && cSeg[cSeg.length - 1 - k] === rSeg[rSeg.length - 1 - k]) k++;
+      if (k < 2) continue;
+      const suffix = cSeg.slice(cSeg.length - k);
+      if (!suffix.some((x) => x !== ':p')) continue; // all-param tail proves nothing
+      if (k > bestSuffix) { best = r; bestSuffix = k; }
+    }
+    if (best) {
+      findings.push(mk('PATH_MISMATCH', call, best,
+        `no route at ${call.path}; the same handler is mounted at ${best.path} (last ${bestSuffix} segments identical) — the client's mount prefix is wrong`));
       continue;
     }
 
