@@ -145,6 +145,8 @@ interface ApplyEmailResult {
   status?: number;
   code?: string;
   message?: string;
+  /** How many OTHER sessions were actually revoked. Never asserted, always counted. */
+  otherSessionsRevoked?: number;
 }
 
 /**
@@ -253,9 +255,15 @@ export async function applyVerifiedEmailChange(params: {
   //     bouncing them to the sign-in screen would be a UX regression, not a
   //     security win. Fail-soft: the identity change already landed, so a
   //     revoke error must not turn a success into a 500.
+  //     HONESTY: sessions_pw is still DARK in production
+  //     (ff.returning_user.sessions_owned.enabled defaults false and nothing
+  //     mints rows), so this legitimately revokes ZERO rows today. Return the
+  //     real count rather than a boolean the UI would turn into "all your other
+  //     devices were signed out" — a claim that is currently false.
+  let otherSessionsRevoked = 0;
   try {
-    const revoked = await revokeAllExceptForUser(uid, params.currentRawSessionId, 'contact_change');
-    logger.info('[ProfileSettings] Other sessions revoked after email change', { uid, revoked });
+    otherSessionsRevoked = await revokeAllExceptForUser(uid, params.currentRawSessionId, 'contact_change');
+    logger.info('[ProfileSettings] Other sessions revoked after email change', { uid, otherSessionsRevoked });
   } catch (e: any) {
     logger.error('[ProfileSettings] Session revoke after email change failed (non-blocking)', {
       uid,
@@ -263,7 +271,7 @@ export async function applyVerifiedEmailChange(params: {
     });
   }
 
-  return { ok: true };
+  return { ok: true, otherSessionsRevoked };
 }
 
 
@@ -835,7 +843,7 @@ router.post('/settings/email/confirm-change', async (req, res) => {
         runtime: 'unified_verification',
         newEmail,
         emailVerified: true,
-        sessionsRevoked: true,
+        otherSessionsRevoked: applied.otherSessionsRevoked ?? 0,
       });
     }
 
@@ -917,7 +925,7 @@ router.post('/settings/email/confirm-change', async (req, res) => {
       message: 'Email updated successfully',
       newEmail: pending.newEmail,
       emailVerified: true,
-      sessionsRevoked: true,
+      otherSessionsRevoked: applied.otherSessionsRevoked ?? 0,
     });
   } catch (error: any) {
     if (error instanceof UnifiedVerificationError) {
@@ -1086,12 +1094,11 @@ router.post('/settings/phone/confirm-verification', async (req, res) => {
 
     // A CHANGE of mobile (not a first-set) is a credential change — other
     // devices still hold sessions minted against the previous identity.
-    let sessionsRevoked = false;
+    let otherSessionsRevoked = 0;
     if (previousPhone && normalizePhoneE164(previousPhone) !== verifiedPhone) {
       try {
-        const count = await revokeAllExceptForUser(uid, req.cookies?.pw_session_id, 'contact_change');
-        sessionsRevoked = true;
-        logger.info('[ProfileSettings] Other sessions revoked after mobile change', { uid, count });
+        otherSessionsRevoked = await revokeAllExceptForUser(uid, req.cookies?.pw_session_id, 'contact_change');
+        logger.info('[ProfileSettings] Other sessions revoked after mobile change', { uid, otherSessionsRevoked });
       } catch (e: any) {
         logger.error('[ProfileSettings] Session revoke after mobile change failed (non-blocking)', {
           uid,
@@ -1106,7 +1113,7 @@ router.post('/settings/phone/confirm-verification', async (req, res) => {
       success: true,
       phone: verifiedPhone,
       verified: true,
-      sessionsRevoked,
+      otherSessionsRevoked,
     });
   } catch (error: any) {
     if (error?.code === '23505') {
