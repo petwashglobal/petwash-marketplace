@@ -12,6 +12,7 @@ import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { contentModerationLogs } from '../../shared/schema';
+import { safeFetchBuffer, SsrfBlockedError } from '../lib/ssrfGuard';
 
 interface ModerationResult {
   isApproved: boolean;
@@ -420,15 +421,32 @@ Respond in JSON:
     }
   ): Promise<ImageModerationResult> {
     try {
-      const response = await fetch(imageUrl);
-      if (!response.ok) {
-        logger.warn('[ContentModeration] Failed to fetch image for moderation', { url: imageUrl.substring(0, 50) });
+      // SSRF: `imageUrl` is caller-influenced. A bare fetch() here would let a
+      // caller point the server at 169.254.169.254 (cloud metadata), 127.0.0.1
+      // or anything in the VPC, and — because fetch() follows redirects — a
+      // public URL answering `302 Location: http://169.254.169.254/...` would
+      // work too. safeFetchBuffer validates the scheme, the host and every
+      // resolved IP on EVERY redirect hop, and caps the buffered body.
+      const { buffer, contentType, status } = await safeFetchBuffer(imageUrl, {
+        maxBytes: 10 * 1024 * 1024,
+        timeoutMs: 10_000,
+      });
+      if (status < 200 || status >= 300) {
+        logger.warn('[ContentModeration] Failed to fetch image for moderation', { status });
         return { isApproved: true, flags: [], safetyScore: 60, explanation: 'Could not fetch image for review' };
       }
-      const buffer = Buffer.from(await response.arrayBuffer());
-      const contentType = response.headers.get('content-type') || 'image/jpeg';
-      return this.moderateImage(buffer, contentType, context);
+      return this.moderateImage(buffer, contentType || 'image/jpeg', context);
     } catch (err) {
+      if (err instanceof SsrfBlockedError) {
+        // Fail CLOSED on an SSRF attempt — this is an attack, not a hiccup.
+        logger.error('[ContentModeration] SSRF blocked for image URL', { reason: err.message });
+        return {
+          isApproved: false,
+          flags: ['ssrf_blocked'],
+          safetyScore: 0,
+          explanation: 'Image URL rejected by network policy',
+        };
+      }
       logger.error('[ContentModeration] Image URL moderation error', err);
       return { isApproved: true, flags: [], safetyScore: 60, explanation: 'Image URL moderation failed - allowed by default' };
     }

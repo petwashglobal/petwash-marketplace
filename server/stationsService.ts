@@ -6,6 +6,7 @@
 import { db } from './lib/firebase-admin';
 import { logger } from './lib/logger';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { safeFetch } from './lib/ssrfGuard';
 
 // ==================== TYPES ====================
 
@@ -873,10 +874,18 @@ export async function pingStation(stationId: string): Promise<{ success: boolean
 
     const start = Date.now();
     try {
-      const resp = await fetch(controllerUrl + '/ping', {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000),
-      });
+      // SSRF: controllerUrl is operator-configured data read out of the DB, not
+      // a constant. Anyone who can write a station row (or a future admin form)
+      // could aim this at 169.254.169.254 or a VPC-internal service and read
+      // the reply back through the heartbeat result. safeFetch resolves the
+      // host and rejects any non-public address, on every redirect hop.
+      // http: is permitted because station controllers are plaintext LAN peers,
+      // but the address rules still apply.
+      const resp = await safeFetch(
+        controllerUrl + '/ping',
+        { method: 'GET' },
+        { allowedProtocols: ['http:', 'https:'], timeoutMs: 5000, maxRedirects: 1 },
+      );
       const latency = Date.now() - start;
       if (resp.ok) {
         await updateStationHeartbeat(stationId, 'ping');

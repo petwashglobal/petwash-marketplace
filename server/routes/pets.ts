@@ -16,15 +16,25 @@ import { db as pgDb, pool } from '../db';
 import { pets as pgPets } from '@shared/schema';
 import { and, eq } from 'drizzle-orm';
 import { isSuperAdminVerified } from '../middleware/rbac';
+import { requireValidFileContent, detectFileKind, KIND_TO_MIME } from '../lib/fileMagicValidation';
 
 const router = Router();
 
 // Pet photo upload — in-memory, image-only, max 5MB.
+// SECURITY: `mimetype.startsWith('image/')` is a PREFIX test, not an
+// allowlist — it happily accepts image/svg+xml, and an SVG is a
+// script-bearing document. These photos are then made public via
+// makePublic() below, so an SVG would be a hosted XSS/phishing payload on a
+// Google-owned origin under our bucket. Enumerate the raster types instead.
+const PET_PHOTO_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic'];
+
 const petPhotoUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, cb) =>
-    file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Only image files are allowed')),
+    PET_PHOTO_MIMES.includes(file.mimetype)
+      ? cb(null, true)
+      : cb(new Error('Only JPEG, PNG, WebP, GIF or HEIC images are allowed')),
 });
 
 // ============================================
@@ -41,7 +51,7 @@ router.post('/photo', validateFirebaseToken, (req, res, next) => {
     }
     next();
   });
-}, async (req, res) => {
+}, requireValidFileContent(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/heic']), async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     if (!req.file) return res.status(400).json({ error: 'No photo file provided' });
@@ -51,8 +61,16 @@ router.post('/photo', validateFirebaseToken, (req, res, next) => {
     const fileName = `pet-photos/${uid}/${Date.now()}_${crypto.randomBytes(8).toString('hex')}.${ext}`;
     const file = bucket.file(fileName);
 
+    // Store the SNIFFED content type, never the caller's claim. The bytes are
+    // guaranteed to be a raster image by requireValidFileContent above, but a
+    // lying Content-Type would still make GCS serve a PNG/HTML polyglot as
+    // text/html.
+    const petSniffed = detectFileKind(req.file.buffer);
     await file.save(req.file.buffer, {
-      metadata: { contentType: req.file.mimetype, metadata: { uploadedBy: uid, uploadedAt: new Date().toISOString() } },
+      metadata: {
+        contentType: petSniffed ? KIND_TO_MIME[petSniffed] : 'image/jpeg',
+        metadata: { uploadedBy: uid, uploadedAt: new Date().toISOString() },
+      },
     });
     try { await file.makePublic(); } catch (e) { logger.warn('[Pets] Could not make pet photo public', e); }
 

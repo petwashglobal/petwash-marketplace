@@ -17,6 +17,7 @@ import {
   type VerificationActor,
 } from '../services/UnifiedVerificationService';
 import { sendVerificationEmailCode } from '../services/VerificationEmailDelivery';
+import { requireValidFileContent, detectFileKind, KIND_TO_MIME } from '../lib/fileMagicValidation';
 
 const router = Router();
 const photoUpload = multer({
@@ -709,7 +710,7 @@ router.post('/settings/profile/photo', (req, res, next) => {
     }
     next();
   });
-}, async (req, res) => {
+}, requireValidFileContent(['image/jpeg', 'image/png', 'image/webp']), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
@@ -743,9 +744,12 @@ router.post('/settings/profile/photo', (req, res, next) => {
     const fileName = `profile-photos/${uid}/${Date.now()}_${crypto.randomBytes(8).toString('hex')}.${req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg'}`;
     const file = bucket.file(fileName);
 
+    // Store the SNIFFED content type, never the caller's claim — this object
+    // is made public below.
+    const sniffedAvatar = detectFileKind(req.file.buffer);
     await file.save(req.file.buffer, {
       metadata: {
-        contentType: req.file.mimetype,
+        contentType: sniffedAvatar ? KIND_TO_MIME[sniffedAvatar] : 'image/jpeg',
         metadata: {
           uploadedBy: uid,
           uploadedAt: new Date().toISOString(),
