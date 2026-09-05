@@ -12733,6 +12733,51 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
+      // ── Do not mint a second live QR while a redeem is already in flight ──
+      // MONEY-CRITICAL. /redeem-wash moves this member's hold to 'scanned' the
+      // moment the bay accepts the code and the debit commits. If the on-screen
+      // QR happens to rotate right then, this endpoint would hand the member a
+      // fresh, live, replay-proof code for a wash they have ALREADY paid for —
+      // which they could present at the other bay for a SECOND debit. It would
+      // also strand the client: the poll would follow the new 'pending' row and
+      // never observe the 'scanned' one, putting the member back in the exact
+      // dead-end this whole change set exists to fix.
+      //
+      // Bounded window, deliberately: if START_PUMP never ACKs the hold stays
+      // 'scanned', and a member whose wash genuinely failed must be able to try
+      // again rather than be locked out. After the window lapses a new QR is
+      // minted normally. This gate mints nothing and refunds nothing — it only
+      // declines to issue a second code.
+      const REDEEM_IN_FLIGHT_WINDOW_MS = 3 * 60 * 1000;
+      const [inFlight] = await db
+        .select({
+          sessionId: redemptionSessions.sessionId,
+          updatedAt: redemptionSessions.updatedAt,
+        })
+        .from(redemptionSessions)
+        .where(and(
+          eq(redemptionSessions.userId, userId),
+          eq(redemptionSessions.platform, 'k9000'),
+          eq(redemptionSessions.status, 'scanned'),
+          gte(redemptionSessions.updatedAt, new Date(Date.now() - REDEEM_IN_FLIGHT_WINDOW_MS)),
+        ))
+        .orderBy(desc(redemptionSessions.updatedAt))
+        .limit(1);
+
+      if (inFlight) {
+        logger.info('[K9000 GenerateQR] Redeem already in flight — refusing to mint a second code', {
+          userId, sessionId: inFlight.sessionId,
+        });
+        return res.status(409).json({
+          error: 'השטיפה שלך כבר אושרה בעמדה. אין צורך בקוד נוסף.',
+          errorEn: 'Your wash was already accepted at the bay. No new code is needed.',
+          status: 'REDEEM_IN_FLIGHT',
+          // Hand back the live hold so the client can keep polling the RIGHT
+          // session instead of starting a new one it will never see settle.
+          sessionId: inFlight.sessionId,
+        });
+      }
+
       const passSerial = wallet?.walletId ?? userId;
       const TTL_SECONDS = 45;
 
