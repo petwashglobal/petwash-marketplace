@@ -137,6 +137,7 @@ export default function BookingSearch() {
   const [showFilters, setShowFilters] = useState(false);
   const [locating, setLocating] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [searchResults, setSearchResults] = useState<Provider[]>([]);
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
 
@@ -176,10 +177,35 @@ export default function BookingSearch() {
       return res.json();
     },
     onSuccess: (data) => {
+      setSearchError(null);
       setSearchResults(data.providers || []);
       setHasSearched(true);
     },
+    // Without this a failed search silently reverted the page to its initial
+    // "you haven't searched yet" state: hasSearched stayed false, the
+    // skeletons unmounted, and nothing was ever rendered. The customer had no
+    // way to tell a 500 from "no providers".
+    onError: (err: any) => {
+      setSearchResults([]);
+      setSearchError(
+        err?.status === 429
+          ? (isHebrew ? 'יותר מדי חיפושים. נסה/י שוב בעוד רגע.' : 'Too many searches. Please wait a moment.')
+          : (isHebrew ? 'החיפוש נכשל. בדוק/י את החיבור ונסה/י שוב.' : "Search failed. Check your connection and try again."),
+      );
+      setHasSearched(true);
+    },
   });
+
+  // Search with an EXPLICIT filter set. The recovery buttons below used to do
+  // `setFilters(...)` then `handleSearch()`, but handleSearch closes over the
+  // `filters` of the render it was created in and React state updates are
+  // async — so "Expand radius to 30 km" searched with the OLD 20 km and
+  // returned the identical empty page. Passing the next filters through
+  // removes the stale closure entirely.
+  const searchWith = useCallback((next: SearchFilters) => {
+    setFilters(next);
+    searchMutation.mutate(next);
+  }, [searchMutation]);
 
   const handleSearch = useCallback(() => {
     searchMutation.mutate(filters);
@@ -675,8 +701,20 @@ export default function BookingSearch() {
         </div>
       )}
 
+      {/* Search failed — an explicit, retryable error state. */}
+      {searchError && !searchMutation.isPending && (
+        <Card className="mt-8 p-8">
+          <div className="text-center space-y-3">
+            <p className="text-gray-700 dark:text-gray-200 font-medium">{searchError}</p>
+            <Button variant="outline" onClick={() => handleSearch()}>
+              {isHebrew ? 'נסה/י שוב' : 'Try again'}
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Results */}
-      {hasSearched && !searchMutation.isPending && (
+      {hasSearched && !searchError && !searchMutation.isPending && (
         <div className="mt-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold">
@@ -713,10 +751,7 @@ export default function BookingSearch() {
                 {filters.latitude && filters.radiusKm < 50 && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setFilters(p => ({ ...p, radiusKm: Math.min(50, p.radiusKm + 10) }));
-                      handleSearch();
-                    }}
+                    onClick={() => searchWith({ ...filters, radiusKm: Math.min(50, filters.radiusKm + 10) })}
                   >
                     📍 {isHebrew ? `הרחב רדיוס ל-${Math.min(50, filters.radiusKm + 10)} ק"מ` : `Expand radius to ${Math.min(50, filters.radiusKm + 10)} km`}
                   </Button>
@@ -726,10 +761,7 @@ export default function BookingSearch() {
                 {(filters.startDate || filters.endDate) && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setFilters(p => ({ ...p, startDate: '', endDate: '' }));
-                      handleSearch();
-                    }}
+                    onClick={() => searchWith({ ...filters, startDate: '', endDate: '' })}
                   >
                     📅 {isHebrew ? 'נסה כל תאריך זמין' : 'Try any available date'}
                   </Button>
@@ -739,10 +771,7 @@ export default function BookingSearch() {
                 {(filters.minRating > 0 || filters.verifiedOnly) && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setFilters(p => ({ ...p, minRating: 0, verifiedOnly: false }));
-                      handleSearch();
-                    }}
+                    onClick={() => searchWith({ ...filters, minRating: 0, verifiedOnly: false })}
                   >
                     ⭐ {isHebrew ? 'הסר סינון דירוג' : 'Remove rating filters'}
                   </Button>
@@ -752,10 +781,7 @@ export default function BookingSearch() {
                 {filters.serviceType !== 'grooming' && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setFilters(p => ({ ...p, serviceType: 'grooming' }));
-                      handleSearch();
-                    }}
+                    onClick={() => searchWith({ ...filters, serviceType: 'grooming' })}
                     className="inline-flex items-center gap-2"
                   >
                     <PetWashIcon name="product_scissors" size={18} label={isHebrew ? 'טיפוח' : 'Grooming'} />
@@ -765,10 +791,7 @@ export default function BookingSearch() {
                 {filters.serviceType !== 'dog_walking' && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setFilters(p => ({ ...p, serviceType: 'dog_walking' }));
-                      handleSearch();
-                    }}
+                    onClick={() => searchWith({ ...filters, serviceType: 'dog_walking' })}
                     className="inline-flex items-center gap-2"
                   >
                     <PetWashIcon name="animal_dog" size={18} label={isHebrew ? 'כלב' : 'Dog'} />
@@ -778,10 +801,7 @@ export default function BookingSearch() {
                 {filters.serviceType !== 'pet_sitting' && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setFilters(p => ({ ...p, serviceType: 'pet_sitting' }));
-                      handleSearch();
-                    }}
+                    onClick={() => searchWith({ ...filters, serviceType: 'pet_sitting' })}
                   >
                     🏠 {isHebrew ? 'עבור לשמירה' : 'Browse pet sitters'}
                   </Button>
