@@ -110,3 +110,45 @@ describe('false-success sweep — client/src/pages/forms/*.tsx no fabricated suc
     });
   }
 });
+
+/**
+ * Review addition 2026-09-06. Removing the swallow so the route answers 500
+ * instead of a false success is the right fix — but on its own it still LOSES
+ * the lead: the submitter sees an error and a single log line is the only
+ * record that a partner tried to reach us.
+ *
+ * The codebase already has the right tool for lost business data — sendAlert,
+ * used the same way when a sitter settlement fails (sitter-suite.ts). Wired it
+ * into the franchise-inquiry catch so someone can follow up, and pinned the
+ * PII property: the alert carries MASKED contact details only. An alert
+ * channel is not a side door for raw email/phone.
+ */
+describe('franchise inquiry — a lost lead is alerted, not just logged', () => {
+  const SRC = readFileSync(
+    resolve(__dirname, '..', 'routes', 'franchise.ts'),
+    'utf8',
+  );
+
+  it('the catch fires an ops alert', () => {
+    expect(SRC).toContain("import { sendAlert } from '../monitoring'");
+    expect(SRC).toMatch(/sendAlert\(\{[\s\S]{0,400}?partner lead lost/);
+  });
+
+  it('the alert carries MASKED contact details, never raw', () => {
+    const alertBlock = SRC.slice(SRC.indexOf('partner lead lost'));
+    const details = alertBlock.slice(0, alertBlock.indexOf('});'));
+    expect(details).toContain('maskEmail(');
+    expect(details).toContain('maskPhone(');
+    // The raw fields must not be interpolated straight into the alert.
+    expect(details).not.toMatch(/\$\{req\.body\?\.email\}/);
+    expect(details).not.toMatch(/\$\{req\.body\?\.phone\}/);
+  });
+
+  it('an alert failure cannot mask the original 500', () => {
+    // The sendAlert call is wrapped so a monitoring outage never changes the
+    // response the submitter gets.
+    expect(SRC).toMatch(/catch \{ \/\* alert must never mask the original failure \*\/ \}/);
+    expect(SRC).toMatch(/return res\.status\(500\)\.json\(\{ error: 'Failed to process inquiry' \}\)/);
+  });
+});
+
