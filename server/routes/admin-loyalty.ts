@@ -32,6 +32,7 @@ import { logger } from '../lib/logger';
 import { adjustLoyaltyBalance } from '../utils/loyaltyLedger';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -467,7 +468,7 @@ router.post('/adjust', async (req: any, res) => {
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /adjust', err);
-    res.status(500).json({ error: err.message || 'Failed to adjust credits' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_ADJUST_FAILED', { logContext: { op: 'adjust-credits' } });
   }
 });
 
@@ -678,7 +679,7 @@ router.post('/proof-run', async (req: any, res) => {
     await db.execute(sql`DELETE FROM experiment_decisions WHERE experiment_key = ${PROOF_EXP_KEY}`).catch(() => {});
 
     logger.error('admin-loyalty POST /proof-run', err);
-    res.status(500).json({ error: err.message || 'Proof run failed' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_PROOF_RUN_FAILED', { logContext: { op: 'proof-run' } });
   }
 });
 
@@ -757,7 +758,7 @@ router.post('/experiment-decisions/evaluate', async (_req, res) => {
     res.json({ ok: true });
   } catch (err: any) {
     logger.error('admin-loyalty POST /experiment-decisions/evaluate', err);
-    res.status(500).json({ error: err.message || 'Evaluation failed' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_EVALUATE_FAILED', { logContext: { op: 'experiment-decisions-evaluate' } });
   }
 });
 
@@ -799,7 +800,7 @@ router.post('/experiment-decisions/promote', async (req: any, res) => {
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /experiment-decisions/promote', err);
-    res.status(500).json({ error: err.message || 'Promote failed' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_PROMOTE_FAILED', { logContext: { op: 'experiment-decisions-promote' } });
   }
 });
 
@@ -874,7 +875,7 @@ router.post('/experiment-decisions/pause-variant', async (req: any, res) => {
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /experiment-decisions/pause-variant', err);
-    res.status(500).json({ error: err.message || 'Pause-variant failed' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_PAUSE_VARIANT_FAILED', { logContext: { op: 'experiment-decisions-pause-variant' } });
   }
 });
 
@@ -1121,7 +1122,7 @@ router.post('/proof-scenario', async (req, res) => {
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /proof-scenario', err);
-    res.status(500).json({ error: err.message || 'Proof run failed' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_PROOF_SCENARIO_FAILED', { logContext: { op: 'proof-scenario' } });
   }
 });
 
@@ -1154,7 +1155,7 @@ router.post('/paid-channel-kill-switch', async (req: any, res) => {
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /paid-channel-kill-switch', err);
-    res.status(500).json({ error: err.message || 'Kill switch update failed' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_KILL_SWITCH_FAILED', { logContext: { op: 'paid-channel-kill-switch' } });
   }
 });
 
@@ -1199,7 +1200,7 @@ router.post('/experiment-decisions/lock', async (req: any, res) => {
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
     logger.error('admin-loyalty POST /experiment-decisions/lock', err);
-    res.status(500).json({ error: err.message || 'Lock update failed' });
+    sendSanitizedError(res, err, 'ADMIN_LOYALTY_LOCK_UPDATE_FAILED', { logContext: { op: 'experiment-decisions-lock' } });
   }
 });
 
