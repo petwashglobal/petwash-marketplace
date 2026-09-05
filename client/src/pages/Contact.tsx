@@ -26,12 +26,24 @@ export default function Contact({ language }: ContactProps) {
   const [currentLanguage, setCurrentLanguage] = useState<Language>(language);
   const [submitting, setSubmitting] = useState(false);
   const [hubspotLoaded, setHubspotLoaded] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    subject: '',
-    message: ''
+  const [formData, setFormData] = useState(() => {
+    // PR-NAV-4: /support hands a question off here as ?message=… so the topic
+    // buttons and the help box lead somewhere real instead of nowhere. Read it
+    // once, at mount, so later typing is never clobbered. Capped and treated
+    // strictly as text for the textarea — never rendered as HTML.
+    let prefilledMessage = '';
+    if (typeof window !== 'undefined') {
+      try {
+        prefilledMessage = (new URLSearchParams(window.location.search).get('message') || '').slice(0, 1000);
+      } catch { /* malformed query string */ }
+    }
+    return {
+      name: '',
+      email: '',
+      phone: '',
+      subject: '',
+      message: prefilledMessage,
+    };
   });
 
   const handleLanguageChange = (newLanguage: Language) => {
@@ -105,7 +117,12 @@ export default function Contact({ language }: ContactProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Double-submit guard — `disabled={submitting}` on the button only applies
+    // after React re-renders; a fast double-tap can fire this handler twice
+    // first and send the same message to the support inbox twice.
+    if (submitting) return;
+
     if (!validateForm()) {
       return;
     }

@@ -429,7 +429,11 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
               ))}
             </section>
 
-            {/* Insurance trust row — every booking is covered */}
+            {/* Safety disclaimer (NOT an insurance claim). PR-LEGAL-B removed the
+                underwriter, policy number and coverage amounts from this chip:
+                §8 of the Provider & Host Services Agreement states Pet Wash Ltd
+                is not an insurance company, broker or adviser. Do not reinstate
+                any "covered by PetWash" wording without Counsel sign-off. */}
             <InsuranceTrustChip variant="row" isHebrew={isHebrew} />
 
             {/* About */}

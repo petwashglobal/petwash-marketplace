@@ -32,6 +32,9 @@ export default function SuppliersPartners() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Double-submit guard — fires before React can re-render the button into
+    // its disabled state, so a fast double-tap cannot file two inquiries.
+    if (isSubmitting) return;
     if (!formData.fullName || !formData.email || !formData.phone) {
       toast({
         title: isHe ? 'שדות חובה חסרים' : 'Missing required fields',
@@ -52,8 +55,16 @@ export default function SuppliersPartners() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, message: supplierMessage }),
       });
-      if (!res.ok) {
-        throw new Error('Failed to submit');
+      // Success must come from a real server result, not merely from "the
+      // fetch resolved". Parse defensively so an HTML error page cannot crash
+      // into a blank panel, and treat a 200 carrying {success:false} as the
+      // failure it is rather than showing a green toast over a lost lead.
+      let body: any = null;
+      try { body = await res.json(); } catch { /* non-JSON body */ }
+      if (!res.ok || body?.success !== true) {
+        throw new Error(
+          typeof body?.error === 'string' ? body.error : `Failed to submit (${res.status})`,
+        );
       }
       setSubmitted(true);
       toast({

@@ -2389,6 +2389,16 @@ export const translations: TranslationStrings = {
   'supportPage.topic.billing': { en: 'Account and billing', he: 'חשבון וחיובים', ar: 'الحساب والفواتير', ru: 'Аккаунт и оплата', fr: 'Compte et facturation', es: 'Cuenta y facturación' },
   'supportPage.topic.safety': { en: 'Safety and insurance', he: 'בטיחות וביטוח', ar: 'السلامة والتأمين', ru: 'Безопасность и страхование', fr: 'Sécurité et assurance', es: 'Seguridad y seguros' },
   'supportPage.topic.technical': { en: 'Technical issues', he: 'בעיות טכניות', ar: 'المشاكل التقنية', ru: 'Технические проблемы', fr: 'Problèmes techniques', es: 'Problemas técnicos' },
+  // PR-NAV-4 — honest /support controls. The search box, the FAQ button and
+  // the six topic buttons were all rendered with NO handler: there is no FAQ
+  // document and no help-article index behind any of them. Rather than invent
+  // FAQ answers (they would be unverified claims about washes, billing, refunds
+  // and safety), the topics now open the contact form with the question
+  // pre-filled, and the FAQ card carries an explicit coming-soon state.
+  'supportPage.searchPlaceholderHonest': { en: 'Describe your question and we will route it to support…', he: 'תארו את השאלה שלכם ונעביר אותה לתמיכה…', ar: 'صف سؤالك وسنحوله إلى الدعم…', ru: 'Опишите ваш вопрос — мы направим его в поддержку…', fr: 'Décrivez votre question et nous la transmettrons au support…', es: 'Describe tu pregunta y la enviaremos al soporte…' },
+  'supportPage.askSupport': { en: 'Ask support', he: 'שאלו את התמיכה', ar: 'اسأل الدعم', ru: 'Спросить поддержку', fr: 'Demander au support', es: 'Preguntar al soporte' },
+  'supportPage.faqComingSoon': { en: 'Coming soon', he: 'בקרוב', ar: 'قريبًا', ru: 'Скоро', fr: 'Bientôt', es: 'Próximamente' },
+  'supportPage.faqComingSoonDesc': { en: 'Our written FAQ is being prepared. In the meantime, ask us directly — we answer every message.', he: 'מרכז השאלות הנפוצות בהכנה. בינתיים אפשר לשאול אותנו ישירות — אנחנו עונים לכל פנייה.', ar: 'يجري إعداد قسم الأسئلة الشائعة. في هذه الأثناء اسألنا مباشرة — نرد على كل رسالة.', ru: 'Раздел частых вопросов готовится. А пока спросите нас напрямую — мы отвечаем на каждое сообщение.', fr: 'Notre FAQ écrite est en préparation. En attendant, posez-nous directement votre question — nous répondons à chaque message.', es: 'Nuestra sección de preguntas frecuentes está en preparación. Mientras tanto, pregúntanos directamente: respondemos a cada mensaje.' },
 
   'groomingFeedback.pageTitle': { en: 'Rate Your Grooming Experience', he: 'דרגו את חוויית הטיפוח', ar: 'قيّم تجربة العناية بحيوانك', ru: 'Оцените опыт груминга', fr: 'Évaluez votre expérience de toilettage', es: 'Califica tu experiencia de aseo' },
   'groomingFeedback.pageSubtitle': { en: 'Your feedback helps us improve our service', he: 'המשוב שלכם עוזר לנו להשתפר', ar: 'ملاحظاتك تساعدنا على تحسين خدماتنا', ru: 'Ваш отзыв помогает нам улучшать сервис', fr: 'Vos commentaires nous aident à améliorer notre service', es: 'Sus comentarios nos ayudan a mejorar nuestro servicio' },
