@@ -94,22 +94,40 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
   });
 
   const redeemMutation = useMutation<RedemptionResult, Error, void>({
-    mutationFn: () =>
-      apiRequest('POST', '/api/prestige-pass/redeem-online', {
+    // apiRequest resolves to a Response, NOT parsed JSON. This mutation is
+    // typed <RedemptionResult> and onSuccess reads result.deductionBreakdown,
+    // so without .json() `result` was a Response, deductionBreakdown was
+    // undefined, and reading .totalCovered threw a TypeError INSIDE onSuccess —
+    // after the server had already debited the wallet. The throw landed between
+    // the cache invalidations and onRedemptionSuccess?.(result), so the customer
+    // saw no confirmation and, worse, the parent booking flow never learned the
+    // payment had succeeded. Real spend, silent on both ends.
+    mutationFn: async (): Promise<RedemptionResult> => {
+      const res = await apiRequest('POST', '/api/prestige-pass/redeem-online', {
         bookingId,
         serviceType,
         amountGross,
-      }),
+      });
+      // apiRequest already threw on a non-2xx (throwIfResNotOk), so reaching
+      // here means the deduction is committed server-side.
+      return (await res.json()) as RedemptionResult;
+    },
     onSuccess: (result) => {
       setRedeemed(true);
       setTxnResult(result);
       queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/me'] });
       queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/wallet'] });
+      // Notify the parent FIRST: the booking flow depends on this callback to
+      // mark the booking paid. Cosmetic formatting must never be able to
+      // prevent it again.
+      onRedemptionSuccess?.(result);
+      const covered = result?.deductionBreakdown?.totalCovered;
       toast({
         title: 'תשלום בוצע בהצלחה',
-        description: `₪${(result.deductionBreakdown.totalCovered / 100).toFixed(0)} paid from your PetWash Privilege`,
+        description: typeof covered === 'number'
+          ? `₪${(covered / 100).toFixed(0)} paid from your PetWash Privilege`
+          : 'Paid from your PetWash Privilege',
       });
-      onRedemptionSuccess?.(result);
     },
     onError: (err) => {
       const msg = err.message || 'אירעה שגיאה בתשלום';
