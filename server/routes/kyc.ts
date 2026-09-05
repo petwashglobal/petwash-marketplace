@@ -24,6 +24,7 @@ import { logger } from '../lib/logger';
 import { loadUserRole, checkAccessLevel, type AuthenticatedRequest } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
+import { requireValidFileContent, detectFileKind, KIND_TO_MIME } from '../lib/fileMagicValidation';
 
 const router = Router();
 
@@ -89,7 +90,15 @@ function wrapUpload(mw: (req: Request, res: Response, next: (err?: any) => void)
 
 // Upload KYC document
 // SECURITY: Requires Firebase authentication - users can only upload their own KYC
-router.post('/upload', wrapUpload(upload.single('file')), async (req: Request, res: Response) => {
+// SECURITY (2026-09-05): multer here has no fileFilter, and validateKYCFile()
+// below only inspects `file.mimetype` — the client-declared Content-Type
+// header, which is trivially spoofable. A caller could therefore store an
+// HTML/SVG/script payload in their own KYC folder under a lying content type,
+// and the reviewing admin is the one who opens it. Sniff the real magic bytes
+// before the object is ever written.
+const KYC_ALLOWED_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+router.post('/upload', wrapUpload(upload.single('file')), requireValidFileContent(KYC_ALLOWED_MIMES), async (req: Request, res: Response) => {
   try {
     // SECURITY: Verify Firebase authentication
     const authHeader = req.headers.authorization;
@@ -159,9 +168,21 @@ router.post('/upload', wrapUpload(upload.single('file')), async (req: Request, r
     const fileName = `users/${uid}/kyc/${nanoid(24)}`;
     const fileUpload = bucket.file(fileName);
 
+    // Store the SNIFFED content type, never the caller's claim — otherwise the
+    // object is served back to the reviewing admin as whatever the uploader
+    // said it was. detectFileKind has already been enforced by
+    // requireValidFileContent above, so this is guaranteed non-null here; the
+    // fallback is belt-and-braces.
+    const sniffedKind = detectFileKind(file.buffer);
+    const storedContentType = sniffedKind ? KIND_TO_MIME[sniffedKind] : 'application/octet-stream';
+
     await fileUpload.save(file.buffer, {
       metadata: {
-        contentType: file.mimetype,
+        contentType: storedContentType,
+        // Defence in depth: even if this object is ever handed out via a URL,
+        // the browser must not render it as active content.
+        contentDisposition: 'attachment',
+        cacheControl: 'private, max-age=0, no-store',
       },
     });
 

@@ -11,6 +11,8 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/gates";
+import { requireValidFileContent, detectFileKind, KIND_TO_MIME } from "../lib/fileMagicValidation";
+import { sanitizeFilenameForStorage } from "../lib/safeStorageName";
 
 const router = Router();
 
@@ -72,7 +74,15 @@ async function assertContractorAccess(
  * BEFORE: No auth. Any HTTP client could upload documents to any contractor.
  * AFTER:  requireAuth + ownership check (callerId === contractorId || admin).
  */
-router.post("/upload", upload.single("file"), async (req: any, res) => {
+const CONTRACTOR_DOC_MIMES = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+const CONTRACTOR_EXT_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+};
+
+router.post("/upload", upload.single("file"), requireValidFileContent(CONTRACTOR_DOC_MIMES), async (req: any, res) => {
   try {
     const { contractorId, type, country } = req.body;
     const file = req.file;
@@ -95,15 +105,25 @@ router.post("/upload", upload.single("file"), async (req: any, res) => {
 
     const timestamp = Date.now();
     const randomId = nanoid(8);
-    const fileExtension = file.originalname.split(".").pop();
-    const filename = `${contractorId}/${type}/${timestamp}-${randomId}.${fileExtension}`;
+    // SECURITY: both `type` (request body) and the extension taken off
+    // `originalname` were caller-controlled components of the object key — a
+    // `/` or `..` in either re-parents the stored document elsewhere in the
+    // bucket. Derive the extension from the SNIFFED mime (enforced by
+    // requireValidFileContent above) and flatten `type`.
+    const sniffed = detectFileKind(file.buffer);
+    const sniffedMime = sniffed ? KIND_TO_MIME[sniffed] : "application/pdf";
+    const fileExtension = CONTRACTOR_EXT_BY_MIME[sniffedMime] ?? "bin";
+    const safeType = sanitizeFilenameForStorage(type);
+    const filename = `${contractorId}/${safeType}/${timestamp}-${randomId}.${fileExtension}`;
 
     const bucket = storage.bucket(bucketName);
     const blob = bucket.file(filename);
 
     await blob.save(file.buffer, {
       metadata: {
-        contentType: file.mimetype,
+        // Store the sniffed type, never the caller's claim.
+        contentType: sniffedMime,
+        contentDisposition: "attachment",
         metadata: {
           contractorId,
           documentType: type,

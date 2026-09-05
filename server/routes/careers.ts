@@ -18,6 +18,7 @@ import crypto from 'crypto';
 import { Storage } from '@google-cloud/storage';
 import { requireAdmin } from '../adminAuth';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { sanitizeFilenameForStorage } from '../lib/safeStorageName';
 
 // Ownership check for in-progress (draft) applications.
 //
@@ -665,8 +666,14 @@ router.post('/applications/:applicationId/documents', upload.single('document'),
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    // Upload to GCS
-    const fileName = `careers/${applicationId}/${documentType}_${Date.now()}_${req.file.originalname}`;
+    // Upload to GCS.
+    // SECURITY: both `documentType` (from the request body) and
+    // `originalname` are caller-controlled and were interpolated raw into the
+    // object key — either could inject `/` or `..` segments and re-parent the
+    // stored CV somewhere else in the bucket. Flatten both.
+    const safeDocumentType = sanitizeFilenameForStorage(documentType);
+    const safeOriginalName = sanitizeFilenameForStorage(req.file.originalname);
+    const fileName = `careers/${applicationId}/${safeDocumentType}_${Date.now()}_${safeOriginalName}`;
     const bucket = storage.bucket(BUCKET_NAME);
     const file = bucket.file(fileName);
     
