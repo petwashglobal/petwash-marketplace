@@ -48,7 +48,24 @@ function hasRipgrep(): boolean {
 function grepRepo(pattern: string): string[] {
   const cmd = hasRipgrep()
     ? `rg --no-heading -n -g '*.ts' -g '!server/tests/**' -g '!**/node_modules/**' ${JSON.stringify(pattern)} ${ROOT}`
-    : `grep -rnE --include='*.ts' --exclude-dir=node_modules --exclude-dir=tests ${JSON.stringify(pattern)} ${ROOT}`;
+    : [
+        'grep -rnE',
+        "--include='*.ts'",
+        // Prune everything that cannot hold first-party source. Without this
+        // the fallback walks .git and the build output and takes >5s, which
+        // trips vitest's default per-test timeout.
+        '--exclude-dir=node_modules',
+        '--exclude-dir=tests',
+        '--exclude-dir=.git',
+        '--exclude-dir=dist',
+        '--exclude-dir=build',
+        '--exclude-dir=coverage',
+        '--exclude-dir=.next',
+        '--exclude-dir=ios',
+        '--exclude-dir=android',
+        JSON.stringify(pattern),
+        ROOT,
+      ].join(' ');
   try {
     const out = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
     return out.split('\n').filter(Boolean);
@@ -61,11 +78,14 @@ function grepRepo(pattern: string): string[] {
 describe('prestige-pass admin gate — must never reintroduce broken pattern (AUDIT-AUTH-7 / #240)', () => {
   const PATTERN = String.raw`session\?\.user\?\.isAdmin`;
 
+  // 30s: ripgrep finishes in well under a second, but the POSIX-grep fallback
+  // (machines without rg) walks the tree serially and needs more than vitest's
+  // 5s default.
   it('the broken admin-gate pattern must not appear ANYWHERE in the repo', () => {
     const hits = grepRepo(PATTERN);
     expect(
       hits,
       `session?.user?.isAdmin is a phantom field that fails CLOSED — use isSuperAdminVerified(req) instead. Offenders:\n${hits.join('\n')}`,
     ).toEqual([]);
-  });
+  }, 30_000);
 });
