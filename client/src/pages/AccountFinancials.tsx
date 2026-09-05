@@ -41,14 +41,21 @@ type SumitSummaryResponse = {
   documents: any[];
 };
 
-/** Best-effort normaliser — SUMIT field names not yet locked to swagger. */
+/**
+ * Tolerant normaliser. The server now projects these objects through an
+ * allowlist (SumitFinancialsService.projectSavedMethod / projectDocument), so
+ * in practice `raw` already arrives in this exact shape — the lowercase
+ * fallbacks below make the function idempotent over it. The PascalCase
+ * branches are retained so a cached response from before that change still
+ * renders.
+ */
 function normaliseCard(raw: any): { id: string; last4?: string; brand?: string; expiry?: string } {
   const id = String(
-    raw?.PaymentMethodID ?? raw?.PaymentMethodId ?? raw?.ID ?? raw?.Id ?? '',
+    raw?.PaymentMethodID ?? raw?.PaymentMethodId ?? raw?.ID ?? raw?.Id ?? raw?.id ?? '',
   );
   const last4 = raw?.Last4Digits ?? raw?.Last4 ?? raw?.last4 ?? undefined;
   const brand = raw?.CardBrand ?? raw?.Brand ?? raw?.brand ?? undefined;
-  const expiry = raw?.Expiration ?? raw?.Expiry ?? raw?.expiration ?? undefined;
+  const expiry = raw?.Expiration ?? raw?.Expiry ?? raw?.expiration ?? raw?.expiry ?? undefined;
   return { id, last4, brand, expiry };
 }
 
@@ -60,14 +67,15 @@ function normaliseDocument(raw: any): {
   amount?: number;
   url?: string;
 } {
-  const id = String(raw?.DocumentID ?? raw?.ID ?? raw?.DocumentNumber ?? raw?.Number ?? '');
-  const number = raw?.DocumentNumber ?? raw?.Number ?? undefined;
-  const type = raw?.DocumentType ?? raw?.Type ?? undefined;
-  const date = raw?.IssueDate ?? raw?.Date ?? raw?.CreatedAt ?? undefined;
+  const id = String(raw?.DocumentID ?? raw?.ID ?? raw?.DocumentNumber ?? raw?.Number ?? raw?.id ?? '');
+  const number = raw?.DocumentNumber ?? raw?.Number ?? raw?.number ?? undefined;
+  const type = raw?.DocumentType ?? raw?.Type ?? raw?.type ?? undefined;
+  const date = raw?.IssueDate ?? raw?.Date ?? raw?.CreatedAt ?? raw?.date ?? undefined;
   const amount = typeof raw?.TotalAmount === 'number' ? raw.TotalAmount
     : typeof raw?.Amount === 'number' ? raw.Amount
+    : typeof raw?.amount === 'number' ? raw.amount
     : undefined;
-  const url = raw?.DocumentURL ?? raw?.URL ?? raw?.PdfURL ?? undefined;
+  const url = raw?.DocumentURL ?? raw?.URL ?? raw?.PdfURL ?? raw?.url ?? undefined;
   return { id, number, type, date, amount, url };
 }
 
