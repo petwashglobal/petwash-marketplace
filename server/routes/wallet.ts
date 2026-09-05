@@ -23,6 +23,7 @@ import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contac
 // loyalty-redemption POST — the only money-mutating path in this Apple Wallet
 // router (a scan burns discount + writes a redemption row).
 import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = express.Router();
 
@@ -1111,9 +1112,6 @@ router.post('/email-cards', requireAuth, async (req, res) => {
  * 🔒 Requires valid Firebase token from SUPER_ADMIN email
  * Used by CEO to trigger wallet pass delivery without logging in as target user
  */
-const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || '')
-  .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-
 router.post('/admin-send', async (req, res) => {
   try {
     // 1. Verify admin via Firebase Bearer token
@@ -1138,7 +1136,15 @@ router.post('/admin-send', async (req, res) => {
     if (!callerEmailVerified) {
       return res.status(403).json({ error: 'Verified email required for admin action' });
     }
-    if (!callerEmail || !SUPER_ADMIN_EMAILS.includes(callerEmail.toLowerCase())) {
+    // Delegate the allowlist match to rbac.isSuperAdmin instead of re-parsing
+    // SUPER_ADMIN_EMAILS locally — a second parse here missed rbac's
+    // CI-placeholder detection (SUPER_ADMIN_EMAILS='PLACEHOLDER_SET_ME' would
+    // otherwise "match" a literal placeholder string) and, being module-load
+    // scoped, ignored a rotated secret until process restart. The paired
+    // check (callerEmailVerified, from decoded.email_verified === true above)
+    // already gated this function on line ~1136 — isSuperAdmin() here is
+    // reached only when the caller's email_verified === true.
+    if (!callerEmail || !isSuperAdmin(callerEmail)) {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
