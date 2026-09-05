@@ -184,6 +184,7 @@ import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { isValidAdminSecret } from '../lib/admin-secret';
 import { isSuperAdminVerified } from '../middleware/rbac';
+import { isValidCronSecret } from '../lib/cron-secret';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { OperatingActionType } from '../../shared/petwash-operating-system';
@@ -8918,7 +8919,15 @@ router.post('/admin/wallet/disputes/:caseRef/escalate', async (req: Request, res
 router.post('/admin/wallet/disputes/auto-escalate', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!isSuperAdminVerified(req) && req.headers['x-internal-job'] !== 'petwash-cron') {
+    // SECURITY (2026-09-06 credential-header sweep): this gate used to accept
+    // the HARDCODED literal `x-internal-job: petwash-cron` as proof of being
+    // the cron. A constant published in source is not a secret — anyone could
+    // send that header and bypass isSuperAdminVerified entirely on a route
+    // that mutates dispute_cases and writes 'critical' finance_alerts rows.
+    // The router mounts with optionalFirebaseToken, so no login was needed
+    // either. Replaced with the canonical timing-safe CRON_SECRET check used
+    // by every /api/cron/* job. Nothing in the repo ever sent x-internal-job.
+    if (!isSuperAdminVerified(req) && !isValidCronSecret(req)) {
       return res.status(403).json({ error: 'Admin or internal cron only' });
     }
     const now = new Date();
