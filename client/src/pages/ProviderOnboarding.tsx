@@ -854,7 +854,26 @@ export default function ProviderOnboarding() {
     provider: isHebrew ? 'חברת ביטוח' : 'Insurance Provider',
   };
 
+  // Guards handleSubmit against a same-tick double fire — see the comment
+  // at the top of handleSubmit.
+  const submitInFlightRef = useRef(false);
+
   const handleSubmit = async () => {
+    // DOUBLE-TAP GUARD. The button is `disabled={loading || ...}`, but
+    // `loading` is React state: two events dispatched in the SAME tick (a
+    // mobile touch+click pair, or an Enter keypress landing with a tap)
+    // both read loading===false and both enter this handler before the
+    // re-render disables the button. A ref flips synchronously, so the
+    // second entry returns immediately.
+    // This is belt-and-braces only — the authoritative guarantee is the
+    // atomic business-idempotency claim on POST /api/provider-onboarding
+    // /apply, which also covers two tabs and client retries that no
+    // client-side flag can see.
+    if (submitInFlightRef.current) {
+      console.warn('[ProviderOnboarding] duplicate submit ignored (already in flight)');
+      return;
+    }
+    submitInFlightRef.current = true;
     const traceId = 'PROV-' + Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 7);
     console.log('[Provider Onboarding Trace]', { traceId, timestamp: new Date().toISOString() });
     if (!user) {
@@ -863,6 +882,7 @@ export default function ProviderOnboarding() {
         title: t.loginRequired,
         description: t.pleaseLogin
       });
+      submitInFlightRef.current = false;
       return;
     }
 
@@ -875,6 +895,7 @@ export default function ProviderOnboarding() {
           ? 'נדרשים מספר תעודה וסוג המסמך (ת"ז / דרכון / רישיון). אין צורך להעלות תמונה.'
           : 'Your document number and type (ID / passport / licence) are required. No photo upload needed.',
       });
+      submitInFlightRef.current = false;
       return;
     }
 
@@ -884,6 +905,7 @@ export default function ProviderOnboarding() {
         title: t.error,
         description: isHebrew ? 'יש לבחור לפחות סוג שותף אחד' : 'Please select at least one provider type'
       });
+      submitInFlightRef.current = false;
       return;
     }
 
@@ -894,6 +916,7 @@ export default function ProviderOnboarding() {
         title: t.error,
         description: declarationText.checkboxLabel,
       });
+      submitInFlightRef.current = false;
       return;
     }
 
@@ -1071,8 +1094,33 @@ export default function ProviderOnboarding() {
             he: 'לא נמצאה בקשה מתאימה. נא להתחיל את התהליך מחדש.',
             en: 'No matching application was found. Please start the process again.',
           },
+          // 409s from the submit guard. Without copy here these fell
+          // through to the generic "Error submitting application", which
+          // told a provider who HAD already applied to keep retrying —
+          // a dead end. They are re-routed to their status screen below.
+          APPLICATION_EXISTS: {
+            he: 'כבר קיימת בקשה פעילה בחשבון שלך. מעבירים אותך למסך הסטטוס.',
+            en: "You already have an application in progress. Taking you to its status.",
+          },
+          ALREADY_APPROVED: {
+            he: 'אתם כבר מאושרים כנותני שירות. מעבירים אתכם ללוח הבקרה.',
+            en: 'You are already an approved provider. Taking you to your dashboard.',
+          },
+          ALREADY_SUBMITTED: {
+            he: 'הבקשה כבר נשלחה. מעבירים אותך למסך הסטטוס.',
+            en: 'Your application was already submitted. Taking you to its status.',
+          },
+          DUPLICATE_SUBMISSION_IN_FLIGHT: {
+            he: 'הבקשה שלך כבר בשליחה. רגע אחד — אין צורך ללחוץ שוב.',
+            en: 'Your application is already being submitted. One moment — no need to tap again.',
+          },
+          IDEMPOTENCY_UNAVAILABLE: {
+            he: 'שירות השליחה אינו זמין כרגע. נסו שוב בעוד רגע — לא נוצרה בקשה כפולה.',
+            en: 'The submission service is briefly unavailable. Try again in a moment — no duplicate was created.',
+          },
         };
-        const friendly = FRIENDLY[String(data?.errorCode || '')];
+        const code = String(data?.errorCode || '');
+        const friendly = FRIENDLY[code];
         const description = friendly
           ? (isHebrew ? friendly.he : friendly.en)
           : (isHebrew ? 'שגיאה בשליחת בקשה' : 'Error submitting application');
@@ -1081,6 +1129,16 @@ export default function ProviderOnboarding() {
           title: t.error,
           description,
         });
+        // A 409 that means "you already have one" is NOT something the
+        // user can fix by pressing submit again — send them where the
+        // real state lives instead of leaving them stranded on the form.
+        if (code === 'ALREADY_APPROVED') {
+          void providerApplyCheckpoint.clear();
+          setTimeout(() => navigate('/provider/dashboard'), 1500);
+        } else if (code === 'APPLICATION_EXISTS' || code === 'ALREADY_SUBMITTED') {
+          void providerApplyCheckpoint.clear();
+          setTimeout(() => navigate('/provider/pending'), 1500);
+        }
       }
     } catch (error: any) {
       console.error('[ProviderOnboarding] Submit exception:', { traceId, error: error?.message || error });
@@ -1092,6 +1150,7 @@ export default function ProviderOnboarding() {
       });
     } finally {
       setLoading(false);
+      submitInFlightRef.current = false;
     }
   };
 
