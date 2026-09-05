@@ -44,7 +44,13 @@ describe('job-passport.ts — §44 auth discipline', () => {
   });
 
   it('actor kind is derived from isSuperAdmin, never from a body-supplied field', () => {
-    expect(SRC).toMatch(/isSuperAdmin\(email\)\s*\?\s*['"]PETWASH_STAFF['"]\s*:\s*['"]CUSTOMER['"]/);
+    // #240 migration: re-pointed from the bare `isSuperAdmin(email)` shape.
+    // That shape is the audit-199 DEFECT (allowlist match on the email
+    // STRING alone); the route was correctly migrated to
+    // isSuperAdminVerified(req) — allowlist AND email_verified === true —
+    // so this pin had begun failing against the FIXED code and was telling
+    // the next agent to restore the vulnerability. Guarantee unchanged.
+    expect(SRC).toMatch(/isSuperAdminVerified\(req as any\)\s*\?\s*['"]PETWASH_STAFF['"]\s*:\s*['"]CUSTOMER['"]/);
     expect(SRC).not.toMatch(/kind\s*=\s*req\.body\./);
     expect(SRC).not.toMatch(/actorKind\s*=\s*req\.body\./);
   });

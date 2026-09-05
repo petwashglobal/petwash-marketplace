@@ -15,7 +15,13 @@ describe('cron-nayax-sumit (2026-07-11)', () => {
     expect(CRON).toMatch(/router\.post\('\/nayax-sumit-reconcile'/);
     expect(CRON).toMatch(/x-cron-secret/);
     expect(CRON).toMatch(/timingSafeEqual/);
-    expect(CRON).toMatch(/isSuperAdmin\(email\)/);
+    // #240 migration: re-pointed from the bare `isSuperAdmin(email)` shape.
+    // That shape is the audit-199 DEFECT (allowlist match on the email
+    // STRING alone); the route was correctly migrated to
+    // isSuperAdminVerified(req) — allowlist AND email_verified === true —
+    // so this pin had begun failing against the FIXED code and was telling
+    // the next agent to restore the vulnerability. Guarantee unchanged.
+    expect(CRON).toMatch(/isSuperAdminVerified\(req as any\)/);
   });
 
   it('defaults to the two confirmed Kfar Saba bays, overridable by env', () => {

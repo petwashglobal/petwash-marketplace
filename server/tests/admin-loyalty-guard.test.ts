@@ -35,14 +35,27 @@ describe('admin-loyalty — Issue #148 P5 regression pin', () => {
     expect(SRC).not.toMatch(/router\.(get|post|put|patch|delete)\([^)]+,\s*requireAdmin\s*,/);
   });
 
-  it('still defines the local requireAdmin (super-admin email check)', () => {
-    expect(SRC).toMatch(/function requireAdmin\([^)]*\)\s*\{[\s\S]*isSuperAdmin\(/);
+  // UPDATED for the #240 migration. These two assertions used to demand the
+  // bare `isSuperAdmin(` shape. That shape is the audit-199 DEFECT: a match
+  // on the email STRING alone, which an unverified Firebase account under an
+  // unclaimed allowlisted address clears. admin-loyalty.ts was migrated to
+  // isSuperAdminVerified (allowlist AND email_verified === true), so the pin
+  // began FAILING AGAINST THE FIXED CODE — it was pinning the vulnerability
+  // in place and telling the next agent to restore it. Re-pointed at the
+  // correct shape; the guarantee (the local requireAdmin still gates on the
+  // canonical rbac super-admin primitive) is unchanged.
+  it('still defines the local requireAdmin (verified super-admin check)', () => {
+    expect(SRC).toMatch(/function requireAdmin\([^)]*\)\s*\{[\s\S]*isSuperAdminVerified\(/);
   });
 
-  it('still uses isSuperAdmin from middleware/rbac (super-admin contract preserved)', () => {
+  it('still uses isSuperAdminVerified from middleware/rbac (super-admin contract preserved)', () => {
     expect(SRC).toMatch(
-      /import\s*\{\s*isSuperAdmin\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/,
+      /import\s*\{\s*isSuperAdminVerified\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/,
     );
+  });
+
+  it('does NOT fall back to the bare allowlist primitive', () => {
+    expect(SRC).not.toMatch(/[^A-Za-z]isSuperAdmin\s*\(/);
   });
 
   it('still mounts adminLoyaltyAuditMiddleware (PR-W34d audit coverage preserved)', () => {
