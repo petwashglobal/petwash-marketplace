@@ -630,6 +630,13 @@ export default function Settings() {
 
   const [devices, setDevices] = useState<PasskeyDevice[]>([]);
   const [loadingDevices, setLoadingDevices] = useState(true);
+  // TRUTHFULNESS (auth/identity sprint 2026-09-05): the fetch below used to do
+  // `if (response.ok) { setDevices(...) } else { logger.error(...) }`. On a
+  // failed read `devices` stayed [] and the panel rendered the "no passkeys
+  // registered" empty state — presenting a security status we never actually
+  // read as a factual "you have none". Exactly the class of lie that was fixed
+  // for PIN status in the 2026-08-17 pass. Track the failure and say so.
+  const [devicesError, setDevicesError] = useState(false);
   const [editingDevice, setEditingDevice] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [deletingDevice, setDeletingDevice] = useState<string | null>(null);
@@ -660,12 +667,17 @@ export default function Settings() {
 
         if (response.ok) {
           const data = await response.json();
+          setDevicesError(false);
           setDevices(data.devices || []);
         } else {
           logger.error('Failed to fetch devices', { status: response.status });
+          setDevicesError(true);
+          setDevices([]);
         }
       } catch (error) {
         logger.error('Error fetching devices:', error);
+        setDevicesError(true);
+        setDevices([]);
       } finally {
         setLoadingDevices(false);
       }
@@ -1136,6 +1148,20 @@ export default function Settings() {
                 {loadingDevices ? (
                   <div className="flex justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-[#b0841c]" />
+                  </div>
+                ) : devicesError ? (
+                  <div
+                    className="text-center py-16 luxury-dark-surface rounded-2xl"
+                    data-testid="passkey-status-unavailable"
+                  >
+                    <h3 className="luxury-dark-heading-sm mb-3">
+                      {language === 'he' ? 'לא ניתן לטעון את המפתחות' : 'Could not load your passkeys'}
+                    </h3>
+                    <p className="luxury-dark-text-body">
+                      {language === 'he'
+                        ? 'זו תקלת טעינה — אין זו הצהרה שאין לך מפתחות. רענן את הדף ונסה שוב.'
+                        : 'This is a loading failure, not a statement that you have none. Refresh and try again.'}
+                    </p>
                   </div>
                 ) : devices.length === 0 ? (
                   <div className="text-center py-16 luxury-dark-surface rounded-2xl luxury-animate-fade-in">

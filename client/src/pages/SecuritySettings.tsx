@@ -65,7 +65,11 @@ export default function SecuritySettings() {
   });
 
   // Fetch passkeys
-  const { data: passkeysData, isLoading: passkeysLoading } = useQuery<{
+  const {
+    data: passkeysData,
+    isLoading: passkeysLoading,
+    isError: passkeysError,
+  } = useQuery<{
     ok: boolean;
     credentials: Passkey[];
   }>({
@@ -73,7 +77,14 @@ export default function SecuritySettings() {
   });
 
   const passkeys = passkeysData?.credentials || [];
-  const hasPasskey = passkeys.length > 0;
+  // TRUTHFULNESS (auth/identity sprint 2026-09-05): `hasPasskey` was derived
+  // from `passkeysData?.credentials || []`, so a FAILED query produced
+  // hasPasskey === false — indistinguishable from "this user genuinely has no
+  // passkey". Two consequences: the list showed the "no passkeys" empty state,
+  // and PasskeyEnforcementBanner told a level-8+ admin who already has a passkey
+  // that they must create one. A read we did not complete is not a status.
+  const passkeyStatusKnown = !passkeysLoading && !passkeysError;
+  const hasPasskey = passkeyStatusKnown && passkeys.length > 0;
   const passkeyRequired = (roleInfo?.level || 0) >= 8;
 
   // Create passkey mutation
@@ -217,7 +228,9 @@ export default function SecuritySettings() {
           <Skeleton className="h-24 mb-6" />
         ) : (
           <PasskeyEnforcementBanner
-            required={passkeyRequired}
+            // Suppress the enforcement nag while the status is unknown — see
+            // passkeyStatusKnown above.
+            required={passkeyRequired && passkeyStatusKnown}
             hasPasskey={hasPasskey}
             onCreate={() => createPasskeyMutation.mutate()}
             language={language}
@@ -239,6 +252,18 @@ export default function SecuritySettings() {
               <div className="space-y-4">
                 <Skeleton className="h-24" />
                 <Skeleton className="h-24" />
+              </div>
+            ) : passkeysError ? (
+              <div className="text-center py-12" data-testid="passkey-status-unavailable">
+                <Shield className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-black mb-2">
+                  {language === 'he' ? 'לא ניתן לטעון את המפתחות' : 'Could not load your passkeys'}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {language === 'he'
+                    ? 'זו תקלת טעינה — אין זו הצהרה שאין לך מפתחות. רענן את הדף ונסה שוב.'
+                    : 'This is a loading failure, not a statement that you have none. Refresh and try again.'}
+                </p>
               </div>
             ) : passkeys.length === 0 ? (
               <div className="text-center py-12" data-testid="empty-state">
