@@ -8,6 +8,7 @@ import { db } from '../db';
 import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdminVerified } from '../middleware/rbac';
+import { requireNayaxStationDevice } from '../middleware/nayaxStationDeviceAuth';
 // Modernity SEV-1 #1 (2026-08-20 audit): wrap every money-mutating POST in
 // the canonical audit middleware so admin dashboards can filter on
 // action_type. Read-only GETs remain untouched.
@@ -822,13 +823,18 @@ router.post('/credits/add', auditLogMiddleware('CREDIT_WALLET_ADJUST'), async (r
   }
 });
 
-router.post('/nayax/validate-code', nayaxValidationRateLimiter, async (req, res) => {
+// SECURITY (2026-09-05 wallet-money audit): `x-station-key` used to be
+// read, checked only for emptiness, and then never compared against any
+// registered credential — `x-station-key: anything` authenticated. The
+// header is now resolved against the real station device registry by
+// requireNayaxStationDevice (constant-time confirm, fail-closed 403),
+// and bound to the station named in the body so one bay's key cannot
+// drive another's.
+router.post('/nayax/validate-code', nayaxValidationRateLimiter, requireNayaxStationDevice({
+  bindBodyStationId: true,
+  route: 'POST /api/credit-wallet/nayax/validate-code',
+}), async (req, res) => {
   try {
-    const stationApiKey = req.headers['x-station-key'] as string;
-    if (!stationApiKey) {
-      return res.status(401).json({ success: false, error: 'Station API key required' });
-    }
-
     const { code, stationId } = req.body;
     if (!code || !stationId) {
       return res.status(400).json({ success: false, error: 'Code and stationId required' });
@@ -856,13 +862,16 @@ router.post('/nayax/validate-code', nayaxValidationRateLimiter, async (req, res)
   }
 });
 
-router.post('/nayax/acknowledge', auditLogMiddleware('WALLET_BURN'), async (req, res) => {
+// SECURITY (2026-09-05 wallet-money audit): this route BURNS wallet credit
+// and marks a hardware redemption completed. It previously accepted any
+// non-empty `x-station-key`, so a customer holding their own sessionId
+// could confirm the wash as delivered over plain HTTP without ever being
+// at the K9000 — credit spent, no wash. Now gated on a registered station
+// device credential (fail-closed 403).
+router.post('/nayax/acknowledge', auditLogMiddleware('WALLET_BURN'), requireNayaxStationDevice({
+  route: 'POST /api/credit-wallet/nayax/acknowledge',
+}), async (req, res) => {
   try {
-    const stationApiKey = req.headers['x-station-key'] as string;
-    if (!stationApiKey) {
-      return res.status(401).json({ success: false, error: 'Station API key required' });
-    }
-
     const { sessionId } = req.body;
     if (!sessionId) {
       return res.status(400).json({ success: false, error: 'Session ID required' });
