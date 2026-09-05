@@ -14,7 +14,9 @@
  *  - The caller MUST supply the AUTHENTICATED uid — never a browser-supplied
  *    userId. The Express route derives uid from the Firebase session/token.
  *  - No sumit_customer_id or CustomerHistoryURL is ever returned in the shape
- *    below — only aggregated arrays. The mapping row stays server-side.
+ *    below. The mapping row stays server-side, AND every array element is
+ *    projected through an explicit allowlist (projectSavedMethod /
+ *    projectDocument) — raw SUMIT item objects never reach the browser.
  *  - Fail-quiet:
  *      * SUMIT dormant (SUMIT_ENABLED unset or credentials missing) → returns
  *        { available:false, savedMethods:[], documents:[] } — no throw.
@@ -31,13 +33,71 @@ import { logger } from '../lib/logger';
 
 const client = new SumitClient();
 
+/** The ONLY payment-method fields that may reach the browser. */
+export interface SumitSavedMethod {
+  id: string;
+  last4?: string;
+  brand?: string;
+  expiry?: string;
+}
+
+/** The ONLY document fields that may reach the browser. */
+export interface SumitDocumentSummary {
+  id: string;
+  number?: string;
+  type?: string;
+  date?: string;
+  amount?: number;
+  url?: string;
+}
+
 export interface SumitFinancialsSummary {
   /** Whether SUMIT was reachable AND a mapping row existed. When false the two arrays are always empty. */
   available: boolean;
-  savedMethods: unknown[];
-  documents: unknown[];
+  savedMethods: SumitSavedMethod[];
+  documents: SumitDocumentSummary[];
   /** Diagnostic reason surfaced to logs — never rendered to the customer. */
   reason?: string;
+}
+
+/**
+ * Allowlist projections — SUMIT's raw item objects must never be forwarded.
+ *
+ * These arrays used to be typed unknown[] and returned verbatim, so every
+ * field SUMIT chose to include on a payment method or document went straight
+ * to the browser. That silently broke this file's own contract (see the header:
+ * "No sumit_customer_id or CustomerHistoryURL is ever returned") — the promise
+ * held for the top-level envelope, but not for anything nested inside an item.
+ *
+ * The field-name fallbacks mirror the client's former normalisers exactly, so
+ * the rendered UI is unchanged; the difference is that an unrecognised field
+ * is now DROPPED instead of forwarded. New SUMIT fields must be added here
+ * deliberately.
+ */
+function projectSavedMethod(raw: any): SumitSavedMethod {
+  return {
+    id: String(raw?.PaymentMethodID ?? raw?.PaymentMethodId ?? raw?.ID ?? raw?.Id ?? raw?.id ?? ''),
+    last4:  raw?.Last4Digits ?? raw?.Last4 ?? raw?.last4 ?? undefined,
+    brand:  raw?.CardBrand ?? raw?.Brand ?? raw?.brand ?? undefined,
+    expiry: raw?.Expiration ?? raw?.Expiry ?? raw?.expiration ?? raw?.expiry ?? undefined,
+  };
+}
+
+function projectDocument(raw: any): SumitDocumentSummary {
+  const amount = typeof raw?.TotalAmount === 'number' ? raw.TotalAmount
+    : typeof raw?.Amount === 'number' ? raw.Amount
+    : typeof raw?.amount === 'number' ? raw.amount
+    : undefined;
+  return {
+    id:     String(raw?.DocumentID ?? raw?.ID ?? raw?.DocumentNumber ?? raw?.Number ?? raw?.id ?? ''),
+    number: raw?.DocumentNumber ?? raw?.Number ?? raw?.number ?? undefined,
+    type:   raw?.DocumentType ?? raw?.Type ?? raw?.type ?? undefined,
+    date:   raw?.IssueDate ?? raw?.Date ?? raw?.CreatedAt ?? raw?.date ?? undefined,
+    amount,
+    // Per-document PDF link only. A customer-level history URL is never a
+    // per-document field and cannot arrive here.
+    url:    raw?.DocumentURL ?? raw?.URL ?? raw?.PdfURL ?? raw?.url ?? undefined,
+  };
 }
 
 /**
@@ -83,7 +143,7 @@ export async function getFinancialsSummary(uid: string): Promise<SumitFinancials
 
   return {
     available: true,
-    savedMethods: methodsRes.items || [],
-    documents: docsRes.items || [],
+    savedMethods: (methodsRes.items || []).map(projectSavedMethod),
+    documents:    (docsRes.items    || []).map(projectDocument),
   };
 }
