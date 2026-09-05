@@ -257,6 +257,16 @@ const FORBIDDEN: ReadonlyArray<ForbiddenPattern> = [
   { id: "COMPREHENSIVE_PROTECT", pattern: /comprehensive protection/i,              reason: "implies full protection by the platform" },
   { id: "CLAIM_GUARANTEED",      pattern: /claim guaranteed/i,                      reason: "guarantees claim approval" },
   { id: "FULLY_COVERED",         pattern: /fully covered/i,                         reason: "claim that pets/bookings are fully covered" },
+  // English "Full Insurance" — the EXACT original provider-recruitment
+  // banner title (providerBanner.fullInsurance) and the sitter/walker/
+  // driver "Full Insurance Included" labels PR-LEGAL-B removed. The other
+  // English patterns above ("fully insured", "comprehensive coverage") did
+  // NOT catch this exact phrasing, so a revert to en: 'Full Insurance'
+  // would have slipped through. The §8 disclaimer never uses "full
+  // insurance" (it says "their own insurance"), so this is safe to ban.
+  { id: "FULL_INSURANCE",        pattern: /\bfull\s+insurance\b/i,                  reason: "claim that the platform provides full insurance" },
+  { id: "INSURANCE_INCLUDED",    pattern: /\binsurance\s+included\b/i,              reason: "claim that insurance is included with the service" },
+  { id: "INSURED_SERVICE",       pattern: /\binsured\s+service\b/i,                 reason: "claim that the service itself is insured" },
 
   // Pet Wash–branded insurance / protection programs
   // "PetWash Protect" / "PetWash Protect™" / "PetWash Protection" = a
@@ -367,6 +377,10 @@ const KNOWN_BAD_STRINGS: ReadonlyArray<{
     needle: "Pet Wash™ provides up to" },
   { label: "Policy number PW-2026-IL-001",
     needle: "PW-2026-IL-001" },
+  { label: "ProviderRegistrationBanner 'Full Insurance' recruitment benefit",
+    needle: "Full Insurance" },
+  { label: "Sitter/Walker 'Full Insurance Included' benefit",
+    needle: "Full Insurance Included" },
 ];
 
 describe("PR-LEGAL-B — known-bad strings stay removed", () => {
@@ -848,4 +862,103 @@ describe("PR-LEGAL-A-REWRITE — Wolt/Yango integration-evidence scrub", () => {
     expect(agreementSrc).not.toMatch(/mandatory arbitration/i);
     expect(agreementSrc).not.toMatch(/binding arbitration/i);
   });
+});
+
+// ─────────────────────────────────────────────────────────────
+// PR-LEGAL-INSURANCE-KEYS — provider-recruitment benefit keys
+// must never RENDER an insurance / coverage claim.
+//
+// The broad FORBIDDEN scan above catches phrase-level regressions
+// anywhere under client/src. This block is a tighter, value-level
+// pin on the exact i18n keys that a recruitment/marketing surface
+// renders as a "benefit" (the ProviderRegistrationBanner Shield
+// benefit, and the sitter/walker/driver/franchise equivalents).
+//
+// Provider insurance is NOT a live Pet Wash product (blocked on
+// broker + counsel as of 2026-07). Until that changes, these keys
+// must resolve — in ALL six locales — to a neutral, truthful
+// "verified provider" style claim with NO insurance/coverage
+// vocabulary. If a real, backed insurance product ships, this
+// block is the intentional gate: it will fail, forcing a
+// deliberate, counsel-reviewed edit rather than a silent revert.
+// ─────────────────────────────────────────────────────────────
+
+describe("PR-LEGAL-INSURANCE-KEYS — recruitment benefit keys carry no coverage claim", () => {
+  const i18nSrc = readFileSync(
+    path.join(ROOT, "client/src/lib/i18n.ts"),
+    "utf8",
+  );
+
+  // Keys a marketing/recruitment surface renders as a headline
+  // "benefit". Each was an insurance promise before PR-LEGAL-B and
+  // is now a neutral "verified" claim.
+  const RECRUITMENT_BENEFIT_KEYS: ReadonlyArray<string> = [
+    "providerBanner.fullInsurance",
+    "providerBanner.fullInsuranceDesc",
+    "sitterSuite.fullyInsured",
+    "sitterSuite.fullyInsuredDesc",
+    "walkMyPet.fullyInsured",
+    "walkMyPet.fullyInsuredDesc",
+    "pettrek.fullyInsured",
+    "franchise.completeInsurance",
+  ];
+
+  // Insurance / coverage vocabulary across the six shipped locales.
+  // The forbidden set is applied ONLY to the VALUE object of each
+  // key — the key name itself (e.g. "…fullInsurance") is excluded
+  // from the scan, so "insur" here can only fire on rendered text.
+  // Bare Spanish "seguro" (also "safe/sure") and English "cover"
+  // (also "recover") are deliberately omitted to avoid tripping
+  // legitimate safety wording; the insurance ROOTS below still
+  // catch any real coverage claim.
+  const COVERAGE_TOKENS: ReadonlyArray<RegExp> = [
+    /insur/i,          // EN insurance / insured
+    /\bcoverage\b/i,   // EN
+    /\bcovered\b/i,    // EN
+    /ביטוח/,           // HE insurance
+    /מבוטח/,           // HE insured
+    /כיסוי/,           // HE coverage
+    /تأمين/,           // AR insurance
+    /مؤمن/,            // AR insured
+    /تغطية/,           // AR coverage
+    /страхов/i,        // RU insurance root
+    /покрыт/i,         // RU covered
+    /assur/i,          // FR assurance / assuré
+    /couvert/i,        // FR covered / coverage
+    /asegurad/i,       // ES insured
+    /\bcobertura\b/i,  // ES coverage
+  ];
+
+  /**
+   * Extracts the `{ en: '…', he: '…', … }` value object text for a
+   * given i18n key. Returns null when the key is absent. Matches up
+   * to the first `}` — these benefit values are plain text and
+   * contain no `{…}` interpolation or braces, so the shallow match
+   * is exact for this key set.
+   */
+  function extractValueObject(key: string): string | null {
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(`['"]${escaped}['"]\\s*:\\s*\\{([^}]*)\\}`);
+    const m = i18nSrc.match(re);
+    return m ? m[1] : null;
+  }
+
+  for (const key of RECRUITMENT_BENEFIT_KEYS) {
+    describe(key, () => {
+      const value = extractValueObject(key);
+
+      it("key is present in i18n.ts", () => {
+        expect(value, `i18n key not found: ${key}`).not.toBeNull();
+      });
+
+      for (const token of COVERAGE_TOKENS) {
+        it(`value contains no coverage token ${token}`, () => {
+          expect(
+            value ?? "",
+            `${key} value renders a coverage/insurance claim (${token}): ${value}`,
+          ).not.toMatch(token);
+        });
+      }
+    });
+  }
 });

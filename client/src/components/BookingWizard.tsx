@@ -734,7 +734,9 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
               </p>
             </div>
 
-            {/* Insurance — every booking through PetWash is automatically covered */}
+            {/* Safety-information disclaimer chip (§8). Pet Wash is NOT an
+                insurer and does NOT cover bookings — do not reword this to
+                imply coverage. See InsuranceTrustChip. */}
             <InsuranceTrustChip variant="card" isHebrew={isHebrew} />
           </div>
         );

@@ -274,7 +274,9 @@ export default function ProviderDetail() {
                   </div>
                 </div>
 
-                {/* Insurance trust row — booked through PetWash → automatically covered */}
+                {/* Safety-information disclaimer row (§8). Pet Wash is NOT an
+                    insurer and does NOT cover bookings — do not reword this to
+                    imply coverage. See InsuranceTrustChip. */}
                 <InsuranceTrustChip variant="row" isHebrew={isHebrew} />
 
                 {/* Trust Metrics Section */}

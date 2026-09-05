@@ -429,7 +429,9 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
               ))}
             </section>
 
-            {/* Insurance trust row — every booking is covered */}
+            {/* Safety-information disclaimer row (§8). Pet Wash is NOT an
+                insurer and does NOT cover bookings — do not reword this to
+                imply coverage. See InsuranceTrustChip. */}
             <InsuranceTrustChip variant="row" isHebrew={isHebrew} />
 
             {/* About */}
