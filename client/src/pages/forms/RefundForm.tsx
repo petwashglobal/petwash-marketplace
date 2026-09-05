@@ -28,7 +28,16 @@ export default function RefundForm() {
     try {
       const res = await apiRequest('POST', '/api/global-forms/refund-request', form);
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.requestId || 'REF-OK');
+      // Honesty fix (2026-09-05): never fabricate a "REF-OK" success ID on
+      // the client (same class as the 2026-08-24 provider-registration fix).
+      // Money-adjacent — if the server didn't return a real requestId, the
+      // refund request was never recorded; do not tell the customer it was.
+      if (!body?.requestId) {
+        const msg = body?.message || body?.error || 'The request did not go through. Please try again or email finance@petwash.co.il';
+        toast({ variant: 'destructive', title: 'Submission failed', description: msg });
+        return;
+      }
+      setSuccess(body.requestId);
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again or email finance@petwash.co.il' });
     } finally { setLoading(false); }

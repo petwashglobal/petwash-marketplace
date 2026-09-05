@@ -15144,9 +15144,20 @@ self.addEventListener('notificationclick', (event) => {
       if (supportEmailSent) {
         logger.info(`Contact form notification sent to Support@PetWash.co.il`);
       } else {
-        logger.warn('Failed to send contact form notification email');
+        // False-success fix (2026-09-05): this route has no database/Firestore
+        // row for a contact message — the notification email to
+        // Support@PetWash.co.il IS the only record. When it fails to send,
+        // the message was previously logged as a warning and the endpoint
+        // still answered {success:true}, so the visitor was told "Message
+        // sent!" while the message went nowhere and nobody at PetWash ever
+        // saw it. Fail the request honestly instead.
+        logger.error('Failed to send contact form notification email — message not delivered anywhere', { contactId });
+        return res.status(502).json({
+          success: false,
+          error: 'Failed to deliver message. Please try again or contact us on WhatsApp.'
+        });
       }
-      
+
       // Send confirmation email to user
       const confirmationSent = await EmailService.send({
         to: email,

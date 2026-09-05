@@ -10,6 +10,7 @@ import {
   franchiseInboxMessageSchema,
 } from '@shared/firestore-schema';
 import { logger } from '../lib/logger';
+import { sendAlert } from '../monitoring';
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { format } from 'date-fns';
@@ -54,18 +55,13 @@ router.post('/inquiry', async (req, res) => {
       submittedAt: new Date().toISOString(),
       status: 'new',
     };
-    try {
-      const inquiriesRef = firestore.collection('franchise_inquiries');
-      await inquiriesRef.add(inquiryData);
-    } catch (firestoreErr) {
-      logger.warn('Could not save franchise inquiry to Firestore', {
-        emailMasked: maskEmail(email),
-        phoneMasked: maskPhone(phone),
-        country,
-        city,
-        error: (firestoreErr as any)?.message,
-      });
-    }
+    // False-success fix (2026-09-05): this used to swallow a Firestore
+    // write failure in a local try/catch and still answer {success:true} —
+    // a partner lead would vanish silently while the submitter was told it
+    // went through. Let a write failure propagate to the outer catch so we
+    // answer honestly (500) instead of acknowledging a lost lead.
+    const inquiriesRef = firestore.collection('franchise_inquiries');
+    await inquiriesRef.add(inquiryData);
     logger.info('Franchise inquiry received', {
       emailMasked: maskEmail(email),
       phoneMasked: maskPhone(phone),
@@ -76,6 +72,26 @@ router.post('/inquiry', async (req, res) => {
     return res.json({ success: true, message: 'Inquiry submitted successfully' });
   } catch (error) {
     logger.error('Error processing franchise inquiry', error);
+    // Reviewed 2026-09-06. Answering 500 instead of a false success is the
+    // right call, but on its own it still loses the lead: the submitter sees
+    // an error and a log line is the only record that a partner tried to
+    // reach us. Fire the same ops alert the codebase already uses for lost
+    // business data (see sitter-suite.ts settlement failure) so someone can
+    // follow up rather than discovering it in a log search.
+    // Contact details stay MASKED here — the alert says a lead was lost and
+    // where to look; it is not a channel for raw PII.
+    try {
+      await sendAlert({
+        type: 'data_integrity',
+        severity: 'high',
+        message: 'Franchise inquiry FAILED to persist — partner lead lost',
+        details:
+          `emailMasked=${maskEmail(req.body?.email ?? '')} ` +
+          `phoneMasked=${maskPhone(req.body?.phone ?? '')} ` +
+          `country=${req.body?.country ?? '?'} city=${req.body?.city ?? '?'} ` +
+          `error=${(error as any)?.message ?? 'unknown'} — submitter was told it failed; follow up manually`,
+      });
+    } catch { /* alert must never mask the original failure */ }
     return res.status(500).json({ error: 'Failed to process inquiry' });
   }
 });

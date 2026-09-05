@@ -40,9 +40,17 @@ const contactFormSchema = z.object({
 router.post('/contact', async (req, res) => {
   try {
     const data = contactFormSchema.parse(req.body);
-    
+
     // Log to Google Sheets
-    await GoogleSheetsService.logContactForm({
+    // Honesty fix (2026-09-05, false-success sweep): logContactForm resolves
+    // to appendFormSubmission's boolean — same primitive as appendToSheet,
+    // whose ignored return value was already fixed as CRIT-2/CRIT-3 on the
+    // other handlers in this file (hr-application, sales-lead, refund-request,
+    // customer-onboarding, provider-registration). This handler had been
+    // missed: a Sheets outage returned false silently and the visitor still
+    // got {success:true}. This route has no other persistence for the
+    // message, so a failed log here loses it entirely.
+    const contactLogged = await GoogleSheetsService.logContactForm({
       name: data.name,
       email: data.email,
       phone: data.phone || '',
@@ -50,6 +58,13 @@ router.post('/contact', async (req, res) => {
       message: data.message,
       platform: data.platform,
     });
+    if (!contactLogged) {
+      logger.error('[GlobalForms] Contact form persistence FAILED — logContactForm returned false', { email: data.email, platform: data.platform });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not save your message right now. Please try again or email Support@PetWash.co.il directly.',
+      });
+    }
 
     // Send email notification to Support team
     await EmailService.send({
@@ -95,8 +110,17 @@ const feedbackSchema = z.object({
 router.post('/feedback', async (req, res) => {
   try {
     const data = feedbackSchema.parse(req.body);
-    
-    await GoogleSheetsService.logFeedbackReview(data);
+
+    // Honesty fix (2026-09-05): see /contact above — check the boolean
+    // return value instead of always answering {success:true}.
+    const feedbackLogged = await GoogleSheetsService.logFeedbackReview(data);
+    if (!feedbackLogged) {
+      logger.error('[GlobalForms] Feedback persistence FAILED — logFeedbackReview returned false', { email: data.email, platform: data.platform });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not save your feedback right now. Please try again in a few minutes.',
+      });
+    }
 
     res.json({
       success: true,
@@ -123,11 +147,20 @@ router.post('/newsletter', async (req, res) => {
   try {
     const data = newsletterSchema.parse(req.body);
     const ipAddress = req.ip || req.socket.remoteAddress || 'Unknown';
-    
-    await GoogleSheetsService.logNewsletterSignup({
+
+    // Honesty fix (2026-09-05): see /contact above — check the boolean
+    // return value instead of always answering {success:true}.
+    const newsletterLogged = await GoogleSheetsService.logNewsletterSignup({
       ...data,
       ipAddress,
     });
+    if (!newsletterLogged) {
+      logger.error('[GlobalForms] Newsletter signup persistence FAILED — logNewsletterSignup returned false', { email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not complete your signup right now. Please try again in a few minutes.',
+      });
+    }
 
     res.json({
       success: true,
@@ -159,8 +192,20 @@ const franchiseInquirySchema = z.object({
 router.post('/franchise-inquiry', async (req, res) => {
   try {
     const data = franchiseInquirySchema.parse(req.body);
-    
-    await GoogleSheetsService.logFranchiseInquiry(data);
+
+    // Honesty fix (2026-09-05): see /contact above — check the boolean
+    // return value instead of always answering {success:true}. This is a
+    // sibling lead-capture bug to the one fixed in server/routes/franchise.ts
+    // (/api/franchise/inquiry): same class of defect, different endpoint
+    // (/api/global-forms/franchise-inquiry), same "lead silently lost" risk.
+    const franchiseLogged = await GoogleSheetsService.logFranchiseInquiry(data);
+    if (!franchiseLogged) {
+      logger.error('[GlobalForms] Franchise inquiry persistence FAILED — logFranchiseInquiry returned false', { email: data.email, country: data.country });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not record your inquiry right now. Please try again or email franchise@petwash.co.il directly.',
+      });
+    }
 
     // Send email notification to franchise team
     await EmailService.send({
@@ -237,8 +282,11 @@ router.post('/k9000/quick-booking', async (req, res) => {
     
     // Generate booking ID
     const bookingId = `K9000-${Date.now()}`;
-    
-    await GoogleSheetsService.logK9000Booking({
+
+    // Honesty fix (2026-09-05): see /contact above — check the boolean
+    // return value instead of always answering {success:true, bookingId}
+    // for a booking that was never recorded anywhere.
+    const bookingLogged = await GoogleSheetsService.logK9000Booking({
       bookingId,
       customerName: data.customerName,
       email: data.email,
@@ -251,6 +299,13 @@ router.post('/k9000/quick-booking', async (req, res) => {
       paymentStatus: 'Pending',
       notes: data.notes || '',
     });
+    if (!bookingLogged) {
+      logger.error('[GlobalForms] K9000 quick booking persistence FAILED — logK9000Booking returned false', { bookingId, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not record your booking request right now. Please try again in a few minutes.',
+      });
+    }
 
     res.json({
       success: true,
@@ -573,11 +628,22 @@ router.post('/club-registration', async (req, res) => {
   try {
     const data = clubRegistrationSchema.parse(req.body);
     const memberId = `CLUB-${Date.now().toString(36).toUpperCase()}`;
-    await GoogleSheetsService.appendToSheet('Club Members', [
+    // Honesty fix (2026-09-05): appendToSheet's boolean return value was
+    // ignored here — same CRIT-2/CRIT-3 class already fixed on the other
+    // handlers in this file. A Sheets outage previously still answered
+    // {success:true, memberId} for a membership that was never recorded.
+    const clubLogged = await GoogleSheetsService.appendToSheet('Club Members', [
       new Date().toISOString(), memberId, data.plan.toUpperCase(),
       data.firstName, data.lastName, data.email, data.phone,
       data.city || '', data.petName || '', data.petType || '', data.how || '',
     ]);
+    if (!clubLogged) {
+      logger.error('[GlobalForms] Club registration persistence FAILED — appendToSheet returned false', { memberId, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not complete your registration right now. Please try again in a few minutes.',
+      });
+    }
     res.json({ success: true, memberId });
     setImmediate(() => {
       petWashOrchestrator.handleClubRegistration({
@@ -683,7 +749,11 @@ router.post('/quick-booking', async (req, res) => {
     const bookingRef = `BK-${Date.now().toString(36).toUpperCase()}`;
     // All address sub-fields stored in Sheets for full audit trail (§17b compliance)
     // NOTE: appendFormSubmissionDirect auto-prepends a timestamp — do not include one here.
-    await GoogleSheetsService.appendToSheet('Quick Bookings', [
+    // Honesty fix (2026-09-05): appendToSheet's boolean return value was
+    // ignored — same CRIT-2/CRIT-3 class already fixed on the other handlers
+    // in this file. A Sheets outage previously still answered
+    // {success:true, bookingRef} for a booking that was never recorded.
+    const quickBookingLogged = await GoogleSheetsService.appendToSheet('Quick Bookings', [
       bookingRef, data.platform, data.serviceType,
       data.date, data.time, data.firstName, data.email, data.phone,
       data.address || '',
@@ -693,6 +763,13 @@ router.post('/quick-booking', async (req, res) => {
       String(data.lat ?? ''), String(data.lng ?? ''),
       data.petName || '', data.petSize || '', 'PENDING',
     ]);
+    if (!quickBookingLogged) {
+      logger.error('[GlobalForms] Quick booking persistence FAILED — appendToSheet returned false', { bookingRef, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not record your booking request right now. Please try again in a few minutes.',
+      });
+    }
     res.json({ success: true, bookingRef });
     setImmediate(() => {
       petWashOrchestrator.handleBookingSubmission({
@@ -730,12 +807,25 @@ router.post('/legal-agreement', async (req, res) => {
     const data = legalAgreementSchema.parse(req.body);
     if (!data.accepted) return res.status(400).json({ error: 'Agreement not accepted' });
     const signatureId = `SIG-${Date.now().toString(36).toUpperCase()}`;
-    await GoogleSheetsService.appendToSheet('Legal Agreements', [
+    // Honesty fix (2026-09-05): appendToSheet's boolean return value was
+    // ignored — same CRIT-2/CRIT-3 class already fixed on the other handlers
+    // in this file, but the stakes are highest here: this is the ONLY
+    // record of a legal e-signature. A Sheets outage previously still
+    // answered {success:true, signatureId}, telling the signer their
+    // agreement was recorded when nothing was persisted anywhere.
+    const legalLogged = await GoogleSheetsService.appendToSheet('Legal Agreements', [
       data.signedAt, signatureId, data.agreementId, data.agreementVersion || '',
       data.fullName, data.idNumber, data.email,
       data.department || '', data.representingCompany || '', data.companyRegNumber || '',
       'SIGNED', req.ip || '',
     ]);
+    if (!legalLogged) {
+      logger.error('[GlobalForms] Legal agreement persistence FAILED — appendToSheet returned false', { signatureId, agreementId: data.agreementId, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not record your signature right now. Please try again in a few minutes — do not assume the agreement is signed.',
+      });
+    }
     res.json({ success: true, signatureId });
     setImmediate(() => {
       petWashOrchestrator.handleLegalAgreementSigning({

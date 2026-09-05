@@ -86,7 +86,17 @@ export default function QuickBookingForm() {
     try {
       const res = await apiRequest('POST', '/api/global-forms/quick-booking', form);
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.bookingRef || `BK-${Date.now().toString(36).toUpperCase()}`);
+      // Honesty fix (2026-09-05): never fabricate a local "BK-<timestamp>"
+      // success reference on the client (same class as the 2026-08-24
+      // provider-registration fix). If the server didn't return a real
+      // bookingRef, the booking was never recorded — a fabricated ref
+      // shows "Booking Confirmed!" for a booking that doesn't exist and
+      // can't be looked up.
+      if (!body?.bookingRef) {
+        toast({ variant: 'destructive', title: 'Booking failed', description: body?.message || body?.error || 'Please try again or call 1-800-PETWASH' });
+        return;
+      }
+      setSuccess(body.bookingRef);
     } catch {
       toast({ variant: 'destructive', title: 'Booking failed', description: 'Please try again or call 1-800-PETWASH' });
     } finally { setLoading(false); }

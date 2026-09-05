@@ -185,7 +185,16 @@ export default function LegalAgreementForm() {
         signedAt: new Date().toISOString(),
       });
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.signatureId || `SIG-${Date.now().toString(36).toUpperCase()}`);
+      // Honesty fix (2026-09-05): the comment above already flagged this —
+      // a fabricated local SIG-<timestamp> doesn't match any row the server
+      // actually wrote. This is a legally binding e-signature surface: if
+      // the server didn't return a real signatureId, the signature was
+      // never recorded and the signer must not be told it was.
+      if (!body?.signatureId) {
+        toast({ variant: 'destructive', title: 'Submission failed', description: body?.message || body?.error || 'Your signature was not recorded. Please try again or contact legal@petwash.co.il' });
+        return;
+      }
+      setSuccess(body.signatureId);
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Contact legal@petwash.co.il' });
     } finally { setLoading(false); }
