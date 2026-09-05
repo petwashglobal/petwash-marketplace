@@ -3,6 +3,8 @@ import { storage } from '../storage';
 import { logger } from '../lib/logger';
 import { logSecurityEvent } from '../services/securityEventsService';
 import { isReadOnlyAdminRole } from '@shared/adminRoles';
+import { getUserCapabilities } from '../lib/userCapabilities';
+import { hasProviderCapability } from '@shared/lib/userCapabilities';
 
 // SECURITY: Super-admin email list loaded from environment variable.
 // BEFORE: Hard-coded personal Gmail addresses — if any leaked (GitHub, CI logs,
@@ -229,31 +231,93 @@ export function requireUserStatus(...statuses: string[]) {
 }
 
 /**
- * Middleware: Checks user role is 'provider' AND userStatus is 'provider_active'
- * Returns 403 with {error: 'PROVIDER_NOT_ACTIVE'} if not
+ * Resolve the caller's id for the provider gate.
+ *
+ * `getUserId` above looks at `req.userId`, `req.user?.id` and
+ * `req.session.userId` — and NONE of those is what the Firebase auth path
+ * actually sets. `validateFirebaseToken` (server/middleware/firebase-auth.ts)
+ * sets ONLY `req.firebaseUser`, and `customAuth.requireAuth` sets
+ * `req.user = { uid, email }` — note `.uid`, not `.id`. So on
+ * `/api/provider-dashboard/v2` — mounted as
+ * `validateFirebaseToken → requireProviderActive` — getUserId() returned
+ * null and the gate answered 401 AUTH_REQUIRED to a fully approved
+ * provider holding a valid token.
+ *
+ * Deliberately local to this gate: `getUserId` is shared by requireAuth /
+ * requireRole / requireUserStatus and widening it changes behaviour on
+ * routes outside this lane. Handed off rather than fixed here.
+ */
+function getProviderGateUserId(req: Request): string | null {
+  const r = req as any;
+  return (
+    r.firebaseUser?.uid ||
+    r.userId ||
+    r.user?.uid ||
+    r.user?.id ||
+    (req.session as any)?.userId ||
+    null
+  );
+}
+
+/**
+ * Middleware: the account must hold the PROVIDER capability — i.e. the
+ * authoritative provider_applications row is 'approved'.
+ * Returns 403 {error: 'PROVIDER_NOT_ACTIVE'} otherwise.
+ *
+ * 2026-09-05 — REWRITTEN. This gate gates `/api/provider/*` and
+ * `/api/provider-dashboard/v2/*`, i.e. the provider dashboard: the final
+ * step of the provider journey. It used to require
+ *
+ *     users.role === 'provider' && users.userStatus === 'provider_active'
+ *
+ * and BOTH halves of that are unsatisfiable in the current data model:
+ *
+ *  • users.role is DELIBERATELY never flipped to 'provider' any more. The
+ *    2026-08-20 MULTI-ROLE CONTRACT forbids mutating the scalar (it deleted
+ *    the customer capability of anyone who became a provider), so both
+ *    approval paths now only set `role = 'provider' WHERE role IS NULL`
+ *    and otherwise just append to the users.roles[] array, and
+ *    post-login.ts:823 explicitly refuses the mutation. An existing
+ *    customer who is approved as a provider keeps role='customer' forever
+ *    — and the normal journey REQUIRES being a signed-in customer first.
+ *
+ *  • NOTHING in the repo ever writes users.user_status = 'provider_active'.
+ *    Staff has its write path (access-requests.ts sets 'staff_active');
+ *    the provider equivalent was never built. The column stays at its
+ *    'new' default.
+ *
+ * So the gate was dead-closed: every caller got 403 (or 401, per the id
+ * bug above), approved providers included. Fail-closed, so not an
+ * escalation — but the provider dashboard was unreachable for everyone.
+ *
+ * Authority now comes from the ONE server-side aggregator,
+ * getUserCapabilities() → provider_applications.status === 'approved'
+ * (CEO D5: users.role is a legacy CACHE, never the authority). The
+ * aggregator fails soft to empty capabilities on a DB error, which lands
+ * here as a 403 — still fail-closed.
  */
 export async function requireProviderActive(req: Request, res: Response, next: NextFunction) {
   try {
-    const userId = getUserId(req);
+    const userId = getProviderGateUserId(req);
     if (!userId) {
       logger.debug('[requireProviderActive] No userId found');
       return res.status(401).json({ error: 'AUTH_REQUIRED' });
     }
 
-    const user = await getOrLoadUser(req, userId);
-    if (!user) {
-      logger.debug(`[requireProviderActive] User not found: ${userId}`);
-      return res.status(404).json({ error: 'USER_NOT_FOUND' });
+    // Memoise per request — the aggregator runs several queries and this
+    // gate sits on a hot mount.
+    let caps = (req as any).userCapabilities;
+    if (!caps) {
+      caps = await getUserCapabilities(userId);
+      (req as any).userCapabilities = caps;
     }
 
-    const userRole = (user as any).role || 'customer';
-    const userStatus = (user as any).userStatus || 'new';
-
-    if (userRole !== 'provider' || userStatus !== 'provider_active') {
+    if (!hasProviderCapability(caps)) {
+      const status = caps?.provider?.applicationStatus ?? 'none';
       logger.debug(
-        `[requireProviderActive] User ${userId} is not provider_active (role: ${userRole}, status: ${userStatus})`
+        `[requireProviderActive] User ${userId} lacks the provider capability (application status: ${status})`
       );
-      logSecurityEvent({ userId, eventType: 'provider_gate_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 50, metadata: { role: userRole, status: userStatus, endpoint: req.originalUrl } });
+      logSecurityEvent({ userId, eventType: 'provider_gate_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 50, metadata: { applicationStatus: status, endpoint: req.originalUrl } });
       return res.status(403).json({ error: 'PROVIDER_NOT_ACTIVE' });
     }
 
