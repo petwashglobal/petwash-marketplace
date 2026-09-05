@@ -18,6 +18,7 @@ import { pool } from '../db';
 import { eventBus } from '../services/EventBus';
 import { auth as firebaseAdminAuth } from '../lib/firebase-admin';
 import { getSuperAdmins } from '../middleware/rbac';
+import { isWsOriginAllowed } from '../lib/wsOrigins';
 
 /**
  * Verify a Firebase ID token supplied over the WebSocket subscribe payload.
@@ -258,21 +259,97 @@ function wireBookingEventForwarding() {
   });
 }
 
+/**
+ * Upgrade-level abuse controls.
+ *
+ * 2026-09-05 (realtime security lane): /ws/match was created as a bare
+ * `new WebSocketServer({ server, path })` — no origin check, no connection
+ * cap, no message rate limit, no payload cap. Its sibling /realtime
+ * (server/websocket.ts) has had all four since day one.
+ *
+ * The consequence was NOT a tenant-data leak (SUBSCRIBE_ADMIN and
+ * SUBSCRIBE_BOOKING each verify a Firebase ID token per message, so an
+ * attacker's socket sees nothing it is not entitled to). It was an
+ * unauthenticated cost/availability hole: `START_SEARCH` needs no auth and
+ * runs a Neon query per message, so any page on the open internet could
+ * hold unlimited sockets and drive unlimited queries against production.
+ */
+const MATCH_WS_MAX_CONNECTIONS    = Number(process.env.MATCH_WS_MAX_CONN) || 500;
+const MATCH_WS_MAX_MSGS_PER_MIN   = Number(process.env.MATCH_WS_MAX_MSGS_PER_MIN) || 60;
+/** A legitimate frame here is a few hundred bytes; `ws` defaults to 100 MB. */
+const MATCH_WS_MAX_PAYLOAD_BYTES  = 16 * 1024;
+
+let matchWsLiveConnections = 0;
+
+/** Test seam — lets the behavioral suite assert the cap without opening 500 sockets. */
+export function __matchWsLiveConnections(): number {
+  return matchWsLiveConnections;
+}
+
 export function setupMatchingWebSocket(server: Server): void {
-  const wss = new WebSocketServer({ server, path: '/ws/match' });
+  const wss = new WebSocketServer({
+    server,
+    path: '/ws/match',
+    maxPayload: MATCH_WS_MAX_PAYLOAD_BYTES,
+    verifyClient: (info: { origin: string; req: any; secure: boolean }) => {
+      const origin = info.origin || info.req.headers?.origin;
+
+      // Origin is an abuse control, not authentication — tenant data is still
+      // gated per message. Enforced strictly in production only, so local dev
+      // and non-browser test clients (which send no Origin) keep working.
+      if (process.env.NODE_ENV === 'production') {
+        if (!origin) {
+          logger.warn('[MatchingWS] Rejected upgrade — missing Origin header');
+          return false;
+        }
+        if (!isWsOriginAllowed(origin)) {
+          logger.warn('[MatchingWS] Rejected upgrade — unauthorized origin', { origin });
+          return false;
+        }
+      } else if (origin && !isWsOriginAllowed(origin)) {
+        logger.warn('[MatchingWS] Dev mode: allowing unlisted origin', { origin });
+      }
+
+      if (matchWsLiveConnections >= MATCH_WS_MAX_CONNECTIONS) {
+        logger.warn('[MatchingWS] Rejected upgrade — connection cap reached', {
+          cap: MATCH_WS_MAX_CONNECTIONS,
+        });
+        return false;
+      }
+
+      return true;
+    },
+  });
 
   // Wire EventBus → WS forwarding once
   wireBookingEventForwarding();
 
   wss.on('connection', (ws: WebSocket, req) => {
     const ip = req.socket.remoteAddress;
-    logger.info('[MatchingWS] Client connected', { ip });
+    matchWsLiveConnections++;
+    logger.info('[MatchingWS] Client connected', { ip, live: matchWsLiveConnections });
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
     let subscribedBookings: string[] = [];
 
+    // Per-connection message budget. START_SEARCH costs a Neon query and
+    // needs no auth, so an unmetered socket is a free DB amplifier.
+    let msgCount = 0;
+    let msgWindowStart = Date.now();
+
     ws.on('message', (raw) => {
       try {
+        const now = Date.now();
+        if (now - msgWindowStart >= 60_000) {
+          msgCount = 0;
+          msgWindowStart = now;
+        }
+        msgCount++;
+        if (msgCount > MATCH_WS_MAX_MSGS_PER_MIN) {
+          send(ws, { type: 'ERROR', code: 'RATE_LIMITED', limitPerMinute: MATCH_WS_MAX_MSGS_PER_MIN });
+          return;
+        }
+
         const msg = JSON.parse(raw.toString());
 
         if (msg.type === 'START_SEARCH') {
@@ -368,7 +445,8 @@ export function setupMatchingWebSocket(server: Server): void {
       if (searchTimer) clearTimeout(searchTimer);
       for (const id of subscribedBookings) removeWatcher(id, ws);
       adminWatchers.delete(ws);
-      logger.info('[MatchingWS] Client disconnected');
+      matchWsLiveConnections = Math.max(0, matchWsLiveConnections - 1);
+      logger.info('[MatchingWS] Client disconnected', { live: matchWsLiveConnections });
     });
 
     ws.on('error', (err) => {
