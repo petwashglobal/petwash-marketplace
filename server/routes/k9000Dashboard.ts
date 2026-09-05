@@ -218,7 +218,15 @@ router.get('/dashboard/stations', async (req, res) => {
  * POST /api/k9000/dashboard/stop
  * Emergency stop for a specific wash bay
  */
-router.post('/dashboard/stop', async (req, res) => {
+// SECURITY P1 (2026-09-06 optional-auth sweep): this router mounts with
+// `optionalFirebaseToken` (routes.ts), so auth is OPTIONAL and each handler
+// must gate itself — this one did not. Anonymous callers could drive real
+// hardware (EMERGENCY STOP of a physical K9000) at the live Kfar Saba bays.
+// The only identity reference in the body was for LOGGING, and it fell back
+// to the literal 'admin', so the audit trail would have recorded an anonymous
+// caller as an administrator. requireAdmin is the canonical guard already used
+// by /bay/:bayId/health in this same file.
+router.post('/dashboard/stop', requireAdmin, async (req, res) => {
   try {
     const { stationId, reason } = req.body;
     
@@ -318,7 +326,15 @@ router.post('/dashboard/stop', async (req, res) => {
  * Remote wash activation for testing, promotional washes, or maintenance
  * Based on user's Node.js remote activation code
  */
-router.post('/dashboard/start', async (req, res) => {
+// SECURITY P1 (2026-09-06 optional-auth sweep): this router mounts with
+// `optionalFirebaseToken` (routes.ts), so auth is OPTIONAL and each handler
+// must gate itself — this one did not. Anonymous callers could drive real
+// hardware (starts a physical wash cycle) at the live Kfar Saba bays.
+// The only identity reference in the body was for LOGGING, and it fell back
+// to the literal 'admin', so the audit trail would have recorded an anonymous
+// caller as an administrator. requireAdmin is the canonical guard already used
+// by /bay/:bayId/health in this same file.
+router.post('/dashboard/start', requireAdmin, async (req, res) => {
   try {
     const { stationId, washProgram, userId, amount } = req.body;
     
