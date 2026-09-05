@@ -320,7 +320,15 @@ export default function ProviderTaskInbox() {
                   <Button
                     size="sm"
                     className="flex-1 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
-                    disabled={processingId === b.id + "accept"}
+                    // Was gated only on THIS button's own action
+                    // (`processingId === b.id + "accept"`), so tapping Decline
+                    // while Accept was still in flight for the SAME booking
+                    // stayed enabled — a mis-tap could fire accept and decline
+                    // concurrently for one booking. The server's status-gated
+                    // atomic transition rejects whichever loses the race, but
+                    // the customer-facing outcome should never depend on a
+                    // request race; block both actions while EITHER is pending.
+                    disabled={processingId === b.id + "accept" || processingId === b.id + "decline"}
                     onClick={() => handleAction(b.id, "accept")}
                   >
                     <Check className="w-3.5 h-3.5" />
@@ -330,7 +338,7 @@ export default function ProviderTaskInbox() {
                     size="sm"
                     variant="outline"
                     className="flex-1 gap-1 border-red-200 text-red-600 hover:bg-red-50"
-                    disabled={processingId === b.id + "decline"}
+                    disabled={processingId === b.id + "accept" || processingId === b.id + "decline"}
                     onClick={() => handleAction(b.id, "decline")}
                   >
                     <X className="w-3.5 h-3.5" />

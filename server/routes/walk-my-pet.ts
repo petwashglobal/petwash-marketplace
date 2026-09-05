@@ -208,6 +208,43 @@ router.patch('/walkers/location', requireAuth, async (req, res) => {
   }
 });
 
+// GET /walkers/search — Returns all active, verified walkers for client-side filtering (used by WalkMyPet listing page)
+// AUDIT-AUTH-8 (2026-09-01): deliberately unauthenticated (product needs
+// browse-before-signup UX). Mitigations: apiLimiter throttles per-IP;
+// projectPublicWalker (existing) drops KYC / banking / live GPS from
+// the DTO. Coarser geohash rounding is tracked in the POST handler.
+router.get('/walkers/search', apiLimiter, async (req, res) => {
+  try {
+    const city = (req.query.city as string) || '';
+    const walkers = await db
+      .select()
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.isActive, true))
+      .orderBy(desc(walkerProfiles.averageRating))
+      .limit(200);
+
+    // DTO round 1 (2026-08-22): previously `walkers.map(w => ({...w, ...}))`
+    // spread the FULL row on an UNAUTHENTICATED endpoint — leaking every
+    // walker's email, phone, kycVerified, governmentIdUrl, biometricMatchScore,
+    // bankAccountVerified, nayaxPayoutAccountId, commissionRate, adminNotes,
+    // internalNotes to any anonymous visitor. Uses the existing
+    // `projectPublicWalker` helper (already used at line 234 for /walkers/:id)
+    // so the surface stays a single audited allowlist. filter(Boolean) drops
+    // any row that fails projection.
+    const mapped = walkers
+      .map(w => projectPublicWalker(w))
+      .filter((w): w is NonNullable<typeof w> => w !== null);
+
+    const filtered = city
+      ? mapped.filter(w => (w.city || '').toLowerCase().includes(city.toLowerCase()))
+      : mapped;
+    res.json(filtered);
+  } catch (error: any) {
+    logger.error('[Walk My Pet] GET walkers/search error', { error: error.message });
+    res.status(500).json({ error: 'Failed to fetch walkers' });
+  }
+});
+
 // Get walker profile.
 //
 // P0-2 fix (2026-08-18): previously returned the RAW walker_profiles row,
@@ -308,42 +345,6 @@ router.patch('/walkers/:walkerId', requireAuth, async (req, res) => {
   }
 });
 
-// GET /walkers/search — Returns all active, verified walkers for client-side filtering (used by WalkMyPet listing page)
-// AUDIT-AUTH-8 (2026-09-01): deliberately unauthenticated (product needs
-// browse-before-signup UX). Mitigations: apiLimiter throttles per-IP;
-// projectPublicWalker (existing) drops KYC / banking / live GPS from
-// the DTO. Coarser geohash rounding is tracked in the POST handler.
-router.get('/walkers/search', apiLimiter, async (req, res) => {
-  try {
-    const city = (req.query.city as string) || '';
-    const walkers = await db
-      .select()
-      .from(walkerProfiles)
-      .where(eq(walkerProfiles.isActive, true))
-      .orderBy(desc(walkerProfiles.averageRating))
-      .limit(200);
-
-    // DTO round 1 (2026-08-22): previously `walkers.map(w => ({...w, ...}))`
-    // spread the FULL row on an UNAUTHENTICATED endpoint — leaking every
-    // walker's email, phone, kycVerified, governmentIdUrl, biometricMatchScore,
-    // bankAccountVerified, nayaxPayoutAccountId, commissionRate, adminNotes,
-    // internalNotes to any anonymous visitor. Uses the existing
-    // `projectPublicWalker` helper (already used at line 234 for /walkers/:id)
-    // so the surface stays a single audited allowlist. filter(Boolean) drops
-    // any row that fails projection.
-    const mapped = walkers
-      .map(w => projectPublicWalker(w))
-      .filter((w): w is NonNullable<typeof w> => w !== null);
-
-    const filtered = city
-      ? mapped.filter(w => (w.city || '').toLowerCase().includes(city.toLowerCase()))
-      : mapped;
-    res.json(filtered);
-  } catch (error: any) {
-    logger.error('[Walk My Pet] GET walkers/search error', { error: error.message });
-    res.status(500).json({ error: 'Failed to fetch walkers' });
-  }
-});
 
 // Search walkers by location (geolocation)
 // AUDIT-AUTH-8 (2026-09-01): unauthenticated by design (product browse
@@ -1263,6 +1264,37 @@ router.post('/walks/holds', requireAuth, async (req, res) => {
   }
 });
 
+// Canonical safe route — read by CustomerBookings aggregator (PR-3).
+router.get('/walks/mine', requireAuth, async (req: any, res) => {
+  try {
+    const userId: string = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const { status } = req.query;
+
+    // SECURITY: build ONE combined WHERE. A second `.where()` on a Drizzle query
+    // OVERWRITES the first (it sets config.where, not AND) — so the previous
+    // `.where(ownerId).where(status)` DROPPED the ownership scope whenever
+    // ?status= was present, returning every user's walks (cross-tenant IDOR).
+    // (2026-08-11)
+    const scope = status
+      ? and(eq(walkBookings.ownerId, userId), eq(walkBookings.status, status as string))
+      : eq(walkBookings.ownerId, userId);
+
+    const bookings = await db
+      .select()
+      .from(walkBookings)
+      .where(scope)
+      .orderBy(desc(walkBookings.createdAt));
+
+    res.json({ success: true, bookings });
+  } catch (error: any) {
+    console.error('[Walk My Pet] Get owner walks (mine) error:', error);
+    res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+
 // Get booking details.
 // AUTH (P0 audit-fix 2026-08-25): this endpoint powers WalkTracking.tsx —
 // live 5s poll for geofence, walker position, walk state. Before this fix
@@ -2013,36 +2045,6 @@ router.get('/walkers/:walkerId/reviews', async (req, res) => {
 // Out of scope: schema, booking writes, BookingEngine, payments, schema,
 // state machines, walker scoping, K9000/Nayax/Tranzila.
 
-// Canonical safe route — read by CustomerBookings aggregator (PR-3).
-router.get('/walks/mine', requireAuth, async (req: any, res) => {
-  try {
-    const userId: string = req.user?.uid || req.firebaseUser?.uid;
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    const { status } = req.query;
-
-    // SECURITY: build ONE combined WHERE. A second `.where()` on a Drizzle query
-    // OVERWRITES the first (it sets config.where, not AND) — so the previous
-    // `.where(ownerId).where(status)` DROPPED the ownership scope whenever
-    // ?status= was present, returning every user's walks (cross-tenant IDOR).
-    // (2026-08-11)
-    const scope = status
-      ? and(eq(walkBookings.ownerId, userId), eq(walkBookings.status, status as string))
-      : eq(walkBookings.ownerId, userId);
-
-    const bookings = await db
-      .select()
-      .from(walkBookings)
-      .where(scope)
-      .orderBy(desc(walkBookings.createdAt));
-
-    res.json({ success: true, bookings });
-  } catch (error: any) {
-    console.error('[Walk My Pet] Get owner walks (mine) error:', error);
-    res.status(500).json({ error: 'Failed to fetch bookings' });
-  }
-});
 
 // Legacy route — kept for backwards compatibility with existing clients.
 // Issue #153 PR-WALK-1 added requireAuth + path-uid match check; mismatch
