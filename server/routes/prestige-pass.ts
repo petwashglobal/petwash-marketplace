@@ -253,6 +253,42 @@ router.use((req: Request, res: Response, next: NextFunction) => {
   return next();
 });
 
+// ─── ADMIN GATE (2026-09-06 optional-auth sweep) ──────────────────────────────
+// SECURITY P0. This router mounts with `optionalFirebaseToken` (routes.ts),
+// so authentication is OPTIONAL — every handler is responsible for its own
+// check. 369 routes live under /admin here, and while the finance surface
+// calls requireFinanceRole(), a later-added block of ~45 governance/system
+// routes (from ~/admin/wallet/policy-outcomes/recompute onward) shipped with
+// NO check at all. `router.use('/admin/wallet', adminWalletAuditMiddleware)`
+// below looks like a gate but only WRITES AUDIT ROWS and calls next() — it
+// even labels the unauthenticated caller 'admin'.
+//
+// Proven against production 2026-09-06: an anonymous POST to
+// /api/prestige-pass/admin/wallet/kill-switches/<key>/toggle reached the
+// handler body (404 "Kill switch not found" for a nonexistent key — the
+// SELECT runs before the UPDATE). With a real key it would have flipped a
+// money kill switch. CSRF is no barrier: a Bearer header skips it and a
+// token is publicly fetchable from GET /api/csrf-token.
+//
+// One gate in front of the whole /admin surface is the only fix that cannot
+// be missed by the next route someone appends to this 17k-line file. It is
+// additive: routes that already call requireFinanceRole() still enforce
+// their finer-grained finance role behind this.
+router.use('/admin', (req: Request, res: Response, next: NextFunction) => {
+  // Machine automation path, same timing-safe ADMIN_SECRET check used at
+  // line ~2434 in this file and in middleware/stationAuth.ts.
+  if (isValidAdminSecret(req)) return next();
+
+  // #240 paired shape — allowlist + email_verified.
+  if (isSuperAdminVerified(req as any)) return next();
+
+  logger.warn('[PrestigePass] Blocked unauthenticated admin route', {
+    route: `${req.method} /api/prestige-pass/admin${req.path}`,
+    ip: req.ip,
+  });
+  return res.status(403).json({ error: 'Admin only', code: 'ADMIN_REQUIRED' });
+});
+
 // ─── Wallet error → HTTP status mapper ────────────────────────────────────────
 // Translates structured error codes from WalletLedger/WalletEngine into proper
 // HTTP responses. All codes are uppercase prefixes before the first colon.
