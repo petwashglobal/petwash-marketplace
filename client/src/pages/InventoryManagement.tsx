@@ -80,8 +80,11 @@ function toInventoryItem(row: StationSupplyRow): InventoryItem {
     minThreshold,
     // `station_supplies` has no capacity column. Treat "full" as twice the
     // reorder threshold so the progress bar and the top-up amount are at least
-    // derived from a real number instead of an invented one.
-    maxCapacity: minThreshold * 2,
+    // derived from a real number instead of an invented one. Floor at 1: the
+    // server COALESCEs a NULL threshold to 10, but a threshold STORED as 0
+    // would survive that and make maxCapacity 0, giving the progress bar a
+    // divide-by-zero and rendering "NaN%".
+    maxCapacity: Math.max(minThreshold * 2, 1),
     unit: row.supply?.unitType ?? '',
     lastRestocked: row.lastRefillAt ?? '',
     status: deriveStatus(currentLevel, minThreshold),
