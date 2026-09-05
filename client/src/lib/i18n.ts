@@ -15,6 +15,9 @@ interface TranslationStrings {
 export const translations: TranslationStrings = {
   // Navigation
   'nav.home': { en: 'Home', he: 'בית', ar: 'الرئيسية', ru: 'Главная', fr: 'Accueil', es: 'Inicio' },
+  // A11Y (agent-13, 2026-09-05): accessible name for the header/drawer
+  // language <select>, which previously announced as an unnamed combo box.
+  'nav.language': { en: 'Language', he: 'שפה', ar: 'اللغة', ru: 'Язык', fr: 'Langue', es: 'Idioma' },
   'nav.packages': { en: 'Wash Packages', he: 'חבילות רחיצה', ar: 'باقات الغسيل', ru: 'Пакеты мойки', fr: 'Forfaits de lavage', es: 'Paquetes de lavado' },
   'nav.giftCards': { en: 'e-Gift', he: 'תווי שי דיגיטליים', ar: 'قسائم رقمية', ru: 'Электронные ваучеры', fr: 'Bons cadeaux', es: 'Vales regalo' },
   'nav.loyalty': { en: '⁦PetWash™⁩ Prestige', he: '⁦PetWash™⁩ Prestige', ar: '⁦PetWash™⁩ Prestige', ru: '⁦PetWash™⁩ Prestige', fr: '⁦PetWash™⁩ Prestige', es: '⁦PetWash™⁩ Prestige' },

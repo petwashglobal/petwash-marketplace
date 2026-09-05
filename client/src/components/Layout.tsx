@@ -100,10 +100,30 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
             fontFamily: 'system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
           }}
         >
+          {/* RTL FIX (agent-13, 2026-09-05): this strip mixes Hebrew and Latin in
+              one string. Rendered as a single text node inside `direction: rtl`
+              the bidi algorithm resolves the neutral characters — the
+              parentheses and the final full stop — against the PARAGRAPH
+              direction, not the run they belong to. Verified on a 375px
+              Hebrew viewport: the closing paren jumped to the head of the
+              wrapped line and the full stop landed before "development", i.e.
+              "(Site under" / ".development — no live payments yet)".
+
+              `<bdi>` isolates the embedded run so its own direction is
+              resolved independently and its punctuation stays attached to it.
+              Both language branches embed the other script, so both need it. */}
           <span style={{ flex: 1, textAlign: 'center' }}>
-            {isRTL
-              ? 'האתר עדיין בפיתוח — אין תשלום חי כרגע. (Site under development — no live payments yet.)'
-              : 'Site still under development — no live payments yet. (האתר עדיין בפיתוח — אין תשלום חי כרגע.)'}
+            {isRTL ? (
+              <>
+                {'האתר עדיין בפיתוח — אין תשלום חי כרגע. '}
+                <bdi dir="ltr">(Site under development — no live payments yet.)</bdi>
+              </>
+            ) : (
+              <>
+                {'Site still under development — no live payments yet. '}
+                <bdi dir="rtl">(האתר עדיין בפיתוח — אין תשלום חי כרגע.)</bdi>
+              </>
+            )}
           </span>
           <button
             type="button"

@@ -247,14 +247,29 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
       </div>
       
       <style>{`
+        /* MOBILE-OVERLAY FIX (agent-13, 2026-09-05): these keyframes used to
+           set `transform` directly. A running animation's `transform` wins over
+           the element's own declaration, so it CLOBBERED the Tailwind
+           `-translate-x-1/2` that centres this fixed banner against
+           `left: 50%`. Measured on a 375px viewport: the panel rendered at
+           x=193..525 — 150px (45% of it) off the right edge of the screen,
+           for the whole 500ms entrance, with the Accept / Reject buttons
+           partly unreachable.
+
+           Fix: animate the standalone `translate` property instead of
+           `transform`. `translate` composes with `transform` rather than
+           replacing it, so the -50% X centring survives the animation. The
+           0.95 scale moves onto the `scale` property for the same reason. */
         @keyframes slideInUp {
           from {
             opacity: 0;
-            transform: translateY(20px) scale(0.95);
+            translate: 0 20px;
+            scale: 0.95;
           }
           to {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            translate: 0 0;
+            scale: 1;
           }
         }
       `}</style>

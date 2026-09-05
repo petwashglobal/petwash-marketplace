@@ -662,8 +662,13 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               <span />
               <span />
             </button>
+            {/* A11Y (agent-13, 2026-09-05): this <select> had no accessible
+                name — no <label>, no aria-label. A screen reader announced
+                only "English, combo box", giving no clue it switches the
+                site language. Measured named=false on the rendered header. */}
             <select
               className="pw-language-select pw-language-luxury"
+              aria-label={t('nav.language', currentLanguage)}
               value={currentLanguage}
               onChange={(e) => handleLanguageChange(e.target.value)}
               data-testid="select-language"
@@ -745,8 +750,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
 
         {/* Language + account row */}
         <div className="pw-mobile-lang-row">
+          {/* A11Y (agent-13, 2026-09-05): same unnamed <select> in the drawer. */}
           <select
             className="pw-language-select"
+            aria-label={t('nav.language', currentLanguage)}
             value={currentLanguage}
             onChange={(e) => handleLanguageChange(e.target.value)}
           >
