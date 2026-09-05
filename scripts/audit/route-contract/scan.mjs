@@ -260,6 +260,23 @@ export function run(root = ROOT) {
     });
   }
 
+  // SHADOWED — a STATIC route registered AFTER a param route of the same
+  // shape in the same router is unreachable: express matches in
+  // registration order, so `/sitters/:id` (line 435) swallows
+  // `/sitters/location` (line 524). No client caller is needed for this to
+  // be a real defect.
+  const shadowed = [];
+  for (const r of live) {
+    const sh = findShadow(r, shadowBucket(r));
+    if (!sh) continue;
+    shadowed.push({
+      kind: 'PATH_MISMATCH', domain: ownerDomain(r.path),
+      clientRef: '(server-side finding)',
+      server: `${r.method} ${r.path}`, serverRef: `${r.file}:${r.line}`,
+      note: `UNREACHABLE — ${sh.method} ${sh.path} is registered earlier in the same router (${sh.file}:${sh.line}) and express matches in registration order`,
+    });
+  }
+
   // SERVER_ONLY-SENSITIVE
   const calledPaths = new Set(calls.map((c) => normalizePattern(c.path)));
   const serverOnly = [];
@@ -302,7 +319,7 @@ export function run(root = ROOT) {
       rejectedNonRequests: rejected.length,
       matched: calls.length - findings.length,
     },
-    findings, authFindings, serverOnly,
+    findings, authFindings, serverOnly, shadowed,
     orphans: table.orphans, unresolved: table.unresolved,
     rejected,
   };
@@ -324,6 +341,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log('\nFindings by class:');
   for (const [k, v] of Object.entries(byKind).sort((a, b) => b[1] - a[1])) console.log(`  ${k.padEnd(20)} ${v}`);
   console.log(`  ${'AUTH_MISMATCH'.padEnd(20)} ${res.authFindings.length}`);
+  console.log(`  ${'SHADOWED(server)'.padEnd(20)} ${res.shadowed.length}`);
   console.log(`  ${'SERVER_ONLY-SENS'.padEnd(20)} ${res.serverOnly.length}`);
   console.log('');
   const groups = {};
