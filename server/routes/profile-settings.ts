@@ -113,6 +113,50 @@ export function maskEmail(email: string): string {
   return `${head}${'\u2022'.repeat(Math.max(1, local.length - head.length))}${domain}`;
 }
 
+/**
+ * What a generic profile PATCH is allowed to do with an incoming `phone`.
+ *
+ * Extracted as a PURE function so the rule can be driven directly by tests. The
+ * rule itself is the security control:
+ *
+ *   `users.phone` is UNIQUE and `users.phone_hash` is the lookup key for SMS OTP
+ *   login. If an unverified PATCH may rewrite it then whoever holds a session
+ *   can point the account's OTP, booking confirmations and receipts at a handset
+ *   they never proved they own — and, because the column is unique, can squat a
+ *   number belonging to somebody else and block the real owner from registering
+ *   it. A mobile CHANGE must go through the SMS-OTP flow (Firebase
+ *   updatePhoneNumber -> POST /settings/phone/confirm-verification), which is
+ *   the only path that actually proves possession.
+ *
+ *   FIRST-SET stays allowed: /booking-contact writes a phone for users who have
+ *   none on file, and blocking that breaks a live booking journey. It is still
+ *   normalised to E.164 so it collides correctly under the unique index.
+ */
+export type MobileWriteDecision =
+  | { action: 'reject'; code: 'INVALID_PHONE' | 'MOBILE_CHANGE_REQUIRES_VERIFICATION' }
+  | { action: 'noop' }
+  | { action: 'write'; phone: string };
+
+export function decideMobileWrite(
+  incomingRaw: string | undefined,
+  currentPhone: string | null | undefined,
+): MobileWriteDecision {
+  if (incomingRaw === undefined) return { action: 'noop' };
+
+  const incoming = normalizePhoneE164(incomingRaw);
+  if (!incoming || !isE164(incoming)) {
+    return { action: 'reject', code: 'INVALID_PHONE' };
+  }
+
+  const current = (currentPhone || '').trim();
+  if (!current) return { action: 'write', phone: incoming };
+
+  // Same subscriber written in a different format is not a change.
+  if (normalizePhoneE164(current) === incoming) return { action: 'noop' };
+
+  return { action: 'reject', code: 'MOBILE_CHANGE_REQUIRES_VERIFICATION' };
+}
+
 /** Max wrong OTP guesses before a pending email change is destroyed. */
 const EMAIL_OTP_MAX_ATTEMPTS = 5;
 
@@ -389,33 +433,26 @@ router.patch('/settings/profile', async (req, res) => {
     // The value is normalised to E.164 and the HMAC lookup key is written with
     // it (previously the UPDATE path set `phone` but left `phone_hash` pointing
     // at the OLD number, so SMS login and the profile disagreed forever).
-    if (updates.phone !== undefined) {
-      const incomingPhone = normalizePhoneE164(updates.phone);
-      const currentPhone = (existingUser?.phone || '').trim();
-
-      if (!incomingPhone || !isE164(incomingPhone)) {
-        return res.status(400).json({
-          error: 'Invalid phone number. Use international format, e.g. +972541234567.',
-          code: 'INVALID_PHONE',
-        });
-      }
-
-      if (currentPhone && normalizePhoneE164(currentPhone) !== incomingPhone) {
+    const mobileDecision = decideMobileWrite(updates.phone, existingUser?.phone);
+    if (mobileDecision.action === 'reject') {
+      if (mobileDecision.code === 'MOBILE_CHANGE_REQUIRES_VERIFICATION') {
         logger.warn('[ProfileSettings] Blocked unverified mobile CHANGE via generic PATCH', { uid });
         return res.status(400).json({
           error: 'Changing your mobile number requires SMS verification.',
           code: 'MOBILE_CHANGE_REQUIRES_VERIFICATION',
         });
       }
-
-      if (!currentPhone) {
-        updateData.phone = incomingPhone;
-        updateData.phoneHash = phoneLookupHash(incomingPhone);
-      }
-      // else: same number, normalised — nothing to write.
+      return res.status(400).json({
+        error: 'Invalid phone number. Use international format, e.g. +972541234567.',
+        code: 'INVALID_PHONE',
+      });
     }
 
     const updateData: Record<string, any> = {};
+    if (mobileDecision.action === 'write') {
+      updateData.phone = mobileDecision.phone;
+      updateData.phoneHash = phoneLookupHash(mobileDecision.phone);
+    }
     if (updates.firstName !== undefined) updateData.firstName = updates.firstName;
     if (updates.lastName !== undefined) updateData.lastName = updates.lastName;
     if (updates.birthdate !== undefined) updateData.dateOfBirth = updates.birthdate;

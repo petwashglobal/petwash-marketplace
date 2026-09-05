@@ -23,6 +23,7 @@ import {
   maskEmail,
   hasRecentAuth,
   sanitizeFirebaseAuthError,
+  decideMobileWrite,
 } from '../routes/profile-settings';
 
 describe('normalizeEmail', () => {
@@ -95,5 +96,59 @@ describe('sanitizeFirebaseAuthError', () => {
     expect(out.status).toBe(500);
     expect(out.message).toBe('Failed to update identity');
     expect(out.message).not.toContain('petwash-xyz');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('decideMobileWrite — the generic-PATCH mobile guard', () => {
+  const VICTIM = '+972541234567';
+
+  it('ALLOWS a first-set (this is the live /booking-contact journey)', () => {
+    expect(decideMobileWrite('0541234567', null)).toEqual({ action: 'write', phone: VICTIM });
+    expect(decideMobileWrite('0541234567', '')).toEqual({ action: 'write', phone: VICTIM });
+    expect(decideMobileWrite('0541234567', '   ')).toEqual({ action: 'write', phone: VICTIM });
+  });
+
+  it('normalises the first-set to E.164 so the UNIQUE index actually collides', () => {
+    for (const variant of ['0541234567', '972541234567', '541234567', '+972-54-123-4567']) {
+      expect(decideMobileWrite(variant, null), variant).toEqual({ action: 'write', phone: VICTIM });
+    }
+  });
+
+  it('REFUSES to change an existing mobile — the whole point of the control', () => {
+    // An attacker holding a session must not be able to repoint the account's
+    // SMS OTP, booking confirmations and receipts at their own handset.
+    expect(decideMobileWrite('+972500000000', VICTIM)).toEqual({
+      action: 'reject',
+      code: 'MOBILE_CHANGE_REQUIRES_VERIFICATION',
+    });
+    // ...nor squat someone else's number under the UNIQUE index.
+    expect(decideMobileWrite('0501112222', '+972529998888')).toEqual({
+      action: 'reject',
+      code: 'MOBILE_CHANGE_REQUIRES_VERIFICATION',
+    });
+  });
+
+  it('treats a re-send of the SAME number in another format as a no-op, not a change', () => {
+    // Otherwise a profile save that merely echoes the existing phone back in
+    // national format would 400 at the user for changing nothing.
+    for (const sameNumber of ['0541234567', '972541234567', '+972 54 123 4567', '541234567']) {
+      expect(decideMobileWrite(sameNumber, VICTIM), sameNumber).toEqual({ action: 'noop' });
+    }
+  });
+
+  it('rejects input that is not a real phone number instead of storing it', () => {
+    for (const junk of ['', '   ', 'not-a-phone', '12345', '+', 'abc0541234567']) {
+      expect(decideMobileWrite(junk, null), junk).toEqual({
+        action: 'reject',
+        code: 'INVALID_PHONE',
+      });
+    }
+  });
+
+  it('is a no-op when the PATCH body carries no phone at all', () => {
+    expect(decideMobileWrite(undefined, null)).toEqual({ action: 'noop' });
+    expect(decideMobileWrite(undefined, VICTIM)).toEqual({ action: 'noop' });
   });
 });
