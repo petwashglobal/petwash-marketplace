@@ -137,6 +137,24 @@ export default function AccountSecurity() {
     if (hasPasskeyLink) {
       return requestStepUpProofWithPasskey(purpose);
     }
+
+    // DEAD-END FIXED 2026-09-05. Step-up supports exactly two methods
+    // (client/src/auth/stepUp.ts): password reauth, or a passkey ceremony.
+    // PetWash signup is deliberately PASSWORDLESS — mobile OTP, email OTP,
+    // Google, Apple — so the majority of members have NO password on the
+    // Firebase account at all. For them this fell through to
+    // `window.prompt('Enter your password')`, they typed something, Firebase
+    // rejected it, and the page said "Wrong password. Try again." — blaming the
+    // user for not knowing a password that was never set, on an action that can
+    // never succeed. Detect it and say what is actually true.
+    const providers = auth.currentUser?.providerData?.map((p) => p.providerId) ?? [];
+    if (!providers.includes('password')) {
+      throw new StepUpError(
+        'PASSWORD_REAUTH_FAILED',
+        'NO_REAUTH_METHOD',
+      );
+    }
+
     const password = window.prompt('Enter your password to continue');
     if (!password) throw new StepUpError('PASSWORD_REAUTH_FAILED', 'cancelled');
     return requestStepUpProofWithPassword(purpose, password);
@@ -150,6 +168,10 @@ export default function AccountSecurity() {
         case 'PASSKEY_REAUTH_FAILED':
           return 'Face ID / passkey did not complete. Try again.';
         case 'PASSWORD_REAUTH_FAILED':
+          if (err.message === 'NO_REAUTH_METHOD') {
+            return 'This action needs you to confirm it\'s you, and this account has no password or passkey to confirm with. Add a passkey first (Settings → Security), then try again.';
+          }
+          if (err.message === 'cancelled') return 'Cancelled.';
           return 'Wrong password. Try again.';
         case 'SERVER_REJECTED':
           return err.serverCode === 'RECENCY_INSUFFICIENT'
