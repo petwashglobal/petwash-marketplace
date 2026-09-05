@@ -24,6 +24,7 @@ import { Router, type Request, type Response } from 'express';
 import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { requireBrainAccess } from '../middleware/requireBrainAccess';
 import { sumitClient } from '../services/SumitClient';
 
@@ -601,7 +602,7 @@ router.get('/stations/unmapped', async (_req: Request, res: Response) => {
     });
   } catch (err: any) {
     logger.error('[Brain] stations/unmapped failed', { error: err?.message ?? String(err) });
-    res.status(500).json({ error: 'UNMAPPED_QUERY_FAILED', message: String(err?.message ?? err).slice(0, 200) });
+    sendSanitizedError(res, err, 'UNMAPPED_QUERY_FAILED', { logContext: { op: 'stations-unmapped' } });
   }
 });
 
