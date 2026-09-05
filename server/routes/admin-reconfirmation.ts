@@ -38,7 +38,15 @@ async function requireAdmin(req: any, res: any, next: any) {
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean);
 
-    if (!adminEmails.includes((decodedToken.email || '').toLowerCase())) {
+    // #240 follow-up: the allowlist match ALONE is not authority. Firebase
+    // lets anyone register under any address they type, and it stays
+    // UNVERIFIED until the confirmation link is clicked — so an unclaimed
+    // <admin>@petwash.co.il would otherwise clear this door.
+    // email_verified is what proves the caller controls the mailbox.
+    const callerEmail = (decodedToken.email || '').toLowerCase();
+    if (!callerEmail
+        || decodedToken.email_verified !== true
+        || !adminEmails.includes(callerEmail)) {
       return res.status(403).json({ error: 'הרשאות מנהל נדרשות' });
     }
     req.userId = decodedToken.uid;

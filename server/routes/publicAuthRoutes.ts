@@ -2048,8 +2048,13 @@ publicAuthRouter.get('/api/admin/auth-events', apiLimiter, async (req, res) => {
     const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
       .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
     const callerEmail = (decodedToken.email || '').toLowerCase();
-    const isEmailVerified = decodedToken.email_verified !== false;
-    if (!adminEmails.includes(callerEmail) || !isEmailVerified) {
+    // #240 follow-up: this was `email_verified !== false`, which treats a
+    // MISSING claim as verified. Firebase omits email_verified entirely for
+    // several sign-in paths, so `undefined !== false` === true handed the
+    // gate to exactly the unverified accounts the check exists to stop.
+    // Only the boolean true counts.
+    const isEmailVerified = decodedToken.email_verified === true;
+    if (!callerEmail || !isEmailVerified || !adminEmails.includes(callerEmail)) {
       return res.status(403).json({ error: 'FORBIDDEN' });
     }
 
