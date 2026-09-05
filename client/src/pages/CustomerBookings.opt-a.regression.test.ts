@@ -78,7 +78,17 @@ describe('CustomerBookings — Issue #153 P4 OPT-A regression pin', () => {
   });
 
   it('cancel button is gated to kind !== "marketplace"', () => {
-    expect(SRC).toMatch(/canCancel[^;]*kind\s*!==\s*['"]marketplace['"]/);
+    // Implementation is now an explicit allowlist (CANCELLABLE_KINDS) rather
+    // than a `!== 'marketplace'` denylist — functionally equivalent (fails
+    // closed for any future kind too) but this pin was string-matching the
+    // old denylist form and going stale as a false negative. Assert the
+    // real invariant: 'marketplace' is absent from the allowlist that gates
+    // canCancel.
+    expect(SRC).toMatch(/const CANCELLABLE_KINDS = new Set\(\[[^\]]*\]\)/);
+    const setMatch = SRC.match(/const CANCELLABLE_KINDS = new Set\((\[[^\]]*\])\)/);
+    expect(setMatch).not.toBeNull();
+    expect(setMatch![1]).not.toMatch(/marketplace/);
+    expect(SRC).toMatch(/canCancel\s*=\s*CANCELLABLE_STATUSES\.has\(booking\.status\)[\s\S]{0,80}CANCELLABLE_KINDS\.has\(booking\.kind/);
   });
 
   it('Booking interface declares the kind discriminator (request | marketplace)', () => {

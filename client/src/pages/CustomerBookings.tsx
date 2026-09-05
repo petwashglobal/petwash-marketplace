@@ -44,6 +44,12 @@ const STATUS_TO_TAB: Record<string, TabId> = {
   accepted:    'upcoming',
   confirmed:   'upcoming',
   in_progress: 'upcoming',
+  // booking-requests.ts:2089 transitions to 'meet_greet_requested' and
+  // provider-dashboard-v2.ts:53 treats it as a live new_request — but it was
+  // never mapped here, so those bookings were invisible in every tab. The
+  // existing pin CustomerBookings.tab-map.regression.test.ts was RED on main
+  // for exactly this.
+  meet_greet_requested: 'upcoming',
   meet_greet_scheduled: 'upcoming',
   meet_greet_completed: 'upcoming',
   payment_pending: 'upcoming',
@@ -55,13 +61,51 @@ const STATUS_TO_TAB: Record<string, TabId> = {
   declined:    'archived',
   cancelled:   'archived',
   disputed:    'archived',
+
+  // ── Marketplace rail (`bookings` table) ──────────────────────────────────
+  // This page aggregates FIVE sources, and the marketplace one does not share
+  // the vocabulary above. Its state machine is BOOKING_STATUS_TRANSITIONS in
+  // shared/schema.ts and BookingLifecycleService.createBooking() opens every
+  // booking at 'inquiry'. None of those values were mapped here, and an
+  // unmapped status matches NO tab (see `filtered` below) and is skipped by
+  // the badge counts — so a marketplace booking was invisible in My Bookings
+  // from the moment it was created, straight through the customer paying a
+  // deposit and both parties confirming. It only reappeared if it reached
+  // in_progress / completed / cancelled / disputed, the four values that
+  // happen to collide with the legacy vocabulary.
+  draft:                      'pending',  // bookings.status column default
+  inquiry:                    'pending',
+  quote_sent:                 'pending',
+  quote_expired:              'pending',
+  deposit_pending:            'pending',
+  deposit_received:           'upcoming', // money taken — must be visible
+  owner_confirmed:            'upcoming',
+  provider_confirmed:         'upcoming',
+  // Awaiting the other party's completion sign-off. Mirrors how
+  // 'provider_marked_complete' is kept in Upcoming until it is truly done.
+  owner_completion_review:    'upcoming',
+  provider_completion_review: 'upcoming',
+  refunded:                   'archived',
 };
+
+/**
+ * Never let an unrecognised status make a booking vanish.
+ *
+ * `STATUS_TO_TAB[status] === activeTab` silently drops anything unmapped, which
+ * is how ten marketplace states disappeared. Any future status a rail adds
+ * lands in Pending — visible and actionable — instead of nowhere.
+ */
+function tabForStatus(status: string): TabId {
+  return STATUS_TO_TAB[status] ?? 'pending';
+}
 
 const CANCELLABLE_STATUSES = new Set([
   // 'pending_provider' (2026-07-31): legacy sitter/walk create status — the customer
   // can cancel their own request before a provider accepts (routes to the service's
   // money-safe cancel). Without this the cancel button never showed for them.
-  'pending', 'pending_provider', 'accepted', 'confirmed', 'meet_greet_scheduled', 'meet_greet_completed',
+  'pending', 'pending_provider', 'accepted', 'confirmed',
+  // a customer may still back out while the meet & greet is only requested
+  'meet_greet_requested', 'meet_greet_scheduled', 'meet_greet_completed',
 ]);
 
 // Statuses where the customer may reach their assigned provider. Mirrors the
@@ -499,12 +543,22 @@ function BookingCard({
 
   const service    = SERVICE_TYPES.find(s => s.id === booking.serviceType) || SERVICE_TYPES[0];
   const statusInfo = STATUS_COLORS[booking.status] || { bg: '#F3F4F6', text: '#374151', border: '#E5E7EB' };
-  const statusLabel = bookingStatusLabel(booking.status, isRTL ? 'he' : 'en');
+  // 'pending_provider' (2026-07-31 legacy sitter/walk create status) is not a
+  // canonical BookingStatus, so @shared/lib/bookingStatusLabels falls back to
+  // a raw-uppercase display — the customer would see "PENDING PROVIDER" on
+  // their status pill instead of the familiar "Pending" every other rail
+  // uses for the same wait state. Alias it for label purposes only; the
+  // underlying booking.status is untouched (tab routing / cancel-eligibility
+  // already treat it as an alias of 'pending' — see STATUS_TO_TAB above).
+  const statusLabel = bookingStatusLabel(
+    booking.status === 'pending_provider' ? 'pending' : booking.status,
+    isRTL ? 'he' : 'en',
+  );
   const StatusIcon  = STATUS_ICONS[booking.status] || CircleDot;
 
   const nights      = calcNights(booking.startDate, booking.endDate);
   const daysTil     = daysUntil(booking.startDate);
-  const isUpcoming  = STATUS_TO_TAB[booking.status] === 'upcoming';
+  const isUpcoming  = tabForStatus(booking.status) === 'upcoming';
   // The old guard (Issue #153 PR-3) hid Cancel for sitter/walker/academy
   // because the mutation only knew /api/booking-requests. On 2026-07-31 the
   // mutation was rewritten to route each kind to its OWNING service
@@ -528,7 +582,16 @@ function BookingCard({
                       && CANCELLABLE_KINDS.has(booking.kind ?? 'request');
   const hasRefund   = (booking.refundCents ?? 0) > 0;
   const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
-  const canReview   = booking.status === 'completed';
+  // 'completed' alone silently dropped the actionable pre-confirm window:
+  // BookingConfirmation.tsx's rating form is gated on
+  // status === 'provider_marked_complete' (canConfirm there), so a customer
+  // whose provider just marked the service done had status
+  // 'provider_marked_complete' — not 'completed' — and got NO review/confirm
+  // CTA anywhere on this page. The booking then sat waiting on a customer
+  // action they were never shown a button for. (Originally fixed in #1916,
+  // then silently reverted by the #1882 canonical-labels refactor — this
+  // restores it.)
+  const canReview   = booking.status === 'provider_marked_complete' || booking.status === 'completed';
 
   const cleanReason = (r: string | null | undefined) =>
     r?.replace(/^(DECLINED:|CANCELLED:|DISPUTE:|CANCELED:)\s*/i, '') || null;
@@ -807,15 +870,22 @@ function BookingCard({
             </button>
           )}
 
-          {/* Leave a review CTA — only for completed, not reviewed */}
+          {/* Leave a review / Confirm & rate CTA — context-aware label:
+              provider_marked_complete is the actionable step (customer must
+              confirm before the booking can settle); 'completed' is the
+              post-confirm / cron-fallback state where it reads as an
+              optional review invite instead. */}
           {canReview && (
             <button
+              data-testid={`booking-review-cta-${booking.requestId}`}
               onClick={handleReview}
               className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors"
               style={{ borderColor: `${GOLD}60`, color: GOLD, background: `${GOLD}0C` }}
             >
               <Star size={10} />
-              {isRTL ? 'כתוב ביקורת' : 'Leave a review'}
+              {booking.status === 'provider_marked_complete'
+                ? (isRTL ? 'אשר/י ודרג/י' : 'Confirm & rate')
+                : (isRTL ? 'כתוב ביקורת' : 'Leave a review')}
             </button>
           )}
 
@@ -1013,6 +1083,11 @@ export default function CustomerBookings() {
   type AcademyRow = {
     id?: string;
     bookingId?: string;
+    // trainer_bookings' status column is `booking_status` -> Drizzle property
+    // `bookingStatus`, and GET /api/academy/bookings (academy.ts:584) res.json's
+    // the raw row. `status` is NOT in that payload; it is kept only as a
+    // defensive fallback in case the endpoint is ever reshaped.
+    bookingStatus?: string;
     status?: string;
     scheduledDate?: string | null;
     startTime?: string | null;
@@ -1031,7 +1106,11 @@ export default function CustomerBookings() {
         : null;
     return {
       requestId: row.bookingId || row.id || '',
-      status: row.status || 'pending',
+      // Reading `row.status` alone always yielded undefined -> every training
+      // booking displayed as "Pending" forever: a confirmed session never moved
+      // to Upcoming, a completed one never reached Past, and a CANCELLED one
+      // stayed in the Pending tab still offering a Cancel button.
+      status: row.bookingStatus ?? row.status ?? 'pending',
       serviceType: 'training',
       startDate: row.startTime || row.scheduledDate || row.createdAt || '',
       endDate: row.endTime || row.startTime || row.scheduledDate || row.createdAt || '',
@@ -1180,7 +1259,7 @@ export default function CustomerBookings() {
 
   const filtered = useMemo(() =>
     allBookings.filter(b => {
-      const tabMatch = STATUS_TO_TAB[b.status] === activeTab;
+      const tabMatch = tabForStatus(b.status) === activeTab;
       const serviceMatch = selectedService === 'all' || b.serviceType === selectedService;
       return tabMatch && serviceMatch;
     }),
@@ -1190,8 +1269,7 @@ export default function CustomerBookings() {
   const counts = useMemo(() => {
     const c: Record<TabId, number> = { pending: 0, upcoming: 0, past: 0, archived: 0 };
     allBookings.forEach(b => {
-      const tab = STATUS_TO_TAB[b.status] as TabId | undefined;
-      if (tab) c[tab]++;
+      c[tabForStatus(b.status)]++;
     });
     return c;
   }, [allBookings]);
