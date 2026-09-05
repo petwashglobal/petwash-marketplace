@@ -72,6 +72,7 @@ import {
   findBay,
   openBaySession,
   closeBaySession,
+  settleMemberRedemptionHold,
 } from '../services/K9000RedemptionService';
 import * as MachineCommandService from '../services/MachineCommandService';
 import { createOrUpdateAlert } from '../services/AlertEngine';
@@ -1227,6 +1228,16 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
 
     const { washId, bayId, sessionId, side: authorisedSide, remainingBalance, remainingUnit } = authorization;
 
+    // ── Step 8b: Move the member's on-screen redeem hold to 'scanned' ───────
+    // The debit is committed, so the member must stop presenting QR codes —
+    // that is what prevents a second debit at the other bay. But START_PUMP has
+    // NOT been dispatched yet, so we deliberately do NOT say 'completed' here:
+    // that would be a false "wash started". 'completed' is set only by the
+    // machine ACK path below. See settleMemberRedemptionHold().
+    // Fire-and-forget + fail-soft: a UI-status write must never be able to
+    // unwind a wash whose money is already committed and audited.
+    void settleMemberRedemptionHold({ userId, status: 'scanned', washId, baySessionId: sessionId, correlationId });
+
     // ── Step 9: Dispatch START_PUMP via machine command reliability layer ──
     // authorizeRedemption() already committed the debit.  We now create a
     // tracked command record and fire it asynchronously to the controller.
@@ -1385,6 +1396,23 @@ router.post('/commands/:commandId/ack', async (req, res) => {
       status:      result.cmd?.status,
       correlationId,
     });
+
+    // The controller has now CONFIRMED it is executing START_PUMP — this is the
+    // first moment "your wash started" is a true statement, so it is the only
+    // place the member's redeem hold is allowed to reach 'completed'. Scoped to
+    // START_PUMP commands that carry the member's userId (wallet/Flow-B redeems);
+    // Flow-A card sales have no hold to settle. Idempotent: a replayed ACK
+    // matches no open hold and is a no-op. Fail-soft, never blocks the ACK 200.
+    const ackUserId = (result.cmd?.payload as any)?.userId;
+    if (result.cmd?.commandType === 'START_PUMP' && typeof ackUserId === 'string' && ackUserId) {
+      void settleMemberRedemptionHold({
+        userId:       ackUserId,
+        status:       'completed',
+        washId:       (result.cmd?.payload as any)?.washId,
+        baySessionId: result.cmd?.sessionId ?? undefined,
+        correlationId,
+      });
+    }
 
     return res.status(200).json({
       ok:        true,
