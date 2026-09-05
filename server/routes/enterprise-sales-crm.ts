@@ -8,6 +8,7 @@ import {
   insertCrmTaskSchema,
   insertCrmActivitySchema,
 } from "@shared/schema";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 
 const router = express.Router();
 
@@ -56,7 +57,7 @@ router.post("/communications", requireAdmin, async (req, res) => {
     res.status(201).json(communication);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating communication:", error);
-    res.status(400).json({ error: error.message || "Failed to create communication" });
+    sendSanitizedError(res, error, 'ENTERPRISE_SALES_CRM_CREATE_COMMUNICATION_FAILED', { status: 400, logContext: { op: 'create-communication' } });
   }
 });
 
@@ -111,7 +112,7 @@ router.post("/deal-stages", requireAdmin, async (req, res) => {
     res.status(201).json(stage);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating deal stage:", error);
-    res.status(400).json({ error: error.message || "Failed to create deal stage" });
+    sendSanitizedError(res, error, 'ENTERPRISE_SALES_CRM_CREATE_DEAL_STAGE_FAILED', { status: 400, logContext: { op: 'create-deal-stage' } });
   }
 });
 
@@ -222,7 +223,7 @@ router.post("/tasks", requireAdmin, async (req, res) => {
     res.status(201).json(task);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating task:", error);
-    res.status(400).json({ error: error.message || "Failed to create task" });
+    sendSanitizedError(res, error, 'ENTERPRISE_SALES_CRM_CREATE_TASK_FAILED', { status: 400, logContext: { op: 'create-task' } });
   }
 });
 
@@ -309,7 +310,7 @@ router.post("/activities", requireAdmin, async (req, res) => {
     res.status(201).json(activity);
   } catch (error: any) {
     logger.error("[Enterprise Sales CRM] Error creating activity:", error);
-    res.status(400).json({ error: error.message || "Failed to create activity" });
+    sendSanitizedError(res, error, 'ENTERPRISE_SALES_CRM_CREATE_ACTIVITY_FAILED', { status: 400, logContext: { op: 'create-activity' } });
   }
 });
 
