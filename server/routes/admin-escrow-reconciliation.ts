@@ -24,6 +24,7 @@ import { escrowHoldings, PETWASH_COMMISSION_RATE } from '@shared/schema';
 import { vatFromInclusive } from '@shared/money';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { desc, eq, gte, lte, and, or } from 'drizzle-orm';
 import { requireAuth } from '../middleware/gates';
 import { logAuditEvent } from '../middleware/auditLog';
@@ -273,7 +274,7 @@ router.get('/reconciliation', requireAuth, async (req: Request, res: Response) =
 
   } catch (err: any) {
     logger.error('[EscrowRecon] Failed to build reconciliation view', { error: err.message });
-    return res.status(500).json({ error: 'RECON_FAILED', message: err.message });
+    return sendSanitizedError(res, err, 'ESCROW_RECON_VIEW_FAILED', { logContext: { op: 'reconciliation-view' } });
   }
 });
 
@@ -331,7 +332,7 @@ router.get('/reconciliation/booking/:bookingId', requireAuth, async (req: Reques
 
   } catch (err: any) {
     logger.error('[EscrowRecon] Booking reconciliation failed', { bookingId, error: err.message });
-    return res.status(500).json({ error: 'RECON_FAILED', message: err.message });
+    return sendSanitizedError(res, err, 'ESCROW_RECON_BOOKING_FAILED', { logContext: { op: 'reconciliation-booking', bookingId } });
   }
 });
 
@@ -468,7 +469,7 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
 
   } catch (err: any) {
     logger.error('[EscrowRecon] Sync failed', { escrowId, error: err.message });
-    return res.status(500).json({ error: 'SYNC_FAILED', message: err.message });
+    return sendSanitizedError(res, err, 'ESCROW_RECON_SYNC_FAILED', { logContext: { op: 'reconciliation-sync', escrowId } });
   }
 });
 
