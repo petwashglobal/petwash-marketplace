@@ -83,6 +83,7 @@ import {
   groomingFeedback,
 } from '@shared/schema';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -370,7 +371,7 @@ router.get('/partner-report', requireAdmin, async (_req: Request, res: Response)
     });
   } catch (err: any) {
     logger.error('[admin-buildings-partners] partner-report failed', { error: err?.message });
-    return res.status(500).json({ wired: false, error: 'partner_report_failed', message: err?.message });
+    return sendSanitizedError(res, err, 'partner_report_failed', { logContext: { op: 'partner-report' } });
   }
 });
 
@@ -469,7 +470,7 @@ router.get('/buildings', requireAdmin, async (_req: Request, res: Response) => {
     });
   } catch (err: any) {
     logger.error('[admin-buildings-partners] buildings failed', { error: err?.message });
-    return res.status(500).json({ wired: false, error: 'buildings_failed', message: err?.message });
+    return sendSanitizedError(res, err, 'buildings_failed', { logContext: { op: 'buildings' } });
   }
 });
 
