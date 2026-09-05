@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { db } from '../lib/firebase-admin';
 import { EmployeeRole } from '@shared/firestore-schema';
 import { logger } from '../lib/logger';
+import { isSuperAdminVerified } from './rbac';
 
 // Extend Express Request to include employee profile
 declare global {
@@ -94,8 +95,10 @@ export async function optionalEmployeeProfile(
     const email = req.firebaseUser.email;
     
     // SECURITY: Super-admin bypass reads from env var (not hardcoded email).
-    const _superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-    if (email && _superAdminEmails.includes(email.toLowerCase())) {
+    // #240 follow-up: this branch MINTS req.employee with role 'admin'
+    // out of thin air. On the email string alone it was a full staff
+    // identity for anyone holding an unverified allowlisted address.
+    if (isSuperAdminVerified(req)) {
       logger.info(`[Auth] Super admin access granted (optionalEmployeeProfile): ${email}`);
       req.employee = {
         uid,
@@ -179,8 +182,10 @@ export async function loadEmployeeProfile(
     const email = req.firebaseUser.email;
     
     // SECURITY: Super-admin bypass reads from env var (not hardcoded email).
-    const _superAdminEmails2 = (process.env.SUPER_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-    if (email && _superAdminEmails2.includes(email.toLowerCase())) {
+    // #240 follow-up: this branch MINTS req.employee with role 'admin'
+    // out of thin air. On the email string alone it was a full staff
+    // identity for anyone holding an unverified allowlisted address.
+    if (isSuperAdminVerified(req)) {
       logger.info(`[Auth] Super admin access granted (loadEmployeeProfile): ${email}`);
       req.employee = {
         uid,

@@ -11,6 +11,7 @@
 import { Router, Request, Response } from 'express';
 import admin, { db as firestore } from '../lib/firebase-admin';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { pushNotificationSchema } from '@shared/firestore-fcm';
 import { z } from 'zod';
@@ -91,12 +92,11 @@ router.post('/send', async (req: Request, res: Response) => {
 
     // If sending to multiple users, require admin role
     if (body.userIds && body.userIds.length > 1) {
-      // P0-FIX: Admin email list must come from SUPER_ADMIN_EMAILS env var, not source code.
-      const senderEmail = (req as any).firebaseUser?.email;
-      const adminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
-        .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-      
-      if (!adminEmails.includes((senderEmail || '').toLowerCase())) {
+      // #240 follow-up: broadcast push reaches every targeted user, so the
+      // gate must be a VERIFIED super-admin — the allowlist string alone
+      // was clearable by an unverified account under an unclaimed
+      // allowlisted address.
+      if (!isSuperAdminVerified(req)) {
         return res.status(403).json({ error: 'Admin access required for broadcast notifications' });
       }
     }

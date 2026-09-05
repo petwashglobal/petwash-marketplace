@@ -231,6 +231,80 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
     ).toEqual([]);
   });
 
+  // ── No THIRD allowlist either ─────────────────────────────────────
+  // The clause above catches a named SUPER_ADMINS array. Several routes
+  // instead parsed process.env.SUPER_ADMIN_EMAILS inline into a local
+  // (adminEmails / _superAdminEmails / AUTHORIZED_USERS) and matched the
+  // email string — invisible to every other clause, because the word
+  // "isSuperAdmin" never appears. police-check, admin-provider-review,
+  // admin-reconfirmation, backup and push-notifications all shipped that
+  // way. Any file that parses the secret itself must also carry the
+  // email_verified pairing, or be enumerated below as a non-authorization
+  // use with a stated reason.
+  it('no file may parse SUPER_ADMIN_EMAILS into its own gate without email_verified', () => {
+    // Files that legitimately touch the secret but do NOT authorize with it.
+    const NON_AUTHORIZATION: Record<string, string> = {
+      'server/index.ts':
+        'startup env-var validation — checks the secret is set, grants nothing',
+      'server/routes/recaptcha.ts':
+        'health readout — reports whether the secret is configured',
+      'server/services/SmsAbuseDetector.ts':
+        'picks the alert recipient address — not a gate',
+      'server/routes/control-panel.ts':
+        'only names the secret in a comment; gate is the imported requireAdmin',
+      'server/company-registration-secure.ts':
+        'isAuthorizedUser() checks a PARAMETER, not the request caller; it is a '
+        + 'defense-in-depth second layer behind requireAdmin at '
+        + 'routes.ts /api/admin/company-registration, never the sole authority',
+    };
+
+    const offenders: string[] = [];
+    for (const file of sourceFiles()) {
+      const src = readFileSync(file, 'utf8');
+      if (!/process\.env\.SUPER_ADMIN_EMAILS/.test(src)) continue;
+      const rel = file.replace(ROOT + '/', '');
+      if (rel in NON_AUTHORIZATION) continue;
+      if (/isSuperAdminVerified\s*\(/.test(src)) continue;
+      // Accept any real verification test — `email_verified === true`,
+      // `emailVerified !== true` (early-return shape), `!emailVerified`.
+      // NOT `!== false`: that is banned outright by the clause below.
+      if (/email_?[Vv]erified/.test(src)) continue;
+      offenders.push(
+        `${rel} — parses SUPER_ADMIN_EMAILS but never checks email_verified`,
+      );
+    }
+    expect(
+      offenders,
+      'Import isSuperAdminVerified from server/middleware/rbac instead of '
+        + 're-parsing the secret, or add the file to NON_AUTHORIZATION with a '
+        + 'reason:\n' + offenders.join('\n'),
+    ).toEqual([]);
+  });
+
+  // ── `!== false` is never a verification check ─────────────────────
+  // publicAuthRoutes.ts gated /api/admin/auth-events on
+  //     decodedToken.email_verified !== false
+  // Firebase OMITS email_verified for several sign-in paths, so for the
+  // unverified accounts this exists to stop the claim is `undefined`, and
+  // `undefined !== false` is true. The check handed the gate to precisely
+  // the callers it was written to deny. Only the boolean `true` counts.
+  it('email_verified is never tested with !== false (undefined would pass)', () => {
+    const offenders: string[] = [];
+    for (const hit of grepRepo(/email_?[Vv]erified\s*!==\s*false/)) {
+      const idx = hit.lastIndexOf(':');
+      const file = hit.slice(0, idx);
+      const lineNo = parseInt(hit.slice(idx + 1), 10);
+      const line = readFileSync(file, 'utf8').split('\n')[lineNo - 1];
+      if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue; // prose about the bug
+      offenders.push(`${file.replace(ROOT + '/', '')}:${lineNo}`);
+    }
+    expect(
+      offenders,
+      'Use `email_verified === true`. `!== false` treats a MISSING claim as '
+        + 'verified:\n' + offenders.join('\n'),
+    ).toEqual([]);
+  });
+
   // ── Call it correctly ─────────────────────────────────────────────
   // isSuperAdminVerified is SYNCHRONOUS and takes the Express Request —
   // it has to read req.firebaseUser.email_verified. Two #240 call sites
