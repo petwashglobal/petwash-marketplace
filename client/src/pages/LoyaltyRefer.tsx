@@ -53,7 +53,21 @@ export default function LoyaltyRefer() {
   const siteUrl = 'https://petwash.co.il';
 
   const handleCopy = async () => {
-    const text = referralCode ?? displayCode;
+    // Honesty guard: without a real code, displayCode is '' or the '…' loading
+    // placeholder. Copying that and still toasting "Copied!" told the member
+    // their referral code was on the clipboard when it was not — and a shared
+    // '…' attributes the signup to nobody. Say what actually happened instead.
+    const text = referralCode;
+    if (!text) {
+      toast({
+        title: isHebrew ? 'הקוד עדיין נטען' : 'Code not ready yet',
+        description: isHebrew
+          ? 'קוד ההפניה שלך עדיין לא נטען. נסו שוב בעוד רגע.'
+          : 'Your referral code has not loaded yet. Try again in a moment.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -195,7 +209,9 @@ export default function LoyaltyRefer() {
               </code>
               <button
                 onClick={handleCopy}
-                className="p-3 rounded-lg bg-[rgba(217, 184, 76,0.1)] hover:bg-[rgba(217, 184, 76,0.2)] transition-all duration-300 border border-[rgba(217, 184, 76,0.2)]"
+                disabled={!referralCode}
+                aria-label={isHebrew ? 'העתק קוד הפניה' : 'Copy referral code'}
+                className="p-3 rounded-lg bg-[rgba(217, 184, 76,0.1)] hover:bg-[rgba(217, 184, 76,0.2)] transition-all duration-300 border border-[rgba(217, 184, 76,0.2)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[rgba(217, 184, 76,0.1)]"
               >
                 <Copy className="w-5 h-5 text-[#0a0a0a]" />
               </button>
