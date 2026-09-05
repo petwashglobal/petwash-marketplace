@@ -27,7 +27,16 @@ export default function SalesLeadForm() {
     try {
       const res = await apiRequest('POST', '/api/global-forms/sales-lead', form);
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.leadId || 'LEAD-OK');
+      // Honesty fix (2026-09-05): never fabricate a "LEAD-OK" success ID on
+      // the client (same class as the 2026-08-24 provider-registration fix).
+      // If the server didn't return a real leadId, the lead was never
+      // recorded — don't tell the prospect their inquiry was received.
+      if (!body?.leadId) {
+        const msg = body?.message || body?.error || 'The submission did not go through. Please try again.';
+        toast({ variant: 'destructive', title: 'Submission failed', description: msg });
+        return;
+      }
+      setSuccess(body.leadId);
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again.' });
     } finally { setLoading(false); }

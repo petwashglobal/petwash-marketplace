@@ -29,7 +29,16 @@ export default function HRApplicationForm() {
     try {
       const res = await apiRequest('POST', '/api/global-forms/hr-application', form);
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.applicationId || 'HR-OK');
+      // Honesty fix (2026-09-05): never fabricate an "HR-OK" success ID on
+      // the client (same class as the 2026-08-24 provider-registration fix).
+      // If the server didn't return a real applicationId, the application
+      // was never recorded — show the real error instead of a fake receipt.
+      if (!body?.applicationId) {
+        const msg = body?.message || body?.error || 'The submission did not go through. Please try again.';
+        toast({ variant: 'destructive', title: 'Submission failed', description: msg });
+        return;
+      }
+      setSuccess(body.applicationId);
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again.' });
     } finally { setLoading(false); }

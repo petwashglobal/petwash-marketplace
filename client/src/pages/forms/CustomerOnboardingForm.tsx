@@ -29,7 +29,16 @@ export default function CustomerOnboardingForm() {
     try {
       const res = await apiRequest('POST', '/api/global-forms/customer-onboarding', form);
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.petId || 'PET-OK');
+      // Honesty fix (2026-09-05): never fabricate a "PET-OK" success ID on
+      // the client (same class as the 2026-08-24 provider-registration fix).
+      // If the server didn't return a real petId, nothing was registered —
+      // show the real error instead of a fake receipt the owner can't look up.
+      if (!body?.petId) {
+        const msg = body?.message || body?.error || 'The submission did not go through. Please try again.';
+        toast({ variant: 'destructive', title: 'Submission failed', description: msg });
+        return;
+      }
+      setSuccess(body.petId);
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again.' });
     } finally { setLoading(false); }
