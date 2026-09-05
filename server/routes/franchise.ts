@@ -54,18 +54,13 @@ router.post('/inquiry', async (req, res) => {
       submittedAt: new Date().toISOString(),
       status: 'new',
     };
-    try {
-      const inquiriesRef = firestore.collection('franchise_inquiries');
-      await inquiriesRef.add(inquiryData);
-    } catch (firestoreErr) {
-      logger.warn('Could not save franchise inquiry to Firestore', {
-        emailMasked: maskEmail(email),
-        phoneMasked: maskPhone(phone),
-        country,
-        city,
-        error: (firestoreErr as any)?.message,
-      });
-    }
+    // False-success fix (2026-09-05): this used to swallow a Firestore
+    // write failure in a local try/catch and still answer {success:true} —
+    // a partner lead would vanish silently while the submitter was told it
+    // went through. Let a write failure propagate to the outer catch so we
+    // answer honestly (500) instead of acknowledging a lost lead.
+    const inquiriesRef = firestore.collection('franchise_inquiries');
+    await inquiriesRef.add(inquiryData);
     logger.info('Franchise inquiry received', {
       emailMasked: maskEmail(email),
       phoneMasked: maskPhone(phone),
