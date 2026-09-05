@@ -11,6 +11,7 @@ import { googleDriveBackupService } from '../services/googleDriveBackupService';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { storage } from '../storage';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
@@ -26,18 +27,14 @@ import { SystemEventService } from '../services/SystemEventService';
 
 const router = Router();
 
-const getSuperAdminEmails = (): string[] => {
-  const envEmails = process.env.SUPER_ADMIN_EMAILS;
-  if (envEmails) {
-    return envEmails.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-  }
-  return [];
-};
-
+// #240 follow-up: this used to re-parse SUPER_ADMIN_EMAILS locally and match
+// on the email STRING. Backup/restore reads the whole database, so an
+// unverified account squatting an unclaimed allowlisted address had a
+// full-data-export door. Delegated to the canonical primitive, which pairs
+// the allowlist with Firebase email_verified === true (and carries the
+// CI-placeholder detection the local parser lacked).
 const requireBackupAdmin = (req: any, res: any, next: any) => {
-  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const admins = getSuperAdminEmails();
-  if (!admins.includes(userEmail)) {
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: 'Admin access required for backup operations' });
   }
   next();

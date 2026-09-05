@@ -952,19 +952,24 @@ router.post('/test/vaccine-reminder', validateFirebaseToken, requireAdmin, async
 // CEO-only access middleware
 // SECURITY: CEO email list loaded from SUPER_ADMIN_EMAILS env var (same pool as super-admins).
 // Hard-coded personal Gmail was removed — see gates.ts for rotation instructions.
+//
+// sprint/requireadmin-consolidation-v2 (P0): this gate matched the caller's
+// email against the allowlist ONLY — it never checked Firebase
+// email_verified. This endpoint issues FREE e-gift vouchers (real money
+// created from nothing), so an attacker who registers
+// <ceo-email>@petwash.co.il and never clicks the verification link could
+// mint vouchers for themselves. Delegates to the canonical
+// rbac.isSuperAdminVerified(req), which requires BOTH the allowlist match
+// AND req.firebaseUser.email_verified === true.
 const requireCEO = (req: any, res: any, next: any) => {
-  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const CEO_EMAILS_RAW = process.env.SUPER_ADMIN_EMAILS || '';
-  const CEO_EMAILS = CEO_EMAILS_RAW.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
-  
-  if (!CEO_EMAILS.includes(userEmail)) {
+  if (!isSuperAdminVerified(req)) {
     logger.warn(`[Security] Unauthorized CEO endpoint access attempt by ${req.firebaseUser?.email}`);
-    return res.status(403).json({ 
+    return res.status(403).json({
       error: 'CEO access required',
       message: 'This endpoint is restricted to designated super-admin users.',
     });
   }
-  
+
   next();
 };
 

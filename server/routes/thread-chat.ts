@@ -47,7 +47,7 @@ function callerUid(req: Request): string | null {
 async function loadThreadForCaller(
   threadId: string,
   callerUid: string,
-  callerEmail: string,
+  req: Request,
 ): Promise<{ ok: true; thread: typeof chatThreads.$inferSelect; isAdmin: boolean } | { ok: false; status: number; error: string }> {
   const [t] = await db.select().from(chatThreads).where(eq(chatThreads.threadId, threadId)).limit(1);
   if (!t) return { ok: false, status: 404, error: 'not_found' };
@@ -55,7 +55,11 @@ async function loadThreadForCaller(
     t.customerUserId === callerUid ||
     t.providerUserId === callerUid ||
     t.supportOwnerId === callerUid;
-  const isAdmin = callerEmail ? await isSuperAdminVerified(callerEmail).catch(() => false) : false;
+  // #240 follow-up: isSuperAdminVerified is SYNCHRONOUS and takes the
+  // Request — it must read req.firebaseUser.email_verified. Passing the
+  // email string returned `false` and then threw
+  // `TypeError: false.catch is not a function`, 500-ing every thread read.
+  const isAdmin = isSuperAdminVerified(req);
   if (!isParticipant && !isAdmin) return { ok: false, status: 404, error: 'not_found' };
   return { ok: true, thread: t, isAdmin };
 }
@@ -64,8 +68,7 @@ async function loadThreadForCaller(
 router.get('/:threadId/messages', async (req: Request, res: Response) => {
   const uid = callerUid(req);
   if (!uid) return res.status(401).json({ error: 'auth_required' });
-  const callerEmail = (req as any).firebaseUser?.email || '';
-  const loaded = await loadThreadForCaller(req.params.threadId, uid, callerEmail);
+  const loaded = await loadThreadForCaller(req.params.threadId, uid, req);
   if (!loaded.ok) return res.status(loaded.status).json({ error: loaded.error });
 
   const limit = Math.min(Math.max(Number(req.query.limit ?? 50), 1), 200);
@@ -95,8 +98,7 @@ const sendSchema = z.object({
 router.post('/:threadId/send', async (req: Request, res: Response) => {
   const uid = callerUid(req);
   if (!uid) return res.status(401).json({ error: 'auth_required' });
-  const callerEmail = (req as any).firebaseUser?.email || '';
-  const loaded = await loadThreadForCaller(req.params.threadId, uid, callerEmail);
+  const loaded = await loadThreadForCaller(req.params.threadId, uid, req);
   if (!loaded.ok) return res.status(loaded.status).json({ error: loaded.error });
   // Admin READ is allowed above; admin WRITE is not permitted here —
   // admin messages route through the dedicated admin surfaces so they
@@ -149,8 +151,7 @@ router.post('/:threadId/send', async (req: Request, res: Response) => {
 router.put('/:threadId/read', async (req: Request, res: Response) => {
   const uid = callerUid(req);
   if (!uid) return res.status(401).json({ error: 'auth_required' });
-  const callerEmail = (req as any).firebaseUser?.email || '';
-  const loaded = await loadThreadForCaller(req.params.threadId, uid, callerEmail);
+  const loaded = await loadThreadForCaller(req.params.threadId, uid, req);
   if (!loaded.ok) return res.status(loaded.status).json({ error: loaded.error });
 
   const t = loaded.thread;

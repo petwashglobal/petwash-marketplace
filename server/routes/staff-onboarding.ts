@@ -72,13 +72,19 @@ async function assertStaffAppReadable(
     return true;
   }
 
+  const emailVerified = fbUser?.email_verified === true; // fbUser.email_verified === true
+
   try {
     const { isSuperAdmin } = await import('../middleware/rbac');
     const claimEmail = String(fbUser?.email || '').toLowerCase();
-    if (claimEmail && isSuperAdmin(claimEmail)) return true;
+    // Paired shape required: an allowlisted-but-UNVERIFIED email must not
+    // grant super-admin read access to another user's staff application
+    // (PII: bank, tax ID, DOB, address, KYC) — see the CRIT #3/#4 note above,
+    // which this branch had silently regressed on. `emailVerified` above is
+    // `fbUser?.email_verified === true` and is required in this condition.
+    if (claimEmail && emailVerified && isSuperAdmin(claimEmail)) return true;
   } catch { /* rbac helper absent → fall through */ }
 
-  const emailVerified = fbUser?.email_verified === true;
   if (
     emailVerified &&
     typeof application.email === 'string' &&

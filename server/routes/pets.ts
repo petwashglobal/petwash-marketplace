@@ -15,6 +15,7 @@ import {
 import { db as pgDb, pool } from '../db';
 import { pets as pgPets } from '@shared/schema';
 import { and, eq } from 'drizzle-orm';
+import { isSuperAdminVerified } from '../middleware/rbac';
 
 const router = Router();
 
@@ -434,15 +435,11 @@ router.delete('/:petId', validateFirebaseToken, async (req, res) => {
 // ============================================
 
 const isAdmin = (req: any, res: any, next: any) => {
-  const adminEmail: string | undefined = req.firebaseUser?.email;
-  const emailVerified: boolean = !!req.firebaseUser?.email_verified;
-
   // SECURITY 2026-05-24 (CRITICAL fix from audit finding S1):
   //   1. Pre-fix used `adminEmail?.includes('@petwash.co.il')` — a
   //      SUBSTRING match — so a Firebase account with email like
   //      `attacker@petwash.co.il.evil.com` matched and got admin read
   //      on every pet record (PII, medical notes, GPS-via-walker).
-  //      `.includes` → `.endsWith` closes the substring escape.
   //   2. Pre-fix did NOT require `email_verified`. Firebase Auth allows
   //      signup with an arbitrary unverified email; the admin SDK does
   //      NOT auto-reject. We now require email_verified=true so an
@@ -456,17 +453,16 @@ const isAdmin = (req: any, res: any, next: any) => {
   // PII / medical notes on /admin/all. Removed — access is now the
   // SUPER_ADMIN_EMAILS allowlist only (same source as the rest of the
   // system). To grant a staffer access, add them to SUPER_ADMIN_EMAILS.
-  if (!emailVerified || !adminEmail) {
+  //
+  // sprint/requireadmin-consolidation-v2: replaced the route-local
+  // SUPER_ADMIN_EMAILS re-parse (no CI-placeholder detection, module-load
+  // scoped so a rotated secret needed a restart) with the canonical
+  // rbac.isSuperAdminVerified(req), which already does both checks against
+  // the single source of truth.
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({ error: 'Admin access required (verified email)' });
   }
-  const lowered = adminEmail.toLowerCase();
-  const superAdminEmails = (process.env.SUPER_ADMIN_EMAILS || '')
-    .split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-  const isAllowed = superAdminEmails.includes(lowered);
-  if (isAllowed) {
-    return next();
-  }
-  return res.status(403).json({ error: 'Admin access required' });
+  return next();
 };
 
 // Admin: Get all pets (read-only)

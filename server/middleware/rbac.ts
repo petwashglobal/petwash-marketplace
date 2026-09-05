@@ -430,7 +430,10 @@ export function requireAdmin(
     const userEmail = req.firebaseUser.email.toLowerCase();
 
     // Quick check: Super admin email list
-    if (isSuperAdmin(userEmail)) {
+    // #240 follow-up: allowlist match ALONE is not authority — Firebase
+    // lets anyone sign up under an unclaimed allowlisted address. Require
+    // email_verified === true as well.
+    if (isSuperAdminVerified(req)) {
       return next();
     }
 
@@ -467,7 +470,8 @@ export async function requireInternalAccount(
     const userEmail = req.firebaseUser.email.toLowerCase();
 
     // Super admins always have internal access
-    if (isSuperAdmin(userEmail)) {
+    // #240 follow-up: allowlist + Firebase email_verified === true.
+    if (isSuperAdminVerified(req)) {
       return next();
     }
 
@@ -635,7 +639,9 @@ export async function blockPublicUser(
 
     const userEmail = req.firebaseUser.email.toLowerCase();
 
-    if (isSuperAdmin(userEmail)) {
+    // #240 follow-up: allowlist + Firebase email_verified === true. An
+    // unverified allowlisted account falls through to the normal role check.
+    if (isSuperAdminVerified(req)) {
       return next();
     }
 
@@ -674,7 +680,8 @@ export async function requireMinRole(minRole: string) {
 
       const userEmail = req.firebaseUser.email.toLowerCase();
 
-      if (isSuperAdmin(userEmail)) {
+      // #240 follow-up: allowlist + Firebase email_verified === true.
+      if (isSuperAdminVerified(req)) {
         return next();
       }
 
@@ -717,7 +724,9 @@ export function enforceSelfOnly(
 
   if (requestedUserId && requestedUserId !== req.firebaseUser.uid) {
     const userEmail = req.firebaseUser.email || 'unknown';
-    if (!isSuperAdmin(userEmail)) {
+    // #240 follow-up: the cross-user (IDOR) escape hatch requires a
+    // VERIFIED super-admin, not just an allowlisted email string.
+    if (!isSuperAdminVerified(req)) {
       logger.warn(`[RBAC] Self-only violation: ${userEmail} tried to access data for ${requestedUserId}`);
       return res.status(403).json({
         error: 'Access denied',
