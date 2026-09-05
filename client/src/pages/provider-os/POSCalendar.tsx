@@ -86,22 +86,35 @@ export default function POSCalendar() {
   }, [consoleSettings]);
 
   const profileMutation = useMutation({
-    mutationFn: (body: any) =>
-      authFetch('/api/provider-profile/me', {
+    // 2026-09-05: was `.then(r => r.json())` with no `r.ok` check — a 401 /
+    // 400 / 500 response with a JSON error body (e.g. {error: '...'}) still
+    // RESOLVED this mutation successfully. Combined with handleSave's
+    // unconditional post-await toast, a rejected save showed "Availability
+    // saved" to the provider while nothing was actually persisted.
+    mutationFn: async (body: any) => {
+      const r = await authFetch('/api/provider-profile/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      }).then(r => r.json()),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `Failed to save profile (${r.status})`);
+      return j;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/provider-profile/me'] }),
   });
 
   const consoleMutation = useMutation({
-    mutationFn: (body: any) =>
-      authFetch('/api/provider-console/settings', {
+    mutationFn: async (body: any) => {
+      const r = await authFetch('/api/provider-console/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
-      }).then(r => r.json()),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `Failed to save settings (${r.status})`);
+      return j;
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/provider-console/settings'] }),
   });
 
@@ -128,20 +141,33 @@ export default function POSCalendar() {
 
   const handleSave = async () => {
     const availabilityState = vacationMode ? 'vacation' : pauseNewBookings ? 'paused' : 'active';
-    await Promise.all([
-      profileMutation.mutateAsync({
-        blockedDates,
-        workingHours: schedule,
-        availabilityState,
-      }),
-      consoleMutation.mutateAsync({
-        bufferMinutes,
-        maxJobsPerDay,
-        travelRadiusKm: maxRadiusKm,
-        instantBooking,
-      }),
-    ]);
-    toast({ title: 'Availability saved', description: 'Your schedule has been updated.' });
+    // 2026-09-05: no try/catch meant a rejected mutateAsync just threw out of
+    // this handler (unhandled rejection, silent to the provider) — no error
+    // toast, no retry affordance, nothing. Neither mutation had its own
+    // onError either, so a failed save looked identical to a successful one
+    // (button just stopped spinning). Now every outcome is visible.
+    try {
+      await Promise.all([
+        profileMutation.mutateAsync({
+          blockedDates,
+          workingHours: schedule,
+          availabilityState,
+        }),
+        consoleMutation.mutateAsync({
+          bufferMinutes,
+          maxJobsPerDay,
+          travelRadiusKm: maxRadiusKm,
+          instantBooking,
+        }),
+      ]);
+      toast({ title: 'Availability saved', description: 'Your schedule has been updated.' });
+    } catch (err: any) {
+      toast({
+        title: 'Could not save availability',
+        description: err?.message || 'Please check your connection and try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (profileLoading) {
