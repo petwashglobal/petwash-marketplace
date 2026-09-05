@@ -12733,6 +12733,51 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
+      // ── Do not mint a second live QR while a redeem is already in flight ──
+      // MONEY-CRITICAL. /redeem-wash moves this member's hold to 'scanned' the
+      // moment the bay accepts the code and the debit commits. If the on-screen
+      // QR happens to rotate right then, this endpoint would hand the member a
+      // fresh, live, replay-proof code for a wash they have ALREADY paid for —
+      // which they could present at the other bay for a SECOND debit. It would
+      // also strand the client: the poll would follow the new 'pending' row and
+      // never observe the 'scanned' one, putting the member back in the exact
+      // dead-end this whole change set exists to fix.
+      //
+      // Bounded window, deliberately: if START_PUMP never ACKs the hold stays
+      // 'scanned', and a member whose wash genuinely failed must be able to try
+      // again rather than be locked out. After the window lapses a new QR is
+      // minted normally. This gate mints nothing and refunds nothing — it only
+      // declines to issue a second code.
+      const REDEEM_IN_FLIGHT_WINDOW_MS = 3 * 60 * 1000;
+      const [inFlight] = await db
+        .select({
+          sessionId: redemptionSessions.sessionId,
+          updatedAt: redemptionSessions.updatedAt,
+        })
+        .from(redemptionSessions)
+        .where(and(
+          eq(redemptionSessions.userId, userId),
+          eq(redemptionSessions.platform, 'k9000'),
+          eq(redemptionSessions.status, 'scanned'),
+          gte(redemptionSessions.updatedAt, new Date(Date.now() - REDEEM_IN_FLIGHT_WINDOW_MS)),
+        ))
+        .orderBy(desc(redemptionSessions.updatedAt))
+        .limit(1);
+
+      if (inFlight) {
+        logger.info('[K9000 GenerateQR] Redeem already in flight — refusing to mint a second code', {
+          userId, sessionId: inFlight.sessionId,
+        });
+        return res.status(409).json({
+          error: 'השטיפה שלך כבר אושרה בעמדה. אין צורך בקוד נוסף.',
+          errorEn: 'Your wash was already accepted at the bay. No new code is needed.',
+          status: 'REDEEM_IN_FLIGHT',
+          // Hand back the live hold so the client can keep polling the RIGHT
+          // session instead of starting a new one it will never see settle.
+          sessionId: inFlight.sessionId,
+        });
+      }
+
       const passSerial = wallet?.walletId ?? userId;
       const TTL_SECONDS = 45;
 
@@ -12768,20 +12813,64 @@ self.addEventListener('notificationclick', (event) => {
       const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
 
       try {
-        await db.insert(redemptionSessions).values({
-          sessionId,
-          walletId: passSerial,
-          userId,
-          platform: 'k9000',
-          redemptionType,
-          requestedAmountCents: 5500, // ₪55 standard wash
-          status: 'pending',
-          expiresAt,
-          stationId: req.body?.kioskId ?? 'any',
-        } as any);
+        // MONEY-CRITICAL race close (2026-09-05): two near-simultaneous generate-qr
+        // calls for the same member (a double network retry, not just a double
+        // click — proven with Promise.all in
+        // server/tests/k9000GenerateQrPendingRace.behavior.test.ts) used to each
+        // pass the 'scanned' in-flight check above, then each independently
+        // expire-and-insert with no coordination — leaving TWO 'pending' rows
+        // live at once, i.e. two outstanding signed QR tokens instead of one.
+        // pg_advisory_xact_lock keyed on userId forces concurrent calls onto the
+        // SAME serialized view of this member's pending row, so the second call
+        // always expires the first call's just-inserted row before inserting its
+        // own — restoring "exactly ONE live QR" even under a race. Transaction-
+        // scoped lock: released automatically on commit or rollback, no manual
+        // unlock, and does not change the token's own cryptographic/nonce
+        // single-use behaviour (that guard is independent and unaffected).
+        await db.transaction(async (tx) => {
+          await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`);
+
+          // The client rotates the QR every TTL_SECONDS and calls this endpoint again on
+          // each rotation. Retire this member's earlier k9000 holds first, so we don't
+          // accumulate one orphan 'pending' row every 45 s for as long as the redeem
+          // screen stays open — and so the status poll below resolves against exactly
+          // one live hold. Status only: touches no balance, no ledger, no receipt.
+          await tx
+            .update(redemptionSessions)
+            .set({ status: 'expired', updatedAt: new Date() })
+            .where(and(
+              eq(redemptionSessions.userId, userId),
+              eq(redemptionSessions.platform, 'k9000'),
+              eq(redemptionSessions.status, 'pending'),
+            ));
+
+          await tx.insert(redemptionSessions).values({
+            sessionId,
+            walletId: passSerial,
+            userId,
+            // REQUIRED — `session_type` is varchar NOT NULL with NO default
+            // (migrations/0010_registration_tables.sql:225). Omitting it made every
+            // insert throw a not-null violation, which the catch below swallowed as
+            // "non-fatal" — so the row NEVER existed, GET /api/credit-wallet/
+            // redemptions/:sessionId/status always 404'd, and K9000Redeem.tsx could
+            // never leave the "show your QR" step. The member got the wash and the
+            // app never confirmed it.
+            sessionType: 'hardware_qr',
+            platform: 'k9000',
+            serviceType: 'per_wash',
+            redemptionType,
+            requestedAmountCents: 5500, // ₪55 standard wash
+            status: 'pending',
+            expiresAt,
+            stationId: req.body?.kioskId ?? 'any',
+          } as any);
+        });
       } catch (dbErr: any) {
-        // Non-fatal — session row missing just breaks status polling, not the wash itself
-        logger.warn('[K9000 GenerateQR] Failed to create redemption session (non-fatal)', { error: dbErr?.message, sessionId });
+        // Still non-fatal for the wash itself, but log at ERROR: a missing row means
+        // the member's screen can never confirm, which reads to them as "nothing
+        // happened" — and a member who reads it that way presents the next rotated
+        // QR at the other bay, i.e. a SECOND debit for one intended wash.
+        logger.error('[K9000 GenerateQR] Failed to create redemption session — member status polling will 404', { error: dbErr?.message, sessionId });
       }
 
       return res.json({

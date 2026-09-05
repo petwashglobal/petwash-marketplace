@@ -57,7 +57,12 @@ interface RedemptionResult {
 }
 
 type RedeemOption = 'wash_package' | 'egift' | 'loyalty';
-type Step = 'select' | 'qr' | 'confirmed' | 'failed';
+// 'accepted' = the bay took the code and the member's credit is ALREADY debited,
+// but the K9000 controller has not yet ACKed START_PUMP. We must leave the QR
+// screen (so the member stops presenting codes and cannot be debited twice at
+// the other bay) WITHOUT claiming the wash has started — that claim is only true
+// once the server marks the hold 'completed' off a real machine ACK.
+type Step = 'select' | 'qr' | 'accepted' | 'confirmed' | 'failed';
 
 const WALLET_FUNDED_SOURCES: RedeemOption[] = ['wash_package', 'egift', 'loyalty'];
 
@@ -116,8 +121,12 @@ export default function K9000Redeem() {
 
   const { data: statusData } = useQuery<{ success: boolean; status: string }>({
     queryKey: ['/api/credit-wallet/redemptions', redemption?.sessionId, 'status'],
-    enabled: step === 'qr' && !!redemption?.sessionId && secondsLeft > 0,
-    refetchInterval: secondsLeft > 0 ? 3000 : false,
+    // Keep polling through 'accepted': the debit has happened and we are waiting
+    // on the machine ACK, so stopping here would strand the member on a screen
+    // that never resolves — the original dead-end.
+    enabled: (step === 'qr' || step === 'accepted') && !!redemption?.sessionId
+             && (step === 'accepted' || secondsLeft > 0),
+    refetchInterval: (step === 'accepted' || secondsLeft > 0) ? 3000 : false,
     queryFn: async () => {
       // apiRequest attaches Bearer token — server /status route requires
       // req.user.uid, else 401 → the wallet-redeem QR screen never advanced
@@ -130,7 +139,13 @@ export default function K9000Redeem() {
 
   useEffect(() => {
     const st = statusData?.status;
-    if (st === 'completed') {
+    if (st === 'scanned') {
+      // Bay accepted the code and the credit is committed, but START_PUMP is not
+      // confirmed yet. Leave the QR screen so no further code is presented; do
+      // NOT say the wash started.
+      setStep((prev) => (prev === 'qr' ? 'accepted' : prev));
+      queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
+    } else if (st === 'completed') {
       setStep('confirmed');
       queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
     } else if (st === 'failed' || st === 'compensation_required') {
@@ -215,6 +230,20 @@ export default function K9000Redeem() {
       await generateQrCode(r.qrData);
       if (!opts?.silent) setStep('qr');
     } catch (err: any) {
+      // The bay already accepted a code for this member and the debit is done —
+      // the server refuses to mint a second live QR (MONEY-CRITICAL: a second
+      // code could be presented at the other bay for a second debit). Adopt the
+      // in-flight session so we poll the RIGHT one, and move to 'accepted'.
+      // This is the rotation-vs-scan race: it arrives on a SILENT rotation, so
+      // it must be handled here and not swallowed as a failed refresh.
+      if (err?.status === 409 && err?.body?.status === 'REDEEM_IN_FLIGHT') {
+        if (err.body.sessionId) {
+          setRedemption((prev) => (prev ? { ...prev, sessionId: err.body.sessionId } : prev));
+        }
+        setStep('accepted');
+        setError('');
+        return;
+      }
       // A failed silent rotation shouldn't blow away a still-valid on-screen QR.
       if (!opts?.silent) setError(err.message || (isHebrew ? 'שגיאה' : 'Error'));
     } finally {
@@ -551,6 +580,55 @@ export default function K9000Redeem() {
                 ) : null}
                 {isHebrew ? 'ביטול' : 'Cancel Redemption'}
               </Button>
+            </div>
+          )}
+
+          {/* ── 'accepted' — money is committed, machine NOT yet confirmed ──────
+              Deliberately NOT a success screen. The bay took the code and the
+              credit is already debited, so the member must stop presenting QR
+              codes (that is what prevents a second debit at the other bay), but
+              START_PUMP has not been ACKed. Claiming "wash started" here would
+              be the false-success defect. */}
+          {step === 'accepted' && redemption && (
+            <div className="space-y-5 luxury-animate-slide-up">
+              <div className="text-center py-6">
+                <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-4 bg-blue-100">
+                  <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                  {isHebrew ? 'הקוד התקבל בעמדה' : 'Code Accepted at the Bay'}
+                </h2>
+                <p className="text-sm text-gray-600">
+                  {isHebrew
+                    ? 'הזיכוי נוכה מחשבונך. ממתינים לאישור מהמכונה…'
+                    : 'Your credit has been deducted. Waiting for the machine to confirm…'}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 flex gap-3 items-start">
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-blue-900">
+                    {isHebrew ? 'אין להציג קוד נוסף' : 'Do not present another code'}
+                  </p>
+                  <p className="text-xs text-blue-800 mt-1">
+                    {isHebrew
+                      ? 'השטיפה כבר שולמה. הצגת קוד נוסף בעמדה השנייה תגרום לחיוב כפול.'
+                      : 'This wash is already paid for. Presenting another code at the other bay would charge you twice.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs text-gray-600">
+                  {isHebrew
+                    ? 'אם המכונה לא מתחילה תוך 30 שניות — אל תציג/י קוד נוסף. פנה/י לצוות עם מספר האסמכתא שלהלן.'
+                    : 'If the machine does not start within 30 seconds, do NOT present another code. Contact staff with the reference below.'}
+                </p>
+                <p className="text-xs font-mono text-gray-800 mt-2 break-all">
+                  {redemption.sessionId}
+                </p>
+              </div>
             </div>
           )}
 

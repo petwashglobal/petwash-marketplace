@@ -52,7 +52,7 @@ import {
   bayEvents,
   bayFaults,
 } from '@shared/schema';
-import { eq, and, gt, gte, ne, sql, notInArray } from 'drizzle-orm';
+import { eq, and, gt, gte, ne, sql, notInArray, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
@@ -239,6 +239,103 @@ export async function authorizeRedemption(input: RedemptionInput): Promise<Redem
     remainingUnit: result.remainingUnit,
     auditId: result.auditId,
   };
+}
+
+/**
+ * Move the member's on-screen K9000 redeem hold to its next honest state.
+ *
+ * THE BUG THIS FIXES: `POST /api/k9000/generate-qr` opens a `redemption_sessions`
+ * row (platform 'k9000', status 'pending') purely so the member's phone can poll
+ * `GET /api/credit-wallet/redemptions/:sessionId/status` and learn that the bay
+ * accepted their QR. NOTHING ever moved that row off 'pending' — not
+ * `/api/k9000/redeem-wash`, not the Cortina settlement commit. So after a real,
+ * debited wash the app sat on the "show your QR" screen forever, rotating a fresh
+ * code every 45 s and never showing the new balance. A member reading that as
+ * "it didn't work" would present the next rotated QR at the other bay — a SECOND
+ * debit for one intended wash.
+ *
+ * TWO PHASES, DELIBERATELY — we must not claim more than we know:
+ *
+ *   'scanned'   set by /redeem-wash once the debit is COMMITTED but before the
+ *               controller has confirmed anything. This is the honest statement
+ *               "the bay took your code and your credit" — enough for the member
+ *               to stop presenting QR codes, which is what stops the double
+ *               debit. It does NOT assert that water is running.
+ *
+ *   'completed' set ONLY from the machine ACK path
+ *               (POST /api/k9000/commands/:commandId/ack), i.e. once the K9000
+ *               controller has actually confirmed START_PUMP. This is the only
+ *               point at which "your wash started" is a true statement.
+ *
+ * Marking 'completed' at debit time instead would be a false success: START_PUMP
+ * is dispatched fire-and-forget and can fail, in which case
+ * MachineCommandService logs `compensation_required`. Telling the member the wash
+ * started when the machine never got the command is the dishonesty defect this
+ * split exists to prevent.
+ *
+ * The QR token carries no `redemption_sessions.sessionId`, and the client polls
+ * only the most recently issued one, so we move every live hold for this member —
+ * which is exactly the set that one redeem screen produced (generate-qr retires
+ * the previous holds on each rotation).
+ *
+ * FAIL-SOFT BY CONTRACT: the money is already committed and audited by the time
+ * this runs. This function must never throw and must never be awaited in a way
+ * that can roll back a completed wash — it only updates a UI-status row.
+ *
+ * MONEY NOTE: touches no balance, no ledger, no receipt, no VAT. Status only.
+ */
+export async function settleMemberRedemptionHold(params: {
+  userId: string;
+  status: 'scanned' | 'completed';
+  washId?: string;
+  baySessionId?: string;
+  correlationId?: string;
+}): Promise<void> {
+  try {
+    const { redemptionSessions } = await import('@shared/schema');
+    const now = new Date();
+
+    // Only advance a hold that is still open. 'scanned' may only come from
+    // 'pending'; 'completed' may come from either, so a missing/late ACK never
+    // strands the row and a replayed ACK is a no-op (the second update matches
+    // nothing because the row is already 'completed').
+    const openStatuses = params.status === 'scanned'
+      ? ['pending']
+      : ['pending', 'scanned'];
+
+    const updated = await db
+      .update(redemptionSessions)
+      .set({
+        status: params.status,
+        ...(params.status === 'scanned'
+          ? { scannedAt: now }
+          : { acknowledgedAt: now, completedAt: now }),
+        updatedAt: now,
+      })
+      .where(and(
+        eq(redemptionSessions.userId, params.userId),
+        eq(redemptionSessions.platform, 'k9000'),
+        inArray(redemptionSessions.status, openStatuses),
+      ))
+      .returning({ sessionId: redemptionSessions.sessionId });
+
+    logger.info('[K9000Redemption] Member redeem hold advanced', {
+      userId: params.userId,
+      to: params.status,
+      settled: updated.length,
+      washId: params.washId,
+      baySessionId: params.baySessionId,
+      correlationId: params.correlationId,
+    });
+  } catch (err: any) {
+    // Never propagate — the wash is already paid for and running.
+    logger.warn('[K9000Redemption] Could not advance member redeem hold (non-blocking)', {
+      userId: params.userId,
+      to: params.status,
+      error: err?.message,
+      correlationId: params.correlationId,
+    });
+  }
 }
 
 // ── Bay session lifecycle helpers (called by Flow A route as well) ────────────
