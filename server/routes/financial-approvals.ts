@@ -11,6 +11,7 @@ import {
   type ApprovalRule,
 } from '../lib/financial-approvals';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -152,7 +153,7 @@ router.get('/matrix', async (req: Request, res: Response) => {
     `);
     return res.json({ rules: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_LIST_MATRIX_FAILED', { logContext: { op: 'list-matrix' } });
   }
 });
 
@@ -180,7 +181,7 @@ router.post('/matrix', requireFinancialAdmin, async (req: Request, res: Response
     `);
     return res.status(201).json({ rule: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_CREATE_MATRIX_RULE_FAILED', { logContext: { op: 'create-matrix-rule' } });
   }
 });
 
@@ -208,7 +209,7 @@ router.patch('/matrix/:id', requireFinancialAdmin, async (req: Request, res: Res
     if (!result.rows[0]) return res.status(404).json({ error: 'Rule not found' });
     return res.json({ rule: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_UPDATE_MATRIX_RULE_FAILED', { logContext: { op: 'update-matrix-rule' } });
   }
 });
 
@@ -219,7 +220,7 @@ router.delete('/matrix/:id', requireFinancialAdmin, async (req: Request, res: Re
     await db.execute(sql`UPDATE financial_approval_matrix SET is_active = false WHERE id = ${id}`);
     return res.json({ ok: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_DEACTIVATE_MATRIX_RULE_FAILED', { logContext: { op: 'deactivate-matrix-rule' } });
   }
 });
 
@@ -244,7 +245,7 @@ router.post('/check', async (req: Request, res: Response) => {
     );
     return res.json(decision);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_CHECK_FAILED', { logContext: { op: 'check-authority' } });
   }
 });
 
@@ -358,7 +359,7 @@ router.get('/queue', async (req: Request, res: Response) => {
       executedToday: todayRaw.rows.filter((r: any) => r.status === 'executed'),
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_QUEUE_FAILED', { logContext: { op: 'list-queue' } });
   }
 });
 
@@ -431,7 +432,7 @@ router.post('/approve', requireFinancialAdmin, async (req: Request, res: Respons
         : 'Approved and executed',
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_APPROVE_FAILED', { logContext: { op: 'approve' } });
   }
 });
 
@@ -487,7 +488,7 @@ router.post('/second-approve/:logId', requireFinancialAdmin, async (req: Request
 
     return res.json({ logId, status: 'approved', message: 'Second approval granted and executed' });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_SECOND_APPROVE_FAILED', { logContext: { op: 'second-approve' } });
   }
 });
 
@@ -528,7 +529,7 @@ router.post('/reject', requireFinancialAdmin, async (req: Request, res: Response
 
     return res.json({ ok: true, status: 'rejected' });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_REJECT_FAILED', { logContext: { op: 'reject' } });
   }
 });
 
@@ -621,7 +622,7 @@ router.post('/payout-release-gate', requireFinancialAdmin, async (req: Request, 
     });
     return res.json({ released: true, decision });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_PAYOUT_RELEASE_GATE_FAILED', { logContext: { op: 'payout-release-gate' } });
   }
 });
 
@@ -644,7 +645,7 @@ router.post('/reserve', requireFinancialAdmin, async (req: Request, res: Respons
     `);
     return res.json({ ok: true, held: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_RESERVE_FAILED', { logContext: { op: 'reserve' } });
   }
 });
 
@@ -662,7 +663,7 @@ router.post('/release-reserve', requireFinancialAdmin, async (req: Request, res:
     `);
     return res.json({ ok: true, released: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_RELEASE_RESERVE_FAILED', { logContext: { op: 'release-reserve' } });
   }
 });
 
@@ -681,7 +682,7 @@ router.get('/reserve-summary', async (req: Request, res: Response) => {
     `);
     return res.json(result.rows[0] ?? {});
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_RESERVE_SUMMARY_FAILED', { logContext: { op: 'reserve-summary' } });
   }
 });
 
@@ -733,7 +734,7 @@ router.get('/log', async (req: Request, res: Response) => {
     }
     return res.json({ log: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FIN_APPROVALS_LOG_FAILED', { logContext: { op: 'list-log' } });
   }
 });
 
