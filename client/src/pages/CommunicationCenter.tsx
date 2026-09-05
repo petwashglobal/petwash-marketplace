@@ -419,7 +419,10 @@ export default function CommunicationCenter() {
     },
   });
 
-  const { data: communicationHistory = [], isLoading: historyLoading } = useQuery<any[]>({
+  // Lane E D13: this endpoint did not exist until now (see the handler added in
+  // server/routes.ts next to /stats). Surfacing `error` too, so a failed load can
+  // no longer masquerade as "No communication history found".
+  const { data: communicationHistory = [], isLoading: historyLoading, error: historyError } = useQuery<any[]>({
     queryKey: ['/api/crm/communications/history'],
     enabled: activeTab === 'history',
   });
@@ -1141,6 +1144,14 @@ export default function CommunicationCenter() {
                   <div className="text-center py-8">
                     <RefreshCw className="w-8 h-8 text-slate-400 mx-auto mb-4 animate-spin" />
                     <p className="text-slate-600">{t('common.loading', 'Loading...')}</p>
+                  </div>
+                ) : historyError ? (
+                  <div className="text-center py-8" data-testid="history-error">
+                    <Activity className="w-12 h-12 text-red-400 mx-auto mb-4" />
+                    <p className="font-medium text-red-700">
+                      {t('communication.history.error', 'Could not load communication history')}
+                    </p>
+                    <p className="text-sm text-slate-600 mt-1">{(historyError as any)?.message}</p>
                   </div>
                 ) : communicationHistory.length === 0 ? (
                   <div className="text-center py-8">
