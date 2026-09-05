@@ -87,15 +87,24 @@ router.get('/threads', requireAuth, async (req, res) => {
  */
 router.get('/booking/:bookingId/status', requireAuth, async (req, res) => {
   const { bookingId } = req.params;
+  const uid = req.user!.uid;
   try {
     let bookingStatus: string | null = null;
     try {
+      // IDOR fix: this used to look up status by requestId ALONE, so any
+      // authenticated user could probe any other user's booking status by
+      // guessing/enumerating bookingId. Only the customer (ownerId) or the
+      // assigned provider (providerId) may see it — anyone else gets the
+      // same "unknown" null result as a nonexistent booking (no existence
+      // oracle).
       const [b] = await db
-        .select({ status: bookingRequests.status })
+        .select({ status: bookingRequests.status, ownerId: bookingRequests.ownerId, providerId: bookingRequests.providerId })
         .from(bookingRequests)
         .where(eq(bookingRequests.requestId, bookingId))
         .limit(1);
-      bookingStatus = (b?.status as string) ?? null;
+      if (b && (b.ownerId === uid || b.providerId === uid)) {
+        bookingStatus = (b.status as string) ?? null;
+      }
     } catch { /* leave null */ }
 
     const smart = computeInboxRowStatus({ threadType: 'BOOKING', bookingStatus });

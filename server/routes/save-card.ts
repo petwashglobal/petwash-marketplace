@@ -20,15 +20,51 @@ import { logger } from '../lib/logger';
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
 
+// ---------------------------------------------------------------------------
+// IDOR FIX (cross-tenant sweep, 2026-09-05): the /return handler used to trust
+// `uid` straight from the querystring — the exact "identity from a
+// client-supplied field" anti-pattern. The redirect URL (and everything in
+// it) is fully visible/editable in the customer's own browser, so anyone
+// could swap `uid=<their-own>` for `uid=<victim>` on the way back from SUMIT
+// and have SumitCardVault.saveCard() tie THEIR card token to a victim's
+// account. `ID`/txnId being "authoritatively re-verified" only proves the
+// charge is real — it says nothing about whose account should receive it.
+//
+// Fix: remember the real (server-derived) uid for each externalId at
+// /start time — while the caller is still authenticated — and require the
+// /return handler to look it up server-side. The querystring `uid` is no
+// longer trusted for anything. Per-instance in-memory map is fine here: the
+// whole redirect round-trip is seconds, one-shot, and consumed on first use
+// (same "defensive, non-distributed" tolerance already accepted for the
+// per-uid rate limiters in routes/messages.ts).
+// ---------------------------------------------------------------------------
+const SAVE_CARD_PENDING_TTL_MS = 30 * 60 * 1000; // 30 min — generous for a hosted-page checkout
+const pendingSaveCardUids = new Map<string, { uid: string; expiresAt: number }>();
+
+function rememberPendingUid(externalId: string, uid: string): void {
+  pendingSaveCardUids.set(externalId, { uid, expiresAt: Date.now() + SAVE_CARD_PENDING_TTL_MS });
+}
+
+/** One-time, TTL-checked lookup. Consumes the entry so a return URL can't be replayed. */
+function takePendingUid(externalId: string): string | null {
+  const entry = pendingSaveCardUids.get(externalId);
+  pendingSaveCardUids.delete(externalId);
+  if (!entry || entry.expiresAt < Date.now()) return null;
+  return entry.uid;
+}
+
 // POST /api/payments/save-card/start — start a SUMIT hosted page to save the customer's card.
 router.post('/save-card/start', validateFirebaseToken, async (req: Request, res: Response) => {
   if (!isCardVaultEnabled()) return res.status(503).json({ error: 'Card-on-file is not enabled yet' });
   const uid = req.firebaseUser!.uid;
   const externalId = `savecard_${uid}_${Date.now()}`;
+  rememberPendingUid(externalId, uid);
   const result = await sumitClient.beginRedirect({
     externalId,
     amountIls: 1, // ₪1 verification — refundable; the point is to save the card, not to charge.
     description: 'שמירת אמצעי תשלום · PetWash',
+    // `uid` stays in the URL only as a debugging breadcrumb — the /return handler below
+    // no longer reads or trusts it. Ownership comes from the pending map keyed by `ext`.
     redirectUrl: `${baseUrl()}/api/payments/save-card/return?ext=${encodeURIComponent(externalId)}&uid=${encodeURIComponent(uid)}`,
     customerName: (req.firebaseUser as any)?.name,
     customerEmail: req.firebaseUser?.email,
@@ -41,9 +77,17 @@ router.post('/save-card/start', validateFirebaseToken, async (req: Request, res:
 // GET /api/payments/save-card/return — SUMIT redirects the customer back here.
 router.get('/save-card/return', async (req: Request, res: Response) => {
   const txnId = String(req.query.ID || req.query.id || '');
-  const uid = String(req.query.uid || '');
+  const ext = String(req.query.ext || '');
   const base = baseUrl();
-  if (!txnId || !uid) return res.redirect(`${base}/my-wallet?card=failed`);
+  if (!txnId || !ext) return res.redirect(`${base}/my-wallet?card=failed`);
+
+  // Ownership is SERVER-DERIVED from the /start-time pending map — the
+  // querystring `uid` (if present at all) is never consulted.
+  const uid = takePendingUid(ext);
+  if (!uid) {
+    logger.warn('[SaveCard] no pending save-card session for this externalId (fail-closed)', { ext, txnId });
+    return res.redirect(`${base}/my-wallet?card=failed`);
+  }
 
   // Authoritative server-side re-verify — never trust the querystring.
   const verify = await sumitClient.getTransaction(txnId);
