@@ -6,6 +6,7 @@
 
 import { logger } from '../lib/logger';
 import { FCMService } from './FCMService';
+import { WhatsAppService } from './WhatsAppService';
 import sgMail from '../lib/sendgrid';
 
 interface MessagePayload {
@@ -39,6 +40,31 @@ export class GoogleMessagingService {
     }
   }
   
+  /**
+   * Send a WhatsApp message to a customer via the real Meta Business API.
+   *
+   * Callers (gift-card delivery, campaigns, meeting reminders) previously invoked
+   * a method that did NOT exist on this class — the `await` threw a TypeError that
+   * was swallowed by surrounding try/catch, so no WhatsApp ever went out AND the
+   * failure was invisible. This delegates to WhatsAppService.sendMessage, which
+   * returns FALSE (never a fake success) when Meta credentials are unconfigured or
+   * the API rejects the send.
+   *
+   * @returns true only when Meta accepted the message; false otherwise.
+   */
+  static async sendWhatsAppMessage(
+    to: string,
+    message: string,
+    language?: 'he' | 'en',
+  ): Promise<boolean> {
+    try {
+      return await WhatsAppService.sendMessage({ to, message, language });
+    } catch (error) {
+      logger.error('[GoogleMessaging] Failed to send WhatsApp message', error);
+      return false;
+    }
+  }
+
   /**
    * Send email via SendGrid
    */

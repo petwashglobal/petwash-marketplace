@@ -6,6 +6,7 @@
 import admin from '../lib/firebase-admin';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { getUserFcmTokens, INVALID_TOKEN_CODES } from '../lib/fcm-push';
 
 interface PushNotificationPayload {
   userId: string;
@@ -16,6 +17,35 @@ interface PushNotificationPayload {
   clickAction?: string;
 }
 
+/** Where a token was registered, so an invalid one is pruned from the right store. */
+type TokenSource =
+  | { source: 'device'; deviceId: string }   // Firestore fcmTokens/{uid}/devices/{deviceId}
+  | { source: 'legacy' };                     // array field users/{uid}.fcmTokens
+
+/**
+ * Merge the two historically-divergent token stores into ONE de-duplicated send
+ * list, remembering each token's origin. Pure/synchronous so it is unit-testable
+ * without Firebase.
+ *
+ * Web clients (client/src/lib/fcm-notifications.ts) write to the `devices`
+ * subcollection; POST /api/fcm/register-token writes the legacy `users` array.
+ * Reading only one store is exactly why booking/receipt/promo push silently never
+ * delivered to web users. Read BOTH.
+ */
+export function mergePushTokens(
+  deviceTokens: Array<{ token: string; deviceId: string }>,
+  legacyTokens: string[],
+): Map<string, TokenSource> {
+  const bySource = new Map<string, TokenSource>();
+  for (const { token, deviceId } of deviceTokens) {
+    if (token && !bySource.has(token)) bySource.set(token, { source: 'device', deviceId });
+  }
+  for (const token of legacyTokens) {
+    if (token && !bySource.has(token)) bySource.set(token, { source: 'legacy' });
+  }
+  return bySource;
+}
+
 export class FCMService {
   
   /**
@@ -23,25 +53,25 @@ export class FCMService {
    */
   static async sendToUser(payload: PushNotificationPayload): Promise<boolean> {
     try {
-      // Get user's FCM tokens from Firestore
-      const userDoc = await firestoreDb
-        .collection('users')
-        .doc(payload.userId)
-        .get();
-      
-      if (!userDoc.exists) {
-        logger.warn('[FCM] User not found', { userId: payload.userId });
-        return false;
-      }
-      
-      const userData = userDoc.data();
-      const fcmTokens = userData?.fcmTokens || [];
-      
-      if (fcmTokens.length === 0) {
+      // Unified token read. The web client fills the Firestore subcollection
+      // fcmTokens/{uid}/devices/{deviceId}; POST /api/fcm/register-token fills the
+      // legacy array users/{uid}.fcmTokens. This service historically read ONLY the
+      // array, so web-registered devices never received booking/receipt/promo push
+      // (silent no-op). Read BOTH stores so every device is reached regardless of
+      // which path registered it.
+      const [deviceTokens, legacyTokens] = await Promise.all([
+        getUserFcmTokens(payload.userId),
+        this.getLegacyArrayTokens(payload.userId),
+      ]);
+
+      const bySource = mergePushTokens(deviceTokens, legacyTokens);
+      const tokens = Array.from(bySource.keys());
+
+      if (tokens.length === 0) {
         logger.info('[FCM] No FCM tokens for user', { userId: payload.userId });
         return false;
       }
-      
+
       // Build notification message
       const message = {
         notification: {
@@ -50,36 +80,68 @@ export class FCMService {
           imageUrl: payload.imageUrl,
         },
         data: payload.data || {},
-        tokens: fcmTokens,
+        tokens,
       };
-      
+
       // Send multicast message
       const response = await admin.messaging().sendEachForMulticast(message);
-      
+
       logger.info('[FCM] Notification sent', {
         userId: payload.userId,
+        deviceCount: tokens.length,
         successCount: response.successCount,
         failureCount: response.failureCount,
       });
-      
-      // Remove invalid tokens
+
+      // Prune ONLY tokens FCM reports as permanently dead, from their own store.
+      // A transient/quota failure must not delete an otherwise-valid token.
       if (response.failureCount > 0) {
-        const tokensToRemove: string[] = [];
+        const legacyToRemove: string[] = [];
+        const deviceDocsToRemove: string[] = [];
         response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            tokensToRemove.push(fcmTokens[idx]);
-          }
+          if (resp.success) return;
+          if (!resp.error || !INVALID_TOKEN_CODES.has(resp.error.code)) return;
+          const src = bySource.get(tokens[idx]);
+          if (src?.source === 'device') deviceDocsToRemove.push(src.deviceId);
+          else legacyToRemove.push(tokens[idx]);
         });
-        
-        if (tokensToRemove.length > 0) {
-          await this.removeTokens(payload.userId, tokensToRemove);
+
+        if (legacyToRemove.length > 0) {
+          await this.removeTokens(payload.userId, legacyToRemove);
         }
+        await Promise.all(
+          deviceDocsToRemove.map((deviceId) =>
+            firestoreDb
+              .collection('fcmTokens')
+              .doc(payload.userId)
+              .collection('devices')
+              .doc(deviceId)
+              .delete()
+              .catch(() => { /* best-effort prune */ }),
+          ),
+        );
       }
-      
+
       return response.successCount > 0;
     } catch (error: any) {
       logger.error('[FCM] Failed to send notification', error);
       return false;
+    }
+  }
+
+  /**
+   * Legacy array token store: users/{uid}.fcmTokens (written by
+   * POST /api/fcm/register-token). Returns [] when the user/doc is absent.
+   */
+  private static async getLegacyArrayTokens(userId: string): Promise<string[]> {
+    try {
+      const userDoc = await firestoreDb.collection('users').doc(userId).get();
+      if (!userDoc.exists) return [];
+      const tokens = userDoc.data()?.fcmTokens;
+      return Array.isArray(tokens) ? tokens.filter((t): t is string => typeof t === 'string' && !!t) : [];
+    } catch (err) {
+      logger.warn('[FCM] Failed to read legacy array tokens', { userId, err });
+      return [];
     }
   }
   

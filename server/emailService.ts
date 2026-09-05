@@ -35,7 +35,36 @@ export class EmailService {
 
   // One-shot guard so a production blackout writes ONE critical audit row, not one per send.
   private static prodBlackoutReported = false;
-  
+
+  /**
+   * Shared "SendGrid not configured" outcome for financial/legal email methods
+   * (tax invoices, VAT/revenue/expense reports). In production a missing key is a
+   * real outage, NOT a dev convenience: returning true would fake a legal receipt /
+   * statutory report that never sent — a silent legal-receipt loss. Report loudly
+   * (once, critical audit) and return FALSE. In dev, keep the no-op convenience.
+   */
+  private static unconfiguredEmailResult(context: { kind: string; ref?: string }): boolean {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error(
+        `[EmailService] 🔴 PRODUCTION EMAIL BLACKOUT — SendGrid not configured; ${context.kind} dropped (no email sent)`,
+        { ref: context.ref },
+      );
+      if (!EmailService.prodBlackoutReported) {
+        EmailService.prodBlackoutReported = true;
+        logAuditEvent({
+          actionType: 'EMAIL_DISABLED_IN_PRODUCTION',
+          targetType: 'email_system',
+          targetId: 'sendgrid',
+          severity: 'critical',
+          metadata: { firstDropped: context.kind, ref: context.ref, at: new Date().toISOString() },
+        }).catch(() => { /* helper swallows; double-guard */ });
+      }
+      return false;
+    }
+    logger.info(`SendGrid not configured - would send ${context.kind}${context.ref ? `: ${context.ref}` : ''}`);
+    return true;
+  }
+
   /**
    * Send a simple email (for system alerts and internal notifications)
    * Bypasses consent checks and business hours - use only for operational alerts
@@ -458,8 +487,7 @@ export class EmailService {
    */
   static async sendTaxInvoice(invoice: TaxInvoice): Promise<boolean> {
     if (!isSendGridConfigured()) {
-      logger.info('SendGrid not configured - would send invoice:', invoice.invoiceNumber);
-      return true; // Return true for development
+      return EmailService.unconfiguredEmailResult({ kind: 'tax invoice', ref: invoice.invoiceNumber });
     }
     
     try {
@@ -510,8 +538,7 @@ export class EmailService {
     invoice: TaxInvoice
   ): Promise<boolean> {
     if (!isSendGridConfigured()) {
-      logger.info('SendGrid not configured - would send report for transaction:', transaction.id);
-      return true; // Return true for development
+      return EmailService.unconfiguredEmailResult({ kind: 'transaction report', ref: transaction.id });
     }
     
     try {
@@ -554,8 +581,7 @@ export class EmailService {
     summary: { totalRevenue: number; totalTransactions: number }
   ): Promise<boolean> {
     if (!isSendGridConfigured()) {
-      logger.info(`SendGrid not configured - would send ${reportType} revenue report for ${period}`);
-      return true;
+      return EmailService.unconfiguredEmailResult({ kind: `${reportType} revenue report`, ref: period });
     }
 
     try {
@@ -687,8 +713,7 @@ export class EmailService {
     status: 'payment_due' | 'refund_due' | 'balanced';
   }): Promise<boolean> {
     if (!isSendGridConfigured()) {
-      logger.info(`SendGrid not configured - would send VAT notification for ${params.month}/${params.year}`);
-      return true;
+      return EmailService.unconfiguredEmailResult({ kind: 'VAT declaration notification', ref: `${params.month}/${params.year}` });
     }
 
     try {
@@ -802,8 +827,7 @@ export class EmailService {
     supervisorEmail?: string;
   }): Promise<boolean> {
     if (!isSendGridConfigured()) {
-      logger.info(`SendGrid not configured - would send expense notification for ${params.expenseId}`);
-      return true;
+      return EmailService.unconfiguredEmailResult({ kind: 'employee expense notification', ref: params.expenseId });
     }
 
     try {
@@ -912,8 +936,7 @@ export class EmailService {
    */
   static async sendBlankExpenseFormDraft(): Promise<boolean> {
     if (!isSendGridConfigured()) {
-      logger.info('SendGrid not configured - would send blank expense form draft');
-      return true;
+      return EmailService.unconfiguredEmailResult({ kind: 'blank expense form draft' });
     }
 
     try {
@@ -1092,8 +1115,7 @@ export class EmailService {
    */
   static async sendSampleVATSubmissionTaxAuthority(): Promise<boolean> {
     if (!isSendGridConfigured()) {
-      logger.info('SendGrid not configured - would send sample VAT submission');
-      return true;
+      return EmailService.unconfiguredEmailResult({ kind: 'sample VAT submission' });
     }
 
     try {

@@ -3014,11 +3014,20 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
     const validPhone = ownerPhone && phoneRegex.test(ownerPhone.replace(/[\s-]/g, ''));
     const validEmail = ownerEmail && emailRegex.test(ownerEmail);
+    // Honest SMS delivery flag. twilioSMSService.sendSMS returns { success } and
+    // does NOT throw on a provider failure — reporting smsSent from "a valid phone
+    // exists" hides real failures from a customer who paid and got no confirmation.
+    let receiptSmsDelivered = false;
     if (validPhone && booking.ownerId === callerUserId) {
       try {
         const smsBody = `PetWash™ ההזמנה אושרה!\n\nמזהה: ${requestId}\nשירות: ${booking.serviceType}\nתאריכים: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}\nסכום: ₪${(booking.totalCents / 100).toFixed(2)}\nסטטוס: אושר ✅\n\nתודה שבחרת ב-PetWash™!`;
-        await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'] });
-        logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
+        const smsResult = await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'] });
+        receiptSmsDelivered = !!smsResult?.success;
+        if (receiptSmsDelivered) {
+          logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
+        } else {
+          logger.error('[BookingRequests] Confirmation SMS NOT delivered', { requestId, error: smsResult?.error });
+        }
       } catch (smsErr: any) {
         logger.warn('[BookingRequests] SMS send failed', { error: smsErr.message });
       }
@@ -3279,10 +3288,10 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
       success: true,
       status: finalStatus,
       payoutETA: '72 hours',
-      smsSent: !!ownerPhone,
-      emailSent: !!recipientEmail,
-      // Honest delivery status: true ONLY when EmailService confirmed the
-      // receipt actually went out (not merely that an address existed).
+      // Honest delivery status: true ONLY when the provider confirmed the message
+      // actually went out (not merely that a phone/address existed).
+      smsSent: receiptSmsDelivered,
+      emailSent: receiptEmailDelivered,
       emailDelivered: receiptEmailDelivered,
       message: 'Thank you! Payment has been released to the provider and will be transferred within 72 hours.',
     });

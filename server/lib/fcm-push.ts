@@ -32,7 +32,12 @@ export async function getUserFcmTokens(userId: string): Promise<Array<{ token: s
   }
 }
 
-const INVALID_TOKEN_CODES = new Set([
+/**
+ * FCM error codes that mean the token is permanently dead and should be pruned.
+ * Exported so every sender (this module AND FCMService) prunes with the SAME
+ * predicate — a transient/quota error must NOT delete an otherwise-valid token.
+ */
+export const INVALID_TOKEN_CODES = new Set([
   'messaging/registration-token-not-registered',
   'messaging/invalid-registration-token',
   'messaging/invalid-argument',

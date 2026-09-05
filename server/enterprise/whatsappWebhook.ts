@@ -7,6 +7,7 @@ import type { Request, Response } from 'express';
 import { db as firestoreDb } from '../lib/firebase-admin';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { WhatsAppService } from '../services/WhatsAppService';
 import crypto from 'crypto';
 
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'petwash_webhook_secret';
@@ -27,24 +28,37 @@ interface WhatsAppMessage {
  */
 function verifyMetaSignature(req: Request): boolean {
   if (!META_WEBHOOK_SECRET) {
-    logger.warn('[WhatsApp] META_WEBHOOK_SECRET not configured - signature verification disabled');
-    return true; // Allow in development
+    // Fail CLOSED in production: without the secret we cannot authenticate the
+    // caller, so accepting inbound payloads would let anyone forge WhatsApp
+    // messages into the routing pipeline. Only the dev convenience keeps the
+    // open path.
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[WhatsApp] META_WEBHOOK_SECRET not set in production — rejecting inbound webhook (fail closed)');
+      return false;
+    }
+    logger.warn('[WhatsApp] META_WEBHOOK_SECRET not configured - signature verification disabled (non-production only)');
+    return true;
   }
-  
+
   const signature = req.headers['x-hub-signature-256'] as string;
-  
+
   if (!signature) {
     return false;
   }
-  
-  const expectedSignature = 'sha256=' + crypto
+
+  // Guard timingSafeEqual against a length mismatch (it throws on unequal-length
+  // buffers). A malformed/short signature is simply not a match.
+  const expected = 'sha256=' + crypto
     .createHmac('sha256', META_WEBHOOK_SECRET)
     .update(JSON.stringify(req.body))
     .digest('hex');
-  
+  if (signature.length !== expected.length) {
+    return false;
+  }
+
   return crypto.timingSafeEqual(
     Buffer.from(signature),
-    Buffer.from(expectedSignature)
+    Buffer.from(expected)
   );
 }
 
@@ -312,10 +326,22 @@ export async function sendWhatsAppMessage(
   message: string,
   fromStaffUid: string
 ): Promise<boolean> {
+  // Actually deliver via the Meta WhatsApp Business API. WhatsAppService.sendMessage
+  // returns FALSE (never a fake success) when credentials are unconfigured or Meta
+  // rejects the send. This function used to only write a Firestore row and return
+  // true unconditionally — callers believed the customer was messaged when nothing
+  // was sent. Never report success without a real send.
+  let delivered = false;
   try {
-    // This would integrate with WhatsApp Business API
-    // For now, log the outbound message
-    
+    delivered = await WhatsAppService.sendMessage({ to, message });
+  } catch (error: any) {
+    logger.error('[WhatsApp] Send message failed:', error);
+    delivered = false;
+  }
+
+  // Record the outbound attempt in the staff inbox for the conversation thread,
+  // stamped with the REAL delivery outcome (audit trail — best-effort, non-fatal).
+  try {
     await firestoreDb
       .collection('inboxes')
       .doc(fromStaffUid)
@@ -325,20 +351,22 @@ export async function sendWhatsAppMessage(
         recipient: to,
         text: message,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        status: 'sent',
+        status: delivered ? 'sent' : 'failed',
         source: 'whatsapp',
-        direction: 'outbound'
+        direction: 'outbound',
       });
-    
-    logger.info('[WhatsApp] Outbound message sent', {
-      to,
-      from: fromStaffUid
-    });
-    
-    return true;
-    
-  } catch (error: any) {
-    logger.error('[WhatsApp] Send message failed:', error);
-    return false;
+  } catch (logErr: any) {
+    logger.error('[WhatsApp] Failed to record outbound message', logErr);
   }
+
+  if (delivered) {
+    logger.info('[WhatsApp] Outbound message sent', { to, from: fromStaffUid });
+  } else {
+    logger.warn('[WhatsApp] Outbound message NOT delivered (Meta unconfigured or rejected)', {
+      to,
+      from: fromStaffUid,
+    });
+  }
+
+  return delivered;
 }
