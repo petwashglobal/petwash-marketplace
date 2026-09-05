@@ -141,6 +141,18 @@ export default function PetPassportHome() {
 
   const speciesLabel = (s: string) => (isHe ? SPECIES_HE[s] : SPECIES_EN[s]) ?? s;
 
+  // SPRINT/CUSTOMER-HUB-PETS (2026-09-05): "Medical records" tile + the
+  // bottom-nav "Documents" item both navigated to `/documents`. That route
+  // is mounted with <AdminRouteGuard> → <DocumentManagement/> — the INTERNAL
+  // admin document console, not a customer surface. Every real pet owner
+  // who tapped either control landed on "Access not authorised" (see
+  // client/src/components/AdminRouteGuard.tsx). The actual customer-facing
+  // document vault is PetDocuments.tsx, routed at /pets/:petId/documents
+  // (server-scoped to the caller's own uid, verified in pet-documents.ts).
+  // Route there for the hero pet; fall back to /pets so a customer with no
+  // pets yet can add one first instead of hitting a 404/denied screen.
+  const goToPetDocuments = () => navigate(hero ? `/pets/${hero.id}/documents` : '/pets');
+
   return (
     <div dir={isHe ? 'rtl' : 'ltr'} className="min-h-screen w-full bg-[#FAFAF7]">
       <div className="mx-auto w-full max-w-[440px] px-5 pb-28 pt-5">
@@ -208,7 +220,7 @@ export default function PetPassportHome() {
              Insurance was a dead notReady() toast → removed until the feature
              ships. Vaccines + Medical records are REAL destinations. */}
         <div className="mt-5 grid grid-cols-2 gap-3">
-          <Tile icon={<BriefcaseMedical />} label={tr('רשומות רפואיות', 'Medical records')} onClick={() => navigate('/documents')} />
+          <Tile icon={<BriefcaseMedical />} label={tr('רשומות רפואיות', 'Medical records')} onClick={goToPetDocuments} />
           {/* 2026-08-18 COMPETITIVE (WhatIDog gap): Vaccines is REAL — per-pet
               PetHealthPanel on /pets already stores nextVaccineDate + the
               enableVaccineReminders toggle and reads /api/pets/:id/health-events. */}
@@ -279,7 +291,7 @@ export default function PetPassportHome() {
         <NavItem icon={<Home />} label={tr('דף הבית', 'Home')} onClick={() => navigate('/prestige/home')} />
         <NavItem icon={<PawPrint />} label={tr('חיות מחמד', 'Pets')} active onClick={() => navigate('/pet-passport')} />
         <NavItem icon={<Heart />} label={tr('בריאות', 'Health')} onClick={() => navigate('/pets')} />
-        <NavItem icon={<FileText />} label={tr('מסמכים', 'Documents')} onClick={() => navigate('/documents')} />
+        <NavItem icon={<FileText />} label={tr('מסמכים', 'Documents')} onClick={goToPetDocuments} />
         <NavItem icon={<Bell />} label={tr('התראות', 'Alerts')} onClick={() => navigate('/notifications')} />
       </nav>
     </div>

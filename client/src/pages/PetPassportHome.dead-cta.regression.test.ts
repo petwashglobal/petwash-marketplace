@@ -26,8 +26,25 @@ describe('PetPassportHome.tsx CTA wiring — every visible tile lands on a real 
     expect(SRC).toMatch(/label=\{tr\('וטרינר', 'Vet'\)\}\s*onClick=\{\(\) => navigate\(['"]\/pets['"]\)\}/);
   });
 
-  it('Medical records tile navigates to /documents (real document vault)', () => {
-    expect(SRC).toMatch(/label=\{tr\('רשומות רפואיות', 'Medical records'\)\}\s*onClick=\{\(\) => navigate\(['"]\/documents['"]\)\}/);
+  // 2026-09-05 CORRECTION: the 2026-08-27 sweep believed /documents was
+  // "the real document vault" and pinned that route here. It is not — the
+  // route is <AdminRouteGuard><DocumentManagement/></AdminRouteGuard>, the
+  // INTERNAL admin console. Every real customer who tapped this tile got
+  // "Access not authorised". The actual customer document vault is
+  // PetDocuments.tsx at /pets/:petId/documents. Both this tile and the
+  // bottom-nav "Documents" item now route through goToPetDocuments(),
+  // which targets the hero pet's document vault (or /pets with no pets yet).
+  it('Medical records tile navigates to the pet document vault via goToPetDocuments (not the admin /documents console)', () => {
+    expect(SRC).toMatch(/label=\{tr\('רשומות רפואיות', 'Medical records'\)\}\s*onClick=\{goToPetDocuments\}/);
+    expect(SRC).not.toMatch(/label=\{tr\('רשומות רפואיות', 'Medical records'\)\}\s*onClick=\{\(\) => navigate\(['"]\/documents['"]\)\}/);
+  });
+
+  it('goToPetDocuments() targets /pets/:petId/documents (the real customer vault), never the admin /documents console', () => {
+    expect(SRC).toMatch(/const goToPetDocuments = \(\) => navigate\(hero \? `\/pets\/\$\{hero\.id\}\/documents` : '\/pets'\);/);
+  });
+
+  it('bottom-nav "Documents" item also uses goToPetDocuments (not the admin /documents console)', () => {
+    expect(SRC).toMatch(/label=\{tr\('מסמכים', 'Documents'\)\}\s*onClick=\{goToPetDocuments\}/);
   });
 
   it('Shop quick-action navigates to /shop (real store)', () => {

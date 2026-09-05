@@ -207,15 +207,39 @@ router.patch("/:id", requireAuth, async (req, res) => {
     if (raw.lat !== undefined) data.lat = raw.lat.toString();
     if (raw.lng !== undefined) data.lng = raw.lng.toString();
 
-    if (data.isDefault) {
-      await db.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
-    }
+    // SPRINT/CUSTOMER-HUB-PETS (2026-09-05): this used to clear
+    // isDefault on ALL of the caller's addresses BEFORE checking whether
+    // `id` actually belongs to them (or exists at all). A bogus/foreign
+    // id (stale after a delete, a double-tap race, or a client bug)
+    // still 404'd — but only AFTER the caller's own real default had
+    // already been wiped, leaving the address book with no default and
+    // no way to know it happened. Verify ownership first so a 404 never
+    // has this side effect.
+    // Promoting an address to default is a two-step swap: clear the old
+    // default, then set the new one. Run it in ONE transaction — reviewed
+    // 2026-09-06. The ownership pre-check above stops a bogus id from wiping
+    // the default, but the swap itself was still two independent statements:
+    // if the second failed (connection blip, constraint), the clear had
+    // already committed and the user was left with NO default at all and no
+    // error explaining it. Atomic here means the address book either moves to
+    // the new default or stays exactly as it was.
+    const updated = await db.transaction(async (tx) => {
+      if (data.isDefault) {
+        const [owned] = await tx
+          .select({ id: userAddresses.id })
+          .from(userAddresses)
+          .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)));
+        if (!owned) return null;
+        await tx.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
+      }
 
-    const [updated] = await db
-      .update(userAddresses)
-      .set(data)
-      .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)))
-      .returning();
+      const [row] = await tx
+        .update(userAddresses)
+        .set(data)
+        .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)))
+        .returning();
+      return row ?? null;
+    });
 
     if (!updated) return res.status(404).json({ error: "Address not found" });
     res.json(updated);
