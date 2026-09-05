@@ -157,21 +157,27 @@ function readArgs(src, openParen) {
   return src.slice(openParen + 1, Math.min(src.length, openParen + 600));
 }
 
-const AUTH_TOKENS = [
-  'requireSuperAdmin', 'isSuperAdminVerified', 'isSuperAdmin',
-  'requireAdmin', 'requireAdminMiddleware', 'adminOnly', 'requireRole',
-  'requireStaffApproved', 'requireMfaEnrolled',
-  'requireAuth', 'isAuthenticated', 'verifyFirebaseToken', 'requireUser',
-  'optionalAuth', 'optFirebase',
-];
+/**
+ * Auth detection is PATTERN based, not a fixed allow-list. A fixed list
+ * flagged `requireAdminPanelAccess` (a locally built
+ * requireAuthenticatedRole([...])) and `requireKYCPermission(...)` as
+ * "unguarded" — 279 false AUTH findings. Any identifier that reads like a
+ * guard counts, and the rank is taken from what the name asserts.
+ */
+const GUARD_NAME = /^(require|ensure|assert|verify|validate|check|is|has|guard|only|protect|authorize|authenticate)[A-Z_]/;
+const GUARDISH = /(admin|auth|role|permission|mfa|token|guard|staff|super|kyc|verified|approved|owner|member|firebase|session|csrf)/i;
 
-function detectAuth(argText) {
-  const found = AUTH_TOKENS.filter((t) => new RegExp(`\\b${t}\\b`).test(argText));
-  if (found.some((t) => /Super/i.test(t))) return 'super_admin';
-  if (found.some((t) => /admin|Role|Staff|Mfa/i.test(t))) return 'admin';
-  if (found.length) return 'user';
-  return 'none';
+export function detectAuth(argText) {
+  const idents = [...argText.matchAll(/\b([A-Za-z_$][\w$]*)\s*(\(|,|\)|$)/g)].map((x) => x[1]);
+  const guards = idents.filter((n) => GUARD_NAME.test(n) && GUARDISH.test(n));
+  if (!guards.length) return 'none';
+  if (guards.some((g) => /super/i.test(g))) return 'super_admin';
+  if (guards.some((g) => /(admin|staff|role|permission|mfa)/i.test(g))) return 'admin';
+  return 'user';
 }
+
+const AUTH_RANK = { none: 0, user: 1, admin: 2, super_admin: 3 };
+export function strongerAuth(a, b) { return AUTH_RANK[a] >= AUTH_RANK[b] ? a : b; }
 
 /** Parse one module into a structured record. */
 function parseModule(root, rel) {
@@ -309,7 +315,18 @@ function parseModule(root, rel) {
       method: m[2].toUpperCase(),
       path: pathM[2],
       line: lineOf(m.index),
-      auth: detectAuth(args.slice(0, 400)),
+      // Middleware on the registration line, OR a gate written INSIDE the
+      // handler body (prestige-pass checks firebase customClaims.admin and
+      // returns 403 inline — invisible to middleware-only analysis).
+      auth: (() => {
+        const mw = detectAuth(args.slice(0, 400));
+        if (mw !== 'none') return mw;
+        const body = args.slice(0, 4000);
+        if (!/res\s*\.\s*status\s*\(\s*40[13]\s*\)/.test(body)) return 'none';
+        if (/(customClaims|isSuperAdmin|super_admin|SUPER_ADMIN)/.test(body)) return 'super_admin';
+        if (/\b(admin|adminUser|isAdmin|role|permission)\b/i.test(body)) return 'admin';
+        return 'user';
+      })(),
       is410: /\b410\b/.test(args.slice(0, 800)) && /(V1_DEPRECATED|ENDPOINT_RETIRED|Gone|RETIRED|DEPRECATED)/i.test(args.slice(0, 800)),
     });
   }
@@ -393,22 +410,40 @@ export function buildServerRouteTable(root) {
     return null;
   }
 
-  function walk(fileRel, objName, prefix, chain) {
-    const key = `${fileRel}::${objName}::${prefix}`;
+  function walk(fileRel, objName, prefix, chain, inheritedAuth = 'none') {
+    const key = `${fileRel}::${objName}::${prefix}::${inheritedAuth}`;
     if (visited.has(key)) return;
     visited.add(key);
     if (chain.length > 12) return;
     const mod = modules.get(fileRel);
     if (!mod) return;
 
+    // Guards applied to the WHOLE router inside its own module —
+    // `router.use(requireAuth)` / `router.use('/admin', requireAdmin)`.
+    let moduleAuth = inheritedAuth;
+    const scopedGuards = [];
+    for (const u of mod.uses) {
+      if (u.obj !== objName) continue;
+      const a = detectAuth(u.args);
+      if (a === 'none') continue;
+      const looksLikeRouterMount = u.idents.some((id) => resolveRouterIdent(mod, id));
+      if (looksLikeRouterMount) continue;
+      if (!u.mountPath) moduleAuth = strongerAuth(moduleAuth, a);
+      else scopedGuards.push({ prefix: u.mountPath, auth: a });
+    }
+
     for (const h of mod.handlers) {
       if (h.obj !== objName) continue;
+      let auth = strongerAuth(h.auth, moduleAuth);
+      for (const g of scopedGuards) {
+        if (h.path === g.prefix || h.path.startsWith(g.prefix.replace(/\/$/, '') + '/')) auth = strongerAuth(auth, g.auth);
+      }
       routes.push({
         method: h.method,
         path: joinPath(prefix, h.path),
         file: fileRel,
         line: h.line,
-        auth: h.auth,
+        auth,
         is410: h.is410,
         mountChain: [...chain, `${fileRel}#${objName}`],
       });
@@ -422,7 +457,7 @@ export function buildServerRouteTable(root) {
         const node = resolveRouterIdent(mod, ident);
         if (node) {
           matched = true;
-          walk(node.file, node.obj, childPrefix, [...chain, `${fileRel}:${u.line}`]);
+          walk(node.file, node.obj, childPrefix, [...chain, `${fileRel}:${u.line}`], strongerAuth(inheritedAuth, detectAuth(u.args)));
         }
       }
       if (!matched && u.mountPath && u.idents.length && /[Rr]out(er|es)|[Hh]andler/.test(u.idents.join(' '))) {
@@ -435,7 +470,7 @@ export function buildServerRouteTable(root) {
       if (c.arg !== objName) continue;
       if (!/^(register|mount|setup|install|attach|add)[A-Z]/.test(c.fn)) continue;
       const target = resolveRegistrar(mod, c.fn);
-      if (target) walk(target.mod.rel, target.param, prefix, [...chain, `${fileRel}:${c.line}`]);
+      if (target) walk(target.mod.rel, target.param, prefix, [...chain, `${fileRel}:${c.line}`], inheritedAuth);
     }
   }
 
@@ -447,7 +482,7 @@ export function buildServerRouteTable(root) {
     for (const r of mod.registrars) {
       if (/^(registerRoutes|createServer|registerAllRoutes|setupRoutes|registerEnterpriseRoutes)/.test(r.fn) || /app/i.test(r.param)) seeds.add(r.param);
     }
-    for (const s of seeds) walk(hint, s, '', [`seed:${hint}#${s}`]);
+    for (const s of seeds) walk(hint, s, '', [`seed:${hint}#${s}`], 'none');
   }
 
   // Second pass: routers that are reachable but whose mount we could not
