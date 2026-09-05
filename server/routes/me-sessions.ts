@@ -43,6 +43,7 @@ import {
   type SessionSummary,
 } from '../services/SessionService';
 import { logger } from '../lib/logger';
+import { getFeatureFlag } from '../services/SystemConfig';
 
 const router = Router();
 
@@ -91,7 +92,21 @@ router.get('/sessions', validateFirebaseToken, async (req: Request, res: Respons
   if (!uid) return res.status(401).json({ error: 'AUTH_REQUIRED' });
   try {
     const rows = await listSessionsForUser(uid);
-    return res.json({ userId: uid, sessions: rows.map(toPublic) });
+    // TRUTHFULNESS (auth/identity sprint 2026-09-05): sessions_pw is still DARK
+    // in production — ff.returning_user.sessions_owned.enabled defaults false and
+    // NOTHING mints a row, so this endpoint returns [] for every real user and
+    // the Account Security page rendered "No active sessions." to somebody who
+    // is demonstrably signed in. An empty list is not the same claim as "the
+    // device registry is not recording yet"; the client must be able to tell
+    // them apart, so say which one this is.
+    const trackingEnabled = await getFeatureFlag('ff.returning_user.sessions_owned.enabled')
+      .catch(() => false);
+    return res.json({
+      userId: uid,
+      sessions: rows.map(toPublic),
+      /** false => this list is empty because nothing is recorded yet, NOT because the user has no devices. */
+      tracking: Boolean(trackingEnabled),
+    });
   } catch (err: any) {
     logger.error('[me/sessions] list failed', { uid, error: err?.message });
     return res.status(500).json({ error: 'SESSIONS_LIST_FAILED' });

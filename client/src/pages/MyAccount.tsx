@@ -1415,9 +1415,17 @@ export default function MyAccount() {
       if (firebaseUser) {
         firebaseUser.reload();
       }
+      // Report only what the server actually did. `otherSessionsRevoked` is a
+      // COUNT, not a boolean — sessions_pw is dark in production today, so
+      // claiming "your other devices were signed out" would be false.
+      const revoked = typeof data.otherSessionsRevoked === 'number' ? data.otherSessionsRevoked : 0;
       toast({
         title: isHebrew ? 'האימייל עודכן' : 'Email Updated',
-        description: data.newEmail,
+        description: revoked > 0
+          ? (isHebrew
+              ? `${data.newEmail} · ${revoked} מכשירים אחרים נותקו`
+              : `${data.newEmail} · ${revoked} other device(s) signed out`)
+          : data.newEmail,
       });
     },
     onError: (error: any) => {
@@ -3916,8 +3924,8 @@ export default function MyAccount() {
                           <Shield className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
                           <p className="text-gray-500 text-sm">
                             {isHebrew
-                              ? 'לאחר שינוי האימייל תישאר מחובר במכשיר הזה, וכל שאר המכשירים ינותקו. בפעם הבאה התחבר עם הכתובת החדשה.'
-                              : 'After the change you stay signed in on this device and every other device is signed out. Next time, sign in with the new address.'}
+                              ? 'לאחר השינוי תישאר מחובר במכשיר הזה. בפעם הבאה התחבר עם הכתובת החדשה.'
+                              : 'After the change you stay signed in on this device. Next time, sign in with the new address.'}
                           </p>
                         </div>
                       </div>
