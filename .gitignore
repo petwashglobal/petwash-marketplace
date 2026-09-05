@@ -76,3 +76,7 @@ dist-verify
 # Claude Code isolated agent worktrees
 .claude/worktrees/
 
+
+# Playwright run artifacts (Agent 12 sprint)
+test-results/
+playwright-report/
