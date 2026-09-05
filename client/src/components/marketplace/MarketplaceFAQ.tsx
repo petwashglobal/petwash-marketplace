@@ -16,8 +16,8 @@ const platformFAQs: Record<Platform, FAQItem[]> = {
       id: 'sitter-1',
       question: 'How does pet sitting work with ⁦PetWash™⁩?',
       questionHe: 'איך עובד שמרטוף חיות מחמד עם ⁦PetWash™⁩?',
-      answer: 'Our verified pet sitters offer two options: your pet can stay at their home, or they can come to your home while you\'re away. All sitters pass background checks, are insured, and follow our 7-star care standards. You\'ll receive daily photo updates and can message your sitter anytime.',
-      answerHe: 'השמרטפים המאומתים שלנו מציעים שתי אפשרויות: חיית המחמד שלך יכולה להישאר בבית שלהם, או שהם יכולים לבוא לבית שלך בזמן שאתה בחופשה. כל השמרטפים עוברים בדיקות רקע, מבוטחים ועומדים בתקני הטיפול 7 כוכבים שלנו. תקבל עדכוני תמונות יומיים ותוכל לשלוח הודעות לשמרטף בכל עת.'
+      answer: 'Our verified pet sitters offer two options: your pet can stay at their home, or they can come to your home while you\'re away. All sitters pass our verification and review process and follow our 7-star care standards. You\'ll receive daily photo updates and can message your sitter anytime.',
+      answerHe: 'השמרטפים המאומתים שלנו מציעים שתי אפשרויות: חיית המחמד שלך יכולה להישאר בבית שלהם, או שהם יכולים לבוא לבית שלך בזמן שאתה בחופשה. כל השמרטפים עוברים את תהליך האימות והבדיקה שלנו ועומדים בתקני הטיפול 7 כוכבים שלנו. תקבל עדכוני תמונות יומיים ותוכל לשלוח הודעות לשמרטף בכל עת.'
     },
     {
       id: 'sitter-2',
@@ -37,8 +37,8 @@ const platformFAQs: Record<Platform, FAQItem[]> = {
       id: 'sitter-4',
       question: 'What if there\'s an emergency?',
       questionHe: 'מה קורה אם יש מצב חירום?',
-      answer: 'All sitters have access to our 24/7 emergency support line and are trained in pet first aid. We provide vet clinic contacts and your pet\'s medical history is shared with the sitter. Insurance covers vet emergencies during the stay.',
-      answerHe: 'לכל השמרטפים יש גישה לקו החירום שלנו 24/7 והם מאומנים בעזרה ראשונה לחיות מחמד. אנחנו מספקים פרטי קשר של מרפאות וטרינריות וההיסטוריה הרפואית של חיית המחמד שלך משותפת עם השמרטף. הביטוח מכסה מצבי חירום וטרינריים במהלך השהייה.'
+      answer: 'All sitters have access to our 24/7 emergency support line and are trained in pet first aid. We provide vet clinic contacts and your pet\'s medical history is shared with the sitter. In an emergency the sitter contacts you and the nearest vet clinic without delay.',
+      answerHe: 'לכל השמרטפים יש גישה לקו החירום שלנו 24/7 והם מאומנים בעזרה ראשונה לחיות מחמד. אנחנו מספקים פרטי קשר של מרפאות וטרינריות וההיסטוריה הרפואית של חיית המחמד שלך משותפת עם השמרטף. במקרה חירום, השמרטף יצור איתך קשר ויפנה למרפאה הווטרינרית הקרובה ללא דיחוי.'
     },
     {
       id: 'sitter-5',
@@ -67,8 +67,8 @@ const platformFAQs: Record<Platform, FAQItem[]> = {
       id: 'walker-3',
       question: 'How do walkers access my home?',
       questionHe: 'איך המטיילים נכנסים לבית שלי?',
-      answer: 'You can provide a key, lockbox code, or smart lock access. All walkers are background-checked and insured. We recommend a secure key handoff at your first booking.',
-      answerHe: 'אתה יכול לספק מפתח, קוד לכספת או גישה למנעול חכם. כל המטיילים עברו בדיקת רקע ומבוטחים. אנחנו ממליצים על מסירת מפתח מאובטחת בהזמנה הראשונה שלך.'
+      answer: 'You can provide a key, lockbox code, or smart lock access. All walkers are background-checked. We recommend a secure key handoff at your first booking.',
+      answerHe: 'אתה יכול לספק מפתח, קוד לכספת או גישה למנעול חכם. כל המטיילים עברו בדיקת רקע. אנחנו ממליצים על מסירת מפתח מאובטחת בהזמנה הראשונה שלך.'
     },
     {
       id: 'walker-4',

@@ -249,8 +249,27 @@ const FORBIDDEN: ReadonlyArray<ForbiddenPattern> = [
   { id: "CLAIM_GUARANTEED",      pattern: /claim guaranteed/i,                      reason: "guarantees claim approval" },
   { id: "FULLY_COVERED",         pattern: /fully covered/i,                         reason: "claim that pets/bookings are fully covered" },
 
+  // Blanket "our providers are insured" marketing claims.
+  // NOTE: the per-provider "Insured" / "מבוטח" search badge is a
+  // data-driven attribute of a single provider (backed by an
+  // uploaded KYC certificate) and is intentionally NOT matched —
+  // these patterns only catch UNQUALIFIED, all-providers claims.
+  { id: "INSURANCE_COVERS",      pattern: /insurance covers/i,                      reason: "claim that PetWash insurance covers incidents" },
+  { id: "INSURED_PROFESSIONALS", pattern: /insured\s+(groomers|sitters|walkers|dog\s*walkers|providers|hosts|drivers)/i,
+                                                                                    reason: "blanket claim that a provider class is insured" },
+  { id: "ALL_X_ARE_INSURED",     pattern: /\ball\s+(sitters|walkers|providers|groomers|drivers|hosts)\b[^.\n]{0,60}\binsured\b/i,
+                                                                                    reason: "blanket claim that all providers of a class are insured" },
+  { id: "HE_HABITUACH_MECHASE",  pattern: /הביטוח\s+מכסה/,                           reason: "Hebrew 'the insurance covers'" },
+  { id: "HE_KOL_MEVUTACHIM",     pattern: /כל\s+ה[^.\n]{0,40}מבוטחים/,               reason: "Hebrew blanket 'all ... are insured'" },
+
   // Pet Wash–branded insurance / protection programs
-  { id: "PW_PROTECT_BRAND",      pattern: /Pet ?Wash[™]?\s*Protect/i,               reason: "PetWash-branded protection program" },
+  // Targets the branded "PetWash Protect" insurance/protection
+  // PROGRAM (as a noun: "PetWash Protect", "PetWash Protect™",
+  // "PetWash Protect covers ..."). The trailing \b prevents a
+  // false match on the plain adjective "PetWash Protected
+  // Booking" — a payment/trust layer that makes no coverage or
+  // guarantee claim (see client/src/pages/ProviderDetail.tsx).
+  { id: "PW_PROTECT_BRAND",      pattern: /Pet ?Wash[™]?\s*Protect\b/i,             reason: "PetWash-branded protection program" },
   { id: "PW_ACCIDENT_COVER",     pattern: /Pet ?Wash[™]?\s*Accident\s*Cover/i,      reason: "PetWash-branded accident cover" },
   { id: "COVERED_BY_PW",         pattern: /Covered\s+by\s+Pet ?Wash/i,              reason: "claim that PetWash covers" },
   { id: "PW_PROVIDES_COVERAGE",  pattern: /Pet ?Wash[™]?\s+provides\s+[^.\n]*\b(coverage|liability\s+coverage)\b/i,
@@ -337,6 +356,16 @@ const KNOWN_BAD_STRINGS: ReadonlyArray<{
     needle: "Pet Wash™ provides up to" },
   { label: "Policy number PW-2026-IL-001",
     needle: "PW-2026-IL-001" },
+  { label: "MarketplaceFAQ sitter 'are insured' claim",
+    needle: "background checks, are insured" },
+  { label: "MarketplaceFAQ 'Insurance covers vet emergencies'",
+    needle: "Insurance covers vet emergencies during the stay" },
+  { label: "MarketplaceFAQ Hebrew 'הביטוח מכסה מצבי חירום'",
+    needle: "הביטוח מכסה מצבי חירום" },
+  { label: "MarketplaceFAQ walker 'background-checked and insured'",
+    needle: "background-checked and insured" },
+  { label: "Groomers 'Certified, insured groomers near you'",
+    needle: "Certified, insured groomers near you" },
 ];
 
 describe("PR-LEGAL-B — known-bad strings stay removed", () => {

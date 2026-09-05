@@ -112,7 +112,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
         <div className="luxury-container">
           <div className="flex items-center gap-2 mb-2"><Scissors className="w-6 h-6 text-[#D4AF37]" /><span className="text-[#D4AF37] text-sm font-medium uppercase tracking-wide">Grooming Marketplace</span></div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{isHebrew ? 'מצא מטפח מקצועי' : 'Find a Professional Groomer'}</h1>
-          <p className="text-[#D4AF37] mb-8">Certified, insured groomers near you</p>
+          <p className="text-[#D4AF37] mb-8">{isHebrew ? 'מטפחים מאומתים באזורך' : 'Verified groomers near you'}</p>
 
           <div className="relative max-w-lg">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
