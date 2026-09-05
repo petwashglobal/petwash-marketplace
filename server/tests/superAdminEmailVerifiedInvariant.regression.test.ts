@@ -47,7 +47,7 @@
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const ROOT = join(__dirname, '..', '..');
 
@@ -65,7 +65,21 @@ const SKIP_DIRS = new Set([
  * invariant must not be silently contingent on a developer tool being
  * on PATH — this walker uses only node:fs.
  */
+let _fileCache: string[] | null = null;
+const _srcCache = new Map<string, string>();
+
+/** Read a source file once, then serve it from memory. */
+function readSource(file: string): string {
+  let src = _srcCache.get(file);
+  if (src === undefined) {
+    src = readFileSync(file, 'utf8');
+    _srcCache.set(file, src);
+  }
+  return src;
+}
+
 function sourceFiles(): string[] {
+  if (_fileCache) return _fileCache;
   const out: string[] = [];
   const walk = (dir: string) => {
     let entries;
@@ -87,38 +101,51 @@ function sourceFiles(): string[] {
     }
   };
   walk(ROOT);
+  _fileCache = out;
   return out;
 }
 
 /** `<abs file>:<1-based line>` for every line matching `re`. */
 function grepRepo(re: RegExp): string[] {
+  // Compile ONCE. Rebuilding the RegExp per line (the previous shape) cost
+  // enough over a repo this size to blow vitest's 5s default test timeout.
+  const lineRe = new RegExp(re.source);
   const hits: string[] = [];
   for (const file of sourceFiles()) {
     let src: string;
     try {
-      src = readFileSync(file, 'utf8');
+      src = readSource(file);
     } catch {
       continue;
     }
-    if (!re.test(src)) {
-      re.lastIndex = 0;
-      continue;
+    lineRe.lastIndex = 0;
+    if (!lineRe.test(src)) continue;
+    const lines = src.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      lineRe.lastIndex = 0;
+      if (lineRe.test(lines[i])) hits.push(`${file}:${i + 1}`);
     }
-    re.lastIndex = 0;
-    src.split('\n').forEach((line, i) => {
-      if (new RegExp(re.source).test(line)) hits.push(`${file}:${i + 1}`);
-    });
   }
   return hits;
 }
 
+// Scanning several thousand source files is legitimately slower than the
+// 5s default. Warm the caches once and give the scanning clauses room.
+const SCAN_TIMEOUT_MS = 120_000;
+
 /** Lines around `lineNo` (1-based), used to look for a paired check. */
 function windowAround(file: string, lineNo: number, radius = 8): string {
-  const lines = readFileSync(file, 'utf8').split('\n');
+  const lines = readSource(file).split('\n');
   return lines.slice(Math.max(0, lineNo - radius), Math.min(lines.length, lineNo + radius)).join('\n');
 }
 
 describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () => {
+  beforeAll(() => {
+    // Pay the walk + read cost once, so it is not billed to whichever
+    // clause happens to run first.
+    for (const f of sourceFiles()) readSource(f);
+  }, SCAN_TIMEOUT_MS);
+
   it('rbac.ts anchors the paired shape (isSuperAdmin + email_verified === true)', () => {
     const src = readFileSync(join(ROOT, 'server/middleware/rbac.ts'), 'utf8');
     // The canonical isSuperAdminVerified helper must exist and gate on
@@ -167,7 +194,7 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
       strays.length,
       `unpaired isSuperAdmin(...) call-sites: ${strays.length} — must be 0. New offenders:\n${strays.join('\n')}`,
     ).toBeLessThanOrEqual(CEILING);
-  });
+  }, SCAN_TIMEOUT_MS);
 
   // ── The blind spot ────────────────────────────────────────────────
   // The clause above SKIPS server/middleware/rbac.ts, because that file
@@ -229,7 +256,7 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
         'with isSuperAdminVerified(req), or import the rbac primitive ' +
         'instead of re-parsing SUPER_ADMIN_EMAILS:\n' + offenders.join('\n'),
     ).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS);
 
   // ── No THIRD allowlist either ─────────────────────────────────────
   // The clause above catches a named SUPER_ADMINS array. Several routes
@@ -260,7 +287,7 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
 
     const offenders: string[] = [];
     for (const file of sourceFiles()) {
-      const src = readFileSync(file, 'utf8');
+      const src = readSource(file);
       if (!/process\.env\.SUPER_ADMIN_EMAILS/.test(src)) continue;
       const rel = file.replace(ROOT + '/', '');
       if (rel in NON_AUTHORIZATION) continue;
@@ -279,7 +306,7 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
         + 're-parsing the secret, or add the file to NON_AUTHORIZATION with a '
         + 'reason:\n' + offenders.join('\n'),
     ).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS);
 
   // ── `!== false` is never a verification check ─────────────────────
   // publicAuthRoutes.ts gated /api/admin/auth-events on
@@ -294,7 +321,7 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
       const idx = hit.lastIndexOf(':');
       const file = hit.slice(0, idx);
       const lineNo = parseInt(hit.slice(idx + 1), 10);
-      const line = readFileSync(file, 'utf8').split('\n')[lineNo - 1];
+      const line = readSource(file).split('\n')[lineNo - 1];
       if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue; // prose about the bug
       offenders.push(`${file.replace(ROOT + '/', '')}:${lineNo}`);
     }
@@ -303,7 +330,7 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
       'Use `email_verified === true`. `!== false` treats a MISSING claim as '
         + 'verified:\n' + offenders.join('\n'),
     ).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS);
 
   // ── Call it correctly ─────────────────────────────────────────────
   // isSuperAdminVerified is SYNCHRONOUS and takes the Express Request —
@@ -322,7 +349,7 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
       const lineNo = parseInt(hit.slice(idx + 1), 10);
       const rel = file.replace(ROOT + '/', '');
       if (rel === 'server/middleware/rbac.ts') continue; // the definition
-      const line = readFileSync(file, 'utf8').split('\n')[lineNo - 1];
+      const line = readSource(file).split('\n')[lineNo - 1];
       if (/^\s*(\/\/|\*|\/\*)/.test(line)) continue; // prose about it
       if (/^\s*import\s|from '.*rbac'/.test(line)) continue;
 
@@ -341,5 +368,5 @@ describe('CEO invariant — SUPER_ADMIN elevation requires email_verified', () =
       'isSuperAdminVerified(req) takes the Express Request and returns a ' +
         'boolean synchronously:\n' + offenders.join('\n'),
     ).toEqual([]);
-  });
+  }, SCAN_TIMEOUT_MS);
 });
