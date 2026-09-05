@@ -214,20 +214,31 @@ router.patch("/:id", requireAuth, async (req, res) => {
     // already been wiped, leaving the address book with no default and
     // no way to know it happened. Verify ownership first so a 404 never
     // has this side effect.
-    if (data.isDefault) {
-      const [owned] = await db
-        .select({ id: userAddresses.id })
-        .from(userAddresses)
-        .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)));
-      if (!owned) return res.status(404).json({ error: "Address not found" });
-      await db.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
-    }
+    // Promoting an address to default is a two-step swap: clear the old
+    // default, then set the new one. Run it in ONE transaction — reviewed
+    // 2026-09-06. The ownership pre-check above stops a bogus id from wiping
+    // the default, but the swap itself was still two independent statements:
+    // if the second failed (connection blip, constraint), the clear had
+    // already committed and the user was left with NO default at all and no
+    // error explaining it. Atomic here means the address book either moves to
+    // the new default or stays exactly as it was.
+    const updated = await db.transaction(async (tx) => {
+      if (data.isDefault) {
+        const [owned] = await tx
+          .select({ id: userAddresses.id })
+          .from(userAddresses)
+          .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)));
+        if (!owned) return null;
+        await tx.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
+      }
 
-    const [updated] = await db
-      .update(userAddresses)
-      .set(data)
-      .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)))
-      .returning();
+      const [row] = await tx
+        .update(userAddresses)
+        .set(data)
+        .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)))
+        .returning();
+      return row ?? null;
+    });
 
     if (!updated) return res.status(404).json({ error: "Address not found" });
     res.json(updated);
