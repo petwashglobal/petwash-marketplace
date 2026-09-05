@@ -826,13 +826,30 @@ export default function MyAccount() {
     queryKey: ['/api/user/addresses'],
     enabled: !!user,
   });
+  // SPRINT/CUSTOMER-HUB-PETS (2026-09-05): both mutations previously had NO
+  // onError handler at all — a failed delete/set-default (network drop, 404
+  // because the row was already removed elsewhere, 500) surfaced NOTHING to
+  // the owner. The button just... did nothing, silently, with no way to
+  // tell a slow network from a rejected request. Added the missing error
+  // toast (matching every other mutation in this file) — no behavior change
+  // on the success path.
   const deleteAddressMutation = useMutation({
     mutationFn: (id: number) => apiRequest('DELETE', `/api/user/addresses/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] }),
+    onError: (error: any) => toast({
+      title: isHebrew ? 'מחיקת הכתובת נכשלה' : 'Could not remove address',
+      description: error?.body?.error || error?.userMessage,
+      variant: 'destructive',
+    }),
   });
   const setDefaultAddressMutation = useMutation({
     mutationFn: (id: number) => apiRequest('PATCH', `/api/user/addresses/${id}`, { isDefault: true }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/user/addresses'] }),
+    onError: (error: any) => toast({
+      title: isHebrew ? 'לא ניתן היה להגדיר כברירת מחדל' : 'Could not set default address',
+      description: error?.body?.error || error?.userMessage,
+      variant: 'destructive',
+    }),
   });
 
   // Birthday countdown helper
@@ -2570,14 +2587,16 @@ export default function MyAccount() {
                               <button
                                 type="button"
                                 onClick={() => setDefaultAddressMutation.mutate(addr.id)}
-                                className="text-[10px] text-amber-500 hover:text-amber-700 font-semibold"
+                                disabled={setDefaultAddressMutation.isPending || deleteAddressMutation.isPending}
+                                className="text-[10px] text-amber-500 hover:text-amber-700 font-semibold disabled:opacity-40"
                                 title={isHebrew ? 'הגדר כברירת מחדל' : 'Set default'}
                               >★</button>
                             )}
                             <button
                               type="button"
                               onClick={() => deleteAddressMutation.mutate(addr.id)}
-                              className="text-[10px] text-gray-300 hover:text-red-400"
+                              disabled={deleteAddressMutation.isPending || setDefaultAddressMutation.isPending}
+                              className="text-[10px] text-gray-300 hover:text-red-400 disabled:opacity-40"
                               title={isHebrew ? 'הסר' : 'Remove'}
                             >✕</button>
                           </div>

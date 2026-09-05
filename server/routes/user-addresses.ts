@@ -206,7 +206,20 @@ router.patch("/:id", requireAuth, async (req, res) => {
     if (raw.lat !== undefined) data.lat = raw.lat.toString();
     if (raw.lng !== undefined) data.lng = raw.lng.toString();
 
+    // SPRINT/CUSTOMER-HUB-PETS (2026-09-05): this used to clear
+    // isDefault on ALL of the caller's addresses BEFORE checking whether
+    // `id` actually belongs to them (or exists at all). A bogus/foreign
+    // id (stale after a delete, a double-tap race, or a client bug)
+    // still 404'd — but only AFTER the caller's own real default had
+    // already been wiped, leaving the address book with no default and
+    // no way to know it happened. Verify ownership first so a 404 never
+    // has this side effect.
     if (data.isDefault) {
+      const [owned] = await db
+        .select({ id: userAddresses.id })
+        .from(userAddresses)
+        .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)));
+      if (!owned) return res.status(404).json({ error: "Address not found" });
       await db.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
     }
 
