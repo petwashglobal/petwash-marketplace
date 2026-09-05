@@ -2,7 +2,7 @@ import { getVertexAIConfig } from '../lib/gemini-client';
 import { Router, type Request, type Response } from 'express';
 import { randomBytes } from 'crypto';
 import { db } from '../db';
-import { eq, desc, and, gte, lte, gt } from 'drizzle-orm';
+import { eq, desc, and, gte, lte, gt, sql } from 'drizzle-orm';
 import { authService } from '../services/AuthService';
 import {
   loyaltyProfiles,
@@ -39,6 +39,7 @@ import { requireAdmin } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
 import { fulfillRedemption, cancelRedemptionWithRefund, redemptionEffectiveStatus } from '../services/rewardFulfillment';
 import { validateGift, giftNoteLine, buildGiftEmail, type GiftRequest } from '../services/giftAMoment';
+import { deriveLoyaltyRedeemIdempotencyKey } from '../lib/loyalty-redeem-idempotency';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
@@ -1056,6 +1057,26 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
     const userId = req.firebaseUser!.uid;
     const { rewardId, gift: rawGift } = req.body;
 
+    // R5 — idempotency key from the client's stable request id (header or body).
+    // Namespaced to (user, reward) so a double-submit de-dupes but it can never
+    // replay against a different member/reward. Null when no id was supplied.
+    const clientReqId =
+      (req.get('Idempotency-Key') || req.body?.clientRequestId || req.body?.idempotencyKey) ?? null;
+    const idempotencyKey = deriveLoyaltyRedeemIdempotencyKey(userId, rewardId, clientReqId);
+
+    // Fast idempotent replay — if this exact request already minted a
+    // redemption, return it instead of debiting points / minting again.
+    if (idempotencyKey) {
+      const [prior] = await db
+        .select()
+        .from(userRedemptions)
+        .where(eq(userRedemptions.idempotencyKey, idempotencyKey))
+        .limit(1);
+      if (prior) {
+        return res.json({ ok: true, redemption: prior, idempotent: true });
+      }
+    }
+
     // Gift a Moment (#16): optional recipient — validated up front, the money
     // path below is IDENTICAL either way (member spends own points, same tx).
     let gift: GiftRequest | null = null;
@@ -1101,65 +1122,86 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
     const voucherCode = `REWARD-${Date.now()}-${randomBytes(5).toString('hex').toUpperCase()}`;
     let redemption: any;
 
-    await db.transaction(async (tx) => {
-      // 1. Deduct points — use optimistic check inside the transaction to guard
-      //    against a concurrent request spending the same points.
-      const updated = await tx
-        .update(loyaltyProfiles)
-        .set({
-          points: profile.points - reward.pointsCost,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(loyaltyProfiles.userId, userId),
-          gte(loyaltyProfiles.points, reward.pointsCost), // guard: still enough points
-        ))
-        .returning({ points: loyaltyProfiles.points });
-
-      if (!updated.length) {
-        throw Object.assign(new Error('Insufficient points (concurrent spend)'), { status: 400 });
-      }
-
-      // 2. Create redemption record
-      const [inserted] = await tx
-        .insert(userRedemptions)
-        .values({
-          userId,
-          rewardId,
-          pointsCost: reward.pointsCost,
-          status: 'pending',
-          voucherCode,
-          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-          ...(gift ? { notes: giftNoteLine(gift) } : {}),
-        })
-        .returning();
-      redemption = inserted;
-
-      // 3. Log transaction
-      await tx.insert(pointsTransactions).values({
-        userId,
-        type: 'redeemed',
-        amount: -reward.pointsCost,
-        balance: profile.points - reward.pointsCost,
-        source: 'reward_redemption',
-        sourceId: reward.id.toString(),
-        description: `Redeemed: ${reward.name}`,
-      });
-
-      // 4. Decrement stock if applicable (inside same transaction)
-      if (reward.stock !== null) {
-        await tx
-          .update(rewardsMarketplace)
+    try {
+      await db.transaction(async (tx) => {
+        // 1. Deduct points — RELATIVE decrement (not a stale-read absolute) with
+        //    the gte guard, so two concurrent spends can't clobber into a lost
+        //    debit.
+        const updated = await tx
+          .update(loyaltyProfiles)
           .set({
-            stock: reward.stock - 1,
+            points: sql`${loyaltyProfiles.points} - ${reward.pointsCost}`,
             updatedAt: new Date(),
           })
           .where(and(
-            eq(rewardsMarketplace.id, rewardId),
-            gt(rewardsMarketplace.stock, 0), // guard: still in stock
-          ));
+            eq(loyaltyProfiles.userId, userId),
+            gte(loyaltyProfiles.points, reward.pointsCost), // guard: still enough points
+          ))
+          .returning({ points: loyaltyProfiles.points });
+
+        if (!updated.length) {
+          throw Object.assign(new Error('Insufficient points (concurrent spend)'), { status: 400 });
+        }
+
+        // 2. Create redemption record. idempotencyKey is UNIQUE (partial) — a
+        //    racing double-submit with the same key fails here (23505) and the
+        //    whole tx rolls back, so points are never debited twice.
+        const [inserted] = await tx
+          .insert(userRedemptions)
+          .values({
+            userId,
+            rewardId,
+            pointsCost: reward.pointsCost,
+            status: 'pending',
+            voucherCode,
+            idempotencyKey: idempotencyKey ?? undefined,
+            expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+            ...(gift ? { notes: giftNoteLine(gift) } : {}),
+          })
+          .returning();
+        redemption = inserted;
+
+        // 3. Log transaction. sourceId is the UNIQUE redemption id (not the
+        //    reward id) so the points_transactions uniqueness guard cannot
+        //    wrongly block a member legitimately redeeming the same reward twice.
+        await tx.insert(pointsTransactions).values({
+          userId,
+          type: 'redeemed',
+          amount: -reward.pointsCost,
+          balance: updated[0].points,
+          source: 'reward_redemption',
+          sourceId: inserted.id.toString(),
+          description: `Redeemed: ${reward.name}`,
+        });
+
+        // 4. Decrement stock if applicable (inside same transaction)
+        if (reward.stock !== null) {
+          await tx
+            .update(rewardsMarketplace)
+            .set({
+              stock: sql`${rewardsMarketplace.stock} - 1`,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(rewardsMarketplace.id, rewardId),
+              gt(rewardsMarketplace.stock, 0), // guard: still in stock
+            ));
+        }
+      });
+    } catch (txErr: any) {
+      // Racing double-submit lost the unique-key race → idempotent replay:
+      // return the redemption the winning request already minted. Everything
+      // else (insufficient points 400, unexpected 500) falls to the outer catch.
+      if (txErr?.code === '23505' && idempotencyKey) {
+        const [prior] = await db
+          .select()
+          .from(userRedemptions)
+          .where(eq(userRedemptions.idempotencyKey, idempotencyKey))
+          .limit(1);
+        if (prior) return res.json({ ok: true, redemption: prior, idempotent: true });
       }
-    });
+      throw txErr;
+    }
 
     // ── Post-commit notifications (fire-and-forget) ──
     (async () => {

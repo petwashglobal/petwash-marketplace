@@ -212,16 +212,21 @@ export class KioskCouponService {
         throw Object.assign(new Error('TOKEN_EXPIRED'), { code: 'TOKEN_EXPIRED', httpStatus: 410 });
       }
 
-      // Mark token confirmed inside TX
+      // R2 fix — flip the token to 'confirmed' AND consume the coupon in the
+      // SAME transaction. Previously the flip was committed here and
+      // redeemAtomic ran in a SEPARATE transaction: if redeemAtomic threw
+      // (e.g. the campaign-cap re-check), the token stayed permanently
+      // 'confirmed' with NO redemption, and a retry short-circuited at the
+      // status==='confirmed' branch above to {alreadyDone:true, redemptionId:0}
+      // — a success shape for a coupon that was never burned. Same-TX makes it
+      // all-or-nothing: a throw below rolls the 'confirmed' flip back too.
       await client.query(
         `UPDATE kiosk_coupon_tokens SET status = 'confirmed', confirmed_at = NOW(), session_id = $1 WHERE token = $2`,
         [sessionId, token]
       );
-      await client.query('COMMIT');
 
-      // Now atomically consume coupon (its own TX)
       const idempotencyKey = `kiosk-${token}-${sessionId}`;
-      const result = await couponService.redeemAtomic({
+      const result = await couponService.redeemAtomicInTx(client, {
         couponId:            t.coupon_id,
         userId:              t.user_id,
         orderType:           'kiosk_wash',
@@ -231,6 +236,15 @@ export class KioskCouponService {
         discountAmountCents: t.discount_amount_cents,
         idempotencyKey,
       });
+
+      // Fail-closed: a real redemption always has a positive id. A 0/falsy id
+      // means the coupon was NOT consumed — never commit a 'confirmed' token in
+      // that case, or we recreate the exact false-success this fix removes.
+      if (!result.redemptionId) {
+        throw Object.assign(new Error('COUPON_REDEEM_FAILED'), { code: 'COUPON_REDEEM_FAILED', httpStatus: 500 });
+      }
+
+      await client.query('COMMIT');
 
       logger.info('[KioskCoupon] ✅ Token confirmed + coupon consumed', {
         token, sessionId, redemptionId: result.redemptionId,

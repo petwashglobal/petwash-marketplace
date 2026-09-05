@@ -1,4 +1,5 @@
-import { pgTable, serial, varchar, integer, timestamp, boolean, text, decimal, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, integer, timestamp, boolean, text, decimal, jsonb, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -343,16 +344,26 @@ export const userRedemptions = pgTable('user_redemptions', {
   // Voucher/Code
   voucherCode: varchar('voucher_code', { length: 255 }).unique(), // Generated unique code
   redemptionCode: varchar('redemption_code', { length: 255 }), // Code to use at partner
-  
+
+  // Idempotency (R5) — a client-supplied request id de-dupes a double-submit of
+  // the SAME redeem (double-click / retry) so it mints ONE voucher and debits
+  // points ONCE. Unique so a racing second insert fails closed (23505) rather
+  // than double-minting. NULL for legacy rows / callers that send no key.
+  idempotencyKey: varchar('idempotency_key', { length: 191 }),
+
   // Fulfillment
   fulfilledAt: timestamp('fulfilled_at'),
   expiresAt: timestamp('expires_at'),
-  
+
   // Metadata
   notes: text('notes'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-});
+}, (table) => ({
+  idempotencyKeyUq: uniqueIndex('user_redemptions_idempotency_key_uq')
+    .on(table.idempotencyKey)
+    .where(sql`${table.idempotencyKey} IS NOT NULL`),
+}));
 
 export type UserRedemption = typeof userRedemptions.$inferSelect;
 export const insertUserRedemptionSchema = createInsertSchema(userRedemptions).omit({

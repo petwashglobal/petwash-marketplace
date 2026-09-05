@@ -15,6 +15,7 @@
  */
 import { db } from '../db';
 import { pool } from '../db';
+import type { PoolClient } from '@neondatabase/serverless';
 import { eq } from 'drizzle-orm';
 import {
   coupons,
@@ -353,84 +354,114 @@ export class CouponService {
   // ───────────────────────────────────────────
 
   /**
-   * Atomically commits a coupon redemption.
-   * Idempotency key prevents double-commit on retry.
-   * SELECT FOR UPDATE row-locks the coupon row to prevent parallel race.
+   * Core redemption work on an EXISTING transaction (caller-owned client).
+   *
+   * Does NO BEGIN / COMMIT / ROLLBACK — the caller owns the transaction. Any
+   * throw here (cap re-check, per-user cap, coupon vanished) propagates so the
+   * caller's `catch` rolls back the WHOLE unit of work, including whatever
+   * state the caller flipped alongside the redemption.
+   *
+   * This is what lets confirmToken()/confirmReservation() flip a token /
+   * reservation to 'confirmed' AND consume the coupon in ONE transaction,
+   * closing the split-commit hole (R2): previously the 'confirmed' flip was
+   * committed first and redeemAtomic ran in a SEPARATE transaction, so if the
+   * cap re-check below threw, the token stayed permanently 'confirmed' with no
+   * redemption and a retry short-circuited to a false success.
+   *
+   * Idempotency key prevents double-commit on retry. SELECT FOR UPDATE
+   * row-locks the coupon row to prevent parallel race.
    */
-  async redeemAtomic(input: RedeemCouponInput): Promise<{ redemptionId: number; alreadyRedeemed?: boolean }> {
+  async redeemAtomicInTx(
+    client: PoolClient,
+    input: RedeemCouponInput,
+  ): Promise<{ redemptionId: number; alreadyRedeemed?: boolean }> {
     const { couponId, userId, orderType, orderId, issuanceId, amountBeforeCents, discountAmountCents, idempotencyKey, ledgerEntryId } = input;
     const amountAfterCents = Math.max(0, amountBeforeCents - discountAmountCents);
 
+    // Idempotency check — if already redeemed with same key, return existing.
+    // No rollback: this path has written nothing, and rolling back here would
+    // abort the caller's transaction.
+    const existing = await client.query(
+      `SELECT id FROM coupon_redemptions WHERE idempotency_key = $1`,
+      [idempotencyKey]
+    );
+    if (existing.rows.length > 0) {
+      return { redemptionId: existing.rows[0].id, alreadyRedeemed: true };
+    }
+
+    // Row-lock the coupon — prevents parallel redemption race
+    const locked = await client.query(
+      `SELECT id, total_redemptions, max_total_redemptions, max_redemptions_per_user
+         FROM coupons WHERE id = $1 FOR UPDATE`,
+      [couponId]
+    );
+    if (!locked.rows.length) throw new Error('COUPON_NOT_FOUND');
+    const coupon = locked.rows[0];
+
+    // Re-check campaign cap inside lock — throws so the caller rolls back.
+    if (coupon.max_total_redemptions != null && (coupon.total_redemptions ?? 0) >= coupon.max_total_redemptions) {
+      throw Object.assign(new Error('CAMPAIGN_CAP_REACHED'), { code: 'CAMPAIGN_CAP_REACHED' });
+    }
+
+    // Re-check per-user cap inside lock — throws so the caller rolls back.
+    const uCount = await client.query(
+      `SELECT COUNT(*) AS cnt FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2 AND cancelled_at IS NULL`,
+      [couponId, userId]
+    );
+    const used = parseInt(uCount.rows[0]?.cnt ?? '0', 10);
+    if (used >= (coupon.max_redemptions_per_user ?? 1)) {
+      throw Object.assign(new Error('PER_USER_LIMIT_REACHED'), { code: 'PER_USER_LIMIT_REACHED' });
+    }
+
+    // Increment total_redemptions
+    await client.query(
+      `UPDATE coupons SET total_redemptions = COALESCE(total_redemptions, 0) + 1, updated_at = NOW() WHERE id = $1`,
+      [couponId]
+    );
+
+    // Write redemption
+    const inserted = await client.query(
+      `INSERT INTO coupon_redemptions
+         (coupon_id, user_id, order_type, order_id, amount_before_cents, discount_amount_cents, amount_after_cents, currency, idempotency_key, ledger_entry_id, issuance_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'ILS', $8, $9, $10)
+       RETURNING id`,
+      [couponId, userId, orderType, orderId ?? null, amountBeforeCents, discountAmountCents, amountAfterCents, idempotencyKey, ledgerEntryId ?? null, issuanceId ?? null]
+    );
+    const redemptionId = inserted.rows[0].id;
+
+    // Mark issuance as redeemed
+    if (issuanceId) {
+      await client.query(
+        `UPDATE coupon_issuances SET redeemed_at = NOW(), redemption_id = $1 WHERE id = $2`,
+        [redemptionId, issuanceId]
+      );
+    }
+
+    return { redemptionId };
+  }
+
+  /**
+   * Atomically commits a coupon redemption in its OWN transaction.
+   * Idempotency key prevents double-commit on retry.
+   * SELECT FOR UPDATE row-locks the coupon row to prevent parallel race.
+   *
+   * Thin wrapper over redeemAtomicInTx() — use this when the redemption is a
+   * standalone unit of work; use redeemAtomicInTx() when the redemption must
+   * commit atomically with other state (see R2).
+   */
+  async redeemAtomic(input: RedeemCouponInput): Promise<{ redemptionId: number; alreadyRedeemed?: boolean }> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-
-      // Idempotency check — if already redeemed with same key, return existing
-      const existing = await client.query(
-        `SELECT id FROM coupon_redemptions WHERE idempotency_key = $1`,
-        [idempotencyKey]
-      );
-      if (existing.rows.length > 0) {
-        await client.query('ROLLBACK');
-        return { redemptionId: existing.rows[0].id, alreadyRedeemed: true };
-      }
-
-      // Row-lock the coupon — prevents parallel redemption race
-      const locked = await client.query(
-        `SELECT id, total_redemptions, max_total_redemptions, max_redemptions_per_user
-           FROM coupons WHERE id = $1 FOR UPDATE`,
-        [couponId]
-      );
-      if (!locked.rows.length) throw new Error('COUPON_NOT_FOUND');
-      const coupon = locked.rows[0];
-
-      // Re-check campaign cap inside lock
-      if (coupon.max_total_redemptions != null && (coupon.total_redemptions ?? 0) >= coupon.max_total_redemptions) {
-        await client.query('ROLLBACK');
-        throw Object.assign(new Error('CAMPAIGN_CAP_REACHED'), { code: 'CAMPAIGN_CAP_REACHED' });
-      }
-
-      // Re-check per-user cap inside lock
-      const uCount = await client.query(
-        `SELECT COUNT(*) AS cnt FROM coupon_redemptions WHERE coupon_id = $1 AND user_id = $2 AND cancelled_at IS NULL`,
-        [couponId, userId]
-      );
-      const used = parseInt(uCount.rows[0]?.cnt ?? '0', 10);
-      if (used >= (coupon.max_redemptions_per_user ?? 1)) {
-        await client.query('ROLLBACK');
-        throw Object.assign(new Error('PER_USER_LIMIT_REACHED'), { code: 'PER_USER_LIMIT_REACHED' });
-      }
-
-      // Increment total_redemptions
-      await client.query(
-        `UPDATE coupons SET total_redemptions = COALESCE(total_redemptions, 0) + 1, updated_at = NOW() WHERE id = $1`,
-        [couponId]
-      );
-
-      // Write redemption
-      const inserted = await client.query(
-        `INSERT INTO coupon_redemptions
-           (coupon_id, user_id, order_type, order_id, amount_before_cents, discount_amount_cents, amount_after_cents, currency, idempotency_key, ledger_entry_id, issuance_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'ILS', $8, $9, $10)
-         RETURNING id`,
-        [couponId, userId, orderType, orderId ?? null, amountBeforeCents, discountAmountCents, amountAfterCents, idempotencyKey, ledgerEntryId ?? null, issuanceId ?? null]
-      );
-      const redemptionId = inserted.rows[0].id;
-
-      // Mark issuance as redeemed
-      if (issuanceId) {
-        await client.query(
-          `UPDATE coupon_issuances SET redeemed_at = NOW(), redemption_id = $1 WHERE id = $2`,
-          [redemptionId, issuanceId]
-        );
-      }
-
+      const result = await this.redeemAtomicInTx(client, input);
       await client.query('COMMIT');
 
-      logger.info('[CouponService] ✅ Atomic redemption committed', { couponId, userId, redemptionId, idempotencyKey });
-      return { redemptionId };
+      logger.info('[CouponService] ✅ Atomic redemption committed', {
+        couponId: input.couponId, userId: input.userId, redemptionId: result.redemptionId, idempotencyKey: input.idempotencyKey,
+      });
+      return result;
     } catch (err) {
-      await client.query('ROLLBACK');
+      try { await client.query('ROLLBACK'); } catch {}
       throw err;
     } finally {
       client.release();

@@ -355,16 +355,19 @@ export class UnifiedPricingService {
         throw Object.assign(new Error('RESERVATION_EXPIRED'), { code: 'RESERVATION_EXPIRED' });
       }
 
-      // Mark confirmed before coupon redemption (inside same TX)
+      // R2 fix — flip the reservation to 'confirmed' AND consume the coupon in
+      // the SAME transaction. Previously the flip was committed here and
+      // redeemAtomic ran in a SEPARATE transaction: if redeemAtomic threw
+      // (e.g. the campaign-cap re-check inside the lock), the reservation
+      // stayed permanently 'confirmed' with NO redemption, and a retry
+      // short-circuited at the status==='confirmed' branch above to a false
+      // success. Same-TX makes it all-or-nothing.
       await client.query(
         `UPDATE coupon_reservations SET status = 'confirmed', confirmed_at = NOW(), order_id = $1 WHERE reservation_id = $2`,
         [orderId, reservationId]
       );
 
-      await client.query('COMMIT');
-
-      // Now atomically consume the coupon (its own TX with row-lock)
-      const result = await couponService.redeemAtomic({
+      const result = await couponService.redeemAtomicInTx(client, {
         couponId:            res.coupon_id,
         userId:              res.user_id,
         orderType:           res.order_type,
@@ -375,6 +378,14 @@ export class UnifiedPricingService {
         idempotencyKey:      res.idempotency_key ?? `confirm-${reservationId}-${orderId}`,
         ledgerEntryId,
       });
+
+      // Fail-closed: a real redemption always has a positive id. A 0/falsy id
+      // means the coupon was NOT consumed — roll back the 'confirmed' flip too.
+      if (!result.redemptionId) {
+        throw Object.assign(new Error('COUPON_REDEEM_FAILED'), { code: 'COUPON_REDEEM_FAILED' });
+      }
+
+      await client.query('COMMIT');
 
       logger.info('[Pricing] ✅ Reservation confirmed + coupon consumed', {
         reservationId, redemptionId: result.redemptionId, orderId,
