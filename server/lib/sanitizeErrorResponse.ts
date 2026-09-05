@@ -166,6 +166,24 @@ const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/;
 const LONG_DIGIT_RUN_RE = /\d{7,}/;
 /** A JWT / Firebase ID token that leaked into the message text. */
 const JWT_RE = /eyJ[A-Za-z0-9_-]{6,}/;
+/**
+ * Any IPv4 literal. Added 2026-09-06 after probing this helper: the marker
+ * list caught '127.0.0.1' and 'localhost' by name, but a message naming ANY
+ * other internal host slipped through with no marker and no long digit run —
+ *   "upstream 10.0.0.5 refused the request"
+ *   "could not reach 192.168.1.44"
+ * — which discloses internal network topology to the customer. No authored,
+ * user-facing sentence contains a dotted quad, so this is safe to reject on.
+ */
+const IPV4_LITERAL_RE = /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/;
+/**
+ * A credential-shaped token: 16+ chars of A-Z/0-9 containing at least one
+ * digit — AWS access key ids (AKIA…), many provider keys and license/agent
+ * identifiers. Deliberately narrow so ordinary SHOUTED domain words survive:
+ * 'EXPIRED', 'ALREADY_REDEEMED' and friends have no digit, and short codes
+ * like 'E01' are under the length floor.
+ */
+const CREDENTIAL_TOKEN_RE = /\b(?=[A-Z0-9]*\d)[A-Z0-9]{16,}\b/;
 
 /**
  * Return `err`'s message ONLY when it looks like an authored, user-facing
@@ -196,6 +214,8 @@ export function clientSafeErrorMessage(err: unknown, fallback: string): string {
     if (LONG_DIGIT_RUN_RE.test(msg)) return fallback;
     if (STACK_FRAME_RE.test(msg)) return fallback;
     if (JWT_RE.test(msg)) return fallback;
+    if (IPV4_LITERAL_RE.test(msg)) return fallback;
+    if (CREDENTIAL_TOKEN_RE.test(msg)) return fallback;
 
     const lower = msg.toLowerCase();
     for (const marker of INTERNAL_MARKERS) {

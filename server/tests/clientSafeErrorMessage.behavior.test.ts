@@ -122,3 +122,52 @@ describe('clientSafeErrorMessage — never throws, always returns a string', () 
     expect(clientSafeErrorMessage(err, FALLBACK)).toBe('Voucher is EXPIRED');
   });
 });
+
+/**
+ * Added during review of this PR (2026-09-06). I probed the helper with
+ * engineered leaks; most were caught, three were not:
+ *
+ *   "upstream 10.0.0.5 refused the request"   — internal host, no marker
+ *   "could not reach 192.168.1.44"            — private IP, no marker
+ *   "AKIAIOSFODNN7EXAMPLE is not authorized"  — AWS key id, no marker
+ *
+ * The marker list named '127.0.0.1' and 'localhost' specifically, so ANY other
+ * internal address slipped through and disclosed network topology to the
+ * customer. Two shape rules now cover the whole class rather than naming hosts
+ * one at a time.
+ */
+describe('clientSafeErrorMessage — internal hosts and credential-shaped tokens', () => {
+  const FALLBACK = 'Something went wrong. Please try again.';
+
+  const MUST_FALL_BACK: Array<[string, string]> = [
+    ['private 10/8 host', 'upstream 10.0.0.5 refused the request'],
+    ['private 192.168 host', 'could not reach 192.168.1.44'],
+    ['link-local host', 'metadata fetch failed for 169.254.169.254'],
+    ['public IP still internal detail', 'origin 34.117.59.81 returned 502'],
+    ['AWS access key id', 'AKIAIOSFODNN7EXAMPLE is not authorized'],
+    ['generic long key token', 'token ABCD1234EFGH5678IJKL rejected'],
+  ];
+
+  for (const [label, msg] of MUST_FALL_BACK) {
+    it(`falls back on ${label}`, () => {
+      expect(clientSafeErrorMessage(new Error(msg), FALLBACK)).toBe(FALLBACK);
+    });
+  }
+
+  // The rules must stay narrow enough that real product copy survives —
+  // SHOUTED domain codes have no digit, short codes are under the length floor.
+  const MUST_PASS = [
+    'Voucher is EXPIRED',
+    'Address already exists',
+    'This booking cannot be cancelled within 24 hours',
+    'Payment declined with code E01',
+    'Status is ALREADY_REDEEMED',
+  ];
+
+  for (const msg of MUST_PASS) {
+    it(`still surfaces authored copy: "${msg}"`, () => {
+      expect(clientSafeErrorMessage(new Error(msg), FALLBACK)).toBe(msg);
+    });
+  }
+});
+
