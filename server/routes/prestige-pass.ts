@@ -271,21 +271,43 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 // money kill switch. CSRF is no barrier: a Bearer header skips it and a
 // token is publicly fetchable from GET /api/csrf-token.
 //
-// One gate in front of the whole /admin surface is the only fix that cannot
-// be missed by the next route someone appends to this 17k-line file. It is
-// additive: routes that already call requireFinanceRole() still enforce
-// their finer-grained finance role behind this.
-router.use('/admin', (req: Request, res: Response, next: NextFunction) => {
-  // Machine automation path, same timing-safe ADMIN_SECRET check used at
-  // line ~2434 in this file and in middleware/stationAuth.ts.
-  if (isValidAdminSecret(req)) return next();
+// AUTHORITY MODEL — credentials stay SCOPED. Closing anonymous access must
+// not hand one shared secret a master key to every admin function:
+//
+//   • Humans  → canonical server-side RBAC only (isSuperAdminVerified:
+//               allowlist + email_verified, the #240 paired shape). This is
+//               the ONLY way to reach the ~45 governance/system routes.
+//   • Machines→ the shared ADMIN_SECRET is accepted ONLY on the four legacy
+//               routes below that were explicitly built for it and that each
+//               re-verify it themselves inside the handler. It opens nothing
+//               else. A machine credential is not an admin identity.
+//
+// Deliberately NOT a general bypass: adding a route to MACHINE_CREDENTIAL_
+// ROUTES is an explicit, reviewable act, and the handler must still do its
+// own isValidAdminSecret() check — this gate never replaces that.
+const MACHINE_CREDENTIAL_ROUTES = new Set([
+  '/manual-credit',
+  '/reissue',
+  '/send-founder-pass',
+  '/send-demo-receipts',
+]);
 
-  // #240 paired shape — allowlist + email_verified.
+router.use('/admin', (req: Request, res: Response, next: NextFunction) => {
+  // Canonical human path — RBAC, not a secret.
   if (isSuperAdminVerified(req as any)) return next();
 
-  logger.warn('[PrestigePass] Blocked unauthenticated admin route', {
+  // Machine path, scoped to explicitly intended routes only. req.path here is
+  // relative to the '/admin' mount (e.g. '/manual-credit'); strip any trailing
+  // slash so '/reissue/' cannot slip past the allowlist.
+  const relPath = (req.path || '/').replace(/\/+$/, '') || '/';
+  if (MACHINE_CREDENTIAL_ROUTES.has(relPath) && isValidAdminSecret(req)) {
+    return next();
+  }
+
+  logger.warn('[PrestigePass] Blocked unauthorised admin route', {
     route: `${req.method} /api/prestige-pass/admin${req.path}`,
     ip: req.ip,
+    hadAdminSecretHeader: Boolean(req.headers['x-admin-secret']),
   });
   return res.status(403).json({ error: 'Admin only', code: 'ADMIN_REQUIRED' });
 });

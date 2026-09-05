@@ -51,9 +51,13 @@ const { isSuperAdminVerified } = await import('../middleware/rbac');
 function buildApp() {
   const app = express();
   app.use(express.json());
+  const MACHINE_CREDENTIAL_ROUTES = new Set([
+    '/manual-credit', '/reissue', '/send-founder-pass', '/send-demo-receipts',
+  ]);
   app.use('/admin', (req: any, res: any, next: any) => {
-    if (isValidAdminSecret(req)) return next();
     if (isSuperAdminVerified(req)) return next();
+    const relPath = (req.path || '/').replace(/\/+$/, '') || '/';
+    if (MACHINE_CREDENTIAL_ROUTES.has(relPath) && isValidAdminSecret(req)) return next();
     return res.status(403).json({ error: 'Admin only', code: 'ADMIN_REQUIRED' });
   });
   // Stand-ins for the real unauthenticated handlers.
@@ -61,6 +65,7 @@ function buildApp() {
   app.post('/admin/system/e2e/run', (_req, res) => res.json({ reached: true }));
   app.patch('/admin/wallet/remediation-plans/:id', (_req, res) => res.json({ reached: true }));
   app.get('/admin/wallet/alerts', (_req, res) => res.json({ reached: true }));
+  app.post('/admin/manual-credit', (_req, res) => res.json({ reached: true }));
   return app;
 }
 
@@ -101,7 +106,7 @@ describe('prestige-pass /admin gate — anonymous callers cannot reach handlers'
   it('a forged admin secret does not open the gate', async () => {
     for (const forged of ['anything', 'admin', 'true', ADMIN_SECRET.slice(0, -1), `${ADMIN_SECRET}x`]) {
       const res = await request(buildApp())
-        .post('/admin/system/e2e/run')
+        .post('/admin/manual-credit')
         .set('x-admin-secret', forged)
         .send({});
       expect(res.status, forged).toBe(403);
@@ -115,18 +120,43 @@ describe('prestige-pass /admin gate — anonymous callers cannot reach handlers'
     expect(res.body.reached).toBe(true);
   });
 
-  it('the genuine ADMIN_SECRET still gets through (machine automation)', async () => {
+  // ── AUTHORITY SCOPING — the property that matters most here ──────────────
+  // Closing anonymous access must NOT convert 45 open routes into 45 routes
+  // that one shared secret can drive. The machine credential opens only the
+  // four legacy routes explicitly built for it.
+
+  it('THE SCOPING PIN: a GENUINE ADMIN_SECRET does NOT open the governance routes', async () => {
+    const app = buildApp();
+    for (const url of [
+      '/admin/system/e2e/run',
+      '/admin/wallet/kill-switches/PAYOUTS_ENABLED/toggle',
+    ]) {
+      const res = await request(app).post(url).set('x-admin-secret', ADMIN_SECRET).send({});
+      expect(res.status, url).toBe(403);
+      expect(res.body.reached, url).toBeUndefined();
+    }
+  });
+
+  it('the genuine ADMIN_SECRET still works on its four intended legacy routes', async () => {
     const res = await request(buildApp())
-      .post('/admin/system/e2e/run')
+      .post('/admin/manual-credit')
       .set('x-admin-secret', ADMIN_SECRET)
       .send({});
     expect(res.status).toBe(200);
   });
 
+  it('a trailing slash cannot smuggle a route past the machine allowlist', async () => {
+    const res = await request(buildApp())
+      .post('/admin/system/e2e/run/')
+      .set('x-admin-secret', ADMIN_SECRET)
+      .send({});
+    expect(res.status).toBe(403);
+  });
+
   it('fails closed when ADMIN_SECRET is unset', async () => {
     delete process.env.ADMIN_SECRET;
     const res = await request(buildApp())
-      .post('/admin/system/e2e/run')
+      .post('/admin/manual-credit')
       .set('x-admin-secret', 'anything')
       .send({});
     expect(res.status).toBe(403);
@@ -142,8 +172,11 @@ describe('the gate is actually mounted in prestige-pass.ts — source pin', () =
   it("mounts router.use('/admin', ...) with both accepted identities", () => {
     expect(SRC).toMatch(/router\.use\('\/admin',/);
     expect(SRC).toContain("code: 'ADMIN_REQUIRED'");
-    expect(SRC).toMatch(/if \(isValidAdminSecret\(req\)\) return next\(\);/);
     expect(SRC).toMatch(/if \(isSuperAdminVerified\(req as any\)\) return next\(\);/);
+    // The machine credential must be gated behind the explicit allowlist —
+    // never a bare `if (isValidAdminSecret(req)) return next();` bypass.
+    expect(SRC).toMatch(/MACHINE_CREDENTIAL_ROUTES\.has\(relPath\) && isValidAdminSecret\(req\)/);
+    expect(SRC).not.toMatch(/^\s*if \(isValidAdminSecret\(req\)\) return next\(\);/m);
   });
 
   it('the gate is registered BEFORE the first /admin route definition', () => {
