@@ -14,6 +14,7 @@ import { eq, desc } from 'drizzle-orm';
 import { computeStationEconomics, aggregateNetworkEconomics, ownershipComparison } from '../lib/unit-economics';
 import { buildExpansionDecisionPack, toStationRow, toNetworkRow, toOwnershipRow } from '../lib/expansion-decision';
 import { computeOutcomeSummary, buildEconomicSnapshot, buildCurrentEconomicsMap } from '../lib/outcome-measurement';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     return res.json({ cases: rows, counts: { open, inProgress, resolved, escalated, total: rows.length } });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'INTERVENTIONS_LIST_FAILED', { logContext: { op: 'list-interventions' } });
   }
 });
 
@@ -108,7 +109,7 @@ router.post('/', async (req: Request, res: Response) => {
 
     return res.status(201).json({ case: newCase });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'INTERVENTIONS_CREATE_FAILED', { logContext: { op: 'create-intervention' } });
   }
 });
 
@@ -143,7 +144,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     if (!updated) return res.status(404).json({ error: 'Case not found' });
     return res.json({ case: updated });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'INTERVENTIONS_UPDATE_FAILED', { logContext: { op: 'update-intervention' } });
   }
 });
 
@@ -223,7 +224,7 @@ router.post('/auto-generate', async (req: Request, res: Response) => {
       cases: created,
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'INTERVENTIONS_AUTO_GENERATE_FAILED', { logContext: { op: 'auto-generate' } });
   }
 });
 
@@ -236,7 +237,7 @@ router.get('/outcomes/summary', async (req: Request, res: Response) => {
     const summary = await computeOutcomeSummary();
     return res.json(summary);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'INTERVENTIONS_OUTCOMES_SUMMARY_FAILED', { logContext: { op: 'outcomes-summary' } });
   }
 });
 
@@ -253,7 +254,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 
     return res.json({ case: row[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'INTERVENTIONS_GET_FAILED', { logContext: { op: 'get-intervention' } });
   }
 });
 
