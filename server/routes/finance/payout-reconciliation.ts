@@ -31,6 +31,7 @@ import {
 import { eq, and, gte, lte, isNull, sql, inArray } from 'drizzle-orm';
 import { TRANSACTION_TYPES } from '@shared/finance-flow-types';
 import { logger } from '../../lib/logger';
+import { sendSanitizedError } from '../../lib/sanitizeErrorResponse';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
 
 const router = Router();
@@ -174,7 +175,7 @@ router.get('/', async (req, res) => {
     });
   } catch (err: any) {
     logger.error('[PayoutReconciliation] Error', { err: err.message });
-    return res.status(500).json({ error: 'Reconciliation failed', detail: err.message });
+    return sendSanitizedError(res, err, 'PAYOUT_RECONCILIATION_FAILED', { logContext: { op: 'reconciliation' } });
   }
 });
 
@@ -386,7 +387,7 @@ router.get('/israel', async (req, res) => {
     });
   } catch (err: any) {
     logger.error('[PayoutReconciliation/Israel] Error', { err: err.message });
-    return res.status(500).json({ error: 'Israel compliance check failed', detail: err.message });
+    return sendSanitizedError(res, err, 'PAYOUT_RECONCILIATION_ISRAEL_FAILED', { logContext: { op: 'reconciliation-israel' } });
   }
 });
 

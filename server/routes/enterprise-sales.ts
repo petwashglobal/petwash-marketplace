@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
 import { insertCrmLeadSchema, insertCrmOpportunitySchema } from "@shared/schema";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 
 const router = express.Router();
 
@@ -60,7 +61,7 @@ router.get("/leads", requireAdmin, async (req, res) => {
       res.status(201).json(lead);
     } catch (error) {
       logger.error("[Enterprise Sales] Failed to create lead", error);
-      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to create lead" });
+      sendSanitizedError(res, error, 'ENTERPRISE_SALES_CREATE_LEAD_FAILED', { status: 400, logContext: { op: 'create-lead' } });
     }
   });
 
@@ -84,7 +85,7 @@ router.get("/leads", requireAdmin, async (req, res) => {
       res.json(updated);
     } catch (error) {
       logger.error(`[Enterprise Sales] Failed to update lead ${req.params.id}`, error);
-      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update lead" });
+      sendSanitizedError(res, error, 'ENTERPRISE_SALES_UPDATE_LEAD_FAILED', { status: 400, logContext: { op: 'update-lead', leadId: req.params.id } });
     }
   });
 
@@ -187,7 +188,7 @@ router.get("/leads", requireAdmin, async (req, res) => {
       res.status(201).json(opportunity);
     } catch (error) {
       logger.error("[Enterprise Sales] Failed to create opportunity", error);
-      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to create opportunity" });
+      sendSanitizedError(res, error, 'ENTERPRISE_SALES_CREATE_OPPORTUNITY_FAILED', { status: 400, logContext: { op: 'create-opportunity' } });
     }
   });
 
@@ -211,7 +212,7 @@ router.get("/leads", requireAdmin, async (req, res) => {
       res.json(updated);
     } catch (error) {
       logger.error(`[Enterprise Sales] Failed to update opportunity ${req.params.id}`, error);
-      res.status(400).json({ error: error instanceof Error ? error.message : "Failed to update opportunity" });
+      sendSanitizedError(res, error, 'ENTERPRISE_SALES_UPDATE_OPPORTUNITY_FAILED', { status: 400, logContext: { op: 'update-opportunity', opportunityId: req.params.id } });
     }
   });
 

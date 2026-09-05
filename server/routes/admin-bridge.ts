@@ -32,6 +32,7 @@ import { requireAdmin } from '../adminAuth';
 import { adminProviderReviewService } from '../services/AdminProviderReviewService';
 import { logAuditEvent } from '../middleware/auditLogger';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const BRIDGE_MVP_ENABLED = process.env.BRIDGE_MVP_ENABLED === 'true';
 
@@ -241,7 +242,7 @@ router.get('/lookup', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     logger.error('[Bridge] customer lookup failed', { error: err?.message ?? String(err) });
-    res.status(500).json({ error: 'LOOKUP_FAILED', message: String(err?.message ?? err).slice(0, 200) });
+    sendSanitizedError(res, err, 'LOOKUP_FAILED', { logContext: { op: 'customer-lookup' } });
   }
 });
 
@@ -297,7 +298,7 @@ router.get('/signup-activity', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     logger.error('[Bridge] signup-activity failed', { error: err?.message ?? String(err) });
-    res.status(500).json({ error: 'SIGNUP_ACTIVITY_FAILED', message: String(err?.message ?? err).slice(0, 200) });
+    sendSanitizedError(res, err, 'SIGNUP_ACTIVITY_FAILED', { logContext: { op: 'signup-activity' } });
   }
 });
 

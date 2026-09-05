@@ -4,6 +4,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import { reconcileBatch, runReconciliationSweep } from '../lib/reconciliation';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import {
   forecastSnapshot,
   reserveAgeing,
@@ -104,7 +105,7 @@ router.get('/batches', async (req: Request, res: Response) => {
     }
     return res.json({ batches: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_LIST_BATCHES_FAILED', { logContext: { op: 'list-batches' } });
   }
 });
 
@@ -191,7 +192,7 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
 
     return res.status(201).json({ batch, items: inserted });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_CREATE_BATCH_FAILED', { logContext: { op: 'create-batch' } });
   }
 });
 
@@ -220,7 +221,7 @@ router.post('/batches/:id/submit', requireTreasuryAdmin, async (req: Request, re
     `);
     return res.json({ batch: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_SUBMIT_BATCH_FAILED', { logContext: { op: 'submit-batch' } });
   }
 });
 
@@ -251,7 +252,7 @@ router.post('/batches/:id/mark-paid', requireTreasuryAdmin, async (req: Request,
     try { await reconcileBatch(id); } catch { /* reconciliation runs async — non-blocking */ }
     return res.json({ batch: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_MARK_PAID_FAILED', { logContext: { op: 'mark-paid' } });
   }
 });
 
@@ -325,7 +326,7 @@ router.post('/import-bank-transactions', requireTreasuryAdmin, async (req: Reque
 
     return res.json({ imported, skipped, total: transactions.length });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_IMPORT_BANK_TX_FAILED', { logContext: { op: 'import-bank-transactions' } });
   }
 });
 
@@ -357,7 +358,7 @@ router.get('/bank-transactions', async (req: Request, res: Response) => {
     }
     return res.json({ transactions: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_LIST_BANK_TX_FAILED', { logContext: { op: 'list-bank-transactions' } });
   }
 });
 
@@ -372,7 +373,7 @@ router.post('/reconcile/:batchId', requireTreasuryAdmin, async (req: Request, re
     const result = await reconcileBatch(batchId);
     return res.json(result);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_RECONCILE_BATCH_FAILED', { logContext: { op: 'reconcile-batch' } });
   }
 });
 
@@ -382,7 +383,7 @@ router.post('/reconcile-sweep', requireTreasuryAdmin, async (req: Request, res: 
     const result = await runReconciliationSweep();
     return res.json(result);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_RECONCILE_SWEEP_FAILED', { logContext: { op: 'reconcile-sweep' } });
   }
 });
 
@@ -400,7 +401,7 @@ router.get('/reconciliation-results', async (req: Request, res: Response) => {
     `);
     return res.json({ results: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_LIST_RECON_RESULTS_FAILED', { logContext: { op: 'list-reconciliation-results' } });
   }
 });
 
@@ -420,7 +421,7 @@ router.get('/failures', async (req: Request, res: Response) => {
     `);
     return res.json({ failures: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_LIST_FAILURES_FAILED', { logContext: { op: 'list-failures' } });
   }
 });
 
@@ -450,7 +451,7 @@ router.post('/failures/:id/retry', requireTreasuryAdmin, async (req: Request, re
 
     return res.json({ ok: true, message: 'Batch reset to submitted — run reconciliation again' });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_RETRY_FAILURE_FAILED', { logContext: { op: 'retry-failure' } });
   }
 });
 
@@ -461,7 +462,7 @@ router.post('/failures/:id/resolve', requireTreasuryAdmin, async (req: Request, 
     await db.execute(sql`UPDATE payout_failures SET resolved = true WHERE id = ${id}`);
     return res.json({ ok: true });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_RESOLVE_FAILURE_FAILED', { logContext: { op: 'resolve-failure' } });
   }
 });
 
@@ -523,7 +524,7 @@ router.get('/status', async (req: Request, res: Response) => {
       unlinked_bank_transactions: parseInt((bankUnlinked.rows[0] as any)?.unlinked ?? '0'),
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_STATUS_FAILED', { logContext: { op: 'status' } });
   }
 });
 
@@ -592,7 +593,7 @@ router.get('/trace/:settlementId', async (req: Request, res: Response) => {
       traceComplete: !!(settlement && batchItem && recon && bankTx),
     });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_TRACE_FAILED', { logContext: { op: 'trace-settlement' } });
   }
 });
 
@@ -606,7 +607,7 @@ router.get('/forecast-snapshot', async (req: Request, res: Response) => {
     const result = await forecastSnapshot();
     return res.json({ windows: result });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_FORECAST_SNAPSHOT_FAILED', { logContext: { op: 'forecast-snapshot' } });
   }
 });
 
@@ -616,7 +617,7 @@ router.get('/reserve-ageing', async (req: Request, res: Response) => {
     const result = await reserveAgeing();
     return res.json(result);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_RESERVE_AGEING_FAILED', { logContext: { op: 'reserve-ageing' } });
   }
 });
 
@@ -626,7 +627,7 @@ router.get('/liquidity-pressure', async (req: Request, res: Response) => {
     const result = await liquidityPressure();
     return res.json(result);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_LIQUIDITY_PRESSURE_FAILED', { logContext: { op: 'liquidity-pressure' } });
   }
 });
 
@@ -636,7 +637,7 @@ router.get('/payout-calendar-forecast', async (req: Request, res: Response) => {
     const result = await payoutCalendarForecast();
     return res.json(result);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_PAYOUT_CALENDAR_FORECAST_FAILED', { logContext: { op: 'payout-calendar-forecast' } });
   }
 });
 
@@ -646,7 +647,7 @@ router.get('/risk-comparison', async (req: Request, res: Response) => {
     const result = await riskComparison();
     return res.json({ entities: result });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_RISK_COMPARISON_FAILED', { logContext: { op: 'risk-comparison' } });
   }
 });
 
@@ -656,7 +657,7 @@ router.get('/warnings', async (req: Request, res: Response) => {
     const result = await treasuryWarnings();
     return res.json({ warnings: result });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_WARNINGS_FAILED', { logContext: { op: 'warnings' } });
   }
 });
 
@@ -666,7 +667,7 @@ router.get('/forecast-vs-actual', async (req: Request, res: Response) => {
     const result = await forecastVsActual();
     return res.json(result);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'TREASURY_FORECAST_VS_ACTUAL_FAILED', { logContext: { op: 'forecast-vs-actual' } });
   }
 });
 

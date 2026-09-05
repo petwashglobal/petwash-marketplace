@@ -29,6 +29,7 @@ import { loadUserRole, checkAccessLevel, isSuperAdminVerified } from '../middlew
 import { runPreflight, type SumitMode } from '../services/SumitPreflightCheck';
 import { buildSumitActivationReadiness } from '../services/SumitActivationReadiness';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -309,7 +310,7 @@ router.get('/sync-dryrun', ...requireSuperAdmin, async (_req: Request, res: Resp
     });
   } catch (err: any) {
     logger.error('[AdminSumit] sync-dryrun failed', err);
-    return res.status(500).json({ error: 'Sync dry-run failed', message: err.message });
+    return sendSanitizedError(res, err, 'ADMIN_SUMIT_SYNC_DRYRUN_FAILED', { logContext: { op: 'sync-dryrun' } });
   }
 });
 

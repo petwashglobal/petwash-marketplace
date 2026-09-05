@@ -8,6 +8,8 @@
 
 import { Router, Request, Response } from 'express';
 import { computePolicyFeedback } from '../lib/learning-policy';
+import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -17,7 +19,8 @@ router.get('/summary', async (req: Request, res: Response) => {
     const report = await computePolicyFeedback();
     return res.json(report);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    logger.error('[Policy] summary failed', { error: err?.message });
+    return sendSanitizedError(res, err, 'POLICY_SUMMARY_FAILED', { logContext: { op: 'policy-summary' } });
   }
 });
 

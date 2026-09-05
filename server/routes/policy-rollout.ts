@@ -11,6 +11,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { evaluateRollout, KNOWN_POLICY_KEYS } from '../lib/policy-rollout';
 import { computeOutcomeSummary } from '../lib/outcome-measurement';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -21,7 +22,7 @@ router.get('/keys', async (req: Request, res: Response) => {
   try {
     return res.json({ policyKeys: KNOWN_POLICY_KEYS });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_LIST_KEYS_FAILED', { logContext: { op: 'list-keys' } });
   }
 });
 
@@ -45,7 +46,7 @@ router.get('/configs', async (req: Request, res: Response) => {
 
     return res.json({ configs: result.rows, grouped, total: result.rows.length });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_LIST_CONFIGS_FAILED', { logContext: { op: 'list-configs' } });
   }
 });
 
@@ -84,7 +85,7 @@ router.post('/configs', async (req: Request, res: Response) => {
     if (err.message?.includes('unique')) {
       return res.status(409).json({ error: 'A policy config with this key and version already exists' });
     }
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_CREATE_CONFIG_FAILED', { logContext: { op: 'create-config' } });
   }
 });
 
@@ -120,7 +121,7 @@ router.post('/configs/:id/activate', async (req: Request, res: Response) => {
 
     return res.json({ config: activated.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_ACTIVATE_CONFIG_FAILED', { logContext: { op: 'activate-config' } });
   }
 });
 
@@ -145,7 +146,7 @@ router.get('/rollouts', async (req: Request, res: Response) => {
 
     return res.json({ rollouts: result.rows, counts });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_LIST_ROLLOUTS_FAILED', { logContext: { op: 'list-rollouts' } });
   }
 });
 
@@ -186,7 +187,7 @@ router.post('/rollouts', async (req: Request, res: Response) => {
 
     return res.status(201).json({ rollout: insertResult.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_CREATE_ROLLOUT_FAILED', { logContext: { op: 'create-rollout' } });
   }
 });
 
@@ -213,7 +214,7 @@ router.post('/rollouts/:id/rollback', async (req: Request, res: Response) => {
 
     return res.json({ rollout: result.rows[0], status: 'rolled_back', reason: reason ?? null });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_ROLLBACK_FAILED', { logContext: { op: 'rollback-rollout' } });
   }
 });
 
@@ -247,7 +248,7 @@ router.get('/rollouts/:id/evaluate', async (req: Request, res: Response) => {
 
     return res.json({ rollout, evaluation });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_EVALUATE_FAILED', { logContext: { op: 'evaluate-rollout' } });
   }
 });
 
@@ -266,7 +267,7 @@ router.get('/rollouts/:id/evaluation-history', async (req: Request, res: Respons
 
     return res.json({ evaluations: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'POLICY_ROLLOUT_EVALUATION_HISTORY_FAILED', { logContext: { op: 'evaluation-history' } });
   }
 });
 

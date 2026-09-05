@@ -15,6 +15,7 @@ import { Router } from 'express';
 import { IsraelComplianceEngine } from '../../services/IsraelComplianceEngine';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
 import { logger } from '../../lib/logger';
+import { sendSanitizedError } from '../../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -56,7 +57,7 @@ router.get('/reconcile/:bookingId', async (req, res) => {
     return res.status(200).json({ success: true, ...result });
   } catch (err: any) {
     logger.error('[IsraelCompliance] reconcile error', { bookingId, error: err.message });
-    return res.status(500).json({ error: 'Reconciliation failed', detail: err.message });
+    return sendSanitizedError(res, err, 'ISRAEL_COMPLIANCE_RECONCILE_FAILED', { logContext: { op: 'reconcile', bookingId } });
   }
 });
 

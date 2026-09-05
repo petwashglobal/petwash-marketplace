@@ -35,6 +35,7 @@
 
 import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
+import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import {
@@ -141,7 +142,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'station_bills', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'station_bills', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] station_bills query failed', { error: e?.message });
+    sources.push({ source: 'station_bills', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- 2. Station equipment warranty + next inspection ----------------------
@@ -188,7 +190,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'station_assets', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'station_assets', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] station_assets query failed', { error: e?.message });
+    sources.push({ source: 'station_assets', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- 3. Station hardware warranty + next maintenance ----------------------
@@ -230,7 +233,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'pet_wash_stations', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'pet_wash_stations', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] pet_wash_stations query failed', { error: e?.message });
+    sources.push({ source: 'pet_wash_stations', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- 4. Supplier contract expiry + renewal confirmation -------------------
@@ -266,7 +270,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'supplier_contracts', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'supplier_contracts', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] supplier_contracts query failed', { error: e?.message });
+    sources.push({ source: 'supplier_contracts', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- 5. Compliance certification expiry -----------------------------------
@@ -298,7 +303,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'compliance_certifications', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'compliance_certifications', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] compliance_certifications query failed', { error: e?.message });
+    sources.push({ source: 'compliance_certifications', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- 6. Policy document expiry --------------------------------------------
@@ -329,7 +335,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'policy_documents', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'policy_documents', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] policy_documents query failed', { error: e?.message });
+    sources.push({ source: 'policy_documents', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- 7. Provider insurance document expiry --------------------------------
@@ -361,7 +368,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'provider_insurance_documents', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'provider_insurance_documents', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] provider_insurance_documents query failed', { error: e?.message });
+    sources.push({ source: 'provider_insurance_documents', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- 8. Contractor insurance renewal --------------------------------------
@@ -391,7 +399,8 @@ router.get('/deadlines', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'contractor_insurance', ok: true, count });
   } catch (e: any) {
-    sources.push({ source: 'contractor_insurance', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] contractor_insurance query failed', { error: e?.message });
+    sources.push({ source: 'contractor_insurance', ok: false, count: 0, reason: 'query failed' });
   }
 
   // Sort soonest-first (overdue first, then by daysUntil ascending).
@@ -468,7 +477,8 @@ router.get('/insurance-status', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'provider_insurance_documents', ok: true, count: rows.length });
   } catch (e: any) {
-    sources.push({ source: 'provider_insurance_documents', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] provider_insurance_documents query failed', { error: e?.message });
+    sources.push({ source: 'provider_insurance_documents', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- Contractor insurance --------------------------------------------------
@@ -507,7 +517,8 @@ router.get('/insurance-status', async (_req: Request, res: Response) => {
     }
     sources.push({ source: 'contractor_insurance', ok: true, count: rows.length });
   } catch (e: any) {
-    sources.push({ source: 'contractor_insurance', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] contractor_insurance query failed', { error: e?.message });
+    sources.push({ source: 'contractor_insurance', ok: false, count: 0, reason: 'query failed' });
   }
 
   // --- Station-level insurance billed via station_bills (billType=insurance) -
@@ -522,7 +533,8 @@ router.get('/insurance-status', async (_req: Request, res: Response) => {
     stationInsuranceBillCount = rows[0]?.c ?? 0;
     sources.push({ source: 'station_bills(insurance)', ok: true, count: stationInsuranceBillCount });
   } catch (e: any) {
-    sources.push({ source: 'station_bills(insurance)', ok: false, count: 0, reason: e?.message || 'query failed' });
+    logger.error('[AdminDeadlines] station_bills(insurance) query failed', { error: e?.message });
+    sources.push({ source: 'station_bills(insurance)', ok: false, count: 0, reason: 'query failed' });
   }
 
   // Summarise policies.
