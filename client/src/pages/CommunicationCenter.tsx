@@ -419,9 +419,24 @@ export default function CommunicationCenter() {
     },
   });
 
-  const { data: communicationHistory = [], isLoading: historyLoading } = useQuery<any[]>({
+  // NOTE (Lane E D13, 2026-09-05): no server route exists at
+  // GET /api/crm/communications/history. `/api/crm/communications/*` in
+  // server/routes.ts is a family of inline handlers (templates,
+  // appointment-reminders, logs-by-communication-id) — there is no
+  // "list all history" endpoint, and building one correctly needs a real
+  // join across crm_communications (type/subject/recipient target) and
+  // crm_communication_logs (delivery status) plus recipient resolution
+  // across lead/customer/user — a real feature, not a wiring fix. Until
+  // that's built, surface the gap honestly instead of silently reusing the
+  // zero-results empty state below.
+  const {
+    data: communicationHistory = [],
+    isLoading: historyLoading,
+    isError: historyErrored,
+  } = useQuery<any[]>({
     queryKey: ['/api/crm/communications/history'],
     enabled: activeTab === 'history',
+    retry: false,
   });
 
   // Handler functions
@@ -1141,6 +1156,11 @@ export default function CommunicationCenter() {
                   <div className="text-center py-8">
                     <RefreshCw className="w-8 h-8 text-slate-400 mx-auto mb-4 animate-spin" />
                     <p className="text-slate-600">{t('common.loading', 'Loading...')}</p>
+                  </div>
+                ) : historyErrored ? (
+                  <div className="text-center py-8">
+                    <Activity className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-600">{t('communication.history.unavailable', 'Communication history is not available yet — this view is not wired to a live data source')}</p>
                   </div>
                 ) : communicationHistory.length === 0 ? (
                   <div className="text-center py-8">

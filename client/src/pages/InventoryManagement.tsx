@@ -50,15 +50,28 @@ export default function InventoryManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
 
-  const { data: rawInventoryData, isLoading } = useQuery<{ items: InventoryItem[] }>({
+  // NOTE (Lane E D14, 2026-09-05): no server route exists at
+  // GET /api/k9000/inventory or /api/k9000/inventory/summary.
+  // server/routes/k9000.ts has no /inventory subpath at all — the closest
+  // schema (station_supplies: stationId, currentLevel, reorderThreshold) has
+  // no maxCapacity column and no station name/city join, and no route
+  // anywhere exposes it as a list. server/routes/k9000-supplier.ts's
+  // /spare-parts is a DIFFERENT domain (mechanical spare-parts warehouse
+  // stock, not per-station consumable levels) — not a canonical match.
+  // Building a correct per-station consumable feed needs real schema work
+  // (maxCapacity doesn't exist yet), so this surfaces the gap honestly
+  // instead of silently reusing the zero-results "No items found" state.
+  const { data: rawInventoryData, isLoading, isError: inventoryErrored } = useQuery<{ items: InventoryItem[] }>({
     queryKey: ['/api/k9000/inventory'],
     refetchInterval: 60000,
+    retry: false,
   });
 
   // Fetch inventory summary
   const { data: summaryData } = useQuery<any>({
     queryKey: ['/api/k9000/inventory/summary'],
     refetchInterval: 60000,
+    retry: false,
   });
 
   // Request restock mutation
@@ -333,6 +346,15 @@ export default function InventoryManagement() {
               <div className="text-center py-12">
                 <div className="luxury-spinner luxury-animate-scale-in"></div>
                 <p className="luxury-text-small mt-4">{isHebrew ? 'טוען מלאי...' : 'Loading inventory...'}</p>
+              </div>
+            ) : inventoryErrored ? (
+              <div className="text-center py-12">
+                <Package className="w-16 h-16 text-[#D4AF37] mx-auto mb-4" />
+                <p className="luxury-text-small">
+                  {isHebrew
+                    ? 'תצוגת המלאי אינה מחוברת עדיין למקור נתונים חי'
+                    : 'This inventory view is not wired to a live data source yet'}
+                </p>
               </div>
             ) : items.length === 0 ? (
               <div className="text-center py-12">
