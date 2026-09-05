@@ -9,6 +9,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { isSuperAdminVerified } from "../middleware/rbac";
 import { logger } from "../lib/logger";
+import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 import {
   MATCH_VERDICTS, OFFICIAL_DOC_TYPES, DOC_SUBMISSION_METHODS,
 } from "@shared/schema-provider-verification";
@@ -59,7 +60,8 @@ router.post("/:applicationId/patch", async (req: Request, res: Response) => {
     const cl = await computeChecklist(req.params.applicationId);
     return res.json({ ok: true, checklist: cl });
   } catch (e: any) {
-    return res.status(500).json({ error: e?.message || "patch failed" });
+    logger.error("[AdminProviderVerify] patch failed", { error: e?.message, applicationId: req.params.applicationId });
+    return sendSanitizedError(res, e, "PROVIDER_VERIFY_PATCH_FAILED", { logContext: { op: "patch" } });
   }
 });
 
@@ -72,7 +74,8 @@ router.post("/:applicationId/decision", async (req: Request, res: Response) => {
     const cl = await computeChecklist(req.params.applicationId);
     return res.json({ ok: true, checklist: cl });
   } catch (e: any) {
-    return res.status(400).json({ error: e?.message || "decision failed" });
+    logger.error("[AdminProviderVerify] decision failed", { error: e?.message, applicationId: req.params.applicationId });
+    return sendSanitizedError(res, e, "PROVIDER_VERIFY_DECISION_FAILED", { status: 400, logContext: { op: "decision" } });
   }
 });
 
@@ -90,7 +93,8 @@ router.post("/:applicationId/document", async (req: Request, res: Response) => {
     const id = await recordDocument(req.params.applicationId, adminUid(req), parsed.data as any, req.ip, req.headers["user-agent"]);
     return res.json({ ok: true, documentId: id });
   } catch (e: any) {
-    return res.status(500).json({ error: e?.message || "record failed" });
+    logger.error("[AdminProviderVerify] record document failed", { error: e?.message, applicationId: req.params.applicationId });
+    return sendSanitizedError(res, e, "PROVIDER_VERIFY_RECORD_DOCUMENT_FAILED", { logContext: { op: "record-document" } });
   }
 });
 
@@ -103,7 +107,8 @@ const docAction = (fn: (docId: number, adminId: string, applicationId: string, i
       await fn(docId.data, adminUid(req), applicationId.data, req.ip, req.headers["user-agent"]);
       return res.json({ ok: true });
     } catch (e: any) {
-      return res.status(500).json({ error: e?.message || "action failed" });
+      logger.error("[AdminProviderVerify] document action failed", { error: e?.message, docId: req.params.docId });
+      return sendSanitizedError(res, e, "PROVIDER_VERIFY_DOCUMENT_ACTION_FAILED", { logContext: { op: "document-action" } });
     }
   };
 
@@ -119,7 +124,8 @@ router.post("/document/:docId/legal-hold", async (req: Request, res: Response) =
     await setDocumentLegalHold(docId.data, adminUid(req), parsed.data.applicationId, parsed.data.reason, req.ip, req.headers["user-agent"]);
     return res.json({ ok: true });
   } catch (e: any) {
-    return res.status(500).json({ error: e?.message || "legal-hold failed" });
+    logger.error("[AdminProviderVerify] legal-hold failed", { error: e?.message, docId: req.params.docId });
+    return sendSanitizedError(res, e, "PROVIDER_VERIFY_LEGAL_HOLD_FAILED", { logContext: { op: "legal-hold" } });
   }
 });
 
