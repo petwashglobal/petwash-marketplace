@@ -234,14 +234,31 @@ export async function commitReservation(input: {
     if (row.status !== 'RESERVED') return { ok: false, errorCode: 'RESERVATION_NOT_ACTIVE' };
 
     const now = new Date();
-    await db
+    // CONCURRENCY (closure sprint): the conditional WHERE makes this UPDATE
+    // safe to run twice, but the OLD code never looked at how many rows it
+    // actually touched — it wrote the REDEEMED event and returned ok:true
+    // unconditionally. A commit() racing a release() on the SAME
+    // reservationId (both read status='RESERVED' before either write lands)
+    // could have the loser's UPDATE match zero rows — the reservation was
+    // already COMMITTED by the winner — while the loser still reported
+    // success. For release() that means "hold released, not a refund" is
+    // told to a caller whose money was in fact just captured by the other
+    // request: a checkout flow could act as if no charge occurred while the
+    // eGift had already been debited. Checking `.returning()` makes only the
+    // request whose write actually took effect report success; the other
+    // gets the honest RESERVATION_NOT_ACTIVE, never a false COMMITTED/RELEASED.
+    const committedRows = await db
       .update(egiftReservations)
       .set({ status: 'COMMITTED', committedAt: now })
       .where(and(
         eq(egiftReservations.reservationId, input.reservationId),
         eq(egiftReservations.egiftId, input.egiftId),
         eq(egiftReservations.status, 'RESERVED'),
-      ));
+      ))
+      .returning({ id: egiftReservations.id });
+    if (committedRows.length === 0) {
+      return { ok: false, errorCode: 'RESERVATION_NOT_ACTIVE' };
+    }
 
     await db.insert(egiftEvents).values({
       eventId: `evt-commit-${row.reservationId}`,
@@ -303,14 +320,23 @@ export async function releaseByReservationId(
     if (row.status !== 'RESERVED') return { ok: false, errorCode: 'RESERVATION_NOT_ACTIVE' };
 
     const now = new Date();
-    await db
+    // See the matching comment in commitReservation — the same race applies
+    // in reverse. Only the write that actually flips RESERVED → RELEASED may
+    // report success; a release() that loses the race to a concurrent
+    // commit() must not claim "released, not a refund" for money that was
+    // just captured elsewhere.
+    const releasedRows = await db
       .update(egiftReservations)
       .set({ status: 'RELEASED', releasedAt: now })
       .where(and(
         eq(egiftReservations.reservationId, reservationId),
         eq(egiftReservations.egiftId, egiftId),
         eq(egiftReservations.status, 'RESERVED'),
-      ));
+      ))
+      .returning({ id: egiftReservations.id });
+    if (releasedRows.length === 0) {
+      return { ok: false, errorCode: 'RESERVATION_NOT_ACTIVE' };
+    }
 
     await db.insert(egiftEvents).values({
       eventId: `evt-release-${reservationId}`,
