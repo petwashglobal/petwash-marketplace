@@ -558,7 +558,7 @@ function DigitalCardSection({
   wallet, walletData, he,
   selectedBay, setSelectedBay,
   qrToken, secondsLeft, isGenerating, generateQr,
-  setShowTopUpDialog, navigate,
+  navigate,
   resendEmailMutation,
   walletDownloadMutation,
   toast,
@@ -702,18 +702,39 @@ function DigitalCardSection({
                 {he ? `חסרים ${fmt(shortfall)} להפעלה` : `${fmt(shortfall)} short to activate via pass`}
               </span>
             </div>
-            <button onClick={() => setShowTopUpDialog(true)} style={{ display:'flex', alignItems:'center', gap:'10px', background:'rgba(217, 184, 76,0.08)', border:'1.5px solid rgba(217, 184, 76,0.3)', borderRadius:'12px', padding:'12px 14px', cursor:'pointer', textAlign:'left' }}>
-              <ArrowUpCircle size={18} color="#D9B84C" style={{ flexShrink:0 }} />
+            {/*
+              HONESTY FIX: this used to be an active "Top up ₪X+" button whose
+              onClick called setShowTopUpDialog(true) — but showTopUpDialog was
+              never read anywhere in this file, so no dialog, navigation or
+              request ever happened. A member short of the minimum tapped the
+              primary remedy and got silence.
+
+              There is no in-app top-up to route it to, by design:
+              POST /api/prestige-pass/topup is deliberately 410 (it was a pure
+              ledger credit with no payment capture — a self-mint), and the
+              canonical POST /api/credit-wallet/topup requires a VERIFIED Nayax
+              station transaction. Top-up is a station action.
+
+              So this is now non-interactive and says what is actually true. The
+              live remedy is the Nayax terminal button directly below.
+            */}
+            <div
+              role="note"
+              aria-disabled="true"
+              style={{ display:'flex', alignItems:'center', gap:'10px', background:'rgba(0,0,0,0.03)', border:'1.5px solid rgba(0,0,0,0.08)', borderRadius:'12px', padding:'12px 14px', textAlign:'left' }}
+            >
+              <ArrowUpCircle size={18} color="#9E9E9E" style={{ flexShrink:0 }} />
               <div>
-                <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#B8860B' }}>
-                  {he ? `טען ${fmt(shortfall)} ויותר` : `Top up ${fmt(shortfall)}+`}
+                <div style={{ fontSize:'0.82rem', fontWeight:700, color:'#6B6B6B' }}>
+                  {he ? `חסרים ${fmt(shortfall)} בארנק` : `${fmt(shortfall)} short in your wallet`}
                 </div>
                 <div style={{ fontSize:'0.68rem', color:'#9E9E9E' }}>
-                  {he ? 'הוסף כסף ל-PetWash Wallet' : 'Add credit to your PetWash Wallet'}
+                  {he
+                    ? 'טעינת ארנק מתבצעת בעמדה — שלם בטרמינל למטה'
+                    : 'Wallet top-up happens at the station — pay at the terminal below'}
                 </div>
               </div>
-              <ChevronRight size={16} color="#D9B84C" style={{ marginLeft:'auto' }} />
-            </button>
+            </div>
             <button onClick={() => toast({ title: he ? 'תשלום בטרמינל Nayax' : 'Pay at Nayax Terminal', description: he ? 'הניח כרטיס אשראי, Apple Pay או Google Pay על קורא הכרטיסים שבמכונה.' : "Tap your card, Apple Pay, or Google Pay on the machine's card reader." })} style={{ display:'flex', alignItems:'center', gap:'10px', background:'#FFFFFF', border:'1.5px solid rgba(0,0,0,0.1)', borderRadius:'12px', padding:'12px 14px', cursor:'pointer', textAlign:'left' }}>
               <Monitor size={18} color="#1A1A1A" style={{ flexShrink:0 }} />
               <div>
@@ -1109,7 +1130,6 @@ export default function PrestigePassWallet() {
   const [qrToken, setQrToken]               = useState<QrToken | null>(null);
   const [secondsLeft, setSecondsLeft]       = useState(QR_TTL);
   const [isGenerating, setIsGenerating]     = useState(false);
-  const [showTopUpDialog, setShowTopUpDialog] = useState(false);
   const [showKioskPass, setShowKioskPass]   = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [washEvent, setWashEvent]           = useState<{ bay:string; stationId:string|null; deductedCents:number; newBalanceCents:number; source:string; } | null>(null);
@@ -1469,7 +1489,6 @@ export default function PrestigePassWallet() {
           secondsLeft={secondsLeft}
           isGenerating={isGenerating}
           generateQr={generateQr}
-          setShowTopUpDialog={setShowTopUpDialog}
           navigate={navigate}
           resendEmailMutation={resendEmailMutation}
           walletDownloadMutation={walletDownloadMutation}
