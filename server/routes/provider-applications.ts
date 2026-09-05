@@ -761,6 +761,25 @@ router.get('/draft', async (req: Request, res: Response) => {
         city:          row.city || null,
         postalCode:    row.postalCode || null,
         country:       row.countryCode || null,
+        // REFRESH FIX 2026-09-05 — this line was missing. The column was
+        // already SELECTed above and the POST handler already persisted it,
+        // but the response object dropped it, so `data.draft.draftStep2Step3`
+        // was ALWAYS undefined on the client. That made the entire Step 2 +
+        // Step 3 rehydrate block in ProviderOnboarding.tsx dead code: the
+        // wizard faithfully saved every declaration, tax status, insurance
+        // number, first-aid/driving-licence detail, residential history and
+        // bank field on an 800ms debounce — and threw all of it away on
+        // reload, leaving only the eight Step 1 personal fields. An
+        // applicant who refreshed (or came back later) silently restarted
+        // two thirds of the form. Migration 0131 added the column for
+        // exactly this; the read-back was never wired up.
+        //
+        // Safe to return: it is the applicant's OWN client form state, this
+        // route is uid-scoped, and idNumber is deliberately never put in the
+        // blob (see the comment on the client payload) — the raw Israeli ID
+        // only ever leaves the browser through the encrypt-at-rest /apply
+        // path.
+        draftStep2Step3: row.draftStep2Step3 ?? null,
         updatedAt:     row.updatedAt,
       },
     });

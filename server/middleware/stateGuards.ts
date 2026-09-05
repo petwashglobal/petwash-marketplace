@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { logger } from '../lib/logger';
 import { logSecurityEvent } from '../services/securityEventsService';
+import { getUserCapabilities } from '../lib/userCapabilities';
+import { hasProviderCapability } from '@shared/lib/userCapabilities';
 
 function getUserId(req: Request): string | null {
   return (req as any).userId || (req as any).user?.id || (req.session as any)?.userId || null;
@@ -55,18 +57,45 @@ export function requireKycApproved(req: Request, res: Response, next: NextFuncti
   })();
 }
 
+/**
+ * Only an APPROVED provider may accept a booking.
+ *
+ * 2026-09-05 — the predicate here was
+ *   `role !== 'provider' || status !== 'provider_active'`
+ * read off the users row, exactly like requireProviderActive in gates.ts,
+ * and it is unsatisfiable for the same two reasons: users.role is
+ * deliberately never flipped to 'provider' (2026-08-20 multi-role
+ * contract) and nothing in the repo ever writes
+ * users.user_status = 'provider_active'. It also resolved the caller via
+ * getUserId, which does not know about req.firebaseUser.
+ *
+ * NOTE: this guard is currently IMPORTED BY server/routes.ts:283 BUT
+ * NEVER MOUNTED on any route. Fixed anyway so it is not a landmine for
+ * whoever wires it up — a gate that silently denies everyone is as bad as
+ * one that silently allows everyone. Which accept endpoints should carry
+ * it is a booking-lane decision.
+ *
+ * Authority is the ONE server aggregator: provider_applications.status
+ * === 'approved'. Fails closed (the aggregator degrades to empty
+ * capabilities on a DB error, which lands as a 403).
+ */
 export function requireProviderCanAcceptBooking(req: Request, res: Response, next: NextFunction) {
   return (async () => {
     try {
-      const userId = getUserId(req);
+      const r = req as any;
+      const userId = r.firebaseUser?.uid || r.userId || r.user?.uid || r.user?.id || (req.session as any)?.userId || null;
       if (!userId) return res.status(401).json({ error: 'AUTH_REQUIRED' });
-      const user = await getOrLoadUser(req, userId);
-      if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
-      const role = (user as any).role || 'customer';
-      const status = (user as any).userStatus || 'new';
-      if (role !== 'provider' || status !== 'provider_active') {
-        logSecurityEvent({ userId, eventType: 'booking_accept_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 50, metadata: { role, status, endpoint: req.originalUrl } });
-        return res.status(403).json({ error: 'PROVIDER_NOT_ACTIVE', message: 'Only active providers can accept bookings', role, userStatus: status });
+
+      let caps = r.userCapabilities;
+      if (!caps) {
+        caps = await getUserCapabilities(userId);
+        r.userCapabilities = caps;
+      }
+
+      if (!hasProviderCapability(caps)) {
+        const applicationStatus = caps?.provider?.applicationStatus ?? 'none';
+        logSecurityEvent({ userId, eventType: 'booking_accept_blocked', ip: req.ip || '', userAgent: req.headers['user-agent'] || '', riskScore: 50, metadata: { applicationStatus, endpoint: req.originalUrl } });
+        return res.status(403).json({ error: 'PROVIDER_NOT_ACTIVE', message: 'Only approved providers can accept bookings', applicationStatus });
       }
       next();
     } catch (error: any) {

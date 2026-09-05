@@ -15,13 +15,59 @@
  * 'approved' and is DELIBERATELY not the source of truth here).
  */
 
+/**
+ * Every status that is actually written to `provider_applications.status`
+ * in this repo. The union used to list only six of them, and the server
+ * aggregator's "in-flight" set listed only three — which silently excluded
+ * `'pending'`, the ONE status the live submit endpoint
+ * (POST /api/provider-onboarding/apply) writes. Result: every real
+ * applicant came back `applicant: false`.
+ *
+ * Writers (grep `providerApplications` + `status:`):
+ *   draft                 — post-login placeholder row
+ *   pending               — POST /api/provider-onboarding/apply
+ *   pending_review        — legacy submit paths
+ *   under_review          — AdminProviderReviewService (claim / resume)
+ *   processing            — provider-onboarding resubmission
+ *   pending_resubmission  — admin asked for more documents
+ *   on_hold               — AdminProviderReviewService hold
+ *   approved              — human admin approval  (the ONLY active state)
+ *   rejected              — human admin rejection (terminal)
+ *   withdrawn             — applicant withdrew    (terminal)
+ */
 export type ProviderApplicationStatus =
   | 'draft'
+  | 'pending'
   | 'pending_review'
   | 'under_review'
+  | 'processing'
+  | 'pending_resubmission'
+  | 'on_hold'
   | 'approved'
   | 'rejected'
   | 'withdrawn';
+
+/**
+ * In-flight (= "has a live application", NOT "is a provider"). Anything
+ * outside this set and outside `'approved'` is terminal or unknown and
+ * grants nothing — the aggregator defaults closed on an unrecognised
+ * value rather than guessing.
+ */
+export const PROVIDER_APPLICANT_STATUSES: readonly ProviderApplicationStatus[] = [
+  'draft',
+  'pending',
+  'pending_review',
+  'under_review',
+  'processing',
+  'pending_resubmission',
+  'on_hold',
+] as const;
+
+/** Terminal, no authority, no in-flight application. */
+export const PROVIDER_TERMINAL_STATUSES: readonly ProviderApplicationStatus[] = [
+  'rejected',
+  'withdrawn',
+] as const;
 
 /**
  * The approved service catalog for a provider. Matches the DB enum in
@@ -63,8 +109,8 @@ export interface UserCapabilities {
 
   /**
    * PROVIDER — three related states:
-   *   applicant: any application row exists in a non-terminal state
-   *              (draft / pending_review / under_review).
+   *   applicant: the authoritative application row is in a non-terminal
+   *              state (see PROVIDER_APPLICANT_STATUSES).
    *   active:    application.status === 'approved'.
    *   services:  approved service types (from provider_services table
    *              filtered by serviceStatus IN approved_for_booking /
