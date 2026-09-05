@@ -351,7 +351,54 @@ function walletErrorResponse(res: Response, err: unknown): Response {
 // ── SSE Registry — real-time push to user's open wallet tab ──────────────────
 // When K9000 redeems a token → we push "wash_started" to the user instantly.
 // Keyed by Firebase userId. Per-process (no Redis needed at this scale).
-const sseClients = new Map<string, Response>();
+/**
+ * Open SSE streams, keyed by SERVER-DERIVED uid → the set of that user's
+ * live responses.
+ *
+ * 2026-09-05 (realtime security lane): this used to be
+ * `Map<string, Response>` — ONE response per user. Two tabs meant the second
+ * silently replaced the first in the map, the displaced response was never
+ * ended (its 20s keepalive interval ran on forever), and when the OLD tab
+ * finally closed its handler ran `sseClients.delete(userId)` and unregistered
+ * the CURRENTLY LIVE tab — which then stopped receiving `wash_started`
+ * while still looking connected.
+ */
+const sseClients = new Map<string, Set<Response>>();
+
+/** Hard cap on concurrent streams per account; the oldest is evicted. */
+const SSE_MAX_STREAMS_PER_USER = 4;
+
+/**
+ * Maximum lifetime of one SSE connection.
+ *
+ * An SSE stream authenticates ONCE, at connect. Without a bound it outlives
+ * a logout or a token revocation for as long as the tab stays open. Ending
+ * the response makes the browser's EventSource reconnect, which re-runs the
+ * full auth chain; a signed-out browser then gets 401 and EventSource stops
+ * for good (per spec it does not retry a non-200). Cheap revocation with no
+ * extra Firebase round-trips on the keepalive path.
+ */
+function sseMaxStreamMs(): number {
+  return Number(process.env.PRESTIGE_SSE_MAX_STREAM_MS) || 15 * 60_000;
+}
+
+/** Fan a payload out to every live stream owned by `userId`. Returns delivery count. */
+function pushSse(userId: string, payload: Record<string, unknown>): number {
+  const streams = sseClients.get(userId);
+  if (!streams || streams.size === 0) return 0;
+  const frame = `data: ${JSON.stringify(payload)}\n\n`;
+  let delivered = 0;
+  for (const stream of [...streams]) {
+    try {
+      stream.write(frame);
+      delivered++;
+    } catch {
+      streams.delete(stream); // client already gone
+    }
+  }
+  if (streams.size === 0) sseClients.delete(userId);
+  return delivered;
+}
 
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
@@ -910,21 +957,18 @@ router.post('/token/redeem', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), 
       },
     });
 
-    // ── Real-time SSE push → user's open wallet tab sees "Wash started" instantly ──
-    const sseRes = sseClients.get(userId);
-    if (sseRes) {
-      try {
-        sseRes.write(`data: ${JSON.stringify({
-          type:            'wash_started',
-          bay:             effectiveBay,
-          stationId:       stationId || null,
-          deductedCents:   result.deductedCents,
-          newBalanceCents: result.newCashWalletCents,
-          source:          result.source,
-          timestamp:       new Date().toISOString(),
-        })}\n\n`);
-      } catch { /* client already disconnected */ }
-    }
+    // ── Real-time SSE push → EVERY open wallet tab of the token's owner sees
+    //    "Wash started" instantly. Fan-out is keyed by the userId carried in
+    //    the signed QR token, never by anything the caller sent. ──
+    pushSse(userId, {
+      type:            'wash_started',
+      bay:             effectiveBay,
+      stationId:       stationId || null,
+      deductedCents:   result.deductedCents,
+      newBalanceCents: result.newCashWalletCents,
+      source:          result.source,
+      timestamp:       new Date().toISOString(),
+    });
 
     return res.json({
       ok:           true,
@@ -2278,17 +2322,48 @@ router.get('/session/stream', (req: Request, res: Response) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  // Register this response so /token/redeem can push to it
-  sseClients.set(userId, res);
+  // Register this response so /token/redeem can push to it. Keyed by the
+  // server-derived uid — never anything the caller supplied.
+  let streams = sseClients.get(userId);
+  if (!streams) { streams = new Set<Response>(); sseClients.set(userId, streams); }
+
+  // Bound per-account fan-out: evict the oldest stream rather than let one
+  // account pin an unbounded number of open responses.
+  while (streams.size >= SSE_MAX_STREAMS_PER_USER) {
+    const oldest = streams.values().next().value as Response | undefined;
+    if (!oldest) break;
+    streams.delete(oldest);
+    try { oldest.end(); } catch { /* already gone */ }
+  }
+
+  streams.add(res);
   res.write(`: connected\n\n`);
 
   // Keepalive ping every 20s (prevents proxy timeout)
-  const ping = setInterval(() => { res.write(`: ping\n\n`); }, 20_000);
+  const ping = setInterval(() => {
+    try { res.write(`: ping\n\n`); } catch { /* closing */ }
+  }, 20_000);
 
-  req.on('close', () => {
+  // Bounded lifetime → forces a re-authenticating reconnect (see sseMaxStreamMs).
+  const maxAge = setTimeout(() => { try { res.end(); } catch { /* already gone */ } }, sseMaxStreamMs());
+  (maxAge as any).unref?.();
+
+  // Remove ONLY this response. The old code deleted the whole uid entry, so a
+  // stale tab closing unregistered the user's live tab.
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
     clearInterval(ping);
-    sseClients.delete(userId);
-  });
+    clearTimeout(maxAge);
+    const set = sseClients.get(userId);
+    if (set) {
+      set.delete(res);
+      if (set.size === 0) sseClients.delete(userId);
+    }
+  };
+  req.on('close', cleanup);
+  res.on('close', cleanup);
 });
 
 // ─────────────────────────────────────────────────────────
