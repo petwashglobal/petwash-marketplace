@@ -49,7 +49,7 @@ call, and nothing dedupes a repeat.
 | # | Location | Trigger | Notes |
 |---|---|---|---|
 | B1 | `server/services/BookingPolicyEngine.ts:176` `processAutoRefund` | internal | No key, no transaction, no ledger, no audit. `transactionId` is generated locally and **never persisted**. The owner lookup is `SELECT owner_id FROM sitter_bookings WHERE id=$1 UNION ALL SELECT owner_id FROM walk_bookings WHERE id=$1 LIMIT 1` — the two tables share a numeric `id` space, so this **can credit the wrong user**. Reachable only via `SitterAdvancedBookingEngine.cancelBooking` / `BaseLuxuryBookingEngine.cancelBooking`, neither of which has a live HTTP route today: **dormant, one route-wire away from live.** |
-| B2 | `server/routes/walk-my-pet.ts:2492` `POST /walker/reject/:walkId` | user (walker) | Live. The booking-status CAS immediately above it (`if (!updated) → 404`) is the only thing preventing a double credit. Wallet errors are swallowed into `logger.error`. |
+| B2 | `server/routes/walk-my-pet.ts` `POST /walker/reject/:walkId` | user (walker) | **FIXED ON MAIN** (re-verified 2026-09-05). The 2026-08-20 evil-hunt removed the raw `cash_wallet_balance_cents + totalCents` credit entirely — and found something worse than the missing dedupe this row originally described: the route is guarded on `status='pending'`, i.e. the walker has not accepted and **no money was ever captured**, so the credit minted wallet balance from nothing. Any real hold is now released through `WalletLedger` with a walk-id-derived key. Pinned by `refundWriterInventory.regression.test.ts` so the raw credit cannot come back. |
 | B3 | `server/routes/bookings.ts:916` `POST /api/bookings/:bookingId/cancel` | user / admin | Live. Single atomic `ON CONFLICT … DO UPDATE` upsert — but `ON CONFLICT` creates-or-adds, it is **not** a refund dedupe. |
 | B4 | `server/routes/disputes.ts:282, 358` `PATCH /api/disputes/:id/resolve` | super-admin | Transactional, and the escrow CAS (`WHERE escrow_id = $2 AND status NOT IN ('refunded','released')` + rollback on 0 rows) genuinely prevents a double credit. The defect is only the missing ledger entry. |
 
@@ -58,6 +58,23 @@ call, and nothing dedupes a repeat.
 `escrow_holdings.status = 'refunded'` with no `AND status NOT IN (…)` predicate, so a
 holding already **released to the provider** can be stamped `refunded` — recording one
 booking as both paid out and refunded.
+
+> **B12 — `server/services/BookingLifecycleService.ts` `settleEscrowTerminal`.**
+> Added to this inventory 2026-09-05 while re-verifying it against main. It is **not**
+> new code — it predates this branch and the original sweep simply missed it.
+>
+> It reads the holding, decides in JS via `planEscrowOnTerminal(escrow.status)`, then
+> issues an **unconditional** `UPDATE escrow_holdings SET status='refunded' WHERE id = …`.
+> That is the same defect shape M1 and M3 fix: two concurrent terminal transitions both
+> read `held`, both pass the skip check, both write `refunded`, and both append a
+> `BOOKING_ESCROW_REFUNDED` audit row — and a holding RELEASED between the read and the
+> write is silently overwritten as refunded.
+>
+> `scheduleEscrowRelease`, in the same file, already does it correctly
+> (`WHERE bookingId = … AND status = 'held'` + `.returning()`), which is what makes this
+> a gap rather than a deliberate design. Deliberately **not fixed in this PR** — a new
+> money write belongs in its own reviewed change. Frozen by CI pin so it cannot be
+> forgotten again.
 
 | # | Location | Trigger |
 |---|---|---|
@@ -77,15 +94,21 @@ timestamp to the key so it never collides. Combined with a read of
 `wallet_refunded_cents` that happens **outside** any row lock, two concurrent admin
 refunds can each pass the `maxRefundable` check and both execute.
 
-| # | Location | Key |
-|---|---|---|
-| B9 | `server/routes/prestige-pass.ts:3985` `POST /admin/wallet/refund` | `wallet:booking:refund:admin:${bookingId}:${Date.now()}` |
-| B10 | `server/routes/prestige-pass.ts:4068` `POST /admin/wallet/adjust` | `wallet:admin:adjust:${type}:${userId}:${Date.now()}` |
-| B11 | `server/routes/prestige-pass.ts:4768` academy force-cancel | `admin-cancel:${uid}:${Date.now()}` |
+| # | Location | Key | Status |
+|---|---|---|---|
+| B9 | `server/routes/prestige-pass.ts:4018` `POST /admin/wallet/refund` | `wallet:booking:refund:admin:${bookingId}:${Date.now()}` | **STILL OPEN** |
+| B10 | `server/routes/prestige-pass.ts` support refund | `wallet:support:refund:${bookingType}:${booking.booking_id}:${refundCents}` | **FIXED ON MAIN** — PR #2115 |
+| B11 | `server/routes/prestige-pass.ts` approval refund | `wallet:approval:refund:${bookingType}:${booking.booking_id}:${approvalId}` | **FIXED ON MAIN** — PR #2115 |
 
-The comment at B9 says the timestamp exists to allow multiple partial refunds. That is a
-real product need — but the safe shape is a key derived from the *amount and a client
-request id*, not from the clock. **CEO/finance decision required** before changing it.
+Re-verified 2026-09-05. Two of the three were fixed on main while this branch was out, by
+PR #2115 *"F3 over-refund cap + F4 deterministic idempotency (3 sites)"* — exactly the safe
+shape this section recommended: the key is now derived from the **amount** (`refundCents`)
+or the **approval id**, not the clock. Both are pinned so they cannot regress.
+
+**B9 remains open.** Its comment says the timestamp exists to allow multiple partial
+refunds. That is a real product need — but the safe shape is a key derived from the
+*amount and a client request id*, not from the clock. **CEO/finance decision required**
+before changing it.
 
 ### P2 — declared-but-never-paid, and missing authorization
 

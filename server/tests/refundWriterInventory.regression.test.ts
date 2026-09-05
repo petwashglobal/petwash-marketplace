@@ -100,9 +100,10 @@ function serverSources(dir = SERVER, acc: string[] = []): string[] {
 const KNOWN_RAW_WALLET_CREDIT_FILES = new Set([
   'services/WalletLedger.ts',            // canonical rail — hash-chained, keyed, FOR UPDATE
   'services/BookingPolicyEngine.ts',     // B1 — dormant, no key/ledger/tx
-  'routes/walk-my-pet.ts',               // B2 — live, gated only by the booking CAS
   'routes/bookings.ts',                  // B3 — live, ON CONFLICT is not a dedupe
   'routes/disputes.ts',                  // B4 — transactional + escrow CAS, missing ledger row
+  // B2 (routes/walk-my-pet.ts) was REMOVED from this list on 2026-09-05: main
+  // fixed it independently while this branch was out (see the B2 test below).
 ]);
 
 describe('M4 — no NEW raw-SQL wallet-credit bypass', () => {
@@ -122,18 +123,32 @@ describe('M4 — no NEW raw-SQL wallet-credit bypass', () => {
       'WalletLedger.refundToWallet (keyed, FOR UPDATE, hash-chained) instead, ' +
       'or add it to the inventory doc and this list with a written reason.',
     ).toEqual([]);
-  });
+    // Re-verified against main 2026-09-05 (615 commits after this branch was
+    // cut): still exactly these files — the 615 commits added NO new raw-SQL
+    // wallet credit.
+  }, 30_000); // walks + reads every server/**/*.ts; the default 5s now times out
 
-  it('the known bypasses are still exactly the four in the inventory doc', () => {
-    // If one gets FIXED, delete it from the set above and from the doc. This
-    // assertion keeps the doc and the code honest with each other.
+  it('the remaining known bypasses are still named in the inventory doc', () => {
+    // If one gets FIXED, delete it from the set above and mark it fixed in the
+    // doc. This assertion keeps the doc and the code honest with each other.
     const doc = readFileSync(
       resolve(REPO, 'docs', 'architecture', 'refund-writer-inventory-2026-08-17.md'),
       'utf8',
     );
-    for (const f of ['BookingPolicyEngine.ts', 'walk-my-pet.ts', 'bookings.ts', 'disputes.ts']) {
+    for (const f of ['BookingPolicyEngine.ts', 'bookings.ts', 'disputes.ts']) {
       expect(doc).toContain(f);
     }
+    // B2 must be recorded as fixed, not silently deleted.
+    expect(doc).toContain('walk-my-pet.ts');
+    expect(doc).toMatch(/B2[\s\S]{0,400}FIXED ON MAIN/);
+  });
+
+  it('B2 (walk-my-pet walker-decline) stays fixed — no raw wallet credit returns', () => {
+    // Fixed on main by the 2026-08-20 evil-hunt: the old raw
+    // `cash_wallet_balance_cents + totalCents` on a walker-decline of a PENDING
+    // walk minted wallet credit from nothing (no money had been captured).
+    const src = read('routes', 'walk-my-pet.ts');
+    expect(src).not.toMatch(/cash_wallet_balance_cents\s*=\s*[^,;]*(\+|EXCLUDED)/);
   });
 });
 
@@ -187,6 +202,48 @@ describe('M4 — known-open bypasses are still where the doc says they are', () 
       'prestige-pass clock-derived idempotency keys changed. Fixing these is a ' +
       'finance decision (they exist to allow repeated partial refunds) — update ' +
       'the inventory doc B9–B11 with the decision.',
-    ).toBe(3);
+    ).toBe(1); // was 3 when this branch was cut; main fixed 2 of 3 — see below
+  });
+
+  it('B10 + B11 stay FIXED — main made two of the three keys deterministic', () => {
+    // Fixed on main by #2115 "F3 over-refund cap + F4 deterministic idempotency
+    // (3 sites)" while this branch was out. Pinned so they cannot regress to a
+    // clock-derived key, which would make every retry a fresh refund.
+    const src = read('routes', 'prestige-pass.ts');
+    expect(src).toMatch(/wallet:support:refund:\$\{bookingType\}:\$\{booking\.booking_id\}:\$\{refundCents\}/);
+    expect(src).toMatch(/wallet:approval:refund:\$\{bookingType\}:\$\{booking\.booking_id\}:\$\{approvalId\}/);
+  });
+
+  it('B12 — BookingLifecycleService.settleEscrowTerminal is still UNGUARDED (new, pre-existing)', () => {
+    // Found 2026-09-05 while re-verifying this inventory against main. NOT
+    // introduced by the 615 commits — it predates this branch and was simply
+    // missed by the original sweep.
+    //
+    // settleEscrowTerminal reads the holding, decides in JS via
+    // planEscrowOnTerminal(escrow.status), then issues an UNCONDITIONAL
+    // `UPDATE escrow_holdings SET status='refunded' WHERE id = <id>`. That is
+    // the exact M3/M1 defect shape: two concurrent terminal transitions both
+    // read 'held', both pass the skip check, both write 'refunded' and both
+    // append a BOOKING_ESCROW_REFUNDED audit row — and a holding that was
+    // RELEASED between the read and the write is overwritten as refunded.
+    //
+    // Its sibling scheduleEscrowRelease in the SAME file already does it
+    // correctly (CAS on status='held' + .returning()), which is what makes
+    // this a gap rather than a deliberate design.
+    //
+    // Deliberately NOT fixed here: this branch is a rebase + re-verify, and a
+    // new money write belongs in its own reviewed PR. Frozen so it cannot be
+    // forgotten again.
+    const src = read('services', 'BookingLifecycleService.ts');
+    const settle = src.match(/private async settleEscrowTerminal\([\s\S]{0,2000}/)?.[0] ?? '';
+    expect(settle, 'settleEscrowTerminal not found').not.toBe('');
+    expect(settle).toMatch(/planEscrowOnTerminal\(escrow\.status\)/);
+    expect(
+      settle,
+      'settleEscrowTerminal appears to have been GUARDED (good) — remove this ' +
+      'pin and mark B12 fixed in the inventory doc.',
+    ).toMatch(/\.where\(eq\(escrowHoldings\.id, escrow\.id\)\)/);
+    // The correctly-guarded sibling, for contrast — it must not regress.
+    expect(src).toMatch(/eq\(escrowHoldings\.bookingId, bookingId\), eq\(escrowHoldings\.status, 'held'\)/);
   });
 });
