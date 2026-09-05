@@ -36,6 +36,10 @@ const WALLET = fs.readFileSync(
   path.resolve(__dirname, '..', 'pages', 'PrestigePassWallet.tsx'),
   'utf8',
 );
+const REFER = fs.readFileSync(
+  path.resolve(__dirname, '..', 'pages', 'LoyaltyRefer.tsx'),
+  'utf8',
+);
 
 describe('PrestigePassPaymentOption — a real debit produces a real confirmation', () => {
   it('parses the response body before anything reads deductionBreakdown', () => {
@@ -76,5 +80,31 @@ describe('PrestigePassWallet — no dead top-up control', () => {
     expect(WALLET).toMatch(/Wallet top-up happens at the station/);
     // The live remedy (Nayax terminal) must still be present.
     expect(WALLET).toMatch(/Pay at Nayax terminal/);
+  });
+});
+
+describe('LoyaltyRefer — never claim a copy that did not happen', () => {
+  // handleCopy copied `referralCode ?? displayCode`. With no code loaded,
+  // displayCode is '' or the '…' spinner placeholder, so the member got a
+  // "Copied!" toast with nothing (or an ellipsis) on the clipboard — and a
+  // shared '…' attributes the signup to nobody.
+  it('copies only the real code — no displayCode fallback', () => {
+    expect(REFER).not.toMatch(/const text = referralCode \?\? displayCode;/);
+    expect(REFER).toMatch(/const text = referralCode;/);
+  });
+
+  it('bails with an honest message instead of a success toast when no code', () => {
+    const handler = REFER.slice(
+      REFER.indexOf('const handleCopy'),
+      REFER.indexOf('const shareButtons'),
+    );
+    expect(handler).toMatch(/if \(!text\)/);
+    expect(handler).toMatch(/Code not ready yet/);
+    // The bail must return before the clipboard write / success toast.
+    expect(handler.indexOf('return;')).toBeLessThan(handler.indexOf('clipboard.writeText'));
+  });
+
+  it('the copy control is disabled until a real code exists', () => {
+    expect(REFER).toMatch(/disabled=\{!referralCode\}/);
   });
 });
