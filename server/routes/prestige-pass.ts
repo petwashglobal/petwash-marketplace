@@ -49,6 +49,7 @@ import { buildPassLinkToken } from '../lib/passTokens';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
+import { requireStaffApproved } from '../middleware/gates';
 
 // Multer: in-memory storage for CSV reconciliation uploads (max 4 MB)
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
@@ -2341,7 +2342,19 @@ router.post('/pet', async (req: Request, res: Response) => {
 // Body: { cardId }  e.g. "PW-45872043" or "petwash://card/PW-45872043"
 // Auth: session required (staff user)
 // ─────────────────────────────────────────────────────────
-router.post('/staff/lookup', async (req: Request, res: Response) => {
+// P0 (closure sprint): NEITHER /staff/lookup NOR /staff/charge verified the
+// caller was actually staff — only that they were SOME authenticated
+// PetWash session (resolveUid() just checks a token/session exists). Any
+// logged-in member who obtained another member's cardId (the static
+// wallet-pass barcode, not the rotating kiosk QR from /token/generate)
+// could pull that member's balances + PII via lookup, or DRAIN their
+// wallet via charge, by hitting these routes directly — the staff-only
+// gating existed only in the client's StaffScan.tsx page, never enforced
+// server-side. requireStaffApproved (the same gate every other staff/admin
+// surface in this codebase uses — see server/middleware/gates.ts) now
+// confirms role ∈ {staff, management, admin} AND userStatus='staff_active'
+// (or a verified super-admin) before either handler runs.
+router.post('/staff/lookup', requireStaffApproved, async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
@@ -2428,11 +2441,11 @@ const staffChargeSchema = z.object({
   idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
-router.post('/staff/charge', async (req: Request, res: Response) => {
+router.post('/staff/charge', requireStaffApproved, async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
-    const staffUserId = session.user.uid;
+    const staffUserId = resolveUid(req)!;
 
     const parsed = staffChargeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
