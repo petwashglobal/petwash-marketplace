@@ -12813,40 +12813,58 @@ self.addEventListener('notificationclick', (event) => {
       const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
 
       try {
-        // The client rotates the QR every TTL_SECONDS and calls this endpoint again on
-        // each rotation. Retire this member's earlier k9000 holds first, so we don't
-        // accumulate one orphan 'pending' row every 45 s for as long as the redeem
-        // screen stays open — and so the status poll below resolves against exactly
-        // one live hold. Status only: touches no balance, no ledger, no receipt.
-        await db
-          .update(redemptionSessions)
-          .set({ status: 'expired', updatedAt: new Date() })
-          .where(and(
-            eq(redemptionSessions.userId, userId),
-            eq(redemptionSessions.platform, 'k9000'),
-            eq(redemptionSessions.status, 'pending'),
-          ));
+        // MONEY-CRITICAL race close (2026-09-05): two near-simultaneous generate-qr
+        // calls for the same member (a double network retry, not just a double
+        // click — proven with Promise.all in
+        // server/tests/k9000GenerateQrPendingRace.behavior.test.ts) used to each
+        // pass the 'scanned' in-flight check above, then each independently
+        // expire-and-insert with no coordination — leaving TWO 'pending' rows
+        // live at once, i.e. two outstanding signed QR tokens instead of one.
+        // pg_advisory_xact_lock keyed on userId forces concurrent calls onto the
+        // SAME serialized view of this member's pending row, so the second call
+        // always expires the first call's just-inserted row before inserting its
+        // own — restoring "exactly ONE live QR" even under a race. Transaction-
+        // scoped lock: released automatically on commit or rollback, no manual
+        // unlock, and does not change the token's own cryptographic/nonce
+        // single-use behaviour (that guard is independent and unaffected).
+        await db.transaction(async (tx) => {
+          await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`);
 
-        await db.insert(redemptionSessions).values({
-          sessionId,
-          walletId: passSerial,
-          userId,
-          // REQUIRED — `session_type` is varchar NOT NULL with NO default
-          // (migrations/0010_registration_tables.sql:225). Omitting it made every
-          // insert throw a not-null violation, which the catch below swallowed as
-          // "non-fatal" — so the row NEVER existed, GET /api/credit-wallet/
-          // redemptions/:sessionId/status always 404'd, and K9000Redeem.tsx could
-          // never leave the "show your QR" step. The member got the wash and the
-          // app never confirmed it.
-          sessionType: 'hardware_qr',
-          platform: 'k9000',
-          serviceType: 'per_wash',
-          redemptionType,
-          requestedAmountCents: 5500, // ₪55 standard wash
-          status: 'pending',
-          expiresAt,
-          stationId: req.body?.kioskId ?? 'any',
-        } as any);
+          // The client rotates the QR every TTL_SECONDS and calls this endpoint again on
+          // each rotation. Retire this member's earlier k9000 holds first, so we don't
+          // accumulate one orphan 'pending' row every 45 s for as long as the redeem
+          // screen stays open — and so the status poll below resolves against exactly
+          // one live hold. Status only: touches no balance, no ledger, no receipt.
+          await tx
+            .update(redemptionSessions)
+            .set({ status: 'expired', updatedAt: new Date() })
+            .where(and(
+              eq(redemptionSessions.userId, userId),
+              eq(redemptionSessions.platform, 'k9000'),
+              eq(redemptionSessions.status, 'pending'),
+            ));
+
+          await tx.insert(redemptionSessions).values({
+            sessionId,
+            walletId: passSerial,
+            userId,
+            // REQUIRED — `session_type` is varchar NOT NULL with NO default
+            // (migrations/0010_registration_tables.sql:225). Omitting it made every
+            // insert throw a not-null violation, which the catch below swallowed as
+            // "non-fatal" — so the row NEVER existed, GET /api/credit-wallet/
+            // redemptions/:sessionId/status always 404'd, and K9000Redeem.tsx could
+            // never leave the "show your QR" step. The member got the wash and the
+            // app never confirmed it.
+            sessionType: 'hardware_qr',
+            platform: 'k9000',
+            serviceType: 'per_wash',
+            redemptionType,
+            requestedAmountCents: 5500, // ₪55 standard wash
+            status: 'pending',
+            expiresAt,
+            stationId: req.body?.kioskId ?? 'any',
+          } as any);
+        });
       } catch (dbErr: any) {
         // Still non-fatal for the wash itself, but log at ERROR: a missing row means
         // the member's screen can never confirm, which reads to them as "nothing
