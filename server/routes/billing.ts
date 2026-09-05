@@ -22,6 +22,8 @@ import {
   getAuditTrail,
 } from "../services/BillingLedger";
 import { logger } from "../lib/logger";
+import { strictIdempotencyWithDerivedKey } from "../middleware/derivedIdempotencyKey";
+import { EscrowConcurrentTransitionError } from "../services/EscrowStateMachine";
 
 const router = Router();
 
@@ -141,10 +143,43 @@ router.post("/service-completed", async (req, res) => {
 });
 
 /**
+ * Idempotency identity for a refund.
+ *
+ * A "logical refund" is uniquely identified by the billing record it reverses,
+ * the amount, and whether it is partial. Two submits of that same triple are
+ * the SAME refund — a double-click, a second tab, an admin replay, a client
+ * retry after a dropped response, or a webhook redelivery.
+ *
+ * This is not a new rule: the escrow state machine already collapses a repeat
+ * of the same transition to a no-op (`fromStatus === toStatus` → return). The
+ * derived key just makes that collapse explicit, race-proof and observable
+ * instead of relying on a read that two workers can win simultaneously.
+ */
+const refundIdentity = (req: any): string | null => {
+  const b = req.body ?? {};
+  if (!b.recordId || typeof b.refundAgorot !== "number") return null;
+  return [
+    "billing-refund",
+    String(b.recordId),
+    String(b.bookingId ?? ""),
+    String(b.refundAgorot),
+    b.isPartial ? "partial" : "full",
+  ].join("|");
+};
+
+/**
  * POST /api/billing/refund
  * Issue a full or partial refund.
+ *
+ * CONCURRENCY (2026-08-17, M1) — no financial rule changed.
+ * Two protections, both idempotency-only:
+ *   1. `strictIdempotencyWithDerivedKey` claims the logical refund BEFORE the
+ *      handler runs (fail-closed: a DB outage answers 503, never a duplicate).
+ *   2. `transitionEscrowState` now compare-and-sets the record status under a
+ *      row lock, so even a claim that slipped through cannot append a second
+ *      refund delta or fork the audit hash chain.
  */
-router.post("/refund", async (req, res) => {
+router.post("/refund", strictIdempotencyWithDerivedKey("billing-refund", refundIdentity), async (req, res) => {
   try {
     const parsed = RefundSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -164,6 +199,17 @@ router.post("/refund", async (req, res) => {
       documentSummary: result.documentSummary,
     });
   } catch (err: any) {
+    // A concurrent worker already moved this record. Never a 500, never a
+    // silent success — 409 tells the caller the refund was NOT applied twice.
+    if (err instanceof EscrowConcurrentTransitionError || err?.code === "ESCROW_CONCURRENT_TRANSITION") {
+      logger.warn("[BillingRoutes] refund lost concurrent claim — no duplicate applied", {
+        recordId: err.recordId, expectedFrom: err.expectedFrom, toStatus: err.toStatus,
+      });
+      return res.status(409).json({
+        error: "ESCROW_CONCURRENT_TRANSITION",
+        message: "This refund is already being processed by another request. No duplicate refund was applied.",
+      });
+    }
     logger.error("[BillingRoutes] refund error", { error: err.message });
     return res.status(500).json({ error: err.message });
   }
