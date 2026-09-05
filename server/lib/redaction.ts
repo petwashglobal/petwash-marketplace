@@ -83,8 +83,41 @@ function maskValue(v: string): string {
  * ────────────────────────────────────────────────────────────────────────── */
 const JWT_VALUE_RE = /eyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{4,}(?:\.[A-Za-z0-9_-]+)?/g;
 const EMAIL_VALUE_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
-/** 13-19 digit run = card PAN / long account number (not a timestamp). */
+/**
+ * 13-19 digit run = candidate card PAN / long account number.
+ *
+ * The digit-length test ALONE is not enough, and the reason matters: an
+ * epoch-millisecond timestamp is exactly 13 digits, so `\b\d{13,19}\b` on its
+ * own also rewrites `Date.now()` values, 14-digit order ids and every
+ * `txn-${Date.now()}` identifier. That is not a leak — it over-redacts — but
+ * it would shred the logs for precisely the money flows these ids exist to
+ * trace. Verified empirically before this guard was added:
+ *   1788646074657        -> ****4657   (epoch-ms)
+ *   txn-1757000000000    -> txn-****0000
+ *   20260906123456       -> ****3456   (order id)
+ *
+ * So the length match is only a CANDIDATE; `isLuhnValid` decides. Every real
+ * card PAN satisfies Luhn by definition (ISO/IEC 7812), so this keeps true
+ * detection intact while dropping ~90% of incidental numeric matches.
+ */
 const PAN_VALUE_RE = /\b\d{13,19}\b/g;
+
+/** Luhn (mod-10) check — the checksum every issued card number satisfies. */
+function isLuhnValid(digits: string): boolean {
+  let sum = 0;
+  let double = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let d = digits.charCodeAt(i) - 48;
+    if (d < 0 || d > 9) return false;
+    if (double) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    double = !double;
+  }
+  return sum % 10 === 0;
+}
 /** Israeli MSISDN in any of the shapes we store it. */
 const IL_PHONE_VALUE_RE = /\+?972[-\s]?\d{1,2}[-\s]?\d{3}[-\s]?\d{4}\b/g;
 
@@ -98,7 +131,7 @@ export function scrubSensitiveText(input: string): string {
     return input
       .replace(JWT_VALUE_RE, '[jwt]')
       .replace(EMAIL_VALUE_RE, (m) => redactEmail(m))
-      .replace(PAN_VALUE_RE, (m) => `****${m.slice(-4)}`)
+      .replace(PAN_VALUE_RE, (m) => (isLuhnValid(m) ? `****${m.slice(-4)}` : m))
       .replace(IL_PHONE_VALUE_RE, (m) => `+972***${m.replace(/\D/g, '').slice(-2)}`);
   } catch {
     return '[redacted]';

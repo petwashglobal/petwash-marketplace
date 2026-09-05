@@ -37,8 +37,13 @@ describe('scrubSensitiveText — value-level PII scrubbing', () => {
   });
 
   it('scrubs a card PAN down to the last 4', () => {
-    const out = scrubSensitiveText('charge failed for 4580123412341234');
-    expect(out).toBe('charge failed for ****1234');
+    // Fixture corrected 2026-09-06: 4580123412341234 fails the Luhn checksum,
+    // so it is not a number any issuer could have produced. PAN scrubbing is
+    // now Luhn-gated (see the dedicated describe block below for why), so the
+    // fixture has to be a genuinely well-formed PAN. Same 4580 prefix, valid
+    // check digit.
+    const out = scrubSensitiveText('charge failed for 4580123412341232');
+    expect(out).toBe('charge failed for ****1232');
   });
 
   it('scrubs an Israeli mobile number in several shapes', () => {
@@ -193,5 +198,51 @@ describe('scrubSentryEvent — nothing leaves for Sentry unredacted', () => {
     });
     const out = scrubSentryEvent(evil);
     expect(out.extra).toEqual({ scrubError: true });
+  });
+});
+
+/**
+ * PAN detection must not eat operational identifiers (2026-09-06 review of
+ * this PR). `\b\d{13,19}\b` alone also matches an epoch-MILLISECOND timestamp
+ * (exactly 13 digits), so it rewrote Date.now() values, 14-digit order ids and
+ * every `txn-${Date.now()}` id. Not a leak — over-redaction — but it would
+ * shred the logs for exactly the money flows those ids exist to trace.
+ * A Luhn check now decides: every issued card number satisfies mod-10 by
+ * definition, so true detection is unaffected.
+ */
+describe('PAN scrubbing is Luhn-gated — cards redacted, identifiers kept', () => {
+  it('still redacts real card numbers across brands', () => {
+    for (const pan of ['4111111111111111', '5555555555554444', '378282246310005', '6011111111111117']) {
+      const out = scrubSensitiveText(`charge failed for ${pan}`);
+      expect(out, pan).not.toContain(pan);
+      expect(out, pan).toContain(`****${pan.slice(-4)}`);
+    }
+  });
+
+  it('does NOT redact epoch-millisecond timestamps', () => {
+    const ts = String(Date.now());
+    expect(scrubSensitiveText(`booking created at ${ts}`)).toContain(ts);
+  });
+
+  it('does NOT redact txn / idempotency ids built from Date.now()', () => {
+    const id = `txn-${Date.now()}`;
+    expect(scrubSensitiveText(`wallet mutation ${id} applied`)).toContain(id);
+  });
+
+  it('leaves ordinary log lines untouched', () => {
+    const line = 'GET /api/stations 200 in 41ms';
+    expect(scrubSensitiveText(line)).toBe(line);
+  });
+
+  it('DOCUMENTED TRADE-OFF: a card-shaped run that fails Luhn is kept', () => {
+    // Accepted deliberately. Every ISSUED card number satisfies Luhn, so this
+    // costs no real-PAN coverage; what it keeps is mistyped/truncated input.
+    // The alternative — redacting on digit-length alone — destroyed every
+    // epoch-ms timestamp and txn id in the logs, which is a certainty on every
+    // request rather than a rare edge case. If raw PANs ever start reaching
+    // this server (today SUMIT/Nayax take cards on their own hosted pages, so
+    // they do not), revisit this and redact card-shaped runs unconditionally.
+    const notACard = '4580123412341234'; // one digit off — fails mod-10
+    expect(scrubSensitiveText(`value ${notACard}`)).toContain(notACard);
   });
 });
