@@ -10,8 +10,8 @@
  *   - commit or release reservations they don't own.
  *
  * Fix: assertEgiftOwnership loads e_vouchers.owner_uid /
- * purchaser_uid and confirms one matches the caller (super-admin
- * passes through for ops). Unknown eGifts and non-owner attempts both
+ * purchaser_uid and confirms one matches the caller (a VERIFIED
+ * super-admin passes through for ops). Unknown eGifts and non-owner attempts both
  * return 404 (never 403) so the endpoint doesn't leak whether the id
  * exists to a non-owner. Fail-safe: DB error on the ACL read returns
  * 500 with a distinct code — a Postgres hiccup must NEVER downgrade
@@ -36,14 +36,22 @@ describe('egift-balance routes enforce eGift ownership ACL (CEO §30 audit)', ()
     expect(SRC).toMatch(/row\.owner_uid === callerUid \|\| row\.purchaser_uid === callerUid/);
   });
 
-  it('super-admin passes the ACL for ops (isSuperAdmin(email))', () => {
+  it('super-admin passes the ACL for ops — via the VERIFIED paired shape (#240)', () => {
     // #240 migration: re-pointed from the bare `isSuperAdmin(email)` shape.
     // That shape is the audit-199 DEFECT (allowlist match on the email
     // STRING alone); the route was correctly migrated to
     // isSuperAdminVerified(req) — allowlist AND email_verified === true —
-    // so this pin had begun failing against the FIXED code and was telling
-    // the next agent to restore the vulnerability. Guarantee unchanged.
+    // so the old pin had begun failing against the FIXED code and was
+    // telling the next agent to restore the vulnerability.
+    //
+    // Conflict resolved 2026-09-06 in favour of the STRICTER form: as well as
+    // pinning the strong shape, pin the import source and pin OUT the weak
+    // `isSuperAdmin(callerEmail)` shape, so a future refactor cannot silently
+    // downgrade the bypass back to email-only. Guarantee unchanged, coverage
+    // strictly greater.
     expect(SRC).toMatch(/if \(isSuperAdminVerified\(req\)\) return \{ ok: true \}/);
+    expect(SRC).toMatch(/isSuperAdminVerified.*from '\.\.\/middleware\/rbac'/);
+    expect(SRC).not.toMatch(/isSuperAdmin\(callerEmail\)/);
   });
 
   it('non-owner + unknown egiftId BOTH return 404 — the endpoint does not confirm existence to a non-owner', () => {

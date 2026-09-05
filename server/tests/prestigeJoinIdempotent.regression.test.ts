@@ -83,11 +83,19 @@ describe('POST /api/privilege/register wires business-idempotency', () => {
     expect(region).toMatch(/finalizeBusinessClaim\(idempKey, false\)/);
   });
 
-  it('D12 firewall: business surface untouched (INSERT INTO privilege_members intact + HubSpot + FCM)', () => {
+  it('D12 firewall: business surface untouched (INSERT INTO privilege_members intact + FCM + encryptField)', () => {
     expect(SRC).toMatch(/INSERT INTO privilege_members/);
-    expect(SRC).toContain('syncUserToHubSpot');
-    expect(SRC).toContain('trackHubSpotEvent');
     expect(SRC).toContain('FCMService');
     expect(SRC).toContain('encryptField');
+  });
+
+  it('D12 firewall: HubSpot calls are GONE on purpose (#2014) — not silently re-added', () => {
+    // hubspot.ts has been a stub since the Replit connector was cut (June 2026):
+    // syncUserToHubSpot / trackHubSpotEvent only logged "CRM sync disabled".
+    // #2014 removed the two dead callers here. Pinned negative so nobody
+    // reintroduces a no-op CRM call and believes members reach a CRM.
+    // If a real HubSpot integration lands, replace this with a positive pin.
+    expect(SRC).not.toContain('syncUserToHubSpot');
+    expect(SRC).not.toContain('trackHubSpotEvent');
   });
 });

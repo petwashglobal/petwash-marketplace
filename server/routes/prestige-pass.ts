@@ -49,6 +49,7 @@ import { buildPassLinkToken } from '../lib/passTokens';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
+import { requireStaffApproved } from '../middleware/gates';
 
 // Multer: in-memory storage for CSV reconciliation uploads (max 4 MB)
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
@@ -1827,6 +1828,14 @@ router.post('/redeem-online', auditLogMiddleware('EGIFT_REDEEM'), async (req: Re
     };
 
     // Atomic deduction via WalletEngine (PostgreSQL only — no Firestore split)
+    //
+    // Redeem audit R1 — the idempotency key is LOAD-BEARING, not optional.
+    // deductFromWallet() only dedups when ctx.idempotencyKey is supplied
+    // (WalletLedger.ts "Layer 2"); the FOR UPDATE row lock serializes
+    // concurrent writers but does NOT collapse a replay. Without a key a
+    // double-tap / client retry on "Pay with Prestige Pass" debits the wallet
+    // TWICE for one booking. Keyed on (userId, bookingId) so it is stable
+    // across retries of the same booking and distinct between bookings.
     const result = await applyDeduction({
       userId,
       amountCents:  amountGross,
@@ -1834,6 +1843,8 @@ router.post('/redeem-online', auditLogMiddleware('EGIFT_REDEEM'), async (req: Re
       serviceType,
       bookingId,
       description: `Online redemption — ${serviceType}`,
+      idempotencyKey: `prestige:redeem-online:${userId}:${bookingId}`,
+      endpoint:     'prestige-pass/redeem-online',
       divisionCode: DIVISION_MAP[serviceType] ?? 'general',
       sourceType:   'booking',
     });
@@ -2406,7 +2417,19 @@ router.post('/pet', async (req: Request, res: Response) => {
 // Body: { cardId }  e.g. "PW-45872043" or "petwash://card/PW-45872043"
 // Auth: session required (staff user)
 // ─────────────────────────────────────────────────────────
-router.post('/staff/lookup', async (req: Request, res: Response) => {
+// P0 (closure sprint): NEITHER /staff/lookup NOR /staff/charge verified the
+// caller was actually staff — only that they were SOME authenticated
+// PetWash session (resolveUid() just checks a token/session exists). Any
+// logged-in member who obtained another member's cardId (the static
+// wallet-pass barcode, not the rotating kiosk QR from /token/generate)
+// could pull that member's balances + PII via lookup, or DRAIN their
+// wallet via charge, by hitting these routes directly — the staff-only
+// gating existed only in the client's StaffScan.tsx page, never enforced
+// server-side. requireStaffApproved (the same gate every other staff/admin
+// surface in this codebase uses — see server/middleware/gates.ts) now
+// confirms role ∈ {staff, management, admin} AND userStatus='staff_active'
+// (or a verified super-admin) before either handler runs.
+router.post('/staff/lookup', requireStaffApproved, async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
@@ -2485,18 +2508,25 @@ const staffChargeSchema = z.object({
   serviceType: z.enum(['grooming', 'full_wash', 'quick_wash', 'vet', 'academy', 'retail', 'transport', 'other']),
   amountCents: z.number().int().min(100).max(100_000),
   staffNote:   z.string().max(200).optional(),
+  // Redeem audit R6 — per-ring-up token minted ONCE by the POS client when the
+  // cashier opens the charge screen, replayed unchanged on every retry. This is
+  // the only value that can make a staff charge idempotent: the server-side
+  // fallback below embeds Date.now(), so it is fresh on every request and
+  // therefore dedups nothing.
+  idempotencyKey: z.string().min(8).max(128).optional(),
 });
 
-router.post('/staff/charge', async (req: Request, res: Response) => {
+router.post('/staff/charge', requireStaffApproved, async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
-    const staffUserId = session.user.uid;
+    const staffUserId = resolveUid(req)!;
 
     const parsed = staffChargeSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
 
     let { cardId, serviceType, amountCents, staffNote } = parsed.data;
+    const clientIdemKey = parsed.data.idempotencyKey;
     cardId = cardId.replace(/^petwash:\/\/card\//i, '').trim().toUpperCase();
 
     // Find customer by cardId
@@ -2534,7 +2564,11 @@ router.post('/staff/charge', async (req: Request, res: Response) => {
       bookingId,
       description:     `Staff POS charge — ${serviceType}${staffNote ? `: ${staffNote}` : ''}`,
       // Anti-fraud context
-      idempotencyKey:  `STAFF-${staffUserId}-${bookingId}`,
+      // Prefer the client's stable per-ring-up token. The bookingId fallback
+      // embeds Date.now() (see above), so it changes on every retry and gives
+      // NO replay protection — it is kept only so an old POS build still works.
+      idempotencyKey:  clientIdemKey ? `STAFF-${staffUserId}-${clientIdemKey}`
+                                     : `STAFF-${staffUserId}-${bookingId}`,
       ipAddress:       clientIp,
       userAgent:       clientUa,
       staffId:         staffUserId,

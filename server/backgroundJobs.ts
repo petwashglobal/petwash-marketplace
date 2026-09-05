@@ -6,7 +6,7 @@ import { db } from './lib/firebase-admin';
 import EscrowService from './services/EscrowService';
 import { twilioSMSService } from './services/TwilioSMSService';
 import { pool } from './db';
-import { createBirthdayVoucher, hasBirthdayVoucherThisYear } from './birthdayVoucher';
+import { createBirthdayVoucher, hasBirthdayVoucherThisYear, BirthdayVoucherAlreadyIssuedError } from './birthdayVoucher';
 import { processVaccineReminders } from './vaccineReminder';
 import { RevenueReportService } from './revenueReportService';
 import { logger } from './lib/logger';
@@ -992,13 +992,26 @@ export class BackgroundJobProcessor {
               continue;
             }
             
-            // Create birthday voucher
-            const voucher = await createBirthdayVoucher(
-              uid,
-              profileData?.email || '',
-              currentYear,
-              profileData?.petName || profileData?.dogName
-            );
+            // Create birthday voucher.
+            // The hasBirthdayVoucherThisYear() check above is the cheap path;
+            // createBirthdayVoucher re-checks inside a transaction and throws
+            // BirthdayVoucherAlreadyIssuedError if a concurrent run won the
+            // race. Skip quietly — a duplicate voucher is a duplicate discount.
+            let voucher;
+            try {
+              voucher = await createBirthdayVoucher(
+                uid,
+                profileData?.email || '',
+                currentYear,
+                profileData?.petName || profileData?.dogName
+              );
+            } catch (createError) {
+              if (createError instanceof BirthdayVoucherAlreadyIssuedError) {
+                logger.info(`[Birthday] Race lost — voucher already issued for ${uid} in ${currentYear}, skipping`);
+                continue;
+              }
+              throw createError;
+            }
             
             // §30א gate: the birthday email carries a discount voucher → it is a
             // דבר פרסומת and MUST NOT be sent without prior marketing-email consent.

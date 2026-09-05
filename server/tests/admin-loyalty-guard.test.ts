@@ -35,23 +35,27 @@ describe('admin-loyalty — Issue #148 P5 regression pin', () => {
     expect(SRC).not.toMatch(/router\.(get|post|put|patch|delete)\([^)]+,\s*requireAdmin\s*,/);
   });
 
-  // UPDATED for the #240 migration. These two assertions used to demand the
-  // bare `isSuperAdmin(` shape. That shape is the audit-199 DEFECT: a match
-  // on the email STRING alone, which an unverified Firebase account under an
+  // UPDATED for the #240 migration. These assertions used to demand the bare
+  // `isSuperAdmin(` shape. That shape is the audit-199 DEFECT: a match on the
+  // email STRING alone, which an unverified Firebase account under an
   // unclaimed allowlisted address clears. admin-loyalty.ts was migrated to
   // isSuperAdminVerified (allowlist AND email_verified === true), so the pin
   // began FAILING AGAINST THE FIXED CODE — it was pinning the vulnerability
-  // in place and telling the next agent to restore it. Re-pointed at the
-  // correct shape; the guarantee (the local requireAdmin still gates on the
-  // canonical rbac super-admin primitive) is unchanged.
-  it('still defines the local requireAdmin (verified super-admin check)', () => {
+  // in place and telling the next agent to restore it.
+  //
+  // Conflict resolved 2026-09-06: both branches re-pointed at the same strong
+  // shape; kept the fuller rationale plus the incoming negative assertions
+  // (pin the import source, pin OUT the weak shape) so the gate cannot be
+  // silently downgraded back to email-only. Guarantee unchanged.
+  it('still defines the local requireAdmin (VERIFIED super-admin check)', () => {
     expect(SRC).toMatch(/function requireAdmin\([^)]*\)\s*\{[\s\S]*isSuperAdminVerified\(/);
   });
 
-  it('still uses isSuperAdminVerified from middleware/rbac (super-admin contract preserved)', () => {
+  it('uses the VERIFIED super-admin helper from middleware/rbac (#240 paired shape)', () => {
     expect(SRC).toMatch(
       /import\s*\{\s*isSuperAdminVerified\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/,
     );
+    expect(SRC).not.toMatch(/\bisSuperAdmin\(/);
   });
 
   it('does NOT fall back to the bare allowlist primitive', () => {

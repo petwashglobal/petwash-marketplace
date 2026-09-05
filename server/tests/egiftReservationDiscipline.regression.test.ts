@@ -73,7 +73,10 @@ describe('§23 in-transaction race guard', () => {
     // The rollback path calls the release helper on the freshly-
     // inserted reservationId with silent=true so the honest error
     // reaches the caller instead of a spurious warning.
-    expect(SRC).toMatch(/releaseByReservationId\(reservationId,\s*\/\*silent=\*\/\s*true\)/);
+    // The compensating release now also passes the reservation's OWN egiftId,
+    // because releaseByReservationId requires the authorisation scope (P0 fix:
+    // reservation ops used to resolve by reservationId alone).
+    expect(SRC).toMatch(/releaseByReservationId\(reservationId,\s*input\.egiftId,\s*\/\*silent=\*\/\s*true\)/);
     expect(SRC).toMatch(/errorCode:\s*'RACE_CONDITION'/);
   });
 });
@@ -144,5 +147,62 @@ describe('idempotency — deterministic reservation ids', () => {
   it('deterministicReservationId hashes (egiftId, idempotencyKey) — same key → same id', () => {
     expect(SRC).toMatch(/function deterministicReservationId\(egiftId: string, idempotencyKey\?: string\)/);
     expect(SRC).toMatch(/createHash\('sha256'\)\.update\(`\$\{egiftId\}:\$\{seed\}`\)/);
+  });
+});
+
+describe('P0 — reservation ops are bound to the AUTHORISED egiftId (cross-user burn)', () => {
+  // The HTTP surface is
+  //   /api/egift/:egiftId/reservations/:reservationId/commit|release
+  // and it authorises :egiftId via assertEgiftOwnership. commitReservation and
+  // releaseByReservationId used to resolve the row by :reservationId ALONE, so
+  // owning ANY eGift authorised committing or releasing a reservation held
+  // against someone else's — burning or cancelling a stranger's held value.
+  // Reservation ids are derivable (RES- + sha256(egiftId + ':' + idempotencyKey),
+  // client-chosen key), so this was not even guess-limited.
+  const ROUTES = fs.readFileSync(
+    path.resolve(__dirname, '..', 'routes', 'egift-balance.ts'),
+    'utf8',
+  );
+
+  it('commitReservation takes a REQUIRED egiftId and filters both statements on it', () => {
+    const block = SRC.slice(
+      SRC.indexOf('export async function commitReservation'),
+      SRC.indexOf('export async function releaseByReservationId'),
+    );
+    // Required (no `?`) in the input type.
+    expect(block).toMatch(/\n\s*egiftId: string;/);
+    // Bound on BOTH the read and the conditional write.
+    const bindings = block.match(/eq\(egiftReservations\.egiftId, input\.egiftId\)/g) ?? [];
+    expect(bindings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('releaseByReservationId takes a REQUIRED egiftId and filters both statements on it', () => {
+    const block = SRC.slice(SRC.indexOf('export async function releaseByReservationId'));
+    expect(block).toMatch(/reservationId: string,[\s\S]{0,200}?egiftId: string,/);
+    const bindings = block.match(/eq\(egiftReservations\.egiftId, egiftId\)/g) ?? [];
+    expect(bindings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('a cross-eGift reservation id is reported as NOT_FOUND — no existence oracle', () => {
+    // Both helpers must fall through to the generic not-found code rather than
+    // a distinct "wrong owner" code that would confirm the id exists.
+    expect(SRC).not.toMatch(/RESERVATION_WRONG_EGIFT|RESERVATION_FORBIDDEN|status:\s*403/);
+    expect(SRC).toMatch(/errorCode:\s*'RESERVATION_NOT_FOUND'/);
+  });
+
+  it('the routes pass the PATH egiftId (already ACL-checked), never a body-supplied one', () => {
+    for (const op of ['commit', 'release']) {
+      const start = ROUTES.indexOf(`router.post('/:egiftId/reservations/:reservationId/${op}'`);
+      expect(start).toBeGreaterThan(-1);
+      // Fixed window: the handler body contains nested `});` (the json()
+      // calls), so an indexOf('});') slice would cut the block short.
+      const block = ROUTES.slice(start, start + 1400);
+      // egiftId is read from params and ACL-checked before the call.
+      expect(block).toMatch(/const egiftId = String\(req\.params\.egiftId/);
+      expect(block).toMatch(/assertEgiftOwnership\(egiftId, uid, req\)/);
+      // ...and never taken from the request body.
+      expect(block).not.toMatch(/req\.body\??\.?\[?['"]?egiftId/);
+    }
+    expect(ROUTES).toMatch(/releaseByReservationId\(reservationId, egiftId\)/);
   });
 });
