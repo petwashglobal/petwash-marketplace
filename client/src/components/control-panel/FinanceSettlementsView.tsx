@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import {
   DollarSign,
   TrendingUp,
-  Users,
   FileText,
   Download,
   Calendar,
@@ -52,34 +51,8 @@ interface Settlement {
   createdAt: string;
 }
 
-interface Commission {
-  commissionId: string;
-  providerId: string;
-  providerName?: string;
-  customerPaidAmount: string;
-  commissionRate: string;
-  commissionAmount: string;
-  vatAmount: string;
-  providerPayout: string;
-  status: string;
-  createdAt: string;
-}
-
 interface SettlementsResponse {
   settlements?: Settlement[];
-}
-
-interface CommissionsResponse {
-  commissions?: Commission[];
-}
-
-interface FinanceSummaryResponse {
-  summary?: {
-    totalRevenue: string;
-    totalCommissions: string;
-    totalVAT: string;
-    pendingSettlements: number;
-  };
 }
 
 export default function FinanceSettlementsView() {
@@ -93,29 +66,54 @@ export default function FinanceSettlementsView() {
   const settlementsQs = new URLSearchParams();
   if (periodFilter && periodFilter !== 'all') settlementsQs.set('period', periodFilter);
   if (statusFilter && statusFilter !== 'all') settlementsQs.set('status', statusFilter);
-  const { data: settlementsData, isLoading: settlementsLoading } = useQuery<SettlementsResponse>({
+  const { data: settlementsData, isLoading: settlementsLoading, error: settlementsError } = useQuery<SettlementsResponse>({
     queryKey: [settlementsQs.toString()
       ? `/api/finance/settlements?${settlementsQs.toString()}`
       : "/api/finance/settlements"],
   });
 
-  // Fetch commissions — same class: "recent" was dropped.
-  const { data: commissionsData } = useQuery<CommissionsResponse>({
-    queryKey: ["/api/finance/commissions?period=recent"],
-  });
+  // CONTRACT FIX (Lane E D12): `GET /api/finance/commissions` has NO handler
+  // anywhere on the server — verified across all three /api/finance mounts
+  // (routes/finance.ts, routes/finance/settlements.ts, routes/finance/money-flow.ts)
+  // and every other router. The query is removed rather than pointed somewhere
+  // else, because no route owns contractor commissions today. The panel below
+  // now says so instead of rendering the "No recent commissions" empty state,
+  // which read as "there were none" when the truth is "we never asked anyone".
 
-  // Fetch financial summary
-  const { data: summaryData } = useQuery<FinanceSummaryResponse>({
-    queryKey: ["/api/finance/summary"],
-  });
+  // The `/api/finance/summary` query is removed too: nothing on this screen can
+  // honestly consume it (see the note below), and leaving a fetch whose result
+  // is discarded is how the ₪0.00 illusion survived review in the first place.
 
   const settlements = (settlementsData?.settlements || []) as Settlement[];
-  const commissions = (commissionsData?.commissions || []) as Commission[];
-  const summary = summaryData?.summary || {
-    totalRevenue: "0.00",
-    totalCommissions: "0.00",
-    totalVAT: "0.00",
-    pendingSettlements: 0,
+
+  // ── FABRICATED MONEY, NOW REMOVED ─────────────────────────────────────────
+  // This screen used to read `summaryData?.summary` and fall back to a literal
+  // { totalRevenue: "0.00", totalCommissions: "0.00", totalVAT: "0.00" }.
+  // `GET /api/finance/summary` answers { kpis, network, ownership, stationCount }
+  // — there is NO `summary` key on that response and there never has been. So
+  // the optional chain was ALWAYS undefined and the fallback ALWAYS fired: the
+  // executive Finance screen displayed a hard "₪0.00" for revenue, commissions
+  // and VAT, on a 200 response, with no error state to give it away. Zeroes
+  // presented as fact for money nobody measured.
+  //
+  // The four figures are instead totalled from the settlement rows actually
+  // loaded — `settlements` carries grossRevenue, petwashShare and vatAmount per
+  // row — and the cards are labelled with that scope, because a filtered,
+  // paginated page of settlements is NOT a network total and must not be
+  // dressed up as one. When settlements cannot be loaded the cards say so
+  // rather than showing a zero.
+  const sumField = (rows: Settlement[], field: 'grossRevenue' | 'petwashShare' | 'vatAmount') =>
+    rows.reduce((acc, r) => acc + (parseFloat(r[field] ?? '0') || 0), 0);
+  const money = (n: number) => n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const settlementsUnavailable = !!settlementsError;
+  const summaryScopeNote = settlementsLoading
+    ? 'Loading…'
+    : `Across the ${settlements.length} settlement${settlements.length === 1 ? '' : 's'} shown`;
+  const totals = {
+    revenue: money(sumField(settlements, 'grossRevenue')),
+    commissions: money(sumField(settlements, 'petwashShare')),
+    vat: money(sumField(settlements, 'vatAmount')),
+    pending: settlements.filter((s) => s.status === 'pending').length,
   };
 
   const getStatusBadge = (status: SettlementStatus) => {
@@ -144,48 +142,58 @@ export default function FinanceSettlementsView() {
     });
   };
 
-  const downloadInvoice = (commissionId: string, language: "he" | "en" = "he") => {
-    window.open(`/api/contractor-invoices/${commissionId}/generate?lang=${language}`, "_blank");
-    toast({
-      title: "Generating Invoice",
-      description: `Creating ${language === "he" ? "Hebrew" : "English"} tax invoice...`,
-    });
-  };
-
   return (
     <div className="space-y-6">
       {/* Financial Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card data-testid="card-total-revenue">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Settled Gross Revenue</CardTitle>
             <TrendingUp className="w-4 h-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₪{summary.totalRevenue}</div>
-            <p className="text-xs text-muted-foreground mt-1">This month</p>
+            {settlementsUnavailable ? (
+              <div className="text-sm font-medium text-destructive">Unavailable</div>
+            ) : (
+              <div className="text-2xl font-bold">₪{totals.revenue}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {settlementsUnavailable ? "Settlements could not be loaded" : summaryScopeNote}
+            </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-total-commissions">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Commissions</CardTitle>
+            <CardTitle className="text-sm font-medium">PetWash Share</CardTitle>
             <Receipt className="w-4 h-4 text-[#B8932F]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₪{summary.totalCommissions}</div>
-            <p className="text-xs text-muted-foreground mt-1">Contractor payouts</p>
+            {settlementsUnavailable ? (
+              <div className="text-sm font-medium text-destructive">Unavailable</div>
+            ) : (
+              <div className="text-2xl font-bold">₪{totals.commissions}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {settlementsUnavailable ? "Settlements could not be loaded" : summaryScopeNote}
+            </p>
           </CardContent>
         </Card>
 
         <Card data-testid="card-total-vat">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">VAT (18%)</CardTitle>
+            <CardTitle className="text-sm font-medium">VAT</CardTitle>
             <FileText className="w-4 h-4 text-[#B8932F]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₪{summary.totalVAT}</div>
-            <p className="text-xs text-muted-foreground mt-1">Israeli tax compliance</p>
+            {settlementsUnavailable ? (
+              <div className="text-sm font-medium text-destructive">Unavailable</div>
+            ) : (
+              <div className="text-2xl font-bold">₪{totals.vat}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {settlementsUnavailable ? "Settlements could not be loaded" : summaryScopeNote}
+            </p>
           </CardContent>
         </Card>
 
@@ -195,8 +203,14 @@ export default function FinanceSettlementsView() {
             <Clock className="w-4 h-4 text-[#B8932F]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{summary.pendingSettlements}</div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p>
+            {settlementsUnavailable ? (
+              <div className="text-sm font-medium text-destructive">Unavailable</div>
+            ) : (
+              <div className="text-2xl font-bold">{totals.pending}</div>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {settlementsUnavailable ? "Settlements could not be loaded" : "Awaiting approval, in the settlements shown"}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -325,64 +339,29 @@ export default function FinanceSettlementsView() {
         </CardContent>
       </Card>
 
-      {/* Recent Commissions */}
+      {/* Recent Commissions — HONEST UNAVAILABLE STATE.
+          This panel used to render `commissions.length === 0` as
+          "No recent commissions". That is a claim about the business, and it
+          was false: the list was empty because GET /api/finance/commissions
+          404s (no handler exists on any /api/finance mount), not because no
+          commissions were earned. Marketplace commissions have no read API
+          today, so the panel now says exactly that. It stays visible rather
+          than being deleted so the missing capability is not forgotten. */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Contractor Commissions</CardTitle>
           <CardDescription>Latest marketplace commissions with Israeli VAT</CardDescription>
         </CardHeader>
         <CardContent>
-          {commissions.length === 0 ? (
-            <div className="text-center py-8">
-              <Receipt className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No recent commissions</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {commissions.slice(0, 10).map((commission) => (
-                <Card key={commission.commissionId} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Users className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{commission.providerName || "Provider"}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {commission.commissionRate}% commission
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>Customer paid: ₪{commission.customerPaidAmount}</span>
-                          <span>VAT: ₪{commission.vatAmount}</span>
-                          <span className="text-green-600 font-medium">
-                            Provider payout: ₪{commission.providerPayout}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadInvoice(commission.commissionId, "he")}
-                          data-testid={`button-invoice-he-${commission.commissionId}`}
-                        >
-                          חשבונית (HE)
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadInvoice(commission.commissionId, "en")}
-                          data-testid={`button-invoice-en-${commission.commissionId}`}
-                        >
-                          Invoice (EN)
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+          <div className="text-center py-8" data-testid="commissions-unavailable">
+            <Receipt className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+            <p className="font-medium">Commission data is not available</p>
+            <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+              No API currently serves contractor commissions. This panel is intentionally
+              blank rather than showing an empty list, which would wrongly imply that no
+              commissions were earned. Per-settlement figures are shown above.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
