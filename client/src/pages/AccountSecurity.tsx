@@ -94,6 +94,16 @@ function humanise(iso: string): string {
 export default function AccountSecurity() {
   const [links, setLinks] = useState<LinkRow[] | null>(null);
   const [sessions, setSessions] = useState<SessionRow[] | null>(null);
+  /**
+   * TRUTHFULNESS (2026-09-05): sessions_pw is still DARK in production —
+   * ff.returning_user.sessions_owned.enabled defaults false and nothing mints a
+   * row — so GET /api/me/sessions returns [] for every real user and this page
+   * rendered "No active sessions." to somebody who is demonstrably signed in.
+   * The server now says whether the device registry is recording at all; an
+   * empty list means two very different things depending on this flag, and a
+   * security panel must not present the wrong one.
+   */
+  const [sessionTracking, setSessionTracking] = useState<boolean | null>(null);
   const [banner, setBanner] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // key of the action currently running
 
@@ -106,6 +116,7 @@ export default function AccountSecurity() {
       ]);
       setLinks(l.links ?? []);
       setSessions(s.sessions ?? []);
+      setSessionTracking(typeof s.tracking === 'boolean' ? s.tracking : null);
     } catch (err: any) {
       setBanner(err?.message === 'NOT_SIGNED_IN' ? 'Please sign in.' : 'Could not load account data.');
     }
@@ -126,6 +137,24 @@ export default function AccountSecurity() {
     if (hasPasskeyLink) {
       return requestStepUpProofWithPasskey(purpose);
     }
+
+    // DEAD-END FIXED 2026-09-05. Step-up supports exactly two methods
+    // (client/src/auth/stepUp.ts): password reauth, or a passkey ceremony.
+    // PetWash signup is deliberately PASSWORDLESS — mobile OTP, email OTP,
+    // Google, Apple — so the majority of members have NO password on the
+    // Firebase account at all. For them this fell through to
+    // `window.prompt('Enter your password')`, they typed something, Firebase
+    // rejected it, and the page said "Wrong password. Try again." — blaming the
+    // user for not knowing a password that was never set, on an action that can
+    // never succeed. Detect it and say what is actually true.
+    const providers = auth.currentUser?.providerData?.map((p) => p.providerId) ?? [];
+    if (!providers.includes('password')) {
+      throw new StepUpError(
+        'PASSWORD_REAUTH_FAILED',
+        'NO_REAUTH_METHOD',
+      );
+    }
+
     const password = window.prompt('Enter your password to continue');
     if (!password) throw new StepUpError('PASSWORD_REAUTH_FAILED', 'cancelled');
     return requestStepUpProofWithPassword(purpose, password);
@@ -139,6 +168,10 @@ export default function AccountSecurity() {
         case 'PASSKEY_REAUTH_FAILED':
           return 'Face ID / passkey did not complete. Try again.';
         case 'PASSWORD_REAUTH_FAILED':
+          if (err.message === 'NO_REAUTH_METHOD') {
+            return 'This action needs you to confirm it\'s you, and this account has no password or passkey to confirm with. Add a passkey first (Settings → Security), then try again.';
+          }
+          if (err.message === 'cancelled') return 'Cancelled.';
           return 'Wrong password. Try again.';
         case 'SERVER_REJECTED':
           return err.serverCode === 'RECENCY_INSUFFICIENT'
@@ -300,7 +333,7 @@ export default function AccountSecurity() {
           <h2 id="active-sessions-heading" className="text-lg font-medium">
             Signed-in devices
           </h2>
-          {sessions && sessions.length > 0 && (
+          {sessions && (sessions.length > 0 || sessionTracking === false) && (
             <Button
               variant="destructive"
               size="sm"
@@ -315,7 +348,15 @@ export default function AccountSecurity() {
         {sessions === null ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : sessions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No active sessions.</p>
+          sessionTracking === false ? (
+            <p className="text-sm text-muted-foreground" data-testid="sessions-not-tracked">
+              Device sign-in history is not being recorded yet, so we cannot list
+              your devices here. This is not a claim that you have none — you are
+              signed in right now. Signing out below still works.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No active sessions.</p>
+          )
         ) : (
           <ul className="divide-y" data-testid="active-sessions-list">
             {sessions.map((row) => (

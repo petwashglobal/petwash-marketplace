@@ -103,6 +103,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { identityErrorMessage, isReauthRequired } from '@/lib/identityChangeErrors';
+import { normalizePhoneE164 } from '@/lib/authUtils';
 import { usePhoneVerification } from '@/hooks/usePhoneVerification';
 import { PhoneInput } from '@/components/PhoneInput';
 import { NativeDateSelect } from '@/components/ui/native-date-select';
@@ -659,6 +661,9 @@ export default function MyAccount() {
   const [emailVerificationCode, setEmailVerificationCode] = useState('');
   const [emailVerificationChallengeId, setEmailVerificationChallengeId] = useState('');
   const [emailChangeStep, setEmailChangeStep] = useState<'request' | 'verify'>('request');
+  // Masked address of a change that is already in flight server-side. Populated
+  // from GET /settings/email/pending-change so the flow survives a page refresh.
+  const [pendingMaskedEmail, setPendingMaskedEmail] = useState('');
   const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
   const [deleteAcknowledgements, setDeleteAcknowledgements] = useState({
     credits: false,
@@ -1367,17 +1372,23 @@ export default function MyAccount() {
       });
     },
     onError: (error: any) => {
-      const isReauthRequired = error?.code === 'REAUTH_REQUIRED';
+      // BUG FIXED 2026-09-05: this tested `error?.code`, but apiRequest throws an
+      // ApiError that carries the server code at `error.body.code` — so the
+      // re-auth branch NEVER fired and the fallback rendered `error.message`,
+      // i.e. the literal string "403: Re-authentication required".
+      const needsReauth = isReauthRequired(error);
       toast({
         variant: 'destructive',
-        title: isReauthRequired 
+        title: needsReauth
           ? (isHebrew ? 'נדרש אימות מחדש' : 'Re-authentication Required')
           : (isHebrew ? 'שגיאה' : 'Error'),
-        description: isReauthRequired
-          ? (isHebrew ? 'אנא התנתק והתחבר מחדש לפני שינוי האימייל.' : 'Please sign out and sign in again before changing your email.')
-          : (error?.message || (isHebrew ? 'לא ניתן לשלוח קוד אימות' : 'Failed to send verification code')),
+        description: identityErrorMessage(
+          error,
+          isHebrew,
+          isHebrew ? 'לא ניתן לשלוח קוד אימות' : 'Failed to send verification code',
+        ),
       });
-      if (isReauthRequired) {
+      if (needsReauth) {
         setShowEmailChangeDialog(false);
       }
     },
@@ -1397,26 +1408,88 @@ export default function MyAccount() {
       setEmailVerificationCode('');
       setEmailVerificationChallengeId('');
       setEmailChangeStep('request');
+      setPendingMaskedEmail('');
       queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/api/user/settings/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings/email/pending-change'] });
       if (firebaseUser) {
         firebaseUser.reload();
       }
+      // Report only what the server actually did. `otherSessionsRevoked` is a
+      // COUNT, not a boolean — sessions_pw is dark in production today, so
+      // claiming "your other devices were signed out" would be false.
+      const revoked = typeof data.otherSessionsRevoked === 'number' ? data.otherSessionsRevoked : 0;
       toast({
         title: isHebrew ? 'האימייל עודכן' : 'Email Updated',
-        description: data.newEmail,
+        description: revoked > 0
+          ? (isHebrew
+              ? `${data.newEmail} · ${revoked} מכשירים אחרים נותקו`
+              : `${data.newEmail} · ${revoked} other device(s) signed out`)
+          : data.newEmail,
       });
     },
     onError: (error: any) => {
+      const code = error?.body?.code;
+      // The attempt budget is finite now — a wrong code that used the last try
+      // destroys the pending change, so send the user back to step 1 instead of
+      // leaving them typing into a code box that can never succeed.
+      if (code === 'TOO_MANY_ATTEMPTS' || code === 'CODE_EXPIRED') {
+        setEmailChangeStep('request');
+        setEmailVerificationCode('');
+        setEmailVerificationChallengeId('');
+        setPendingMaskedEmail('');
+        refetchPendingEmailChange();
+      }
       toast({
         variant: 'destructive',
         title: isHebrew ? 'שגיאה' : 'Error',
-        description: error?.message || (isHebrew ? 'קוד אימות שגוי' : 'Invalid verification code'),
+        description: identityErrorMessage(
+          error,
+          isHebrew,
+          isHebrew ? 'קוד אימות שגוי' : 'Invalid verification code',
+        ),
       });
     },
   });
 
-  const { data: phoneStatus, refetch: refetchPhoneStatus } = useQuery<{ phone: string | null; verified: boolean }>({
+  /**
+   * RESUME AFTER REFRESH. `emailChangeStep` and the challenge id lived in React
+   * state only, so reloading the tab (or iOS Safari discarding it in the
+   * background while the user switched to their mail app — the single most
+   * common thing to do mid-flow) stranded a still-valid code with no way to
+   * submit it. The server now owns the pending state; this reads it back.
+   */
+  const { data: pendingEmailChange, refetch: refetchPendingEmailChange } = useQuery<{
+    pending: boolean;
+    runtime?: string;
+    maskedNewEmail?: string;
+    expiresAt?: string;
+    attemptsRemaining?: number;
+    verificationChallengeId?: string;
+  }>({
+    queryKey: ['/api/user/settings/email/pending-change'],
+    enabled: !!user,
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (!pendingEmailChange?.pending) return;
+    // Never stomp a flow the user is actively driving in this tab.
+    if (emailChangeStep === 'verify') return;
+    setPendingMaskedEmail(pendingEmailChange.maskedNewEmail || '');
+    if (pendingEmailChange.verificationChallengeId) {
+      setEmailVerificationChallengeId(pendingEmailChange.verificationChallengeId);
+    }
+    setEmailChangeStep('verify');
+    setShowEmailChangeDialog(true);
+  }, [pendingEmailChange, emailChangeStep]);
+
+  const { data: phoneStatus, refetch: refetchPhoneStatus } = useQuery<{
+    phone: string | null;
+    canonicalPhone?: string | null;
+    verified: boolean;
+    inSync?: boolean;
+  }>({
     queryKey: ['/api/user/settings/phone/status'],
     enabled: !!user,
   });
@@ -1449,7 +1522,24 @@ export default function MyAccount() {
 
   const handleSendPhoneCode = async () => {
     if (!phoneNumber) return;
-    const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+972${phoneNumber.replace(/^0/, '')}`;
+    // BUG FIXED 2026-09-05: this hand-rolled `+972${phone.replace(/^0/,'')}`
+    // prefixed +972 onto ANY number that did not start with '+'. A user typing
+    // their UK mobile as 447700900123 was sent to +972447700900123 — a
+    // non-existent Israeli number, so the code silently never arrived and the
+    // only feedback was a generic Firebase error. Use the canonical client
+    // normaliser, which already handles 00-prefixes, bare country codes,
+    // Israeli local format and Israeli mobiles typed without the leading 0.
+    const formattedPhone = normalizePhoneE164(phoneNumber);
+    if (!/^\+[1-9]\d{7,14}$/.test(formattedPhone)) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'מספר לא תקין' : 'Invalid number',
+        description: isHebrew
+          ? 'הזן מספר נייד תקין, לדוגמה 0541234567 או ‎+972541234567.'
+          : 'Enter a valid mobile number, e.g. 0541234567 or +972541234567.',
+      });
+      return;
+    }
     await phoneVerification.sendVerificationCode(formattedPhone);
   };
 
@@ -3833,9 +3923,9 @@ export default function MyAccount() {
                         <div className="flex items-start gap-3">
                           <Shield className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
                           <p className="text-gray-500 text-sm">
-                            {isHebrew 
-                              ? 'לאחר שינוי האימייל, תצטרך להתחבר מחדש עם הכתובת החדשה.'
-                              : 'After changing your email, you\'ll need to sign in again with the new address.'}
+                            {isHebrew
+                              ? 'לאחר השינוי תישאר מחובר במכשיר הזה. בפעם הבאה התחבר עם הכתובת החדשה.'
+                              : 'After the change you stay signed in on this device. Next time, sign in with the new address.'}
                           </p>
                         </div>
                       </div>
@@ -3849,7 +3939,9 @@ export default function MyAccount() {
                         <p className="text-gray-500">
                           {isHebrew ? 'קוד אימות נשלח אל:' : 'Verification code sent to:'}
                         </p>
-                        <p className="text-gray-900 font-medium">{newEmail}</p>
+                        <p className="text-gray-900 font-medium" data-testid="email-change-target">
+                          {newEmail || pendingMaskedEmail}
+                        </p>
                       </div>
 
                       <div>
@@ -3878,6 +3970,7 @@ export default function MyAccount() {
                       setEmailVerificationCode('');
                       setEmailVerificationChallengeId('');
                       setEmailChangeStep('request');
+                      setPendingMaskedEmail('');
                     }}
                     className="border-gray-200 text-gray-600 hover:bg-white"
                   >
