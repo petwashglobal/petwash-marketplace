@@ -24,6 +24,7 @@ const MIGRATED = [
   'server/routes/shop.ts',
   'server/routes/pricing.ts',
   'server/routes/compliance.ts',
+  'server/routes/provider-search.ts',
 ];
 
 function read(rel: string): string {
