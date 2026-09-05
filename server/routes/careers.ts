@@ -232,8 +232,38 @@ router.get('/my-applications/:applicationId', validateFirebaseToken, async (req:
       return res.status(403).json({ error: 'Forbidden' });
     }
     
+    // AGENT-14 privacy lane (2026-09-05): this was `db.select()` — a SELECT *
+    // that returned the ENTIRE staff_applications row to the applicant,
+    // including the internal hiring assessment written ABOUT them
+    // (reviewerNotes, notes, reviewedBy, fraudRiskScore, shortlistScore,
+    // shortlistRecommendation, shortlistFlags) plus their taxId, full bank
+    // account + routing number, date of birth, home address and
+    // criminalRecord flag. Explicit applicant-safe projection only; a column
+    // added to the table in future can no longer leak by default.
     const [application] = await db
-      .select()
+      .select({
+        id: staffApplications.id,
+        applicationId: staffApplications.applicationId,
+        membershipNumber: staffApplications.membershipNumber,
+        positionId: staffApplications.positionId,
+        applicationType: staffApplications.applicationType,
+        firstName: staffApplications.firstName,
+        lastName: staffApplications.lastName,
+        email: staffApplications.email,
+        phone: staffApplications.phone,
+        city: staffApplications.city,
+        country: staffApplications.country,
+        status: staffApplications.status,
+        reviewStage: staffApplications.reviewStage,
+        currentStep: staffApplications.currentStep,
+        yearsOfExperience: staffApplications.yearsOfExperience,
+        hasDrivingLicense: staffApplications.hasDrivingLicense,
+        drivingLicenseType: staffApplications.drivingLicenseType,
+        referralSource: staffApplications.referralSource,
+        submittedAt: staffApplications.submittedAt,
+        createdAt: staffApplications.createdAt,
+        updatedAt: staffApplications.updatedAt,
+      })
       .from(staffApplications)
       .where(
         and(
@@ -254,15 +284,31 @@ router.get('/my-applications/:applicationId', validateFirebaseToken, async (req:
       .where(eq(careerPositions.positionId, application.positionId))
       .limit(1);
     
-    // Get documents
+    // Get documents — explicit projection. The full row carries documentUrl
+    // (a direct link to the applicant's uploaded ID scan), metadata (raw OCR
+    // extraction) and the internal verification trail (verificationScore,
+    // verifiedBy, rejectionReason).
     const documents = await db
-      .select()
+      .select({
+        id: staffDocuments.id,
+        documentType: staffDocuments.documentType,
+        status: staffDocuments.status,
+        expiryDate: staffDocuments.expiryDate,
+        createdAt: staffDocuments.createdAt,
+      })
       .from(staffDocuments)
       .where(eq(staffDocuments.applicationId, application.id));
     
-    // Get step progress
+    // Get step progress — explicit projection. The full row carries
+    // dataSnapshot (every field entered at that step), validationErrors and
+    // the autosave sessionId, which is an ownership token for draft edits.
     const steps = await db
-      .select()
+      .select({
+        stepNumber: applicationStepProgress.stepNumber,
+        stepName: applicationStepProgress.stepName,
+        status: applicationStepProgress.status,
+        completedAt: applicationStepProgress.completedAt,
+      })
       .from(applicationStepProgress)
       .where(eq(applicationStepProgress.applicationId, application.id))
       .orderBy(applicationStepProgress.stepNumber);
