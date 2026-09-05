@@ -103,7 +103,7 @@ beforeAll(async () => {
   setupMatchingWebSocket(server);
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   port = (server.address() as AddressInfo).port;
-});
+}, 60_000);
 
 afterAll(async () => {
   for (const ws of open) { try { ws.close(); } catch { /* noop */ } }

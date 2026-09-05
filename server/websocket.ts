@@ -6,6 +6,7 @@ import { logger } from './lib/logger';
 import { db } from './db';
 import { bookingConversations } from '@shared/schema';
 import { eq } from 'drizzle-orm';
+import { isWsOriginAllowed } from './lib/wsOrigins';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -30,29 +31,10 @@ const MAX_TOTAL_CONNECTIONS = Number(process.env.WS_MAX_TOTAL_CONN) || 1000; // 
 const MAX_CONNECTIONS_PER_IP = Number(process.env.WS_MAX_CONN_PER_IP) || 50; // Enable per-origin quotas
 const ENABLE_PER_IP_LIMITING = MAX_CONNECTIONS_PER_IP > 0;
 
-// Allowed origins for WebSocket connections (production)
-const ALLOWED_ORIGINS = [
-  'https://petwash.co.il',
-  'https://www.petwash.co.il',
-  'https://api.petwash.co.il',
-  'https://hub.petwash.co.il',
-  'https://status.petwash.co.il',
-  'https://signinpetwash.web.app', // Firebase Hosting
-  'http://localhost:5000', // Development
-  'http://127.0.0.1:5000', // Development
-];
-
-function isOriginAllowed(origin: string | undefined): boolean {
-  if (!origin) return false;
-  
-  try {
-    const url = new URL(origin);
-    const originString = `${url.protocol}//${url.host}`;
-    return ALLOWED_ORIGINS.includes(originString);
-  } catch (e) {
-    return false;
-  }
-}
+// Allowed origins for WebSocket connections (production).
+// Shared with /ws/match via server/lib/wsOrigins.ts so the two realtime
+// endpoints on this http server cannot drift to opposite policies again.
+const isOriginAllowed = isWsOriginAllowed;
 
 export function setupWebSocket(server: Server) {
   const wss = new WebSocketServer({ 
