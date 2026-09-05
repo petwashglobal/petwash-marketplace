@@ -53,6 +53,12 @@ const ROOT = join(__dirname, '..', '..');
 
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'build', 'coverage', '.next', 'tests',
+  // '.claude' holds git worktrees — full checkouts of this repo at older
+  // SHAs. Walking them made this pin scan every historical copy of the tree
+  // and report their pre-fix call-sites as live offenders: 735 phantom
+  // failures locally (CI was green only because a clean checkout has no
+  // worktrees). The invariant is about THIS working tree, so skip them.
+  '.claude',
 ]);
 
 /**
