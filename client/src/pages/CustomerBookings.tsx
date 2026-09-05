@@ -505,21 +505,27 @@ function BookingCard({
   const nights      = calcNights(booking.startDate, booking.endDate);
   const daysTil     = daysUntil(booking.startDate);
   const isUpcoming  = STATUS_TO_TAB[booking.status] === 'upcoming';
-  // Issue #153 priority 4 (OPT-A): the UI cancel mutation hits
-  // POST /api/booking-requests/:requestId/cancel which only knows the
-  // legacy booking_requests table. Marketplace bookings live in `bookings`
-  // and have a different cancel path; we intentionally hide the cancel
-  // button on those rows for now (read-only bridge — no booking-state
-  // mutation in this PR per the OPT-A constraints).
-  // Issue #153 PR-3: cancel is wired only for the legacy /api/booking-requests
-  // path. Marketplace, Sitter, Walker, and Academy rows use platform-specific
-  // cancel flows (handled on each platform's own page) — disable the inline
-  // cancel button for those kinds so we don't fire an invalid mutation.
+  // The old guard (Issue #153 PR-3) hid Cancel for sitter/walker/academy
+  // because the mutation only knew /api/booking-requests. On 2026-07-31 the
+  // mutation was rewritten to route each kind to its OWNING service
+  // (see cancelMutation below) and to invalidate all five list caches — but
+  // this guard was never updated, so the whole kind-routing branch was dead
+  // code and a customer could NEVER cancel a sitter, walk or academy booking
+  // from My Bookings. All three server routes exist and are ownership-checked:
+  //   sitter-suite.ts  POST /bookings/:bookingId/cancel
+  //   walk-my-pet.ts   POST /bookings/:bookingId/cancel
+  //   academy.ts       POST /bookings/:id/cancel
+  //
+  // 'marketplace' stays excluded, and NOT for the old reason: its cancel route
+  // (marketplace-bookings.ts POST /:bookingId/cancel) resolves the id against
+  // `bookings.id`, while this aggregator sets requestId to
+  // `row.bookingNumber || row.id` — so the id we hold would 404. Enabling it
+  // needs a distinct cancel-id on the row, which is a separate change.
+  // 'request' is the legacy booking_requests row (CustomerBookings.tsx:1166
+  // defaults every un-tagged row to it).
+  const CANCELLABLE_KINDS = new Set(['request', 'sitter', 'walker', 'academy']);
   const canCancel   = CANCELLABLE_STATUSES.has(booking.status) && !!onCancel
-                      && booking.kind !== 'marketplace'
-                      && booking.kind !== 'sitter'
-                      && booking.kind !== 'walker'
-                      && booking.kind !== 'academy';
+                      && CANCELLABLE_KINDS.has(booking.kind ?? 'request');
   const hasRefund   = (booking.refundCents ?? 0) > 0;
   const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
   const canReview   = booking.status === 'completed';
