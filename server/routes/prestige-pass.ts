@@ -222,7 +222,14 @@ const LEGACY_PRESTIGE_MONEY_ROUTE_GATES: Array<{
     targetPrefix: 'legacy-prestige-bank-close',
   },
   {
-    pattern: /^\/admin\/wallet\/manual-credit$|^\/admin\/wallet\/adjust$|^\/admin\/wallet\/support\/credit$|^\/admin\/wallet\/release$|^\/admin\/wallet\/support\/release-hold$|^\/admin\/wallet\/reverse-action$/,
+    // NOTE the two distinct paths below. `/admin/wallet/manual-credit` was
+    // already covered; `/admin/manual-credit` — a DIFFERENT route, ~2.4k lines
+    // down this file — mints wallet credit through adminManualCredit() and was
+    // NOT matched by this family, so it minted outside operating control
+    // (2026-09-06 sweep). It keeps its own ADMIN_SECRET + verified-super-admin
+    // pair, idempotency key, audit_events row and WalletEngine dedup; this adds
+    // the missing operating-control gate in front of all of it.
+    pattern: /^\/admin\/manual-credit$|^\/admin\/wallet\/manual-credit$|^\/admin\/wallet\/adjust$|^\/admin\/wallet\/support\/credit$|^\/admin\/wallet\/release$|^\/admin\/wallet\/support\/release-hold$|^\/admin\/wallet\/reverse-action$/,
     actionType: 'MANUAL_FINANCIAL_ADJUSTMENT',
     targetPrefix: 'legacy-prestige-manual-adjustment',
   },
@@ -239,13 +246,19 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 
   if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) return next();
 
-  const gate = LEGACY_PRESTIGE_MONEY_ROUTE_GATES.find((candidate) => candidate.pattern.test(req.path));
+  // Every pattern above is $-anchored, but Express (non-strict routing, the
+  // default) treats '/admin/manual-credit/' as the same route as
+  // '/admin/manual-credit'. Without normalising, a single trailing slash
+  // matches the ROUTE but not the GATE — money moves outside operating
+  // control. Normalise before matching so the gate cannot be stepped around.
+  const gatePath = (req.path || '/').replace(/\/+$/, '') || '/';
+  const gate = LEGACY_PRESTIGE_MONEY_ROUTE_GATES.find((candidate) => candidate.pattern.test(gatePath));
   if (!gate) return next();
 
   if (!assertOperatingControl(req, res, {
     actionType: gate.actionType,
-    route: `${req.method} /api/prestige-pass${req.path}`,
-    targetId: `${gate.targetPrefix}:${req.path.replace(/[^a-zA-Z0-9:_-]+/g, ':')}`,
+    route: `${req.method} /api/prestige-pass${gatePath}`,
+    targetId: `${gate.targetPrefix}:${gatePath.replace(/[^a-zA-Z0-9:_-]+/g, ':')}`,
   })) {
     return;
   }
