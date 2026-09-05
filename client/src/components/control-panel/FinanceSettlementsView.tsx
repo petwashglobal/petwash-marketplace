@@ -93,29 +93,55 @@ export default function FinanceSettlementsView() {
   const settlementsQs = new URLSearchParams();
   if (periodFilter && periodFilter !== 'all') settlementsQs.set('period', periodFilter);
   if (statusFilter && statusFilter !== 'all') settlementsQs.set('status', statusFilter);
-  const { data: settlementsData, isLoading: settlementsLoading } = useQuery<SettlementsResponse>({
+  const { data: settlementsData, isLoading: settlementsLoading, error: settlementsError } = useQuery<SettlementsResponse>({
     queryKey: [settlementsQs.toString()
       ? `/api/finance/settlements?${settlementsQs.toString()}`
       : "/api/finance/settlements"],
   });
 
-  // Fetch commissions — same class: "recent" was dropped.
-  const { data: commissionsData } = useQuery<CommissionsResponse>({
-    queryKey: ["/api/finance/commissions?period=recent"],
-  });
+  // CONTRACT FIX (Lane E D12): `GET /api/finance/commissions` has NO handler
+  // anywhere on the server — verified across all three /api/finance mounts
+  // (routes/finance.ts, routes/finance/settlements.ts, routes/finance/money-flow.ts)
+  // and every other router. The query is removed rather than pointed somewhere
+  // else, because no route owns contractor commissions today. The panel below
+  // now says so instead of rendering the "No recent commissions" empty state,
+  // which read as "there were none" when the truth is "we never asked anyone".
 
   // Fetch financial summary
-  const { data: summaryData } = useQuery<FinanceSummaryResponse>({
+  const { data: summaryData, isLoading: summaryLoading, error: summaryError } = useQuery<FinanceSummaryResponse>({
     queryKey: ["/api/finance/summary"],
   });
 
   const settlements = (settlementsData?.settlements || []) as Settlement[];
-  const commissions = (commissionsData?.commissions || []) as Commission[];
-  const summary = summaryData?.summary || {
-    totalRevenue: "0.00",
-    totalCommissions: "0.00",
-    totalVAT: "0.00",
-    pendingSettlements: 0,
+
+  // ── FABRICATED MONEY, NOW REMOVED ─────────────────────────────────────────
+  // This screen used to read `summaryData?.summary` and fall back to a literal
+  // { totalRevenue: "0.00", totalCommissions: "0.00", totalVAT: "0.00" }.
+  // `GET /api/finance/summary` answers { kpis, network, ownership, stationCount }
+  // — there is NO `summary` key on that response and there never has been. So
+  // the optional chain was ALWAYS undefined and the fallback ALWAYS fired: the
+  // executive Finance screen displayed a hard "₪0.00" for revenue, commissions
+  // and VAT, on a 200 response, with no error state to give it away. Zeroes
+  // presented as fact for money nobody measured.
+  //
+  // The four figures are instead totalled from the settlement rows actually
+  // loaded — `settlements` carries grossRevenue, petwashShare and vatAmount per
+  // row — and the cards are labelled with that scope, because a filtered,
+  // paginated page of settlements is NOT a network total and must not be
+  // dressed up as one. When settlements cannot be loaded the cards say so
+  // rather than showing a zero.
+  const sumField = (rows: Settlement[], field: 'grossRevenue' | 'petwashShare' | 'vatAmount') =>
+    rows.reduce((acc, r) => acc + (parseFloat(r[field] ?? '0') || 0), 0);
+  const money = (n: number) => n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const settlementsUnavailable = !!settlementsError;
+  const summaryScopeNote = settlementsLoading
+    ? 'Loading…'
+    : `Across the ${settlements.length} settlement${settlements.length === 1 ? '' : 's'} shown`;
+  const totals = {
+    revenue: money(sumField(settlements, 'grossRevenue')),
+    commissions: money(sumField(settlements, 'petwashShare')),
+    vat: money(sumField(settlements, 'vatAmount')),
+    pending: settlements.filter((s) => s.status === 'pending').length,
   };
 
   const getStatusBadge = (status: SettlementStatus) => {
