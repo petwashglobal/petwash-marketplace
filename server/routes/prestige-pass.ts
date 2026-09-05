@@ -184,7 +184,6 @@ import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { isValidAdminSecret } from '../lib/admin-secret';
 import { isSuperAdminVerified } from '../middleware/rbac';
-import { isValidCronSecret } from '../lib/cron-secret';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { OperatingActionType } from '../../shared/petwash-operating-system';
@@ -275,17 +274,46 @@ router.use((req: Request, res: Response, next: NextFunction) => {
 // be missed by the next route someone appends to this 17k-line file. It is
 // additive: routes that already call requireFinanceRole() still enforce
 // their finer-grained finance role behind this.
-router.use('/admin', (req: Request, res: Response, next: NextFunction) => {
-  // Machine automation path, same timing-safe ADMIN_SECRET check used at
-  // line ~2434 in this file and in middleware/stationAuth.ts.
-  if (isValidAdminSecret(req)) return next();
+//
+// AUTHORITY MODEL — credentials stay SCOPED. Closing anonymous access must
+// not hand one shared secret a master key to every admin function. The first
+// cut of this gate accepted ADMIN_SECRET for the WHOLE surface, which would
+// have converted ~45 anonymous routes into ~45 routes one shared secret could
+// drive, money kill switches included. A machine credential is not an admin
+// identity.
+//
+//   • Humans   → canonical server-side RBAC ONLY (isSuperAdminVerified:
+//                allowlist + email_verified, the #240 paired shape). This is
+//                the ONLY way to reach the ~45 governance/system routes.
+//   • Machines → the shared ADMIN_SECRET opens ONLY the four legacy routes
+//                below that were explicitly built for it and that each
+//                re-verify it themselves inside the handler. Nothing else.
+//
+// Adding to MACHINE_CREDENTIAL_ROUTES is an explicit, reviewable act rather
+// than a general bypass, and this gate never replaces a handler's own check.
+const MACHINE_CREDENTIAL_ROUTES = new Set([
+  '/manual-credit',
+  '/reissue',
+  '/send-founder-pass',
+  '/send-demo-receipts',
+]);
 
-  // #240 paired shape — allowlist + email_verified.
+router.use('/admin', (req: Request, res: Response, next: NextFunction) => {
+  // Canonical human path — RBAC, not a secret.
   if (isSuperAdminVerified(req as any)) return next();
 
-  logger.warn('[PrestigePass] Blocked unauthenticated admin route', {
+  // Machine path, scoped to explicitly intended routes only. req.path here is
+  // relative to the '/admin' mount (e.g. '/manual-credit'); strip any trailing
+  // slash so '/reissue/' cannot slip past the allowlist.
+  const relPath = (req.path || '/').replace(/\/+$/, '') || '/';
+  if (MACHINE_CREDENTIAL_ROUTES.has(relPath) && isValidAdminSecret(req)) {
+    return next();
+  }
+
+  logger.warn('[PrestigePass] Blocked unauthorised admin route', {
     route: `${req.method} /api/prestige-pass/admin${req.path}`,
     ip: req.ip,
+    hadAdminSecretHeader: Boolean(req.headers['x-admin-secret']),
   });
   return res.status(403).json({ error: 'Admin only', code: 'ADMIN_REQUIRED' });
 });
@@ -8927,7 +8955,17 @@ router.post('/admin/wallet/disputes/auto-escalate', async (req: Request, res: Re
     // The router mounts with optionalFirebaseToken, so no login was needed
     // either. Replaced with the canonical timing-safe CRON_SECRET check used
     // by every /api/cron/* job. Nothing in the repo ever sent x-internal-job.
-    if (!isSuperAdminVerified(req) && !isValidCronSecret(req)) {
+    // AUTHORITY (2026-09-06): the machine bypass is GONE from this admin
+    // endpoint. #2267 replaced a source-visible hardcoded literal with a
+    // timing-safe CRON_SECRET check, but #2268 then put an /admin RBAC gate
+    // in front of the whole surface — leaving a machine caller needing BOTH
+    // secrets, and a cron impersonating a web admin. Nothing in the repo has
+    // ever called this route (grep for x-internal-job / x-cron-secret against
+    // it returns only the check itself), so there is no scheduler to keep
+    // working. Admin-only here; if a scheduled caller is ever needed it gets
+    // a dedicated /api/cron/... endpoint with CRON_SECRET that invokes the
+    // same underlying logic, rather than posing as an administrator.
+    if (!isSuperAdminVerified(req)) {
       return res.status(403).json({ error: 'Admin or internal cron only' });
     }
     const now = new Date();

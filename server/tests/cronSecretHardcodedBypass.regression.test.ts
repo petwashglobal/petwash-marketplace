@@ -41,11 +41,16 @@ describe('auto-escalate no longer accepts a hardcoded literal — source pin', (
     expect(ROUTE_SRC).not.toContain("'petwash-cron'");
   });
 
-  it('the guard now pairs super-admin with the timing-safe cron secret', () => {
-    expect(ROUTE_SRC).toMatch(
-      /if \(!isSuperAdminVerified\(req\) && !isValidCronSecret\(req\)\) \{/,
-    );
-    expect(ROUTE_SRC).toContain("import { isValidCronSecret } from '../lib/cron-secret'");
+  it('the guard is now admin-only — no machine bypass on an admin endpoint', () => {
+    // AUTHORITY RESOLUTION (2026-09-06): #2267 swapped the hardcoded literal
+    // for a timing-safe CRON_SECRET check, then #2268 put an /admin RBAC gate
+    // in front of the whole surface — which would have left a machine caller
+    // needing BOTH secrets, i.e. a cron impersonating a web admin. Nothing has
+    // ever called this route, so the machine bypass is removed outright. A
+    // scheduled caller, if ever needed, gets a dedicated /api/cron/... endpoint
+    // with CRON_SECRET that invokes the same underlying logic.
+    expect(ROUTE_SRC).toMatch(/if \(!isSuperAdminVerified\(req\)\) \{/);
+    expect(ROUTE_SRC).not.toContain('isValidCronSecret');
   });
 });
 
