@@ -3,6 +3,7 @@ import EscrowService, { type EscrowPayment } from "../services/EscrowService";
 import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
+import { clientSafeErrorMessage } from "../lib/sanitizeErrorResponse";
 import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
 import { db } from "../db";
@@ -141,7 +142,7 @@ router.post("/create", requireAuth, async (req, res) => {
     res.json({ escrow });
   } catch (error: any) {
     logger.error("[Escrow] Error creating", { error: error.message });
-    res.status(error.status ?? 500).json({ error: error.message });
+    res.status(error.status ?? 500).json({ error: clientSafeErrorMessage(error, "Could not create the escrow hold.") });
   }
 });
 
@@ -192,7 +193,7 @@ router.post("/:escrowId/release", requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error("[Escrow] Error releasing", { error: error.message });
-    res.status(error.status ?? 500).json({ error: error.message });
+    res.status(error.status ?? 500).json({ error: clientSafeErrorMessage(error, "Could not release the escrow hold.") });
   }
 });
 
@@ -238,7 +239,7 @@ router.post("/:escrowId/refund", requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error("[Escrow] Error refunding", { error: error.message });
-    res.status(error.status ?? 500).json({ error: error.message });
+    res.status(error.status ?? 500).json({ error: clientSafeErrorMessage(error, "Could not refund the escrow hold.") });
   }
 });
 
@@ -324,7 +325,7 @@ router.post("/:escrowId/dispute", requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error("[Escrow] Error disputing", { error: error.message });
-    res.status(error.status ?? 500).json({ error: error.message });
+    res.status(error.status ?? 500).json({ error: clientSafeErrorMessage(error, "Could not open a dispute for this escrow hold.") });
   }
 });
 
@@ -353,7 +354,7 @@ router.get("/:escrowId", requireAuth, async (req, res) => {
     res.json({ escrow });
   } catch (error: any) {
     logger.error("[Escrow] Error fetching", { error: error.message });
-    res.status(error.status ?? 500).json({ error: error.message });
+    res.status(error.status ?? 500).json({ error: clientSafeErrorMessage(error, "Could not load the escrow hold.") });
   }
 });
 

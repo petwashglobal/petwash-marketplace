@@ -33,6 +33,7 @@ import {
 } from "../services/unifiedVoucherService";
 import { requireAuth } from "../customAuth";
 import { logger } from "../lib/logger";
+import { clientSafeErrorMessage } from "../lib/sanitizeErrorResponse";
 import crypto from "crypto";
 
 const router = Router();
@@ -147,7 +148,7 @@ router.post("/issue", requireAuth, validate(issueSchema), async (req: Request, r
     res.status(201).json({ success: true, voucher, traceId: tid });
   } catch (err: any) {
     logger.error("[UV] Issue failed", { traceId: tid, error: err.message });
-    res.status(400).json({ success: false, error: err.message, traceId: tid });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(err, "Could not issue the voucher."), traceId: tid });
   }
 });
 
@@ -192,7 +193,7 @@ router.post("/:id/qr-token", requireAuth, validate(qrTokenSchema), async (req: R
     });
   } catch (err: any) {
     logger.error("[UV] QR token generation failed", { traceId: tid, error: err.message });
-    res.status(400).json({ success: false, error: err.message, traceId: tid });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(err, "Could not generate a QR token for this voucher."), traceId: tid });
   }
 });
 
@@ -244,7 +245,7 @@ router.post("/redeem/station", requireAuth, validate(stationRedeemSchema), async
     res.json({ success: true, ...result });
   } catch (err: any) {
     logger.warn("[UV] Station redeem failed", { traceId: tid, error: err.message });
-    res.status(400).json({ success: false, error: err.message, traceId: tid });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(err, "Could not redeem the voucher at this station."), traceId: tid });
   }
 });
 
@@ -326,7 +327,7 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
     res.json({ success: true, ...result });
   } catch (err: any) {
     logger.warn("[UV] Web redeem failed", { traceId: tid, error: err.message });
-    res.status(400).json({ success: false, error: err.message, traceId: tid });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(err, "Could not redeem the voucher."), traceId: tid });
   }
 });
 
@@ -440,7 +441,7 @@ router.get("/my", requireAuth, async (req: Request, res: Response) => {
     res.json({ success: true, vouchers: withBalance, traceId: tid });
   } catch (err: any) {
     logger.error("[UV] My vouchers failed", { traceId: tid, error: err.message });
-    res.status(500).json({ success: false, error: err.message, traceId: tid });
+    res.status(500).json({ success: false, error: "Could not load your vouchers.", traceId: tid });
   }
 });
 
@@ -530,7 +531,7 @@ router.post("/claim", requireAuth, validate(claimSchema), async (req: Request, r
     });
   } catch (err: any) {
     logger.error("[UV] Voucher claim failed", { traceId: tid, error: err.message });
-    res.status(500).json({ success: false, error: err.message, traceId: tid });
+    res.status(500).json({ success: false, error: clientSafeErrorMessage(err, "Could not claim this voucher."), traceId: tid });
   }
 });
 
@@ -567,7 +568,8 @@ router.get("/serial/:sn", requireAuth, async (req: Request, res: Response) => {
       traceId: tid,
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message, traceId: tid });
+    logger.error("[UV] Get voucher failed", { traceId: tid, error: err.message });
+    res.status(500).json({ success: false, error: "Could not load the voucher.", traceId: tid });
   }
 });
 
@@ -596,8 +598,14 @@ router.get("/:id", requireAuth, async (req: Request, res: Response) => {
       traceId: tid,
     });
   } catch (err: any) {
-    const status = err.message === "Voucher not found" ? 404 : 500;
-    res.status(status).json({ success: false, error: err.message, traceId: tid });
+    const notFound = err?.message === "Voucher not found";
+    const status = notFound ? 404 : 500;
+    if (!notFound) logger.error("[UV] Get voucher by serial failed", { traceId: tid, error: err.message });
+    res.status(status).json({
+      success: false,
+      error: notFound ? "Voucher not found" : "Could not load the voucher.",
+      traceId: tid,
+    });
   }
 });
 
@@ -620,7 +628,8 @@ router.get("/:id/ledger", requireAuth, async (req: Request, res: Response) => {
 
     res.json({ success: true, entries, count: entries.length, traceId: tid });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message, traceId: tid });
+    logger.error("[UV] Ledger read failed", { traceId: tid, error: err.message });
+    res.status(500).json({ success: false, error: "Could not load the voucher ledger.", traceId: tid });
   }
 });
 
@@ -637,7 +646,8 @@ router.post("/:id/cancel", requireAuth, validate(cancelSchema), async (req: Requ
     await cancelVoucher(req.params.id, req.body.reason, req.user!.uid);
     res.json({ success: true, message: "Voucher cancelled", traceId: tid });
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message, traceId: tid });
+    logger.error("[UV] Cancel failed", { traceId: tid, error: err.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(err, "Could not cancel the voucher."), traceId: tid });
   }
 });
 
@@ -660,7 +670,8 @@ router.post("/:id/adjust", requireAuth, validate(adjustSchema), async (req: Requ
     const updated = await getVoucherWithBalance(req.params.id);
     res.json({ success: true, voucher: updated, traceId: tid });
   } catch (err: any) {
-    res.status(400).json({ success: false, error: err.message, traceId: tid });
+    logger.error("[UV] Adjust failed", { traceId: tid, error: err.message });
+    res.status(400).json({ success: false, error: clientSafeErrorMessage(err, "Could not adjust the voucher balance."), traceId: tid });
   }
 });
 

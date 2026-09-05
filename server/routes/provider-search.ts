@@ -9,6 +9,7 @@
 import { Router } from "express";
 import { normalizeProviderSearchFilters } from "../utils/providerSearch";
 import { runProviderSearch } from "../services/providerSearchService";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -27,10 +28,12 @@ router.get("/search", async (req, res) => {
       ...result,
     });
   } catch (error: any) {
+    // This route is PUBLIC (optionalFirebaseToken) — `reason: error.message`
+    // echoed raw DB / driver text to anonymous callers. Log it, don't ship it.
+    logger.error("[ProviderSearch] search failed", { error: error?.message });
     res.status(500).json({
       ok: false,
       error: "Provider search failed",
-      reason: error?.message || "Unknown error",
     });
   }
 });
