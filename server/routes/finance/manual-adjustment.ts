@@ -14,6 +14,7 @@ import { requireAuth } from '../../customAuth';
 import { processManualAdjustment } from '../../services/TransactionEngine';
 import { ImmutableStampService } from '../../services/ImmutableStampService';
 import { logger } from '../../lib/logger';
+import { sendSanitizedError } from '../../lib/sanitizeErrorResponse';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
 import { assertOperatingControl } from '../../lib/petwashOperatingControlGateway';
 
@@ -104,7 +105,7 @@ router.post('/', requireAuth, async (req, res) => {
     });
   } catch (err: any) {
     logger.error('[ManualAdjustment] Error', { err: err.message, ip: req.ip });
-    return res.status(500).json({ error: 'Adjustment failed', detail: err.message });
+    return sendSanitizedError(res, err, 'MANUAL_ADJUSTMENT_FAILED', { logContext: { op: 'manual-adjustment' } });
   }
 });
 
