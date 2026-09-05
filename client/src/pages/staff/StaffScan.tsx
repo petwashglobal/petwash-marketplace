@@ -35,6 +35,19 @@ export default function StaffScan() {
   const [customAmt, setCustomAmt] = useState('');
   const [selectedSvc, setSelectedSvc] = useState<string | null>(null);
 
+  // Stable idempotency token for the current ring-up. Minted ONCE when a charge
+  // confirmation opens, held in a ref so a double-tap on "Confirm" (both clicks
+  // fire before React re-renders the disabled state) re-sends the SAME value and
+  // the server dedupes it. Cleared on success so the next charge mints a new one.
+  const chargeKeyRef = useRef<string | null>(null);
+
+  // Open/close a charge confirmation. Opening a service starts a new ring-up →
+  // mint a fresh idempotency key; closing (or switching) clears it.
+  const selectService = (svcId: string | null) => {
+    chargeKeyRef.current = svcId ? crypto.randomUUID() : null;
+    setSelectedSvc(svcId);
+  };
+
   // Autofocus scanner input on mount
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -73,12 +86,17 @@ export default function StaffScan() {
       return;
     }
 
+    // One stable token for this ring-up. Reuse the key minted when the
+    // confirmation opened; fall back to a fresh one only if it's somehow absent.
+    const idempotencyKey = chargeKeyRef.current ?? (chargeKeyRef.current = crypto.randomUUID());
+
     setCharging(true);
     try {
       const res  = await apiRequest('POST', '/api/prestige-pass/staff/charge', {
         cardId:      profile.customer.cardId,
         serviceType: svcId,
         amountCents,
+        idempotencyKey,
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Charge failed');
@@ -91,12 +109,18 @@ export default function StaffScan() {
         ...p,
         balances: { ...p.balances, totalLiquidCents: data.newBalanceCents },
       } : p);
+
+      // Charge landed → close the confirmation and retire the key so the next
+      // ring-up mints a fresh one.
+      chargeKeyRef.current = null;
+      setSelectedSvc(null);
+      setCustomAmt('');
     } catch (e: any) {
+      // Keep the selection open and the key intact so a retry re-sends the SAME
+      // idempotency token rather than double-charging.
       toast({ title: 'Charge failed', description: e.message, variant: 'destructive' });
     } finally {
       setCharging(false);
-      setSelectedSvc(null);
-      setCustomAmt('');
     }
   };
 
@@ -276,7 +300,7 @@ export default function StaffScan() {
                     return (
                       <div key={svc.id}>
                         <button
-                          onClick={() => setSelectedSvc(isSelected ? null : svc.id)}
+                          onClick={() => selectService(isSelected ? null : svc.id)}
                           style={{
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '13px 14px', borderRadius: '12px', border: 'none', cursor: 'pointer',
