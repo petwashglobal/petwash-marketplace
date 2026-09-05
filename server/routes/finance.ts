@@ -11,6 +11,7 @@ import {
   computeFrictionAnalytics,
   networkKPIs,
 } from '../lib/unit-economics';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -69,7 +70,7 @@ router.get('/profitability/stations', async (req: Request, res: Response) => {
 
     return res.json({ stations: sorted, count: sorted.length });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FINANCE_PROFITABILITY_STATIONS_FAILED', { logContext: { op: 'profitability-stations' } });
   }
 });
 
@@ -83,7 +84,7 @@ router.get('/profitability/network', async (req: Request, res: Response) => {
     const network = aggregateNetworkEconomics(stations);
     return res.json({ network, count: network.length });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FINANCE_PROFITABILITY_NETWORK_FAILED', { logContext: { op: 'profitability-network' } });
   }
 });
 
@@ -122,7 +123,7 @@ router.get('/capital-signals', async (req: Request, res: Response) => {
 
     return res.json({ signals });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FINANCE_CAPITAL_SIGNALS_FAILED', { logContext: { op: 'capital-signals' } });
   }
 });
 
@@ -136,7 +137,7 @@ router.get('/ownership-comparison', async (req: Request, res: Response) => {
     const comparison = ownershipComparison(stations);
     return res.json(comparison);
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FINANCE_OWNERSHIP_COMPARISON_FAILED', { logContext: { op: 'ownership-comparison' } });
   }
 });
 
@@ -161,7 +162,7 @@ router.get('/friction-analytics', async (req: Request, res: Response) => {
     );
     return res.json({ stations: friction, totals });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FINANCE_FRICTION_ANALYTICS_FAILED', { logContext: { op: 'friction-analytics' } });
   }
 });
 
@@ -177,7 +178,7 @@ router.get('/summary', async (req: Request, res: Response) => {
     const ownership = ownershipComparison(stations);
     return res.json({ kpis, network, ownership, stationCount: stations.length });
   } catch (err: any) {
-    return res.status(500).json({ error: err.message });
+    sendSanitizedError(res, err, 'FINANCE_SUMMARY_FAILED', { logContext: { op: 'summary' } });
   }
 });
 
