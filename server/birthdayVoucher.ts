@@ -27,6 +27,20 @@ export interface BirthdayEmailData {
 }
 
 /**
+ * Thrown when a birthday voucher for (uid, birthdayYear) already exists.
+ * Distinct from a real failure so the caller can skip quietly instead of
+ * retrying or alerting.
+ */
+export class BirthdayVoucherAlreadyIssuedError extends Error {
+  readonly existingCode: string;
+  constructor(uid: string, birthdayYear: number, existingCode: string) {
+    super(`Birthday voucher already issued for ${uid} in ${birthdayYear}`);
+    this.name = 'BirthdayVoucherAlreadyIssuedError';
+    this.existingCode = existingCode;
+  }
+}
+
+/**
  * Generate unique birthday voucher code
  */
 function generateBirthdayCode(dogName?: string): string {
@@ -65,15 +79,38 @@ export async function createBirthdayVoucher(
       isRedeemed: false
     };
     
-    // Store in Firestore
-    await db
-      .collection('birthday_vouchers')
-      .doc(voucherCode)
-      .set({
+    // ── Exactly-once per (uid, birthdayYear) ────────────────────────────────
+    // Callers used to guard with hasBirthdayVoucherThisYear() and then call
+    // this function — a check-then-act race. Each voucher doc is keyed by a
+    // RANDOM code, so two concurrent issuers both saw an empty query and both
+    // wrote, landing on different doc ids: two 10%-off vouchers for one
+    // birthday. The daily cron is not single-flighted (Cloud Run can hold more
+    // than one instance, and Scheduler retries), so this was reachable.
+    //
+    // The duplicate check and the write now happen inside one Firestore
+    // transaction. Reading the query THROUGH the transaction puts the read set
+    // under contention control, so a concurrent issuer for the same
+    // (uid, birthdayYear) is aborted and retried by the SDK, and on retry it
+    // sees the committed voucher and bails. The guard lives here rather than in
+    // the caller so every future caller inherits it.
+    await db.runTransaction(async (tx) => {
+      const dupQuery = db
+        .collection('birthday_vouchers')
+        .where('uid', '==', uid)
+        .where('birthdayYear', '==', birthdayYear)
+        .limit(1);
+      const existing = await tx.get(dupQuery);
+      if (!existing.empty) {
+        throw new BirthdayVoucherAlreadyIssuedError(
+          uid, birthdayYear, existing.docs[0].id,
+        );
+      }
+      tx.set(db.collection('birthday_vouchers').doc(voucherCode), {
         ...voucher,
         createdAt: createdAt.toISOString(),
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
       });
+    });
     
     // Post-release 2026-09-03 (backlog P1 · AUDIT-LOG-4): the prior log
     // put the FULL voucher code + raw recipient email into stdout. The
@@ -89,6 +126,9 @@ export async function createBirthdayVoucher(
     
     return voucher;
   } catch (error) {
+    // Not a failure — the race backstop did its job. Let it through untouched
+    // and unlogged-as-error so the caller can skip quietly.
+    if (error instanceof BirthdayVoucherAlreadyIssuedError) throw error;
     logger.error('Error creating birthday voucher', error);
     throw error;
   }
