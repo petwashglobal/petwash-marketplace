@@ -32,6 +32,7 @@
 import { Router } from "express";
 import { requireAuth } from "../customAuth";
 import { logger } from "../lib/logger";
+import { isValidAdminSecret } from "../lib/admin-secret";
 import { eventBus } from "../services/EventBus";
 import {
   getOrCreateReferralCode,
@@ -197,8 +198,14 @@ router.post("/link-signup", requireAuth, async (req: any, res) => {
  */
 router.post("/complete", async (req, res) => {
   try {
-    const adminSecret = req.headers["x-admin-secret"];
-    if (!process.env.PETWASH_ADMIN_SECRET || adminSecret !== process.env.PETWASH_ADMIN_SECRET) {
+    // SECURITY (2026-09-06 optional-auth sweep): the plain `!==` here leaked
+    // secret length and prefix via response timing — the exact oracle
+    // lib/admin-secret.ts was extracted to remove ("P1-FIX: Every call site
+    // used === which leaks..."). This route MINTS REFERRAL CREDIT, so the
+    // secret guarding it deserves the canonical constant-time compare.
+    // isValidAdminSecret reads the same x-admin-secret header and is equally
+    // fail-closed when the env var is unset.
+    if (!isValidAdminSecret(req, "PETWASH_ADMIN_SECRET")) {
       logger.warn("[Referral] Unauthorized /complete attempt", { ip: req.ip });
       return res.status(403).json({ error: "FORBIDDEN" });
     }
@@ -292,8 +299,8 @@ router.get("/credits", requireAuth, async (req: any, res) => {
 /** GET /api/referral/admin/overview — programme totals. */
 router.get("/admin/overview", async (req, res) => {
   try {
-    const adminSecret = req.headers["x-admin-secret"];
-    if (!process.env.PETWASH_ADMIN_SECRET || adminSecret !== process.env.PETWASH_ADMIN_SECRET) {
+    // Same constant-time compare as /complete above — see the note there.
+    if (!isValidAdminSecret(req, "PETWASH_ADMIN_SECRET")) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
 
