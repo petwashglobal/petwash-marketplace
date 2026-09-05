@@ -163,6 +163,12 @@ const T: Record<string, Record<string, string>> = {
   "contact.label": { en: "Contact & WhatsApp", he: "צור קשר ו-WhatsApp", ru: "Контакты и WhatsApp", fr: "Contact et WhatsApp", es: "Contacto y WhatsApp", ar: "اتصل بنا وواتساب" },
   "status.label": { en: "System status", he: "סטטוס מערכת", ru: "Статус системы", fr: "État du système", es: "Estado del sistema", ar: "حالة النظام" },
   "nav.platforms": { en: "Platforms", he: "פלטפורמות", ru: "Платформы", fr: "Plateformes", es: "Plataformas", ar: "المنصات" },
+  // A11Y (agent-13, 2026-09-05): accessible name for the header + drawer
+  // language <select>s, which previously announced as unnamed combo boxes.
+  // NOTE: this component resolves strings through its OWN local T table
+  // below, not @/lib/i18n — a key added only to i18n.ts renders as the raw
+  // key string ("nav.language"), which is what the first attempt shipped.
+  "nav.language": { en: "Language", he: "שפה", ru: "Язык", fr: "Langue", es: "Idioma", ar: "اللغة" },
   "nav.loyalty": { en: "PetWash Prestige", he: "PetWash Prestige", ru: "PetWash Prestige", fr: "PetWash Prestige", es: "PetWash Prestige", ar: "PetWash Prestige" },
   "nav.giftCards": { en: "e-Gift", he: "תווי שי דיגיטליים", ru: "Электронные ваучеры", fr: "Bons cadeaux", es: "Vales regalo", ar: "قسائم رقمية" },
   "nav.about": { en: "About", he: "אודות", ru: "О нас", fr: "À propos", es: "Acerca de", ar: "حول" },
