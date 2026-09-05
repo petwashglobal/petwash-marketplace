@@ -334,7 +334,6 @@ import {
   nayaxTransactions,
   hrDocuments,
   washHistory,
-  customerPets,
   users,
   stationBays,
   baySessions,
@@ -16745,30 +16744,15 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  // Get user's pets - REAL DATABASE INTEGRATION
-  app.get('/api/pets', async (req, res) => {
-    try {
-      const userId = (req.session as any)?.userId;
-      
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-      
-      // Fetch REAL pets from database
-      const userPets = await db
-        .select()
-        .from(customerPets)
-        .where(eq(customerPets.userId, userId));
-      
-      // Owner reads their own pets — strip internal audit fields only.
-      const { withOwnerMedicalFields } = await import('./lib/petPrivacy');
-      const filteredPets = userPets.map(p => withOwnerMedicalFields(p as Record<string, unknown>));
-      res.json(filteredPets);
-    } catch (error: any) {
-      logger.error('[PetCare] Fetch pets failed', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // NOTE: GET /api/pets is served by the Firestore-backed router mounted
+  // earlier at `app.use('/api/pets', petsRoutes)` (server/routes/pets.ts),
+  // which is the live source of truth the Pet Passport UI reads/writes with
+  // a Firebase Bearer token. A dead inline handler used to live here reading
+  // Postgres `customerPets` with session-cookie auth; it was permanently
+  // shadowed by that router AND referenced a non-existent `customerPets.userId`
+  // column (customer_pets is keyed by customer_id). Removed 2026-07-11 to
+  // de-dupe the split-brain and drop the broken column reference. See
+  // docs/architecture/pet-identity-spike-2026-07-11.md §2.2 / §2.4.
 
   // Get user loyalty profile (tier, washes, gift balance) - REAL DATABASE INTEGRATION
   app.get('/api/loyalty/user-profile', async (req, res) => {
