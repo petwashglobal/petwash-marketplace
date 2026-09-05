@@ -21,21 +21,28 @@
  * (and did) use the bare allowlist check without the pin noticing. This
  * file closes that hole behaviorally.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ALLOWLISTED = 'ceo@petwash.co.il';
 const OUTSIDER = 'customer@example.com';
 
 let rbac: typeof import('../middleware/rbac');
 
-beforeEach(async () => {
+// Import ONCE, outside the per-test hook. rbac pulls in ../db and the
+// enterprise schema, so a cold transform can exceed vitest's 10s hook
+// timeout and fail the first test for reasons that have nothing to do
+// with the invariant.
+beforeAll(async () => {
   process.env.SUPER_ADMIN_EMAILS = ALLOWLISTED;
   rbac = await import('../middleware/rbac');
-  rbac.invalidateSuperAdminCache();
-});
+}, 120_000);
 
-afterEach(() => {
-  delete process.env.SUPER_ADMIN_EMAILS;
+// Re-assert the allowlist and drop the module-level cache before EVERY
+// test: the env var is process-global and the cache is module-global, so
+// a sibling test file sharing the worker could otherwise leak state in.
+beforeEach(() => {
+  process.env.SUPER_ADMIN_EMAILS = ALLOWLISTED;
+  rbac.invalidateSuperAdminCache();
 });
 
 /** Minimal Express double — records what the middleware did. */

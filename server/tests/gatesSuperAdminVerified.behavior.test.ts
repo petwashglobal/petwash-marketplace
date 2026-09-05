@@ -14,19 +14,25 @@
  * still passes every read and is still blocked on every mutation — only
  * the super-admin *override* of that block was tightened.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ALLOWLISTED = 'ceo@petwash.co.il';
 
+// Set BEFORE any import: gates.ts parses SUPER_ADMINS at module load.
 process.env.SUPER_ADMIN_EMAILS = ALLOWLISTED;
 
 let gates: typeof import('../middleware/gates');
 let rbac: typeof import('../middleware/rbac');
 
-beforeEach(async () => {
-  process.env.SUPER_ADMIN_EMAILS = ALLOWLISTED;
+// Import ONCE — these modules pull in storage/db and a cold transform can
+// blow vitest's 10s hook timeout, failing the first test spuriously.
+beforeAll(async () => {
   gates = await import('../middleware/gates');
   rbac = await import('../middleware/rbac');
+}, 120_000);
+
+beforeEach(() => {
+  process.env.SUPER_ADMIN_EMAILS = ALLOWLISTED;
   rbac.invalidateSuperAdminCache();
 });
 
