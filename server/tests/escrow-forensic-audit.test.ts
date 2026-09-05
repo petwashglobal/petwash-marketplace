@@ -64,9 +64,15 @@ describe('Issue #153 PR-TAX-3 — Escrow forensic audit emission', () => {
     expect(body).toMatch(/logAuditEvent\(\s*\{/);
     expect(body).toMatch(/actionType:\s*["']ESCROW_RELEASED["']/);
     expect(body).toMatch(/targetType:\s*["']escrow_payment["']/);
-    // Order: runTransaction → logAuditEvent → first NotificationService call
+    // Order: runTransaction → logAuditEvent(ESCROW_RELEASED) → first NotificationService call.
+    // Anchor on the ESCROW_RELEASED audit specifically: releaseEscrowPayment now
+    // emits an EARLIER payout-gate audit (ESCROW_GATE_HELD / ESCROW_GATE_WOULD_HOLD)
+    // inside the `if (!opts?.bypassGate)` block, which legitimately runs BEFORE the tx.
+    // A first-match indexOf('logAuditEvent(') would catch that gate audit and wrongly
+    // fail the auditIdx > txIdx ordering check.
     const txIdx     = body.indexOf('this.db.runTransaction');
-    const auditIdx  = body.indexOf('logAuditEvent(');
+    const releasedIdx = body.indexOf('actionType: "ESCROW_RELEASED"');
+    const auditIdx  = body.lastIndexOf('logAuditEvent(', releasedIdx);
     const notifyIdx = body.indexOf('NotificationService.sendNotification', auditIdx);
     expect(txIdx).toBeGreaterThan(0);
     expect(auditIdx).toBeGreaterThan(txIdx);
