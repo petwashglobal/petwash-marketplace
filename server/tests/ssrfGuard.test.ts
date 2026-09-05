@@ -210,3 +210,31 @@ describe('safeFetchBuffer — size cap', () => {
     ).rejects.toBeInstanceOf(SsrfBlockedError);
   });
 });
+
+/**
+ * Added during review of this PR (2026-09-06). The guard already blocked all
+ * of these — I tried to break it and could not — but three encodings had no
+ * regression pin, so a future refactor of the hostname-normalisation path
+ * could silently reopen them.
+ *
+ * `0177.0.0.1` (octal) and `0x7f000001` (hex) are the classic inet_aton
+ * spellings of 127.0.0.1, and `https://google.com@127.0.0.1/` is the userinfo
+ * trick — the part before `@` is credentials, not the host, so anything that
+ * validates by string-matching a domain gets fooled while the connection goes
+ * to loopback.
+ */
+describe('SSRF guard — alternate IPv4 spellings and userinfo (review additions)', () => {
+  const CASES: Array<[string, string]> = [
+    ['octal loopback', 'https://0177.0.0.1/'],
+    ['hex loopback', 'https://0x7f000001/'],
+    ['dotted-hex loopback', 'https://0x7f.0x0.0x0.0x1/'],
+    ['userinfo trick — real host is loopback', 'https://google.com@127.0.0.1/'],
+  ];
+
+  for (const [label, url] of CASES) {
+    it(`blocks ${label}`, async () => {
+      await expect(assertSafeUrl(url)).rejects.toThrow();
+    });
+  }
+});
+
