@@ -14,6 +14,7 @@ import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
+import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 
 const router = Router();
 
@@ -44,7 +45,7 @@ router.post('/job-complete', async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err: any) {
     logger.error('[Orchestrator API] Job completion failed', err);
-    res.status(400).json({ error: err.message || 'Job completion failed' });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_JOB_COMPLETE_FAILED', { status: 400, logContext: { op: 'job-complete' } });
   }
 });
 
@@ -77,7 +78,7 @@ router.post('/calendar/booking', async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err: any) {
     logger.error('[Orchestrator API] Calendar booking failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_CALENDAR_BOOKING_FAILED', { status: 400, logContext: { op: 'calendar-booking' } });
   }
 });
 
@@ -114,7 +115,7 @@ router.post('/generate-statement', validateFirebaseToken, async (req: any, res) 
     res.json({ success: true, statementId, total, vatTotal });
   } catch (err: any) {
     logger.error('[Orchestrator API] Statement generation failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_GENERATE_STATEMENT_FAILED', { status: 400, logContext: { op: 'generate-statement' } });
   }
 });
 
@@ -147,7 +148,7 @@ router.post('/kyc-submit', async (req, res) => {
     res.json({ success: true, queued: true });
   } catch (err: any) {
     logger.error('[Orchestrator API] KYC submit parse failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_KYC_SUBMIT_FAILED', { status: 400, logContext: { op: 'kyc-submit' } });
   }
 });
 
@@ -178,7 +179,7 @@ router.post('/kyb-submit', async (req, res) => {
     res.json({ success: true, queued: true });
   } catch (err: any) {
     logger.error('[Orchestrator API] KYB submit parse failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_KYB_SUBMIT_FAILED', { status: 400, logContext: { op: 'kyb-submit' } });
   }
 });
 
@@ -213,7 +214,7 @@ router.post('/booking-confirmed', async (req, res) => {
     res.json({ success: true, queued: true });
   } catch (err: any) {
     logger.error('[Orchestrator API] Booking confirmed parse failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_BOOKING_CONFIRMED_FAILED', { status: 400, logContext: { op: 'booking-confirmed' } });
   }
 });
 
@@ -241,7 +242,7 @@ router.post('/esign-complete', async (req, res) => {
     res.json({ success: true, queued: true });
   } catch (err: any) {
     logger.error('[Orchestrator API] E-sign complete parse failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_ESIGN_COMPLETE_FAILED', { status: 400, logContext: { op: 'esign-complete' } });
   }
 });
 
@@ -274,7 +275,7 @@ router.post('/onboarding-approved', async (req, res) => {
     res.json({ success: true, queued: true });
   } catch (err: any) {
     logger.error('[Orchestrator API] Onboarding approved parse failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_ONBOARDING_APPROVED_FAILED', { status: 400, logContext: { op: 'onboarding-approved' } });
   }
 });
 
@@ -305,7 +306,7 @@ router.post('/contract-generated', async (req, res) => {
     res.json({ success: true, queued: true });
   } catch (err: any) {
     logger.error('[Orchestrator API] Contract generated parse failed', err);
-    res.status(400).json({ error: err.message });
+    sendSanitizedError(res, err, 'ORCHESTRATOR_CONTRACT_GENERATED_FAILED', { status: 400, logContext: { op: 'contract-generated' } });
   }
 });
 
