@@ -287,7 +287,16 @@ router.post('/:bookingId/confirm', requireAuth, async (req: Request, res: Respon
         const { walletService } = await import('../services/WalletService');
         const cashRequired = creditBreakdown.cashPaidCents || 0;
         const paymentConfirmed = cashRequired === 0 || !!paymentReference;
-        await walletService.confirmRedemption(redemptionSessionId, paymentConfirmed);
+        // IDOR FIX (cross-tenant sweep, 2026-09-05): userId must be passed
+        // through so WalletService scopes the lookup to `sessionId AND
+        // user_id = userId` (the fix already applied at
+        // routes/credit-wallet.ts POST /redemptions/:sessionId/confirm).
+        // Omitting it drops confirmRedemption's owner clause entirely
+        // (userId is optional there only for old internal callers), so a
+        // caller confirming their OWN booking could pass ANY OTHER user's
+        // redemptionSessionId in the body and force-confirm/burn that
+        // stranger's wallet credit hold.
+        await walletService.confirmRedemption(redemptionSessionId, paymentConfirmed, undefined, userId);
         logger.info('[UnifiedBookingAPI] Wallet redemption confirmed after booking', { 
           bookingId, redemptionSessionId, creditsApplied: creditBreakdown.totalCreditsAppliedCents 
         });
