@@ -1256,20 +1256,51 @@ app.get('/api/health/bot-check', (_req, res) => {
   // rollout without exposing key material.
   const turnstileSiteKeyEnvPresent = !!process.env.VITE_TURNSTILE_SITE_KEY;
   const enforcementActive = turnstileServerConfigured;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  /**
+   * THIS ENDPOINT USED TO LIE, and it lied about an outage.
+   *
+   * It reported `status: ADVISORY` with the note "protected surfaces log a
+   * WARN and skip the check" whenever the secret was missing. That described
+   * turnstileGuard's behaviour BEFORE AUDIT-SMS-6 (2026-09-01) changed it to
+   * fail CLOSED in production.
+   *
+   * Since that change, a missing TURNSTILE_SECRET_KEY in production means
+   * POST /api/auth/email/start and /api/auth/sms/start return 503 to every
+   * customer — nobody can receive a signup or passwordless-login code. The
+   * one place an operator looks to understand the impact was telling them the
+   * surfaces were merely unprotected, i.e. working. Found live on 2026-09-06:
+   * both endpoints were returning TURNSTILE_NOT_CONFIGURED in production while
+   * this endpoint said ADVISORY.
+   *
+   * The status now tracks what the guard actually does in THIS environment.
+   */
+  const surfacesDown = isProduction && !turnstileServerConfigured;
+  const status = surfacesDown ? 'OUTAGE' : enforcementActive ? 'READY' : 'ADVISORY';
+
   res.status(200).json({
-    status: enforcementActive ? 'READY' : 'ADVISORY',
+    status,
     timestamp: new Date().toISOString(),
     botCheck: 'turnstile',
     turnstileServerConfigured,
     turnstileSiteKeyEnvPresent,
     enforcementActive,
+    // The operationally important field: are customers being served, or not.
+    protectedSurfacesRejectingAllTraffic: surfacesDown,
+    nodeEnv: isProduction ? 'production' : 'non-production',
     protectedSurfaces: [
       'signup_sms_start',
       'signup_email_start',
     ],
-    note: enforcementActive
-      ? 'Turnstile enforced on protected surfaces. Missing/invalid tokens will 400/403.'
-      : 'TURNSTILE_SECRET_KEY not set — protected surfaces log a WARN and skip the check.',
+    note: surfacesDown
+      ? 'OUTAGE: TURNSTILE_SECRET_KEY is not set and turnstileGuard fails CLOSED in production. '
+        + 'POST /api/auth/email/start and /api/auth/sms/start are returning 503 TURNSTILE_NOT_CONFIGURED '
+        + 'to EVERY caller — no customer can receive a signup or passwordless-login code. Set the secret.'
+      : enforcementActive
+        ? 'Turnstile enforced on protected surfaces. Missing/invalid tokens will 400/403.'
+        : 'TURNSTILE_SECRET_KEY not set. Non-production, so turnstileGuard skips the check with a WARN; '
+          + 'the same configuration in production would take the protected surfaces DOWN.',
   });
 });
 
