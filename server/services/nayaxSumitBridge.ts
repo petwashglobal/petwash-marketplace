@@ -28,7 +28,12 @@ import { getSumitDocumentMapping } from './sumitDocumentMapping';
 import type { LynxSaleRow } from './lynxReconciliation';
 import { terminalForMachine, terminalLabel } from './nayaxTerminals';
 import { logger } from '../lib/logger';
-import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { ISRAEL_VAT_RATE, israeliFiscalDate } from '@shared/israel-compliance-config';
+
+// Re-exported so the Nayax fiscal surface has one import site; the definition
+// lives in the shared config because SumitClient needs it too and this module
+// already imports SumitClient.
+export { israeliFiscalDate };
 
 // Single source of truth — canonical rate (env-overridable) from israel-compliance-config.
 // Bay prices are VAT-inclusive consumer prices; we back the VAT out for the SUMIT line.
@@ -201,6 +206,61 @@ export function bridgeWired(): {
  * A sale with no readable settlement timestamp is WITHHELD because eligibility
  * cannot be established — not because it is old.
  */
+/**
+ * Turn a Nayax settlement timestamp into a real instant — explicitly, never via
+ * bare `new Date(str)`.
+ *
+ * WHY THIS EXISTS (measured 2026-09-06): the Nayax field is `SettlementDateTimeGMT`,
+ * but Nayax sends it WITHOUT a zone marker. JavaScript resolves a zone-less
+ * timestamp in the HOST process's timezone, so the same wash resolves to two
+ * different instants on two different machines:
+ *
+ *   new Date('2026-09-05 22:30:00')  on a UTC server   -> 2026-09-05T22:30Z -> Israel day 06/09
+ *   new Date('2026-09-05 22:30:00')  on this dev laptop -> 2026-09-05T12:30Z -> Israel day 05/09
+ *
+ * A wrong day is not cosmetic here. The bookkeeper's 2026-09-06 ruling is that the
+ * document's ISSUE DATE alone determines the reporting period, so a day that slips
+ * across a month boundary moves income into the wrong VAT period.
+ *
+ * Rules:
+ *  - An explicit offset or trailing Z is trusted as sent.
+ *  - A zone-less `YYYY-MM-DD[T ]HH:mm[:ss]` is read as UTC, because the field says GMT.
+ *  - EVERYTHING ELSE returns null. In particular a DD/MM/YYYY string (the shape the
+ *    Excel export uses) is refused rather than guessed: when both halves are <= 12 it
+ *    would silently parse as a different month, and a fiscal date must never be a guess.
+ *    Returning null makes the sale unissuable (NO_SETTLEMENT_TIME) instead of misdated.
+ */
+export function parseNayaxSettlementInstant(raw: string | null | undefined): Date | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.trim();
+  if (!s) return null;
+
+  // Explicit zone (…Z or …+03:00 / …-0500): trust what was sent.
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+    const d = new Date(s.replace(' ', 'T'));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  // Zone-less ISO-shaped: the field is named GMT, so read it as UTC explicitly.
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
+  if (m) {
+    const [, y, mo, da, hh, mi, ss] = m;
+    const d = new Date(Date.UTC(
+      Number(y), Number(mo) - 1, Number(da), Number(hh), Number(mi), Number(ss ?? '0'),
+    ));
+    // Date.UTC happily rolls 2026-13-45 over; reject anything that did not round-trip.
+    if (
+      d.getUTCFullYear() !== Number(y) || d.getUTCMonth() !== Number(mo) - 1 ||
+      d.getUTCDate() !== Number(da) || d.getUTCHours() !== Number(hh)
+    ) return null;
+    return d;
+  }
+
+  // Unrecognised shape (DD/MM/YYYY included) — refuse rather than guess.
+  return null;
+}
+
+
 export function applyFiscalCutover(
   sales: DocumentableSale[],
   cutoverAt: Date | null,
@@ -209,8 +269,8 @@ export function applyFiscalCutover(
   const eligible: DocumentableSale[] = [];
   const withheld: DocumentableSale[] = [];
   for (const s of sales) {
-    const t = s.settledAt ? new Date(s.settledAt) : null;
-    if (t && !Number.isNaN(t.getTime()) && t.getTime() >= cutoverAt.getTime()) eligible.push(s);
+    const t = parseNayaxSettlementInstant(s.settledAt);
+    if (t && t.getTime() >= cutoverAt.getTime()) eligible.push(s);
     else withheld.push(s);
   }
   return { eligible, withheld };
@@ -344,8 +404,9 @@ export function issuanceBlockers(sale: DocumentableSale): IssuanceBlocker[] {
   if (!sale.machineId || !terminalForMachine(sale.machineId)) {
     out.push(ISSUANCE_BLOCKER.UNKNOWN_MACHINE);
   }
-  const t = sale.settledAt ? new Date(sale.settledAt) : null;
-  if (!t || Number.isNaN(t.getTime())) out.push(ISSUANCE_BLOCKER.NO_SETTLEMENT_TIME);
+  if (!parseNayaxSettlementInstant(sale.settledAt)) {
+    out.push(ISSUANCE_BLOCKER.NO_SETTLEMENT_TIME);
+  }
   if (!(Number(sale.totalInclVat) > 0)) out.push(ISSUANCE_BLOCKER.NON_POSITIVE_AMOUNT);
   return out;
 }
@@ -371,6 +432,12 @@ export function buildReceiptInput(sale: DocumentableSale) {
     // One stable product; the bay lives on the line, not in the item name.
     item: { name: K9000_INCOME_ITEM.name, externalId: K9000_INCOME_ITEM.externalId },
     lineDescription: where,
+    // Fiscal date = when the wash actually closed at the bay, not when this
+    // request happens to reach SUMIT. Bookkeeper-directed 2026-09-06: the issue
+    // date determines the reporting period, so it must not drift with our retries.
+    // A sale with no readable settledAt never reaches here — issuanceBlockers
+    // withholds it (NO_SETTLEMENT_TIME).
+    documentDate: parseNayaxSettlementInstant(sale.settledAt) ?? undefined,
     amountBeforeVat: sale.amountBeforeVat,
     vatAmount: sale.vatAmount,
     totalAmount: sale.totalInclVat,

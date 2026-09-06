@@ -28,6 +28,7 @@
 
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { israeliFiscalDate } from '@shared/israel-compliance-config';
 
 /**
  * Env is read on every call (not cached at module load) so tests can
@@ -427,6 +428,21 @@ export class SumitClient {
     item?: { name: string; externalId: string };
     /** Per-line context (station/bay). Only used when `item` is supplied. */
     lineDescription?: string;
+    /**
+     * The fiscal date to stamp on the document (Details.Date).
+     *
+     * BOOKKEEPER-DIRECTED, 2026-09-06: "כל חשבונית שתופק ב-SUMIT צריכה להיווצר
+     * בזמן אמת בהתאם לתאריך ולשעת סגירת העסקה בפועל ב-Nayax" — every invoice must
+     * be created in real time according to the actual date and time the
+     * transaction closed in Nayax.
+     *
+     * Omitting it lets SUMIT stamp "now", which is only correct while the rail is
+     * perfectly current. A retry, backlog or recovery makes "now" drift from the
+     * Nayax close — and because the ISSUE date is what determines the reporting
+     * period, that drift moves income between periods. So the date is sent
+     * explicitly rather than left to whenever the request happened to land.
+     */
+    documentDate?: Date;
     /** caller context for the audit log (platform, bookingId) */
     context?: Record<string, unknown>;
   }): Promise<SumitDocumentResult> {
@@ -465,6 +481,14 @@ export class SumitClient {
         // (verified live 2026-07-05, document #10000 walk).
         Language: 'Hebrew',
         ExternalReference: input.idempotencyKey,
+        // Fiscal date = the instant the transaction closed at the machine, per the
+        // bookkeeper's 2026-09-06 instruction. Sent as ISO (yyyy-MM-dd) in Israel
+        // time: SUMIT reads ISO or MM/DD, never DD/MM — a DD/MM string whose halves
+        // are both <= 12 silently means a different month (verified live 2026-09-06).
+        // Omitted (SUMIT stamps "now") only when the caller has no settlement time.
+        ...(input.documentDate && !Number.isNaN(input.documentDate.getTime())
+          ? { Date: israeliFiscalDate(input.documentDate) }
+          : {}),
       },
       // The sale is already paid — record the payment so the doc is a receipt too.
       // A bare {Amount} is rejected ("יש להזין מוטב/מחויב"): SUMIT needs the

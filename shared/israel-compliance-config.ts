@@ -330,3 +330,27 @@ export function resolveWithholdingRate(
     certExpired: certExpiryDate != null && asOf > certExpiryDate,
   };
 }
+
+/**
+ * The Israel-local calendar day of an instant, as `yyyy-MM-dd`.
+ *
+ * THE ONE place this format is produced. It is the date that goes on the face of a
+ * fiscal document, and under the bookkeeper's 2026-09-06 ruling the issue date alone
+ * determines the reporting period — so it must be the day in ISRAEL, not the day in
+ * UTC or on whatever machine happens to be running the rail.
+ *
+ * ISO (yyyy-MM-dd) is deliberate: SUMIT reads ISO or MM/DD and never DD/MM, and a
+ * DD/MM string whose halves are both <= 12 is silently a different month
+ * (verified live against SUMIT, 2026-09-06).
+ *
+ * It lives here rather than in the Nayax bridge because SumitClient must use the
+ * same function, and the bridge already imports SumitClient.
+ */
+export function israeliFiscalDate(instant: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jerusalem',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant);
+}
