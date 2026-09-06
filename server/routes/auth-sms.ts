@@ -164,9 +164,14 @@ router.post('/start', turnstileGuard({ action: 'signup_sms_start' }), async (req
 
   // Bot check ran in turnstileGuard middleware above. When TURNSTILE_SECRET_KEY
   // is configured, an invalid/missing token blocks with 400/403 before this
-  // handler runs. When the env is unset the middleware skips + logs a WARN;
-  // the /api/health/bot-check endpoint reports the unconfigured state to
-  // operators so they can fix it without stranding sign-ins.
+  // handler runs.
+  //
+  // CORRECTED 2026-09-06: this used to say the middleware "skips + logs a WARN"
+  // when the env is unset, and that operators could fix it "without stranding
+  // sign-ins". Both stopped being true when AUDIT-SMS-6 made the guard fail
+  // CLOSED in production — an unset secret means this route returns 503 to
+  // every caller, which strands sign-ins completely. That is exactly what was
+  // happening in production on 2026-09-06.
   const captchaSignal: 'turnstile_passed' | 'turnstile_absent' =
     (req as any).turnstileVerified === true ? 'turnstile_passed' : 'turnstile_absent';
 

@@ -52,6 +52,24 @@ export function isTurnstileConfigured(): boolean {
   return !!process.env.TURNSTILE_SECRET_KEY;
 }
 
+/**
+ * TURNSTILE HAS TWO HALVES AND BOTH MUST SHIP TOGETHER.
+ *
+ *   TURNSTILE_SECRET_KEY      server runtime (Cloud Run env / Secret Manager)
+ *   VITE_TURNSTILE_SITE_KEY   client BUILD time (compiled into the bundle)
+ *
+ * Setting only the secret does not restore service. The browser cannot mint a
+ * token without the site key — Vite folds the widget away at build time and
+ * executeTurnstileInvisible() returns SITE_KEY_MISSING — so the guard moves
+ * from 503 TURNSTILE_NOT_CONFIGURED to 400 TURNSTILE_TOKEN_REQUIRED and the
+ * surface stays dead. Observed exactly this way in production on 2026-09-06:
+ * neither half had ever been provisioned after the Replit -> Cloud Run
+ * migration (see the note in .github/workflows/petwash-ci.yml).
+ *
+ * A VITE_* value is baked into the bundle, so adding it to Cloud Run after the
+ * client is built changes nothing — the client must be REBUILT.
+ */
+
 export function turnstileGuard(opts: TurnstileGuardOptions) {
   const tokenField = opts.tokenField ?? 'turnstileToken';
   return async function turnstileGuardMiddleware(req: Request, res: Response, next: NextFunction) {

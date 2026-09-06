@@ -60,8 +60,21 @@ const startSchema = z.object({
 // POST /api/auth/email/start
 // Turnstile guard: previously this route had NO bot check at all — the only
 // customer-facing OTP surface without one. Same policy as the canonical SMS
-// surface: fully enforced when TURNSTILE_SECRET_KEY is configured, skipped
-// with a WARN otherwise (reported by /api/health/bot-check for operators).
+// surface.
+//
+// POLICY, corrected 2026-09-06. This comment used to say "skipped with a WARN
+// otherwise", which stopped being true when AUDIT-SMS-6 (2026-09-01) made the
+// guard fail CLOSED in production. The real policy is:
+//
+//   production,     TURNSTILE_SECRET_KEY missing -> 503, THIS ROUTE IS DOWN
+//   non-production, TURNSTILE_SECRET_KEY missing -> skip + WARN
+//   configured,     token missing                -> 400 TURNSTILE_TOKEN_REQUIRED
+//   configured,     token invalid                -> 403 TURNSTILE_CHECK_FAILED
+//
+// The stale wording mattered: on 2026-09-06 both this route and the SMS one
+// were returning 503 in production for want of the secret, and everything an
+// operator could read — this comment and /api/health/bot-check — described a
+// surface that was merely unprotected rather than dead.
 router.post('/start', turnstileGuard({ action: 'signup_email_start' }), async (req: Request, res: Response) => {
   const parsed = startSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ ok: false, error: 'invalid_email' });
