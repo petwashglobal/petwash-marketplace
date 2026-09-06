@@ -1265,18 +1265,6 @@ jobs:
           # client half only, and the server half is gated later against the
           # real candidate mappings.
           TURNSTILE_SKIP_SERVER_HALF: 'client-half-only'
-          # KNOWN OUTAGE WAIVER — delete this line when Turnstile is provisioned.
-          #
-          # Signup and code sign-in are down because neither Turnstile key has
-          # ever existed (see #2288/#2290/#2291). The keys can only be created
-          # in a Cloudflare account, so until someone logs in, NOTHING can
-          # satisfy this gate — and blocking every unrelated release for that
-          # window is worse than shipping with the outage acknowledged, which
-          # is the state production is already in.
-          #
-          # The waiver covers ONLY the provisioning gap. Pipeline faults —
-          # missing or inconsistent build metadata — still block.
-          TURNSTILE_KNOWN_OUTAGE_ACK: '2026-09-06 · awaiting Cloudflare Turnstile widget for petwash.co.il'
         run: |
           node scripts/guards/turnstile-release-invariant.mjs --dist dist/public
 
@@ -1479,6 +1467,14 @@ jobs:
             "WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest"
             "WEBAUTHN_COOKIE_SECRET=WEBAUTHN_COOKIE_SECRET:latest"
             "RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest"
+            # Turnstile server half. REQUIRED as of 2026-09-06, when the secret
+            # was finally created in Secret Manager. turnstileGuard fails CLOSED
+            # in production, so a revision without this binding returns 503 on
+            # /api/auth/email/start and /api/auth/sms/start and nobody can sign
+            # up or sign in by code — which is exactly what happened, unnoticed,
+            # for months. Required here means the deploy stops before traffic
+            # moves rather than after customers are locked out.
+            "TURNSTILE_SECRET_KEY=TURNSTILE_SECRET_KEY:latest"
             "MOBILE_LINK_SECRET=MOBILE_LINK_SECRET:latest"
             "WALLET_LINK_SECRET=WALLET_LINK_SECRET:latest"
             "VOUCHER_SALT=VOUCHER_SALT:latest"
@@ -1548,21 +1544,6 @@ jobs:
             #
             #   FINANCE_AUTHORIZED_EMAILS (currently missing) →
             #     server/routes/bank.ts:83 financial admin gating degraded.
-            # Turnstile server half. OPTIONAL ONLY UNTIL THE SECRET EXISTS.
-            #
-            # It belongs in required_mappings — turnstileGuard fails CLOSED in
-            # production, so a revision without this binding returns 503 on
-            # /api/auth/email/start and /api/auth/sms/start and nobody can sign
-            # up or sign in by code. It is here because required_mappings has
-            # no waiver path: listing it before the Cloudflare keys exist
-            # hard-fails EVERY deploy, including unrelated hotfixes, and that
-            # is a worse trade than shipping with a known outage.
-            #
-            # MOVE THIS BACK TO required_mappings the moment
-            # TURNSTILE_SECRET_KEY exists in Secret Manager, and delete
-            # TURNSTILE_KNOWN_OUTAGE_ACK below. The release invariant prints a
-            # reminder on every green run until you do.
-            "TURNSTILE_SECRET_KEY=TURNSTILE_SECRET_KEY:latest"
             "SUPER_ADMIN_UID=SUPER_ADMIN_UID:latest"
             "ADMIN_APPROVER_EMAIL=ADMIN_APPROVER_EMAIL:latest"
             "FINANCE_AUTHORIZED_EMAILS=FINANCE_AUTHORIZED_EMAILS:latest"
@@ -1822,8 +1803,6 @@ jobs:
         env:
           TURNSTILE_INVARIANT_ENV: production
           CLOUDRUN_SECRET_MAPPINGS: ${{ steps.build-cloudrun-secrets.outputs.secret_mappings }}
-          # Same waiver, same reason — see the client-half gate above.
-          TURNSTILE_KNOWN_OUTAGE_ACK: '2026-09-06 · awaiting Cloudflare Turnstile widget for petwash.co.il'
         run: node scripts/guards/turnstile-release-invariant.mjs --dist dist/public
 
       - name: Deploy to Cloud Run (no-traffic candidate)
@@ -2361,24 +2340,12 @@ jobs:
       # Failing here means traffic is never promoted: the previous revision
       # keeps serving 100%, so rollback is implicit.
       - name: Gate — candidate reports Turnstile READY before promotion
-        env:
-          TURNSTILE_KNOWN_OUTAGE_ACK: '2026-09-06 · awaiting Cloudflare Turnstile widget for petwash.co.il'
         run: |
           set -euo pipefail
           URL="${{ steps.revision.outputs.candidate_url }}"
           if [ -z "$URL" ]; then
             echo "::error::candidate_url empty — cannot verify Turnstile on the candidate."
             exit 1
-          fi
-
-          # KNOWN OUTAGE WAIVER — delete with the others when provisioned.
-          # Turnstile cannot report READY until the keys exist; requiring it
-          # now would block promotion of every release.
-          if [ -n "${TURNSTILE_KNOWN_OUTAGE_ACK:-}" ]; then
-            echo "::warning::Skipping the Turnstile READY gate — known outage acknowledged:"
-            echo "::warning::  ${TURNSTILE_KNOWN_OUTAGE_ACK}"
-            echo "Signup and code sign-in remain DOWN. Remove the waiver once provisioned."
-            exit 0
           fi
 
           BODY=$(curl -fsS --max-time 30 "$URL/api/health/bot-check" || echo '')
