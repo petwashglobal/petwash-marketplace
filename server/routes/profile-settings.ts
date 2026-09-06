@@ -10,7 +10,10 @@ import crypto from 'crypto';
 import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
 import multer from 'multer';
 import { authService } from '../services/AuthService';
-import { isUnifiedVerificationChangeEmailEnabled } from '../lib/feature-flags/unifiedVerification';
+import {
+  isUnifiedVerificationChangeEmailEnabled,
+  isUnifiedVerificationChangePhoneEnabled,
+} from '../lib/feature-flags/unifiedVerification';
 import {
   UnifiedVerificationError,
   unifiedVerificationService,
@@ -84,6 +87,15 @@ const emailChangeRequestSchema = z.object({
   // .trim().toLowerCase() BEFORE .email() so `  Nir@Example.COM ` both
   // validates and is stored in exactly one canonical form.
   newEmail: z.string().trim().toLowerCase().pipe(z.string().email()),
+});
+
+const phoneChangeRequestSchema = z.object({
+  newPhone: z.string().trim().min(6).max(20),
+});
+
+const phoneChangeConfirmSchema = z.object({
+  verificationCode: z.string().length(6),
+  verificationChallengeId: z.string().min(10).max(100),
 });
 
 const emailChangeConfirmSchema = z.object({
@@ -1394,6 +1406,219 @@ router.delete('/settings/profile/photo', async (req, res) => {
   } catch (error: any) {
     logger.error('[ProfileSettings] Photo delete error:', error);
     res.status(500).json({ error: 'Failed to remove profile photo' });
+  }
+});
+
+
+/**
+ * POST /api/user/settings/phone/request-change
+ * POST /api/user/settings/phone/confirm-change
+ *
+ * The canonical way to change the account's security phone number, and the
+ * reason PATCH /api/user/profile now refuses a phone CHANGE outright.
+ *
+ * Deliberately a mirror of the email pair above, because the threat is the
+ * same one pointed at a different column: a number nobody proved you hold
+ * becomes the thing that receives your login codes. So the same four
+ * protections apply — recent auth, uniqueness in BOTH stores before anything
+ * is sent, a code delivered to the NEW destination, and a confirm step that
+ * re-verifies server-side and reads the new value out of the VERIFICATION
+ * RESULT rather than the request body.
+ *
+ * That last point is the one that matters most. The client never gets to say
+ * which number to write; it only supplies a code, and the number comes back
+ * from the challenge the server itself created.
+ */
+router.post('/settings/phone/request-change', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const decodedToken = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1], true);
+    const uid = decodedToken.uid;
+
+    if (!hasRecentAuth(decodedToken)) {
+      logger.warn('[ProfileSettings] Phone change denied — session too old', { uid });
+      return res.status(403).json({
+        error: 'Re-authentication required',
+        message: 'Please sign out and sign in again before changing your mobile number.',
+        code: 'REAUTH_REQUIRED',
+      });
+    }
+
+    if (!isUnifiedVerificationChangePhoneEnabled()) {
+      return res.status(503).json({
+        error: 'Mobile number changes are temporarily unavailable.',
+        code: 'CHANGE_PHONE_DISABLED',
+      });
+    }
+
+    const parsed = phoneChangeRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid request', details: parsed.error.flatten() });
+    }
+
+    const newPhone = normalizePhoneE164(parsed.data.newPhone);
+    if (!newPhone || !isE164(newPhone)) {
+      return res.status(400).json({ error: 'That phone number is not valid.', code: 'INVALID_PHONE' });
+    }
+
+    const [current] = await db.select({ phone: users.phone })
+      .from(users).where(eq(users.id, uid)).limit(1);
+    if (current?.phone && normalizePhoneE164(current.phone) === newPhone) {
+      return res.status(400).json({
+        error: 'That is already your mobile number',
+        code: 'PHONE_UNCHANGED',
+      });
+    }
+
+    // Refuse up-front if the number belongs to someone else, in EITHER store.
+    // Discovering the collision at confirm time would mean the customer has
+    // already received and typed a code for a change that cannot be applied.
+    const conflict = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.phoneHash, phoneLookupHash(newPhone)), ne(users.id, uid)))
+      .limit(1);
+    if (conflict.length > 0) {
+      return res.status(409).json({ error: 'That mobile number is already in use', code: 'PHONE_ALREADY_IN_USE' });
+    }
+    try {
+      const existing = await admin.auth().getUserByPhoneNumber(newPhone);
+      if (existing && existing.uid !== uid) {
+        return res.status(409).json({ error: 'That mobile number is already in use', code: 'PHONE_ALREADY_IN_USE' });
+      }
+    } catch (e: any) {
+      if (e?.code !== 'auth/user-not-found') throw e;
+    }
+
+    // The challenge goes to the NEW number. change_phone is sms/whatsapp-only
+    // in the purpose registry, so this cannot be redirected to an email.
+    const challenge = await unifiedVerificationService.startChallenge({
+      purpose: 'change_phone',
+      channel: 'sms',
+      destination: newPhone,
+      payload: { oldPhone: current?.phone || '' },
+      actor: verificationActorFromRequest(req, uid),
+    });
+
+    logger.info('[ProfileSettings] Phone change requested', { uid });
+    return res.json({
+      success: true,
+      message: 'Verification code sent to the new number',
+      verificationChallengeId: challenge.challenge.challengeId,
+      maskedDestination: (challenge.challenge as any).maskedDestination,
+      expiresAt: challenge.challenge.expiresAt,
+    });
+  } catch (error: any) {
+    if (error instanceof UnifiedVerificationError) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.reasonCode });
+    }
+    logger.error('[ProfileSettings] Phone change request failed', { error: error?.message });
+    return res.status(500).json({ error: 'Failed to start the mobile number change' });
+  }
+});
+
+router.post('/settings/phone/confirm-change', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const decodedToken = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1], true);
+    const uid = decodedToken.uid;
+
+    if (!isUnifiedVerificationChangePhoneEnabled()) {
+      return res.status(503).json({
+        error: 'Mobile number changes are temporarily unavailable.',
+        code: 'CHANGE_PHONE_DISABLED',
+      });
+    }
+
+    const parsed = phoneChangeConfirmSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid verification code format' });
+    }
+
+    const verificationResult = await unifiedVerificationService.verifyChallenge({
+      challengeId: parsed.data.verificationChallengeId,
+      code: parsed.data.verificationCode,
+      actor: verificationActorFromRequest(req, uid),
+    });
+
+    // THE NEW NUMBER COMES FROM THE VERIFICATION, NEVER THE REQUEST BODY.
+    const metadata = (verificationResult.action as any)?.metadata || {};
+    if (metadata.action !== 'change_phone') {
+      return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
+    }
+    const newPhone = typeof metadata.newPhoneE164 === 'string' ? metadata.newPhoneE164 : '';
+    if (!newPhone || !isE164(newPhone)) {
+      return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
+    }
+
+    // Re-check uniqueness at apply time. The request-time check was ~5 minutes
+    // ago and another account could have claimed the number since.
+    const conflict = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.phoneHash, phoneLookupHash(newPhone)), ne(users.id, uid)))
+      .limit(1);
+    if (conflict.length > 0) {
+      logger.warn('[ProfileSettings] Phone change lost a race for the number', { uid });
+      return res.status(409).json({ error: 'That mobile number is already in use', code: 'PHONE_ALREADY_IN_USE' });
+    }
+
+    // Firebase first: it owns the auth identity, and it is the write that can
+    // reject (bad format, taken). Doing it before the canonical row means a
+    // failure leaves both stores on the OLD number rather than disagreeing.
+    try {
+      await admin.auth().updateUser(uid, { phoneNumber: newPhone });
+    } catch (e: any) {
+      logger.error('[ProfileSettings] Firebase phone update failed', { uid, error: e?.message });
+      if (e?.code === 'auth/phone-number-already-exists') {
+        return res.status(409).json({ error: 'That mobile number is already in use', code: 'PHONE_ALREADY_IN_USE' });
+      }
+      return res.status(500).json({ error: 'Could not update the mobile number', code: 'PHONE_UPDATE_FAILED' });
+    }
+
+    const affected = await db.update(users).set({
+      phone: newPhone,
+      phoneHash: phoneLookupHash(newPhone),
+      phoneVerified: true,
+      updatedAt: new Date(),
+    }).where(eq(users.id, uid)).returning({ id: users.id });
+
+    if (affected.length === 0) {
+      logger.error('[ProfileSettings] Phone change matched 0 canonical rows after Firebase succeeded', { uid });
+      return res.status(500).json({
+        error: 'The number was verified but the profile could not be updated. Please contact support.',
+        code: 'PHONE_UPDATE_PARTIAL',
+      });
+    }
+
+    // A security identity changed, so other sessions must not keep running on
+    // the old one — the same consequence the email change applies.
+    let otherSessionsRevoked = 0;
+    try {
+      otherSessionsRevoked = await revokeAllExceptForUser(uid, req.cookies?.pw_session_id);
+    } catch (e: any) {
+      logger.warn('[ProfileSettings] Phone change could not revoke other sessions', { uid, error: e?.message });
+    }
+
+    logger.info('[ProfileSettings] Phone changed', { uid, otherSessionsRevoked });
+    return res.json({
+      success: true,
+      message: 'Mobile number updated successfully',
+      phoneVerified: true,
+      otherSessionsRevoked,
+    });
+  } catch (error: any) {
+    if (error instanceof UnifiedVerificationError) {
+      return res.status(error.statusCode).json({ error: error.message, code: error.reasonCode });
+    }
+    logger.error('[ProfileSettings] Phone change confirm failed', { error: error?.message });
+    return res.status(500).json({ error: 'Failed to confirm the mobile number change' });
   }
 });
 

@@ -9,6 +9,7 @@ import {
   UNIFIED_VERIFICATION_EGIFT_REDEEM_FLAG_NAME,
   UNIFIED_VERIFICATION_LOGIN_FLAG_NAME,
   UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME,
+  UNIFIED_VERIFICATION_CHANGE_PHONE_FLAG_NAME,
   UNIFIED_VERIFICATION_SIGNUP_FLAG_NAME,
   isUnifiedVerificationChangeEmailEnabled,
   isUnifiedVerificationCloseAccountEnabled,
@@ -18,6 +19,7 @@ import {
   isUnifiedVerificationEnabled,
   isUnifiedVerificationLoginEnabled,
   isUnifiedVerificationPayoutEnabled,
+  isUnifiedVerificationChangePhoneEnabled,
   isUnifiedVerificationSignupEnabled,
   requireUnifiedVerificationEnabled,
 } from "../lib/feature-flags/unifiedVerification";
@@ -43,6 +45,7 @@ const purposeSchema = z.enum([
   "enable_2fa",
   "disable_2fa",
   "close_account",
+  "change_phone",
   "payout",
 ]);
 
@@ -151,6 +154,10 @@ router.get("/status", (_req, res) => {
       payout: {
         flag: UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME,
         enabled: isUnifiedVerificationPayoutEnabled(),
+      },
+      changePhone: {
+        flag: UNIFIED_VERIFICATION_CHANGE_PHONE_FLAG_NAME,
+        enabled: isUnifiedVerificationChangePhoneEnabled(),
       },
     },
     purposes,

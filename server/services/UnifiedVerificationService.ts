@@ -24,6 +24,7 @@ export type VerificationPurpose =
   | "enable_2fa"
   | "disable_2fa"
   | "close_account"
+  | "change_phone"
   | "payout";
 
 export interface VerificationActor {
@@ -270,6 +271,45 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
         action: "close_account",
         userId: challenge.userId || undefined,
         email: challenge.destination,
+      },
+    }),
+  },
+  change_phone: {
+    purpose: "change_phone",
+    migrated: true,
+    sensitive: true,
+    requiresSession: true,
+    ttlSeconds: 300,
+    maxAttempts: 5,
+    /**
+     * PHONE CHANNELS ONLY, and that is not a preference.
+     *
+     * The whole point of this challenge is to prove the customer controls the
+     * NEW handset before it becomes the account's security phone number. An
+     * email code proves control of a mailbox, which says nothing about the
+     * number being claimed — so permitting email here would make the
+     * verification decorative. Same reasoning that makes change_email
+     * email-only, pointed the other way.
+     *
+     * The `destination` MUST therefore be the new number, never the old one
+     * and never the account email.
+     */
+    allowedChannels: ["sms", "whatsapp"] as const,
+    recommendedChannel: "sms",
+    provesDestinationOwnership: true,
+    /**
+     * Returns the proven number for the CALLER to apply. This execute() does
+     * not write the identity itself: the canonical identity update, the
+     * uniqueness check against other accounts, and the session/security
+     * consequences belong to one place, and it is not a verification
+     * purpose's side effect.
+     */
+    execute: async (challenge) => ({
+      metadata: {
+        action: "change_phone",
+        // Already normalised to E.164 by normalizeDestination() on start.
+        newPhoneE164: challenge.destination,
+        userId: challenge.userId || undefined,
       },
     }),
   },
