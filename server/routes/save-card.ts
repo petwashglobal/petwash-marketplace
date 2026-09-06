@@ -18,6 +18,7 @@ import { redis } from '../services/redis';
 import { sumitClient } from '../services/SumitClient';
 import { SumitCardVault, isCardVaultEnabled } from '../services/SumitCardVault';
 import { logger } from '../lib/logger';
+import { sendAlert } from '../monitoring';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -134,12 +135,50 @@ router.post('/save-card/start', validateFirebaseToken, async (req: Request, res:
   return res.json({ ok: true, redirectUrl: result.redirectUrl });
 });
 
+/**
+ * Every failure exit in /save-card/return happens AFTER SUMIT has already
+ * taken the ₪1 verification charge — the customer only reaches this handler
+ * by being redirected back from SUMIT's hosted page. Nothing in this codebase
+ * refunds that automatically (see the refund-rail gap), so a fail-closed exit
+ * here means a real customer paid ₪1 and got no saved card.
+ *
+ * Redirecting them to ?card=failed is honest, but on its own it loses the
+ * event: a log line is the only record that someone is out of pocket. Alert
+ * so it can be refunded manually, exactly as the codebase already does for a
+ * failed sitter settlement (sitter-suite.ts) and a lost franchise lead.
+ *
+ * Reason strings are fixed enums, and the alert carries uid/txn identifiers
+ * only — never card data, which this route never sees in the first place.
+ * The alert can never change what the customer sees: it is fire-and-forget
+ * and its own failure is swallowed.
+ */
+async function failAfterCharge(
+  res: Response,
+  base: string,
+  reason: string,
+  ctx: { ext?: string; txnId?: string; uid?: string },
+  outcome: 'failed' | 'unsaved' = 'failed',
+): Promise<void> {
+  try {
+    await sendAlert({
+      type: 'data_integrity',
+      severity: 'high',
+      message: 'Save-card verification charge taken but card NOT saved',
+      details:
+        `reason=${reason} ext=${ctx.ext ?? '?'} txnId=${ctx.txnId ?? '?'} ` +
+        `uid=${ctx.uid ?? 'unknown'} — customer was charged the ₪1 verification ` +
+        `and has no saved card; refund manually (no automated refund rail)`,
+    });
+  } catch { /* alert must never change the customer's redirect */ }
+  res.redirect(`${base}/my-wallet?card=${outcome}`);
+}
+
 // GET /api/payments/save-card/return — SUMIT redirects the customer back here.
 router.get('/save-card/return', async (req: Request, res: Response) => {
   const txnId = String(req.query.ID || req.query.id || '');
   const ext = String(req.query.ext || '');
   const base = baseUrl();
-  if (!txnId || !ext) return res.redirect(`${base}/my-wallet?card=failed`);
+  if (!txnId || !ext) return failAfterCharge(res, base, 'missing_txn_or_ext', { ext, txnId });
 
   // Ownership is SERVER-DERIVED from the /start-time Redis record. The
   // querystring carries no uid any more, and would not be trusted if it did.
@@ -148,26 +187,29 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
   const pending = await redis.get<PendingSaveCard>(pendingKey(ext));
   if (!pending?.uid) {
     logger.warn('[SaveCard] no pending save-card session for this externalId (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterCharge(res, base, 'no_pending_handoff', { ext, txnId });
   }
 
   // Authoritative server-side re-verify — never trust the querystring.
   const verify = await sumitClient.getTransaction(txnId);
   if (!verify.wired || !verify.valid) {
     logger.warn('[SaveCard] return not verified', { txnId, reason: verify.reason });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterCharge(res, base, `sumit_verify_failed:${verify.reason ?? 'unknown'}`, { ext, txnId, uid: pending.uid });
   }
 
   // A stolen `ext` must not be redeemable with somebody else's transaction.
   if (externalRefMismatch(verify.raw as any, ext)) {
     logger.error('[SaveCard] transaction external reference does not match this handoff (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterCharge(res, base, 'external_ref_mismatch', { ext, txnId, uid: pending.uid });
   }
 
   // ATOMIC one-shot claim. Concurrent duplicate callbacks race on this single
   // Redis command: exactly one gets the record, every replay gets null.
   const claimedRaw = await redis.getDel(pendingKey(ext));
   if (!claimedRaw) {
+    // A replay is NOT a new loss — the first caller already consumed the
+    // handoff, so no second charge happened here. Redirect honestly, but do
+    // not alert: that would page someone for a duplicate callback.
     logger.warn('[SaveCard] pending handoff already consumed — replay ignored (fail-closed)', { ext, txnId });
     return res.redirect(`${base}/my-wallet?card=failed`);
   }
@@ -176,11 +218,11 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
     uid = (JSON.parse(claimedRaw) as PendingSaveCard).uid;
   } catch {
     logger.error('[SaveCard] pending handoff was unreadable (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterCharge(res, base, 'handoff_unreadable', { ext, txnId });
   }
   if (!uid) {
     logger.error('[SaveCard] pending handoff carried no uid (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterCharge(res, base, 'handoff_missing_uid', { ext, txnId });
   }
 
   // Pull the SUMIT customer + saved payment method from the verified transaction
@@ -192,7 +234,7 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
     raw?.PaymentMethodID ?? raw?.SinglePaymentToken ?? raw?.Data?.PaymentMethodID ?? raw?.PaymentMethod?.ID;
   if (!sumitCustomerId) {
     logger.warn('[SaveCard] no SUMIT customer id in verified txn — not saving (fail-closed)', { txnId, uid });
-    return res.redirect(`${base}/my-wallet?card=unsaved`);
+    return failAfterCharge(res, base, 'no_sumit_customer_id', { ext, txnId, uid }, 'unsaved');
   }
 
   const saved = await SumitCardVault.saveCard({
