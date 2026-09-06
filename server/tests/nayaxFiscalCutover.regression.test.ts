@@ -32,7 +32,7 @@ const sale = (id: string, settledAt?: string): DocumentableSale => ({
 });
 const CUTOVER = new Date('2026-09-05T13:00:00+03:00');
 
-describe('fiscal cutover — historical vs post-cutover treatment', () => {
+describe('fiscal cutover — issuance eligibility', () => {
   const saved = process.env.NAYAX_SUMIT_CUTOVER_AT;
   beforeEach(() => { delete process.env.NAYAX_SUMIT_CUTOVER_AT; });
   afterEach(() => {
@@ -104,10 +104,10 @@ describe('fiscal cutover — historical vs post-cutover treatment', () => {
   // THE CORE GUARANTEE. Without a cutover the old code issued for EVERY settled
   // row; the safe default is the opposite.
   it('issues NOTHING when no cutover is configured — never everything', () => {
-    const { eligible, historical } = applyFiscalCutover(
+    const { eligible, withheld } = applyFiscalCutover(
       [sale('a', '2026-09-06T09:00:00Z'), sale('b', '2026-07-10T12:00:00Z')], null);
     expect(eligible).toHaveLength(0);
-    expect(historical).toHaveLength(2);
+    expect(withheld).toHaveLength(2);
   });
 
   // NOTE ON WHAT THIS PROVES. In the test environment SUMIT and Lynx are not
@@ -137,15 +137,15 @@ describe('fiscal cutover — historical vs post-cutover treatment', () => {
   });
 
   it('withholds a sale settled BEFORE the cutover', () => {
-    const { eligible, historical } = applyFiscalCutover([sale('old', '2026-08-10T09:00:00Z')], CUTOVER);
+    const { eligible, withheld } = applyFiscalCutover([sale('old', '2026-08-10T09:00:00Z')], CUTOVER);
     expect(eligible).toHaveLength(0);
-    expect(historical.map((s) => s.transactionId)).toEqual(['old']);
+    expect(withheld.map((s) => s.transactionId)).toEqual(['old']);
   });
 
   it('issues for a sale settled AFTER the cutover', () => {
-    const { eligible, historical } = applyFiscalCutover([sale('new', '2026-09-06T09:00:00Z')], CUTOVER);
+    const { eligible, withheld } = applyFiscalCutover([sale('new', '2026-09-06T09:00:00Z')], CUTOVER);
     expect(eligible.map((s) => s.transactionId)).toEqual(['new']);
-    expect(historical).toHaveLength(0);
+    expect(withheld).toHaveLength(0);
   });
 
   // The boundary is inclusive at the cutover instant — one rule, no gap, no overlap.
@@ -154,12 +154,13 @@ describe('fiscal cutover — historical vs post-cutover treatment', () => {
     expect(eligible.map((s) => s.transactionId)).toEqual(['edge']);
   });
 
+  // Withheld because eligibility cannot be ESTABLISHED — not because it is old.
   // A legal document must never be dated on a timestamp we could not read.
   it('withholds a sale whose settlement timestamp is missing or unparseable', () => {
-    const { eligible, historical } = applyFiscalCutover(
+    const { eligible, withheld } = applyFiscalCutover(
       [sale('nodate', undefined), sale('junk', 'not-a-date')], CUTOVER);
     expect(eligible).toHaveLength(0);
-    expect(historical).toHaveLength(2);
+    expect(withheld).toHaveLength(2);
   });
 
   it('splits a mixed batch on the boundary and keeps every row accounted for', () => {
@@ -167,10 +168,10 @@ describe('fiscal cutover — historical vs post-cutover treatment', () => {
       sale('jul', '2026-07-10T12:42:00Z'), sale('aug', '2026-08-20T08:00:00Z'),
       sale('sep-before', '2026-09-05T05:00:00Z'), sale('sep-after', '2026-09-05T11:00:00Z'),
     ];
-    const { eligible, historical } = applyFiscalCutover(batch, CUTOVER);
+    const { eligible, withheld } = applyFiscalCutover(batch, CUTOVER);
     expect(eligible.map((s) => s.transactionId)).toEqual(['sep-after']);
-    expect(historical.map((s) => s.transactionId)).toEqual(['jul', 'aug', 'sep-before']);
-    expect(eligible.length + historical.length).toBe(batch.length);
+    expect(withheld.map((s) => s.transactionId)).toEqual(['jul', 'aug', 'sep-before']);
+    expect(eligible.length + withheld.length).toBe(batch.length);
   });
 
   // The selector must carry the settlement instant through, or the gate is blind.
@@ -299,8 +300,52 @@ describe('settled-with-no-document, before any cutover exists', () => {
       sale('2206704842', '2026-09-05T10:19:13Z'),
       sale('2207959160', '2026-09-06T05:54:25Z'),
     ];
-    const { eligible, historical } = applyFiscalCutover(undocumented, null);
+    const { eligible, withheld } = applyFiscalCutover(undocumented, null);
     expect(eligible).toHaveLength(0);
-    expect(historical).toHaveLength(2);
+    expect(withheld).toHaveLength(2);
+  });
+});
+
+
+/**
+ * The boundary the whole PR turns on.
+ *
+ * WITHHELD is an engineering decision — "this bridge will not auto-issue for it".
+ * TREATMENT is an accounting state — "this is how the turnover is represented".
+ * They must stay separate in the function names and the data model, not only in
+ * the explanatory comments. An earlier revision returned { eligible, historical }
+ * and, with no cutover, put everything into `historical` — encoding the exact
+ * assumption the vocabulary had just disowned.
+ */
+describe('withholding never assigns a fiscal treatment', () => {
+  it('returns eligibility, not treatment', () => {
+    const r = applyFiscalCutover([sale('x', '2026-07-01T09:00:00Z')], CUTOVER);
+    expect(Object.keys(r).sort()).toEqual(['eligible', 'withheld']);
+    expect(r).not.toHaveProperty('historical');
+  });
+
+  it('withholds everything when no boundary exists, and classifies none of it', () => {
+    const { eligible, withheld } = applyFiscalCutover(
+      [sale('a', '2026-09-06T09:00:00Z'), sale('b', '2026-07-10T12:00:00Z')], null);
+    expect(eligible).toHaveLength(0);
+    expect(withheld).toHaveLength(2);
+    // Withheld sales carry no treatment field of any kind.
+    for (const s of withheld) {
+      expect(s).not.toHaveProperty('fiscalTreatment');
+      expect(s).not.toHaveProperty('treatment');
+    }
+  });
+
+  // Drawing a boundary later does not retroactively classify what it now precedes.
+  // The 18 SETTLED_NO_DOCUMENT transactions stay observations until the bookkeeper
+  // records a treatment — falling before a cutover is not a fiscal decision.
+  it('does not classify a sale merely because a boundary was drawn after it', () => {
+    const s18 = sale('2206704842', '2026-09-05T10:19:13Z');
+    const later = new Date('2026-09-10T00:00:00+03:00');
+    const { eligible, withheld } = applyFiscalCutover([s18], later);
+    expect(eligible).toHaveLength(0);
+    expect(withheld[0]).not.toHaveProperty('fiscalTreatment');
+    expect(Object.values(FISCAL_TREATMENT)).not.toContain(
+      RECONCILIATION_OBSERVATION.SETTLED_NO_DOCUMENT);
   });
 });

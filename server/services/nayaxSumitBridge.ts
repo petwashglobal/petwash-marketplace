@@ -180,32 +180,40 @@ export function bridgeWired(): {
 }
 
 /**
- * Split candidate sales by fiscal treatment. PURE.
+ * Split candidate sales by AUTOMATIC-ISSUANCE ELIGIBILITY. PURE.
  *
- * `eligible`   — settled at/after the cutover → POST_CUTOVER_INDIVIDUAL, this
- *                bridge issues exactly one document each.
- * `historical` — settled before the cutover. Withheld, always. Which historical
- *                treatment actually applies (EXISTING_INDIVIDUAL / CONSOLIDATED /
- *                UNRESOLVED) is NOT decided here — that comes from the link
- *                records and the bookkeeper. All this function guarantees is
- *                that the bridge never auto-invoices a pre-cutover transaction.
+ * ── WITHHELD IS AN ENGINEERING DECISION. TREATMENT IS AN ACCOUNTING STATE. ──
+ * This function decides only the first, and the return type says so. An earlier
+ * version returned `{ eligible, historical }` and, with no cutover configured,
+ * put every candidate into `historical` — asserting a pre-cutover classification
+ * from a boundary that did not exist. The words were later corrected while the
+ * API still encoded the old assumption. It no longer does.
  *
- * A sale with no readable settlement timestamp is treated as HISTORICAL: we do
- * not issue a legal document on a date we could not read.
+ * `eligible` — permitted for automatic issuance: settled at/after the cutover.
+ * `withheld` — NOT permitted for automatic issuance. Nothing more. It carries no
+ *              fiscal treatment, no claim about consolidation, and no claim that
+ *              the sale is "historical" — that word needs a boundary to mean
+ *              anything, and with no cutover there is none.
+ *
+ * With no cutover: eligible = [], withheld = every candidate. Factually correct
+ * and treatment-free.
+ *
+ * A sale with no readable settlement timestamp is WITHHELD because eligibility
+ * cannot be established — not because it is old.
  */
 export function applyFiscalCutover(
   sales: DocumentableSale[],
   cutoverAt: Date | null,
-): { eligible: DocumentableSale[]; historical: DocumentableSale[] } {
-  if (!cutoverAt) return { eligible: [], historical: [...sales] };
+): { eligible: DocumentableSale[]; withheld: DocumentableSale[] } {
+  if (!cutoverAt) return { eligible: [], withheld: [...sales] };
   const eligible: DocumentableSale[] = [];
-  const historical: DocumentableSale[] = [];
+  const withheld: DocumentableSale[] = [];
   for (const s of sales) {
     const t = s.settledAt ? new Date(s.settledAt) : null;
     if (t && !Number.isNaN(t.getTime()) && t.getTime() >= cutoverAt.getTime()) eligible.push(s);
-    else historical.push(s);
+    else withheld.push(s);
   }
-  return { eligible, historical };
+  return { eligible, withheld };
 }
 
 /** Prepaid (member QR-redeem) is ALREADY documented when the customer paid us — never
@@ -304,6 +312,49 @@ export const K9000_INCOME_ITEM = {
   externalId: 'PETWASH-K9000-WASH',
 } as const;
 
+
+/**
+ * Reasons a settled sale must NOT produce a fiscal document.
+ *
+ * Separate from the cutover: the cutover asks "is this in the automated era?",
+ * these ask "is this sale safe to document at all?". Both must pass.
+ */
+export const ISSUANCE_BLOCKER = {
+  /** Not shekels. buildReceiptInput emits ILS unconditionally, so issuing a
+   *  foreign-currency sale would silently re-denominate it — an AUD 10.00 wash
+   *  invoiced as ₪10.00. The one real AUD transaction (3467932838) was held out
+   *  of the 2026-09 backfill by hand for exactly this reason; this makes that
+   *  judgement a property of the code instead of the operator. */
+  NON_ILS: 'NON_ILS',
+  /** Machine absent from NAYAX_TERMINALS: the document would carry no station or
+   *  bay, and an unregistered machine may not be ours at all. */
+  UNKNOWN_MACHINE: 'UNKNOWN_MACHINE',
+  /** No readable settlement instant — eligibility cannot be established, and a
+   *  legal document must never be dated on a timestamp we could not read. */
+  NO_SETTLEMENT_TIME: 'NO_SETTLEMENT_TIME',
+  /** Nothing was collected. */
+  NON_POSITIVE_AMOUNT: 'NON_POSITIVE_AMOUNT',
+} as const;
+export type IssuanceBlocker = (typeof ISSUANCE_BLOCKER)[keyof typeof ISSUANCE_BLOCKER];
+
+/** EVERY reason this sale may not be documented. PURE. Empty = safe to issue. */
+export function issuanceBlockers(sale: DocumentableSale): IssuanceBlocker[] {
+  const out: IssuanceBlocker[] = [];
+  if ((sale.currency || 'ILS') !== 'ILS') out.push(ISSUANCE_BLOCKER.NON_ILS);
+  if (!sale.machineId || !terminalForMachine(sale.machineId)) {
+    out.push(ISSUANCE_BLOCKER.UNKNOWN_MACHINE);
+  }
+  const t = sale.settledAt ? new Date(sale.settledAt) : null;
+  if (!t || Number.isNaN(t.getTime())) out.push(ISSUANCE_BLOCKER.NO_SETTLEMENT_TIME);
+  if (!(Number(sale.totalInclVat) > 0)) out.push(ISSUANCE_BLOCKER.NON_POSITIVE_AMOUNT);
+  return out;
+}
+
+/** Fail-closed convenience over issuanceBlockers(). */
+export function isIssuable(sale: DocumentableSale): boolean {
+  return issuanceBlockers(sale).length === 0;
+}
+
 /** PURE: build the exact SumitClient.createCustomerReceipt input for a bay sale. */
 export function buildReceiptInput(sale: DocumentableSale) {
   const mapping = getSumitDocumentMapping('K9000_PUBLIC_CARD'); // InvoiceAndReceipt, full VAT
@@ -360,8 +411,10 @@ export interface BridgeRunResult {
   }>;
   /** ISO instant at/after which a settled transaction is individually invoiced. */
   fiscalCutoverAt?: string | null;
-  /** Settled sales withheld because they precede the cutover. Never auto-invoiced. */
-  historicalWithheld?: number;
+  /** Settled sales not permitted for automatic issuance. Carries no treatment. */
+  withheldCount?: number;
+  /** Eligible sales blocked by an issuance guard (currency, machine, timestamp). */
+  blockedCount?: number;
 }
 
 /**
@@ -383,19 +436,28 @@ export async function reconcileMachineToSumit(
 
   // FISCAL CUTOVER — applied before a single document is considered.
   //
-  // Settled before the cutover means exactly ONE thing: WITHHELD FROM AUTOMATIC
-  // ISSUANCE. It does NOT mean the turnover is consolidated. A withheld
-  // transaction may turn out to be HISTORICAL_EXISTING_INDIVIDUAL (481 of them
-  // already are), HISTORICAL_CONSOLIDATED, or HISTORICAL_UNRESOLVED — that is
-  // recorded from the bookkeeper's direction and from what SUMIT is observed to
-  // contain, never decided here. This bridge must simply never be the thing that
-  // turns historical turnover into per-transaction invoices.
+  // The only decision made here is ELIGIBILITY FOR AUTOMATIC ISSUANCE. A withheld
+  // transaction is given no treatment: it may later be recorded as
+  // HISTORICAL_EXISTING_INDIVIDUAL (481 already are), HISTORICAL_CONSOLIDATED or
+  // HISTORICAL_UNRESOLVED — from the bookkeeper's direction and from what SUMIT is
+  // observed to contain, never inferred here, and never merely because a boundary
+  // was later drawn after it.
   const cutoverAt = fiscalCutoverAt();
-  const { eligible: sales, historical } = applyFiscalCutover(candidates, cutoverAt);
-  if (historical.length) {
-    logger.info('[NayaxSumitBridge] withheld pre-cutover sales (historical — treatment not decided here)', {
-      machineId, withheld: historical.length,
+  const { eligible: sales, withheld } = applyFiscalCutover(candidates, cutoverAt);
+  if (withheld.length) {
+    logger.info('[NayaxSumitBridge] withheld from automatic issuance (no treatment assigned)', {
+      machineId, withheld: withheld.length,
       cutoverAt: cutoverAt ? cutoverAt.toISOString() : null,
+    });
+  }
+
+  // Second gate: a sale may be in the automated era and still be unsafe to
+  // document (foreign currency, unregistered machine, unreadable timestamp).
+  const blocked = sales.filter((s) => !isIssuable(s));
+  const issuable = sales.filter(isIssuable);
+  for (const s of blocked) {
+    logger.warn('[NayaxSumitBridge] blocked from issuance', {
+      machineId, transactionId: s.transactionId, blockers: issuanceBlockers(s),
     });
   }
 
@@ -403,7 +465,7 @@ export async function reconcileMachineToSumit(
   let issued = 0;
   let failed = 0;
 
-  for (const sale of sales) {
+  for (const sale of issuable) {
     if (dryRun) {
       rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: false });
       continue;
@@ -426,8 +488,9 @@ export async function reconcileMachineToSumit(
 
   return {
     ok: true, dryRun, wired, machineId,
-    candidateCount: sales.length, issued, failed, rows,
+    candidateCount: issuable.length, issued, failed, rows,
+    blockedCount: blocked.length,
     fiscalCutoverAt: cutoverAt ? cutoverAt.toISOString() : null,
-    historicalWithheld: historical.length,
+    withheldCount: withheld.length,
   };
 }
