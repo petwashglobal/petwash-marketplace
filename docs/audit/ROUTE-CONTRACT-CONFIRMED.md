@@ -118,7 +118,7 @@ that prefix and grep the server tree for the path.
 | 8 | `GET /api/account/export` (BODY_MISMATCH) | **HELD** — `apiRequest('GET', url, {})`; `{}` is truthy so the wrapper serialises it, and `fetch` throws *"Request with GET/HEAD method cannot have body"* |
 | 9 | `GET /api/provider-onboarding/mgmt/analytics` | **HELD, reclassified.** The route exists; the defect is that the call passes a **4th argument** (a headers object with `Authorization`) to a 3-parameter `apiRequest` — silently dropped. Was BODY_MISMATCH, now AUTH_MISMATCH |
 | 10 | `GET /api/expenses` via `MyExpenses.tsx:76` (was LEGACY `/api/:p`) | **FALSE POSITIVE — fixed.** Template mangling; route exists and matches |
-| 11 | `GET /api/admin/fiscal-transactions/by-source/:p/:p` | **HELD** — real path is `/api/fiscal/transactions/by-source/:source/:sourceId` (`server/routes/fiscal-passport.ts:87`). The *suggestion* was initially wrong (pointed at an unrelated `/api/case-actions/notes/:a/:b`) and the relocation heuristic was tightened |
+| 11 | `GET /api/admin/fiscal-transactions/by-source/:p/:p` | **HELD (404 confirmed), but the emitted target is WRONG — do not follow it.** The scanner points at `/api/fiscal/transactions/by-source/:source/:sourceId` (`fiscal-passport.ts:87`), which is the **customer** route: participant-scope enforced by the composer. The caller is an **admin** explorer, and the admin handler is a different declaration — `router.get('/admin/by-source/:source/:sourceId')` at `fiscal-passport.ts:121`, i.e. `GET /api/fiscal/admin/by-source/:source/:sourceId`. Re-pointing the client at :87 as emitted would silently downgrade an admin surface to customer scope. The last-3-segments relocation heuristic cannot tell the two apart because it ignores the segment that carries the authorisation difference |
 
 **Precision on the sample: 9/11 held as emitted (82%).** Both misses were
 mechanical and both are fixed in this PR, so the 19 findings below are the
@@ -187,8 +187,9 @@ prioritised queue for the security lane, not as 183 confirmed holes.
 **PATH_MISMATCH · `GET /api/admin/fiscal-transactions/by-source/:p/:p`**
 
 - client: `client/src/pages/admin/AdminTransactionExplorer.tsx:122` (apiRequest)
-- server: `GET /api/fiscal/transactions/by-source/:source/:sourceId` — `server/routes/fiscal-passport.ts:87`
-- why: no route at /api/admin/fiscal-transactions/by-source/:p/:p; the same handler is mounted at /api/fiscal/transactions/by-source/:source/:sourceId (last 3 segments identical) — the client's mount prefix is wrong
+- server (CORRECTED target): `GET /api/fiscal/admin/by-source/:source/:sourceId` — `server/routes/fiscal-passport.ts:121`
+- why: no route at /api/admin/fiscal-transactions/by-source/:p/:p — the router is mounted at `/api/fiscal` (`server/routes.ts:13057`), so nothing under `/api/admin/fiscal-transactions` exists. The file's own header comment at `fiscal-passport.ts:19` documents that URL, but it was never mounted.
+- **the scanner's emitted target was `:87` and is wrong.** `:87` is `/transactions/by-source/:source/:sourceId`, the CUSTOMER route (participant scope). The admin handler is `:121`, `/admin/by-source/:source/:sourceId`, behind the `isSuperAdminVerified` gate. Following the emitted suggestion would repoint an admin explorer at a customer-scoped endpoint. Verified by reading all three `router.get` declarations in the file.
 
 
 ### booking — 1 confirmed
