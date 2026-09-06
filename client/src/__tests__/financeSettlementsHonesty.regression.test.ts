@@ -33,16 +33,20 @@ const SRC = fs.readFileSync(
 const CODE = SRC.replace(/\/\*[\s\S]*?\*\//g, '');
 
 describe('FinanceSettlementsView renders no money it did not fetch', () => {
-  it('names the missing endpoints as documentation, never as request targets', () => {
+  it('names the missing endpoints as documentation for the operator', () => {
     // The paths DO appear in the rendered output on purpose — the screen tells
-    // the operator exactly which handlers are absent. What must never come
-    // back is using them: that is covered by the "fetches nothing" case below.
-    // Assert they appear only inside JSX text, i.e. never adjacent to a call.
+    // the operator exactly which handlers are absent. What must never come back
+    // is USING them, and that is fully covered by the "fetches nothing" case
+    // below: if no fetch/apiRequest/useQuery call exists anywhere in the
+    // component, no string in it can be a request target.
+    //
+    // (An earlier draft built a RegExp from the endpoint string to assert
+    // "not adjacent to a call". CodeQL flagged it — js/incomplete-sanitization,
+    // the escape handled `/` but not `\` — and it was right: hand-escaping a
+    // string into a pattern is fragile even in a test. The assertion was also
+    // redundant, so it is gone rather than patched.)
     for (const ep of ['/api/finance/settlements', '/api/finance/commissions']) {
       expect(SRC, `${ep} should be shown to the operator`).toContain(ep);
-      expect(CODE, `${ep} must not be a request target`).not.toMatch(
-        new RegExp(`(?:fetch|apiRequest|useQuery)\\([^)]*${ep.replace(/\//g, '\\/')}`),
-      );
     }
   });
 
