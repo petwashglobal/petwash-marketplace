@@ -9,10 +9,23 @@
  * Fleet: NAYAX_BRIDGE_MACHINE_IDS (comma-separated), default the two Kfar Saba bays
  * 182443 (ולד ימין / right) + 182462 (ולד שמאל / left).
  *
- * SAFE TO SCHEDULE NOW: the bridge is triple-dark — this cron is a complete NO-OP
- * until SUMIT is wired AND Lynx is wired AND NAYAX_SUMIT_BRIDGE_ENABLED=true. It is
- * also idempotent (deterministic key per Nayax tx), so overlapping runs can never
- * double-issue a document. Prepaid member-redeems are never re-documented.
+ * SAFE TO SCHEDULE NOW: the bridge is QUADRUPLE-dark — this cron is a complete
+ * NO-OP until SUMIT is wired AND Lynx is wired AND NAYAX_SUMIT_BRIDGE_ENABLED=true
+ * AND NAYAX_SUMIT_CUTOVER_AT is set. It is also idempotent (deterministic key per
+ * Nayax tx), so overlapping runs can never double-issue a document. Prepaid
+ * member-redeems are never re-documented.
+ *
+ * THE CUTOVER IS NOT OPTIONAL (2026-09-06). Only transactions settled at or after
+ * NAYAX_SUMIT_CUTOVER_AT are individually invoiced here. Everything settled before
+ * it is withheld — this rail must never be what turns historical turnover into
+ * per-transaction invoices, which is what a manual backfill did on 05/09/2026 with
+ * the cutover set to 2026-01-01.
+ *
+ * Withholding is ALL this cron decides. Which historical treatment actually applies
+ * to a withheld transaction — it already has an individual final document, it is
+ * covered by a consolidated one, or it remains unresolved — is recorded from the
+ * bookkeeper's direction and from what SUMIT is observed to contain. Not inferred
+ * here, and not by whoever next edits this file.
  *
  * Auth: x-cron-secret (timing-safe vs CRON_SECRET) OR super-admin — identical to
  * cron-compliance.ts / cron-backup.ts. CSRF-exempt via the /api/cron mount.
