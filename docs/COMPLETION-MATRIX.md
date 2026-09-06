@@ -54,7 +54,7 @@ Then the site moves to normal continuous improvement.
 | Wallet | `TESTED` | Nayax station key #19, wallet DTO privacy. |
 | eGift buy | `TESTED` | #98/99 SUMIT phase 2 audit; JourneyCheckpoint E2E for `egift` (#2211). |
 | eGift redeem | `TESTED` | #53 replay audit, `tests/e2e/egift-redeem.e2e.spec.ts`. |
-| Packages | `BROKEN` | Real, revenue-live checkout wire (`/packages` → `/api/checkout` → Nayax webhook). BUT `client/src/pages/Packages.tsx:68-126` hardcodes the 4-tier catalog + WASH_COUNT_TO_PACKAGE_ID map (lines 135-140) instead of reading `/api/packages` like `WashPackages.tsx:129` does. Divergence: admin edits at `/admin/wash-packages` don't reflect on `/packages`. Task #280 to collapse onto `/api/packages` + add missing E2E for the happy path. |
+| Packages | `BROKEN` | Real, revenue-live checkout wire (`/packages` → `/api/checkout` → Nayax webhook). BUT `client/src/pages/Packages.tsx:68-126` hardcodes the 4-tier catalog + WASH_COUNT_TO_PACKAGE_ID map (lines 135-140) instead of reading `/api/packages` like `client/src/components/WashPackages.tsx:129` does. Divergence: admin edits at `/admin/wash-packages` don't reflect on `/packages`. Task #280 to collapse onto `/api/packages` + add missing E2E for the happy path. |
 | Pet Sitter booking | `TESTED` | Sitter booking flow #133; Journey resume E2E for `sitter_book`. |
 | Walk My Pet booking | `TESTED` | Walk booking; Journey resume E2E for `walk_book` (#2210). |
 | Marketplace booking | `TESTED` | Journey resume E2E for `marketplace_book` (#2210). |
