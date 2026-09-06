@@ -201,9 +201,22 @@ describe('VerificationFlow — the reusable screen', () => {
     expect(FLOW).toMatch(/e\.key === 'Enter'/);
   });
 
-  it('auto-submits only once per value — a customer must not burn attempts on autopilot', () => {
-    expect(FLOW).toContain('autoSubmitted');
-    expect(FLOW).toMatch(/autoSubmitted\.current === code/);
+  it('submits a given code only once, by ANY route — auto OR a Continue click', () => {
+    /**
+     * This pin originally checked only the auto-submit path, and the browser
+     * suite immediately showed why that was not enough: type six digits
+     * (auto-submit fires) then click Continue twice, and the server saw THREE
+     * verifies — three of the customer's five attempts on one code, and a
+     * double-submit of a one-shot code on the success path.
+     *
+     * The guard now lives in submit() itself, so both routes go through it.
+     */
+    expect(FLOW).toContain('lastSubmitted');
+    expect(FLOW).toMatch(/if \(lastSubmitted\.current === value\) return;/);
+    // It must sit in submit(), not in the auto-submit effect, or the manual
+    // path walks straight past it again.
+    const submitFn = FLOW.slice(FLOW.indexOf('const submit = useCallback'), FLOW.indexOf('// Auto-submit only'));
+    expect(submitFn).toContain('lastSubmitted.current === value');
   });
 
   it('is genuinely RTL for Hebrew, not translated strings in an LTR box', () => {

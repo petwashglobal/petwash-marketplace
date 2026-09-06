@@ -109,7 +109,20 @@ export function VerificationFlow({
 
   const [code, setCode] = useState('');
   const startedFor = useRef<string | null>(null);
-  const autoSubmitted = useRef<string | null>(null);
+  /**
+   * The last code value that was SUBMITTED, by any route.
+   *
+   * This was `autoSubmitted` and only guarded the auto-submit path — the
+   * browser suite caught the hole immediately: type six digits (auto-submit
+   * fires), then click Continue twice, and the server sees THREE verifies.
+   * That is three of the customer's five attempts spent on one code, and on
+   * the success path it is a double-submit of a one-shot code.
+   *
+   * Re-submitting the identical value can never succeed where the first
+   * attempt failed, so refusing it costs the customer nothing and protects
+   * their attempt budget. Changing a digit clears it.
+   */
+  const lastSubmitted = useRef<string | null>(null);
 
   // Adopt a caller-started challenge. Same one-shot guard as start(): a
   // re-render must not re-adopt and reset the customer's typing.
@@ -134,6 +147,8 @@ export function VerificationFlow({
 
   const submit = useCallback(async (value: string) => {
     if (value.length !== CODE_LENGTH) return;
+    if (lastSubmitted.current === value) return;
+    lastSubmitted.current = value;
     const result = await verify(value);
     if (result) onVerified(result, challenge as PublicChallenge);
   }, [verify, onVerified, challenge]);
@@ -144,15 +159,13 @@ export function VerificationFlow({
   useEffect(() => {
     if (code.length !== CODE_LENGTH) return;
     if (phase !== 'awaiting_code') return;
-    if (autoSubmitted.current === code) return;
-    autoSubmitted.current = code;
     void submit(code);
   }, [code, phase, submit]);
 
   // A new code invalidates whatever is typed — clear it so the customer is not
   // staring at six stale digits after pressing Resend.
   useEffect(() => {
-    if (justResent) { setCode(''); autoSubmitted.current = null; }
+    if (justResent) { setCode(''); lastSubmitted.current = null; }
   }, [justResent]);
 
   const busy = phase === 'starting' || phase === 'verifying' || phase === 'resending';
@@ -209,7 +222,8 @@ export function VerificationFlow({
               value={code}
               onChange={(v: string) => {
                 setCode(v);
-                if (v.length < CODE_LENGTH) autoSubmitted.current = null;
+                // Editing the code makes it a new attempt again.
+                if (v.length < CODE_LENGTH) lastSubmitted.current = null;
               }}
               disabled={busy || phase === 'verified'}
               // iOS/Android one-time-code autofill lands on the single input.
