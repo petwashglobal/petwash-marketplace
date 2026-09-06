@@ -11,6 +11,8 @@ import { twilioSMSService } from "./TwilioSMSService";
 import { sendVerificationEmailCode } from "./VerificationEmailDelivery";
 import { otpEvents, smsEvidence, verificationChallenges, type VerificationChallenge } from "@shared/schema";
 
+import { maskDestinationForOwner } from "../../shared/auth/verificationDestination";
+
 export type VerificationChannel = "sms" | "email" | "whatsapp" | "push";
 
 export type VerificationPurpose =
@@ -66,6 +68,29 @@ export interface PurposeDefinition {
   requiresSession: boolean;
   ttlSeconds: number;
   maxAttempts: number;
+  /**
+   * CHANNEL POLICY — the server decides, the UI does not.
+   *
+   * `allowedChannels` is enforced in assertChannelAllowed(): a client asking
+   * for a channel that is not on this list is refused, so a caller can never
+   * downgrade a purpose to a weaker or wrong channel by editing a request
+   * body. `recommendedChannel` is what the UI should offer FIRST; every other
+   * allowed channel is a fallback the customer may choose.
+   *
+   * Cost note (CEO 2026-09-06): email is effectively free and SMS is not, so
+   * `recommendedChannel` is email wherever email is sufficient. It is NOT
+   * email where the whole point of the challenge is proving control of a
+   * phone number — see `provesDestinationOwnership`.
+   */
+  allowedChannels: readonly VerificationChannel[];
+  recommendedChannel: VerificationChannel;
+  /**
+   * True when the challenge exists to prove the customer controls the
+   * DESTINATION itself (e.g. verifying a new address before it becomes the
+   * account's address). For these, sending to any other channel would prove
+   * nothing, so the channel set is deliberately narrow.
+   */
+  provesDestinationOwnership: boolean;
   execute: (challenge: VerificationChallenge, actor: VerificationActor) => Promise<Record<string, unknown>>;
 }
 
@@ -88,6 +113,9 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: false,
     ttlSeconds: 300,
     maxAttempts: 5,
+    allowedChannels: ["email"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
     execute: async (challenge) => ({
       action: "diagnostic_noop",
       challengeId: challenge.challengeId,
@@ -100,10 +128,35 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: false,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: async (challenge) => ({
-      verificationToken: issueSmsVerificationToken(challenge.destination),
-      phone: challenge.destination,
-    }),
+    allowedChannels: ["email", "sms", "whatsapp"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
+    /**
+     * The phone-session token is minted ONLY for a phone channel.
+     *
+     * This used to run unconditionally. The token it issues is
+     * { phone: <destination>, type: "sms-verified" }, and the consumer at
+     * publicAuthRoutes.ts calls fbAdminAuth.updateUser(uid, { phoneNumber })
+     * with whatever `phone` says — so an email-channel login challenge minted
+     * a token asserting that an EMAIL ADDRESS was a verified phone number.
+     *
+     * Not exploitable as it stood (the destination is also where the code is
+     * delivered, so an attacker can only ever assert a destination they
+     * already control, and Firebase rejects a non-E.164 phoneNumber). But the
+     * channel and the token's meaning were decoupled, and resendChallenge can
+     * switch a challenge's channel — so the next careless change makes it
+     * real. Gate it on the channel that actually carried the code.
+     */
+    execute: async (challenge) => {
+      const isPhoneChannel = challenge.channel === "sms" || challenge.channel === "whatsapp";
+      if (!isPhoneChannel) {
+        return { channel: challenge.channel, emailVerified: challenge.channel === "email" };
+      }
+      return {
+        verificationToken: issueSmsVerificationToken(challenge.destination),
+        phone: challenge.destination,
+      };
+    },
   },
   signup: {
     purpose: "signup",
@@ -112,13 +165,22 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: false,
     ttlSeconds: 300,
     maxAttempts: 5,
-    execute: async (challenge) => ({
-      metadata: {
-        phoneE164: challenge.destination,
-        userTypeIntent: userTypeIntentForChallenge(challenge),
-        userId: challenge.userId || undefined,
-      },
-    }),
+    allowedChannels: ["email", "sms", "whatsapp"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
+    // Same reasoning as login above: phoneE164 must only ever carry a phone.
+    execute: async (challenge) => {
+      const isPhoneChannel = challenge.channel === "sms" || challenge.channel === "whatsapp";
+      return {
+        metadata: {
+          phoneE164: isPhoneChannel ? challenge.destination : undefined,
+          emailVerified: challenge.channel === "email" ? challenge.destination : undefined,
+          channel: challenge.channel,
+          userTypeIntent: userTypeIntentForChallenge(challenge),
+          userId: challenge.userId || undefined,
+        },
+      };
+    },
   },
   egift_redeem: {
     purpose: "egift_redeem",
@@ -127,6 +189,9 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
+    allowedChannels: ["email", "sms", "whatsapp"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
     execute: async (challenge) => ({
       metadata: {
         voucherId: (challenge.payload as any)?.voucherId,
@@ -142,6 +207,9 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
+    allowedChannels: ["email"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: true,
     execute: async (challenge) => ({
       metadata: {
         newEmail: challenge.destination,
@@ -158,6 +226,9 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
+    allowedChannels: ["email", "sms", "whatsapp"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
     execute: async (challenge) => ({
       metadata: {
         action: "enable_2fa",
@@ -173,6 +244,9 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
+    allowedChannels: ["email", "sms", "whatsapp"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
     execute: async (challenge) => ({
       metadata: {
         action: "disable_2fa",
@@ -188,6 +262,9 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
+    allowedChannels: ["email", "sms", "whatsapp"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
     execute: async (challenge) => ({
       metadata: {
         action: "close_account",
@@ -203,6 +280,9 @@ export const unifiedVerificationPurposeRegistry: Record<VerificationPurpose, Pur
     requiresSession: true,
     ttlSeconds: 300,
     maxAttempts: 5,
+    allowedChannels: ["email", "sms", "whatsapp"] as const,
+    recommendedChannel: "email",
+    provesDestinationOwnership: false,
     execute: async (challenge) => ({
       metadata: {
         action: "payout",
@@ -272,6 +352,24 @@ function assertStartAllowed(definition: PurposeDefinition, actor: VerificationAc
   }
 }
 
+/**
+ * The SERVER decides which channel a purpose may use — never the caller.
+ *
+ * Without this, any client could POST { purpose: "change_email", channel: "sms" }
+ * and send the "confirm your new email address" code somewhere that proves
+ * nothing about the mailbox. The registry's allowedChannels is the policy;
+ * this is where it is enforced.
+ */
+function assertChannelAllowed(definition: PurposeDefinition, channel: VerificationChannel): void {
+  if (!definition.allowedChannels.includes(channel)) {
+    throw new UnifiedVerificationError(
+      "CHANNEL_NOT_ALLOWED",
+      `The ${channel} channel is not permitted for this verification.`,
+      400,
+    );
+  }
+}
+
 function normalizeDestination(channel: VerificationChannel, destination: string): string {
   if (channel !== "sms" && channel !== "whatsapp") return destination.trim();
   const trimmed = destination.trim();
@@ -336,14 +434,32 @@ function assertActorCanVerify(
   }
 }
 
+/**
+ * The wire shape of a challenge.
+ *
+ * `destination` is deliberately ABSENT. It used to be echoed raw, which put a
+ * full email address or phone number into the body of every /start and
+ * /verify response — the same class #2253 closed for Sentry. The client does
+ * not need it: the only question it has to answer on screen is "which inbox
+ * do I go and look in?", and `maskedDestination` answers that while leaking
+ * materially less. Masking happens HERE, on the server, so a client can never
+ * be trusted (or tempted) to mask a raw value itself.
+ *
+ * `resendAvailableAt` makes the UI countdown server-driven. The 60s cooldown
+ * lives in resendChallenge(); a client that guessed at it would either nag the
+ * server early or make the customer wait longer than necessary.
+ */
+const RESEND_COOLDOWN_MS = 60_000;
+
 function publicChallenge(challenge: VerificationChallenge) {
   return {
     challengeId: challenge.challengeId,
     purpose: challenge.purpose,
     channel: challenge.channel,
-    destination: challenge.destination,
+    maskedDestination: maskDestinationForOwner(challenge.channel, challenge.destination),
     status: challenge.status,
     expiresAt: challenge.expiresAt,
+    resendAvailableAt: new Date(challenge.updatedAt.getTime() + RESEND_COOLDOWN_MS),
     attempts: challenge.attempts,
     maxAttempts: challenge.maxAttempts,
   };
@@ -525,6 +641,7 @@ export class UnifiedVerificationService {
   async startChallenge(input: StartVerificationInput) {
     const definition = getPurposeDefinition(input.purpose);
     assertStartAllowed(definition, input.actor);
+    assertChannelAllowed(definition, input.channel);
 
     const now = new Date();
     const challengeId = crypto.randomUUID();
@@ -749,7 +866,7 @@ export class UnifiedVerificationService {
       throw new UnifiedVerificationError("CHALLENGE_EXPIRED", "Verification challenge expired.", 410);
     }
 
-    if (challenge.updatedAt.getTime() > now.getTime() - 60_000) {
+    if (challenge.updatedAt.getTime() > now.getTime() - RESEND_COOLDOWN_MS) {
       throw new UnifiedVerificationError(
         "CHALLENGE_COOLDOWN",
         "Please wait before requesting a new verification code.",
@@ -758,9 +875,32 @@ export class UnifiedVerificationService {
     }
 
     const code = generateVerificationCode();
-    const nextChannel = input.channel && (input.channel === "sms" || input.channel === "whatsapp")
-      ? input.channel
-      : challenge.channel;
+    /**
+     * A resend may switch channel, but only between channels that carry the
+     * SAME KIND of destination — sms <-> whatsapp both take the phone number
+     * already on the challenge. Going email -> sms would need a phone number
+     * nobody has supplied, and would resend to an email address as if it were
+     * one. "Use SMS instead" in the UI is therefore a NEW challenge with a new
+     * destination, not a resend.
+     *
+     * The switch is also re-checked against the purpose's allowedChannels, so
+     * a resend can never reach a channel that /start itself would refuse.
+     */
+    let nextChannel = challenge.channel;
+    if (input.channel && input.channel !== challenge.channel) {
+      const phoneChannels: VerificationChannel[] = ["sms", "whatsapp"];
+      const bothPhone = phoneChannels.includes(input.channel)
+        && phoneChannels.includes(challenge.channel as VerificationChannel);
+      if (!bothPhone) {
+        throw new UnifiedVerificationError(
+          "CHANNEL_SWITCH_NOT_ALLOWED",
+          "Switching to this channel needs a new verification, not a resend.",
+          400,
+        );
+      }
+      assertChannelAllowed(definition, input.channel);
+      nextChannel = input.channel;
+    }
     const [updated] = await db.update(verificationChallenges).set({
       channel: nextChannel,
       codeHash: hashVerificationCode(challenge.challengeId, code),
