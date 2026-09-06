@@ -85,6 +85,7 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
 // service reads its env at module load). Non-destructive, never logs values.
 import { applyWalletEnvCompat } from './lib/wallet-env-compat';
 import { logger } from './lib/logger'; // F3: poller-startup failures now log (→ Sentry via F1) instead of a silent catch(){}
+import { getDbWriteReadiness } from './lib/dbWriteReadiness'; // 2026-09-07: reads passing is not writes passing
 {
   const _walletEnvFilled = applyWalletEnvCompat();
   if (_walletEnvFilled > 0) {
@@ -1207,6 +1208,13 @@ app.get('/api/release-info', (_req, res) => {
 
 app.get('/api/health', async (_req, res) => {
   const db = await checkDbOnce();
+  // WRITE readiness is reported ALONGSIDE the read check, never folded into it.
+  // On 2026-09-06 a read-only database passed `SELECT 1` for the whole outage,
+  // so `checks.db` stayed green while every write failed. `status` deliberately
+  // stays driven by the READ check: this endpoint is used for liveness, and
+  // restarting containers because the database went read-only turns an outage
+  // into a restart storm. Readiness gating lives in /api/health/readiness.
+  const write = await getDbWriteReadiness();
   const status = db.ok ? 'OK' : 'DEGRADED';
   const traceId = crypto.randomUUID();
   // PR-HEALTH-READY: sanitized fields only. NO startupError.message, NO
@@ -1217,7 +1225,20 @@ app.get('/api/health', async (_req, res) => {
   res.status(200).json({
     status,
     timestamp: new Date().toISOString(),
-    checks: { db: { ok: db.ok, ms: db.ms } },
+    checks: {
+      db: { ok: db.ok, ms: db.ms },
+      // Independent facts, never collapsed into one boolean. dbReadable=true
+      // with dbWritable=false is the 2026-09-06 signature.
+      dbWrite: {
+        dbReachable: write.dbReachable,
+        dbReadable: write.dbReadable,
+        dbWritable: write.dbWritable,
+        dbWriteErrorCode: write.dbWriteErrorCode,
+        dbWriteErrorKind: write.dbWriteErrorKind,
+        dbWriteLatencyMs: write.dbWriteLatencyMs,
+        checkedAt: write.checkedAt,
+      },
+    },
     routesReady: !!healthState.app.routesReady,
     serverReady,
     startupPhase,
@@ -1239,6 +1260,38 @@ app.get('/api/health', async (_req, res) => {
         lastCheckAt: healthState.db.lastCheckAt,
       },
     },
+  });
+});
+
+/**
+ * GET /api/health/readiness — WRITE readiness. Public, secrets-free.
+ *
+ * Separate from /api/health on purpose:
+ *   • /api/health is LIVENESS. It must stay green while the database is
+ *     read-only, otherwise Cloud Run restarts every container during an outage
+ *     it cannot fix — a restart storm on top of a database problem.
+ *   • This endpoint is READINESS. It returns 503 when the database cannot take
+ *     a write, so a deploy gate can refuse to promote a revision that would
+ *     silently fail every booking, payment and fiscal document.
+ *
+ * Use in the deploy pipeline as the pre-promotion check: require dbWritable.
+ * `force` skips the probe cache — a stale "writable" must never promote.
+ *
+ * Never returns the driver error message (it can carry connection details);
+ * SQLSTATE + classified kind are enough to act on and are not secrets.
+ */
+app.get('/api/health/readiness', async (_req, res) => {
+  const w = await getDbWriteReadiness({ force: true });
+  res.status(w.dbWritable ? 200 : 503).json({
+    ready: w.dbWritable,
+    dbReachable: w.dbReachable,
+    dbReadable: w.dbReadable,
+    dbWritable: w.dbWritable,
+    dbWriteErrorCode: w.dbWriteErrorCode,
+    dbWriteErrorKind: w.dbWriteErrorKind,
+    dbWriteLatencyMs: w.dbWriteLatencyMs,
+    checkedAt: w.checkedAt,
+    revision: process.env.K_REVISION || null,
   });
 });
 
