@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Check, ArrowRight, ArrowLeft, Leaf, Sparkles, ShieldCheck, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -8,6 +8,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { CheckoutLegalNotice } from '@/components/legal/CheckoutLegalNotice';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import type { WashPackage } from '@shared/schema';
 
 import pinkCardFront from '@assets/IMG_3094_1770832584882.png';
 import greenCardFront from '@assets/IMG_3091_1770832584882.png';
@@ -54,90 +55,72 @@ const PACKAGES_FAQ: SeoFaqItem[] = [
   },
 ];
 
-interface PackageOption {
-  washes: number;
-  name: string;
-  nameHe: string;
-  discount: number;
-  tier: string;
-  image: string;
-  features: { en: string; he: string }[];
-  popular?: boolean;
-}
+// Card artwork keyed by wash count — mirrors client/src/components/WashPackages.tsx
+// so a shared visual identity carries between the homepage widget and /packages.
+// Unknown wash counts (admin-added tiers) fall back to the pink card.
+const cardImagesByWashCount: Record<number, string> = {
+  1: pinkCardFront,
+  3: greenCardFront,
+  5: blackCardFront,
+  10: goldCardFront,
+};
 
-const packageOptions: PackageOption[] = [
-  { 
-    washes: 1, 
-    name: 'Essentials', 
-    nameHe: 'בסיסי',
-    discount: 0, 
-    tier: 'CLASSIC',
-    image: pinkCardFront,
-    features: [
-      { en: 'Single premium wash', he: 'רחיצה פרימיום בודדת' },
-      { en: 'natural shampoo', he: 'שמפו טבעי' },
-      { en: 'Valid 6 months', he: 'בתוקף 6 חודשים' },
-    ]
-  },
-  { 
-    washes: 3, 
-    name: 'Silver', 
-    nameHe: 'סילבר',
-    discount: 5, 
-    tier: 'POPULAR',
-    image: greenCardFront,
-    features: [
-      { en: '3 premium washes', he: '3 רחיצות פרימיום' },
-      { en: '5% discount', he: '5% הנחה' },
-      { en: 'Valid 9 months', he: 'בתוקף 9 חודשים' },
-      { en: 'Transferable', he: 'ניתן להעברה' },
-    ],
-    popular: true
-  },
-  { 
-    washes: 5, 
-    name: 'Premium', 
-    nameHe: 'פרימיום',
-    discount: 8, 
-    tier: 'PREMIUM',
-    image: blackCardFront,
-    features: [
-      { en: '5 premium washes', he: '5 רחיצות פרימיום' },
-      { en: '8% discount', he: '8% הנחה' },
-      { en: 'Priority booking', he: 'הזמנה בעדיפות' },
-      { en: 'Valid 12 months', he: 'בתוקף 12 חודשים' },
-    ]
-  },
-  { 
-    washes: 10, 
-    name: 'Maison Collection', 
-    nameHe: 'קולקציית מזון',
-    discount: 12, 
-    tier: 'ELITE',
-    image: goldCardFront,
-    features: [
-      { en: '10 premium washes', he: '10 רחיצות פרימיום' },
-      { en: '12% discount', he: '12% הנחה' },
-      { en: 'VIP treatment', he: 'טיפול VIP' },
-      { en: '2x loyalty points', he: 'נקודות נאמנות כפולות' },
-      { en: 'Valid 12 months', he: 'בתוקף 12 חודשים' },
-    ]
-  }
-];
+const TIER_ORDER = ['CLASSIC', 'POPULAR', 'PREMIUM', 'ELITE'] as const;
+type Tier = typeof TIER_ORDER[number];
 
-const tierLabels: Record<string, Record<string, string>> = {
+const tierLabels: Record<Tier, Record<string, string>> = {
   CLASSIC: { en: 'Essentials', he: 'בסיסי' },
   POPULAR: { en: 'Most Popular', he: 'הכי פופולרי' },
   PREMIUM: { en: 'Premium', he: 'פרימיום' },
   ELITE: { en: 'Maison Collection', he: 'קולקציית מזון' },
 };
 
-const WASH_COUNT_TO_PACKAGE_ID: Record<number, number> = {
-  1: 1,
-  3: 2,
-  5: 3,
-  10: 4,
-};
+// Feature bullets are derived from washCount buckets, not from the DB row. The
+// admin CRUD (`/admin/wash-packages`) only owns name/price/washCount/active,
+// so keeping the "what you get" copy client-side lets the CEO reprice without
+// having to re-author marketing bullets in Hebrew.
+function featuresForPackage(pkg: WashPackage, discountPct: number): { en: string; he: string }[] {
+  const items: { en: string; he: string }[] = [];
+  if (pkg.washCount === 1) {
+    items.push({ en: 'Single premium wash', he: 'רחיצה פרימיום בודדת' });
+  } else {
+    items.push({
+      en: `${pkg.washCount} premium washes`,
+      he: `${pkg.washCount} רחיצות פרימיום`,
+    });
+  }
+  items.push({ en: 'natural shampoo', he: 'שמפו טבעי' });
+  if (discountPct > 0) {
+    items.push({ en: `${discountPct}% discount`, he: `${discountPct}% הנחה` });
+  }
+  if (pkg.washCount >= 3) {
+    items.push({ en: 'Transferable', he: 'ניתן להעברה' });
+  }
+  if (pkg.washCount >= 5) {
+    items.push({ en: 'Priority booking', he: 'הזמנה בעדיפות' });
+  }
+  if (pkg.washCount >= 10) {
+    items.push({ en: 'VIP treatment', he: 'טיפול VIP' });
+    items.push({ en: '2x loyalty points', he: 'נקודות נאמנות כפולות' });
+  }
+  return items;
+}
+
+// Discount % is inferred from the DB price so the CEO reprices from
+// /admin/wash-packages and the "You save …" copy stays honest without another
+// touchpoint. Any per-wash price at-or-above the single-wash rate → 0% shown.
+function discountPercentFor(pkg: WashPackage): number {
+  if (pkg.washCount <= 1) return 0;
+  const perWash = Number(pkg.price) / pkg.washCount;
+  if (!Number.isFinite(perWash) || perWash >= WASH_PRICE) return 0;
+  const pct = (1 - perWash / WASH_PRICE) * 100;
+  return Math.max(0, Math.round(pct));
+}
+
+function tierForIndex(index: number, isElite: boolean): Tier {
+  if (isElite) return 'ELITE';
+  return TIER_ORDER[Math.min(index, TIER_ORDER.length - 1)];
+}
 
 export default function Packages() {
   useSEO(pageSEO.packages);
@@ -153,9 +136,15 @@ export default function Packages() {
   const BackIcon = isRtl ? ChevronRight : ChevronLeft;
   const ForwardIcon = isRtl ? ArrowLeft : ArrowRight;
 
-  const [selectedPackage, setSelectedPackage] = useState<PackageOption | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState<{ washesAdded: number; amountPaid: number; discountApplied: number } | null>(null);
+
+  const { data: packages, isLoading, isError } = useQuery<WashPackage[]>({
+    queryKey: ['/api/packages'],
+  });
+
+  const selectedPackage = packages?.find(p => p.id === selectedPackageId) ?? null;
 
   const purchaseMutation = useMutation({
     mutationFn: async ({ packageId }: { packageId: number }) => {
@@ -176,10 +165,6 @@ export default function Packages() {
     }
   });
 
-  const handlePackageClick = (pkg: PackageOption) => {
-    setSelectedPackage(pkg);
-  };
-
   const proceedToDetails = () => {
     if (!selectedPackage) {
       toast({ title: isHe ? "נא לבחור חבילה" : "Please select a package", variant: "destructive" });
@@ -195,12 +180,7 @@ export default function Packages() {
       setLocation('/sign-up');
       return;
     }
-    const packageId = WASH_COUNT_TO_PACKAGE_ID[selectedPackage.washes];
-    if (!packageId) {
-      toast({ title: isHe ? 'חבילה לא תקינה' : 'Invalid package', variant: 'destructive' });
-      return;
-    }
-    purchaseMutation.mutate({ packageId });
+    purchaseMutation.mutate({ packageId: selectedPackage.id });
   };
 
   if (purchaseSuccess && selectedPackage) {
@@ -230,6 +210,7 @@ export default function Packages() {
               className="w-full py-3.5 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333]"
               style={{ borderRadius: '2px' }}
               onClick={() => setLocation('/dashboard')}
+              data-testid="button-go-dashboard"
             >
               {isHe ? 'לדשבורד שלי' : 'Go to My Dashboard'}
             </Button>
@@ -247,15 +228,20 @@ export default function Packages() {
   }
 
   if (showDetails && selectedPackage) {
-    const price = Math.round(selectedPackage.washes * WASH_PRICE * (1 - selectedPackage.discount / 100));
-    const originalPrice = selectedPackage.washes * WASH_PRICE;
-    const tierLabel = tierLabels[selectedPackage.tier]?.[lang] || tierLabels[selectedPackage.tier]?.en;
+    const discountPct = discountPercentFor(selectedPackage);
+    const price = Math.round(Number(selectedPackage.price));
+    const originalPrice = selectedPackage.washCount * WASH_PRICE;
+    const index = packages?.findIndex(p => p.id === selectedPackage.id) ?? 0;
+    const tier = tierForIndex(index, index === (packages?.length ?? 0) - 1 && (packages?.length ?? 0) >= 4);
+    const tierLabel = tierLabels[tier][lang] ?? tierLabels[tier].en;
+    const cardImage = cardImagesByWashCount[selectedPackage.washCount] ?? pinkCardFront;
+    const features = featuresForPackage(selectedPackage, discountPct);
 
     return (
       <div className="min-h-screen bg-white" dir={dir}>
         <div className="container mx-auto px-4 py-6 sm:py-8 max-w-5xl">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             onClick={() => setShowDetails(false)}
             className="mb-4 sm:mb-6 text-[#555] hover:text-[#1a1a1a]"
             data-testid="button-back"
@@ -274,7 +260,7 @@ export default function Packages() {
                     {isHe ? selectedPackage.nameHe : selectedPackage.name}
                   </h2>
                   <p className="text-[13px] text-[#888] mt-1">
-                    {selectedPackage.washes} {isHe ? 'רחיצות פרימיום' : `Premium Wash${selectedPackage.washes > 1 ? 'es' : ''}`}
+                    {selectedPackage.washCount} {isHe ? 'רחיצות פרימיום' : `Premium Wash${selectedPackage.washCount > 1 ? 'es' : ''}`}
                   </p>
                 </div>
 
@@ -285,13 +271,13 @@ export default function Packages() {
                       style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em' }}>
                       {price}
                     </span>
-                    {selectedPackage.discount > 0 && (
+                    {discountPct > 0 && (
                       <span className="text-base text-[#bbb] line-through">₪{originalPrice}</span>
                     )}
                   </div>
-                  {selectedPackage.discount > 0 && (
+                  {discountPct > 0 && (
                     <p className="text-[11px] text-[#0a0a0a] font-medium mt-1.5 tracking-wide">
-                      {isHe ? `חסכת ₪${originalPrice - price} (${selectedPackage.discount}% הנחה)` : `You save ₪${originalPrice - price} (${selectedPackage.discount}% off)`}
+                      {isHe ? `חסכת ₪${originalPrice - price} (${discountPct}% הנחה)` : `You save ₪${originalPrice - price} (${discountPct}% off)`}
                     </p>
                   )}
                 </div>
@@ -301,7 +287,7 @@ export default function Packages() {
                     {isHe ? 'מה כולל:' : "What's Included:"}
                   </p>
                   <ul className="space-y-2.5">
-                    {selectedPackage.features.map((feature, i) => (
+                    {features.map((feature, i) => (
                       <li key={i} className="flex items-center gap-2.5 text-[#555] text-[13px]">
                         <Check className="w-3.5 h-3.5 text-[#0a0a0a] flex-shrink-0" strokeWidth={1.5} />
                         {isHe ? feature.he : feature.en}
@@ -310,7 +296,7 @@ export default function Packages() {
                   </ul>
                 </div>
 
-                <Button 
+                <Button
                   className="w-full py-4 text-[11px] tracking-[0.18em] uppercase font-medium bg-[#1a1a1a] text-white hover:bg-[#333] transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-60"
                   onClick={handlePurchase}
                   disabled={purchaseMutation.isPending}
@@ -337,11 +323,11 @@ export default function Packages() {
                   <p className="text-[10px] tracking-[0.25em] uppercase text-[#0a0a0a] font-medium mb-3 text-center">
                     {tierLabel} · ⁦PetWash™⁩
                   </p>
-                  <img 
-                    src={selectedPackage.image} 
+                  <img
+                    src={cardImage}
                     alt={`⁦PetWash™⁩ ${isHe ? selectedPackage.nameHe : selectedPackage.name} Wash Package`}
                     className="w-full h-auto rounded-lg shadow-xl"
-                    style={{ 
+                    style={{
                       filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
                       display: 'block',
                     }}
@@ -352,7 +338,7 @@ export default function Packages() {
                       ₪{price}
                     </p>
                     <p className="text-[10px] tracking-[0.15em] uppercase text-[#aaa]">
-                      {selectedPackage.washes} {isHe ? 'רחיצות' : 'washes'} · Premium Natural
+                      {selectedPackage.washCount} {isHe ? 'רחיצות' : 'washes'} · Premium Natural
                     </p>
                   </div>
                 </div>
@@ -389,114 +375,143 @@ export default function Packages() {
         </div>
 
         <div className="max-w-[1200px] mx-auto">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-8">
-            {packageOptions.map((pkg) => {
-              const price = Math.round(pkg.washes * WASH_PRICE * (1 - pkg.discount / 100));
-              const originalPrice = pkg.washes * WASH_PRICE;
-              const isElite = pkg.tier === 'ELITE';
-              const isPopular = pkg.tier === 'POPULAR';
-              const selected = selectedPackage?.washes === pkg.washes;
-              const tierLabel = tierLabels[pkg.tier]?.[lang] || tierLabels[pkg.tier]?.en;
-              const pricePerWash = Math.round(price / pkg.washes);
+          {isLoading && (
+            <div className="flex justify-center py-16" data-testid="packages-loading">
+              <div className="animate-spin w-8 h-8 border-2 border-gray-300 border-t-black rounded-full" />
+            </div>
+          )}
 
-              return (
-                <Button
-                  key={pkg.washes}
-                  type="button"
-                  className="group text-start transition-all duration-300"
-                  onClick={() => handlePackageClick(pkg)}
-                  data-testid={`package-card-${pkg.tier.toLowerCase()}`}
-                >
-                  <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
-                    style={{
-                      borderRadius: '6px',
-                      border: selected 
-                        ? '2.5px solid #1a1a1a'
-                        : isPopular ? '1.5px solid #D9B84C' : '1px solid #eee',
-                    }}
+          {!isLoading && isError && (
+            <div className="text-center py-16" data-testid="packages-error">
+              <p className="text-[13px] text-[#888]">
+                {isHe ? 'לא הצלחנו לטעון את החבילות כרגע. נסה שוב בעוד רגע.' : 'We couldn’t load the packages right now. Please try again in a moment.'}
+              </p>
+            </div>
+          )}
+
+          {!isLoading && !isError && packages && packages.length === 0 && (
+            <div className="text-center py-16" data-testid="packages-empty">
+              <p className="text-[13px] text-[#888]">
+                {isHe ? 'אין חבילות פעילות כעת. חזרו בקרוב.' : 'No active packages right now. Please check back soon.'}
+              </p>
+            </div>
+          )}
+
+          {!isLoading && !isError && packages && packages.length > 0 && (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5 lg:gap-8">
+              {packages.map((pkg, index) => {
+                const discountPct = discountPercentFor(pkg);
+                const price = Math.round(Number(pkg.price));
+                const originalPrice = pkg.washCount * WASH_PRICE;
+                const isEliteByIndex = index === packages.length - 1 && packages.length >= 4;
+                const tier = tierForIndex(index, isEliteByIndex);
+                const isElite = tier === 'ELITE';
+                const isPopular = tier === 'POPULAR';
+                const selected = selectedPackageId === pkg.id;
+                const tierLabel = tierLabels[tier][lang] ?? tierLabels[tier].en;
+                const pricePerWash = Math.max(1, Math.round(price / Math.max(1, pkg.washCount)));
+                const cardImage = cardImagesByWashCount[pkg.washCount] ?? pinkCardFront;
+                const features = featuresForPackage(pkg, discountPct);
+
+                return (
+                  <Button
+                    key={pkg.id}
+                    type="button"
+                    className="group text-start transition-all duration-300"
+                    onClick={() => setSelectedPackageId(pkg.id)}
+                    data-testid={`package-card-${tier.toLowerCase()}`}
                   >
-                    {selected && (
-                      <div className="absolute top-3 end-3 z-10">
-                        <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#1a1a1a] shadow-lg">
-                          <Check className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                    <div className="relative overflow-hidden transition-all duration-500 bg-white hover:shadow-xl hover:shadow-black/[0.06]"
+                      style={{
+                        borderRadius: '6px',
+                        border: selected
+                          ? '2.5px solid #1a1a1a'
+                          : isPopular ? '1.5px solid #D9B84C' : '1px solid #eee',
+                      }}
+                    >
+                      {selected && (
+                        <div className="absolute top-3 end-3 z-10">
+                          <div className="w-6 h-6 rounded-full flex items-center justify-center bg-[#1a1a1a] shadow-lg">
+                            <Check className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {isPopular && (
-                      <div className="absolute top-3 start-3 z-10">
-                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#D9B84C] text-[#0a0a0a] font-medium" style={{ borderRadius: '2px' }}>
-                          {isHe ? 'מומלץ' : 'Best'}
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
-                      <img 
-                        src={pkg.image} 
-                        alt={`⁦PetWash™⁩ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
-                        className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
-                        style={{ 
-                          display: 'block',
-                        }}
-                        loading="lazy"
-                      />
-                    </div>
-
-                    <div className="px-3 sm:px-5 py-3 sm:py-5">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
-                          isElite || isPopular ? 'text-[#0a0a0a]' : 'text-[#999]'
-                        }`}>
-                          {tierLabel}
-                        </span>
-                      </div>
-
-                      <div className="mb-2">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
-                          <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
-                            style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
-                            {price}
+                      {isPopular && (
+                        <div className="absolute top-3 start-3 z-10">
+                          <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#D9B84C] text-[#0a0a0a] font-medium" style={{ borderRadius: '2px' }}>
+                            {isHe ? 'מומלץ' : 'Best'}
                           </span>
-                          {pkg.discount > 0 && (
-                            <span className="text-[10px] line-through text-[#ccc] ms-1">₪{originalPrice}</span>
+                        </div>
+                      )}
+
+                      <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
+                        <img
+                          src={cardImage}
+                          alt={`⁦PetWash™⁩ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
+                          className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                          style={{
+                            display: 'block',
+                          }}
+                          loading="lazy"
+                        />
+                      </div>
+
+                      <div className="px-3 sm:px-5 py-3 sm:py-5">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
+                            isElite || isPopular ? 'text-[#0a0a0a]' : 'text-[#999]'
+                          }`}>
+                            {tierLabel}
+                          </span>
+                        </div>
+
+                        <div className="mb-2">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-[11px] sm:text-xs text-[#999]">₪</span>
+                            <span className="text-3xl sm:text-4xl lg:text-[2.8rem] font-light text-[#1a1a1a]"
+                              style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em', lineHeight: 1 }}>
+                              {price}
+                            </span>
+                            {discountPct > 0 && (
+                              <span className="text-[10px] line-through text-[#ccc] ms-1">₪{originalPrice}</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="mb-3">
+                          <p className="text-xs sm:text-[13px] text-[#555] mb-0.5">
+                            {pkg.washCount} {isHe ? 'רחיצות' : `wash${pkg.washCount > 1 ? 'es' : ''}`}
+                          </p>
+                          {pkg.washCount > 1 && (
+                            <p className="text-[10px] sm:text-[11px] text-[#aaa]">
+                              ₪{pricePerWash} {isHe ? 'לרחיצה' : 'per wash'}
+                            </p>
+                          )}
+                          {discountPct > 0 && (
+                            <p className="text-[10px] sm:text-[11px] text-[#0a0a0a] mt-0.5 font-medium">
+                              {isHe ? `${discountPct}% הנחה` : `Save ${discountPct}%`}
+                            </p>
                           )}
                         </div>
-                      </div>
 
-                      <div className="mb-3">
-                        <p className="text-xs sm:text-[13px] text-[#555] mb-0.5">
-                          {pkg.washes} {isHe ? 'רחיצות' : `wash${pkg.washes > 1 ? 'es' : ''}`}
-                        </p>
-                        {pkg.washes > 1 && (
-                          <p className="text-[10px] sm:text-[11px] text-[#aaa]">
-                            ₪{pricePerWash} {isHe ? 'לרחיצה' : 'per wash'}
-                          </p>
-                        )}
-                        {pkg.discount > 0 && (
-                          <p className="text-[10px] sm:text-[11px] text-[#0a0a0a] mt-0.5 font-medium">
-                            {isHe ? `${pkg.discount}% הנחה` : `Save ${pkg.discount}%`}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="border-t border-[#eee] pt-3 space-y-1.5 text-[#888]">
-                        {pkg.features.slice(0, 3).map((feature, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#0a0a0a' }} />
-                            <span className="text-[10px] sm:text-[11px]">
-                              {isHe ? feature.he : feature.en}
-                            </span>
-                          </div>
-                        ))}
+                        <div className="border-t border-[#eee] pt-3 space-y-1.5 text-[#888]">
+                          {features.slice(0, 3).map((feature, i) => (
+                            <div key={i} className="flex items-center gap-2">
+                              <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#0a0a0a' }} />
+                              <span className="text-[10px] sm:text-[11px]">
+                                {isHe ? feature.he : feature.en}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Button>
-              );
-            })}
-          </div>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
 
           {selectedPackage && (
             <div className="mt-10 sm:mt-12 text-center">
@@ -518,7 +533,7 @@ export default function Packages() {
               <ShieldCheck className="w-4 h-4 text-[#0a0a0a]" strokeWidth={1.2} />
               <div className="flex-1 max-w-[80px] h-px bg-gradient-to-l from-transparent to-[#ddd]" />
             </div>
-            
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-10 max-w-xl mx-auto">
               <div className="text-center">
                 <div className="w-9 h-9 mx-auto mb-2.5 rounded-full border border-[#e8e4de] flex items-center justify-center">
