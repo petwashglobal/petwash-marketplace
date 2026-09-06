@@ -16,7 +16,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   applyFiscalCutover, fiscalCutoverAt, bridgeWired, FISCAL_TREATMENT,
-  selectDocumentableSales, type DocumentableSale,
+  selectDocumentableSales, buildReceiptInput, K9000_INCOME_ITEM,
+  type DocumentableSale,
 } from '../services/nayaxSumitBridge';
 
 const sale = (id: string, settledAt?: string): DocumentableSale => ({
@@ -119,5 +120,47 @@ describe('fiscal cutover — historical vs post-cutover treatment', () => {
     }]);
     expect(s.settledAt).toBe('2026-09-06T09:00:00');
     expect(applyFiscalCutover([s], CUTOVER).eligible).toHaveLength(1);
+  });
+});
+
+/**
+ * The catalogue item on FUTURE documents.
+ *
+ * The 481 documents issued 05/09/2026 are attached to a SUMIT item named
+ * "PetWash rail verification" — a wiring-test name that became the business
+ * product label, which is why SUMIT's product report reads
+ * "PetWash rail verification — ₪20,945, 99.9%". That item and those documents
+ * are frozen. These pins govern what the bridge bills against from now on.
+ */
+describe('K9000 income item — future documents only', () => {
+  it('bills against a stable Hebrew business product, not a test name', () => {
+    expect(K9000_INCOME_ITEM.name).toBe('שטיפת כלבים בשירות עצמי – Pet Wash™');
+    expect(K9000_INCOME_ITEM.externalId).toBe('PETWASH-K9000-WASH');
+  });
+
+  it('never reuses the test item id the 481 documents are attached to', () => {
+    expect(K9000_INCOME_ITEM.externalId).not.toBe('PETWASH-K9000-SELFWASH');
+    expect(K9000_INCOME_ITEM.name.toLowerCase()).not.toContain('verification');
+    expect(K9000_INCOME_ITEM.name.toLowerCase()).not.toContain('test');
+  });
+
+  // The item is the PRODUCT. Putting the bay in the item name would give SUMIT one
+  // "product" per bay and make the product report useless — the exact failure mode
+  // the description-derived item created.
+  it('keeps station and bay OFF the item and ON the line', () => {
+    const wald = buildReceiptInput(sale('t1', '2026-09-06T09:00:00Z'));
+    expect(wald.item).toEqual({
+      name: K9000_INCOME_ITEM.name, externalId: K9000_INCOME_ITEM.externalId,
+    });
+    expect(wald.item!.name).not.toContain('ימין');
+    expect(wald.lineDescription).toBe('כפר סבא פארק ולד — ימין');
+  });
+
+  it('gives every bay the SAME item but its OWN line', () => {
+    const bays = ['182374', '182403', '182443', '182462'].map((m) =>
+      buildReceiptInput({ ...sale('x', '2026-09-06T09:00:00Z'), machineId: m }));
+    expect(new Set(bays.map((b) => b.item!.externalId)).size).toBe(1);
+    expect(new Set(bays.map((b) => b.lineDescription)).size).toBe(4);
+    expect(bays.map((b) => b.lineDescription)).toContain('פארק 80 כפר סבא הירוקה — ימין');
   });
 });

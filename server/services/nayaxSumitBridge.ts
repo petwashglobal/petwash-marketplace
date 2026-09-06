@@ -179,6 +179,24 @@ export function selectDocumentableSales(rows: unknown): DocumentableSale[] {
   return out;
 }
 
+/**
+ * The catalogue item every FUTURE K9000 wash is billed against.
+ *
+ * 2026-09-06 — the 481 documents issued on 05/09/2026 are attached to a SUMIT item
+ * literally named `PetWash rail verification`, an engineering test name that became
+ * the business product label; SUMIT's product report therefore reads
+ * "PetWash rail verification — ₪20,945, 99.9%". Those documents and that catalogue
+ * record are NOT touched: editing the item could alter how already-issued documents
+ * present. A NEW item is used from the cutover forward instead.
+ *
+ * The item is the PRODUCT and must stay stable — station and bay belong on the
+ * document LINE, never in the item name, or SUMIT ends up with one "product" per bay.
+ */
+export const K9000_INCOME_ITEM = {
+  name: 'שטיפת כלבים בשירות עצמי – Pet Wash™',
+  externalId: 'PETWASH-K9000-WASH',
+} as const;
+
 /** PURE: build the exact SumitClient.createCustomerReceipt input for a bay sale. */
 export function buildReceiptInput(sale: DocumentableSale) {
   const mapping = getSumitDocumentMapping('K9000_PUBLIC_CARD'); // InvoiceAndReceipt, full VAT
@@ -190,7 +208,10 @@ export function buildReceiptInput(sale: DocumentableSale) {
     idempotencyKey: idempotencyKeyFor(sale.transactionId),
     // Walk-up retail sale → a generic casual customer (no PII collected at the bay).
     customer: { name: 'לקוח מזדמן' },
-    description: `רחיצת חיית מחמד בשירות עצמי K9000 — ${where}`,
+    description: `${K9000_INCOME_ITEM.name} — ${where}`,
+    // One stable product; the bay lives on the line, not in the item name.
+    item: { name: K9000_INCOME_ITEM.name, externalId: K9000_INCOME_ITEM.externalId },
+    lineDescription: where,
     amountBeforeVat: sale.amountBeforeVat,
     vatAmount: sale.vatAmount,
     totalAmount: sale.totalInclVat,
