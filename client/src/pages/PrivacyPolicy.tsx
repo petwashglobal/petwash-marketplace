@@ -137,6 +137,11 @@ export default function PrivacyPolicy() {
                       <tr><td className="border border-gray-200 px-3 py-1.5">Google Maps Platform</td><td className="border border-gray-200 px-3 py-1.5">מיקום תחנות שטיפה, מפות</td><td className="border border-gray-200 px-3 py-1.5">EEA / ארה״ב</td></tr>
                       <tr><td className="border border-gray-200 px-3 py-1.5">Google Gemini AI</td><td className="border border-gray-200 px-3 py-1.5">ניתוח תוכן, בקרת בטיחות אוטומטית</td><td className="border border-gray-200 px-3 py-1.5">EEA / ארה״ב</td></tr>
                       <tr><td className="border border-gray-200 px-3 py-1.5">Cloudflare Turnstile</td><td className="border border-gray-200 px-3 py-1.5">הגנה מפני בוטים (CAPTCHA)</td><td className="border border-gray-200 px-3 py-1.5">EEA / ארה״ב</td></tr>
+                      {/* Cloudflare Turnstile — Invisible mode.
+                          Cloudflare's documentation makes referencing the Turnstile
+                          Privacy Addendum a CONDITION of enabling invisible mode, so
+                          the link below is required, not optional. Wording is
+                          deliberately minimal and factual and is pending legal review. */}
                       <tr><td className="border border-gray-200 px-3 py-1.5">DocuSeal</td><td className="border border-gray-200 px-3 py-1.5">חתימות דיגיטליות</td><td className="border border-gray-200 px-3 py-1.5">EEA</td></tr>
                     </tbody>
                   </table>
@@ -148,6 +153,21 @@ export default function PrivacyPolicy() {
                   <li><strong>רשויות:</strong> כנדרש על פי חוק ישראלי בלבד</li>
                   <li><strong>העברות עסקיות:</strong> במקרה של מיזוג או רכישה — תקבל הודעה מראש</li>
                 </ul>
+              
+                <p className="mt-4 luxury-text-small">
+                  אנו משתמשים ב-<strong>Cloudflare Turnstile</strong> כדי להבחין בין
+                  משתמשים אמיתיים לבין ניסיונות אוטומטיים בטפסי ההרשמה והכניסה. הבדיקה
+                  מתבצעת ברקע ואיננו משתמשים בה למעקב אחריכם באתרים אחרים. Cloudflare
+                  מעבדת נתונים טכניים מוגבלים לצורך הבדיקה, כמפורט ב־{' '}
+                  <a
+                    href="https://www.cloudflare.com/application-services/terms/turnstile-privacy-addendum/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    נספח הפרטיות של Cloudflare Turnstile
+                  </a>.
+                </p>
               </CardContent>
               </Card>
             </motion.div>
@@ -486,12 +506,36 @@ export default function PrivacyPolicy() {
               <CardContent className="space-y-4 luxury-text-body">
                 <p>We only share information with:</p>
                 <ul className="list-disc ml-6 space-y-2">
-                  <li><strong>Service Providers:</strong> Firebase (storage), Nayax Israel (payments), SendGrid (email)</li>
+                  <li><strong>Service Providers:</strong> Firebase (storage), Nayax Israel (payments), SendGrid (email), Cloudflare (bot protection)</li>
                   <li><strong>Authorities:</strong> As required by law</li>
                   <li><strong>Business Transfers:</strong> In case of merger or acquisition</li>
                 </ul>
                 <p className="mt-4 luxury-text-small">
                   We never sell personal data to third parties.
+                </p>
+                {/*
+                  REQUIRED BY CLOUDFLARE, not optional. Cloudflare's documentation
+                  states that referencing the Turnstile Privacy Addendum in your own
+                  privacy policy is a CONDITION of enabling Turnstile's invisible
+                  mode — which is the mode this site uses (widget "PetWash",
+                  invisible, hostnames petwash.co.il + www).
+
+                  This wording is deliberately minimal and factual. Broader legal
+                  phrasing is for legal review; the LINK itself is the obligation.
+                */}
+                <p className="mt-4 luxury-text-small">
+                  We use <strong>Cloudflare Turnstile</strong> to tell real visitors from
+                  automated abuse on our sign-up and sign-in forms. It runs invisibly and
+                  we do not use it to track you across sites. Cloudflare processes limited
+                  technical data to make that assessment, as described in the{' '}
+                  <a
+                    href="https://www.cloudflare.com/application-services/terms/turnstile-privacy-addendum/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-4"
+                  >
+                    Cloudflare Turnstile Privacy Addendum
+                  </a>.
                 </p>
               </CardContent>
             </Card>
