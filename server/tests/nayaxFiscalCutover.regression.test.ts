@@ -1,0 +1,123 @@
+/**
+ * Fiscal cutover — the guard that stops the live rail turning historical turnover
+ * into per-transaction invoices.
+ *
+ * WHY THIS PIN EXISTS
+ * On 05/09/2026 a manual backfill ran with NAYAX_SUMIT_CUTOVER_AT=2026-01-01 and
+ * issued 481 individual tax invoices for the Jul–Sep history. The written
+ * instruction for that period was ONE consolidated document built from the Nayax
+ * report. Before this guard, `server/` had NO cutover concept at all — the live
+ * cron would have done the same thing to every historical row Lynx returned.
+ *
+ * The two treatments are the bookkeeper's distinction, not ours:
+ *   HISTORICAL_CONSOLIDATED  many transactions → one consolidated document
+ *   POST_CUTOVER_INDIVIDUAL  one transaction  → one document
+ */
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  applyFiscalCutover, fiscalCutoverAt, bridgeWired, FISCAL_TREATMENT,
+  selectDocumentableSales, type DocumentableSale,
+} from '../services/nayaxSumitBridge';
+
+const sale = (id: string, settledAt?: string): DocumentableSale => ({
+  transactionId: id, machineId: '182443', totalInclVat: 48, amountBeforeVat: 40.68,
+  vatAmount: 7.32, currency: 'ILS', settledAt,
+});
+const CUTOVER = new Date('2026-09-05T13:00:00+03:00');
+
+describe('fiscal cutover — historical vs post-cutover treatment', () => {
+  const saved = process.env.NAYAX_SUMIT_CUTOVER_AT;
+  beforeEach(() => { delete process.env.NAYAX_SUMIT_CUTOVER_AT; });
+  afterEach(() => {
+    if (saved === undefined) delete process.env.NAYAX_SUMIT_CUTOVER_AT;
+    else process.env.NAYAX_SUMIT_CUTOVER_AT = saved;
+  });
+
+  it('names both treatments explicitly', () => {
+    expect(FISCAL_TREATMENT.HISTORICAL_CONSOLIDATED).toBe('HISTORICAL_CONSOLIDATED');
+    expect(FISCAL_TREATMENT.POST_CUTOVER_INDIVIDUAL).toBe('POST_CUTOVER_INDIVIDUAL');
+  });
+
+  // THE CORE GUARANTEE. Without a cutover the old code issued for EVERY settled
+  // row; the safe default is the opposite.
+  it('issues NOTHING when no cutover is configured — never everything', () => {
+    const { eligible, historical } = applyFiscalCutover(
+      [sale('a', '2026-09-06T09:00:00Z'), sale('b', '2026-07-10T12:00:00Z')], null);
+    expect(eligible).toHaveLength(0);
+    expect(historical).toHaveLength(2);
+  });
+
+  // NOTE ON WHAT THIS PROVES. In the test environment SUMIT and Lynx are not
+  // wired, so `canIssue` is already false for reasons unrelated to the cutover —
+  // asserting `canIssue === false` here would pass even with the guard removed.
+  // The honest, environment-independent invariant is the implication:
+  // the bridge may never be able to issue while the cutover is unconfigured.
+  it('can never issue while the cutover is unconfigured', () => {
+    expect(fiscalCutoverAt()).toBeNull();
+    const w = bridgeWired();
+    expect(w.cutover).toBe(false);
+    expect(w.canIssue && !w.cutover).toBe(false); // canIssue ⇒ cutover
+  });
+
+  it('exposes cutover as its own wiring condition, not folded into the others', () => {
+    process.env.NAYAX_SUMIT_CUTOVER_AT = '2026-09-05T13:00:00+03:00';
+    expect(fiscalCutoverAt()?.toISOString()).toBe(CUTOVER.toISOString());
+    expect(bridgeWired().cutover).toBe(true);
+    delete process.env.NAYAX_SUMIT_CUTOVER_AT;
+    expect(bridgeWired().cutover).toBe(false);
+  });
+
+  it('treats an unparseable cutover as unset rather than as epoch zero', () => {
+    process.env.NAYAX_SUMIT_CUTOVER_AT = 'whenever';
+    expect(fiscalCutoverAt()).toBeNull();
+    expect(bridgeWired().cutover).toBe(false);
+  });
+
+  it('withholds a sale settled BEFORE the cutover', () => {
+    const { eligible, historical } = applyFiscalCutover([sale('old', '2026-08-10T09:00:00Z')], CUTOVER);
+    expect(eligible).toHaveLength(0);
+    expect(historical.map((s) => s.transactionId)).toEqual(['old']);
+  });
+
+  it('issues for a sale settled AFTER the cutover', () => {
+    const { eligible, historical } = applyFiscalCutover([sale('new', '2026-09-06T09:00:00Z')], CUTOVER);
+    expect(eligible.map((s) => s.transactionId)).toEqual(['new']);
+    expect(historical).toHaveLength(0);
+  });
+
+  // The boundary is inclusive at the cutover instant — one rule, no gap, no overlap.
+  it('treats the cutover instant itself as post-cutover', () => {
+    const { eligible } = applyFiscalCutover([sale('edge', CUTOVER.toISOString())], CUTOVER);
+    expect(eligible.map((s) => s.transactionId)).toEqual(['edge']);
+  });
+
+  // A legal document must never be dated on a timestamp we could not read.
+  it('withholds a sale whose settlement timestamp is missing or unparseable', () => {
+    const { eligible, historical } = applyFiscalCutover(
+      [sale('nodate', undefined), sale('junk', 'not-a-date')], CUTOVER);
+    expect(eligible).toHaveLength(0);
+    expect(historical).toHaveLength(2);
+  });
+
+  it('splits a mixed batch on the boundary and keeps every row accounted for', () => {
+    const batch = [
+      sale('jul', '2026-07-10T12:42:00Z'), sale('aug', '2026-08-20T08:00:00Z'),
+      sale('sep-before', '2026-09-05T05:00:00Z'), sale('sep-after', '2026-09-05T11:00:00Z'),
+    ];
+    const { eligible, historical } = applyFiscalCutover(batch, CUTOVER);
+    expect(eligible.map((s) => s.transactionId)).toEqual(['sep-after']);
+    expect(historical.map((s) => s.transactionId)).toEqual(['jul', 'aug', 'sep-before']);
+    expect(eligible.length + historical.length).toBe(batch.length);
+  });
+
+  // The selector must carry the settlement instant through, or the gate is blind.
+  it('carries settledAt from the Lynx row so the gate has something to judge', () => {
+    const [s] = selectDocumentableSales([{
+      TransactionID: 900, MachineID: 182443, CurrencyCode: 'ILS',
+      AuthorizationValue: 48, SettlementValue: 48, PaymentMethod: 'Credit Card',
+      SettlementDateTimeGMT: '2026-09-06T09:00:00',
+    }]);
+    expect(s.settledAt).toBe('2026-09-06T09:00:00');
+    expect(applyFiscalCutover([s], CUTOVER).eligible).toHaveLength(1);
+  });
+});

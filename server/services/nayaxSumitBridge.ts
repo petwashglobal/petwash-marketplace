@@ -40,12 +40,79 @@ export function bridgeEnabled(): boolean {
   return (process.env.NAYAX_SUMIT_BRIDGE_ENABLED || '').trim().toLowerCase() === 'true';
 }
 
+/**
+ * How a wash's turnover is represented fiscally. The two treatments are NOT
+ * interchangeable and the distinction is the bookkeeper's, not ours:
+ *
+ *   HISTORICAL_CONSOLIDATED  — many Nayax transactions are covered by ONE
+ *                              consolidated SUMIT document built from the Nayax
+ *                              report. A row under this treatment must NEVER be
+ *                              individually auto-invoiced.
+ *   POST_CUTOVER_INDIVIDUAL  — one settled Nayax transaction ↔ one SUMIT
+ *                              document, issued by this bridge.
+ *
+ * A row's treatment is decided solely by whether its SETTLEMENT instant falls
+ * before or at/after `NAYAX_SUMIT_CUTOVER_AT`.
+ */
+export const FISCAL_TREATMENT = {
+  HISTORICAL_CONSOLIDATED: 'HISTORICAL_CONSOLIDATED',
+  POST_CUTOVER_INDIVIDUAL: 'POST_CUTOVER_INDIVIDUAL',
+} as const;
+export type FiscalTreatment = (typeof FISCAL_TREATMENT)[keyof typeof FISCAL_TREATMENT];
+
+/**
+ * The instant separating the two treatments. Controlled ACCOUNTING configuration:
+ * once set in production it is not a developer's to move.
+ *
+ * Returns null when unset or unparseable — and the bridge then refuses to issue
+ * anything at all (see bridgeWired). That is deliberate. The failure mode of a
+ * missing cutover is not "issue nothing"; without this guard it is "individually
+ * invoice the entire history", which is exactly what happened on 05/09/2026 when
+ * a backfill ran with the cutover set to 2026-01-01.
+ */
+export function fiscalCutoverAt(): Date | null {
+  const raw = (process.env.NAYAX_SUMIT_CUTOVER_AT || '').trim();
+  if (!raw) return null;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /** True only when everything needed to actually ISSUE is in place. */
-export function bridgeWired(): { sumit: boolean; lynx: boolean; flag: boolean; canIssue: boolean } {
+export function bridgeWired(): {
+  sumit: boolean; lynx: boolean; flag: boolean; cutover: boolean; canIssue: boolean;
+} {
   const sumit = sumitClient.isWired();
   const lynx = LynxClient.isWired();
   const flag = bridgeEnabled();
-  return { sumit, lynx, flag, canIssue: sumit && lynx && flag };
+  // FAIL CLOSED: no cutover configured → this bridge issues nothing.
+  const cutover = fiscalCutoverAt() !== null;
+  return { sumit, lynx, flag, cutover, canIssue: sumit && lynx && flag && cutover };
+}
+
+/**
+ * Split candidate sales by fiscal treatment. PURE.
+ *
+ * `eligible`   — settled at/after the cutover → POST_CUTOVER_INDIVIDUAL, this
+ *                bridge issues exactly one document each.
+ * `historical` — settled before the cutover → HISTORICAL_CONSOLIDATED. Withheld.
+ *                Never auto-invoiced, whatever the caller asks for.
+ *
+ * A sale with no readable settlement timestamp is treated as HISTORICAL: we do
+ * not issue a legal document on a date we could not read.
+ */
+export function applyFiscalCutover(
+  sales: DocumentableSale[],
+  cutoverAt: Date | null,
+): { eligible: DocumentableSale[]; historical: DocumentableSale[] } {
+  if (!cutoverAt) return { eligible: [], historical: [...sales] };
+  const eligible: DocumentableSale[] = [];
+  const historical: DocumentableSale[] = [];
+  for (const s of sales) {
+    const t = s.settledAt ? new Date(s.settledAt) : null;
+    if (t && !Number.isNaN(t.getTime()) && t.getTime() >= cutoverAt.getTime()) eligible.push(s);
+    else historical.push(s);
+  }
+  return { eligible, historical };
 }
 
 /** Prepaid (member QR-redeem) is ALREADY documented when the customer paid us — never
@@ -68,6 +135,8 @@ export interface DocumentableSale {
   machineName?: string;
   siteName?: string;
   authorizedAt?: string;
+  /** Settlement instant — the ONLY field the fiscal cutover is judged on. */
+  settledAt?: string;
   reference?: string;      // Nayax external-clearing reference for the audit trail
 }
 
@@ -103,6 +172,7 @@ export function selectDocumentableSales(rows: unknown): DocumentableSale[] {
       machineName: r.MachineName ?? undefined,
       siteName: r.SiteName ?? undefined,
       authorizedAt: r.AuthorizationDateTimeGMT ?? undefined,
+      settledAt: r.SettlementDateTimeGMT ?? undefined,
       reference: (r as any).PaymentServiceTransactionID ? String((r as any).PaymentServiceTransactionID) : String(r.TransactionID),
     });
   }
@@ -159,6 +229,10 @@ export interface BridgeRunResult {
     sumitDocumentId?: string;
     reason?: string;
   }>;
+  /** ISO instant separating HISTORICAL_CONSOLIDATED from POST_CUTOVER_INDIVIDUAL. */
+  fiscalCutoverAt?: string | null;
+  /** Settled sales withheld because they precede the cutover. Never auto-invoiced. */
+  historicalWithheld?: number;
 }
 
 /**
@@ -176,7 +250,21 @@ export async function reconcileMachineToSumit(
   if (!feed.ok) {
     return { ok: false, dryRun, wired, machineId, candidateCount: 0, issued: 0, failed: 0, status: feed.status, error: feed.error, rows: [] };
   }
-  const sales = selectDocumentableSales(feed.data);
+  const candidates = selectDocumentableSales(feed.data);
+
+  // FISCAL CUTOVER — applied before a single document is considered.
+  // Anything settled before the cutover belongs to the consolidated historical
+  // document and is withheld here. This bridge must never be the thing that turns
+  // historical turnover into per-transaction invoices.
+  const cutoverAt = fiscalCutoverAt();
+  const { eligible: sales, historical } = applyFiscalCutover(candidates, cutoverAt);
+  if (historical.length) {
+    logger.info('[NayaxSumitBridge] withheld pre-cutover sales (HISTORICAL_CONSOLIDATED)', {
+      machineId, withheld: historical.length,
+      cutoverAt: cutoverAt ? cutoverAt.toISOString() : null,
+    });
+  }
+
   const rows: BridgeRunResult['rows'] = [];
   let issued = 0;
   let failed = 0;
@@ -202,5 +290,10 @@ export async function reconcileMachineToSumit(
     }
   }
 
-  return { ok: true, dryRun, wired, machineId, candidateCount: sales.length, issued, failed, rows };
+  return {
+    ok: true, dryRun, wired, machineId,
+    candidateCount: sales.length, issued, failed, rows,
+    fiscalCutoverAt: cutoverAt ? cutoverAt.toISOString() : null,
+    historicalWithheld: historical.length,
+  };
 }
