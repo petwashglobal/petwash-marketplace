@@ -10,8 +10,10 @@
  * "identity from a client-supplied field" IDOR.
  *
  * FIX: /start now remembers the real (server-derived, authenticated) uid
- * for the externalId it generates, in a one-time server-side map. /return
+ * for the opaque externalId it generates, in Redis (one-shot, GETDEL). /return
  * looks the uid up by `ext` and ignores the querystring `uid` entirely.
+ * (The store started life as a process-local Map; that was not durable across
+ * Cloud Run instances — see saveCardRedisHandoffDurability.behavior.test.ts.)
  *
  * Real supertest against the router mounted in a fresh express app; SUMIT
  * and the vault are mocked so the test focuses on the ROUTE'S ownership
@@ -20,6 +22,18 @@
 import express from 'express';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Minimal in-test Redis stand-in — the handoff store the route now uses.
+const redisStore = new Map<string, string>();
+vi.mock('../services/redis', () => ({
+  redis: {
+    isConnected: () => true,
+    async set(key: string, value: unknown) { redisStore.set(key, JSON.stringify(value)); return true; },
+    async get(key: string) { const v = redisStore.get(key); return v ? JSON.parse(v) : null; },
+    async getDel(key: string) { const v = redisStore.get(key) ?? null; redisStore.delete(key); return v; },
+    async del(key: string) { redisStore.delete(key); return true; },
+  },
+}));
 
 let injectUid: string | null = null;
 vi.mock('../middleware/firebase-auth', () => ({
@@ -61,6 +75,7 @@ async function makeApp(uid: string | null) {
 }
 
 beforeEach(() => {
+  redisStore.clear();
   capturedExternalId = null;
   saveCardMock.mockClear();
 });
@@ -76,7 +91,10 @@ describe('GET /api/payments/save-card/return · ownership is server-derived, not
     // Victim authenticates and starts a save-card flow.
     const startRes = await request(app).post('/api/payments/save-card/start').send({});
     expect(startRes.status).toBe(200);
-    expect(capturedExternalId).toMatch(/^savecard_victim_uid_/);
+    // The external id is opaque: it must NOT leak the internal uid to SUMIT
+    // or into the browser-visible redirect URL.
+    expect(capturedExternalId).toMatch(/^savecard_[0-9a-f]{48}$/);
+    expect(capturedExternalId).not.toContain('victim_uid');
 
     // Attacker (or the victim's own tampered browser) hits /return with the
     // SAME ext (the only thing that ties back to a real pending session) but
