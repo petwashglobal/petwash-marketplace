@@ -28,6 +28,7 @@ import { getSumitDocumentMapping } from './sumitDocumentMapping';
 import type { LynxSaleRow } from './lynxReconciliation';
 import { terminalForMachine, terminalLabel } from './nayaxTerminals';
 import { logger } from '../lib/logger';
+import { issueSaleWithClaim, type SaleIssuanceStore } from './nayaxSaleIssuance';
 import { ISRAEL_VAT_RATE, israeliFiscalDate } from '@shared/israel-compliance-config';
 
 // Re-exported so the Nayax fiscal surface has one import site; the definition
@@ -491,7 +492,14 @@ export interface BridgeRunResult {
  */
 export async function reconcileMachineToSumit(
   machineId: string,
-  opts?: { dryRun?: boolean },
+  opts?: {
+    dryRun?: boolean;
+    /**
+     * The claim ledger. REQUIRED for live issuance — it is the duplicate guard.
+     * Omitting it does not fall back to unguarded issuance; the run refuses.
+     */
+    claimStore?: SaleIssuanceStore | null;
+  },
 ): Promise<BridgeRunResult> {
   const wired = bridgeWired();
   const dryRun = opts?.dryRun === false ? !wired.canIssue : true; // live only when explicitly asked AND fully wired
@@ -532,19 +540,52 @@ export async function reconcileMachineToSumit(
   let issued = 0;
   let failed = 0;
 
+  // ── ISSUANCE IS CLAIM-GUARDED ────────────────────────────────────────────
+  //
+  // Every create goes through the claim ledger (nayax_sale_issuance_attempts),
+  // whose unique index on (machine_id, nayax_transaction_id) is what stops a
+  // repeated run from issuing a SECOND tax invoice for the same wash.
+  //
+  // This used to call createCustomerReceipt directly, selecting candidates from
+  // the live feed alone and recording nothing afterwards. The deterministic key
+  // it relied on reaches SUMIT only as an Idempotency-Key header and an
+  // ExternalReference, and SUMIT deduplicates on NEITHER — which is exactly why
+  // findDocumentByExternalReference exists. Run hourly over a rolling window,
+  // that issued a fresh invoice for every eligible wash, every hour.
+  //
+  // Without a store there is no guard, so issuance REFUSES rather than falling
+  // back. A caller with no persistence can preview and nothing else.
+  const store = opts?.claimStore ?? null;
+  if (!dryRun && issuable.length > 0 && !store) {
+    logger.error('[NayaxSumitBridge] refusing to issue: no claim store, no duplicate guard', {
+      machineId, issuable: issuable.length,
+    });
+    return {
+      ok: false, dryRun, wired, machineId,
+      candidateCount: issuable.length, issued: 0, failed: 0, rows: [],
+      blockedCount: blocked.length,
+      fiscalCutoverAt: cutoverAt ? cutoverAt.toISOString() : null,
+      withheldCount: withheld.length,
+      error: 'no_claim_store',
+    };
+  }
+
   for (const sale of issuable) {
     if (dryRun) {
       rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: false });
       continue;
     }
     try {
-      const r = await sumitClient.createCustomerReceipt(buildReceiptInput(sale));
-      if (r.wired && r.sumitDocumentId) {
+      const r = await issueSaleWithClaim({ store: store!, sumit: sumitClient }, sale);
+      if (r.issued) {
         issued++;
-        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: true, sumitDocumentId: r.sumitDocumentId });
+        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: true, sumitDocumentId: r.documentId });
       } else {
-        failed++;
-        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: false, reason: r.reason || 'no_document_id' });
+        // A sale whose claim was unavailable is NOT a failure — another run owns
+        // it, or it is already documented. Counting it as failed would invite a
+        // retry, which is the behaviour being removed.
+        if (r.state !== 'ALREADY_CLAIMED') failed++;
+        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: false, reason: r.reason });
       }
     } catch (err: any) {
       failed++;

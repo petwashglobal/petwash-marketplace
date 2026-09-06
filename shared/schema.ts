@@ -1182,6 +1182,60 @@ export const nayaxFiscalDocumentLinks = pgTable("nayax_fiscal_document_links", {
 //                        still a guess.
 // Only the first two may authorise createCreditDocument().
 // ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Claim ledger for K9000 SALE invoicing.
+ *
+ * The unique index on (machine_id, nayax_transaction_id) is the duplicate guard:
+ * it is what stops a repeated cron run from issuing a second tax invoice for the
+ * same wash. Before this table existed the sale path selected candidates purely
+ * from the live Nayax feed, consulted nothing persisted, and recorded nothing
+ * afterwards — so every run re-selected every already-invoiced wash. The cron's
+ * own comment claimed idempotency "per Nayax tx", but that key only reached SUMIT
+ * as an Idempotency-Key header and an ExternalReference, and SUMIT deduplicates
+ * on neither (which is exactly why read-before-recreate exists).
+ *
+ * Separate from nayaxFiscalDocumentLinks by design: that table records
+ * transaction <-> document and cannot hold claim state or attempt timestamps.
+ */
+export const nayaxSaleIssuanceAttempts = pgTable("nayax_sale_issuance_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  nayaxTransactionId: varchar("nayax_transaction_id").notNull(),
+  machineId: varchar("machine_id").notNull(),
+
+  /** Minor units (agorot), VAT-inclusive — what the customer paid. */
+  amountMinor: integer("amount_minor").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("ILS"),
+
+  /** The Nayax close. The document's fiscal date (bookkeeper, 2026-09-06). */
+  settledAt: timestamp("settled_at"),
+
+  /** READY | CLAIMED | PENDING_LOOKUP | ISSUED | NEEDS_RECONCILIATION | WITHHELD */
+  state: varchar("state").notNull().default("READY"),
+
+  /** Deterministic reference sent to SUMIT. */
+  externalReference: varchar("external_reference").notNull(),
+
+  /**
+   * Persisted BEFORE the first create HTTP call. Recovery searches SUMIT around
+   * THIS instant — never the settlement time.
+   */
+  firstCreateAttemptAt: timestamp("first_create_attempt_at"),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+
+  sumitDocumentId: varchar("sumit_document_id"),
+  sumitDocumentNumber: varchar("sumit_document_number"),
+  lastError: text("last_error"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_nayax_sale_issuance").on(table.machineId, table.nayaxTransactionId),
+  uniqueIndex("uq_nayax_sale_external_ref").on(table.externalReference),
+  index("idx_nayax_sale_state").on(table.state),
+]);
+
 export const nayaxRefundEvents = pgTable("nayax_refund_events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 

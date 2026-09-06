@@ -11,9 +11,26 @@
  *
  * SAFE TO SCHEDULE NOW: the bridge is QUADRUPLE-dark — this cron is a complete
  * NO-OP until SUMIT is wired AND Lynx is wired AND NAYAX_SUMIT_BRIDGE_ENABLED=true
- * AND NAYAX_SUMIT_CUTOVER_AT is set. It is also idempotent (deterministic key per
- * Nayax tx), so overlapping runs can never double-issue a document. Prepaid
- * member-redeems are never re-documented.
+ * AND NAYAX_SUMIT_CUTOVER_AT is set. Prepaid member-redeems are never
+ * re-documented.
+ *
+ * ON IDEMPOTENCY (corrected 2026-09-06). This comment used to claim the rail was
+ * "idempotent (deterministic key per Nayax tx), so overlapping runs can never
+ * double-issue a document". That was NOT true, and it mattered most for the one
+ * thing that cannot be undone — a tax invoice:
+ *
+ *   - the deterministic key reached SUMIT only as an Idempotency-Key header and
+ *     an ExternalReference, and SUMIT deduplicates on NEITHER. That is exactly
+ *     why read-before-recreate (findDocumentByExternalReference) had to be built;
+ *   - candidates were selected from the live Nayax feed alone, consulting nothing
+ *     persisted, and nothing recorded the document afterwards.
+ *
+ * Run hourly over a rolling window, that would have issued a fresh invoice for
+ * every eligible wash on every run. Idempotency is now REAL and comes from the
+ * claim ledger (nayax_sale_issuance_attempts): its unique index on
+ * (machine_id, nayax_transaction_id) means a second run cannot take the claim,
+ * and a claim that cannot be taken is never a reason to create. Issuance without
+ * that ledger refuses outright rather than falling back.
  *
  * THE CUTOVER IS NOT OPTIONAL (2026-09-06). Only transactions settled at or after
  * NAYAX_SUMIT_CUTOVER_AT are individually invoiced here. Everything settled before
@@ -40,6 +57,8 @@ import { Router, type Request, type Response } from 'express';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { reconcileMachineToSumit, bridgeWired } from '../services/nayaxSumitBridge';
+import { pgSaleIssuanceStore } from '../services/nayaxSaleIssuance';
+import { pool } from '../db';
 import { NAYAX_TERMINALS } from '../services/nayaxTerminals';
 
 const router = Router();
@@ -92,7 +111,10 @@ router.post('/nayax-sumit-reconcile', async (req: Request, res: Response) => {
 
   for (const machineId of machineIds) {
     try {
-      const r = await reconcileMachineToSumit(machineId, { dryRun: forceDryRun ? true : false });
+      const r = await reconcileMachineToSumit(machineId, {
+        dryRun: forceDryRun ? true : false,
+        claimStore: pgSaleIssuanceStore(pool),
+      });
       totalCandidates += r.candidateCount;
       totalIssued += r.issued;
       totalFailed += r.failed;
