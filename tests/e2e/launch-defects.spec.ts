@@ -111,7 +111,15 @@ test.describe('T37 — cookie banner is hidden on immersive routes', () => {
 
 // ── T38 mobile nav does not overlap content ───────────────────────────────
 test.describe('T38 — mobile nav CTA does not overlap page content', () => {
-  test.use({ ...devices['iPhone 13'] });
+  // Spread the device WITHOUT defaultBrowserType. Playwright refuses a
+  // test.use() inside a describe that changes the browser type — "because it
+  // forces a new worker" — and devices['iPhone 13'] carries
+  // defaultBrowserType: 'webkit'. That error aborted collection for the
+  // WHOLE suite, so all 24 e2e specs listed as 0 tests. The viewport, user
+  // agent and touch flags are what this test actually needs; the browser
+  // comes from the project.
+  const { defaultBrowserType: _ignored, ...iPhone13 } = devices['iPhone 13'];
+  test.use(iPhone13);
   test('bottom nav does not cover the primary CTA on / home', async ({ page }) => {
     await page.goto('/');
     // Any button reasonably close to the fold — the primary CTA.
