@@ -80,29 +80,21 @@ export function useCreateBooking() {
   });
 }
 
-/**
- * Get user's bookings (past and upcoming)
- * 
- * @param userId - User ID
- * @param status - Optional status filter (upcoming, past, cancelled)
- * @returns List of bookings
+/*
+ * REMOVED (Lane E D15): export function useCustomerBookings(userId, status)
+ *
+ * It queried `GET /api/bookings` (with the filters baked into the querystring by
+ * an earlier repair). There is no bare `GET /` on the bookings router —
+ * server/routes/bookings.ts exposes /create, /my-bookings, /availability,
+ * /:bookingId (+ /confirm /complete /cancel), /lock and /release — so any call
+ * would have 404'd. Note the earlier fix carefully passed filters to a route
+ * that does not exist: fixing the querystring never made the request valid.
+ *
+ * VERIFIED zero callers, so nothing regresses; this deletes a 404 trap waiting
+ * for its first consumer rather than a feature. A customer's own bookings are
+ * owned by `GET /api/bookings/my-bookings`, which derives the user from the
+ * authenticated session instead of taking a userId from the client.
  */
-export function useCustomerBookings(
-  userId: string,
-  status?: 'upcoming' | 'past' | 'cancelled'
-) {
-  // queryKey[1] filter drop family (2026-08-21). Default queryFn uses
-  // queryKey[0] verbatim as URL, so `{userId, status}` was dropped and
-  // every caller got the same unfiltered list. Bake into URL.
-  const qs = new URLSearchParams();
-  if (userId) qs.set('userId', userId);
-  if (status) qs.set('status', status);
-  return useQuery({
-    queryKey: [qs.toString() ? `/api/bookings?${qs.toString()}` : '/api/bookings'],
-    enabled: !!userId,
-    staleTime: 1000 * 60 * 2, // Cache for 2 minutes
-  });
-}
 
 /**
  * Cancel a booking with refund
@@ -178,16 +170,16 @@ export function useProviderReviews(
   });
 }
 
-/**
- * Get provider earnings (for provider dashboard)
- * 
- * @param providerId - Provider ID
- * @returns Earnings summary with escrow, released payouts, total revenue
+/*
+ * REMOVED (Lane E D16): export function useProviderEarnings(providerId)
+ *
+ * It queried `/api/providers/earnings/:providerId` — no such handler exists on
+ * the `/api/providers` mount (providers.ts / provider-search.ts). VERIFIED zero
+ * callers. Provider earnings are owned by the payout/escrow surfaces, not by a
+ * marketplace search service; the live consumer is the `useProviderEarningsTruth`
+ * hook (client/src/hooks/useProviderEarningsTruth.ts), which reads the canonical
+ * expected/pending/paid figures.
+ *
+ * Taking a providerId from the client to read someone's earnings would also have
+ * been an IDOR shape; the canonical hook derives the provider from the session.
  */
-export function useProviderEarnings(providerId: number) {
-  return useQuery({
-    queryKey: [`/api/providers/earnings/${providerId}`],
-    enabled: !!providerId,
-    staleTime: 1000 * 60 * 1, // Cache for 1 minute (earnings should be fresh)
-  });
-}

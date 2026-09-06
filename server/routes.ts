@@ -406,6 +406,8 @@ import {
   insertCustomerSubscriptionSchema,
   updateCustomerSubscriptionSchema,
   customers,
+  crmCommunications,
+  crmCommunicationLogs,
   type InsertCustomer,
   nayaxTransactions,
   hrDocuments,
@@ -11021,6 +11023,60 @@ self.addEventListener('notificationclick', (event) => {
     } catch (error) {
       logger.error('Communication stats error:', error);
       res.status(500).json({ message: "Failed to fetch communication statistics" });
+    }
+  });
+
+  // Communication history — the History tab of the Communication Center.
+  // CONTRACT FIX (Lane E D13): the client has always queried
+  // GET /api/crm/communications/history (client/src/pages/CommunicationCenter.tsx)
+  // but no handler existed, so the tab 404'd and rendered its
+  // "No communication history found" empty state over real data.
+  // Read-only. The canonical store is crm_communications (+ crm_communication_logs
+  // for delivery state) — the same tables /stats already reports on. No new
+  // write authority and no second source of truth.
+  app.get('/api/crm/communications/history', requireAdmin, async (req: any, res) => {
+    try {
+      const rawLimit = parseInt(String(req.query.limit ?? '100'), 10);
+      const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 500) : 100;
+      const type = typeof req.query.type === 'string' ? req.query.type : undefined;
+
+      const rows = await db
+        .select({
+          id: crmCommunications.id,
+          type: crmCommunications.communicationType,
+          direction: crmCommunications.direction,
+          subject: crmCommunications.subject,
+          summary: crmCommunications.summary,
+          phone: crmCommunications.phoneNumber,
+          createdAt: crmCommunications.createdAt,
+          deliveryStatus: crmCommunicationLogs.deliveryStatus,
+        })
+        .from(crmCommunications)
+        .leftJoin(
+          crmCommunicationLogs,
+          eq(crmCommunicationLogs.communicationId, crmCommunications.id),
+        )
+        .where(type ? eq(crmCommunications.communicationType, type) : undefined)
+        .orderBy(desc(crmCommunications.createdAt))
+        .limit(limit);
+
+      res.json(
+        rows.map((r) => ({
+          id: r.id,
+          type: r.type,
+          direction: r.direction,
+          recipient: r.phone ?? null,
+          subject: r.subject ?? r.summary ?? null,
+          // No delivery-log row means the interaction was recorded manually
+          // (phone call, in-person meeting). Say "logged" rather than inventing
+          // a "delivered" that no provider ever confirmed.
+          status: r.deliveryStatus ?? 'logged',
+          createdAt: r.createdAt,
+        })),
+      );
+    } catch (error) {
+      logger.error('Communication history error:', error);
+      res.status(500).json({ message: "Failed to fetch communication history" });
     }
   });
 
