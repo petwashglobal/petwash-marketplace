@@ -12,6 +12,7 @@ import { sendVerificationEmailCode } from "./VerificationEmailDelivery";
 import { otpEvents, smsEvidence, verificationChallenges, type VerificationChallenge } from "@shared/schema";
 
 import { maskDestinationForOwner } from "../../shared/auth/verificationDestination";
+import { issueStepUpProof, type StepUpBinding, type StepUpPurpose } from "./StepUpService";
 
 export type VerificationChannel = "sms" | "email" | "whatsapp" | "push";
 
@@ -400,6 +401,70 @@ function assertStartAllowed(definition: PurposeDefinition, actor: VerificationAc
  * nothing about the mailbox. The registry's allowedChannels is the policy;
  * this is where it is enforced.
  */
+/**
+ * A successful sensitive verification produces a PROOF, not a free pass.
+ *
+ * The pattern the directive sets out: sensitive operation attempted -> server
+ * says STEP_UP_REQUIRED -> shared VerificationFlow -> verification succeeds ->
+ * server issues a purpose-bound proof -> the ORIGINAL operation is retried
+ * with that proof -> the money service re-checks authorisation and its own
+ * canonical state -> executes idempotently.
+ *
+ * This function is the "issues a purpose-bound proof" step, and nothing more.
+ * It never moves money and never applies an identity change; it hands back
+ * evidence that the challenge was satisfied, which the real operation then
+ * has to present.
+ *
+ * Purposes with no entry get no proof — silence is the safe default. Adding
+ * one is a deliberate act.
+ */
+const VERIFICATION_TO_STEP_UP: Partial<Record<VerificationPurpose, StepUpPurpose>> = {
+  change_email: "change_email",
+  change_phone: "change_mobile",
+  close_account: "delete_account",
+  payout: "payout_action",
+};
+
+function stepUpProofForChallenge(challenge: VerificationChallenge): {
+  stepUpProof: string;
+  stepUpExpiresAt: string;
+  stepUpPurpose: StepUpPurpose;
+} | undefined {
+  const stepUpPurpose = VERIFICATION_TO_STEP_UP[challenge.purpose as VerificationPurpose];
+  if (!stepUpPurpose || !challenge.userId) return undefined;
+
+  /**
+   * The binding comes from the payload the CALLER supplied at /start — before
+   * the customer ever saw a code. It cannot be influenced by anything the
+   * browser sends back at verify time, which is the point: the proof
+   * authorises the operation that was actually requested, at the amount that
+   * was actually shown.
+   */
+  const payload = (challenge.payload || {}) as Record<string, unknown>;
+  const operation = typeof payload.operation === "string" ? payload.operation : undefined;
+  const targetId = typeof payload.targetId === "string" ? payload.targetId : undefined;
+  const amountMinor = typeof payload.amountMinor === "number" ? payload.amountMinor : undefined;
+  const binding: StepUpBinding | undefined =
+    operation && targetId ? { operation, targetId, amountMinor } : undefined;
+
+  // issueStepUpProof refuses an unbound money proof, so a payout challenge
+  // started without operation/targetId yields NO proof rather than a broad one.
+  const issued = issueStepUpProof(challenge.userId, stepUpPurpose, 5 * 60, binding);
+  if (!issued) {
+    logger.warn("[UnifiedVerification] no step-up proof issued for a sensitive verification", {
+      purpose: challenge.purpose,
+      stepUpPurpose,
+      bound: !!binding,
+    });
+    return undefined;
+  }
+  return {
+    stepUpProof: issued.token,
+    stepUpExpiresAt: issued.expiresAt.toISOString(),
+    stepUpPurpose,
+  };
+}
+
 function assertChannelAllowed(definition: PurposeDefinition, channel: VerificationChannel): void {
   if (!definition.allowedChannels.includes(channel)) {
     throw new UnifiedVerificationError(
@@ -852,6 +917,8 @@ export class UnifiedVerificationService {
       ok: true,
       challenge: publicChallenge(consumed ?? verified),
       action: actionResult,
+      // Present only for sensitive purposes; see stepUpProofForChallenge.
+      ...(stepUpProofForChallenge(consumed ?? verified) ?? {}),
     };
   }
 
