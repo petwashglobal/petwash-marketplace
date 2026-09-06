@@ -30,6 +30,7 @@ export type JourneyDomain =
   | 'walk_book'
   | 'sitter_book'
   | 'marketplace_book'
+  | 'academy_book'
   | 'shop_checkout'
   | 'egift'
   | 'provider_apply';

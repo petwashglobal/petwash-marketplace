@@ -48,6 +48,11 @@ const WIRES: readonly Wire[] = [
     file: 'client/src/pages/MarketplaceBookingFlow.tsx',
     domain: 'marketplace_book',
   },
+  {
+    label: 'academy booking · confirm',
+    file: 'client/src/pages/academy/BookingFlow.tsx',
+    domain: 'academy_book',
+  },
 ];
 
 function read(rel: string): string {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, GraduationCap, Clock, Check } from "lucide-react";
@@ -14,6 +14,8 @@ import { PrestigePassPaymentOption } from "@/components/PrestigePassPaymentOptio
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview";
 import { BookingFinancialSummary } from "@/components/wallet/BookingFinancialSummary";
+import { useJourneyCheckpoint } from "@/hooks/useJourneyCheckpoint";
+import { emitCtaEvent } from "@/lib/ctaActions";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -41,6 +43,61 @@ export default function AcademyBookingFlow() {
   });
 
   const trainer = trainerData?.trainer;
+
+  /**
+   * Journey Brain Phase 2 · academy_book wire.
+   *
+   * Only RESUMABLE, non-payment intent is persisted (trainer id,
+   * selected date, session duration + type, notes). Payment/wallet
+   * fields (bookingWalletHoldCents, appliedCredits, financeState)
+   * are DELIBERATELY excluded — the resuming wizard is the sole
+   * authority on payment on arrival, per the CEO's Phase 2 rule.
+   *
+   * Enabled only when the user is signed in — a guest-view of the
+   * academy page keeps form state entirely local (no server write).
+   *
+   * The debounced save skips no-op cases (isSubmitting, empty
+   * form). The clear runs on successful booking submit BEFORE any
+   * navigation, since the real /api/academy/bookings POST re-runs
+   * every price / auth / wallet check server-side.
+   */
+  const checkpoint = useJourneyCheckpoint<Record<string, unknown>>('academy_book', {
+    enabled: !!user,
+  });
+
+  // Hydrate untouched fields from the saved checkpoint. Never
+  // overwrite what the user has already typed in this session.
+  useEffect(() => {
+    if (checkpoint.hydrating || !checkpoint.initial) return;
+    const draft = checkpoint.initial as any;
+    if (!selectedDate && draft?.serviceDate) {
+      const d = new Date(draft.serviceDate);
+      if (!isNaN(d.getTime())) setSelectedDate(d);
+    }
+    if (draft?.sessionDuration && sessionDuration === 60 && draft.sessionDuration !== 60) {
+      setSessionDuration(Number(draft.sessionDuration));
+    }
+    if (draft?.sessionType && sessionType === 'private' && draft.sessionType !== 'private') {
+      setSessionType(String(draft.sessionType));
+    }
+    if (draft?.specialNotes && !notes) setNotes(String(draft.specialNotes));
+  }, [checkpoint.hydrating, checkpoint.initial]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist resumable state on every meaningful change. Payload is
+  // deliberately narrow — no payment truth, no ledger truth.
+  useEffect(() => {
+    if (step === 'confirmation') return; // don't overwrite after success
+    if (isSubmitting) return;             // don't race the POST
+    if (!trainerId || !selectedDate) return; // no meaningful state yet
+    checkpoint.save({
+      trainerId,
+      serviceDate: selectedDate.toISOString(),
+      sessionDuration,
+      sessionType,
+      specialNotes: notes,
+      step,
+    });
+  }, [step, isSubmitting, trainerId, selectedDate, sessionDuration, sessionType, notes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sessionTypes = [
     { id: "private", name: "שיעור פרטי", description: "אימון אחד על אחד" },
@@ -135,6 +192,11 @@ export default function AcademyBookingFlow() {
       setBookingId(bookingRecord?.bookingId || bookingRecord?.bookingNumber || bookingRecord?.id || 'pending');
       setBookingFinanceState(bookingRecord?.financeState || 'none');
       setBookingWalletHoldCents(bookingRecord?.walletHoldCents || 0);
+      // Journey Brain Phase 2 · clear the resumable draft — the real
+      // booking is now server-owned. Fire-and-forget; a failure to
+      // clear never blocks the confirmation UX (the row TTL is 72h
+      // and the pruner cron sweeps it either way).
+      checkpoint.clear();
       setStep("confirmation");
 
       toast({
@@ -446,8 +508,12 @@ export default function AcademyBookingFlow() {
               </Button>
               <Button
                 className="luxury-btn-primary luxury-shadow-xl flex-1 h-14"
-                onClick={handleConfirmBooking}
+                onClick={() => {
+                  emitCtaEvent('BOOK_CONFIRM', { domain: 'academy_book' });
+                  handleConfirmBooking();
+                }}
                 disabled={isSubmitting}
+                data-action-id="BOOK_CONFIRM"
                 data-testid="button-confirm"
               >
                 {isSubmitting ? "שולח..." : "אישור והמשך"}
