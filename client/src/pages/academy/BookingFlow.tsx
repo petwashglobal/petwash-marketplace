@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Shield, GraduationCap, Clock, Check } from "lucide-react";
@@ -67,7 +67,7 @@ export default function AcademyBookingFlow() {
 
   // Hydrate untouched fields from the saved checkpoint. Never
   // overwrite what the user has already typed in this session.
-  useMemo(() => {
+  useEffect(() => {
     if (checkpoint.hydrating || !checkpoint.initial) return;
     const draft = checkpoint.initial as any;
     if (!selectedDate && draft?.serviceDate) {
@@ -85,7 +85,7 @@ export default function AcademyBookingFlow() {
 
   // Persist resumable state on every meaningful change. Payload is
   // deliberately narrow — no payment truth, no ledger truth.
-  useMemo(() => {
+  useEffect(() => {
     if (step === 'confirmation') return; // don't overwrite after success
     if (isSubmitting) return;             // don't race the POST
     if (!trainerId || !selectedDate) return; // no meaningful state yet
