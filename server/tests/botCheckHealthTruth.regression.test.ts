@@ -184,7 +184,12 @@ describe('the server-only secret is not duplicated into GitHub', () => {
     expect(INV).toContain('The site key is PUBLIC');
   });
 
-  it('both halves share ONE detector so the gate and health cannot disagree', () => {
+  it('the CLIENT half shares one detector with the build-config writer', () => {
+    // Scoped deliberately: this keeps the release gate and
+    // /api/health/bot-check from disagreeing about what the browser received.
+    // It says nothing about the server half, which is proven independently
+    // from the candidate deployment's bindings — describing it as "one shared
+    // detector for both halves" was inaccurate.
     expect(INV_CODE).toContain('detectTurnstileInBundle');
     expect(WRITER_SRC).toContain('detectTurnstileInBundle');
   });
