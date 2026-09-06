@@ -120,7 +120,35 @@ export const SHAAM_THRESHOLD_PHASE2_ILS = 5_000;
 // (line ~244). Do NOT add a parallel threshold helper — import those.
 
 /** PetWash Ltd company tax ID (ח.פ) */
+/**
+ * ── TWO DIFFERENT NUMBERS. NEVER INTERCHANGE THEM. ──────────────────────────
+ *
+ * COMPANY_TAX_ID = '517145033'
+ *   Pet Wash Ltd's LEGAL Israeli company registration number (ח.פ.). This is the
+ *   identity of the issuing business and belongs on every legal document.
+ *
+ * SUMIT CompanyID = 1455151432   (env SUMIT_COMPANY_ID — deliberately NOT a
+ *   constant in this file, and it must never be added here)
+ *   SUMIT's own internal identifier for the Pet Wash workspace. It is an API
+ *   routing value that tells SUMIT which account a server-to-server request
+ *   belongs to. It is NOT a company registration number, it has no legal
+ *   meaning, and it must never be printed on a document or shown to a customer.
+ *
+ * The SUMIT API key is likewise a platform credential, not a business identity.
+ *
+ * Before production activation, verify in SUMIT → Settings → Business details
+ * that the issuing entity reads exactly פט וואש בע"מ / PET WASH LTD, company
+ * number 517145033, together with the legal address, VAT/business status,
+ * document numbering series and the business name shown on documents. Those are
+ * the accountant's settings — do not change them unless demonstrably incorrect.
+ * (Checked 2026-09-06: SUMIT exposes no company-details read endpoint — seven
+ * candidates all returned empty — so this verification is manual in the UI.)
+ * ───────────────────────────────────────────────────────────────────────────
+ */
 export const COMPANY_TAX_ID = '517145033';
+
+/** SUMIT's internal workspace id — for asserting it is NEVER used as an identity. */
+export const SUMIT_INTERNAL_COMPANY_ID_NOT_A_TAX_ID = '1455151432';
 /** PetWash Ltd company name (English) */
 export const COMPANY_NAME_EN = 'PET WASH LTD';
 /** PetWash Ltd company name (Hebrew) */

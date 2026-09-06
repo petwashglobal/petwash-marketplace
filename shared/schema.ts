@@ -1085,10 +1085,16 @@ export const k9000WashEvents = pgTable("k9000_wash_events", {
   // Idempotency — prevent double-logging on webhook retry
   idempotencyKey: varchar("idempotency_key").unique(),
 
-  // SUMIT tax-invoice/receipt id — populated ONLY for a direct Nayax card sale
-  // (transaction_source='nayax'), the one K9000 flow that is a NEW taxable cash
-  // sale. Credit/package redemptions (transaction_source='petwash') were already
-  // taxed at purchase, so they intentionally carry NO sumit document here.
+  // ⚠️ LEGACY CONVENIENCE — NOT the canonical fiscal linkage (2026-09-06).
+  //
+  // A single scalar cannot express what actually occurs:
+  //   • one transaction → an original AND a later credit document
+  //   • many transactions → ONE consolidated document
+  // Both are real. Coverage lives in `nayax_fiscal_document_links`, which records
+  // the relationship with its type, provenance and observation time.
+  //
+  // This column stays for existing readers and remains fine as a display hint,
+  // but NO fiscal decision may be made from it. Read the link table instead.
   sumitDocumentId: varchar("sumit_document_id"),
 
   createdAt: timestamp("created_at").defaultNow(),
@@ -1101,6 +1107,56 @@ export const k9000WashEvents = pgTable("k9000_wash_events", {
   index("idx_k9000_wash_nayax_tx").on(table.nayaxTransactionId),
   index("idx_k9000_wash_created").on(table.createdAt),
 ]);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NAYAX ↔ SUMIT FISCAL DOCUMENT LINKS — the canonical coverage record.
+//
+// An OBSERVED relationship between one Nayax transaction and one SUMIT document.
+// It records what exists, who says so, and when we saw it. It decides nothing:
+// fiscal treatment is the bookkeeper's determination, and this table is how that
+// determination — or a read-back from SUMIT — is written down.
+//
+// Why a table and not a column: the relationship is many-to-one and mutable.
+//   • 481 transactions each hold their OWN final document (2026-09-06 reality)
+//   • a consolidated document may cover MANY transactions
+//   • a transaction may carry an original AND a later credit
+// `k9000_wash_events.sumit_document_id` can express none of that and is now
+// explicitly legacy.
+//
+// link_type   INDIVIDUAL_ORIGINAL | CONSOLIDATED_COVERAGE | CREDIT_REFUND
+// source      SUMIT_EXTERNAL_REFERENCE  read back from SUMIT
+//             BRIDGE_ISSUED             this bridge issued it
+//             BOOKKEEPER_DIRECTED       the bookkeeper stated it — never inferred
+//             MANUAL                    a human recorded it, with a note
+// ─────────────────────────────────────────────────────────────────────────────
+export const nayaxFiscalDocumentLinks = pgTable("nayax_fiscal_document_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  nayaxTransactionId: varchar("nayax_transaction_id").notNull(),
+  sumitDocumentId: varchar("sumit_document_id").notNull(),
+  sumitDocumentNumber: varchar("sumit_document_number"),
+  sumitDocumentType: varchar("sumit_document_type"),
+
+  linkType: varchar("link_type").notNull(),
+  source: varchar("source").notNull(),
+
+  /** When WE observed this — not when the document was issued. */
+  observedAt: timestamp("observed_at").notNull().defaultNow(),
+  note: text("note"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  // Idempotency: re-observing the same relationship must never create a second row.
+  uniqueIndex("uq_nayax_fiscal_link").on(
+    table.nayaxTransactionId, table.sumitDocumentId, table.linkType,
+  ),
+  index("idx_nayax_fiscal_link_txn").on(table.nayaxTransactionId),
+  index("idx_nayax_fiscal_link_doc").on(table.sumitDocumentId),
+  index("idx_nayax_fiscal_link_type").on(table.linkType),
+]);
+
+export type NayaxFiscalDocumentLink = typeof nayaxFiscalDocumentLinks.$inferSelect;
+export type InsertNayaxFiscalDocumentLink = typeof nayaxFiscalDocumentLinks.$inferInsert;
 
 export type K9000WashEvent = typeof k9000WashEvents.$inferSelect;
 export type InsertK9000WashEvent = typeof k9000WashEvents.$inferInsert;
