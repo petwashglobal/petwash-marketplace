@@ -635,6 +635,106 @@ export class SumitClient {
   }
 
   /** Public accessor so callers can branch without firing a no-op call. */
+  /**
+   * Find a document by OUR ExternalReference — the duplicate guard that makes
+   * stale-claim recovery safe.
+   *
+   * ── WHY THREE OUTCOMES AND NOT A BOOLEAN ────────────────────────────────────
+   * The failure this exists to prevent: the create request REACHES SUMIT, SUMIT
+   * issues the document, and the HTTP response dies on the way back. Our claim is
+   * left stale. If recovery then calls create again, a second legal tax document
+   * is issued for one wash, and it cannot be deleted — only credited.
+   *
+   * So recovery must READ BEFORE IT RECREATES, and "I could not tell" must never
+   * collapse into "not found":
+   *
+   *   FOUND        the document exists — link it, do not create.
+   *   ABSENT       pagination completed cleanly and it is definitively not there
+   *                — one safe retry is permitted.
+   *   INCONCLUSIVE unwired, network/HTTP failure, non-zero Status, or page budget
+   *                exhausted. NEVER create on this. Fail closed to reconciliation.
+   *
+   * documents/list has no server-side ExternalReference filter, so we page a
+   * narrow date window around the known settlement instant and match on the rows,
+   * which do carry it.
+   */
+  async findDocumentByExternalReference(input: {
+    externalReference: string;
+    documentTypes: string[];
+    dateHint: Date;
+    windowDays?: number;
+    maxPages?: number;
+    pageSize?: number;
+  }): Promise<
+    | { outcome: 'FOUND'; documentId: string; documentNumber?: string }
+    | { outcome: 'ABSENT' }
+    | { outcome: 'INCONCLUSIVE'; reason: string }
+  > {
+    const env = readEnv();
+    // Unwired is NOT evidence of absence.
+    if (!isWired()) return { outcome: 'INCONCLUSIVE', reason: 'not_wired' };
+
+    const windowDays = input.windowDays ?? 3;
+    const maxPages = input.maxPages ?? 20;
+    const pageSize = input.pageSize ?? 200;
+    const ddmmyyyy = (d: Date) => {
+      const p = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric',
+      }).formatToParts(d).reduce<Record<string, string>>((a, x) => (a[x.type] = x.value, a), {});
+      return `${p.day}/${p.month}/${p.year}`;
+    };
+    const from = new Date(input.dateHint.getTime() - windowDays * 86_400_000);
+    const to = new Date(input.dateHint.getTime() + windowDays * 86_400_000);
+
+    for (let page = 0; page < maxPages; page++) {
+      let body: any;
+      try {
+        const res = await fetch(`${env.baseUrl}/accounting/documents/list/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            Credentials: { CompanyID: Number(env.companyId), APIKey: env.apiKey },
+            DocumentTypes: input.documentTypes,
+            DateFrom: ddmmyyyy(from),
+            DateTo: ddmmyyyy(to),
+            IncludeDrafts: false,
+            Paging: { StartIndex: page * pageSize, PageSize: pageSize },
+          }),
+        });
+        if (!res.ok) return { outcome: 'INCONCLUSIVE', reason: `http_${res.status}` };
+        body = await res.json();
+      } catch (err: any) {
+        // A transport failure tells us nothing about what SUMIT holds.
+        return { outcome: 'INCONCLUSIVE', reason: `transport:${err?.message ?? 'unknown'}` };
+      }
+
+      const status = body?.Status;
+      if (status !== 0 && status !== 'Success') {
+        return { outcome: 'INCONCLUSIVE', reason: `sumit_status:${JSON.stringify(status)}` };
+      }
+      const data = body?.Data ?? {};
+      const rows: any[] = data.Documents ?? data.Items ?? data.Rows ?? (Array.isArray(data) ? data : []);
+      for (const row of rows) {
+        const ref = row?.ExternalReference ?? row?.Document?.ExternalReference;
+        if (ref != null && String(ref) === input.externalReference) {
+          const id = row?.DocumentID ?? row?.ID ?? row?.Id;
+          if (!id) return { outcome: 'INCONCLUSIVE', reason: 'match_without_document_id' };
+          const num = row?.DocumentNumber ?? row?.Number;
+          return {
+            outcome: 'FOUND',
+            documentId: String(id),
+            ...(num != null ? { documentNumber: String(num) } : {}),
+          };
+        }
+      }
+      // Clean end of pagination with no match = definitively absent.
+      if (data.HasNextPage !== true || rows.length === 0) return { outcome: 'ABSENT' };
+    }
+    // Budget exhausted. NOT absence — creating on this basis is how a duplicate
+    // legal document gets issued.
+    return { outcome: 'INCONCLUSIVE', reason: `page_budget_exhausted:${maxPages}` };
+  }
+
   isWired(): boolean {
     return isWired();
   }
