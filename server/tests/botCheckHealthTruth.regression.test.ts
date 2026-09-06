@@ -97,6 +97,15 @@ describe('the health endpoint reports what the guard actually does', () => {
 describe('Turnstile needs BOTH halves — the guard documents it and the release enforces it', () => {
   const GUARD_SRC = readFileSync(join(ROOT, 'server/lib/turnstileGuard.ts'), 'utf8');
   const INVARIANT = readFileSync(join(ROOT, 'scripts/guards/turnstile-release-invariant.mjs'), 'utf8');
+  /**
+   * Executable text only. The script's own comment EXPLAINS why the hostname
+   * check was removed, and therefore quotes it — the same trap that made the
+   * profile-bypass pin fail against its own fix. A pin that prose can break is
+   * not testing the code.
+   */
+  const INVARIANT_CODE = INVARIANT
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
   const CI = readFileSync(join(ROOT, '.github/workflows/petwash-ci.yml'), 'utf8');
 
   it('the guard says so, because setting only the secret does not restore service', () => {
@@ -121,8 +130,9 @@ describe('Turnstile needs BOTH halves — the guard documents it and the release
     // sanitisation and was right about the shape, even though nothing was
     // being sanitised. Presence of the public site-key literal is both more
     // direct and exactly how the outage was diagnosed.
-    expect(INVARIANT).not.toContain('challenges.cloudflare.com');
-    expect(INVARIANT).toMatch(/0x4\[A-Za-z0-9_-\]/);
+    expect(INVARIANT_CODE).not.toContain('challenges.cloudflare.com');
+    expect(INVARIANT_CODE).toContain('const SITE_KEY_SHAPE = ');
+    expect(INVARIANT_CODE).toContain('0x4');
   });
 
   it('it checks the server half too', () => {
