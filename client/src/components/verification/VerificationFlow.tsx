@@ -35,6 +35,7 @@ import {
 import {
   useVerificationChallenge,
   type PublicChallenge,
+  type VerificationTransport,
 } from '@/lib/verification/useVerificationChallenge';
 
 const CODE_LENGTH = 6;
@@ -63,7 +64,20 @@ export interface VerificationFlowProps {
   /** Switch to a different channel — the caller collects the new destination. */
   onSwitchChannel?: (channel: VerificationChannel) => void;
   className?: string;
+  /**
+   * Start the challenge on mount. Set false when the caller already started
+   * one — signup does, because its /start is behind a Turnstile guard the
+   * page owns. Pass that challenge as `existingChallenge`.
+   */
   autoStart?: boolean;
+  existingChallenge?: PublicChallenge | null;
+  /**
+   * How this surface reaches the verification service. Defaults to
+   * /api/verification/*. Signup/login supply /api/auth/email/* because that
+   * route carries the Turnstile bot guard the generic endpoint does not —
+   * a different transport, not a different implementation.
+   */
+  transport?: VerificationTransport;
 }
 
 function mmss(totalSeconds: number): string {
@@ -85,26 +99,38 @@ export function VerificationFlow({
   onSwitchChannel,
   className,
   autoStart = true,
+  existingChallenge = null,
+  transport,
 }: VerificationFlowProps) {
   const he = language === 'he';
   const copy = purposeCopy(purpose, language);
-  const { phase, challenge, failure, resendIn, justResent, start, verify, resend } =
-    useVerificationChallenge();
+  const { phase, challenge, failure, resendIn, justResent, start, adopt, verify, resend } =
+    useVerificationChallenge(transport);
 
   const [code, setCode] = useState('');
   const startedFor = useRef<string | null>(null);
   const autoSubmitted = useRef<string | null>(null);
 
+  // Adopt a caller-started challenge. Same one-shot guard as start(): a
+  // re-render must not re-adopt and reset the customer's typing.
+  useEffect(() => {
+    if (!existingChallenge) return;
+    const key = `adopt|${existingChallenge.challengeId}`;
+    if (startedFor.current === key) return;
+    startedFor.current = key;
+    adopt(existingChallenge);
+  }, [existingChallenge, adopt]);
+
   // Start exactly once per (purpose, channel, destination). Without this guard
   // a re-render would open a second challenge and invalidate the code already
   // sitting in the customer's inbox.
   useEffect(() => {
-    if (!autoStart) return;
+    if (!autoStart || existingChallenge) return;
     const key = `${purpose}|${preferredChannel}|${destination}`;
     if (startedFor.current === key) return;
     startedFor.current = key;
     void start({ purpose, channel: preferredChannel, destination, payload: { ...context, language } });
-  }, [autoStart, purpose, preferredChannel, destination, context, language, start]);
+  }, [autoStart, existingChallenge, purpose, preferredChannel, destination, context, language, start]);
 
   const submit = useCallback(async (value: string) => {
     if (value.length !== CODE_LENGTH) return;

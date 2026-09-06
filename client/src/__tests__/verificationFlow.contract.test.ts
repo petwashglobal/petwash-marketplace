@@ -279,3 +279,96 @@ describe('shared chrome copy', () => {
     expect(CHANNEL_NOUN.whatsapp.en).toBe('WhatsApp');
   });
 });
+
+describe('signup/login migration — one screen, two transports', () => {
+  const SIGNUP = readFileSync(join(ROOT, 'client/src/pages/SignUpLuxury.tsx'), 'utf8');
+  const TRANSPORT = readFileSync(
+    join(ROOT, 'client/src/lib/verification/authEmailTransport.ts'),
+    'utf8',
+  );
+  const SWITCH = readFileSync(join(ROOT, 'client/src/lib/verification/rolloutSwitch.ts'), 'utf8');
+  const AUTH_EMAIL = readFileSync(join(ROOT, 'server/routes/auth-email.ts'), 'utf8');
+
+  it('the email code screen renders the SHARED flow, not another OTP form', () => {
+    expect(SIGNUP).toContain('<VerificationFlow');
+    expect(SIGNUP).toContain("purpose={authMode === 'login' ? 'login' : 'signup'}");
+  });
+
+  it('THE TURNSTILE GUARD SURVIVES — the flow does not bypass /api/auth/email/start', () => {
+    /**
+     * The obvious migration is to point VerificationFlow at /api/verification.
+     * That would silently drop turnstileGuard({ action: 'signup_email_start' })
+     * from the most-attacked surface in the product, because the generic
+     * endpoint has no bot check. Hence a transport.
+     */
+    expect(AUTH_EMAIL).toContain("turnstileGuard({ action: 'signup_email_start' })");
+    expect(TRANSPORT).toContain('/api/auth/email/start');
+    expect(TRANSPORT).not.toContain('/api/verification/start');
+  });
+
+  it('the page keeps ownership of the guarded start; the flow ADOPTS the challenge', () => {
+    // autoStart={false} + existingChallenge means the flow never opens a
+    // second challenge, which would invalidate the code already sent.
+    expect(SIGNUP).toContain('autoStart={false}');
+    expect(SIGNUP).toContain('existingChallenge={emailChallenge}');
+  });
+
+  it('the adopted challenge cannot outlive the code screen', () => {
+    // `sent` is cleared from a dozen places; one effect owns the lifetime so
+    // none of them can leave a stale masked address on screen.
+    expect(SIGNUP).toMatch(/if \(!sent\) setEmailChallenge\(null\)/);
+  });
+
+  it('the OTP is consumed ONCE — stage 1 is not re-run after the flow verifies', () => {
+    // Re-verifying a one-shot code returns CHALLENGE_NOT_PENDING, which reads
+    // to the customer as "wrong code" for a code that was correct.
+    expect(SIGNUP).toContain('presuppliedSessionToken');
+    expect(SIGNUP).toMatch(/verifyEmailCode\('', token\)/);
+  });
+
+  it('stages 2-4 are still shared by both paths — only the screen moved', () => {
+    expect(SIGNUP).toMatch(/let sessionToken = presuppliedSessionToken \|\| cachedEmailSessionToken/);
+  });
+
+  it('verify targets THIS challenge, not "the latest for this address"', () => {
+    // Two tabs, or a resend, and "latest" is no longer what is on screen.
+    expect(TRANSPORT).toContain('verificationChallengeId: a.challengeId');
+    expect(AUTH_EMAIL).toContain('verificationChallengeId');
+  });
+
+  it('resend hits the resend route, NOT start — start would kill the code already sent', () => {
+    expect(TRANSPORT).toContain('/api/auth/email/resend');
+    expect(AUTH_EMAIL).toMatch(/router\.post\('\/resend'/);
+  });
+
+  it('the transport reads the email from the caller — the wire stays masked', () => {
+    expect(TRANSPORT).toContain('opts.getEmail()');
+    // It must not try to recover a raw address from the challenge.
+    expect(TRANSPORT).not.toMatch(/challenge as any\)\.email/);
+  });
+
+  it('the rollout switch is INDEPENDENT of the server purpose flags', () => {
+    // The UNIFIED_VERIFICATION_* flags enable backend purposes and have been ON
+    // for login/signup for a while. Treating that as a rollout plan would swap
+    // the live signup screen for everyone on a deploy.
+    expect(SWITCH).not.toContain('UNIFIED_VERIFICATION_LOGIN_ENABLED');
+    expect(SWITCH).toContain('pwverify');
+    expect(SWITCH).toContain('VITE_UNIFIED_VERIFICATION_UI');
+  });
+
+  it('the switch survives the auth redirect round-trip', () => {
+    // Firebase bounces the browser; a query param alone would be lost.
+    expect(SWITCH).toContain('sessionStorage');
+  });
+
+  it('the switch never throws on a page that must always render', () => {
+    // sessionStorage access throws outright in some privacy modes.
+    expect(SWITCH.match(/try \{/g)?.length ?? 0).toBeGreaterThanOrEqual(3);
+  });
+
+  it('both branches exist ONLY while the switch does — this is temporary by construction', () => {
+    expect(SIGNUP).toContain('sharedVerificationUi &&');
+    expect(SIGNUP).toContain('!sharedVerificationUi &&');
+    expect(SWITCH).toContain('TEMPORARY BY CONSTRUCTION');
+  });
+});

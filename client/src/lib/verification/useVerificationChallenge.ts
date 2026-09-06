@@ -14,6 +14,13 @@
  *    when the server would actually accept a resend.
  *  - A failed verify NEVER clears the challenge. The customer keeps their
  *    place; only the six digits are theirs to retype.
+ *
+ * TRANSPORTS. The default talks to /api/verification/*. A caller may supply
+ * its own, and signup/login do — NOT to have a second OTP implementation, but
+ * because /api/auth/email/* carries the Turnstile bot guard that the generic
+ * endpoint does not, and dropping that from the most-attacked surface in the
+ * product to tidy up a URL would be a bad trade. Both transports return the
+ * same masked challenge shape, so everything above this line is identical.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -45,6 +52,19 @@ interface StartArgs {
   payload?: Record<string, unknown>;
 }
 
+/**
+ * How a surface reaches the verification service.
+ *
+ * `start` receives the same args the canonical endpoint takes; a transport is
+ * free to ignore what it does not need (auth-email derives the purpose from
+ * its own body shape, for instance) as long as it returns `{ challenge }`.
+ */
+export interface VerificationTransport {
+  start: (args: StartArgs) => Promise<{ status: number; json: any }>;
+  verify: (args: { challengeId: string; code: string; challenge: PublicChallenge }) => Promise<{ status: number; json: any }>;
+  resend: (args: { challengeId: string; channel?: VerificationChannel; challenge: PublicChallenge }) => Promise<{ status: number; json: any }>;
+}
+
 async function postJson(path: string, body: unknown): Promise<{ status: number; json: any }> {
   const res = await fetch(getApiUrl(path), {
     method: 'POST',
@@ -69,6 +89,15 @@ function failureFrom(status: number, json: any): VerificationFailure {
   return { reasonCode, status };
 }
 
+/** The canonical transport: /api/verification/*. */
+export const canonicalVerificationTransport: VerificationTransport = {
+  start: (a) => postJson('/api/verification/start', {
+    purpose: a.purpose, channel: a.channel, destination: a.destination, payload: a.payload,
+  }),
+  verify: (a) => postJson('/api/verification/verify', { challengeId: a.challengeId, code: a.code }),
+  resend: (a) => postJson('/api/verification/resend', { challengeId: a.challengeId, channel: a.channel }),
+};
+
 export interface UseVerificationChallenge {
   phase: Phase;
   challenge: PublicChallenge | null;
@@ -78,12 +107,25 @@ export interface UseVerificationChallenge {
   /** True right after a successful resend, so the UI can confirm it. */
   justResent: boolean;
   start: (args: StartArgs) => Promise<PublicChallenge | null>;
+  /**
+   * Adopt a challenge someone else already created.
+   *
+   * Signup needs this: /api/auth/email/start is behind a Turnstile guard, and
+   * solving that widget is the page's job (it knows when to render it). So the
+   * page starts the challenge and the shared flow takes over from code entry
+   * onward — rather than the flow re-implementing a bot check, or worse,
+   * starting a SECOND challenge and invalidating the code already sent.
+   */
+  adopt: (challenge: PublicChallenge) => void;
   verify: (code: string) => Promise<any | null>;
   resend: (channel?: VerificationChannel) => Promise<boolean>;
   reset: () => void;
 }
 
-export function useVerificationChallenge(): UseVerificationChallenge {
+export function useVerificationChallenge(
+  transportOverride?: VerificationTransport,
+): UseVerificationChallenge {
+  const transport = transportOverride ?? canonicalVerificationTransport;
   const [phase, setPhase] = useState<Phase>('idle');
   const [challenge, setChallenge] = useState<PublicChallenge | null>(null);
   const [failure, setFailure] = useState<VerificationFailure | null>(null);
@@ -122,12 +164,7 @@ export function useVerificationChallenge(): UseVerificationChallenge {
     setPhase('starting');
     setFailure(null);
     try {
-      const { status, json } = await postJson('/api/verification/start', {
-        purpose: args.purpose,
-        channel: args.channel,
-        destination: args.destination,
-        payload: args.payload,
-      });
+      const { status, json } = await transport.start(args);
       if (!mounted.current) return null;
       if (status >= 400 || !json?.ok) {
         setFailure(failureFrom(status, json));
@@ -144,7 +181,7 @@ export function useVerificationChallenge(): UseVerificationChallenge {
     } finally {
       inFlight.current = false;
     }
-  }, []);
+  }, [transport]);
 
   const verify = useCallback(async (code: string) => {
     if (inFlight.current || !challenge) return null;
@@ -152,9 +189,8 @@ export function useVerificationChallenge(): UseVerificationChallenge {
     setPhase('verifying');
     setFailure(null);
     try {
-      const { status, json } = await postJson('/api/verification/verify', {
-        challengeId: challenge.challengeId,
-        code,
+      const { status, json } = await transport.verify({
+        challengeId: challenge.challengeId, code, challenge,
       });
       if (!mounted.current) return null;
       if (status >= 400 || !json?.ok) {
@@ -173,7 +209,7 @@ export function useVerificationChallenge(): UseVerificationChallenge {
     } finally {
       inFlight.current = false;
     }
-  }, [challenge]);
+  }, [challenge, transport]);
 
   const resend = useCallback(async (channel?: VerificationChannel) => {
     if (inFlight.current || !challenge || resendIn > 0) return false;
@@ -181,9 +217,8 @@ export function useVerificationChallenge(): UseVerificationChallenge {
     setPhase('resending');
     setFailure(null);
     try {
-      const { status, json } = await postJson('/api/verification/resend', {
-        challengeId: challenge.challengeId,
-        channel,
+      const { status, json } = await transport.resend({
+        challengeId: challenge.challengeId, channel, challenge,
       });
       if (!mounted.current) return false;
       if (status >= 400 || !json?.ok) {
@@ -201,7 +236,13 @@ export function useVerificationChallenge(): UseVerificationChallenge {
     } finally {
       inFlight.current = false;
     }
-  }, [challenge, resendIn]);
+  }, [challenge, resendIn, transport]);
+
+  const adopt = useCallback((next: PublicChallenge) => {
+    setChallenge(next);
+    setFailure(null);
+    setPhase('awaiting_code');
+  }, []);
 
   const reset = useCallback(() => {
     setPhase('idle');
@@ -211,5 +252,5 @@ export function useVerificationChallenge(): UseVerificationChallenge {
     setJustResent(false);
   }, []);
 
-  return { phase, challenge, failure, resendIn, justResent, start, verify, resend, reset };
+  return { phase, challenge, failure, resendIn, justResent, start, adopt, verify, resend, reset };
 }
