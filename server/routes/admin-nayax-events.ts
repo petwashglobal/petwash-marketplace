@@ -9,13 +9,15 @@
  *
  *   GET  /            → filtered event list (station/bay labels resolved)
  *   GET  /summary     → month × machine × channel totals.
- *                       CORRECTED 2026-09-06: this was documented as the CPA
- *                       MONTHLY settlement view on the assumption that bay money
- *                       is booked into SUMIT once a month (2026-07-12 decision).
- *                       That is no longer true of the Jun–Sep 2026 history — 481
- *                       per-transaction tax documents were issued on 05/09/2026.
- *                       The note on the response says so rather than asserting
- *                       the stale rule to whoever reads this screen.
+ *
+ *                       ROLE BOUNDARY (2026-09-06). Nayax tells us what happened
+ *                       at the machine. SUMIT tells us what documents exist. The
+ *                       bookkeeper tells us how the books are treated. This file
+ *                       reports the first two and must never assert the third.
+ *                       An earlier revision of this note concluded which VAT
+ *                       period the income declares in — an accounting conclusion
+ *                       no engineer is entitled to make, removed on the CEO's
+ *                       instruction. State observations, never treatment.
  *   GET  /analytics   → station / city / bay / month roll-up over the canonical
  *                       k9000_wash_events log, ILS and non-ILS kept apart
  *   POST /import      → manual Nayax Core report import (JSON rows parsed
@@ -126,13 +128,14 @@ router.get('/summary', async (_req: Request, res: Response) => {
         const t = terminalForMachine(r.machineId);
         return { ...r, stationNameHe: t?.stationNameHe || null, bay: t?.bay || null, bayNameHe: t?.bayNameHe || null };
       }),
+      // OBSERVATION ONLY. This endpoint reports what Nayax and SUMIT contain; it
+      // states no view on fiscal treatment. Which documents cover which period,
+      // and how the historical turnover should be represented, is the
+      // bookkeeper's determination — not this service's and not the developer's.
       note:
-        'Jun–Sep 2026 history: 481 PER-TRANSACTION SUMIT tax documents were issued on ' +
-        '05/09/2026 (#10002 onward), so the 2026-07-12 CPA monthly-settlement decision no ' +
-        'longer describes this period. Each document carries the 05/09/2026 ISSUE date with ' +
-        'the true service date printed on its face — the income therefore declares in the ' +
-        'September VAT period, not the month it was earned. Totals below are ILS only; ' +
-        'non-ILS rows are excluded and reported separately.',
+        'SUMIT documents observed with issue date 05/09/2026. Totals below are ILS only; ' +
+        'non-ILS rows are excluded and reported separately. Fiscal treatment of the ' +
+        'historical period is determined by the bookkeeper, not by this endpoint.',
     });
   } catch (err) {
     logger.error('[AdminNayaxEvents] summary failed', { err: String(err) });
