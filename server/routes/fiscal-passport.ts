@@ -16,9 +16,14 @@
  *     One transaction as a full FiscalTransactionPassport. Customer
  *     path: viewer participant scope enforced by the composer.
  *
- *   GET /api/admin/fiscal-transactions/by-source/:source/:sourceId
+ *   GET /api/fiscal/admin/by-source/:source/:sourceId
  *     Same shape as above but for staff — surfaces external ids and
  *     provider money. Admin-only (isSuperAdmin gate).
+ *     NOTE: this used to be documented here as
+ *     /api/admin/fiscal-transactions/by-source/... — a URL that was never
+ *     mounted. The router mounts at /api/fiscal (server/routes.ts), and
+ *     AdminTransactionExplorer.tsx was calling the documented URL and
+ *     404ing on every request.
  */
 import { Router, type Request, type Response } from 'express';
 import { logger } from '../lib/logger';

@@ -2,7 +2,7 @@
  * AdminTransactionExplorer — CEO 2026-08-27 §16.
  *
  * Route: /admin/fiscal-transactions/:source/:sourceId. Staff-only.
- * Consumes GET /api/admin/fiscal-transactions/by-source/:source/:sourceId
+ * Consumes GET /api/fiscal/admin/by-source/:source/:sourceId
  * (server/routes/fiscal-passport.ts admin route, 403 for non-staff).
  *
  * Renders ONE transaction along the eight axes CEO §16 named:
@@ -117,9 +117,9 @@ export default function AdminTransactionExplorer() {
   const tr = (en: string, he: string) => (isHe ? he : en);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery<{ ok: boolean; passport: AdminFiscalPassport }>({
-    queryKey: [`/api/admin/fiscal-transactions/by-source/${source}/${sourceId}`],
+    queryKey: [`/api/fiscal/admin/by-source/${source}/${sourceId}`],
     queryFn: async () => {
-      const r = await apiRequest('GET', `/api/admin/fiscal-transactions/by-source/${source}/${sourceId}`);
+      const r = await apiRequest('GET', `/api/fiscal/admin/by-source/${source}/${sourceId}`);
       if (!r.ok) throw new Error(String(r.status));
       return r.json();
     },

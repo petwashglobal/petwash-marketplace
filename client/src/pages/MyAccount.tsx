@@ -1358,7 +1358,11 @@ export default function MyAccount() {
 
   const exportDataMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('GET', '/api/account/export', {});
+      // No third argument. apiRequest treats a truthy `data` as a body and
+      // sets Content-Type, and `{}` is truthy — fetch() then throws
+      // "Request with GET/HEAD method cannot have body" before the request
+      // is ever sent, so this export button could never work.
+      const res = await apiRequest('GET', '/api/account/export');
       return res.json();
     },
     onSuccess: (data) => {
