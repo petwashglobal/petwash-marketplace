@@ -648,11 +648,15 @@ export class SumitClient {
    * So recovery must READ BEFORE IT RECREATES, and "I could not tell" must never
    * collapse into "not found":
    *
-   *   FOUND        the document exists — link it, do not create.
-   *   ABSENT       pagination completed cleanly and it is definitively not there
-   *                — one safe retry is permitted.
-   *   INCONCLUSIVE unwired, network/HTTP failure, non-zero Status, or page budget
-   *                exhausted. NEVER create on this. Fail closed to reconciliation.
+   *   FOUND          the document exists under an EXPECTED type — link it.
+   *   FOUND_MISMATCH the reference exists but under an unexpected document type.
+   *                  Still never recreate: the primary invariant is that the same
+   *                  ExternalReference existing anywhere relevant forbids a blind
+   *                  create. Route to reconciliation.
+   *   ABSENT         pagination completed cleanly and it is definitively not there
+   *                  — one safe retry is permitted.
+   *   INCONCLUSIVE   unwired, no create-attempt time, network/HTTP failure,
+   *                  non-zero Status, or page budget exhausted. NEVER create.
    *
    * ── THE WINDOW IS AROUND THE CREATE ATTEMPT, NOT THE WASH ───────────────────
    * documents/list has no server-side ExternalReference filter, so we page a date
@@ -683,7 +687,8 @@ export class SumitClient {
     maxPages?: number;
     pageSize?: number;
   }): Promise<
-    | { outcome: 'FOUND'; documentId: string; documentNumber?: string }
+    | { outcome: 'FOUND'; documentId: string; documentNumber?: string; documentType?: string }
+    | { outcome: 'FOUND_MISMATCH'; documentId: string; documentNumber?: string; documentType?: string }
     | { outcome: 'ABSENT' }
     | { outcome: 'INCONCLUSIVE'; reason: string }
   > {
@@ -754,10 +759,16 @@ export class SumitClient {
           const id = row?.DocumentID ?? row?.ID ?? row?.Id;
           if (!id) return { outcome: 'INCONCLUSIVE', reason: 'match_without_document_id' };
           const num = row?.DocumentNumber ?? row?.Number;
+          const type = row?.Type ?? row?.Document?.Type;
+          const expected = input.expectedTypes ?? input.documentTypes;
+          // The reference exists. Whether or not the type is what we expected,
+          // a blind recreate is now forbidden.
           return {
-            outcome: 'FOUND',
+            outcome: type != null && !expected.includes(String(type))
+              ? 'FOUND_MISMATCH' : 'FOUND',
             documentId: String(id),
             ...(num != null ? { documentNumber: String(num) } : {}),
+            ...(type != null ? { documentType: String(type) } : {}),
           };
         }
       }
