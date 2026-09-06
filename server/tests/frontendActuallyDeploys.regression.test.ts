@@ -100,8 +100,27 @@ describe('no OTHER job in any workflow can silently skip', () => {
 });
 
 describe('the guard runs in CI', () => {
+  it('uses a runtime the self-lint job actually has', () => {
+    /**
+     * The first version was Node + js-yaml and failed on its very first CI run:
+     * gate-workflow-self-lint only checks out the repo — no npm ci, no
+     * node_modules. Its sibling steps already use python3 + pyyaml, which is
+     * on the runner. A guard that cannot execute is not a guard.
+     */
+    const job = CI.jobs['gate-workflow-self-lint'];
+    const installs = job.steps.some((s: any) =>
+      String(s.run ?? '').includes('npm ci') || String(s.uses ?? '').includes('setup-node'));
+    const guard = job.steps.find((s: any) =>
+      String(s.run ?? '').includes('workflow_silent_skip_scan'));
+    expect(guard, 'guard step missing').toBeTruthy();
+    if (!installs) {
+      expect(String(guard.run), 'job installs nothing, so the guard must not need node_modules')
+        .toContain('python3');
+    }
+  });
+
   it('the self-lint gate invokes the scanner with --fail', () => {
     const steps = CI.jobs['gate-workflow-self-lint'].steps.map((s: any) => String(s.run ?? ''));
-    expect(steps.some((r: string) => r.includes('workflow-silent-skip-scan.mjs --fail'))).toBe(true);
+    expect(steps.some((r: string) => r.includes('workflow_silent_skip_scan.py --fail'))).toBe(true);
   });
 });

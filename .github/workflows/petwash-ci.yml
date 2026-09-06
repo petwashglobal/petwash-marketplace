@@ -155,7 +155,7 @@ jobs:
       # `if` — so production served a stale client bundle while every run
       # showed green. This catches that shape before it ships again.
       - name: Gate — no job silently skips on a conditional upstream
-        run: node scripts/guards/workflow-silent-skip-scan.mjs --fail
+        run: python3 scripts/guards/workflow_silent_skip_scan.py --fail
 
   gate-smoke-test-startup:
     name: Gate — routes.ts module-load smoke test
