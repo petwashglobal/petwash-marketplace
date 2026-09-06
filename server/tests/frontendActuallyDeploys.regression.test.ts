@@ -124,3 +124,44 @@ describe('the guard runs in CI', () => {
     expect(steps.some((r: string) => r.includes('workflow_silent_skip_scan.py --fail'))).toBe(true);
   });
 });
+
+describe('the two client builds cannot drift', () => {
+  /**
+   * The client is built TWICE from one commit:
+   *   deploy-backend  -> "Pre-build frontend (outside Docker)"  (into the image)
+   *   deploy-frontend -> "Build production bundle"              (to Firebase Hosting)
+   *
+   * Hosting is what a browser downloads. On 2026-09-06 the frontend step was
+   * missing VITE_TURNSTILE_SITE_KEY, so the SERVED bundle had no site key and
+   * the widget was dead-code-eliminated — while the container's copy had it,
+   * which is why /api/health/bot-check reported the client half configured.
+   *
+   * One commit, two artifacts, and the healthy-looking one was the one nobody
+   * loads. VITE_* is inlined at compile time, so only comparing the build
+   * ENVIRONMENTS catches this.
+   */
+  function viteEnv(job: string, stepName: string): Set<string> {
+    const step = CI.jobs[job].steps.find((s: any) => s.name === stepName);
+    expect(step, `${job} :: ${stepName} not found`).toBeTruthy();
+    return new Set(Object.keys(step.env ?? {}).filter((k) => k.startsWith('VITE_')));
+  }
+
+  const backend = () => viteEnv('deploy-backend', 'Pre-build frontend (outside Docker)');
+  const frontend = () => viteEnv('deploy-frontend', 'Build production bundle');
+
+  it('both builds receive the identical VITE_* set', () => {
+    const b = backend();
+    const f = frontend();
+    expect([...b].filter((k) => !f.has(k)), 'served build is missing these').toEqual([]);
+    expect([...f].filter((k) => !b.has(k)), 'container build is missing these').toEqual([]);
+  });
+
+  it('the SERVED build gets the Turnstile site key — the one that actually matters', () => {
+    expect(frontend().has('VITE_TURNSTILE_SITE_KEY')).toBe(true);
+  });
+
+  it('the parity guard runs in CI', () => {
+    const steps = CI.jobs['gate-workflow-self-lint'].steps.map((s: any) => String(s.run ?? ''));
+    expect(steps.some((r: string) => r.includes('vite_build_env_parity.py --fail'))).toBe(true);
+  });
+});

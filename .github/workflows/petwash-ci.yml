@@ -157,6 +157,14 @@ jobs:
       - name: Gate — no job silently skips on a conditional upstream
         run: python3 scripts/guards/workflow_silent_skip_scan.py --fail
 
+      # The client is built TWICE from one commit — once into the container,
+      # once for Firebase Hosting. VITE_* is inlined at compile time, so a var
+      # present in one and absent in the other ships two different artifacts,
+      # and Hosting's is the one users load. That is how the Turnstile site key
+      # reached the container but never a browser (2026-09-06).
+      - name: Gate — both client builds get the same VITE_* vars
+        run: python3 scripts/guards/vite_build_env_parity.py --fail
+
   gate-smoke-test-startup:
     name: Gate — routes.ts module-load smoke test
     runs-on: ubuntu-latest
@@ -2712,6 +2720,19 @@ jobs:
           VITE_SHOP_LIVE_ENABLED: 'false'
           VITE_SHOP_CHECKOUT_ENABLED: 'false'
 
+          # ADDED 2026-09-06. These three were set on the backend job's
+          # "Pre-build frontend (outside Docker)" step but NOT here — and this
+          # is the build Firebase Hosting actually serves. So the browser got a
+          # bundle without them while the container's copy had them, which is
+          # also why /api/health/bot-check reported the client half configured
+          # when it was not.
+          #
+          # VITE_* is inlined at compile time, so a var present in one build job
+          # and absent in another produces two different artifacts from one
+          # commit. A diff gate below keeps them in step.
+          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
+          VITE_GOOGLE_PLACES_LIVE: 'true'
       - name: Install Chrome for prerender
         run: npx puppeteer browsers install chrome
 
