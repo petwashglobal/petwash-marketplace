@@ -149,6 +149,14 @@ jobs:
   # on both, so a failing smoke test or stale env-var audit blocks production.
   # No app code runs in these jobs — they are pure CI scaffolding.
   # ════════════════════════════════════════════════════════════════════════
+      # A job that silently skips is worse than one that fails: "skipped" reads
+      # as "not needed". deploy-frontend skipped on EVERY deploy because a
+      # conditional upstream (apply-migrations) skipped and it had no explicit
+      # `if` — so production served a stale client bundle while every run
+      # showed green. This catches that shape before it ships again.
+      - name: Gate — no job silently skips on a conditional upstream
+        run: node scripts/guards/workflow-silent-skip-scan.mjs --fail
+
   gate-smoke-test-startup:
     name: Gate — routes.ts module-load smoke test
     runs-on: ubuntu-latest
@@ -2642,6 +2650,20 @@ jobs:
     name: Build & Deploy Frontend (Firebase Hosting)
     runs-on: ubuntu-latest
     needs: deploy-backend
+    # THIS JOB NEVER RAN. Without an explicit `if`, GitHub defaults to
+    # success(), and a SKIPPED job anywhere in the transitive needs graph skips
+    # every downstream job using that default. `apply-migrations` is skipped on
+    # any deploy that is not a workflow_dispatch or a [migrate] commit — i.e.
+    # almost all of them — so deploy-backend (which explicitly tolerates that
+    # with always()) shipped while deploy-frontend silently did not.
+    #
+    # The failure mode was invisible: the job reported "skipped", which reads
+    # as "not needed" rather than "broken". Production served a stale client
+    # bundle while every deploy showed green. Found 2026-09-06 when a merged
+    # signup crash-fix and a Turnstile site key both failed to reach browsers.
+    #
+    # Same tolerance deploy-backend already has.
+    if: ${{ always() && !cancelled() && needs.deploy-backend.result == 'success' }}
     permissions:
       contents: read
     steps:
