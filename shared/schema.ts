@@ -1155,6 +1155,154 @@ export const nayaxFiscalDocumentLinks = pgTable("nayax_fiscal_document_links", {
   index("idx_nayax_fiscal_link_type").on(table.linkType),
 ]);
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NAYAX REFUND EVENTS — the refund state machine.
+//
+// Deliberately NOT folded into nayax_fiscal_document_links. That table records
+// "transaction ↔ document" and nothing else; it cannot hold attempt timestamps,
+// claim state, resolution provenance or error history, and overloading it would
+// make the link table lie about what it is.
+//
+// ── WHY original_transaction_id IS NULLABLE ─────────────────────────────────
+// Measured on the 2026 export (2026-09-06): a Nayax refund row carries its OWN
+// transaction id and a negative settlement value, but NOTHING that names the sale
+// it reverses. Tested across all six known pairs: Authorization RRN differs 0/6,
+// Acquirer Transaction ID is empty on both sides, Batch Ref differs 0/6. Card
+// number and machine match 6/6 — and are not sufficient: across 518 card sales,
+// 23.6% are NOT uniquely identified by (card, machine, amount), and 41 pairs are
+// mutually ambiguous inside a ±4-day window. One card bought five ₪48 washes at
+// the same bay.
+//
+// So the parent is UNKNOWN until something authoritative says otherwise, and
+// original_resolution_source records which:
+//   NAYAX_AUTHORITATIVE  a parent id from Nayax itself (Lynx/Dispatcher/SQS).
+//   HUMAN_RESOLVED       a person decided, on the record.
+//   HEURISTIC_SUGGESTION a candidate for a REVIEW SCREEN. Never authorises a
+//                        fiscal document, at any cardinality — one candidate is
+//                        still a guess.
+// Only the first two may authorise createCreditDocument().
+// ─────────────────────────────────────────────────────────────────────────────
+/**
+ * Claim ledger for K9000 SALE invoicing.
+ *
+ * The unique index on (machine_id, nayax_transaction_id) is the duplicate guard:
+ * it is what stops a repeated cron run from issuing a second tax invoice for the
+ * same wash. Before this table existed the sale path selected candidates purely
+ * from the live Nayax feed, consulted nothing persisted, and recorded nothing
+ * afterwards — so every run re-selected every already-invoiced wash. The cron's
+ * own comment claimed idempotency "per Nayax tx", but that key only reached SUMIT
+ * as an Idempotency-Key header and an ExternalReference, and SUMIT deduplicates
+ * on neither (which is exactly why read-before-recreate exists).
+ *
+ * Separate from nayaxFiscalDocumentLinks by design: that table records
+ * transaction <-> document and cannot hold claim state or attempt timestamps.
+ */
+export const nayaxSaleIssuanceAttempts = pgTable("nayax_sale_issuance_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  nayaxTransactionId: varchar("nayax_transaction_id").notNull(),
+  machineId: varchar("machine_id").notNull(),
+
+  /** Minor units (agorot), VAT-inclusive — what the customer paid. */
+  amountMinor: integer("amount_minor").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("ILS"),
+
+  /** The Nayax close. The document's fiscal date (bookkeeper, 2026-09-06). */
+  settledAt: timestamp("settled_at"),
+
+  /** READY | CLAIMED | PENDING_LOOKUP | ISSUED | NEEDS_RECONCILIATION | WITHHELD */
+  state: varchar("state").notNull().default("READY"),
+
+  /** Deterministic reference sent to SUMIT. */
+  externalReference: varchar("external_reference").notNull(),
+
+  /**
+   * Persisted BEFORE the first create HTTP call. Recovery searches SUMIT around
+   * THIS instant — never the settlement time.
+   */
+  firstCreateAttemptAt: timestamp("first_create_attempt_at"),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+
+  sumitDocumentId: varchar("sumit_document_id"),
+  sumitDocumentNumber: varchar("sumit_document_number"),
+  lastError: text("last_error"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  uniqueIndex("uq_nayax_sale_issuance").on(table.machineId, table.nayaxTransactionId),
+  uniqueIndex("uq_nayax_sale_external_ref").on(table.externalReference),
+  index("idx_nayax_sale_state").on(table.state),
+]);
+
+export const nayaxRefundEvents = pgTable("nayax_refund_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+
+  /** Nayax refund/reversal transaction id (Transaction Type ID = 1). */
+  refundTransactionId: varchar("refund_transaction_id").notNull(),
+  machineId: varchar("machine_id").notNull(),
+
+  /** Minor units (agorot). Positive magnitude of the refund. */
+  amountMinor: integer("amount_minor").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull().default("ILS"),
+
+  /** When WE observed the refund, not when Nayax settled it. NOT a fiscal date. */
+  observedAt: timestamp("observed_at").notNull().defaultNow(),
+
+  /**
+   * When the REFUND actually closed at the Nayax terminal — the credit
+   * document's fiscal date. Bookkeeper instruction 2026-09-06: a document issued
+   * through the API is dated by the transaction it records. NULL withholds the
+   * credit (NO_REFUND_SETTLEMENT_TIME) rather than letting SUMIT stamp "now".
+   */
+  refundSettledAt: timestamp("refund_settled_at"),
+
+  /**
+   * Whether Nayax reports the reversal as FINAL rather than merely attempted.
+   * Stays false until a feed says otherwise — an attempted reversal that never
+   * settled must not produce a credit document.
+   */
+  reversalIsFinal: boolean("reversal_is_final").notNull().default(false),
+
+  /** The sale being reversed — NULL until authoritatively or humanly resolved. */
+  originalTransactionId: varchar("original_transaction_id"),
+  /** NAYAX_AUTHORITATIVE | HUMAN_RESOLVED | HEURISTIC_SUGGESTION */
+  originalResolutionSource: varchar("original_resolution_source"),
+
+  /** OBSERVED | AWAITING_ORIGINAL | READY | CLAIMED | PENDING_LOOKUP | ISSUED | NEEDS_RECONCILIATION */
+  state: varchar("state").notNull().default("OBSERVED"),
+
+  /** Deterministic idempotency reference sent to SUMIT: nayax-credit:<refund id>. */
+  externalReference: varchar("external_reference").notNull(),
+
+  /**
+   * Persisted BEFORE the first create HTTP call. Recovery searches SUMIT around
+   * THIS instant — never the settlement time. Against the 480 real documents the
+   * service→issue gap ran to a median of 30 days and a max of 56.
+   */
+  firstCreateAttemptAt: timestamp("first_create_attempt_at"),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  attemptCount: integer("attempt_count").notNull().default(0),
+
+  sumitCreditDocumentId: varchar("sumit_credit_document_id"),
+  sumitCreditDocumentNumber: varchar("sumit_credit_document_number"),
+  lastError: text("last_error"),
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  // Nayax does not formally guarantee Transaction ID uniqueness across the
+  // operator, so the safe key is machine + refund id.
+  uniqueIndex("uq_nayax_refund_event").on(table.machineId, table.refundTransactionId),
+  uniqueIndex("uq_nayax_refund_external_ref").on(table.externalReference),
+  index("idx_nayax_refund_state").on(table.state),
+  index("idx_nayax_refund_original").on(table.originalTransactionId),
+]);
+
+export type NayaxRefundEvent = typeof nayaxRefundEvents.$inferSelect;
+export type InsertNayaxRefundEvent = typeof nayaxRefundEvents.$inferInsert;
+
 export type NayaxFiscalDocumentLink = typeof nayaxFiscalDocumentLinks.$inferSelect;
 export type InsertNayaxFiscalDocumentLink = typeof nayaxFiscalDocumentLinks.$inferInsert;
 

@@ -30,6 +30,8 @@ import { LynxClient } from '../services/LynxClient';
 import { LynxCardService } from '../services/LynxCardService';
 import { summarizeBaySales } from '../services/lynxReconciliation';
 import { reconcileMachineToSumit, bridgeWired } from '../services/nayaxSumitBridge';
+import { pgSaleIssuanceStore } from '../services/nayaxSaleIssuance';
+import { pool } from '../db';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -145,15 +147,25 @@ router.get('/machine/:machineId/reconciliation', ...requireSuperAdmin, async (re
 // documented). Prepaid member-redeems are skipped (already documented when the
 // customer paid us). DEFAULTS TO DRY-RUN (preview only). Live issuance requires
 // body {dryRun:false} AND SUMIT wired AND Lynx wired AND NAYAX_SUMIT_BRIDGE_ENABLED
-// — triple-dark, idempotent (nayax-bay:<txid> can never issue twice). MONEY/FISCAL:
-// super-admin + audited.
+// — triple-dark. MONEY/FISCAL: super-admin + audited.
+//
+// IDEMPOTENCY (corrected 2026-09-06): this used to claim "nayax-bay:<txid> can
+// never issue twice". That key reached SUMIT only as an Idempotency-Key header
+// and an ExternalReference, and SUMIT deduplicates on neither — so it guaranteed
+// nothing. Real protection now comes from the claim ledger
+// (nayax_sale_issuance_attempts), whose unique index on
+// (machine_id, nayax_transaction_id) means a second run cannot take the claim.
+// Issuance without that ledger refuses rather than falling back.
 router.post('/machine/:machineId/sumit-reconcile', ...requireSuperAdmin, async (req: Request, res: Response) => {
   const machineId = String(req.params.machineId || '').trim();
   if (!machineId) return res.status(400).json({ error: 'machineId required' });
   // Live issuance is opt-in per request; anything but explicit false stays dry-run.
   const dryRun = req.body?.dryRun === false ? false : true;
   try {
-    const result = await reconcileMachineToSumit(machineId, { dryRun });
+    const result = await reconcileMachineToSumit(machineId, {
+      dryRun,
+      claimStore: pgSaleIssuanceStore(pool),
+    });
     await audit(req, 'ADMIN_NAYAX_SUMIT_RECONCILE', {
       machineId, requestedDryRun: dryRun, effectiveDryRun: result.dryRun,
       canIssue: result.wired.canIssue, candidateCount: result.candidateCount,
