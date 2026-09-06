@@ -59,6 +59,13 @@ export interface RefundEventView {
   confirmedCreditedMinor?: number;
   /** Whether Nayax reports the reversal as final rather than merely attempted. */
   reversalIsFinal?: boolean;
+  /**
+   * When the REFUND closed at the Nayax terminal — the credit document's fiscal
+   * date. Required, because the bookkeeper's 2026-09-06 instruction is that a
+   * document issued through the API is dated by the transaction it records. With
+   * no such instant there is no correct date, and SUMIT would stamp "now".
+   */
+  refundSettledAt?: Date | null;
 }
 
 export const REFUND_BLOCKER = {
@@ -71,6 +78,7 @@ export const REFUND_BLOCKER = {
   EXCEEDS_REMAINING: 'EXCEEDS_REMAINING',
   UNKNOWN_MACHINE: 'UNKNOWN_MACHINE',
   NO_REFUND_IDENTITY: 'NO_REFUND_IDENTITY',
+  NO_REFUND_SETTLEMENT_TIME: 'NO_REFUND_SETTLEMENT_TIME',
 } as const;
 export type RefundBlocker = (typeof REFUND_BLOCKER)[keyof typeof REFUND_BLOCKER];
 
@@ -107,6 +115,11 @@ export function refundBlockers(
   }
   if (!e.originalFiscalDocumentId) out.push(REFUND_BLOCKER.NO_ORIGINAL_FISCAL_DOCUMENT);
   if (e.reversalIsFinal !== true) out.push(REFUND_BLOCKER.REVERSAL_NOT_FINAL);
+  // No Nayax close → no correct fiscal date → withhold. Issuing anyway would let
+  // SUMIT stamp today, which is exactly the drift the bookkeeper ruled against.
+  if (!(e.refundSettledAt instanceof Date) || Number.isNaN(e.refundSettledAt.getTime())) {
+    out.push(REFUND_BLOCKER.NO_REFUND_SETTLEMENT_TIME);
+  }
   if (!(e.amountMinor > 0)) out.push(REFUND_BLOCKER.NON_POSITIVE_AMOUNT);
 
   const remaining = remainingCreditableMinor(e.originalAmountMinor, e.confirmedCreditedMinor);

@@ -1193,8 +1193,23 @@ export const nayaxRefundEvents = pgTable("nayax_refund_events", {
   amountMinor: integer("amount_minor").notNull(),
   currency: varchar("currency", { length: 3 }).notNull().default("ILS"),
 
-  /** When WE observed the refund, not when Nayax settled it. */
+  /** When WE observed the refund, not when Nayax settled it. NOT a fiscal date. */
   observedAt: timestamp("observed_at").notNull().defaultNow(),
+
+  /**
+   * When the REFUND actually closed at the Nayax terminal — the credit
+   * document's fiscal date. Bookkeeper instruction 2026-09-06: a document issued
+   * through the API is dated by the transaction it records. NULL withholds the
+   * credit (NO_REFUND_SETTLEMENT_TIME) rather than letting SUMIT stamp "now".
+   */
+  refundSettledAt: timestamp("refund_settled_at"),
+
+  /**
+   * Whether Nayax reports the reversal as FINAL rather than merely attempted.
+   * Stays false until a feed says otherwise — an attempted reversal that never
+   * settled must not produce a credit document.
+   */
+  reversalIsFinal: boolean("reversal_is_final").notNull().default(false),
 
   /** The sale being reversed — NULL until authoritatively or humanly resolved. */
   originalTransactionId: varchar("original_transaction_id"),

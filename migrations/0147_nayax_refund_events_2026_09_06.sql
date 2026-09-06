@@ -27,7 +27,21 @@ CREATE TABLE IF NOT EXISTS nayax_refund_events (
 
   amount_minor                INTEGER NOT NULL,
   currency                    VARCHAR(3) NOT NULL DEFAULT 'ILS',
+
+  -- When WE saw the refund. NOT a fiscal date.
   observed_at                 TIMESTAMP NOT NULL DEFAULT NOW(),
+
+  -- When the REFUND actually closed at the Nayax terminal. This, and never
+  -- observed_at, is the date the credit document carries: the bookkeeper's
+  -- 2026-09-06 instruction is that a document issued through the API is dated
+  -- by the transaction it records. NULL until the feed supplies it, and a NULL
+  -- withholds the credit rather than substituting "now".
+  refund_settled_at           TIMESTAMP,
+
+  -- Whether Nayax reports the reversal as FINAL rather than merely attempted.
+  -- Defaults FALSE and stays FALSE until a feed says otherwise: an attempted
+  -- reversal that never settled must not produce a credit document.
+  reversal_is_final           BOOLEAN NOT NULL DEFAULT FALSE,
 
   original_transaction_id     VARCHAR,
   -- NAYAX_AUTHORITATIVE | HUMAN_RESOLVED | HEURISTIC_SUGGESTION
@@ -68,6 +82,9 @@ CREATE INDEX IF NOT EXISTS idx_nayax_refund_original
 COMMENT ON COLUMN nayax_refund_events.original_transaction_id IS
   'The sale being reversed. NULL until authoritatively or humanly resolved — '
   'Nayax does not provide a parent transaction reference in the export.';
+COMMENT ON COLUMN nayax_refund_events.refund_settled_at IS
+  'The Nayax close of the refund. The credit document''s fiscal date. NULL '
+  'withholds issuance — never substitute observed_at or NOW().';
 COMMENT ON COLUMN nayax_refund_events.first_create_attempt_at IS
   'Persisted before the first SUMIT create call. Recovery searches around this '
   'instant, never the Nayax settlement time.';

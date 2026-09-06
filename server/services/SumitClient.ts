@@ -601,6 +601,13 @@ export class SumitClient {
     vatAmount: number;
     totalAmount: number;
     currency: 'ILS';
+    /**
+     * The fiscal date of the credit, from the Nayax REFUND close — same
+     * bookkeeper instruction that governs the sale (2026-09-06): a document
+     * issued through the API is dated by the transaction it records, not by
+     * whenever the request reached SUMIT. Omitted → SUMIT stamps "now".
+     */
+    documentDate?: Date;
     context?: Record<string, unknown>;
   }): Promise<SumitDocumentResult> {
     const env = readEnv();
@@ -622,6 +629,9 @@ export class SumitClient {
         Currency: input.currency,
         Language: 'Hebrew',
         ExternalReference: input.idempotencyKey,
+        ...(input.documentDate && !Number.isNaN(input.documentDate.getTime())
+          ? { Date: israeliFiscalDate(input.documentDate) }
+          : {}),
       },
       Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountBeforeVat }],
       Payments: [{ Amount: input.totalAmount, Type: 'CreditCard', Details_CreditCard: {} }],

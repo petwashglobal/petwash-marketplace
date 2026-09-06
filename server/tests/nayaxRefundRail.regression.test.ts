@@ -19,7 +19,12 @@ const ev = (o: Partial<RefundEventView> = {}): RefundEventView => ({
   originalTransactionId: '4595298208',
   originalResolutionSource: SRC.NAYAX_AUTHORITATIVE,
   originalFiscalDocumentId: 'DOC-1', originalAmountMinor: 4800,
-  confirmedCreditedMinor: 0, reversalIsFinal: true, ...o,
+  confirmedCreditedMinor: 0, reversalIsFinal: true,
+  // Added 2026-09-06: a credit must carry the Nayax close of the REFUND as its
+  // fiscal date, so the happy-path fixture now supplies one. Its absence is a
+  // blocker in its own right — pinned below.
+  refundSettledAt: new Date('2026-09-05T09:30:00Z'),
+  ...o,
 });
 
 describe('refund identity is the refund event, never the sale', () => {
@@ -172,5 +177,23 @@ describe('createCreditDocument never throws — so silence is not success', () =
 
   it('a resolved promise alone never means the credit exists', () => {
     expect(interpretCreditResult({ wired: true } as any).state).not.toBe(REFUND_STATE.ISSUED);
+  });
+});
+
+describe('a credit with no Nayax close is withheld (bookkeeper dating rule, 2026-09-06)', () => {
+  it('blocks when the refund settlement instant is missing', () => {
+    expect(refundBlockers(ev({ refundSettledAt: null }), known))
+      .toContain(REFUND_BLOCKER.NO_REFUND_SETTLEMENT_TIME);
+    expect(mayIssueCredit(ev({ refundSettledAt: undefined }), known)).toBe(false);
+  });
+
+  it('blocks when the instant is present but unusable', () => {
+    expect(refundBlockers(ev({ refundSettledAt: new Date('nonsense') }), known))
+      .toContain(REFUND_BLOCKER.NO_REFUND_SETTLEMENT_TIME);
+  });
+
+  it('does not block when a real close is present', () => {
+    expect(refundBlockers(ev(), known)).not.toContain(REFUND_BLOCKER.NO_REFUND_SETTLEMENT_TIME);
+    expect(mayIssueCredit(ev(), known)).toBe(true);
   });
 });
