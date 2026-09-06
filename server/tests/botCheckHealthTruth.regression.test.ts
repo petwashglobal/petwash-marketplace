@@ -111,8 +111,18 @@ describe('Turnstile needs BOTH halves — the guard documents it and the release
     // A VITE_* value is inlined at build time. Reading process.env at deploy
     // time would pass while shipping a bundle that has no key in it.
     expect(INVARIANT).toContain('SITE_KEY_MISSING');
-    expect(INVARIANT).toContain('challenges.cloudflare.com');
+    expect(INVARIANT).toContain('SITE_KEY_SHAPE');
     expect(INVARIANT).toMatch(/dead-code-eliminated/);
+  });
+
+  it('detects the key directly, not by sniffing a hostname substring', () => {
+    // The first version inferred presence from challenges.cloudflare.com
+    // appearing in the bundle. CodeQL flagged it as incomplete URL substring
+    // sanitisation and was right about the shape, even though nothing was
+    // being sanitised. Presence of the public site-key literal is both more
+    // direct and exactly how the outage was diagnosed.
+    expect(INVARIANT).not.toContain('challenges.cloudflare.com');
+    expect(INVARIANT).toMatch(/0x4\[A-Za-z0-9_-\]/);
   });
 
   it('it checks the server half too', () => {

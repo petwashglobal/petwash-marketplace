@@ -79,18 +79,31 @@ if (files.length === 0) {
     + 'does not exist.',
   );
 } else {
-  // The guard's own compiled shape is the tell. When the site key is empty
-  // Vite folds `if (!SITE_KEY) return {ok:false, code:'SITE_KEY_MISSING'}`
-  // into the whole function body and drops the widget-render path.
+  /**
+   * Look for a Turnstile SITE KEY LITERAL in the chunk that carries the widget.
+   *
+   * Cloudflare site keys are public by design and have a fixed shape
+   * (`0x4AAAA…`, or `1x0000…`/`3x0000…` for the documented test keys), so this
+   * is a presence test on a known token shape — the value is never printed,
+   * compared or stored.
+   *
+   * An earlier version inferred presence from the challenges.cloudflare.com
+   * loader URL appearing in the bundle. CodeQL flagged that as incomplete URL
+   * substring sanitisation and was right to: a substring test against a
+   * hostname is a fragile shape even when, as here, nothing is being
+   * sanitised. Checking for the key itself is both more direct and exactly how
+   * the 2026-09-06 outage was diagnosed.
+   */
+  const SITE_KEY_SHAPE = /0x4[A-Za-z0-9_-]{20,}|\b[13]x0{20}[A-Za-z0-9]{1,4}\b/;
   let sawWidget = false;
-  let sawFoldedAway = false;
+  let sawKey = false;
   for (const f of files) {
     const src = readFileSync(f, 'utf8');
     if (!src.includes('SITE_KEY_MISSING')) continue;
     sawWidget = true;
-    // The render path only survives when a key was present at build time.
-    if (!src.includes('challenges.cloudflare.com')) sawFoldedAway = true;
+    if (SITE_KEY_SHAPE.test(src)) sawKey = true;
   }
+  const sawFoldedAway = sawWidget && !sawKey;
 
   if (!sawWidget) {
     notes.push(`No Turnstile widget code found in ${DIST} (nothing to validate).`);
