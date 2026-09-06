@@ -24,7 +24,30 @@ describe('generateReceipt wires payment class → SUMIT document type (2026-07-0
   });
 
   it('every generateReceipt caller declares its payment class', () => {
-    expect(read('routes/sitter-suite.ts')).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
+    // Sitter Suite: the declaration moved, it was not removed. The whole
+    // `action === 'accept'` branch of routes/sitter-suite.ts — atomic claim,
+    // Nayax capture, escrow, the SIM_ guard and this generateReceipt call —
+    // was extracted into services/booking-response/acceptSitterBookingCore.ts
+    // by commit 68d9d0b4e (PR #2166, 2026-08-28). routes/sitter-suite.ts
+    // therefore no longer calls generateReceipt itself; it awaits the core, and
+    // so does BookingResponseDispatcher's SITTER accept branch. Pin the core
+    // (where the call lives now) AND both entry points' delegation, so
+    // re-inlining either branch without the receipt fails here again.
+    //
+    // Scope of this pin: it proves the ROUTING is intact — that a Sitter accept
+    // still reaches generateReceipt carrying the class. It does not prove any
+    // individual SUMIT document was issued: the SUMIT dispatch inside
+    // generateReceipt is deliberately non-blocking (a missing document id logs
+    // a warning, a throw logs an error) so a SUMIT hiccup can never fail a
+    // receipt for an already-captured payment. Issuance completeness is a
+    // data-reconciliation question, not a code-path one.
+    expect(read('services/booking-response/acceptSitterBookingCore.ts'))
+      .toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
+    expect(read('routes/sitter-suite.ts')).toMatch(/acceptSitterBookingCore\(/);
+    expect(read('services/booking-response/BookingResponseDispatcher.ts'))
+      .toMatch(/acceptSitterBookingCore\(/);
+    // What that class resolves to (Invoice / VAT_ON_COMMISSION_ONLY /
+    // PETWASH_DISCLOSED_AGENT) stays pinned in sumit-document-mapping.test.ts.
     // walk-my-pet no longer calls generateReceipt at all (2026-07-30): its
     // accept path collects no money, so it may not issue a fiscal document.
     expect(read('routes/walk-my-pet.ts')).not.toMatch(/generateReceipt\(/);
