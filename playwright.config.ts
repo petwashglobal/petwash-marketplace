@@ -7,7 +7,19 @@ import { defineConfig, devices } from '@playwright/test';
  * Uses REPLIT_DEV_DOMAIN to automatically construct the correct public URL.
  */
 export default defineConfig({
-  testDir: './tests',
+  /**
+   * './tests' was too wide. `tests/` also holds the vitest suites
+   * (tests/behavior, tests/contracts, tests/integration, tests/regression,
+   * tests/unit), and Playwright's default testMatch picks up their
+   * `*.test.ts` files. Importing a vitest file into the Playwright runner
+   * throws `TypeError: Cannot redefine property: Symbol($$jest-matchers-object)`
+   * — both runners install a global expect — and the collection errors take
+   * the whole run down with them. `npx playwright test --list` reported
+   * "Total: 0 tests in 0 files" while the 24 real specs sat right there.
+   *
+   * The Playwright specs all live in tests/e2e, so point at that directory.
+   */
+  testDir: './tests/e2e',
   
   // Maximum time one test can run (30 seconds)
   timeout: 30 * 1000,
