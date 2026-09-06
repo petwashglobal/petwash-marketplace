@@ -413,6 +413,20 @@ export class SumitClient {
     documentType?: 'InvoiceAndReceipt' | 'Receipt' | 'Invoice';
     /** Card metadata when the caller has it — enriches the receipt's payment line. */
     card?: { last4?: string; brand?: string };
+    /**
+     * A STABLE catalogue item to bill against, resolved by ExternalIdentifier.
+     *
+     * Without this the line falls back to `Item: { Name: description }`, and SUMIT
+     * creates a NEW catalogue entry for every distinct description string. Since a
+     * bay sale's description carries the station and bay, that fragments one product
+     * into one item per bay and makes SUMIT's product report meaningless.
+     *
+     * Pass a stable {name, externalId} and put the varying station/bay context in
+     * `lineDescription` instead — the item stays one product, the line stays specific.
+     */
+    item?: { name: string; externalId: string };
+    /** Per-line context (station/bay). Only used when `item` is supplied. */
+    lineDescription?: string;
     /** caller context for the audit log (platform, bookingId) */
     context?: Record<string, unknown>;
   }): Promise<SumitDocumentResult> {
@@ -474,11 +488,26 @@ export class SumitClient {
     // number series from invoices. Every other type (InvoiceAndReceipt / Invoice)
     // carries the taxable line with VATIncluded:false so SUMIT adds the 18%.
     if ((input.documentType || 'InvoiceAndReceipt') !== 'Receipt') {
-      body.Items = [{
-        Item: { Name: input.description },
-        Quantity: 1,
-        UnitPrice: input.amountBeforeVat,
-      }];
+      body.Items = [
+        input.item
+          ? {
+              // SearchMode ExternalIdentifier → reuse the ONE catalogue item, or
+              // create it once with this business name. Never a per-description item.
+              Item: {
+                Name: input.item.name,
+                ExternalIdentifier: input.item.externalId,
+                SearchMode: 'ExternalIdentifier',
+              },
+              Quantity: 1,
+              UnitPrice: input.amountBeforeVat,
+              Description: input.lineDescription || input.description,
+            }
+          : {
+              Item: { Name: input.description },
+              Quantity: 1,
+              UnitPrice: input.amountBeforeVat,
+            },
+      ];
       body.VATIncluded = false;
     }
 
