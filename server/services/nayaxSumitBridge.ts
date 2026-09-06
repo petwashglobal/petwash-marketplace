@@ -82,6 +82,25 @@ export const FISCAL_TREATMENT = {
 } as const;
 export type FiscalTreatment = (typeof FISCAL_TREATMENT)[keyof typeof FISCAL_TREATMENT];
 
+/**
+ * A purely FACTUAL reconciliation observation, carrying no treatment.
+ *
+ * Used for a settled transaction seen with no matching SUMIT document while no
+ * production cutover has been chosen. It is deliberately NOT one of the
+ * FISCAL_TREATMENT values: "historical" is relative to a boundary, and until that
+ * boundary exists the word means nothing. Calling such a row
+ * HISTORICAL_UNRESOLVED before a cutover is set states a treatment the data does
+ * not support — the same class of error as naming a VAT period.
+ *
+ * Once a cutover is chosen and these transactions fall before it, they may then be
+ * recorded as HISTORICAL_UNRESOLVED, unless the bookkeeper directs otherwise.
+ */
+export const RECONCILIATION_OBSERVATION = {
+  SETTLED_NO_DOCUMENT: 'SETTLED_NO_DOCUMENT',
+} as const;
+export type ReconciliationObservation =
+  (typeof RECONCILIATION_OBSERVATION)[keyof typeof RECONCILIATION_OBSERVATION];
+
 /** How a SUMIT document relates to a Nayax transaction. */
 export const FISCAL_LINK_TYPE = {
   /** One document issued for this one transaction. */
@@ -127,8 +146,13 @@ export interface FiscalDocumentLink {
 
 
 /**
- * The instant separating the two treatments. Controlled ACCOUNTING configuration:
- * once set in production it is not a developer's to move.
+ * The instant that separates automatic issuance from withholding. Controlled
+ * ACCOUNTING configuration: once set in production it is not a developer's to move.
+ *
+ * It does NOT by itself assign a treatment. At/after it, a settled transaction is
+ * POST_CUTOVER_INDIVIDUAL. Before it, the transaction is simply WITHHELD — which of
+ * the three historical treatments applies is recorded separately, from the
+ * bookkeeper's direction and from what SUMIT is observed to contain.
  *
  * Returns null when unset or unparseable — and the bridge then refuses to issue
  * anything at all (see bridgeWired). That is deliberate. The failure mode of a
@@ -334,7 +358,7 @@ export interface BridgeRunResult {
     sumitDocumentId?: string;
     reason?: string;
   }>;
-  /** ISO instant separating HISTORICAL_CONSOLIDATED from POST_CUTOVER_INDIVIDUAL. */
+  /** ISO instant at/after which a settled transaction is individually invoiced. */
   fiscalCutoverAt?: string | null;
   /** Settled sales withheld because they precede the cutover. Never auto-invoiced. */
   historicalWithheld?: number;

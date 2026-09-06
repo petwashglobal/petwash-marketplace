@@ -9,15 +9,20 @@
  * report. Before this guard, `server/` had NO cutover concept at all — the live
  * cron would have done the same thing to every historical row Lynx returned.
  *
- * The two treatments are the bookkeeper's distinction, not ours:
- *   HISTORICAL_CONSOLIDATED  many transactions → one consolidated document
- *   POST_CUTOVER_INDIVIDUAL  one transaction  → one document
+ * Treatment is the bookkeeper's distinction, not ours. FOUR exist:
+ *   HISTORICAL_EXISTING_INDIVIDUAL  pre-cutover, already has its own document
+ *   HISTORICAL_CONSOLIDATED         pre-cutover, covered by one consolidated doc
+ *   HISTORICAL_UNRESOLVED           pre-cutover, no treatment established
+ *   POST_CUTOVER_INDIVIDUAL         one transaction → one document
+ *
+ * And a settled transaction seen with NO document while no cutover exists yet is
+ * none of them — it is the factual observation SETTLED_NO_DOCUMENT.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   applyFiscalCutover, fiscalCutoverAt, bridgeWired, FISCAL_TREATMENT,
   selectDocumentableSales, buildReceiptInput, K9000_INCOME_ITEM, K9000_GENERAL_CUSTOMER,
-  FISCAL_LINK_TYPE, FISCAL_LINK_SOURCE,
+  FISCAL_LINK_TYPE, FISCAL_LINK_SOURCE, RECONCILIATION_OBSERVATION,
   type DocumentableSale, type FiscalDocumentLink,
 } from '../services/nayaxSumitBridge';
 
@@ -257,5 +262,45 @@ describe('K9000 general customer', () => {
     expect(a.customer.name).toBe(b.customer.name);
     expect(a.item!.externalId).toBe(b.item!.externalId);
     expect(a.lineDescription).not.toBe(b.lineDescription);
+  });
+});
+
+
+/**
+ * A settled transaction with no document, observed BEFORE any cutover exists.
+ *
+ * On 2026-09-06 reconciliation found 18 such transactions (₪808, 05/09 13:19 →
+ * 06/09 08:54, all four bays) beginning the instant the manual backfill stopped.
+ * That is useful operational evidence — it shows the rail did not continue by
+ * itself. It says NOTHING about what document should exist for them.
+ *
+ * They were briefly labelled HISTORICAL_UNRESOLVED. That was wrong: "historical"
+ * is relative to a cutover, and no cutover has been chosen. Until one is, the only
+ * supportable statement is the observation itself.
+ */
+describe('settled-with-no-document, before any cutover exists', () => {
+  it('is an observation, not a treatment', () => {
+    expect(RECONCILIATION_OBSERVATION.SETTLED_NO_DOCUMENT).toBe('SETTLED_NO_DOCUMENT');
+    expect(Object.values(FISCAL_TREATMENT))
+      .not.toContain(RECONCILIATION_OBSERVATION.SETTLED_NO_DOCUMENT);
+  });
+
+  it('is never one of the historical treatments, which need a boundary to mean anything', () => {
+    const obs: string = RECONCILIATION_OBSERVATION.SETTLED_NO_DOCUMENT;
+    expect(obs).not.toBe(FISCAL_TREATMENT.HISTORICAL_UNRESOLVED);
+    expect(obs).not.toBe(FISCAL_TREATMENT.HISTORICAL_CONSOLIDATED);
+    expect(obs).not.toBe(FISCAL_TREATMENT.HISTORICAL_EXISTING_INDIVIDUAL);
+  });
+
+  // Withholding is not a treatment assignment. With no cutover the bridge withholds
+  // EVERYTHING, including these — and still says nothing about how they are treated.
+  it('is withheld from issuance while no cutover exists, without being classified', () => {
+    const undocumented = [
+      sale('2206704842', '2026-09-05T10:19:13Z'),
+      sale('2207959160', '2026-09-06T05:54:25Z'),
+    ];
+    const { eligible, historical } = applyFiscalCutover(undocumented, null);
+    expect(eligible).toHaveLength(0);
+    expect(historical).toHaveLength(2);
   });
 });
