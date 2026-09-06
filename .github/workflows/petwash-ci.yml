@@ -1254,13 +1254,19 @@ jobs:
       # and belongs in Secret Manager; copying it into GitHub just so CI can
       # check presence would widen exposure for no benefit. The gate proves the
       # server WILL RECEIVE it, without ever receiving it.
-      - name: Gate — Turnstile has both halves (blocks a signup outage)
+      # NOTE: this runs before build-cloudrun-secrets, so it validates the
+      # CLIENT half and the build metadata only. The SERVER half is validated
+      # separately, after the candidate secret mappings are generated — see
+      # "Gate — candidate deployment binds TURNSTILE_SECRET_KEY" below.
+      - name: Gate — Turnstile client half (blocks a signup outage)
         env:
           TURNSTILE_INVARIANT_ENV: production
+          # An empty mapping is meaningful here: it tells the gate to check the
+          # client half only, and the server half is gated later against the
+          # real candidate mappings.
+          TURNSTILE_SKIP_SERVER_HALF: 'client-half-only'
         run: |
-          node scripts/guards/turnstile-release-invariant.mjs \
-            --dist dist/public \
-            --service petwash-api --region me-west1 --project signinpetwash
+          node scripts/guards/turnstile-release-invariant.mjs --dist dist/public
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -1461,6 +1467,14 @@ jobs:
             "WEBAUTHN_RP_ID=WEBAUTHN_RP_ID:latest"
             "WEBAUTHN_COOKIE_SECRET=WEBAUTHN_COOKIE_SECRET:latest"
             "RECAPTCHA_SECRET_KEY=RECAPTCHA_SECRET_KEY:latest"
+            # Turnstile server half (2026-09-06). REQUIRED, deliberately:
+            # turnstileGuard fails CLOSED in production, so a revision without
+            # this binding returns 503 on /api/auth/email/start and
+            # /api/auth/sms/start and NOBODY can sign up or sign in by code.
+            # That was live for months because nothing in the pipeline required
+            # it. Listing it here means the deploy stops before traffic moves
+            # rather than after customers are locked out.
+            "TURNSTILE_SECRET_KEY=TURNSTILE_SECRET_KEY:latest"
             "MOBILE_LINK_SECRET=MOBILE_LINK_SECRET:latest"
             "WALLET_LINK_SECRET=WALLET_LINK_SECRET:latest"
             "VOUCHER_SALT=VOUCHER_SALT:latest"
@@ -1775,6 +1789,22 @@ jobs:
       # action's shell invocation as positional args and break gcloud parsing
       # if they contain quotes or apostrophes. Keep explanatory text here, not
       # inline. (Lesson from PR #448 main-deploy break, 2026-05-25.)
+      # Server half, gated against the CANDIDATE deployment.
+      #
+      # This validates the exact `secrets:` argument the deploy above is given,
+      # i.e. what the NEXT revision will be created with — not the config of
+      # the revision already running. Inspecting the live service would pass
+      # even if a template change dropped the binding from the candidate.
+      #
+      # Fails CLOSED: if the mappings cannot be read on a production release,
+      # the release is blocked. Post-deploy health is a second, independent
+      # gate — never a substitute for this one.
+      - name: Gate — candidate deployment binds TURNSTILE_SECRET_KEY
+        env:
+          TURNSTILE_INVARIANT_ENV: production
+          CLOUDRUN_SECRET_MAPPINGS: ${{ steps.build-cloudrun-secrets.outputs.secret_mappings }}
+        run: node scripts/guards/turnstile-release-invariant.mjs --dist dist/public
+
       - name: Deploy to Cloud Run (no-traffic candidate)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -2296,6 +2326,54 @@ jobs:
               exit 1
               ;;
           esac
+
+      # Runtime proof of BOTH Turnstile halves, on the candidate revision,
+      # before any real user reaches it.
+      #
+      # This is the second, INDEPENDENT gate. The pre-deploy invariant proves
+      # the candidate's configuration; this proves the running container agrees
+      # — the secret actually resolved, and the bundle it serves really carries
+      # a site key. Configuration can be right and the runtime still wrong
+      # (an empty secret version, a stale image), which is exactly why both
+      # exist.
+      #
+      # Failing here means traffic is never promoted: the previous revision
+      # keeps serving 100%, so rollback is implicit.
+      - name: Gate — candidate reports Turnstile READY before promotion
+        run: |
+          set -euo pipefail
+          URL="${{ steps.revision.outputs.candidate_url }}"
+          if [ -z "$URL" ]; then
+            echo "::error::candidate_url empty — cannot verify Turnstile on the candidate."
+            exit 1
+          fi
+
+          BODY=$(curl -fsS --max-time 30 "$URL/api/health/bot-check" || echo '')
+          if [ -z "$BODY" ]; then
+            echo "::error::Could not reach $URL/api/health/bot-check — blocking promotion."
+            exit 1
+          fi
+          echo "$BODY"
+
+          node -e '
+            const b = JSON.parse(process.argv[1]);
+            const need = {
+              status: "READY",
+              turnstileServerConfigured: true,
+              turnstileClientBuildConfigured: true,
+              clientBuildMetadataFound: true,
+              protectedSurfacesRejectingAllTraffic: false,
+            };
+            const bad = Object.entries(need).filter(([k, v]) => b[k] !== v);
+            if (bad.length) {
+              console.error("Turnstile not READY on the candidate revision:");
+              for (const [k, v] of bad) console.error(`  ${k}: expected ${v}, got ${JSON.stringify(b[k])}`);
+              console.error(b.note || "");
+              console.error("Traffic will NOT be promoted; the previous revision keeps serving.");
+              process.exit(1);
+            }
+            console.log("Turnstile READY on the candidate — both halves verified at runtime.");
+          ' "$BODY"
 
       # Issue #143 — only now do we promote production traffic. All smoke tests
       # passed against the tagged candidate URL while the previous revision
