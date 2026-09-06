@@ -324,6 +324,7 @@ import { providerAppRouter } from "./routes/provider-app";
 // Top-level imports load eagerly; call-site try/catch still protects against
 // runtime errors inside the called functions.
 import { getBuildInfo as _getBuildInfo } from "./lib/buildInfo";
+import { getClientBuildConfig } from "./lib/clientBuildConfig";
 import { logStartupConfigDiagnostic as _logStartupConfigDiagnostic } from "./lib/configHealth";
 import { SystemEventService as _SystemEventService } from "./services/SystemEventService";
 
@@ -1247,16 +1248,28 @@ app.get('/api/health', async (_req, res) => {
 // deployment has the secrets set before flipping enforcement live.
 app.get('/api/health/bot-check', (_req, res) => {
   const turnstileServerConfigured = !!process.env.TURNSTILE_SECRET_KEY;
-  // The client-side site key rides with the built bundle so a running
-  // server cannot observe it directly. What it CAN observe: whether the
-  // envs it needs (TURNSTILE_SECRET_KEY) are present, and whether the
-  // widget's paired env name (VITE_TURNSTILE_SITE_KEY) was set at build
-  // time (some deployments export it to the server env too for a matched
-  // pair). Both flags exposed so an ops dashboard can flag a mismatched
-  // rollout without exposing key material.
-  const turnstileSiteKeyEnvPresent = !!process.env.VITE_TURNSTILE_SITE_KEY;
-  const enforcementActive = turnstileServerConfigured;
+
+  /**
+   * THE CLIENT HALF COMES FROM THE ARTIFACT, NOT FROM AN ENV VAR.
+   *
+   * This used to be `!!process.env.VITE_TURNSTILE_SITE_KEY`, which was wrong
+   * in both directions. VITE_* is a FRONTEND BUILD variable — Vite inlines it
+   * at compile time and it has no reason to exist in the Cloud Run runtime.
+   * So a correct deployment would have reported the site key ABSENT, and
+   * setting that var on Cloud Run after a build would have reported PRESENT
+   * while the bundle carried no key and the browser could never mint a token.
+   *
+   * The build now records its own verdict in dist/public/build-config.json
+   * (booleans only) and this reports that.
+   */
+  const clientBuild = getClientBuildConfig();
+  const turnstileClientBuildConfigured = clientBuild.turnstileConfigured;
+  const clientBuildMetadataFound = clientBuild.found;
+
   const isProduction = process.env.NODE_ENV === 'production';
+  // Enforcement is only real when BOTH halves are in place: the server can
+  // check a token, and the browser can produce one.
+  const enforcementActive = turnstileServerConfigured && turnstileClientBuildConfigured;
 
   /**
    * THIS ENDPOINT USED TO LIE, and it lied about an outage.
@@ -1276,15 +1289,45 @@ app.get('/api/health/bot-check', (_req, res) => {
    *
    * The status now tracks what the guard actually does in THIS environment.
    */
-  const surfacesDown = isProduction && !turnstileServerConfigured;
+  /**
+   * BOTH HALVES CAN TAKE SIGNUP DOWN, for different reasons:
+   *
+   *   server secret missing -> guard fails closed -> 503 TURNSTILE_NOT_CONFIGURED
+   *   client key missing    -> browser cannot mint a token -> 400 TURNSTILE_TOKEN_REQUIRED
+   *
+   * Reporting only the first would produce the opposite of the 2026-09-06
+   * failure: fix the secret, see READY, and customers still cannot sign up.
+   */
+  const serverHalfDown = isProduction && !turnstileServerConfigured;
+  const clientHalfDown = isProduction && clientBuildMetadataFound && !turnstileClientBuildConfigured;
+  const surfacesDown = serverHalfDown || clientHalfDown;
   const status = surfacesDown ? 'OUTAGE' : enforcementActive ? 'READY' : 'ADVISORY';
+
+  const reasons: string[] = [];
+  if (serverHalfDown) {
+    reasons.push(
+      'TURNSTILE_SECRET_KEY is not bound to this service and turnstileGuard fails CLOSED in '
+      + 'production, so the protected surfaces return 503 TURNSTILE_NOT_CONFIGURED to every caller',
+    );
+  }
+  if (clientHalfDown) {
+    reasons.push(
+      'the deployed client bundle was built WITHOUT VITE_TURNSTILE_SITE_KEY, so the browser cannot '
+      + 'mint a token and the protected surfaces return 400 TURNSTILE_TOKEN_REQUIRED — note this is '
+      + 'a BUILD-time value, so setting it on the server does not help; the client must be rebuilt',
+    );
+  }
 
   res.status(200).json({
     status,
     timestamp: new Date().toISOString(),
     botCheck: 'turnstile',
+    // Runtime secret genuinely bound to this service.
     turnstileServerConfigured,
-    turnstileSiteKeyEnvPresent,
+    // Derived from the built artifact, never from a runtime env var.
+    turnstileClientBuildConfigured,
+    clientBuildMetadataFound,
+    clientBuiltAt: clientBuild.builtAt,
     enforcementActive,
     // The operationally important field: are customers being served, or not.
     protectedSurfacesRejectingAllTraffic: surfacesDown,
@@ -1294,13 +1337,15 @@ app.get('/api/health/bot-check', (_req, res) => {
       'signup_email_start',
     ],
     note: surfacesDown
-      ? 'OUTAGE: TURNSTILE_SECRET_KEY is not set and turnstileGuard fails CLOSED in production. '
-        + 'POST /api/auth/email/start and /api/auth/sms/start are returning 503 TURNSTILE_NOT_CONFIGURED '
-        + 'to EVERY caller — no customer can receive a signup or passwordless-login code. Set the secret.'
+      ? `OUTAGE: ${reasons.join('; AND ')}. No customer can receive a signup or passwordless-login code `
+        + 'on POST /api/auth/email/start or /api/auth/sms/start.'
       : enforcementActive
         ? 'Turnstile enforced on protected surfaces. Missing/invalid tokens will 400/403.'
-        : 'TURNSTILE_SECRET_KEY not set. Non-production, so turnstileGuard skips the check with a WARN; '
-          + 'the same configuration in production would take the protected surfaces DOWN.',
+        : !clientBuildMetadataFound && isProduction
+          ? 'Client build metadata (build-config.json) is missing, so the client half is UNKNOWN. '
+            + 'Treat as unverified rather than healthy until the next deploy writes it.'
+          : 'TURNSTILE_SECRET_KEY not set. Non-production, so turnstileGuard skips the check with a WARN; '
+            + 'the same configuration in production would take the protected surfaces DOWN.',
   });
 });
 
