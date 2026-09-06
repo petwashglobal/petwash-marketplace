@@ -558,12 +558,6 @@ function BookingCard({
 
   const nights      = calcNights(booking.startDate, booking.endDate);
   const daysTil     = daysUntil(booking.startDate);
-  // Conflict resolved 2026-09-06 in favour of main's tabForStatus(): it wraps
-  // STATUS_TO_TAB with a `?? 'pending'` fallback so an UNMAPPED status can no
-  // longer be silently dropped from every tab (see the note above the helper).
-  // This branch's goal — Cancel showing for the three verticals it was hidden
-  // for — is carried by CANCELLABLE_STATUSES, which is independent of the
-  // tab mapping, so nothing is lost by taking the safer lookup.
   const isUpcoming  = tabForStatus(booking.status) === 'upcoming';
   // The old guard (Issue #153 PR-3) hid Cancel for sitter/walker/academy
   // because the mutation only knew /api/booking-requests. On 2026-07-31 the
