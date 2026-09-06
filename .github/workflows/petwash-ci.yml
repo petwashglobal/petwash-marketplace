@@ -1234,17 +1234,33 @@ jobs:
       - name: Verify dist manifest (all referenced assets exist on disk)
         run: npx tsx scripts/verify-dist-manifest.ts dist/public
 
+      # Record what the client build actually produced, as non-secret metadata
+      # the running server can report. /api/health/bot-check reads this instead
+      # of guessing the client half from a runtime env var — VITE_* is a BUILD
+      # input and has no reason to exist on Cloud Run.
+      - name: Write client build-config metadata
+        run: node scripts/guards/write-build-config.mjs --dist dist/public
+
       # Turnstile release invariant (2026-09-06). Both halves must ship
       # together or signup and sign-in are DOWN — and the only signal that
-      # existed was a /health endpoint that called the outage an "advisory".
-      # Checks the BUILT BUNDLE, not just an env var, because a VITE_* value
-      # is compiled in: set after the build, it reaches nobody. Prints
-      # presence only, never key material.
+      # existed was a /health endpoint calling the outage an "advisory".
+      #
+      # NOTE the two halves are checked from two DIFFERENT sources, on purpose:
+      #   public site key -> the BUILT BUNDLE (GitHub legitimately knows it;
+      #                      Vite compiles it into public JS anyway)
+      #   server secret   -> the CLOUD RUN BINDING via gcloud
+      #
+      # TURNSTILE_SECRET_KEY is deliberately NOT passed in. It is server-only
+      # and belongs in Secret Manager; copying it into GitHub just so CI can
+      # check presence would widen exposure for no benefit. The gate proves the
+      # server WILL RECEIVE it, without ever receiving it.
       - name: Gate — Turnstile has both halves (blocks a signup outage)
         env:
-          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           TURNSTILE_INVARIANT_ENV: production
-        run: node scripts/guards/turnstile-release-invariant.mjs --dist dist/public
+        run: |
+          node scripts/guards/turnstile-release-invariant.mjs \
+            --dist dist/public \
+            --service petwash-api --region me-west1 --project signinpetwash
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

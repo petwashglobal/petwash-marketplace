@@ -19,15 +19,33 @@
  * out. This checks both halves and, crucially, checks the BUILT BUNDLE rather
  * than trusting that an env var reached the compiler.
  *
- * It never prints, logs or compares key values — only presence.
+ * TWO HALVES, TWO DIFFERENT STORES — and the check must respect that:
+ *
+ *   VITE_TURNSTILE_SITE_KEY  PUBLIC. Compiled into the browser bundle, so the
+ *                            build system legitimately knows it. Verified by
+ *                            inspecting the ARTIFACT.
+ *   TURNSTILE_SECRET_KEY     SERVER-ONLY. Belongs in GCP Secret Manager, bound
+ *                            to Cloud Run. Verified by inspecting the DEPLOY
+ *                            BINDING — never by having the value.
+ *
+ * An earlier version read `secrets.TURNSTILE_SECRET_KEY` from GitHub Actions
+ * so CI could check presence. That was wrong architecture: it pushes a
+ * server-only production secret into a second secret store purely to satisfy
+ * a check, widening exposure for no benefit. GitHub does not need the value
+ * and no longer receives it.
+ *
+ * It never prints, logs or compares key values — only presence and bindings.
  *
  *   node scripts/guards/turnstile-release-invariant.mjs [--dist dist/public]
+ *                                                       [--service petwash-api]
+ *                                                       [--region me-west1]
+ *                                                       [--project signinpetwash]
  *
  * Exit 0 = both halves present (or non-production, where it warns only).
  * Exit 1 = a production release that would strand signup.
  */
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { detectTurnstileInBundle } from './turnstileBundleDetect.mjs';
 
 const args = process.argv.slice(2);
 const distArg = args.indexOf('--dist');
@@ -43,82 +61,92 @@ const IS_PRODUCTION =
 const problems = [];
 const notes = [];
 
-// ── half 1: the server runtime secret ───────────────────────────────────────
-if (!process.env.TURNSTILE_SECRET_KEY) {
-  problems.push(
-    'TURNSTILE_SECRET_KEY is not set for the server runtime. turnstileGuard '
-    + 'fails CLOSED in production, so /api/auth/email/start and '
-    + '/api/auth/sms/start will return 503 to every customer.',
-  );
-} else {
-  notes.push('TURNSTILE_SECRET_KEY present (value not read).');
+// ── half 1: the server secret, checked as a DEPLOY BINDING ──────────────────
+//
+// The question is "will the server receive TURNSTILE_SECRET_KEY?", and that is
+// answered by the Cloud Run service configuration, not by handing the value to
+// CI. gcloud reports the binding (env var name + the Secret Manager secret it
+// resolves from) without ever revealing the secret.
+function checkServerBinding() {
+  const svcArg = args.indexOf('--service');
+  const regArg = args.indexOf('--region');
+  const projArg = args.indexOf('--project');
+  const service = svcArg !== -1 ? args[svcArg + 1] : (process.env.CLOUD_RUN_SERVICE || 'petwash-api');
+  const region = regArg !== -1 ? args[regArg + 1] : (process.env.CLOUD_RUN_REGION || 'me-west1');
+  const project = projArg !== -1 ? args[projArg + 1] : (process.env.GCP_PROJECT || 'signinpetwash');
+
+  let out = '';
+  try {
+    out = execFileSync('gcloud', [
+      'run', 'services', 'describe', service,
+      '--region', region, '--project', project,
+      // Names only. Values of secret-backed env vars are never rendered by
+      // gcloud anyway; this format asks for the env var NAMES and the secret
+      // REFERENCES, so nothing sensitive can appear even in a debug log.
+      '--format', 'json(spec.template.spec.containers[0].env)',
+    ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 60_000 });
+  } catch (err) {
+    notes.push(
+      `Could not query Cloud Run (${service}/${region}) to verify the secret binding — `
+      + 'skipping the server half. Post-deploy /api/health/bot-check is the backstop.',
+    );
+    return;
+  }
+
+  let bound = false;
+  try {
+    const parsed = JSON.parse(out);
+    const env = parsed?.spec?.template?.spec?.containers?.[0]?.env ?? [];
+    bound = env.some((e) => e?.name === 'TURNSTILE_SECRET_KEY'
+      && (e?.valueFrom?.secretKeyRef?.name || typeof e?.value === 'string'));
+  } catch {
+    notes.push('Cloud Run description was unparseable — skipping the server half.');
+    return;
+  }
+
+  if (bound) {
+    notes.push(`TURNSTILE_SECRET_KEY is bound on Cloud Run ${service} (value never read).`);
+  } else {
+    problems.push(
+      `TURNSTILE_SECRET_KEY is NOT bound on Cloud Run ${service} (${region}). turnstileGuard `
+      + 'fails CLOSED in production, so /api/auth/email/start and /api/auth/sms/start will '
+      + 'return 503 to every customer. Bind it from Secret Manager — do NOT copy the value '
+      + 'into GitHub Actions.',
+    );
+  }
 }
+checkServerBinding();
 
 // ── half 2: the site key, as actually COMPILED into the bundle ──────────────
 //
 // Checking process.env.VITE_TURNSTILE_SITE_KEY here would prove nothing about
 // the artifact being shipped: the value is inlined at build time, so a var set
 // after the build, or in a different job, is invisible to the browser. The
-// only honest check is the bundle itself.
-function jsFiles(dir) {
-  const out = [];
-  if (!existsSync(dir)) return out;
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) out.push(...jsFiles(full));
-    else if (entry.endsWith('.js')) out.push(full);
-  }
-  return out;
-}
+// only honest check is the bundle itself — and it uses the SAME detector the
+// build-config writer uses, so the release gate and /api/health/bot-check can
+// never disagree about what shipped.
+const t = detectTurnstileInBundle(DIST);
 
-const files = jsFiles(DIST);
-if (files.length === 0) {
+if (!t.artifactFound) {
   problems.push(
     `No built JS found under ${DIST}. Run this AFTER the client build, or pass `
     + '--dist <path>; a release cannot be validated against an artifact that '
     + 'does not exist.',
   );
+} else if (!t.widgetPresent) {
+  notes.push(`No Turnstile widget code found in ${DIST} (nothing to validate).`);
+} else if (!t.turnstileConfigured) {
+  problems.push(
+    'The client bundle was built WITHOUT VITE_TURNSTILE_SITE_KEY: the widget '
+    + 'render path was dead-code-eliminated and executeTurnstileInvisible() '
+    + 'can only return SITE_KEY_MISSING. The browser will never obtain a '
+    + 'token, so signup stays dead even if the server secret is bound. '
+    + 'A VITE_* value is compiled in — set it in the BUILD environment and '
+    + 'rebuild the client; adding it to Cloud Run afterwards changes nothing. '
+    + 'The site key is PUBLIC, so a GitHub variable is an appropriate home.',
+  );
 } else {
-  /**
-   * Look for a Turnstile SITE KEY LITERAL in the chunk that carries the widget.
-   *
-   * Cloudflare site keys are public by design and have a fixed shape
-   * (`0x4AAAA…`, or `1x0000…`/`3x0000…` for the documented test keys), so this
-   * is a presence test on a known token shape — the value is never printed,
-   * compared or stored.
-   *
-   * An earlier version inferred presence from the challenges.cloudflare.com
-   * loader URL appearing in the bundle. CodeQL flagged that as incomplete URL
-   * substring sanitisation and was right to: a substring test against a
-   * hostname is a fragile shape even when, as here, nothing is being
-   * sanitised. Checking for the key itself is both more direct and exactly how
-   * the 2026-09-06 outage was diagnosed.
-   */
-  const SITE_KEY_SHAPE = /0x4[A-Za-z0-9_-]{20,}|\b[13]x0{20}[A-Za-z0-9]{1,4}\b/;
-  let sawWidget = false;
-  let sawKey = false;
-  for (const f of files) {
-    const src = readFileSync(f, 'utf8');
-    if (!src.includes('SITE_KEY_MISSING')) continue;
-    sawWidget = true;
-    if (SITE_KEY_SHAPE.test(src)) sawKey = true;
-  }
-  const sawFoldedAway = sawWidget && !sawKey;
-
-  if (!sawWidget) {
-    notes.push(`No Turnstile widget code found in ${DIST} (nothing to validate).`);
-  } else if (sawFoldedAway) {
-    problems.push(
-      'The client bundle was built WITHOUT VITE_TURNSTILE_SITE_KEY: the widget '
-      + 'render path was dead-code-eliminated and executeTurnstileInvisible() '
-      + 'can only return SITE_KEY_MISSING. The browser will never obtain a '
-      + 'token, so signup stays dead even if the server secret is set. '
-      + 'A VITE_* value is compiled in — set it in the BUILD environment and '
-      + 'rebuild the client; adding it to Cloud Run afterwards changes nothing.',
-    );
-  } else {
-    notes.push('Client bundle carries a Turnstile site key (value not read).');
-  }
+  notes.push('Client bundle carries a Turnstile site key (value not read).');
 }
 
 for (const n of notes) console.log(`  ok   ${n}`);

@@ -27,13 +27,27 @@ import { join } from 'node:path';
 
 const ROOT = join(__dirname, '..', '..');
 const INDEX = readFileSync(join(ROOT, 'server/index.ts'), 'utf8');
+
+/**
+ * Executable text only.
+ *
+ * Three of these pins have now failed against their OWN fix, because the
+ * comment explaining a removal quotes the thing removed. A source pin that
+ * prose can satisfy — or break — is not testing the code. Everything that
+ * asserts absence runs through this.
+ */
+function code(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
 const GUARD = readFileSync(join(ROOT, 'server/lib/turnstileGuard.ts'), 'utf8');
 
 function handler(): string {
   const start = INDEX.indexOf("app.get('/api/health/bot-check'");
   expect(start, 'bot-check handler not found').toBeGreaterThan(-1);
   const end = INDEX.indexOf("app.get('/api/health/strict'", start);
-  return INDEX.slice(start, end === -1 ? start + 4000 : end);
+  return code(INDEX.slice(start, end === -1 ? start + 4000 : end));
 }
 
 describe('the guard really does fail closed — the premise of these pins', () => {
@@ -59,7 +73,7 @@ describe('the health endpoint reports what the guard actually does', () => {
 
   it('reports an OUTAGE when production has no secret', () => {
     expect(h).toContain("'OUTAGE'");
-    expect(h).toMatch(/surfacesDown = isProduction && !turnstileServerConfigured/);
+    expect(h).toMatch(/serverHalfDown = isProduction && !turnstileServerConfigured/);
   });
 
   it('never calls that state merely ADVISORY', () => {
@@ -74,7 +88,7 @@ describe('the health endpoint reports what the guard actually does', () => {
   });
 
   it('the outage note says customers are affected, and names the surfaces', () => {
-    expect(h).toContain('no customer can receive a signup or passwordless-login code');
+    expect(h).toContain('No customer can receive a signup or passwordless-login code');
     expect(h).toContain('/api/auth/email/start');
     expect(h).toContain('/api/auth/sms/start');
   });
@@ -94,6 +108,90 @@ describe('the health endpoint reports what the guard actually does', () => {
   });
 });
 
+describe('build-time and runtime config are not conflated', () => {
+  const h = handler();
+  const READER = readFileSync(join(ROOT, 'server/lib/clientBuildConfig.ts'), 'utf8');
+  const WRITER = code(readFileSync(join(ROOT, 'scripts/guards/write-build-config.mjs'), 'utf8'));
+
+  it('the health endpoint NEVER infers the client half from a runtime env var', () => {
+    /**
+     * VITE_TURNSTILE_SITE_KEY is a FRONTEND BUILD variable. Reading it on the
+     * server was wrong in both directions: a correct deployment (no runtime
+     * var) reported the key ABSENT, and setting it on Cloud Run after a build
+     * reported PRESENT while the bundle carried no key at all.
+     */
+    expect(h).not.toContain('process.env.VITE_TURNSTILE_SITE_KEY');
+    expect(h).not.toContain('turnstileSiteKeyEnvPresent');
+  });
+
+  it('it reads the built artifact metadata instead', () => {
+    expect(h).toContain('getClientBuildConfig()');
+    expect(h).toContain('turnstileClientBuildConfigured');
+  });
+
+  it('missing build metadata is UNKNOWN, never a silent healthy', () => {
+    expect(h).toContain('clientBuildMetadataFound');
+    expect(READER).toContain('found: false');
+    // A malformed file must not read as configured.
+    expect(READER).toContain('parsed?.turnstileConfigured === true');
+  });
+
+  it('the metadata carries booleans, never the key', () => {
+    expect(WRITER).toContain('turnstileConfigured');
+    expect(WRITER).not.toMatch(/siteKey|SITE_KEY_VALUE|process\.env\.VITE_TURNSTILE_SITE_KEY/);
+  });
+
+  it('READY requires BOTH halves — otherwise fixing the secret shows green while signup is dead', () => {
+    expect(h).toMatch(/enforcementActive = turnstileServerConfigured && turnstileClientBuildConfigured/);
+  });
+
+  it('EITHER half being down is an OUTAGE, with its own explanation', () => {
+    expect(h).toContain('serverHalfDown');
+    expect(h).toContain('clientHalfDown');
+    expect(h).toContain('the client must be rebuilt');
+  });
+});
+
+describe('the server-only secret is not duplicated into GitHub', () => {
+  const CI_SRC = readFileSync(join(ROOT, '.github/workflows/petwash-ci.yml'), 'utf8');
+  const INV = readFileSync(join(ROOT, 'scripts/guards/turnstile-release-invariant.mjs'), 'utf8');
+  const INV_CODE = INV
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  it('no workflow passes secrets.TURNSTILE_SECRET_KEY anywhere', () => {
+    // Copying a server-only production secret into a second secret store, so
+    // that CI can check its presence, widens exposure for no benefit.
+    expect(CI_SRC).not.toContain('secrets.TURNSTILE_SECRET_KEY');
+  });
+
+  it('the invariant proves the DEPLOY BINDING instead of holding the value', () => {
+    expect(INV_CODE).toContain('run', );
+    expect(INV_CODE).toContain('services');
+    expect(INV_CODE).toContain('describe');
+    expect(INV_CODE).toContain('secretKeyRef');
+    expect(INV_CODE).not.toContain('process.env.TURNSTILE_SECRET_KEY');
+  });
+
+  it('and says so when the binding is missing, pointing at Secret Manager', () => {
+    expect(INV).toContain('do NOT copy the value');
+    expect(INV).toContain('Secret Manager');
+  });
+
+  it('the public site key is still allowed to live in the build system', () => {
+    // It is compiled into public JavaScript; treating it as a server secret
+    // would be cargo-cult, not security.
+    expect(INV).toContain('The site key is PUBLIC');
+  });
+
+  it('both halves share ONE detector so the gate and health cannot disagree', () => {
+    expect(INV_CODE).toContain('detectTurnstileInBundle');
+    expect(WRITER_SRC).toContain('detectTurnstileInBundle');
+  });
+});
+
+const WRITER_SRC = readFileSync(join(ROOT, 'scripts/guards/write-build-config.mjs'), 'utf8');
+
 describe('Turnstile needs BOTH halves — the guard documents it and the release enforces it', () => {
   const GUARD_SRC = readFileSync(join(ROOT, 'server/lib/turnstileGuard.ts'), 'utf8');
   const INVARIANT = readFileSync(join(ROOT, 'scripts/guards/turnstile-release-invariant.mjs'), 'utf8');
@@ -107,6 +205,7 @@ describe('Turnstile needs BOTH halves — the guard documents it and the release
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/(^|[^:])\/\/.*$/gm, '$1');
   const CI = readFileSync(join(ROOT, '.github/workflows/petwash-ci.yml'), 'utf8');
+  const DETECTOR = readFileSync(join(ROOT, 'scripts/guards/turnstileBundleDetect.mjs'), 'utf8');
 
   it('the guard says so, because setting only the secret does not restore service', () => {
     // With the secret but no site key the browser cannot mint a token, so the
@@ -119,8 +218,8 @@ describe('Turnstile needs BOTH halves — the guard documents it and the release
   it('the invariant checks the BUILT BUNDLE, not just an env var', () => {
     // A VITE_* value is inlined at build time. Reading process.env at deploy
     // time would pass while shipping a bundle that has no key in it.
-    expect(INVARIANT).toContain('SITE_KEY_MISSING');
-    expect(INVARIANT).toContain('SITE_KEY_SHAPE');
+    expect(INVARIANT).toContain('detectTurnstileInBundle');
+    expect(DETECTOR).toContain('SITE_KEY_SHAPE');
     expect(INVARIANT).toMatch(/dead-code-eliminated/);
   });
 
@@ -131,12 +230,13 @@ describe('Turnstile needs BOTH halves — the guard documents it and the release
     // being sanitised. Presence of the public site-key literal is both more
     // direct and exactly how the outage was diagnosed.
     expect(INVARIANT_CODE).not.toContain('challenges.cloudflare.com');
-    expect(INVARIANT_CODE).toContain('const SITE_KEY_SHAPE = ');
-    expect(INVARIANT_CODE).toContain('0x4');
+    expect(DETECTOR).toContain('const SITE_KEY_SHAPE = ');
+    expect(DETECTOR).toContain('0x4');
   });
 
-  it('it checks the server half too', () => {
+  it('it checks the server half too, via the binding', () => {
     expect(INVARIANT).toContain('TURNSTILE_SECRET_KEY');
+    expect(INVARIANT).toContain('Cloud Run');
   });
 
   it('it fails the release rather than warning', () => {
