@@ -16,7 +16,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   applyFiscalCutover, fiscalCutoverAt, bridgeWired, FISCAL_TREATMENT,
-  selectDocumentableSales, buildReceiptInput, K9000_INCOME_ITEM,
+  selectDocumentableSales, buildReceiptInput, K9000_INCOME_ITEM, K9000_GENERAL_CUSTOMER,
   FISCAL_LINK_TYPE, FISCAL_LINK_SOURCE,
   type DocumentableSale, type FiscalDocumentLink,
 } from '../services/nayaxSumitBridge';
@@ -219,5 +219,43 @@ describe('K9000 income item — future documents only', () => {
     expect(new Set(bays.map((b) => b.item!.externalId)).size).toBe(1);
     expect(new Set(bays.map((b) => b.lineDescription)).size).toBe(4);
     expect(bays.map((b) => b.lineDescription)).toContain('פארק 80 כפר סבא הירוקה — ימין');
+  });
+});
+
+
+/**
+ * The customer on K9000 bay documents.
+ *
+ * All 481 existing documents (#10002–#10482) are issued to
+ * "לקוח כללי – תחנות Pet Wash", and the fiscal bridge's own GENERAL_CUSTOMER_NAME
+ * is the same string. This service previously used 'לקוח מזדמן' — a SECOND generic
+ * customer, which would have split SUMIT's customer report between the history and
+ * everything issued afterwards. Exactly the failure the catalogue-item name caused
+ * on the product report, in a different column.
+ */
+describe('K9000 general customer', () => {
+  it('matches the customer the 481 existing documents already use', () => {
+    expect(K9000_GENERAL_CUSTOMER).toBe('לקוח כללי – תחנות Pet Wash');
+  });
+
+  it('never reintroduces a second generic customer', () => {
+    expect(K9000_GENERAL_CUSTOMER).not.toBe('לקוח מזדמן');
+  });
+
+  it('issues every bay document to that one customer', () => {
+    const bays = ['182374', '182403', '182443', '182462'].map((m) =>
+      buildReceiptInput({ ...sale('c', '2026-09-06T09:00:00Z'), machineId: m }));
+    expect(new Set(bays.map((b) => b.customer.name))).toEqual(
+      new Set([K9000_GENERAL_CUSTOMER]));
+  });
+
+  // Pinned together because a document is grouped in SUMIT's reports by BOTH.
+  // Splitting either one fragments the books; the bay belongs on the line only.
+  it('keeps customer and item stable while the line varies by bay', () => {
+    const a = buildReceiptInput({ ...sale('a', '2026-09-06T09:00:00Z'), machineId: '182443' });
+    const b = buildReceiptInput({ ...sale('b', '2026-09-06T09:00:00Z'), machineId: '182374' });
+    expect(a.customer.name).toBe(b.customer.name);
+    expect(a.item!.externalId).toBe(b.item!.externalId);
+    expect(a.lineDescription).not.toBe(b.lineDescription);
   });
 });

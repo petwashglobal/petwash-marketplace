@@ -261,6 +261,20 @@ export function selectDocumentableSales(rows: unknown): DocumentableSale[] {
  * The item is the PRODUCT and must stay stable — station and bay belong on the
  * document LINE, never in the item name, or SUMIT ends up with one "product" per bay.
  */
+/**
+ * The customer every K9000 bay document is issued to.
+ *
+ * All 481 existing documents (#10002–#10482) carry exactly this name, and the
+ * fiscal bridge's own GENERAL_CUSTOMER_NAME is the same string. This service
+ * previously used 'לקוח מזדמן' — a second generic customer that would have split
+ * SUMIT's customer report between the history and everything issued afterwards,
+ * the same failure the catalogue-item name caused on the product report.
+ *
+ * Not a developer's string to change: it is how the station's turnover is
+ * grouped in the books. Only the bookkeeper changes it.
+ */
+export const K9000_GENERAL_CUSTOMER = 'לקוח כללי – תחנות Pet Wash';
+
 export const K9000_INCOME_ITEM = {
   name: 'שטיפת כלבים בשירות עצמי – Pet Wash™',
   externalId: 'PETWASH-K9000-WASH',
@@ -275,8 +289,9 @@ export function buildReceiptInput(sale: DocumentableSale) {
   const where = terminal ? terminalLabel(terminal) : (sale.machineName || 'עמדת PetWash');
   return {
     idempotencyKey: idempotencyKeyFor(sale.transactionId),
-    // Walk-up retail sale → a generic casual customer (no PII collected at the bay).
-    customer: { name: 'לקוח מזדמן' },
+    // Walk-up retail sale — no PII is collected at the bay, so every document is
+    // issued to the one general station customer the existing 481 already use.
+    customer: { name: K9000_GENERAL_CUSTOMER },
     description: `${K9000_INCOME_ITEM.name} — ${where}`,
     // One stable product; the bay lives on the line, not in the item name.
     item: { name: K9000_INCOME_ITEM.name, externalId: K9000_INCOME_ITEM.externalId },
@@ -343,9 +358,14 @@ export async function reconcileMachineToSumit(
   const candidates = selectDocumentableSales(feed.data);
 
   // FISCAL CUTOVER — applied before a single document is considered.
-  // Anything settled before the cutover belongs to the consolidated historical
-  // document and is withheld here. This bridge must never be the thing that turns
-  // historical turnover into per-transaction invoices.
+  //
+  // Settled before the cutover means exactly ONE thing: WITHHELD FROM AUTOMATIC
+  // ISSUANCE. It does NOT mean the turnover is consolidated. A withheld
+  // transaction may turn out to be HISTORICAL_EXISTING_INDIVIDUAL (481 of them
+  // already are), HISTORICAL_CONSOLIDATED, or HISTORICAL_UNRESOLVED — that is
+  // recorded from the bookkeeper's direction and from what SUMIT is observed to
+  // contain, never decided here. This bridge must simply never be the thing that
+  // turns historical turnover into per-transaction invoices.
   const cutoverAt = fiscalCutoverAt();
   const { eligible: sales, historical } = applyFiscalCutover(candidates, cutoverAt);
   if (historical.length) {
