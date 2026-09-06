@@ -80,3 +80,6 @@ dist-verify
 # Playwright run artifacts (Agent 12 sprint)
 test-results/
 playwright-report/
+
+# Verification browser-journey harness build (npm run build:verification-harness)
+dist-verification-harness/

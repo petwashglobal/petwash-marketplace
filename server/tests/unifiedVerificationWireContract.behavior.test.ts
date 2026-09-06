@@ -57,7 +57,19 @@ vi.mock('../services/UnifiedVerificationService', async (importOriginal) => {
   };
 });
 
+/**
+ * A FRESH module registry per app.
+ *
+ * Without the reset this suite is order-dependent: `await import()` returns
+ * whatever copy of the router another test file already put in the registry,
+ * and if that copy was built before these mocks were installed it calls the
+ * REAL service. It showed up exactly once in a nine-file run — the
+ * masked-destination assertion failed while passing in isolation and on every
+ * re-run. A security pin that only sometimes runs against the mocked service
+ * is barely a pin, so the ordering dependency is removed rather than retried.
+ */
 async function makeApp() {
+  vi.resetModules();
   const router = (await import('../routes/verification')).default;
   const app = express();
   app.use(express.json());

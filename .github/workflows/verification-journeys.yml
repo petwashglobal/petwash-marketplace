@@ -1,0 +1,65 @@
+# Focused verification browser journeys.
+#
+# This is the FIRST real-browser suite in CI, and deliberately not the whole
+# historical tests/e2e tree — that is 780 tests written against a repo that has
+# moved a long way and has never been executed here. Blocking the verification
+# proof on triaging all of it would mean never running any of it.
+#
+# Runs against a standalone harness build that mounts the shipped
+# VerificationFlow; every API is intercepted in-page, so there is no server,
+# no database and no secret involved.
+name: Verification journeys (real browser)
+
+on:
+  pull_request:
+    paths:
+      - 'client/src/components/verification/**'
+      - 'client/src/lib/verification/**'
+      - 'server/routes/verification.ts'
+      - 'server/routes/auth-email.ts'
+      - 'server/services/UnifiedVerificationService.ts'
+      - 'tests/e2e/verification/**'
+      - 'playwright.verification.config.ts'
+      - '.github/workflows/verification-journeys.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'client/src/components/verification/**'
+      - 'client/src/lib/verification/**'
+      - 'server/routes/verification.ts'
+      - 'server/routes/auth-email.ts'
+      - 'server/services/UnifiedVerificationService.ts'
+      - 'tests/e2e/verification/**'
+  workflow_dispatch:
+
+jobs:
+  verification-journeys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Only the three browsers this suite actually uses.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run the verification journeys
+        run: npm run test:verification
+
+      - name: Upload the report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

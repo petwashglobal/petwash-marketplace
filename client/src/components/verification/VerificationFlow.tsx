@@ -35,6 +35,7 @@ import {
 import {
   useVerificationChallenge,
   type PublicChallenge,
+  type VerificationTransport,
 } from '@/lib/verification/useVerificationChallenge';
 
 const CODE_LENGTH = 6;
@@ -63,7 +64,20 @@ export interface VerificationFlowProps {
   /** Switch to a different channel — the caller collects the new destination. */
   onSwitchChannel?: (channel: VerificationChannel) => void;
   className?: string;
+  /**
+   * Start the challenge on mount. Set false when the caller already started
+   * one — signup does, because its /start is behind a Turnstile guard the
+   * page owns. Pass that challenge as `existingChallenge`.
+   */
   autoStart?: boolean;
+  existingChallenge?: PublicChallenge | null;
+  /**
+   * How this surface reaches the verification service. Defaults to
+   * /api/verification/*. Signup/login supply /api/auth/email/* because that
+   * route carries the Turnstile bot guard the generic endpoint does not —
+   * a different transport, not a different implementation.
+   */
+  transport?: VerificationTransport;
 }
 
 function mmss(totalSeconds: number): string {
@@ -85,29 +99,56 @@ export function VerificationFlow({
   onSwitchChannel,
   className,
   autoStart = true,
+  existingChallenge = null,
+  transport,
 }: VerificationFlowProps) {
   const he = language === 'he';
   const copy = purposeCopy(purpose, language);
-  const { phase, challenge, failure, resendIn, justResent, start, verify, resend } =
-    useVerificationChallenge();
+  const { phase, challenge, failure, resendIn, justResent, start, adopt, verify, resend } =
+    useVerificationChallenge(transport);
 
   const [code, setCode] = useState('');
   const startedFor = useRef<string | null>(null);
-  const autoSubmitted = useRef<string | null>(null);
+  /**
+   * The last code value that was SUBMITTED, by any route.
+   *
+   * This was `autoSubmitted` and only guarded the auto-submit path — the
+   * browser suite caught the hole immediately: type six digits (auto-submit
+   * fires), then click Continue twice, and the server sees THREE verifies.
+   * That is three of the customer's five attempts spent on one code, and on
+   * the success path it is a double-submit of a one-shot code.
+   *
+   * Re-submitting the identical value can never succeed where the first
+   * attempt failed, so refusing it costs the customer nothing and protects
+   * their attempt budget. Changing a digit clears it.
+   */
+  const lastSubmitted = useRef<string | null>(null);
+
+  // Adopt a caller-started challenge. Same one-shot guard as start(): a
+  // re-render must not re-adopt and reset the customer's typing.
+  useEffect(() => {
+    if (!existingChallenge) return;
+    const key = `adopt|${existingChallenge.challengeId}`;
+    if (startedFor.current === key) return;
+    startedFor.current = key;
+    adopt(existingChallenge);
+  }, [existingChallenge, adopt]);
 
   // Start exactly once per (purpose, channel, destination). Without this guard
   // a re-render would open a second challenge and invalidate the code already
   // sitting in the customer's inbox.
   useEffect(() => {
-    if (!autoStart) return;
+    if (!autoStart || existingChallenge) return;
     const key = `${purpose}|${preferredChannel}|${destination}`;
     if (startedFor.current === key) return;
     startedFor.current = key;
     void start({ purpose, channel: preferredChannel, destination, payload: { ...context, language } });
-  }, [autoStart, purpose, preferredChannel, destination, context, language, start]);
+  }, [autoStart, existingChallenge, purpose, preferredChannel, destination, context, language, start]);
 
   const submit = useCallback(async (value: string) => {
     if (value.length !== CODE_LENGTH) return;
+    if (lastSubmitted.current === value) return;
+    lastSubmitted.current = value;
     const result = await verify(value);
     if (result) onVerified(result, challenge as PublicChallenge);
   }, [verify, onVerified, challenge]);
@@ -118,15 +159,13 @@ export function VerificationFlow({
   useEffect(() => {
     if (code.length !== CODE_LENGTH) return;
     if (phase !== 'awaiting_code') return;
-    if (autoSubmitted.current === code) return;
-    autoSubmitted.current = code;
     void submit(code);
   }, [code, phase, submit]);
 
   // A new code invalidates whatever is typed — clear it so the customer is not
   // staring at six stale digits after pressing Resend.
   useEffect(() => {
-    if (justResent) { setCode(''); autoSubmitted.current = null; }
+    if (justResent) { setCode(''); lastSubmitted.current = null; }
   }, [justResent]);
 
   const busy = phase === 'starting' || phase === 'verifying' || phase === 'resending';
@@ -183,7 +222,8 @@ export function VerificationFlow({
               value={code}
               onChange={(v: string) => {
                 setCode(v);
-                if (v.length < CODE_LENGTH) autoSubmitted.current = null;
+                // Editing the code makes it a new attempt again.
+                if (v.length < CODE_LENGTH) lastSubmitted.current = null;
               }}
               disabled={busy || phase === 'verified'}
               // iOS/Android one-time-code autofill lands on the single input.

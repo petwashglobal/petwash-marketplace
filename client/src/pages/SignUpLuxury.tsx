@@ -72,6 +72,10 @@ import { type Language } from '@/lib/i18n';
 import { fieldSchemas, vmsg } from '@/lib/validation';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
+import { VerificationFlow } from '@/components/verification/VerificationFlow';
+import type { PublicChallenge } from '@/lib/verification/useVerificationChallenge';
+import { createAuthEmailTransport } from '@/lib/verification/authEmailTransport';
+import { useSharedVerificationUi } from '@/lib/verification/rolloutSwitch';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -389,6 +393,47 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [confirm, setConfirm] = useState('');
   // (legacy top `terms` checkbox removed — consent is agreedTerms + over18)
   const [sent, setSent] = useState(false);
+
+  /**
+   * The shared-verification-experience switch. Independent of the server's
+   * UNIFIED_VERIFICATION_* purpose flags, which have been ON for login/signup
+   * for a while and control the BACKEND, not which screen a customer sees.
+   * ?pwverify=new opts a single session in — that is how the migrated flow
+   * gets a real-browser production pass without changing anyone else's signup.
+   */
+  const sharedVerificationUi = useSharedVerificationUi();
+  const [emailChallenge, setEmailChallenge] = useState<PublicChallenge | null>(null);
+  /**
+   * No Turnstile getter here on purpose: the page keeps ownership of the
+   * guarded /start (sendEmailCode below solves the widget), and the shared
+   * flow ADOPTS the resulting challenge. So the bot check stays exactly where
+   * it is, and the flow never opens a second challenge that would invalidate
+   * the code already in the customer's inbox.
+   */
+  /**
+   * The adopted challenge lives exactly as long as the code screen does.
+   *
+   * `sent` is cleared from a dozen places (change email, change method, switch
+   * to login, restart after an error…). Rather than remember to null the
+   * challenge at every one of them — and miss one, leaving the shared flow
+   * showing a stale masked address for a challenge that no longer applies —
+   * the lifetime is tied to `sent` in a single effect.
+   */
+  useEffect(() => {
+    if (!sent) setEmailChallenge(null);
+  }, [sent]);
+
+  const emailVerificationTransport = useMemo(
+    () => createAuthEmailTransport({
+      purpose: authMode === 'login' ? 'login' : 'signup',
+      language: he ? 'he' : 'en',
+      getEmail: () => email,
+    }),
+    // `email` is read through a getter so a keystroke does not rebuild the
+    // transport and restart the challenge.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [authMode, he],
+  );
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   // SIGNUP-EMAIL-IN-USE MSG (2026-08-23, CEO audit CRIT #5):
@@ -908,10 +953,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             fail(turnstileFailureMessage(step2.code, he ? 'he' : 'en'));
           } else {
             const step2Token = step2.ok ? step2.token : null;
-            await fetch(getApiUrl('/api/auth/email/start'), {
+            const step2Res = await fetch(getApiUrl('/api/auth/email/start'), {
               method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
               body: JSON.stringify({ email, purpose: 'signup', language, turnstileToken: step2Token }),
             });
+            // Same adoption as sendEmailCode: the shared flow must take over
+            // THIS challenge, not open its own.
+            const step2Body = await step2Res.json().catch(() => null);
+            if (step2Body?.challenge) setEmailChallenge(step2Body.challenge as PublicChallenge);
             toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
           }
         } catch { /* the email OTP screen has a resend */ }
@@ -963,13 +1012,23 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'לא ניתן לשלוח קוד כעת' : 'Could not send the code right now')); return; }
+      // /start now returns the masked challenge; the shared flow adopts it.
+      if (d.challenge) setEmailChallenge(d.challenge as PublicChallenge);
       setSent(true);
       toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
     } catch (e) { logger.error('[signup] sendEmailCode', e); fail(he ? 'שגיאת רשת' : 'Network error'); }
     finally { setBusy(false); }
   }
 
-  async function verifyEmailCode(c: string) {
+  /**
+   * @param presuppliedSessionToken  Stage-1 output when the shared
+   *   VerificationFlow already consumed the OTP. The OTP is one-shot, so the
+   *   migrated path MUST NOT re-verify it here — it would come back
+   *   CHALLENGE_NOT_PENDING and look to the customer like a wrong code. Stages
+   *   2-4 (session mint, Firebase sign-in, cookie mint) are unchanged and
+   *   still shared by both paths, which is the point: only the SCREEN moved.
+   */
+  async function verifyEmailCode(c: string, presuppliedSessionToken?: string) {
     setInlineError(null);
     setBusy(true);
     // The verify chain is 4 stages. Stage 1 CONSUMES the OTP; stages 2-4 do
@@ -981,7 +1040,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // old code lumped all 4 into one generic error → user thought the code
     // was wrong when actually the SERVER cookie mint had 502'd.
     try {
-      let sessionToken = cachedEmailSessionToken;
+      let sessionToken = presuppliedSessionToken || cachedEmailSessionToken;
 
       // ── Stage 1: validate the OTP (skips if cached from a prior attempt) ──
       if (!sessionToken) {
@@ -2246,8 +2305,46 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </>
           )}
 
-          {/* === Email OTP — appears after we send the 6-digit email code === */}
-          {method === 'email' && sent && (
+          {/* === Email OTP === */}
+          {/*
+            MIGRATED to the shared VerificationFlow (2026-09-06), behind an
+            INDEPENDENT rollout switch — the UNIFIED_VERIFICATION_* server flags
+            enable backend purposes and say nothing about which UI a customer
+            sees, so they are not a rollout plan for this.
+
+            The legacy branch below is temporary and goes away with the switch
+            once the migrated flow has a real-browser production pass. Two
+            permanent implementations of one screen is the sprawl this whole
+            effort exists to delete.
+
+            The shared flow consumes the OTP itself (stage 1), so its result is
+            handed to verifyEmailCode as a presupplied token; stages 2-4 are
+            untouched and shared by both paths.
+          */}
+          {method === 'email' && sent && sharedVerificationUi && (
+            <VerificationFlow
+              purpose={authMode === 'login' ? 'login' : 'signup'}
+              destination={email}
+              preferredChannel="email"
+              allowedChannels={['email']}
+              language={he ? 'he' : 'en'}
+              transport={emailVerificationTransport}
+              autoStart={false}
+              existingChallenge={emailChallenge}
+              onVerified={(result) => {
+                const token = (result as any)?.sessionToken;
+                if (!token) {
+                  fail(he ? 'שגיאה לא צפויה באימות. נסה שוב.' : 'Unexpected verification error. Try again.');
+                  return;
+                }
+                setCachedEmailSessionToken(token);
+                void verifyEmailCode('', token);
+              }}
+              onChangeDestination={() => { setSent(false); setEmailChallenge(null); setInlineError(null); }}
+            />
+          )}
+
+          {method === 'email' && sent && !sharedVerificationUi && (
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : `Enter the code sent to ${email}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
