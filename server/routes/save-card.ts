@@ -18,6 +18,7 @@ import { redis } from '../services/redis';
 import { sumitClient } from '../services/SumitClient';
 import { SumitCardVault, isCardVaultEnabled } from '../services/SumitCardVault';
 import { logger } from '../lib/logger';
+import { sendAlert } from '../monitoring';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -134,12 +135,100 @@ router.post('/save-card/start', validateFirebaseToken, async (req: Request, res:
   return res.json({ ok: true, redirectUrl: result.redirectUrl });
 });
 
+/**
+ * Reaching /save-card/return does NOT prove money moved.
+ *
+ * The route is publicly reachable: a bot, a malformed link, a stale bookmark,
+ * an expired handoff or a random `txnId` all land here having paid nothing.
+ * An earlier draft of this file alerted "customer was charged ₪1 — refund
+ * manually" on every failure exit, which would have generated false refund
+ * instructions from unauthenticated traffic. A money alert that cries wolf is
+ * worse than none: it trains the reader to dismiss the real one.
+ *
+ * So the exits are split by EVIDENCE, and the boundary is exactly one thing —
+ * `sumitClient.getTransaction()` returning wired && valid. Before that line we
+ * know nothing about a charge; after it, SUMIT has positively confirmed one.
+ *
+ * Reason codes are a fixed internal enum. Provider text (verify.reason) is
+ * never concatenated into them — it goes to the sanitized logger instead, so
+ * an alert body can never carry arbitrary upstream strings.
+ */
+type CallbackAnomalyReason =
+  | 'missing_txn_or_ext'
+  | 'no_pending_handoff'
+  | 'sumit_verify_failed'
+  | 'handoff_already_consumed';
+
+type ConfirmedChargeFailureReason =
+  | 'external_ref_mismatch'
+  | 'handoff_unreadable'
+  | 'handoff_missing_uid'
+  | 'no_sumit_customer_id'
+  | 'vault_save_failed'
+  | 'vault_save_threw';
+
+/**
+ * A — callback anomaly. No confirmed payment, so make NO claim about money and
+ * give NO refund instruction. Logged for a metric; never a money alert.
+ */
+function failCallbackAnomaly(
+  res: Response,
+  base: string,
+  reason: CallbackAnomalyReason,
+  ctx: { ext?: string; txnId?: string },
+): void {
+  logger.warn('[SaveCard] callback anomaly (no confirmed charge)', {
+    reason,
+    ext: ctx.ext || undefined,
+    txnId: ctx.txnId || undefined,
+  });
+  res.redirect(`${base}/my-wallet?card=failed`);
+}
+
+/**
+ * B — SUMIT positively confirmed the transaction and the card still did not
+ * get saved. A real customer is out the ₪1 verification charge with nothing to
+ * show, and this codebase has no automated reversal, so this is a
+ * money-integrity event someone must action by hand.
+ *
+ * Carries correlation ids only — no card data; this route never sees a PAN.
+ * The alert can never change what the customer sees: it is awaited inside its
+ * own try/catch and the redirect happens regardless.
+ */
+async function failAfterConfirmedCharge(
+  res: Response,
+  base: string,
+  reason: ConfirmedChargeFailureReason,
+  ctx: { ext?: string; txnId?: string; uid?: string },
+  outcome: 'failed' | 'unsaved' = 'unsaved',
+): Promise<void> {
+  logger.error('[SaveCard] confirmed charge but card not saved', {
+    reason,
+    ext: ctx.ext || undefined,
+    txnId: ctx.txnId || undefined,
+    uid: ctx.uid || undefined,
+  });
+  try {
+    await sendAlert({
+      type: 'data_integrity',
+      severity: 'high',
+      message: 'Save-card: SUMIT charge CONFIRMED but no card was saved',
+      details:
+        `reason=${reason} txnId=${ctx.txnId ?? '?'} ext=${ctx.ext ?? '?'} ` +
+        `uid=${ctx.uid ?? 'unknown'} — the ₪1 verification charge is confirmed ` +
+        `and the customer has no saved card; refund/reconcile manually ` +
+        `(no automated reversal rail exists)`,
+    });
+  } catch { /* alert must never change the customer's redirect */ }
+  res.redirect(`${base}/my-wallet?card=${outcome}`);
+}
+
 // GET /api/payments/save-card/return — SUMIT redirects the customer back here.
 router.get('/save-card/return', async (req: Request, res: Response) => {
   const txnId = String(req.query.ID || req.query.id || '');
   const ext = String(req.query.ext || '');
   const base = baseUrl();
-  if (!txnId || !ext) return res.redirect(`${base}/my-wallet?card=failed`);
+  if (!txnId || !ext) return failCallbackAnomaly(res, base, 'missing_txn_or_ext', { ext, txnId });
 
   // Ownership is SERVER-DERIVED from the /start-time Redis record. The
   // querystring carries no uid any more, and would not be trusted if it did.
@@ -148,39 +237,40 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
   const pending = await redis.get<PendingSaveCard>(pendingKey(ext));
   if (!pending?.uid) {
     logger.warn('[SaveCard] no pending save-card session for this externalId (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failCallbackAnomaly(res, base, 'no_pending_handoff', { ext, txnId });
   }
 
   // Authoritative server-side re-verify — never trust the querystring.
   const verify = await sumitClient.getTransaction(txnId);
   if (!verify.wired || !verify.valid) {
     logger.warn('[SaveCard] return not verified', { txnId, reason: verify.reason });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failCallbackAnomaly(res, base, 'sumit_verify_failed', { ext, txnId });
   }
 
   // A stolen `ext` must not be redeemable with somebody else's transaction.
   if (externalRefMismatch(verify.raw as any, ext)) {
     logger.error('[SaveCard] transaction external reference does not match this handoff (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterConfirmedCharge(res, base, 'external_ref_mismatch', { ext, txnId, uid: pending.uid }, 'failed');
   }
 
   // ATOMIC one-shot claim. Concurrent duplicate callbacks race on this single
   // Redis command: exactly one gets the record, every replay gets null.
   const claimedRaw = await redis.getDel(pendingKey(ext));
   if (!claimedRaw) {
-    logger.warn('[SaveCard] pending handoff already consumed — replay ignored (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    // A replay is NOT a new loss — the first caller already consumed the
+    // handoff, so no second charge happened here.
+    return failCallbackAnomaly(res, base, 'handoff_already_consumed', { ext, txnId });
   }
   let uid: string;
   try {
     uid = (JSON.parse(claimedRaw) as PendingSaveCard).uid;
   } catch {
     logger.error('[SaveCard] pending handoff was unreadable (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterConfirmedCharge(res, base, 'handoff_unreadable', { ext, txnId });
   }
   if (!uid) {
     logger.error('[SaveCard] pending handoff carried no uid (fail-closed)', { ext, txnId });
-    return res.redirect(`${base}/my-wallet?card=failed`);
+    return failAfterConfirmedCharge(res, base, 'handoff_missing_uid', { ext, txnId });
   }
 
   // Pull the SUMIT customer + saved payment method from the verified transaction
@@ -192,19 +282,42 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
     raw?.PaymentMethodID ?? raw?.SinglePaymentToken ?? raw?.Data?.PaymentMethodID ?? raw?.PaymentMethod?.ID;
   if (!sumitCustomerId) {
     logger.warn('[SaveCard] no SUMIT customer id in verified txn — not saving (fail-closed)', { txnId, uid });
-    return res.redirect(`${base}/my-wallet?card=unsaved`);
+    return failAfterConfirmedCharge(res, base, 'no_sumit_customer_id', { ext, txnId, uid });
   }
 
-  const saved = await SumitCardVault.saveCard({
-    userId: uid,
-    sumitCustomerId,
-    singlePaymentToken: String(token ?? sumitCustomerId), // fall back to customer ref if the method id isn't surfaced
-    cardBrand: raw?.CardBrand ?? raw?.Data?.CardBrand,
-    cardLast4: raw?.CardLast4 ?? raw?.Last4 ?? raw?.Data?.CardLast4,
-    consentVersion: 'save-card-v1',
-  });
+  // THE terminal failure case. Everything above has succeeded: SUMIT confirmed
+  // the charge, the external reference matched, and the one-shot handoff has
+  // already been CONSUMED — so the customer cannot retry with the same link.
+  // If the vault write now fails, they have paid ₪1 and hold nothing, which is
+  // precisely the money-integrity event this alerting exists for.
+  //
+  // A thrown vault/DB error is handled explicitly rather than being allowed to
+  // escape as an untracked 500: an exception after the handoff is consumed is
+  // the same loss as a `saved:false`, and must not be quieter than it.
+  let saved: Awaited<ReturnType<typeof SumitCardVault.saveCard>>;
+  try {
+    saved = await SumitCardVault.saveCard({
+      userId: uid,
+      sumitCustomerId,
+      singlePaymentToken: String(token ?? sumitCustomerId), // fall back to customer ref if the method id isn't surfaced
+      cardBrand: raw?.CardBrand ?? raw?.Data?.CardBrand,
+      cardLast4: raw?.CardLast4 ?? raw?.Last4 ?? raw?.Data?.CardLast4,
+      consentVersion: 'save-card-v1',
+    });
+  } catch (err: any) {
+    logger.error('[SaveCard] vault save threw after a confirmed charge', {
+      uid, txnId, error: err?.message,
+    });
+    return failAfterConfirmedCharge(res, base, 'vault_save_threw', { ext, txnId, uid });
+  }
+
   logger.info('[SaveCard] result', { uid, saved: saved.saved, reason: saved.reason });
-  return res.redirect(`${base}/my-wallet?card=${saved.saved ? 'saved' : 'unsaved'}`);
+
+  if (!saved.saved) {
+    return failAfterConfirmedCharge(res, base, 'vault_save_failed', { ext, txnId, uid });
+  }
+
+  return res.redirect(`${base}/my-wallet?card=saved`);
 });
 
 // GET /api/payments/save-card/status — public: is card-on-file live yet? Lets the wallet
