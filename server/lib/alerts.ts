@@ -276,18 +276,84 @@ export async function checkAuthLatency(p95Latency: number) {
 
 export async function checkServerErrorRate(errorCount: number, totalCount: number) {
   const errorRate = totalCount > 0 ? errorCount / totalCount : 0;
-  
+
   if (errorRate > 0.01) {
+    // 2026-09-06 lesson: this alert fired correctly at 12:13:57 with a 100% 5xx
+    // rate, but carried nothing explaining WHY — database health was green
+    // (`SELECT 1` passes on a read-only database) so the operator had a spike
+    // with no cause. Attach the write-probe state so the relationship between
+    // "everything is 5xx" and "the database refuses writes" is visible in the
+    // alert itself, not reconstructed from logs a day later.
+    let dbWrite: Record<string, unknown> | undefined;
+    try {
+      const { getDbWriteReadiness } = await import('./dbWriteReadiness');
+      const w = await getDbWriteReadiness();
+      dbWrite = {
+        db_reachable: w.dbReachable,
+        db_readable: w.dbReadable,
+        db_writable: w.dbWritable,
+        db_write_error_code: w.dbWriteErrorCode,
+        db_write_error_kind: w.dbWriteErrorKind,
+      };
+    } catch { /* enrichment must never suppress the alert */ }
+
     await alertManager.triggerAlert({
       name: 'server_error_rate_high',
-      message: `5xx error rate is ${(errorRate * 100).toFixed(2)}% (threshold: 1%)`,
+      message: `5xx error rate is ${(errorRate * 100).toFixed(2)}% (threshold: 1%)`
+        + (dbWrite && dbWrite.db_writable === false
+            ? ` — DATABASE IS NOT WRITABLE (${dbWrite.db_write_error_kind}`
+              + `${dbWrite.db_write_error_code ? ` SQLSTATE ${dbWrite.db_write_error_code}` : ''})`
+            : ''),
       severity: 'critical',
       timestamp: new Date(),
       metadata: {
         error_count: errorCount,
         total_count: totalCount,
-        error_rate: errorRate
+        error_rate: errorRate,
+        ...(dbWrite ?? {}),
       }
     });
   }
+}
+
+/**
+ * DB_WRITE_UNAVAILABLE — the alert that did not exist on 2026-09-06.
+ *
+ * Fires on the specific, otherwise-invisible state: the database is reachable
+ * and answering reads while refusing every write (PostgreSQL SQLSTATE 25006).
+ * In that state uptime checks stay green, `/api/health` stays green, and every
+ * booking, payment, job and fiscal document silently fails.
+ *
+ * Deliberately NOT folded into the generic database-down alert: "down" and
+ * "up but refusing writes" need different operator responses, and the second
+ * one is the one that hides.
+ */
+export async function checkDbWriteAvailability(): Promise<void> {
+  const { getDbWriteReadiness } = await import('./dbWriteReadiness');
+  const w = await getDbWriteReadiness();
+
+  // Not configured / unreachable is a different alert's job — this one is
+  // specifically about reads working while writes do not.
+  if (!w.dbReadable || w.dbWritable) return;
+
+  await alertManager.triggerAlert({
+    name: 'db_write_unavailable',
+    message:
+      `Database is READABLE but NOT WRITABLE (${w.dbWriteErrorKind}`
+      + `${w.dbWriteErrorCode ? ` SQLSTATE ${w.dbWriteErrorCode}` : ''}). `
+      + 'Reads and uptime checks will look healthy while every write fails — '
+      + 'bookings, payments, async jobs and fiscal documents are all affected.',
+    severity: 'critical',
+    timestamp: new Date(),
+    metadata: {
+      db_reachable: w.dbReachable,
+      db_readable: w.dbReadable,
+      db_writable: w.dbWritable,
+      db_write_error_code: w.dbWriteErrorCode,
+      db_write_error_kind: w.dbWriteErrorKind,
+      db_write_latency_ms: w.dbWriteLatencyMs,
+      checked_at: w.checkedAt,
+      revision: process.env.K_REVISION || null,
+    },
+  });
 }
