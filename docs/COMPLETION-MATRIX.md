@@ -57,7 +57,7 @@ Then the site moves to normal continuous improvement.
 | Pet Sitter booking | `TESTED` | Sitter booking flow #133; Journey resume E2E for `sitter_book`. |
 | Walk My Pet booking | `TESTED` | Walk booking; Journey resume E2E for `walk_book` (#2210). |
 | Marketplace booking | `TESTED` | Journey resume E2E for `marketplace_book` (#2210). |
-| Academy booking | `NOT REVIEWED` | Not yet on JourneyCheckpoint 6/6 (no `academy_book` domain). |
+| Academy booking | `TESTED` | Wired on JourneyCheckpoint 7/7 (`academy_book` domain); BOOK_CONFIRM CTA emit + 8-pin regression harness (#2234). |
 | Shop checkout | `TESTED` | Shop flow #134; Journey resume E2E for `shop_checkout` (#2210). |
 | Lost pets / Paw Finder | `BROKEN` | Task #135 pending — CEO said off-instructions. |
 | My Account | `TESTED` | #160-165 canonical write + fan-out + E2E + MOBILE contact-change. |
@@ -118,7 +118,7 @@ Then the site moves to normal continuous improvement.
 | --- | --- | --- |
 | Booking state machines | `TESTED` | Sitter/walk/marketplace/academy audits (#133/§B). |
 | Provider state machines | `TESTED` | #109 state-aware /become-provider; #106 requireProviderActive. |
-| JourneyCheckpoint (Phase 2) | `TESTED` | 6/6 domains wired + 6/6 real-browser E2E proof (#2210, #2211). |
+| JourneyCheckpoint (Phase 2) | `TESTED` | 7/7 domains wired (walk / sitter / marketplace / academy / shop / egift / provider_apply); 6/6 real-browser E2E proof (#2210, #2211); academy_book wire pinned by regression (#2234). |
 | Payment-state resolver on resume | `TESTED` | #151 CEO §12. |
 
 ### Money / Fiscal
@@ -139,7 +139,7 @@ Then the site moves to normal continuous improvement.
 | Area | Status | Evidence |
 | --- | --- | --- |
 | Phase 1 · attentionFeed | `TESTED` | Wallet / eGift / Prestige / KYA-stale / provider KYC / doc-expiry probes shipped. |
-| Phase 2 · JourneyCheckpoint | `TESTED` | 6/6 write-side; 6/6 browser matrix. |
+| Phase 2 · JourneyCheckpoint | `TESTED` | 7/7 write-side (academy_book added #2234); 6/6 browser matrix. |
 | Phase 3 · Saved Searches + Favourite Providers + Rebooking prefill | `TESTED` | #153 FAVOURITE_REBOOK. |
 | Phase 4 · NextBestAction service | `TESTED` | #2208 endpoint + #2213 route integration test (9 real-supertest pins). |
 | Phase 5 · rendering surface | `TESTED` | #2212 hook + card + #2215 home mount + #2216 real-browser E2E (5 scenarios). |
@@ -155,7 +155,7 @@ Then the site moves to normal continuous improvement.
 | --- | --- | --- |
 | Auth CTAs | `TESTED` | #257 CTA action-id registry. |
 | Provider funnel CTAs | `TESTED` | PROVIDER_SERVICE_ACTION_IDS. |
-| BOOK_CONFIRM on booking submits | `TESTED` | #2209 merged (sitter/walk/marketplace). |
+| BOOK_CONFIRM on booking submits | `TESTED` | #2209 (sitter/walk/marketplace) + #2234 (academy) — 4/4 Pet-Parent booking wizards. |
 | RESUME_JOURNEY (NextBestActionCard) | `TESTED` | #2212 registry addition + #2216 E2E asserts `data-action-id="RESUME_JOURNEY"` on resume tap. |
 
 ### Notifications + AI
@@ -224,7 +224,7 @@ Then the site moves to normal continuous improvement.
 ## Open engineering lanes (this session)
 
 - **Lane C · Journey Brain** — Phases 1-6 ALL TESTED. The whole personal-AI surface (attentionFeed / JourneyCheckpoint / SavedSearches+Favourites / NextBestAction / rendering / feedback loop) is now on `main`.
-- **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed; NextBestActionCard end-to-end (#2216). More provider / customer journeys can still be added.
+- **Lane G · real-browser E2E** — 6/6 JourneyCheckpoint matrix landed; NextBestActionCard end-to-end (#2216); academy_book wire has source-scan regression + still needs a browser resume spec (mirror of `journey-checkpoint-resume-*.e2e.spec.ts`). More provider / customer journeys can still be added.
 - **Lane E · money/fiscal** — Nayax letter (#166) blocked on non-code business step.
 - **Lane D · CTA registry** — BOOK_CONFIRM (#2209) + RESUME_JOURNEY (#2212) + DISMISS_NEXT_BEST_ACTION (#2221) TESTED.
 - **Lane F · mobile/RTL** — RTL direction contract now TESTED (#2228, 25 pins across 11 surfaces). Mobile-specific audits (viewport, touch targets, safe-area) not yet run separately.
@@ -235,7 +235,7 @@ Then the site moves to normal continuous improvement.
 | Phase | Status | Evidence |
 | --- | --- | --- |
 | 1 · attentionFeed probes | TESTED | wallet / eGift / Prestige / KYA-stale / provider KYC / doc-expiry probes shipped. |
-| 2 · JourneyCheckpoint | TESTED | 6/6 write-side + 6/6 real-browser matrix. |
+| 2 · JourneyCheckpoint | TESTED | 7/7 write-side (academy_book added #2234) + 6/6 real-browser matrix. |
 | 3 · Saved Searches / Favourites / Rebooking | TESTED | FAVOURITE_REBOOK forward-looking recommendation (#153). |
 | 4 · NextBestAction service | TESTED | endpoint (#2208) + supertest (#2213). |
 | 5 · rendering surface | TESTED | hook + card (#2212) + home mount (#2215) + end-to-end E2E (#2216). |
