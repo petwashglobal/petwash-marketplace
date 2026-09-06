@@ -85,12 +85,14 @@ const AGING_COLORS: Record<string, string> = {
 };
 
 async function fetchAnalytics(): Promise<AnalyticsData> {
-  // `auth` is imported from '@/lib/firebase' above (no local getAuth()).
-  const user = auth.currentUser;
-  const token = user ? await user.getIdToken() : null;
-  const res = await apiRequest('GET', '/api/provider-onboarding/mgmt/analytics', undefined, {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  });
+  // apiRequest takes three parameters. This used to pass a fourth — a
+  // headers object carrying a manually fetched Authorization bearer — which
+  // JavaScript silently discarded. It was never the thing authenticating
+  // this call: apiRequest attaches a Firebase bearer itself whenever the
+  // caller did not supply one, and it owns the single-shot 401 refresh
+  // retry that a hand-rolled header opts out of. So the manual getIdToken()
+  // was dead weight that read like the auth path.
+  const res = await apiRequest('GET', '/api/provider-onboarding/mgmt/analytics');
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);
