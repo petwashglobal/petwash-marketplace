@@ -27,11 +27,17 @@ import { Router, type Request, type Response } from 'express';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { reconcileMachineToSumit, bridgeWired } from '../services/nayaxSumitBridge';
+import { NAYAX_TERMINALS } from '../services/nayaxTerminals';
 
 const router = Router();
 
-// The two Kfar Saba bays confirmed from Nayax MoMa (2026-07-11). Override via env.
-const DEFAULT_MACHINE_IDS = '182443,182462';
+// All FOUR live Kfar Saba bays. Override via NAYAX_BRIDGE_MACHINE_IDS.
+//
+// 2026-09-06 — this was hardcoded '182443,182462' (Wald only), while the Green
+// Park 80 bays 182374/182403 have been taking money since July. Derived from the
+// terminal registry instead, so the fleet and the station/bay labelling cannot
+// drift apart: adding a bay in one place adds it in both.
+const DEFAULT_MACHINE_IDS = Object.keys(NAYAX_TERMINALS).join(',');
 
 function fleetMachineIds(): string[] {
   return (process.env.NAYAX_BRIDGE_MACHINE_IDS || DEFAULT_MACHINE_IDS)
