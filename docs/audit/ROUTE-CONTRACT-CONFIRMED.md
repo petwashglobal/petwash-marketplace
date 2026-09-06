@@ -7,6 +7,32 @@ application code was changed in this PR.** Each finding names the exact client
 `file:line` and the resolved server path, so an owning agent can act on it
 without re-deriving anything.
 
+## Using the suggestions safely — the one real limitation
+
+The scanner is reliable at finding that a client call **cannot reach a
+handler**. Its suggested *target* is a heuristic, and heuristics are exactly
+where authorization scope gets lost. Verified 2026-09-06 on this PR's own
+first finding:
+
+For `AdminTransactionExplorer.tsx:122` the scanner proposed
+`GET /api/fiscal/transactions/by-source/:source/:sourceId` because the last
+three segments matched. But `fiscal-passport.ts` mounts **two** handlers for
+the same source pair:
+
+| route | scope |
+|---|---|
+| `/transactions/by-source/:source/:sourceId` (line 87) | *customer or admin* — viewer-scoped via `resolveViewer(req)` |
+| `/admin/by-source/:source/:sourceId` (line 121) | **ADMIN_ONLY** — surfaces external ids and provider money |
+
+The caller is an **admin** surface, so the correct target is the second one —
+which is what #2279 shipped, differing from the scanner's suggestion. Taking
+the suggestion verbatim would have pointed an admin screen at a viewer-scoped
+handler and quietly shown less data than the operator needs.
+
+**So: trust the DEFECT, verify the TARGET.** When two candidate routes share a
+suffix, check their auth gates before rewiring — segment similarity says
+nothing about who is allowed to see what.
+
 ## How this scanner differs from the one that produced false positives
 
 The previous scanner matched `router.get('/foo')` textually and never resolved
