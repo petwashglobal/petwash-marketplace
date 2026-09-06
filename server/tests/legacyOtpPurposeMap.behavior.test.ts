@@ -16,9 +16,16 @@ import { OTP_PURPOSES } from '@shared/auth/otpPurposeRegistry';
 
 describe('LegacyOtpPurposeMap', () => {
   describe('coverage', () => {
-    it('exactly the 10 legacy purposes today (9 from trigger inventory + phone_change from task #194)', () => {
+    it('exactly the 10 legacy purposes today (9 from trigger inventory + change_phone from task #194)', () => {
+      // 'phone_change' was the reserved spelling here until the purpose was
+      // actually built (2026-09-06). Nothing ever referenced it, and the
+      // unified registry names this family change_email / change_phone /
+      // close_account — so it was renamed rather than left as the only
+      // inverted member. The count is unchanged; the canonical target
+      // (PHONE_VERIFICATION) is unchanged.
       expect([...LEGACY_OTP_PURPOSES].sort()).toEqual([
         'change_email',
+        'change_phone',
         'close_account',
         'diagnostic_noop',
         'disable_2fa',
@@ -26,7 +33,6 @@ describe('LegacyOtpPurposeMap', () => {
         'enable_2fa',
         'login',
         'payout',
-        'phone_change',
         'signup',
       ]);
     });

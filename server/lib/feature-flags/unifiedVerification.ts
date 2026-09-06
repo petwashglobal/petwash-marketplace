@@ -9,6 +9,7 @@ export const UNIFIED_VERIFICATION_CLOSE_ACCOUNT_FLAG_NAME = "UNIFIED_VERIFICATIO
 export const UNIFIED_VERIFICATION_ENABLE_2FA_FLAG_NAME = "UNIFIED_VERIFICATION_ENABLE_2FA_ENABLED" as const;
 export const UNIFIED_VERIFICATION_DISABLE_2FA_FLAG_NAME = "UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED" as const;
 export const UNIFIED_VERIFICATION_PAYOUT_FLAG_NAME = "UNIFIED_VERIFICATION_PAYOUT_ENABLED" as const;
+export const UNIFIED_VERIFICATION_CHANGE_PHONE_FLAG_NAME = "UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED" as const;
 
 export function isUnifiedVerificationEnabled(
   env: NodeJS.ProcessEnv = process.env,
@@ -72,6 +73,13 @@ export function isUnifiedVerificationPayoutEnabled(
     && (env.UNIFIED_VERIFICATION_PAYOUT_ENABLED || "").toLowerCase().trim() === "true";
 }
 
+export function isUnifiedVerificationChangePhoneEnabled(
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
+  return isUnifiedVerificationEnabled(env)
+    && (env.UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED || "").toLowerCase().trim() === "true";
+}
+
 export function isUnifiedVerificationPurposeEnabled(
   purpose: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -84,6 +92,7 @@ export function isUnifiedVerificationPurposeEnabled(
   if (purpose === "enable_2fa") return isUnifiedVerificationEnable2faEnabled(env);
   if (purpose === "disable_2fa") return isUnifiedVerificationDisable2faEnabled(env);
   if (purpose === "payout") return isUnifiedVerificationPayoutEnabled(env);
+  if (purpose === "change_phone") return isUnifiedVerificationChangePhoneEnabled(env);
   if (purpose === "diagnostic_noop") return isUnifiedVerificationEnabled(env);
   return false;
 }

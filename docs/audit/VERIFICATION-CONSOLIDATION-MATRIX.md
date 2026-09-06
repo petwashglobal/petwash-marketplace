@@ -59,7 +59,7 @@ column that matters is **Gap** — what has to change for that to be true.
 | 3 | Passwordless login | `login` | email / sms | canonical | UI only |
 | 4 | `GiftActivate.tsx` | `egift_redeem` | **sms, hard-coded** | canonical | UI + flip flag + let policy choose email first (SMS cost) |
 | 5 | `MyAccount.tsx` — email change | `change_email` | email | canonical | UI only |
-| 6 | `MyAccount.tsx` — phone change | *none yet* | sms | **`/api/user/settings/phone/confirm-verification`** — bespoke | **No `change_phone` purpose exists.** Add it (phone-only, `provesDestinationOwnership: true`), then migrate |
+| 6 | `MyAccount.tsx` — phone change | **`change_phone`** | sms | **canonical** as of 2026-09-06 | UI only. `POST /settings/phone/{request,confirm}-change` now mirror the email pair; `PATCH /api/user/profile` refuses a phone change |
 | 7 | `AccountSecurity.tsx` — 2FA | `enable_2fa` / `disable_2fa` | email | canonical (`mfa.ts`) | UI + flip flags |
 | 8 | Account closure | `close_account` | email | canonical | UI + flip flag |
 | 9 | `ProviderOnboarding.tsx` | *none yet* | sms | **`/api/provider/phone/{send,verify}-otp`** — bespoke, 0 canonical calls | Needs the `change_phone` / a `provider_phone` purpose, then migrate |
@@ -85,8 +85,30 @@ never the security boundary.
 | `change_email` | **email only** | email | The challenge exists to prove control of the NEW mailbox. Sending it anywhere else proves nothing |
 | `enable_2fa`, `disable_2fa`, `close_account`, `payout` | email, sms, whatsapp | **email** | Email leads on cost, but a phone fallback stays — a customer locked out of email must still be able to reach their own money |
 
-`change_phone` (row 6) will be phone-only with `provesDestinationOwnership: true`,
-by the same logic that makes `change_email` email-only.
+| `change_phone` | **sms, whatsapp** | sms | The challenge proves control of the NEW handset. An email code proves control of a mailbox, which says nothing about the number being claimed |
+
+`change_phone` is phone-only with `provesDestinationOwnership: true`, by the
+same logic that makes `change_email` email-only — pointed the other way. Both
+channels reach the same number, so allowing both does not weaken it; the
+invariant the tests enforce is that a prove-ownership purpose never mixes
+destination KINDS.
+
+### The generic profile bypass — closed 2026-09-06
+
+`PATCH /api/user/profile` (`user-profile.ts`) wrote **both** `users.phone` and
+`users.twoFactorEnabled` straight from the request body. The sibling endpoint
+`PATCH /api/user/settings/profile` had guarded the phone since the
+mobile-change audit via `decideMobileWrite()` — which made that guard one route
+away from pointless. `MyAccount.tsx:2077` let the user edit `phone` into
+`editedProfile`, and `:1634` PATCHed the whole object, so this was live.
+
+Both are now refused with a code naming the canonical route. A first-set stays
+allowed (`/booking-contact` depends on it); a *change* does not.
+
+**A third phone-change mechanism still exists** and is not yet consolidated:
+`transaction-otp`'s `profile_phone_change` purpose
+(`server/services/TransactionOTPService.ts:27`). It is row 11's problem — it
+needs the step-up proof before it can move.
 
 ---
 
@@ -94,9 +116,11 @@ by the same logic that makes `change_email` email-only.
 
 1. **Flip the five dark flags** once each surface is migrated and smoke-tested:
    egift_redeem, change_email, close_account, enable_2fa/disable_2fa, payout.
-2. **Add a `change_phone` purpose** — rows 6 and 9 both need it, and today a
-   profile PATCH is the only thing standing between a request and a new
-   security phone number.
+2. ~~Add a `change_phone` purpose~~ **DONE 2026-09-06.** Row 9 (provider
+   onboarding) can now migrate onto it. Note the flag
+   `UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED` must be ON, or phone changes are
+   refused entirely — which is the correct fail-closed posture, but it does
+   mean the flag has to be set at the same deploy as the client migration.
 3. **Migrate rows 9–11.** Row 11 (transaction OTP) is the money one: the
    verification must mint a short-lived, purpose-bound proof that the money
    service then checks. The OTP must never itself mutate money.

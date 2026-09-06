@@ -7,6 +7,7 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { encryptField, blindIndex } from '../services/secretFieldCrypto';
 import { syncProfileAddressToBook } from '../lib/syncProfileAddressToBook';
+import { decideMobileWrite } from './profile-settings';
 
 const notificationPreferencesSchema = z.object({
   pushEnabled: z.boolean().optional(),
@@ -50,8 +51,45 @@ const profileUpdateSchema = z.object({
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),
   marketingConsent: z.boolean().optional(),
+  /**
+   * DELIBERATELY NOT ACCEPTED HERE ANY MORE.
+   *
+   * `twoFactorEnabled` used to be a plain optional boolean on this schema,
+   * applied straight into the UPDATE at the bottom of the handler. That let
+   * ANY authenticated PATCH /api/user/profile turn a security control on or
+   * off — bypassing mfa.ts entirely, which is where enabling 2FA actually
+   * means something: an enable_2fa / disable_2fa challenge, TwoFactorAuthService
+   * enrolment, and the metadata.action check that binds the verification to
+   * the operation.
+   *
+   * A generic profile endpoint must never mutate security state. It is kept in
+   * the schema only so the handler can refuse it with a message that says
+   * where to go, rather than stripping it and returning a silent 200 that
+   * looks like it worked.
+   */
   twoFactorEnabled: z.boolean().optional(),
 });
+
+/**
+ * Fields this endpoint refuses outright, with the canonical route to use.
+ *
+ * Silently ignoring them would be worse than refusing: the caller gets 200,
+ * believes the security setting changed, and never finds out it did not.
+ */
+const SECURITY_FIELDS_REQUIRING_CANONICAL_FLOW = {
+  twoFactorEnabled: {
+    code: 'TWO_FACTOR_REQUIRES_VERIFICATION',
+    message:
+      'Two-factor authentication cannot be changed from the profile endpoint. '
+      + 'Use POST /api/mfa/enable or /api/mfa/disable, which require a verified challenge.',
+  },
+  email: {
+    code: 'EMAIL_CHANGE_REQUIRES_VERIFICATION',
+    message:
+      'Email cannot be changed from the profile endpoint. '
+      + 'Use POST /api/user/settings/email/request-change, which verifies the NEW address.',
+  },
+} as const;
 
 const router = Router();
 
@@ -251,20 +289,35 @@ router.patch('/profile', async (req, res) => {
       return res.status(400).json({ error: 'Invalid request body', details: parseResult.error.flatten() });
     }
 
+    // Security state is not profile data. Refuse loudly and name the route
+    // that actually verifies the change, before touching anything.
+    for (const [field, rule] of Object.entries(SECURITY_FIELDS_REQUIRING_CANONICAL_FLOW)) {
+      if ((req.body ?? {})[field] !== undefined) {
+        logger.warn('[UserProfile] refused a security field on the generic profile PATCH', {
+          uid, field, code: rule.code,
+        });
+        return res.status(400).json({ error: rule.message, code: rule.code });
+      }
+    }
+
     const {
       displayName, phone, birthdate, preferredLanguage,
       address, street, streetNumber, apartment, city, postalCode, country, latitude, longitude,
       addressIsTemporary, temporaryAddress, temporaryLat, temporaryLng, temporaryPostal,
       notificationPreferences,
       gender, idNumber, carPlate, carPlate2,
-      emergencyContactName, emergencyContactPhone, marketingConsent, twoFactorEnabled,
+      emergencyContactName, emergencyContactPhone, marketingConsent,
     } = parseResult.data;
 
-    // PR-DANGER-8: this row is only used for a truthy check at line ~315
-    // (insert-if-missing branch). No fields are read — projecting to just
-    // { id } means SELECT * cannot load PII columns into memory just to
-    // decide whether the row exists.
-    const [existingUser] = await db.select({ id: users.id })
+    // PR-DANGER-8: keep this projection MINIMAL — SELECT * would pull every
+    // PII column into memory just to decide whether the row exists.
+    //
+    // `phone` is the one deliberate addition: decideMobileWrite() below needs
+    // the current number to tell a first-set (allowed) from a change (refused).
+    // Without it the guard reads `undefined` as "no number on file" and waves
+    // every change through — which would be worse than having no guard, since
+    // it would look like one.
+    const [existingUser] = await db.select({ id: users.id, phone: users.phone })
       .from(users).where(eq(users.id, uid)).limit(1);
 
     const updateData: Record<string, any> = {};
@@ -274,7 +327,38 @@ router.patch('/profile', async (req, res) => {
       updateData.firstName = nameParts[0] || '';
       updateData.lastName = nameParts.slice(1).join(' ') || '';
     }
-    if (phone !== undefined) updateData.phone = phone;
+    /**
+     * THE BYPASS THIS CLOSES.
+     *
+     * This line used to be `updateData.phone = phone` — the raw request body
+     * value written straight onto the canonical security phone number. The
+     * sibling endpoint (PATCH /api/user/settings/profile) has guarded this
+     * since the mobile-change audit via decideMobileWrite(); this one never
+     * did, so the guard was one route away from being pointless.
+     *
+     * decideMobileWrite allows a FIRST set (a user with no number on file —
+     * /booking-contact depends on that) and a same-number rewrite in a
+     * different format, and refuses an actual CHANGE. A change now has to go
+     * through the change_phone challenge, which proves control of the NEW
+     * handset before it becomes the account's security number.
+     */
+    if (phone !== undefined) {
+      const mobileDecision = decideMobileWrite(phone, existingUser?.phone);
+      if (mobileDecision.action === 'reject') {
+        const message = mobileDecision.code === 'INVALID_PHONE'
+          ? 'That phone number is not valid.'
+          : 'Changing your mobile number requires verifying the new number. '
+            + 'Start a change_phone verification, then apply the change with the verified result.';
+        logger.warn('[UserProfile] refused an unverified mobile write', {
+          uid, code: mobileDecision.code,
+        });
+        return res.status(400).json({ error: message, code: mobileDecision.code });
+      }
+      if (mobileDecision.action === 'write') {
+        updateData.phone = mobileDecision.phone;
+      }
+      // 'noop' — same subscriber, nothing to write.
+    }
     if (birthdate !== undefined) updateData.dateOfBirth = birthdate;
     if (preferredLanguage !== undefined) updateData.language = preferredLanguage;
     // Permanent address
@@ -314,7 +398,8 @@ router.patch('/profile', async (req, res) => {
     if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;
     if (emergencyContactPhone !== undefined) updateData.emergencyContactPhone = emergencyContactPhone;
     if (marketingConsent !== undefined) updateData.marketingConsent = marketingConsent;
-    if (twoFactorEnabled !== undefined) updateData.twoFactorEnabled = twoFactorEnabled;
+    // twoFactorEnabled is refused above and never reaches an UPDATE from here.
+    // See SECURITY_FIELDS_REQUIRING_CANONICAL_FLOW.
 
     if (Object.keys(updateData).length > 0) {
       if (existingUser) {

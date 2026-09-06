@@ -36,7 +36,7 @@ export const LEGACY_OTP_PURPOSES = [
   'signup',
   'egift_redeem',
   'change_email',
-  'phone_change',
+  'change_phone',
   'enable_2fa',
   'disable_2fa',
   'close_account',
@@ -85,10 +85,10 @@ export const LEGACY_OTP_PURPOSE_MAP: readonly MappingEntry[] = [
     rationale: 'Both verify ownership of a new email address; the change-email flow is a superset that adds a state machine on top.',
   },
   {
-    legacy: 'phone_change',
+    legacy: 'change_phone',
     certainty: 'ONE_TO_ONE',
     canonical: 'PHONE_VERIFICATION',
-    rationale: 'Established-account MOBILE change (P0-MY-ACCOUNT task #194) — the OTP verifies ownership of the new mobile number, which is exactly PHONE_VERIFICATION. Distinct from signup (first-time mobile), which is #188.',
+    rationale: 'Established-account MOBILE change (P0-MY-ACCOUNT task #194) — the OTP verifies ownership of the new mobile number, which is exactly PHONE_VERIFICATION. Distinct from signup (first-time mobile), which is #188. RENAMED from the reserved-but-never-used "phone_change" when the purpose was actually built (2026-09-06): the unified registry names this family change_email / change_phone / close_account, and a lone phone_change would have been the only inverted one. Nothing referenced the old spelling.',
   },
   {
     legacy: 'close_account',

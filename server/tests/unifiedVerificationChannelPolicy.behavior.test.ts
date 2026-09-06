@@ -45,6 +45,13 @@ describe('channel policy — the registry is the authority', () => {
         expect(p.recommendedChannel, `${p.purpose} permits email but does not recommend it`).toBe('email');
       }
     }
+    // …and the converse: a purpose that does NOT permit email must have a
+    // stated reason, i.e. it proves ownership of a non-email destination.
+    for (const p of purposes) {
+      if (!p.allowedChannels.includes('email' as VerificationChannel)) {
+        expect(p.provesDestinationOwnership, `${p.purpose} forgoes free email delivery for no stated reason`).toBe(true);
+      }
+    }
   });
 
   it('change_email can ONLY go to email — anything else proves nothing', () => {
@@ -53,20 +60,51 @@ describe('channel policy — the registry is the authority', () => {
     expect(p.provesDestinationOwnership).toBe(true);
   });
 
-  it('a purpose that proves destination ownership offers exactly one channel', () => {
-    // If the point is "prove you control THIS address", a fallback to some
-    // other address defeats the whole challenge.
+  it('a purpose that proves destination ownership never mixes destination KINDS', () => {
+    /**
+     * The rule is not "exactly one channel" — sms and whatsapp both deliver to
+     * the same phone number, so either one proves control of that number, and
+     * change_phone legitimately allows both.
+     *
+     * The rule is that the allowed channels must all address the SAME KIND of
+     * destination. The moment a prove-ownership purpose accepts both an email
+     * channel and a phone channel, the code can be sent somewhere that says
+     * nothing about the thing being claimed, and the verification becomes
+     * decorative. That is what this catches.
+     */
+    const kindOf = (c: string) => (c === 'email' ? 'email' : c === 'push' ? 'push' : 'phone');
     for (const p of purposes) {
-      if (p.provesDestinationOwnership) {
-        expect(p.allowedChannels.length, p.purpose).toBe(1);
-      }
+      if (!p.provesDestinationOwnership) continue;
+      const kinds = new Set(p.allowedChannels.map(kindOf));
+      expect([...kinds], `${p.purpose} mixes destination kinds`).toHaveLength(1);
     }
+  });
+
+  it('change_phone can ONLY go to the new handset — email would prove nothing', () => {
+    const p = unifiedVerificationPurposeRegistry.change_phone;
+    expect([...p.allowedChannels].sort()).toEqual(['sms', 'whatsapp']);
+    expect(p.allowedChannels).not.toContain('email');
+    expect(p.recommendedChannel).toBe('sms');
+    expect(p.provesDestinationOwnership).toBe(true);
+    expect(p.requiresSession).toBe(true);
+    expect(p.sensitive).toBe(true);
+    expect(p.ttlSeconds).toBe(300);
+    expect(p.maxAttempts).toBe(5);
+  });
+
+  it('change_phone hands the proven number back for the caller to apply, and writes nothing itself', async () => {
+    const result = await unifiedVerificationPurposeRegistry.change_phone.execute(
+      { channel: 'sms', destination: '+972501233360', userId: 'u1', payload: {} } as any,
+      {} as any,
+    );
+    expect((result.metadata as any).action).toBe('change_phone');
+    expect((result.metadata as any).newPhoneE164).toBe('+972501233360');
   });
 
   it('sensitive purposes keep a non-email fallback so an email lockout is not an account lockout', () => {
     for (const p of purposes) {
       if (!p.sensitive) continue;
-      if (p.provesDestinationOwnership) continue; // change_email is legitimately email-only
+      if (p.provesDestinationOwnership) continue; // change_email / change_phone are legitimately single-kind
       const hasPhoneFallback = p.allowedChannels.some((c) => c === 'sms' || c === 'whatsapp');
       expect(hasPhoneFallback, `${p.purpose} would strand a customer locked out of email`).toBe(true);
     }

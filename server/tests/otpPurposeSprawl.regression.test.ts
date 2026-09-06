@@ -80,6 +80,15 @@ const KNOWN_LEGACY: ReadonlySet<string> = new Set([
   'disable_2fa',
   'close_account',
   'payout',
+  // change_phone (2026-09-06). Added under the guard's OWN rule, not around
+  // it: this is not new undocumented debt. The slot was already reserved in
+  // LEGACY_OTP_PURPOSES as 'phone_change' — mapped ONE_TO_ONE to the canonical
+  // PHONE_VERIFICATION for task #194 — and was never used by anything. Building
+  // the purpose filled that slot, renamed to match its own siblings
+  // (change_email / change_phone / close_account). So the count of lowercase
+  // legacy strings is UNCHANGED at ten, and the canonical target is already
+  // decided rather than deferred.
+  'change_phone',
 ]);
 
 /**
