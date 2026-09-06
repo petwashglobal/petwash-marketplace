@@ -77,6 +77,21 @@ const IS_PRODUCTION =
 
 const problems = [];
 const notes = [];
+/**
+ * Problems caused by Turnstile simply not being provisioned yet.
+ *
+ * These are separable from pipeline faults on purpose. The keys can only be
+ * created in a Cloudflare account, so between "we discovered the outage" and
+ * "someone logs into Cloudflare" there is a window where NOTHING can satisfy
+ * this gate. Blocking every unrelated release for that window — including a
+ * hotfix — is a worse trade than shipping with the outage acknowledged, which
+ * is the state production is already in.
+ *
+ * A waiver covers ONLY these. Anything else (missing build metadata, metadata
+ * that disagrees with the artifact, a mapping that was dropped) is a pipeline
+ * fault and still blocks, because those are regressions we control.
+ */
+const notProvisionedProblems = [];
 
 // ── half 1: the server secret, checked on the CANDIDATE DEPLOYMENT ─────────
 //
@@ -121,7 +136,7 @@ function checkServerHalf() {
     if (bound) {
       notes.push('Candidate deployment binds TURNSTILE_SECRET_KEY from Secret Manager (value not read).');
     } else {
-      problems.push(
+      notProvisionedProblems.push(
         'The CANDIDATE deployment does not bind TURNSTILE_SECRET_KEY. turnstileGuard fails '
         + 'CLOSED in production, so the new revision would return 503 on '
         + '/api/auth/email/start and /api/auth/sms/start. Add '
@@ -161,7 +176,7 @@ function checkServerHalf() {
     );
   }
 
-  problems.push(
+  notProvisionedProblems.push(
     'Could not verify the CANDIDATE deployment binds TURNSTILE_SECRET_KEY: no secret '
     + 'mappings were supplied (--secret-mappings / CLOUDRUN_SECRET_MAPPINGS)'
     + (currentBound === true
@@ -198,7 +213,7 @@ if (!t.artifactFound) {
 } else if (!t.widgetPresent) {
   notes.push(`No Turnstile widget code found in ${DIST} (nothing to validate).`);
 } else if (!t.turnstileConfigured) {
-  problems.push(
+  notProvisionedProblems.push(
     'The client bundle was built WITHOUT VITE_TURNSTILE_SITE_KEY: the widget '
     + 'render path was dead-code-eliminated and executeTurnstileInvisible() '
     + 'can only return SITE_KEY_MISSING. The browser will never obtain a '
@@ -247,9 +262,49 @@ if (t.artifactFound) {
 
 for (const n of notes) console.log(`  ok   ${n}`);
 for (const p of problems) console.error(`  FAIL ${p}`);
+for (const p of notProvisionedProblems) console.error(`  FAIL ${p}`);
 
-if (problems.length === 0) {
+const allProblems = [...problems, ...notProvisionedProblems];
+
+if (allProblems.length === 0) {
   console.log('Turnstile release invariant: OK — both halves ship together.');
+  if (process.env.TURNSTILE_KNOWN_OUTAGE_ACK) {
+    console.warn(
+      '\nTurnstile is now provisioned. REMOVE TURNSTILE_KNOWN_OUTAGE_ACK from '
+      + '.github/workflows/petwash-ci.yml and move TURNSTILE_SECRET_KEY back to '
+      + 'required_mappings — the waiver is no longer doing anything except hiding '
+      + 'a future regression.',
+    );
+  }
+  process.exit(0);
+}
+
+/**
+ * The waiver: acknowledged, dated, and impossible to read past.
+ *
+ * It never applies to a pipeline fault, and it never applies once the keys
+ * exist — the branch above fires first.
+ */
+const ack = process.env.TURNSTILE_KNOWN_OUTAGE_ACK;
+if (IS_PRODUCTION && ack && problems.length === 0 && notProvisionedProblems.length > 0) {
+  console.warn(
+    '\n'
+    + '================================================================\n'
+    + '  RELEASING WITH A KNOWN TURNSTILE OUTAGE\n'
+    + `  acknowledged as: ${ack}\n`
+    + '\n'
+    + '  Signup and code sign-in are DOWN in production and this release\n'
+    + '  does not change that. /api/auth/email/start and /api/auth/sms/start\n'
+    + '  return 503 / 400 to every customer.\n'
+    + '\n'
+    + '  This waiver exists because the keys can only be created in a\n'
+    + '  Cloudflare account, and blocking every unrelated release until then\n'
+    + '  is a worse trade than shipping with the outage acknowledged.\n'
+    + '\n'
+    + '  It does NOT cover pipeline faults — those still block.\n'
+    + '  Remove it the moment Turnstile is provisioned.\n'
+    + '================================================================',
+  );
   process.exit(0);
 }
 
@@ -259,6 +314,13 @@ if (!IS_PRODUCTION) {
     + 'take signup and sign-in DOWN in production.',
   );
   process.exit(0);
+}
+
+if (problems.length > 0 && ack) {
+  console.error(
+    '\nTURNSTILE_KNOWN_OUTAGE_ACK does NOT cover these — they are pipeline faults, '
+    + 'not the known provisioning gap.',
+  );
 }
 
 console.error(

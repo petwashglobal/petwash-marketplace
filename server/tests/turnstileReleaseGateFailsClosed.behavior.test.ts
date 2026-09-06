@@ -182,3 +182,87 @@ describe('the candidate ARTIFACT must carry usable build metadata', () => {
     rmSync(d, { recursive: true, force: true });
   });
 });
+
+describe('the known-outage waiver is narrow, loud, and self-removing', () => {
+  /**
+   * WHY IT EXISTS. I merged the gate before anything could satisfy it: neither
+   * Turnstile key has ever been created, and they can only be created in a
+   * Cloudflare account. The very next production deploy failed at this gate —
+   * blocking an unrelated release to enforce a check for a key that could not
+   * yet exist. Fail-closed is right for a REGRESSION; it is wrong as a hostage.
+   *
+   * So the waiver covers exactly the provisioning gap and nothing else.
+   */
+  const ACK = { TURNSTILE_KNOWN_OUTAGE_ACK: '2026-09-06 · awaiting widget' };
+
+  it('lets a release through when the ONLY problem is that nothing is provisioned', () => {
+    const d = mkdtempSync(join(tmpdir(), 'pw-unprov-'));
+    writeFileSync(join(d, 'app.js'), 'var a="SITE_KEY_MISSING";', 'utf8'); // no key
+    execFileSync(process.execPath, [WRITER, '--dist', d], { stdio: 'ignore' });
+    const r = run({ TURNSTILE_INVARIANT_ENV: 'production', ...ACK }, d);
+    expect(r.code).toBe(0);
+    expect(r.out).toContain('RELEASING WITH A KNOWN TURNSTILE OUTAGE');
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  it('still BLOCKS the same release without the waiver', () => {
+    const d = mkdtempSync(join(tmpdir(), 'pw-unprov2-'));
+    writeFileSync(join(d, 'app.js'), 'var a="SITE_KEY_MISSING";', 'utf8');
+    execFileSync(process.execPath, [WRITER, '--dist', d], { stdio: 'ignore' });
+    const r = run({ TURNSTILE_INVARIANT_ENV: 'production' }, d);
+    expect(r.code).toBe(1);
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  it('NEVER covers a pipeline fault — missing build metadata still blocks', () => {
+    // The waiver is about a key nobody has created. A build that forgot to
+    // write its own metadata is a regression we control, and shipping it
+    // would leave the health endpoint reporting UNKNOWN forever.
+    const d = mkdtempSync(join(tmpdir(), 'pw-fault-'));
+    writeFileSync(join(d, 'app.js'), 'var a="SITE_KEY_MISSING";var k="0x4AAAAAAABkMYinukE8nzYS";', 'utf8');
+    const r = run({
+      TURNSTILE_INVARIANT_ENV: 'production',
+      CLOUDRUN_SECRET_MAPPINGS: 'TURNSTILE_SECRET_KEY=TURNSTILE_SECRET_KEY:latest',
+      ...ACK,
+    }, d);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('does NOT cover these');
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  it('NEVER covers metadata that disagrees with the artifact', () => {
+    const d = mkdtempSync(join(tmpdir(), 'pw-stale2-'));
+    writeFileSync(join(d, 'app.js'), 'var a="SITE_KEY_MISSING";var k="0x4AAAAAAABkMYinukE8nzYS";', 'utf8');
+    writeFileSync(join(d, 'build-config.json'),
+      JSON.stringify({ schema: 1, turnstileConfigured: false, turnstileWidgetPresent: true }), 'utf8');
+    const r = run({
+      TURNSTILE_INVARIANT_ENV: 'production',
+      CLOUDRUN_SECRET_MAPPINGS: 'TURNSTILE_SECRET_KEY=TURNSTILE_SECRET_KEY:latest',
+      ...ACK,
+    }, d);
+    expect(r.code).toBe(1);
+    expect(r.out).toContain('disagrees with the artifact');
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  it('tells you to REMOVE it once Turnstile is actually provisioned', () => {
+    // Otherwise the waiver quietly becomes permanent and hides the next
+    // regression — which is the whole failure mode the gate exists to stop.
+    const r = run({
+      TURNSTILE_INVARIANT_ENV: 'production',
+      CLOUDRUN_SECRET_MAPPINGS: 'TURNSTILE_SECRET_KEY=TURNSTILE_SECRET_KEY:latest',
+      ...ACK,
+    });
+    expect(r.code).toBe(0);
+    expect(r.out).toContain('REMOVE TURNSTILE_KNOWN_OUTAGE_ACK');
+  });
+
+  it('says out loud that signup is still down — a waived release is not a healthy one', () => {
+    const d = mkdtempSync(join(tmpdir(), 'pw-loud-'));
+    writeFileSync(join(d, 'app.js'), 'var a="SITE_KEY_MISSING";', 'utf8');
+    execFileSync(process.execPath, [WRITER, '--dist', d], { stdio: 'ignore' });
+    const r = run({ TURNSTILE_INVARIANT_ENV: 'production', ...ACK }, d);
+    expect(r.out).toContain('Signup and code sign-in are DOWN in production');
+    rmSync(d, { recursive: true, force: true });
+  });
+});
