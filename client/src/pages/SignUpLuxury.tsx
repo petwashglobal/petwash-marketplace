@@ -2448,8 +2448,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   {/* Send the one-time code for the chosen method (mobile→SMS,
                       email→email code). The name + any missing base fields are asked
                       after the code is verified — no password anywhere. */}
+                  {/* `ageConfirmed` does not exist — the state is ageConfirmed18Plus.
+                      A bare undefined identifier here threw
+                        ReferenceError: ageConfirmed is not defined
+                      during render, which the error boundary caught, so the WHOLE
+                      signup page went to "Something went wrong" the moment the
+                      manual email form opened. Verified in production 2026-09-06:
+                      SignUpLuxury-BSyZtcwD.js inside React's commit path. */}
                   <button className="sl-cta"
-                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed}
+                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed18Plus}
                     onClick={() => {
                       if (method === 'email') {
                         // Password set → create the account with it (saveable). Blank
@@ -2459,7 +2466,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     }}>
                     <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (he ? 'יצירת חשבון' : 'Create account') : (he ? 'שליחת קוד אימות' : 'Send verification code'))}
                   </button>
-                  {((method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed) && (
+                  {((method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed18Plus) && (
                     <div className="sl-hint sl-submitHint">
                       {(method === 'email' ? !emailValid : (!phoneValid || !emailValid))
                         ? (method === 'email'
