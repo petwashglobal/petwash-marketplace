@@ -121,9 +121,8 @@ needs the step-up proof before it can move.
    `UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED` must be ON, or phone changes are
    refused entirely — which is the correct fail-closed posture, but it does
    mean the flag has to be set at the same deploy as the client migration.
-3. **Migrate rows 9–11.** Row 11 (transaction OTP) is the money one: the
-   verification must mint a short-lived, purpose-bound proof that the money
-   service then checks. The OTP must never itself mutate money.
+3. **Migrate rows 9–11.** The proof primitive row 11 was blocked on now
+   EXISTS — see below — so `transaction-otp` is unblocked, but not yet moved.
 4. **Analytics.** Counters exist per channel in `otp_events`, but there is no
    dashboard for verify-success rate, resend count, fallback rate or SMS cost
    avoided. No OTP digits in any of it.
@@ -131,3 +130,40 @@ needs the step-up proof before it can move.
    #2281 and still is not in CI, so none of the 18 journeys the brief lists
    (mobile autofill, paste-from-email, refresh mid-challenge, multiple tabs,
    iPhone Safari, Android Chrome) has an executed proof yet.
+
+
+---
+
+## The purpose-bound step-up proof (2026-09-06)
+
+`StepUpService` already existed and was sound — HMAC-signed, `(uid, purpose)`
+bound, 5-minute TTL, fail-closed on a missing secret. What it could not do is
+the thing the directive's §8 requires: *"a payout proof must not authorize
+refund, wallet adjustment, bank change, or arbitrary later payout."*
+
+A proof bound only to `(uid, 'change_payout')` says "this person, for payout
+things, for five minutes" — which authorises **any** payout, at **any** amount,
+to **any** destination, for the whole window.
+
+**v2 adds exactly two things** and keeps the rest:
+
+| | |
+|---|---|
+| **Binding** | `(operation, targetId, amountMinor)` hashed into the MAC. A proof for `{payout.execute, po_123, 4200}` verifies only against that tuple. `issueStepUpProof` **refuses to mint an unbound money proof at all**, so a caller cannot get a blank cheque by forgetting an argument |
+| **One-use** | `consumeStepUpProof` burns the jti with Redis `SETNX`, so a replay inside the TTL fails. **Fail-closed** when Redis is unavailable — a money proof whose replay status cannot be established is not a proof |
+
+`authoriseMoneyAction()` is the single call a money operation makes: verify
+against the exact tuple, then burn. It never moves money — the money service
+still re-checks its own canonical state and applies the change idempotently.
+
+`verifyChallenge()` now issues one for `change_email`, `change_phone`,
+`close_account` and `payout`. The binding comes from the payload supplied at
+`/start`, **before the customer saw a code**, so nothing the browser sends back
+at verify time can influence what the proof authorises.
+
+v1 tokens keep verifying for the identity purposes they were issued for, and
+can **never** satisfy a money purpose — v1 has no binding field.
+
+Issuance and consumption are both audited with a shared `jti`, so an operator
+can match one to the other. `STEP_UP_HMAC_SECRET` must be set (≥32 chars) or
+the service is closed.
