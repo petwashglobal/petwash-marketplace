@@ -62,6 +62,15 @@ const verifySchema = z.object({
   traceId: z.string().min(1).max(50).optional(),
 });
 
+const resendSchema = z.object({
+  challengeId: z.string().min(10).max(100),
+  // Only a channel SWITCH is expressed here; the service still checks it
+  // against the purpose's allowedChannels, so this cannot widen policy.
+  channel: channelSchema.optional(),
+  deviceId: z.string().min(1).max(100).optional(),
+  traceId: z.string().min(1).max(50).optional(),
+});
+
 function actorFromRequest(req: Request, body: { deviceId?: string; traceId?: string }): VerificationActor {
   const requestUser = (req as any).user;
   const firebaseUser = (req as any).firebaseUser;
@@ -98,6 +107,12 @@ router.get("/status", (_req, res) => {
     requiresSession: purpose.requiresSession,
     ttlSeconds: purpose.ttlSeconds,
     maxAttempts: purpose.maxAttempts,
+    // Channel policy is published so the UI can render the right options —
+    // but it is ENFORCED server-side in assertChannelAllowed(). A UI reading
+    // this list is a convenience, never the security boundary.
+    allowedChannels: purpose.allowedChannels,
+    recommendedChannel: purpose.recommendedChannel,
+    provesDestinationOwnership: purpose.provesDestinationOwnership,
   }));
 
   res.json({
@@ -174,6 +189,38 @@ router.post("/verify", requireUnifiedVerificationEnabled, async (req, res) => {
     const result = await unifiedVerificationService.verifyChallenge({
       challengeId: body.challengeId,
       code: body.code,
+      actor: actorFromRequest(req, body),
+    });
+    return res.status(200).json(result);
+  } catch (error) {
+    return handleVerificationError(res, error);
+  }
+});
+
+/**
+ * POST /api/verification/resend
+ *
+ * The service has had resendChallenge() all along; there was no HTTP route for
+ * it, so every surface either re-ran /start (a NEW challenge, invalidating the
+ * code already in the customer's inbox) or shipped its own resend endpoint.
+ * This is the canonical one.
+ *
+ * The 60s cooldown and the "challenge must still be pending" rule live in the
+ * service, and surface here as CHALLENGE_COOLDOWN (429) / CHALLENGE_NOT_PENDING
+ * (409) / CHALLENGE_EXPIRED (410) — so a customer mashing the button cannot
+ * send twenty emails.
+ */
+router.post("/resend", requireUnifiedVerificationEnabled, async (req, res) => {
+  const parsed = resendSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: "invalid_request", details: parsed.error.errors });
+  }
+
+  try {
+    const body = parsed.data;
+    const result = await unifiedVerificationService.resendChallenge({
+      challengeId: body.challengeId,
+      channel: body.channel as VerificationChannel | undefined,
       actor: actorFromRequest(req, body),
     });
     return res.status(200).json(result);
