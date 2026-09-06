@@ -16,7 +16,18 @@ const SRC = fs.readFileSync(path.resolve(__dirname, '..', 'services', 'SumitClie
 describe('SUMIT stored-value Receipt carries no VAT (2026-07-09)', () => {
   it('omits VAT-bearing Items when the document type is Receipt', () => {
     expect(SRC).toMatch(/if \(\(input\.documentType \|\| 'InvoiceAndReceipt'\) !== 'Receipt'\) \{/);
-    expect(SRC).toMatch(/body\.Items = \[\{/);
+    // Rewritten 2026-09-06. The pin used to require the literal `body.Items = [{`.
+    // That went red once the taxable line became a ternary (stable-catalogue item
+    // vs. fallback item, added for the K9000 rail) — `[` is now followed by
+    // `input.item ? …`, not `{`. The BEHAVIOUR it guards never changed, so the pin
+    // was wrong, not the code. It now asserts the contract: inside the non-Receipt
+    // branch a taxable line is assigned, priced BEFORE VAT, with VATIncluded false
+    // so SUMIT adds the 18% itself.
+    const branch = SRC.slice(
+      SRC.indexOf("if ((input.documentType || 'InvoiceAndReceipt') !== 'Receipt') {"),
+    ).slice(0, 1600);
+    expect(branch).toMatch(/body\.Items = \[/);
+    expect(branch).toMatch(/UnitPrice: input\.amountBeforeVat/);
     expect(SRC).toMatch(/body\.VATIncluded = false/);
   });
 

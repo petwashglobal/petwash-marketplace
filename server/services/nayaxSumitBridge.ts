@@ -28,7 +28,13 @@ import { getSumitDocumentMapping } from './sumitDocumentMapping';
 import type { LynxSaleRow } from './lynxReconciliation';
 import { terminalForMachine, terminalLabel } from './nayaxTerminals';
 import { logger } from '../lib/logger';
-import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { issueSaleWithClaim, type SaleIssuanceStore } from './nayaxSaleIssuance';
+import { ISRAEL_VAT_RATE, israeliFiscalDate } from '@shared/israel-compliance-config';
+
+// Re-exported so the Nayax fiscal surface has one import site; the definition
+// lives in the shared config because SumitClient needs it too and this module
+// already imports SumitClient.
+export { israeliFiscalDate };
 
 // Single source of truth — canonical rate (env-overridable) from israel-compliance-config.
 // Bay prices are VAT-inclusive consumer prices; we back the VAT out for the SUMIT line.
@@ -201,6 +207,61 @@ export function bridgeWired(): {
  * A sale with no readable settlement timestamp is WITHHELD because eligibility
  * cannot be established — not because it is old.
  */
+/**
+ * Turn a Nayax settlement timestamp into a real instant — explicitly, never via
+ * bare `new Date(str)`.
+ *
+ * WHY THIS EXISTS (measured 2026-09-06): the Nayax field is `SettlementDateTimeGMT`,
+ * but Nayax sends it WITHOUT a zone marker. JavaScript resolves a zone-less
+ * timestamp in the HOST process's timezone, so the same wash resolves to two
+ * different instants on two different machines:
+ *
+ *   new Date('2026-09-05 22:30:00')  on a UTC server   -> 2026-09-05T22:30Z -> Israel day 06/09
+ *   new Date('2026-09-05 22:30:00')  on this dev laptop -> 2026-09-05T12:30Z -> Israel day 05/09
+ *
+ * A wrong day is not cosmetic here. The bookkeeper's 2026-09-06 ruling is that the
+ * document's ISSUE DATE alone determines the reporting period, so a day that slips
+ * across a month boundary moves income into the wrong VAT period.
+ *
+ * Rules:
+ *  - An explicit offset or trailing Z is trusted as sent.
+ *  - A zone-less `YYYY-MM-DD[T ]HH:mm[:ss]` is read as UTC, because the field says GMT.
+ *  - EVERYTHING ELSE returns null. In particular a DD/MM/YYYY string (the shape the
+ *    Excel export uses) is refused rather than guessed: when both halves are <= 12 it
+ *    would silently parse as a different month, and a fiscal date must never be a guess.
+ *    Returning null makes the sale unissuable (NO_SETTLEMENT_TIME) instead of misdated.
+ */
+export function parseNayaxSettlementInstant(raw: string | null | undefined): Date | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.trim();
+  if (!s) return null;
+
+  // Explicit zone (…Z or …+03:00 / …-0500): trust what was sent.
+  if (/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?\s*(Z|[+-]\d{2}:?\d{2})$/.test(s)) {
+    const d = new Date(s.replace(' ', 'T'));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  // Zone-less ISO-shaped: the field is named GMT, so read it as UTC explicitly.
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?$/);
+  if (m) {
+    const [, y, mo, da, hh, mi, ss] = m;
+    const d = new Date(Date.UTC(
+      Number(y), Number(mo) - 1, Number(da), Number(hh), Number(mi), Number(ss ?? '0'),
+    ));
+    // Date.UTC happily rolls 2026-13-45 over; reject anything that did not round-trip.
+    if (
+      d.getUTCFullYear() !== Number(y) || d.getUTCMonth() !== Number(mo) - 1 ||
+      d.getUTCDate() !== Number(da) || d.getUTCHours() !== Number(hh)
+    ) return null;
+    return d;
+  }
+
+  // Unrecognised shape (DD/MM/YYYY included) — refuse rather than guess.
+  return null;
+}
+
+
 export function applyFiscalCutover(
   sales: DocumentableSale[],
   cutoverAt: Date | null,
@@ -209,8 +270,8 @@ export function applyFiscalCutover(
   const eligible: DocumentableSale[] = [];
   const withheld: DocumentableSale[] = [];
   for (const s of sales) {
-    const t = s.settledAt ? new Date(s.settledAt) : null;
-    if (t && !Number.isNaN(t.getTime()) && t.getTime() >= cutoverAt.getTime()) eligible.push(s);
+    const t = parseNayaxSettlementInstant(s.settledAt);
+    if (t && t.getTime() >= cutoverAt.getTime()) eligible.push(s);
     else withheld.push(s);
   }
   return { eligible, withheld };
@@ -344,8 +405,9 @@ export function issuanceBlockers(sale: DocumentableSale): IssuanceBlocker[] {
   if (!sale.machineId || !terminalForMachine(sale.machineId)) {
     out.push(ISSUANCE_BLOCKER.UNKNOWN_MACHINE);
   }
-  const t = sale.settledAt ? new Date(sale.settledAt) : null;
-  if (!t || Number.isNaN(t.getTime())) out.push(ISSUANCE_BLOCKER.NO_SETTLEMENT_TIME);
+  if (!parseNayaxSettlementInstant(sale.settledAt)) {
+    out.push(ISSUANCE_BLOCKER.NO_SETTLEMENT_TIME);
+  }
   if (!(Number(sale.totalInclVat) > 0)) out.push(ISSUANCE_BLOCKER.NON_POSITIVE_AMOUNT);
   return out;
 }
@@ -371,6 +433,12 @@ export function buildReceiptInput(sale: DocumentableSale) {
     // One stable product; the bay lives on the line, not in the item name.
     item: { name: K9000_INCOME_ITEM.name, externalId: K9000_INCOME_ITEM.externalId },
     lineDescription: where,
+    // Fiscal date = when the wash actually closed at the bay, not when this
+    // request happens to reach SUMIT. Bookkeeper-directed 2026-09-06: the issue
+    // date determines the reporting period, so it must not drift with our retries.
+    // A sale with no readable settledAt never reaches here — issuanceBlockers
+    // withholds it (NO_SETTLEMENT_TIME).
+    documentDate: parseNayaxSettlementInstant(sale.settledAt) ?? undefined,
     amountBeforeVat: sale.amountBeforeVat,
     vatAmount: sale.vatAmount,
     totalAmount: sale.totalInclVat,
@@ -424,7 +492,14 @@ export interface BridgeRunResult {
  */
 export async function reconcileMachineToSumit(
   machineId: string,
-  opts?: { dryRun?: boolean },
+  opts?: {
+    dryRun?: boolean;
+    /**
+     * The claim ledger. REQUIRED for live issuance — it is the duplicate guard.
+     * Omitting it does not fall back to unguarded issuance; the run refuses.
+     */
+    claimStore?: SaleIssuanceStore | null;
+  },
 ): Promise<BridgeRunResult> {
   const wired = bridgeWired();
   const dryRun = opts?.dryRun === false ? !wired.canIssue : true; // live only when explicitly asked AND fully wired
@@ -465,19 +540,52 @@ export async function reconcileMachineToSumit(
   let issued = 0;
   let failed = 0;
 
+  // ── ISSUANCE IS CLAIM-GUARDED ────────────────────────────────────────────
+  //
+  // Every create goes through the claim ledger (nayax_sale_issuance_attempts),
+  // whose unique index on (machine_id, nayax_transaction_id) is what stops a
+  // repeated run from issuing a SECOND tax invoice for the same wash.
+  //
+  // This used to call createCustomerReceipt directly, selecting candidates from
+  // the live feed alone and recording nothing afterwards. The deterministic key
+  // it relied on reaches SUMIT only as an Idempotency-Key header and an
+  // ExternalReference, and SUMIT deduplicates on NEITHER — which is exactly why
+  // findDocumentByExternalReference exists. Run hourly over a rolling window,
+  // that issued a fresh invoice for every eligible wash, every hour.
+  //
+  // Without a store there is no guard, so issuance REFUSES rather than falling
+  // back. A caller with no persistence can preview and nothing else.
+  const store = opts?.claimStore ?? null;
+  if (!dryRun && issuable.length > 0 && !store) {
+    logger.error('[NayaxSumitBridge] refusing to issue: no claim store, no duplicate guard', {
+      machineId, issuable: issuable.length,
+    });
+    return {
+      ok: false, dryRun, wired, machineId,
+      candidateCount: issuable.length, issued: 0, failed: 0, rows: [],
+      blockedCount: blocked.length,
+      fiscalCutoverAt: cutoverAt ? cutoverAt.toISOString() : null,
+      withheldCount: withheld.length,
+      error: 'no_claim_store',
+    };
+  }
+
   for (const sale of issuable) {
     if (dryRun) {
       rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: false });
       continue;
     }
     try {
-      const r = await sumitClient.createCustomerReceipt(buildReceiptInput(sale));
-      if (r.wired && r.sumitDocumentId) {
+      const r = await issueSaleWithClaim({ store: store!, sumit: sumitClient }, sale);
+      if (r.issued) {
         issued++;
-        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: true, sumitDocumentId: r.sumitDocumentId });
+        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: true, sumitDocumentId: r.documentId });
       } else {
-        failed++;
-        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: false, reason: r.reason || 'no_document_id' });
+        // A sale whose claim was unavailable is NOT a failure — another run owns
+        // it, or it is already documented. Counting it as failed would invite a
+        // retry, which is the behaviour being removed.
+        if (r.state !== 'ALREADY_CLAIMED') failed++;
+        rows.push({ transactionId: sale.transactionId, total: sale.totalInclVat, documentType: 'InvoiceAndReceipt', issued: false, reason: r.reason });
       }
     } catch (err: any) {
       failed++;

@@ -28,6 +28,7 @@
 
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { israeliFiscalDate } from '@shared/israel-compliance-config';
 
 /**
  * Env is read on every call (not cached at module load) so tests can
@@ -427,6 +428,21 @@ export class SumitClient {
     item?: { name: string; externalId: string };
     /** Per-line context (station/bay). Only used when `item` is supplied. */
     lineDescription?: string;
+    /**
+     * The fiscal date to stamp on the document (Details.Date).
+     *
+     * BOOKKEEPER-DIRECTED, 2026-09-06: "כל חשבונית שתופק ב-SUMIT צריכה להיווצר
+     * בזמן אמת בהתאם לתאריך ולשעת סגירת העסקה בפועל ב-Nayax" — every invoice must
+     * be created in real time according to the actual date and time the
+     * transaction closed in Nayax.
+     *
+     * Omitting it lets SUMIT stamp "now", which is only correct while the rail is
+     * perfectly current. A retry, backlog or recovery makes "now" drift from the
+     * Nayax close — and because the ISSUE date is what determines the reporting
+     * period, that drift moves income between periods. So the date is sent
+     * explicitly rather than left to whenever the request happened to land.
+     */
+    documentDate?: Date;
     /** caller context for the audit log (platform, bookingId) */
     context?: Record<string, unknown>;
   }): Promise<SumitDocumentResult> {
@@ -465,6 +481,14 @@ export class SumitClient {
         // (verified live 2026-07-05, document #10000 walk).
         Language: 'Hebrew',
         ExternalReference: input.idempotencyKey,
+        // Fiscal date = the instant the transaction closed at the machine, per the
+        // bookkeeper's 2026-09-06 instruction. Sent as ISO (yyyy-MM-dd) in Israel
+        // time: SUMIT reads ISO or MM/DD, never DD/MM — a DD/MM string whose halves
+        // are both <= 12 silently means a different month (verified live 2026-09-06).
+        // Omitted (SUMIT stamps "now") only when the caller has no settlement time.
+        ...(input.documentDate && !Number.isNaN(input.documentDate.getTime())
+          ? { Date: israeliFiscalDate(input.documentDate) }
+          : {}),
       },
       // The sale is already paid — record the payment so the doc is a receipt too.
       // A bare {Amount} is rejected ("יש להזין מוטב/מחויב"): SUMIT needs the
@@ -577,6 +601,13 @@ export class SumitClient {
     vatAmount: number;
     totalAmount: number;
     currency: 'ILS';
+    /**
+     * The fiscal date of the credit, from the Nayax REFUND close — same
+     * bookkeeper instruction that governs the sale (2026-09-06): a document
+     * issued through the API is dated by the transaction it records, not by
+     * whenever the request reached SUMIT. Omitted → SUMIT stamps "now".
+     */
+    documentDate?: Date;
     context?: Record<string, unknown>;
   }): Promise<SumitDocumentResult> {
     const env = readEnv();
@@ -598,6 +629,9 @@ export class SumitClient {
         Currency: input.currency,
         Language: 'Hebrew',
         ExternalReference: input.idempotencyKey,
+        ...(input.documentDate && !Number.isNaN(input.documentDate.getTime())
+          ? { Date: israeliFiscalDate(input.documentDate) }
+          : {}),
       },
       Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountBeforeVat }],
       Payments: [{ Amount: input.totalAmount, Type: 'CreditCard', Details_CreditCard: {} }],
@@ -635,6 +669,151 @@ export class SumitClient {
   }
 
   /** Public accessor so callers can branch without firing a no-op call. */
+  /**
+   * Find a document by OUR ExternalReference — the duplicate guard that makes
+   * stale-claim recovery safe.
+   *
+   * ── WHY THREE OUTCOMES AND NOT A BOOLEAN ────────────────────────────────────
+   * The failure this exists to prevent: the create request REACHES SUMIT, SUMIT
+   * issues the document, and the HTTP response dies on the way back. Our claim is
+   * left stale. If recovery then calls create again, a second legal tax document
+   * is issued for one wash, and it cannot be deleted — only credited.
+   *
+   * So recovery must READ BEFORE IT RECREATES, and "I could not tell" must never
+   * collapse into "not found":
+   *
+   *   FOUND          the document exists under an EXPECTED type — link it.
+   *   FOUND_MISMATCH the reference exists but under an unexpected document type.
+   *                  Still never recreate: the primary invariant is that the same
+   *                  ExternalReference existing anywhere relevant forbids a blind
+   *                  create. Route to reconciliation.
+   *   ABSENT         pagination completed cleanly and it is definitively not there
+   *                  — one safe retry is permitted.
+   *   INCONCLUSIVE   unwired, no create-attempt time, network/HTTP failure,
+   *                  non-zero Status, or page budget exhausted. NEVER create.
+   *
+   * ── THE WINDOW IS AROUND THE CREATE ATTEMPT, NOT THE WASH ───────────────────
+   * documents/list has no server-side ExternalReference filter, so we page a date
+   * window and match on the rows, which do carry it. That window MUST be centred
+   * on when we asked SUMIT to create the document — never on when the wash
+   * settled. A SUMIT document's date is its ISSUE date, and issuance can lag the
+   * wash by any amount.
+   *
+   * Measured against the 480 real documents on 2026-09-06: the gap from service
+   * to issue runs min -1d, MEDIAN 30d, max 56d. A ±3-day window around settlement
+   * would have reported ABSENT for 455 of 480 documents that demonstrably exist —
+   * 95%. Each of those is an authorised recreate, i.e. a second legal tax document
+   * for one wash. ±30d still misses half.
+   *
+   * So `createAttemptAt` is required, and when it is unknown the answer is
+   * INCONCLUSIVE — never ABSENT. A search that might not contain the original
+   * attempt cannot prove absence of anything.
+   */
+  async findDocumentByExternalReference(input: {
+    externalReference: string;
+    documentTypes: string[];
+    /**
+     * When we FIRST asked SUMIT to create this document — persisted on the claim
+     * before the HTTP call. NOT the Nayax settlement instant.
+     */
+    createAttemptAt: Date | null | undefined;
+    windowDays?: number;
+    maxPages?: number;
+    pageSize?: number;
+  }): Promise<
+    | { outcome: 'FOUND'; documentId: string; documentNumber?: string; documentType?: string }
+    | { outcome: 'FOUND_MISMATCH'; documentId: string; documentNumber?: string; documentType?: string }
+    | { outcome: 'ABSENT' }
+    | { outcome: 'INCONCLUSIVE'; reason: string }
+  > {
+    const env = readEnv();
+    // Unwired is NOT evidence of absence.
+    if (!isWired()) return { outcome: 'INCONCLUSIVE', reason: 'not_wired' };
+
+    // No create-attempt timestamp → we cannot centre the search on the moment the
+    // document would have been issued, so no result could prove absence.
+    const at = input.createAttemptAt;
+    if (!at || Number.isNaN(at.getTime())) {
+      return { outcome: 'INCONCLUSIVE', reason: 'no_create_attempt_timestamp' };
+    }
+
+    // Generous by default: the cost of an over-wide window is extra paging; the
+    // cost of a narrow one is a duplicate legal document.
+    const windowDays = input.windowDays ?? 30;
+    const maxPages = input.maxPages ?? 20;
+    const pageSize = input.pageSize ?? 200;
+    // ── ISO ONLY. NEVER DD/MM. ────────────────────────────────────────────────
+    // Verified live against documents/list 2026-09-06:
+    //   '09/01/2026'→'09/30/2026'  (valid only as MM/DD) → Status 0, 200 rows
+    //   '01/09/2026'→'30/09/2026'  (valid only as DD/MM) → Status 2, rejected
+    //   '2026-09-01'→'2026-09-30'  (ISO)                 → Status 0, 200 rows
+    // SUMIT reads MM/DD/YYYY or ISO. A DD/MM string is therefore either rejected
+    // outright OR — far worse — silently read as a DIFFERENT MONTH when both
+    // halves are ≤12: searching around 06/09/2026 would query June 9th, return
+    // zero rows cleanly, and yield ABSENT, authorising a duplicate legal
+    // document. en-CA gives YYYY-MM-DD, which cannot be misread.
+    const isoDate = (d: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(d);
+    const from = new Date(at.getTime() - windowDays * 86_400_000);
+    const to = new Date(at.getTime() + windowDays * 86_400_000);
+
+    for (let page = 0; page < maxPages; page++) {
+      let body: any;
+      try {
+        const res = await fetch(`${env.baseUrl}/accounting/documents/list/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            Credentials: { CompanyID: Number(env.companyId), APIKey: env.apiKey },
+            DocumentTypes: input.documentTypes,
+            DateFrom: isoDate(from),
+            DateTo: isoDate(to),
+            IncludeDrafts: false,
+            Paging: { StartIndex: page * pageSize, PageSize: pageSize },
+          }),
+        });
+        if (!res.ok) return { outcome: 'INCONCLUSIVE', reason: `http_${res.status}` };
+        body = await res.json();
+      } catch (err: any) {
+        // A transport failure tells us nothing about what SUMIT holds.
+        return { outcome: 'INCONCLUSIVE', reason: `transport:${err?.message ?? 'unknown'}` };
+      }
+
+      const status = body?.Status;
+      if (status !== 0 && status !== 'Success') {
+        return { outcome: 'INCONCLUSIVE', reason: `sumit_status:${JSON.stringify(status)}` };
+      }
+      const data = body?.Data ?? {};
+      const rows: any[] = data.Documents ?? data.Items ?? data.Rows ?? (Array.isArray(data) ? data : []);
+      for (const row of rows) {
+        const ref = row?.ExternalReference ?? row?.Document?.ExternalReference;
+        if (ref != null && String(ref) === input.externalReference) {
+          const id = row?.DocumentID ?? row?.ID ?? row?.Id;
+          if (!id) return { outcome: 'INCONCLUSIVE', reason: 'match_without_document_id' };
+          const num = row?.DocumentNumber ?? row?.Number;
+          const type = row?.Type ?? row?.Document?.Type;
+          const expected = input.expectedTypes ?? input.documentTypes;
+          // The reference exists. Whether or not the type is what we expected,
+          // a blind recreate is now forbidden.
+          return {
+            outcome: type != null && !expected.includes(String(type))
+              ? 'FOUND_MISMATCH' : 'FOUND',
+            documentId: String(id),
+            ...(num != null ? { documentNumber: String(num) } : {}),
+            ...(type != null ? { documentType: String(type) } : {}),
+          };
+        }
+      }
+      // Clean end of pagination with no match = definitively absent.
+      if (data.HasNextPage !== true || rows.length === 0) return { outcome: 'ABSENT' };
+    }
+    // Budget exhausted. NOT absence — creating on this basis is how a duplicate
+    // legal document gets issued.
+    return { outcome: 'INCONCLUSIVE', reason: `page_budget_exhausted:${maxPages}` };
+  }
+
   isWired(): boolean {
     return isWired();
   }
