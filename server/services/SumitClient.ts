@@ -654,14 +654,31 @@ export class SumitClient {
    *   INCONCLUSIVE unwired, network/HTTP failure, non-zero Status, or page budget
    *                exhausted. NEVER create on this. Fail closed to reconciliation.
    *
-   * documents/list has no server-side ExternalReference filter, so we page a
-   * narrow date window around the known settlement instant and match on the rows,
-   * which do carry it.
+   * ── THE WINDOW IS AROUND THE CREATE ATTEMPT, NOT THE WASH ───────────────────
+   * documents/list has no server-side ExternalReference filter, so we page a date
+   * window and match on the rows, which do carry it. That window MUST be centred
+   * on when we asked SUMIT to create the document — never on when the wash
+   * settled. A SUMIT document's date is its ISSUE date, and issuance can lag the
+   * wash by any amount.
+   *
+   * Measured against the 480 real documents on 2026-09-06: the gap from service
+   * to issue runs min -1d, MEDIAN 30d, max 56d. A ±3-day window around settlement
+   * would have reported ABSENT for 455 of 480 documents that demonstrably exist —
+   * 95%. Each of those is an authorised recreate, i.e. a second legal tax document
+   * for one wash. ±30d still misses half.
+   *
+   * So `createAttemptAt` is required, and when it is unknown the answer is
+   * INCONCLUSIVE — never ABSENT. A search that might not contain the original
+   * attempt cannot prove absence of anything.
    */
   async findDocumentByExternalReference(input: {
     externalReference: string;
     documentTypes: string[];
-    dateHint: Date;
+    /**
+     * When we FIRST asked SUMIT to create this document — persisted on the claim
+     * before the HTTP call. NOT the Nayax settlement instant.
+     */
+    createAttemptAt: Date | null | undefined;
     windowDays?: number;
     maxPages?: number;
     pageSize?: number;
@@ -674,17 +691,34 @@ export class SumitClient {
     // Unwired is NOT evidence of absence.
     if (!isWired()) return { outcome: 'INCONCLUSIVE', reason: 'not_wired' };
 
-    const windowDays = input.windowDays ?? 3;
+    // No create-attempt timestamp → we cannot centre the search on the moment the
+    // document would have been issued, so no result could prove absence.
+    const at = input.createAttemptAt;
+    if (!at || Number.isNaN(at.getTime())) {
+      return { outcome: 'INCONCLUSIVE', reason: 'no_create_attempt_timestamp' };
+    }
+
+    // Generous by default: the cost of an over-wide window is extra paging; the
+    // cost of a narrow one is a duplicate legal document.
+    const windowDays = input.windowDays ?? 30;
     const maxPages = input.maxPages ?? 20;
     const pageSize = input.pageSize ?? 200;
-    const ddmmyyyy = (d: Date) => {
-      const p = new Intl.DateTimeFormat('en-GB', {
-        timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric',
-      }).formatToParts(d).reduce<Record<string, string>>((a, x) => (a[x.type] = x.value, a), {});
-      return `${p.day}/${p.month}/${p.year}`;
-    };
-    const from = new Date(input.dateHint.getTime() - windowDays * 86_400_000);
-    const to = new Date(input.dateHint.getTime() + windowDays * 86_400_000);
+    // ── ISO ONLY. NEVER DD/MM. ────────────────────────────────────────────────
+    // Verified live against documents/list 2026-09-06:
+    //   '09/01/2026'→'09/30/2026'  (valid only as MM/DD) → Status 0, 200 rows
+    //   '01/09/2026'→'30/09/2026'  (valid only as DD/MM) → Status 2, rejected
+    //   '2026-09-01'→'2026-09-30'  (ISO)                 → Status 0, 200 rows
+    // SUMIT reads MM/DD/YYYY or ISO. A DD/MM string is therefore either rejected
+    // outright OR — far worse — silently read as a DIFFERENT MONTH when both
+    // halves are ≤12: searching around 06/09/2026 would query June 9th, return
+    // zero rows cleanly, and yield ABSENT, authorising a duplicate legal
+    // document. en-CA gives YYYY-MM-DD, which cannot be misread.
+    const isoDate = (d: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(d);
+    const from = new Date(at.getTime() - windowDays * 86_400_000);
+    const to = new Date(at.getTime() + windowDays * 86_400_000);
 
     for (let page = 0; page < maxPages; page++) {
       let body: any;
@@ -695,8 +729,8 @@ export class SumitClient {
           body: JSON.stringify({
             Credentials: { CompanyID: Number(env.companyId), APIKey: env.apiKey },
             DocumentTypes: input.documentTypes,
-            DateFrom: ddmmyyyy(from),
-            DateTo: ddmmyyyy(to),
+            DateFrom: isoDate(from),
+            DateTo: isoDate(to),
             IncludeDrafts: false,
             Paging: { StartIndex: page * pageSize, PageSize: pageSize },
           }),

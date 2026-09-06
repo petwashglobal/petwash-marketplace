@@ -17,7 +17,8 @@ import { sumitClient } from '../services/SumitClient';
 const ARGS = {
   externalReference: 'nayax-bay:2207959160',
   documentTypes: ['InvoiceAndReceipt'],
-  dateHint: new Date('2026-09-06T09:00:00Z'),
+  // When we ASKED SUMIT to create — never the wash settlement instant.
+  createAttemptAt: new Date('2026-09-06T09:00:00Z'),
 };
 const saved: Record<string, string | undefined> = {};
 const ENV = ['SUMIT_ENABLED', 'SUMIT_API_KEY', 'SUMIT_COMPANY_ID', 'SUMIT_WEBHOOK_SECRET'];
@@ -124,5 +125,67 @@ describe('findDocumentByExternalReference — never mistakes doubt for absence',
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(f));
       expect((await sumitClient.findDocumentByExternalReference(ARGS)).outcome).not.toBe('ABSENT');
     }
+  });
+});
+
+
+/**
+ * The search window, and the date format it is sent in.
+ *
+ * Both of these were wrong in the first version of this function, and both fail
+ * SILENTLY into ABSENT — the one outcome that authorises creating a second legal
+ * tax document for a wash that already has one.
+ */
+describe('window and date format — the two silent paths to a duplicate', () => {
+  const bodyOf = (f: any) => JSON.parse(f.mock.calls[0][1].body);
+
+  // Measured on the 480 real documents: service→issue gap is min -1d, MEDIAN 30d,
+  // max 56d. A ±3d window around SETTLEMENT would have said ABSENT for 455 of 480
+  // documents that exist. The window must sit on the create attempt.
+  it('centres the window on the create attempt, not on any settlement time', async () => {
+    const f = vi.fn().mockResolvedValue(ok([]));
+    vi.stubGlobal('fetch', f);
+    await sumitClient.findDocumentByExternalReference({
+      ...ARGS, createAttemptAt: new Date('2026-09-05T21:00:00Z'), windowDays: 30,
+    });
+    const b = bodyOf(f);
+    expect(b.DateFrom).toBe('2026-08-07');   // 30d before the ATTEMPT
+    expect(b.DateTo).toBe('2026-10-06');
+  });
+
+  it('is INCONCLUSIVE when the create-attempt timestamp is unknown', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ok([])));
+    for (const at of [undefined, null, new Date('nonsense')]) {
+      const r = await sumitClient.findDocumentByExternalReference({ ...ARGS, createAttemptAt: at as any });
+      expect(r.outcome).toBe('INCONCLUSIVE');
+      expect(r).not.toEqual({ outcome: 'ABSENT' });
+    }
+  });
+
+  // Verified live 2026-09-06: SUMIT reads MM/DD/YYYY or ISO. '01/09/2026' →
+  // Status 2. Worse, a DD/MM string whose halves are both ≤12 is read as a
+  // DIFFERENT MONTH, returns zero rows cleanly, and yields ABSENT.
+  it('sends ISO dates, never DD/MM', async () => {
+    const f = vi.fn().mockResolvedValue(ok([]));
+    vi.stubGlobal('fetch', f);
+    await sumitClient.findDocumentByExternalReference({
+      ...ARGS, createAttemptAt: new Date('2026-09-06T09:00:00Z'), windowDays: 1,
+    });
+    const b = bodyOf(f);
+    for (const d of [b.DateFrom, b.DateTo]) {
+      expect(d).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(d).not.toMatch(/^\d{2}\/\d{2}\/\d{4}$/);
+    }
+    expect(b.DateFrom).toBe('2026-09-05');
+    expect(b.DateTo).toBe('2026-09-07');
+  });
+
+  it('defaults to a window wide enough to cover observed issuance lag', async () => {
+    const f = vi.fn().mockResolvedValue(ok([]));
+    vi.stubGlobal('fetch', f);
+    await sumitClient.findDocumentByExternalReference(ARGS);
+    const b = bodyOf(f);
+    const days = (Date.parse(b.DateTo) - Date.parse(b.DateFrom)) / 86_400_000;
+    expect(days).toBeGreaterThanOrEqual(60);
   });
 });
