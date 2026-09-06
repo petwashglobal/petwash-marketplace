@@ -11,8 +11,10 @@
  * exact SUMIT customer/token field shapes are read defensively and confirmed on the first
  * real save; a mismatch just fails closed (no card stored, no wrong charge).
  */
+import { randomBytes } from 'node:crypto';
 import { Router, Request, Response } from 'express';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { redis } from '../services/redis';
 import { sumitClient } from '../services/SumitClient';
 import { SumitCardVault, isCardVaultEnabled } from '../services/SumitCardVault';
 import { logger } from '../lib/logger';
@@ -21,56 +23,114 @@ const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
 
 // ---------------------------------------------------------------------------
-// IDOR FIX (cross-tenant sweep, 2026-09-05): the /return handler used to trust
-// `uid` straight from the querystring — the exact "identity from a
-// client-supplied field" anti-pattern. The redirect URL (and everything in
-// it) is fully visible/editable in the customer's own browser, so anyone
-// could swap `uid=<their-own>` for `uid=<victim>` on the way back from SUMIT
-// and have SumitCardVault.saveCard() tie THEIR card token to a victim's
-// account. `ID`/txnId being "authoritatively re-verified" only proves the
-// charge is real — it says nothing about whose account should receive it.
+// OWNERSHIP HANDOFF (IDOR fix #2263, made durable 2026-09-06)
 //
-// Fix: remember the real (server-derived) uid for each externalId at
-// /start time — while the caller is still authenticated — and require the
-// /return handler to look it up server-side. The querystring `uid` is no
-// longer trusted for anything. Per-instance in-memory map is fine here: the
-// whole redirect round-trip is seconds, one-shot, and consumed on first use
-// (same "defensive, non-distributed" tolerance already accepted for the
-// per-uid rate limiters in routes/messages.ts).
+// #2263 stopped the /return handler trusting `uid` from the querystring — the
+// redirect URL is fully editable in the customer's browser, so anyone could
+// swap in a victim's uid and have their card token attached to that account.
+//
+// That fix parked the trusted uid in a per-instance in-memory Map and called
+// it "fine". It is not: Cloud Run runs min-instances=0 and scales, so /start
+// and /return routinely land on DIFFERENT instances (or the same instance
+// after a cold start). The map misses, the handler fails closed, and the
+// customer has already been charged the ₪1 — which nothing in this codebase
+// refunds (see the note on amountIls below). Silent, money-losing, and
+// invisible in a single-instance test.
+//
+// Now: the handoff lives in Redis (the canonical server/services/redis.ts —
+// no second client), keyed by an OPAQUE crypto-random external id.
+//
+//   • /start persists {uid, createdAt} under a 30-min TTL and FAILS CLOSED
+//     with 503 BEFORE SUMIT is called. We never take the ₪1 unless we know
+//     we can recover ownership afterwards.
+//   • If SUMIT then fails to start, the pending key is deleted.
+//   • /return reads the record, verifies the transaction with SUMIT, checks
+//     it corresponds to this external reference, and only then CONSUMES the
+//     record with an atomic GETDEL. Two concurrent callbacks race on that
+//     single command: one wins, the replay gets null and fails closed.
+//
+// redis.set()/getDel() already return false/null when Redis is unavailable,
+// so an outage degrades to "cannot start / cannot save" — never to a bypass.
+// There is deliberately NO in-memory fallback: that is the bug being fixed.
 // ---------------------------------------------------------------------------
-const SAVE_CARD_PENDING_TTL_MS = 30 * 60 * 1000; // 30 min — generous for a hosted-page checkout
-const pendingSaveCardUids = new Map<string, { uid: string; expiresAt: number }>();
+const SAVE_CARD_PENDING_TTL_SECONDS = 30 * 60; // 30 min — generous for a hosted-page checkout
 
-function rememberPendingUid(externalId: string, uid: string): void {
-  pendingSaveCardUids.set(externalId, { uid, expiresAt: Date.now() + SAVE_CARD_PENDING_TTL_MS });
+interface PendingSaveCard {
+  uid: string;
+  createdAt: number;
 }
 
-/** One-time, TTL-checked lookup. Consumes the entry so a return URL can't be replayed. */
-function takePendingUid(externalId: string): string | null {
-  const entry = pendingSaveCardUids.get(externalId);
-  pendingSaveCardUids.delete(externalId);
-  if (!entry || entry.expiresAt < Date.now()) return null;
-  return entry.uid;
+function pendingKey(externalId: string): string {
+  return `savecard:pending:${externalId}`;
+}
+
+/**
+ * Opaque, unguessable handoff id. Deliberately carries NO uid: the external
+ * id travels to SUMIT and back through the customer's browser, and internal
+ * user ids should not be exposed there. Ownership lives only in Redis.
+ */
+function newExternalId(): string {
+  return `savecard_${randomBytes(24).toString('hex')}`;
+}
+
+/**
+ * Defensive correspondence check. SUMIT's external-reference field name is not
+ * confirmed against the authenticated swagger (same caveat as every other raw
+ * field read in this file), so: if we can find one and it DISAGREES, reject —
+ * a stolen `ext` must not be redeemable with an attacker's own transaction. If
+ * no such field is present at all we log and continue, because hard-requiring
+ * an unverified field name would fail every legitimate save.
+ */
+function externalRefMismatch(raw: any, expectedExt: string): boolean {
+  const found =
+    raw?.ExternalIdentifier ?? raw?.ExternalID ?? raw?.ExternalId ??
+    raw?.Data?.ExternalIdentifier ?? raw?.Data?.ExternalID ?? raw?.Data?.ExternalId;
+  if (found == null || String(found).length === 0) return false;
+  return String(found) !== expectedExt;
 }
 
 // POST /api/payments/save-card/start — start a SUMIT hosted page to save the customer's card.
 router.post('/save-card/start', validateFirebaseToken, async (req: Request, res: Response) => {
   if (!isCardVaultEnabled()) return res.status(503).json({ error: 'Card-on-file is not enabled yet' });
   const uid = req.firebaseUser!.uid;
-  const externalId = `savecard_${uid}_${Date.now()}`;
-  rememberPendingUid(externalId, uid);
+  const externalId = newExternalId();
+
+  // Persist ownership BEFORE money moves. redis.set() returns false when Redis
+  // is unavailable — in that case we must not start SUMIT at all, because the
+  // ₪1 would be charged with no way to attribute the resulting card.
+  const persisted = await redis.set(
+    pendingKey(externalId),
+    { uid, createdAt: Date.now() } satisfies PendingSaveCard,
+    SAVE_CARD_PENDING_TTL_SECONDS,
+  );
+  if (!persisted) {
+    logger.error('[SaveCard] could not persist pending ownership — refusing to start SUMIT (fail-closed)', { uid });
+    return res.status(503).json({ error: 'Card save temporarily unavailable, please try again' });
+  }
+
   const result = await sumitClient.beginRedirect({
     externalId,
-    amountIls: 1, // ₪1 verification — refundable; the point is to save the card, not to charge.
+    // ₪1 verification. NOTE (verified 2026-09-06): this is a REAL charge —
+    // there is no void/refund anywhere in this flow or in SumitCardVault, and
+    // beginRedirect documents amountIls as "VAT-inclusive gross". The older
+    // comment here said "refundable", which only ever meant "could be
+    // refunded", not "is refunded". Business rule left unchanged; this note
+    // exists so nobody re-reads it as auto-reversed.
+    amountIls: 1,
     description: 'שמירת אמצעי תשלום · PetWash',
-    // `uid` stays in the URL only as a debugging breadcrumb — the /return handler below
-    // no longer reads or trusts it. Ownership comes from the pending map keyed by `ext`.
-    redirectUrl: `${baseUrl()}/api/payments/save-card/return?ext=${encodeURIComponent(externalId)}&uid=${encodeURIComponent(uid)}`,
+    // No uid in the URL — it travels through the customer's browser and is not
+    // needed: `ext` is an opaque handle and ownership lives in Redis.
+    redirectUrl: `${baseUrl()}/api/payments/save-card/return?ext=${encodeURIComponent(externalId)}`,
     customerName: (req.firebaseUser as any)?.name,
     customerEmail: req.firebaseUser?.email,
   });
-  if (!result.wired) return res.status(503).json({ error: 'Payments not enabled yet', reason: result.reason });
-  if (!result.redirectUrl) return res.status(502).json({ error: 'Could not start card save', reason: result.reason });
+
+  // SUMIT never started → release the pending key rather than leaving it to rot.
+  if (!result.wired || !result.redirectUrl) {
+    await redis.del(pendingKey(externalId));
+    if (!result.wired) return res.status(503).json({ error: 'Payments not enabled yet', reason: result.reason });
+    return res.status(502).json({ error: 'Could not start card save', reason: result.reason });
+  }
   return res.json({ ok: true, redirectUrl: result.redirectUrl });
 });
 
@@ -81,10 +141,12 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
   const base = baseUrl();
   if (!txnId || !ext) return res.redirect(`${base}/my-wallet?card=failed`);
 
-  // Ownership is SERVER-DERIVED from the /start-time pending map — the
-  // querystring `uid` (if present at all) is never consulted.
-  const uid = takePendingUid(ext);
-  if (!uid) {
+  // Ownership is SERVER-DERIVED from the /start-time Redis record. The
+  // querystring carries no uid any more, and would not be trusted if it did.
+  // Read first (non-destructive) so a SUMIT verification failure does not burn
+  // the one-shot record — the customer can be sent back to retry.
+  const pending = await redis.get<PendingSaveCard>(pendingKey(ext));
+  if (!pending?.uid) {
     logger.warn('[SaveCard] no pending save-card session for this externalId (fail-closed)', { ext, txnId });
     return res.redirect(`${base}/my-wallet?card=failed`);
   }
@@ -92,7 +154,32 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
   // Authoritative server-side re-verify — never trust the querystring.
   const verify = await sumitClient.getTransaction(txnId);
   if (!verify.wired || !verify.valid) {
-    logger.warn('[SaveCard] return not verified', { txnId, uid, reason: verify.reason });
+    logger.warn('[SaveCard] return not verified', { txnId, reason: verify.reason });
+    return res.redirect(`${base}/my-wallet?card=failed`);
+  }
+
+  // A stolen `ext` must not be redeemable with somebody else's transaction.
+  if (externalRefMismatch(verify.raw as any, ext)) {
+    logger.error('[SaveCard] transaction external reference does not match this handoff (fail-closed)', { ext, txnId });
+    return res.redirect(`${base}/my-wallet?card=failed`);
+  }
+
+  // ATOMIC one-shot claim. Concurrent duplicate callbacks race on this single
+  // Redis command: exactly one gets the record, every replay gets null.
+  const claimedRaw = await redis.getDel(pendingKey(ext));
+  if (!claimedRaw) {
+    logger.warn('[SaveCard] pending handoff already consumed — replay ignored (fail-closed)', { ext, txnId });
+    return res.redirect(`${base}/my-wallet?card=failed`);
+  }
+  let uid: string;
+  try {
+    uid = (JSON.parse(claimedRaw) as PendingSaveCard).uid;
+  } catch {
+    logger.error('[SaveCard] pending handoff was unreadable (fail-closed)', { ext, txnId });
+    return res.redirect(`${base}/my-wallet?card=failed`);
+  }
+  if (!uid) {
+    logger.error('[SaveCard] pending handoff carried no uid (fail-closed)', { ext, txnId });
     return res.redirect(`${base}/my-wallet?card=failed`);
   }
 
