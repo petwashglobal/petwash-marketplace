@@ -34,6 +34,17 @@ import { describe, it, expect } from 'vitest';
  */
 const WIRED_JOURNEYS = [
   {
+    // Added 2026-09-06 while rebasing this pin onto current main. #2234 wired
+    // the academy journey and added 'academy_book' to the JourneyDomain enum
+    // AFTER this table was written, so the coverage assertion below was RED on
+    // main — the table had six domains, the enum seven. That is the invariant
+    // doing its job: a new JourneyDomain must not exist without a wire.
+    // Verified before adding: client/src/pages/academy/BookingFlow.tsx:64 calls
+    // useJourneyCheckpoint('academy_book', …) via the canonical hook path.
+    domain: 'academy_book',
+    file: 'client/src/pages/academy/BookingFlow.tsx',
+  },
+  {
     domain: 'sitter_book',
     file: 'client/src/pages/sitter-suite/BookingFlow.tsx',
   },
@@ -130,8 +141,19 @@ describe('Journey Brain Phase 2 · cross-wire invariants (Lane C.3)', () => {
     (domain, rel) => {
       const src = readWire(rel);
       // Match: useJourneyCheckpoint<...>('<domain>', { enabled: !!user })
+      //
+      // The type argument is matched NON-GREEDILY (2026-09-06) rather than as
+      // `[A-Za-z]+`. That narrower form silently assumed every wire uses a
+      // NAMED payload type, so it failed against the academy wire's inline
+      // `Record<string, unknown>` — nested angle brackets, a comma and a space
+      // are all outside `[A-Za-z]`. The wire was correct; the pin was not.
+      //
+      // What this invariant is actually for is in its own title: the right
+      // DOMAIN LITERAL and the `enabled: !!user` gate (so a checkpoint is
+      // never opened for an anonymous visitor). Type-naming style is not part
+      // of that guarantee and must not be able to fail it.
       const rx = new RegExp(
-        `useJourneyCheckpoint<[A-Za-z]+>\\(["']${domain}["'], \\{\\s*\\n?\\s*enabled: !!user,\\s*\\n?\\s*\\}\\)`,
+        `useJourneyCheckpoint<[\\s\\S]*?>\\(["']${domain}["'], \\{\\s*\\n?\\s*enabled: !!user,\\s*\\n?\\s*\\}\\)`,
       );
       expect(src).toMatch(rx);
     },
