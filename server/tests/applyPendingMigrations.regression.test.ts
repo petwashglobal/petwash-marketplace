@@ -252,21 +252,54 @@ describe('CI workflow — apply-migrations is opt-in only (M-DEPLOY-2)', () => {
     expect(yaml).toMatch(/run_migrations:[\s\S]*?default:\s*false/);
   });
 
-  it('apply-migrations job has an `if:` gating on workflow_dispatch + run_migrations==true', () => {
+  // UPDATED 2026-09-08. Both pins below asserted the M-DEPLOY-2 shape and had
+  // been failing on main since the release-freeze change of 2026-09-03 (PR
+  // #2178). The workflow was deliberately improved, not broken — the pins were
+  // simply never moved. They now assert the CURRENT contract, which is stronger
+  // than what they replaced.
+  it('apply-migrations is opt-in only — via dispatch OR an explicit commit marker', () => {
     const job = yaml.match(/apply-migrations:[\s\S]*?(?=\n  [a-z-]+:|\Z)/)?.[0] ?? '';
-    expect(job).toMatch(/if:\s*\$\{\{\s*github\.event_name\s*===?\s*['"]workflow_dispatch['"]/);
-    expect(job).toMatch(/inputs\.run_migrations\s*===?\s*true/);
+    // `if: >-` folds the condition onto following lines, so the old
+    // /if:\s*\$\{\{/ could never match once the block scalar was introduced.
+    const cond = job.match(/\n    if:[\s\S]*?\}\}/)?.[0] ?? '';
+    expect(cond).not.toBe('');
+
+    // Path 1 — an operator dispatches the workflow with the checkbox on.
+    expect(cond).toMatch(/github\.event_name\s*===?\s*['"]workflow_dispatch['"]/);
+    expect(cond).toMatch(/inputs\.run_migrations\s*===?\s*true/);
+
+    // Path 2 — added by #2178: a push whose HEAD COMMIT carries the explicit
+    // marker. This is what lets a merge that ships a migration apply it,
+    // without every other push touching the production schema.
+    expect(cond).toMatch(/github\.event_name\s*===?\s*['"]push['"]/);
+    expect(cond).toMatch(/contains\(\s*github\.event\.head_commit\.message\s*,\s*'\[apply-pending-migrations\]'\s*\)/);
+
+    // THE INVARIANT THAT MATTERS: a plain push must never reach the schema.
+    // Both branches are conditional, so there is no unguarded path.
+    expect(cond).toMatch(/\|\|/);
   });
 
-  it('deploy-backend does NOT list apply-migrations in needs (would skip deploy forever)', () => {
-    // Extract JUST the needs array (not the surrounding comment block,
-    // which legitimately mentions "apply-migrations" in its explanation).
+  it('deploy-backend gates on apply-migrations WITHOUT deadlocking the normal push', () => {
     const needsArray =
       yaml.match(/deploy-backend:[\s\S]*?\n    needs:\s*(\[[^\]]+\])/)?.[1] ?? '';
-    expect(needsArray).not.toMatch(/apply-migrations/);
-    // Sanity: the two pre-deploy gates are still required.
+    // Since #2178 apply-migrations IS a dependency — deliberately. A failed
+    // migration must stop the deploy: a half-migrated production is worse than
+    // an undeployed one.
+    expect(needsArray).toMatch(/apply-migrations/);
+    // The two pre-deploy gates are still required.
     expect(needsArray).toMatch(/gate-smoke-test-startup/);
     expect(needsArray).toMatch(/gate-audit-env-vars/);
+
+    // And the reason listing it does NOT freeze every push: the deploy's own
+    // `if:` accepts SKIPPED as well as SUCCESS. Skipped is the normal case
+    // (no marker, no dispatch). Without this the original pin's fear —
+    // "would skip deploy forever" — would be real, so it is pinned here
+    // rather than trusted.
+    const cond = yaml.match(/deploy-backend:[\s\S]*?\n    if:[\s\S]*?\}\}/)?.[0] ?? '';
+    expect(cond).toMatch(/needs\.apply-migrations\.result\s*===?\s*'success'/);
+    expect(cond).toMatch(/needs\.apply-migrations\.result\s*===?\s*'skipped'/);
+    // FAILED must NOT be tolerated — that is the whole point of the gate.
+    expect(cond).not.toMatch(/needs\.apply-migrations\.result\s*!==?\s*'failure'/);
   });
 });
 
