@@ -44,6 +44,19 @@ export function OtpCodeInput({
 }: OtpCodeInputProps) {
   const [digits, setDigits] = useState<string[]>(Array(length).fill(''));
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  /**
+   * Guards against firing onComplete twice for ONE fill — not against ever
+   * firing again.
+   *
+   * 2026-09-08: this used to latch `true` and only clear on Backspace or a
+   * change to the `error` prop. SignUpLuxury never passed `error`, so on the
+   * real signup screen it never cleared at all: one rejected code and the
+   * form was dead. Typing a fresh six digits did nothing — no request, no
+   * feedback — and the only escape was a Backspace the customer has no reason
+   * to try. Found driving production after the verify 404 (#2306) was fixed.
+   *
+   * Any edit now clears it, so every fresh six digits submits exactly once.
+   */
   const completedRef = useRef(false);
 
   useEffect(() => {
@@ -76,6 +89,8 @@ export function OtpCodeInput({
   }, [length, onComplete]);
 
   const distribute = useCallback((raw: string) => {
+    // A new fill is a new attempt, whatever the last one did.
+    completedRef.current = false;
     const cleaned = raw.replace(/\D/g, '').slice(0, length);
     const next = Array(length).fill('');
     cleaned.split('').forEach((d, i) => { next[i] = d; });
@@ -95,6 +110,8 @@ export function OtpCodeInput({
       return;
     }
     if (cleaned.length === 1) {
+      // Editing any box means the customer is entering a new code.
+      completedRef.current = false;
       const next = [...digits];
       next[index] = cleaned;
       setDigits(next);
