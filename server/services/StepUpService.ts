@@ -67,7 +67,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../lib/logger';
-import { redis } from './redis';
+import { consumeOneShotProof } from '../lib/oneShotProof';
 
 /** Closed set of sensitive operations. Extend deliberately. */
 export const STEP_UP_PURPOSES = [
@@ -246,7 +246,8 @@ function bindingFingerprintV2(b: StepUpBinding | undefined, secret: string): str
   return b64url(createHmac('sha256', secret).update(canonical, 'utf8').digest()).slice(0, 22);
 }
 
-const CONSUMED_KEY_PREFIX = 'stepup:consumed:';
+/** Key namespace for this proof family in the shared one-shot store. */
+const STEP_UP_ONE_SHOT_SCOPE = 'stepup';
 
 export interface DecodedProof {
   version: string;
@@ -458,27 +459,34 @@ export async function consumeStepUpProof(proof: DecodedProof): Promise<boolean> 
   const remaining = proof.expiresAt - Math.floor(Date.now() / 1000);
   if (remaining <= 0) return false;
 
-  const key = `${CONSUMED_KEY_PREFIX}${proof.uid}:${proof.nonce}`;
-  let claimed = false;
-  try {
-    claimed = await redis.setNx(key, '1', remaining + 5);
-  } catch (error) {
-    logger.error('[StepUpService] could not reach Redis to burn a proof — refusing (fail-closed)', {
-      uid: proof.uid, purpose: proof.purpose, jti: proof.nonce,
-    });
-    return false;
-  }
+  /**
+   * The SETNX, the fail-closed rule and the marker TTL now live in
+   * server/lib/oneShotProof.ts, because the email and SMS proofs need the
+   * identical answer and a second dialect of "has this been spent" is exactly
+   * the duplication the verification consolidation exists to remove.
+   *
+   * Semantics here are UNCHANGED: first caller wins, every later one refused,
+   * and an unreachable store refuses rather than waves through. The shared
+   * helper distinguishes replay from outage; this function's contract is a
+   * boolean, so both still collapse to false for existing callers.
+   */
+  const result = await consumeOneShotProof({
+    scope: STEP_UP_ONE_SHOT_SCOPE,
+    id: `${proof.uid}:${proof.nonce}`,
+    ttlSeconds: remaining,
+    context: { uid: proof.uid, purpose: proof.purpose },
+  });
 
   // Audit consumption, matching the issuance line by jti.
   logger.info('[StepUpService] Step-up proof consumption', {
-    uid: proof.uid, purpose: proof.purpose, jti: proof.nonce, claimed,
+    uid: proof.uid, purpose: proof.purpose, jti: proof.nonce, claimed: result.ok,
   });
-  if (!claimed) {
-    logger.warn('[StepUpService] REPLAY refused — proof already consumed', {
-      uid: proof.uid, purpose: proof.purpose, jti: proof.nonce,
+  if (!result.ok) {
+    logger.warn('[StepUpService] step-up proof refused at consumption', {
+      uid: proof.uid, purpose: proof.purpose, jti: proof.nonce, reason: result.reason,
     });
   }
-  return claimed;
+  return result.ok;
 }
 
 /**

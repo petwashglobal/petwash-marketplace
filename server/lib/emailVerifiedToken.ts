@@ -20,13 +20,25 @@
  * holder of THIS address agreed to THIS action at THIS moment, and all three
  * have to survive into whatever the code authorises.
  *
- * Short-lived (5 min). Signature checked with a timing-safe compare. The
- * underlying OTP challenge is consumed on verify, so a token is minted once
- * per matched code — but the token itself is still a bearer credential for its
- * TTL and is NOT yet single-use. See the note in validateEmailVerifiedToken.
+ * Short-lived (5 min). Signature checked with a timing-safe compare.
+ *
+ * SINGLE-USE. 2026-09-08: the underlying OTP challenge is consumed on verify,
+ * so a token is minted once per matched code — but the TOKEN is a bearer
+ * credential, and until now it could be presented again and again until the
+ * TTL lapsed. A leaked or intercepted proof minted more than one session
+ * inside its window. `redeemEmailVerifiedToken` now burns the nonce through
+ * the shared one-shot store, so the second presentation is refused even inside
+ * the TTL — the property the step-up side already guaranteed, and the auth
+ * side did not.
+ *
+ * Two functions, deliberately:
+ *   validateEmailVerifiedToken   inspect only. Never burns. Safe to call twice.
+ *   redeemEmailVerifiedToken     inspect AND burn. The one to call at the point
+ *                                of use, exactly once, before any side effect.
  */
 import crypto from 'crypto';
 import { logger } from './logger';
+import { consumeOneShotProof } from './oneShotProof';
 
 const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -59,6 +71,34 @@ export function mintEmailVerifiedToken(email: string, purpose: EmailVerifiedPurp
 }
 
 /**
+ * Why a refusal happened. Kept distinct on purpose: `already_used` is a REPLAY
+ * and `expired` is a TIMEOUT, and support cannot tell a customer which one
+ * they hit if both arrive as "invalid". `store_unavailable` is neither — it is
+ * us, and it deserves a 503 rather than blaming the customer's code.
+ */
+export type EmailProofRefusal =
+  | 'missing'
+  | 'malformed'
+  | 'purpose_missing'
+  | 'no_accepted_purposes'
+  | 'bad_signature'
+  | 'expired'
+  | 'purpose_mismatch'
+  | 'already_used'
+  | 'store_unavailable';
+
+export interface ValidatedEmailProof {
+  valid: boolean;
+  email?: string;
+  purpose?: EmailVerifiedPurpose;
+  /** The proof's unique id. Present only on a valid proof; this is what gets burnt. */
+  nonce?: string;
+  /** Epoch ms at which the proof stops being valid. Sizes the one-shot marker. */
+  expiresAt?: number;
+  reason?: EmailProofRefusal;
+}
+
+/**
  * Validate a proof token.
  *
  * `acceptedPurposes` is REQUIRED at every call site, and is a LIST because
@@ -68,15 +108,14 @@ export function mintEmailVerifiedToken(email: string, purpose: EmailVerifiedPurp
  * the code was for cannot decide whether it authorises the thing it is about
  * to do, and "valid signature" is not the same question as "valid for this".
  *
- * NOT single-use yet: within its 5-minute TTL the same token can be presented
- * more than once. The blast radius is one address minting its own session, and
- * closing it needs the Redis one-shot consumption StepUpService already uses.
- * Tracked separately rather than half-done here.
+ * INSPECTION ONLY — this does NOT spend the token, so it is safe to call more
+ * than once on the same proof. Anything that acts on the answer must call
+ * `redeemEmailVerifiedToken` instead, which burns the nonce atomically.
  */
 export function validateEmailVerifiedToken(
   token: string,
   acceptedPurposes: readonly EmailVerifiedPurpose[],
-): { valid: boolean; email?: string; purpose?: EmailVerifiedPurpose; reason?: string } {
+): ValidatedEmailProof {
   if (!Array.isArray(acceptedPurposes) || acceptedPurposes.length === 0) {
     // Refuse to answer "is this valid?" without being told valid FOR WHAT.
     return { valid: false, reason: 'no_accepted_purposes' };
@@ -125,5 +164,57 @@ export function validateEmailVerifiedToken(
     return { valid: false, reason: 'purpose_mismatch' };
   }
 
-  return { valid: true, email, purpose };
+  return { valid: true, email, purpose, nonce, expiresAt: issuedAt + TTL_MS };
+}
+
+/**
+ * Redeem a proof: validate it, then SPEND it. Returns valid:true at most once
+ * per minted token, no matter how many callers race for it.
+ *
+ * This is the call every consumer that ACTS on a proof must make — minting a
+ * session, attaching a verified address. `validateEmailVerifiedToken` answers
+ * "is this genuine?"; only this one answers "and is it still unspent, and it
+ * is now mine".
+ *
+ * ORDER MATTERS. The burn happens BEFORE the caller's side effect, not after.
+ * Burning afterwards leaves exactly the window this closes: two concurrent
+ * requests both validate, both act, and only then does one of them lose the
+ * race. The cost of burning first is that a proof spent on a request that then
+ * fails downstream is gone — which is the correct behaviour for a one-use
+ * credential, and the customer's remedy is the one they already have: request
+ * a new code.
+ *
+ * FAIL-CLOSED. If the one-shot store cannot be reached the proof is refused
+ * (`store_unavailable`), never accepted. Same trade StepUpService makes on the
+ * money path. It is a real availability dependency for email sign-in and it is
+ * stated plainly rather than hidden: a proof whose replay status cannot be
+ * established is not a proof.
+ */
+export async function redeemEmailVerifiedToken(
+  token: string,
+  acceptedPurposes: readonly EmailVerifiedPurpose[],
+): Promise<ValidatedEmailProof> {
+  const checked = validateEmailVerifiedToken(token, acceptedPurposes);
+  if (!checked.valid || !checked.nonce || !checked.expiresAt) return checked;
+
+  const remainingSeconds = Math.ceil((checked.expiresAt - Date.now()) / 1000);
+  const burn = await consumeOneShotProof({
+    scope: 'emailproof',
+    id: checked.nonce,
+    ttlSeconds: remainingSeconds,
+    // Purpose only. The address is NOT copied into the log line — the
+    // challenge row is its one authoritative home.
+    context: { purpose: checked.purpose },
+  });
+
+  if (!burn.ok) {
+    const reason: EmailProofRefusal =
+      burn.reason === 'store_unavailable' ? 'store_unavailable'
+      : burn.reason === 'expired' ? 'expired'
+      : 'already_used';
+    logger.warn('[emailVerifiedToken] proof refused at redemption', { reason, purpose: checked.purpose });
+    return { valid: false, reason };
+  }
+
+  return checked;
 }

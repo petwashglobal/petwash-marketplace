@@ -1103,6 +1103,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             );
             return;
           }
+          // The proof is now SINGLE-USE (server burns it at redemption). A
+          // cached token that has already been spent can never work again, so
+          // hold on to it and the user just re-presses verify into the same
+          // refusal forever. Drop it and send them to a fresh code.
+          if (ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
           fail(ad.error || ad.message || (he ? 'שמירת האימייל נכשלה. נסה שוב.' : 'Email attach failed. Try again.'));
           return;
         }
@@ -1132,6 +1137,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       }
       const sd = await s.json().catch(() => ({} as any));
       if (!sd?.customToken) {
+        // Same reason as the attach path above: a spent one-use proof is dead,
+        // so clear it rather than leave the retry pointing at it.
+        if (sd?.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
         fail(sd?.error || (he ? 'הפעלת החשבון נכשלה. נסה שוב.' : 'Account activation failed. Try again.'));
         return;
       }
