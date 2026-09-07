@@ -275,6 +275,7 @@ router.post('/verify', async (req: Request, res: Response) => {
     if (isUnifiedVerificationLoginEnabled()) {
       const result = await unifiedVerificationService.verifyLatestChallengeForDestination({
         purpose: 'login',
+        channel: 'sms',
         destination: phone,
         code,
         actor: requestActor(req, body),

@@ -52,6 +52,13 @@ export interface VerifyChallengeInput {
 
 export interface VerifyLatestChallengeInput {
   purpose: VerificationPurpose;
+  /**
+   * The channel the challenge was STARTED on. Required, and not a formality:
+   * the lookup key is `normalizeDestination(channel, destination)`, and that
+   * function branches on the channel. Passing the wrong one silently builds a
+   * key that cannot match any stored row. See the note on the method body.
+   */
+  channel: VerificationChannel;
   destination: string;
   code: string;
   actor: VerificationActor;
@@ -922,13 +929,49 @@ export class UnifiedVerificationService {
     };
   }
 
+  /**
+   * Find the newest pending challenge for a destination and verify a code
+   * against it.
+   *
+   * THE CHANNEL MUST BE THE ONE THE CHALLENGE WAS STARTED ON. This method was
+   * written for SMS login (#634) and hardcoded `normalizeDestination("sms", ...)`.
+   * When auth-email later reused it, that hardcode came along, and for an email
+   * address the phone branch strips every non-digit and prepends "+":
+   *
+   *   normalizeDestination("sms", "someone@example.com")  ->  "+"
+   *
+   * So EVERY email verify that did not carry an explicit challengeId looked up
+   * `destination = "+"`, matched nothing, and returned 404 CHALLENGE_NOT_FOUND
+   * — for a correct, unexpired code. startChallenge stores the destination
+   * normalized with the REAL channel, so the two keys could never agree.
+   *
+   * Found on 2026-09-08 driving the real production signup: a fresh code from
+   * a fresh resend still 404'd. The channel is a required parameter now so the
+   * next caller cannot omit it and inherit an SMS assumption.
+   */
   async verifyLatestChallengeForDestination(input: VerifyLatestChallengeInput) {
+    const lookupDestination = normalizeDestination(input.channel, input.destination);
+
+    /**
+     * Fail LOUD on a normalization that destroyed the destination rather than
+     * querying for a key that cannot exist. "+" (or empty) is what the phone
+     * branch produces from an address with no digits — the exact signature of
+     * a channel/destination mismatch. A 404 would blame the customer's code.
+     */
+    if (lookupDestination === "+" || lookupDestination.trim() === "") {
+      throw new UnifiedVerificationError(
+        "DESTINATION_NORMALIZATION_FAILED",
+        "Verification destination could not be normalized for this channel.",
+        500,
+      );
+    }
+
     const [challenge] = await db
       .select()
       .from(verificationChallenges)
       .where(and(
         eq(verificationChallenges.purpose, input.purpose),
-        eq(verificationChallenges.destination, normalizeDestination("sms", input.destination)),
+        eq(verificationChallenges.destination, lookupDestination),
         eq(verificationChallenges.status, "pending"),
       ))
       .orderBy(desc(verificationChallenges.createdAt))

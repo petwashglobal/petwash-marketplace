@@ -141,6 +141,9 @@ router.post('/verify', async (req: Request, res: Response) => {
         })
       : await unifiedVerificationService.verifyLatestChallengeForDestination({
           purpose,
+          // MUST match the channel /start used, or the destination is
+          // normalized with the wrong rule and the lookup cannot match.
+          channel: 'email',
           destination: email.toLowerCase(),
           code,
           actor: actorFrom(req),
