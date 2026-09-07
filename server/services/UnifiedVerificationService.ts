@@ -9,7 +9,7 @@ import { SMS_PURPOSES, type SmsPurpose } from "../lib/perUidSmsBudget";
 import { isUnifiedVerificationPurposeEnabled } from "../lib/feature-flags/unifiedVerification";
 import { twilioSMSService } from "./TwilioSMSService";
 import { sendVerificationEmailCode } from "./VerificationEmailDelivery";
-import { otpEvents, smsEvidence, verificationChallenges, type VerificationChallenge } from "@shared/schema";
+import { authEvents, otpEvents, smsEvidence, verificationChallenges, type VerificationChallenge } from "@shared/schema";
 
 import { maskDestinationForOwner } from "../../shared/auth/verificationDestination";
 import { issueStepUpProof, type StepUpBinding, type StepUpPurpose } from "./StepUpService";
@@ -577,6 +577,66 @@ function publicChallenge(challenge: VerificationChallenge) {
   };
 }
 
+/**
+ * The CHANNEL-AGNOSTIC record of what was asked and what happened.
+ *
+ * 2026-09-08. otp_events and sms_evidence both open with
+ *
+ *     if (challenge.channel !== "sms" && challenge.channel !== "whatsapp") return;
+ *
+ * so an EMAIL verification wrote no audit row at all — not sent, not verified,
+ * not failed. The only trace was the verification_challenges row, and that row
+ * is UPDATED IN PLACE (pending -> verified -> consumed). It is current state,
+ * not history: it cannot tell you when the code went out versus when it was
+ * entered, how many attempts preceded the match, or that an earlier code for
+ * the same address was superseded.
+ *
+ * For a one-time code the record IS the product. "This address confirmed this
+ * purpose at this moment, from this IP, on this device" is the whole reason
+ * the code exists, and for every email OTP we were keeping none of it.
+ *
+ * auth_events is append-only, already deployed, and channel-agnostic, so this
+ * needs no migration. It stays deliberately thin: the challengeId is the join
+ * key back to verification_challenges, which already holds destination,
+ * channel and purpose. The destination is NOT copied here — one authoritative
+ * home for the address, not two.
+ */
+async function recordVerificationAudit(
+  challenge: Pick<VerificationChallenge, "challengeId" | "channel" | "purpose" | "userId" | "ip" | "userAgent" | "traceId">,
+  eventType: "OTP_SENT" | "OTP_RESENT" | "OTP_VERIFIED" | "OTP_FAILED" | "OTP_EXPIRED",
+  result?: string,
+  attemptsCount = 0,
+): Promise<void> {
+  try {
+    await db.insert(authEvents).values({
+      userId: challenge.userId ?? null,
+      eventType: `VERIFICATION_${eventType.replace(/^OTP_/, "")}`,
+      success: eventType === "OTP_VERIFIED",
+      // Structured, greppable, and free of the code and the destination.
+      reason: [
+        `purpose=${challenge.purpose}`,
+        `channel=${challenge.channel}`,
+        `challenge=${challenge.challengeId}`,
+        `attempts=${attemptsCount}`,
+        result ? `result=${result}` : null,
+      ].filter(Boolean).join(" "),
+      ip: challenge.ip ?? null,
+      userAgent: challenge.userAgent ?? null,
+      traceId: challenge.traceId ?? null,
+    });
+  } catch (error) {
+    // Never fail a customer's verification because the audit insert failed —
+    // but never let it vanish silently either.
+    logger.error("[UnifiedVerification] verification audit insert FAILED", {
+      challengeId: challenge.challengeId,
+      purpose: challenge.purpose,
+      channel: challenge.channel,
+      eventType,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 async function recordOtpEvent(
   challenge: Pick<VerificationChallenge, "challengeId" | "channel" | "destination" | "purpose" | "userId" | "codeHash" | "expiresAt" | "ip" | "userAgent" | "deviceId" | "traceId">,
   eventType: "OTP_SENT" | "OTP_RESENT" | "OTP_VERIFIED" | "OTP_FAILED" | "OTP_EXPIRED",
@@ -585,6 +645,13 @@ async function recordOtpEvent(
   providerMessageId?: string | null,
   provider?: string,
 ): Promise<void> {
+  // EVERY channel and EVERY purpose is recorded, before the SMS-shaped tables
+  // below filter themselves out. This line is the fix.
+  await recordVerificationAudit(challenge, eventType, result, attemptsCount);
+
+  // otp_events is Twilio-shaped (phone_e164 is NOT NULL, plus provider and
+  // country columns) so it stays phone-only until there is a schema for the
+  // rest. It is a delivery record; the line above is the legal one.
   if (challenge.channel !== "sms" && challenge.channel !== "whatsapp") return;
   if (!challenge.destination.startsWith("+")) return;
 

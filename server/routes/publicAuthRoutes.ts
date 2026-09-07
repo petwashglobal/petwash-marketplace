@@ -623,8 +623,12 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     } catch {
       return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' });
     }
-    const check = validateEmailVerifiedToken(sessionToken);
+    // Attaching a verified address to an account is a SIGNUP-time action. A
+    // login proof must not settle it — that is a different question the
+    // customer answered.
+    const check = validateEmailVerifiedToken(sessionToken, ['signup']);
     if (!check.valid || !check.email) {
+      logger.warn('[EmailAuth] verify-signup-email rejected proof', { reason: check.reason });
       return res.status(401).json({ ok: false, error: 'Email verification expired — request a new code.' });
     }
     const email = check.email.toLowerCase();
@@ -1181,7 +1185,9 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
     } = req.body || {};
     const firstName = typeof firstNameRaw === 'string' ? firstNameRaw.trim().slice(0, 80) : null;
     const lastName  = typeof lastNameRaw  === 'string' ? lastNameRaw.trim().slice(0, 80)  : null;
-    const check = validateEmailVerifiedToken(sessionToken);
+    // Both are honest routes to a session: a new member finishing signup, and
+    // a returning member signing in by code. Anything else is not.
+    const check = validateEmailVerifiedToken(sessionToken, ['signup', 'login']);
     if (!check.valid || !check.email) {
       logger.warn('[EmailAuth] Invalid or expired email session token', { reason: check.reason });
       return res.status(401).json({ ok: false, error: 'Invalid or expired verification. Please verify your email again.' });
