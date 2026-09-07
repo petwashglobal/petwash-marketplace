@@ -294,7 +294,19 @@ function checkDeliveryPath() {
       }),
   );
 
-  const missing = REQUIRED.filter((name) => !(directives.get(name) ?? []).includes(ORIGIN));
+  // Exact source-expression equality, never substring. A CSP source list is a
+  // set of discrete tokens: `https://challenges.cloudflare.com.evil.test` and
+  // `https://evil.test/https://challenges.cloudflare.com` are DIFFERENT origins
+  // that both contain our origin as a substring, and neither would let the
+  // loader run. Comparing with `===` is both the correct semantics and what
+  // keeps CodeQL's js/incomplete-url-substring-sanitization quiet.
+  const allows = (name) => {
+    const sources = directives.get(name);
+    if (!Array.isArray(sources)) return false;
+    return sources.some((source) => source === ORIGIN);
+  };
+
+  const missing = REQUIRED.filter((name) => !allows(name));
 
   if (missing.length > 0) {
     problems.push(
