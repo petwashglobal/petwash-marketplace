@@ -226,6 +226,90 @@ if (!t.artifactFound) {
   notes.push('Client bundle carries a Turnstile site key (value not read).');
 }
 
+// ── half 3: the DELIVERY PATH — the served CSP must permit the loader ────
+//
+// Both keys can be correct and signup still be dead. On 2026-09-07 they were:
+// the secret was bound, the site key was compiled into the bundle, and the
+// real journey on https://petwash.co.il/signup still ended at "Security
+// verification unavailable" with ZERO emails sent, because the browser refused
+// to load the loader at all:
+//
+//   blockedURI : https://challenges.cloudflare.com/turnstile/v0/api.js
+//   directive  : script-src-elem
+//
+// /signup is a static SPA route, so Firebase Hosting serves it and sends its
+// OWN Content-Security-Policy from firebase.json. That header never listed
+// challenges.cloudflare.com. server/middleware/securityHeaders.ts did, and
+// three regression pins asserted it, and every one of them passed — they read
+// the Express middleware, which does not serve /signup.
+//
+// This is a PIPELINE FAULT, not a provisioning gap: the file is ours and the
+// fix is a one-line allowlist. It goes in `problems`, so the known-outage
+// waiver can never cover it.
+function checkDeliveryPath() {
+  const ORIGIN = 'https://challenges.cloudflare.com';
+  const REQUIRED = ['script-src', 'connect-src', 'frame-src'];
+  const cfgPath = 'firebase.json';
+
+  if (!existsSync(cfgPath)) {
+    problems.push(`${cfgPath} not found — cannot verify the SERVED CSP permits the Turnstile loader.`);
+    return;
+  }
+
+  let cfg;
+  try {
+    cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
+  } catch {
+    problems.push(`${cfgPath} is not valid JSON — cannot verify the SERVED CSP.`);
+    return;
+  }
+
+  const sites = Array.isArray(cfg.hosting) ? cfg.hosting : cfg.hosting ? [cfg.hosting] : [];
+  let csp = null;
+  for (const site of sites) {
+    for (const block of site?.headers ?? []) {
+      for (const h of block?.headers ?? []) {
+        if (String(h?.key ?? '').toLowerCase() === 'content-security-policy') csp = String(h.value);
+      }
+    }
+  }
+
+  if (csp === null) {
+    problems.push(
+      `${cfgPath} declares no Content-Security-Policy header. Either it was dropped (the served `
+      + 'pages lose every CSP protection) or the hosting config moved — either way this gate can no '
+      + 'longer prove the Turnstile loader is permitted.',
+    );
+    return;
+  }
+
+  const directives = new Map(
+    csp
+      .split(';')
+      .map((d) => d.trim())
+      .filter(Boolean)
+      .map((d) => {
+        const [name, ...sources] = d.split(/\s+/);
+        return [name.toLowerCase(), sources];
+      }),
+  );
+
+  const missing = REQUIRED.filter((name) => !(directives.get(name) ?? []).includes(ORIGIN));
+
+  if (missing.length > 0) {
+    problems.push(
+      `The SERVED Content-Security-Policy in ${cfgPath} does not allow ${ORIGIN} in `
+      + `${missing.join(', ')}. Firebase Hosting serves /signup, so the browser blocks the Turnstile `
+      + 'loader and signup dead-ends at "Security verification unavailable" — with both keys '
+      + 'correctly provisioned. server/middleware/securityHeaders.ts does NOT serve that route.',
+    );
+  } else {
+    notes.push('The SERVED (Firebase Hosting) CSP permits the Turnstile loader, iframe and solve XHR.');
+  }
+}
+
+checkDeliveryPath();
+
 // ── the artifact must also carry its own build metadata ─────────────────────
 //
 // /api/health/bot-check reports the client half from build-config.json and
@@ -267,7 +351,7 @@ for (const p of notProvisionedProblems) console.error(`  FAIL ${p}`);
 const allProblems = [...problems, ...notProvisionedProblems];
 
 if (allProblems.length === 0) {
-  console.log('Turnstile release invariant: OK — both halves ship together.');
+  console.log('Turnstile release invariant: OK — both halves ship together, and the served CSP lets the loader run.');
   if (process.env.TURNSTILE_KNOWN_OUTAGE_ACK) {
     console.warn(
       '\nTurnstile is now provisioned. REMOVE TURNSTILE_KNOWN_OUTAGE_ACK from '
