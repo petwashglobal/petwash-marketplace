@@ -150,7 +150,10 @@ router.post('/verify', async (req: Request, res: Response) => {
         });
     // Mint a short-lived, HMAC-signed proof so /api/auth/email-session can mint a
     // login WITHOUT trusting a bare { email }. Only issued on a matched code.
-    const sessionToken = mintEmailVerifiedToken(email);
+    // The proof carries WHAT the customer was asked to confirm, not just who
+    // they are. `purpose` here is the same value the challenge was created and
+    // looked up with, so the code, the challenge and the proof all agree.
+    const sessionToken = mintEmailVerifiedToken(email, purpose);
     return res.json({
       ok: true,
       verified: true,
