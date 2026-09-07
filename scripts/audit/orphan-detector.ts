@@ -169,7 +169,6 @@ const ALLOW_INTENTIONAL: Array<string | RegExp> = [
   /components\/KYCUpload\.tsx$/,
   /components\/KenzoTalkingAvatar\.tsx$/,
   /components\/LandingLiveBayStrip\.tsx$/,
-  /components\/LiveChatWidget\.tsx$/,
   /components\/LuxuryAwardBadge2025\.tsx$/,
   /components\/LuxuryConsentCard\.tsx$/,
   /components\/NewHumanAvatar\.tsx$/,
