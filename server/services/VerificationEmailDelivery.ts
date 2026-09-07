@@ -90,7 +90,12 @@ export async function sendVerificationEmailCode(input: VerificationEmailCodeInpu
   const html = `
     <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #E8DEC8;font-family:Arial,Helvetica,sans-serif;color:#1f2937">
       <div style="background:${BLACK};padding:20px 28px;text-align:center">
-        <span style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;color:${GOLD}">🐾 PetWash™</span>
+        <!-- Wordmark only. CEO hard rule: no emojis on professional surfaces
+             (docs/PROVIDER_ONBOARDING_AND_OAUTH_REBUILD_AUDIT.md), and the logo
+             rule is a real asset or nothing — never a drawn or emoji stand-in.
+             This is a security email; a paw emoji where the mark belongs reads
+             as a phishing tell rather than as the brand. -->
+        <span style="font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;color:${GOLD};letter-spacing:0.5px">PetWash&#8482;</span>
       </div>
       <div style="height:3px;background:${GOLD};font-size:0">&nbsp;</div>
       <div style="padding:26px 28px 8px" dir="rtl" lang="he">
