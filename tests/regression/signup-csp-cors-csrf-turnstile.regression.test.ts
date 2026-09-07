@@ -44,6 +44,48 @@ describe('signup wave-2 pins — CSP + CORS + CSRF + Turnstile docs', () => {
     });
   });
 
+  // 2026-09-07 — the SERVED CSP. The three pins above only read the Express
+  // middleware, but /signup is a static SPA route: Firebase Hosting serves it
+  // and Firebase Hosting sends its OWN Content-Security-Policy from
+  // firebase.json. That header never had challenges.cloudflare.com, so on
+  // production the Turnstile script was blocked, executeTurnstileInvisible
+  // threw, and email signup dead-ended on "Security verification unavailable"
+  // — with the middleware pins above passing the whole time. Same two-artifact
+  // class as the VITE_TURNSTILE_SITE_KEY P0: one commit, two deploy targets,
+  // and a test that only ever looked at one of them.
+  describe('the SERVED (Firebase Hosting) CSP allows Turnstile too', () => {
+    const hostingCsp: string = (() => {
+      const cfg = JSON.parse(root('firebase.json'));
+      const sites: any[] = Array.isArray(cfg.hosting) ? cfg.hosting : [cfg.hosting];
+      for (const site of sites) {
+        for (const block of site?.headers ?? []) {
+          for (const h of block?.headers ?? []) {
+            if (String(h.key).toLowerCase() === 'content-security-policy') return String(h.value);
+          }
+        }
+      }
+      return '';
+    })();
+
+    const directive = (name: string) => {
+      const found = hostingCsp
+        .split(';')
+        .map((d) => d.trim())
+        .find((d) => d === name || d.startsWith(name + ' '));
+      return found ?? '';
+    };
+
+    it('firebase.json actually declares a Content-Security-Policy', () => {
+      expect(hostingCsp).not.toBe('');
+    });
+
+    for (const name of ['script-src', 'connect-src', 'frame-src']) {
+      it(`hosting ${name} includes https://challenges.cloudflare.com`, () => {
+        expect(directive(name)).toContain('https://challenges.cloudflare.com');
+      });
+    }
+  });
+
   describe('CORS mirrors petwash.co.il subdomains with credentials', () => {
     const src = root('server/index.ts');
 
