@@ -849,6 +849,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         }
         const ad = await a.json().catch(() => ({} as any));
         if (!ad.ok) {
+          // THE CACHED TOKEN IS A ONE-SHOT PROOF, and the server burns it before
+          // it touches Firebase or Postgres. Caching it is right for failures
+          // BEFORE that burn — a wrong code, a cold-start blip — and wrong for
+          // every failure after it: reusing a spent nonce dies at the burn with
+          // VERIFICATION_ALREADY_USED, so "try again" would loop forever on a
+          // token that can never work. The server marks post-burn failures
+          // `proofSpent`; VERIFICATION_ALREADY_USED covers the case where the
+          // response to a successful burn was lost and we retried blind. Drop
+          // the token in both, so the next attempt fetches a fresh code — which
+          // the server CAN recover from (it recognises the number as already
+          // attached to this account and finishes the half that did not land).
+          if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') {
+            setCachedPhoneVerificationToken(null);
+          }
           fail(ad.error || ad.message || (he ? 'שמירת הנייד נכשלה. נסה שוב.' : 'Mobile attach failed. Try again.'));
           return;
         }

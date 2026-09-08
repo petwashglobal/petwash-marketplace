@@ -30,6 +30,8 @@
  */
 import express from 'express';
 import request from 'supertest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.JWT_SECRET = 'test-jwt-secret-verify-signup-mobile-0123456789';
@@ -81,13 +83,33 @@ vi.mock('../lib/firebase-admin', () => ({
 // ── SMS proof: token "sms:<phone>:<nonce>" proves that phone ────────────────
 const sendVerificationCode = vi.fn(async (_p: string, _l?: string, _ip?: string) => ({ success: true }));
 const verifyCode = vi.fn(async (_p: string, _c: string, _l?: string) => ({ success: true }));
+
+/**
+ * STATEFUL one-shot nonce — the production contract, not a rubber stamp.
+ *
+ * consumeVerificationNonce delegates to consumeOneShotProof (Redis SETNX,
+ * server/lib/oneShotProof.ts): the FIRST claim wins and every replay answers
+ * `already_used`. An always-ok mock is not a simplification of that, it is a
+ * different contract — and it would silently certify recovery paths that
+ * cannot run in production, which is exactly what a reviewer caught in the
+ * first version of this suite.
+ */
+const burnedNonces = new Set<string>();
+let burnStoreUnavailable = false;
+const consumeVerificationNonce = vi.fn(async (nonce: string) => {
+  if (burnStoreUnavailable) return { ok: false as const, reason: 'store_unavailable' as const };
+  if (burnedNonces.has(nonce)) return { ok: false as const, reason: 'already_used' as const };
+  burnedNonces.add(nonce);
+  return { ok: true as const };
+});
+
 vi.mock('../services/TwilioSMSService', () => ({
   twilioSMSService: {
     validateVerificationToken: (t: string) => {
       const m = /^sms:([^:]+):(.+)$/.exec(t || '');
       return m ? { valid: true, phone: m[1], nonce: m[2] } : { valid: false };
     },
-    consumeVerificationNonce: vi.fn(async () => ({ ok: true })),
+    consumeVerificationNonce: (...a: any[]) => (consumeVerificationNonce as any)(...a),
     sendVerificationCode: (...a: any[]) => (sendVerificationCode as any)(...a),
     verifyCode: (...a: any[]) => (verifyCode as any)(...a),
     sendSMS: vi.fn(async () => ({ success: true })),
@@ -171,9 +193,11 @@ const app = express();
 app.use(express.json());
 app.use(publicAuthRouter);
 
-const attach = (uid: string, phone: string) =>
+/** Each call presents a DISTINCT proof unless a nonce is passed explicitly. */
+let nonceSeq = 0;
+const attach = (uid: string, phone: string, nonce?: string) =>
   request(app).post('/api/auth/verify-signup-mobile')
-    .send({ idToken: uid, verificationToken: `sms:${phone}:nonce1` });
+    .send({ idToken: uid, verificationToken: `sms:${phone}:${nonce ?? `n${++nonceSeq}`}` });
 
 const start2fa = (uid: string) =>
   request(app).post('/api/auth/login/2fa/start').send({ idToken: uid });
@@ -192,6 +216,8 @@ const phonePersisted = () =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  burnedNonces.clear();
+  burnStoreUnavailable = false;
   pgCalls.length = 0;
   fbUsers = { [MEMBER]: { uid: MEMBER, phoneNumber: null }, [OTHER]: { uid: OTHER, phoneNumber: null } };
   updateUserFailure = null;
@@ -223,8 +249,41 @@ describe('verify-signup-mobile: the row may not claim a phone it did not record'
     expect(res.body.code).toBe('PHONE_PERSIST_FAILED');
   });
 
-  it('a failed persist is retryable, and the retry heals the half that did not land', async () => {
-    // Attempt 1: Firebase accepts, Postgres refuses.
+  it('a failed persist tells the client its proof is SPENT, so it stops reusing it', async () => {
+    pgHandler = (sql) => {
+      if (/UPDATE users SET/i.test(sql)) throw Object.assign(new Error('deadlock'), { code: '40P01' });
+      return { rows: [] };
+    };
+    const res = await attach(MEMBER, PHONE);
+    // The burn happens BEFORE any mutation, so by the time this failure is
+    // reported the caller's token can never be presented again. Saying so is
+    // what stops the client looping on a dead token.
+    expect(res.body.proofSpent).toBe(true);
+    expect(res.body.error).toMatch(/new code/i);
+  });
+
+  it('REPLAYING the spent proof dies at the burn — the heal branch is not reachable that way', async () => {
+    // The defect a reviewer caught in the first version of this suite: an
+    // always-ok nonce mock made the retry look like it healed. Under the real
+    // one-shot contract it cannot, and this pin holds that line so nobody
+    // "fixes" recovery by quietly reopening proof replay.
+    pgHandler = (sql) => {
+      if (/UPDATE users SET/i.test(sql)) throw Object.assign(new Error('deadlock'), { code: '40P01' });
+      return { rows: [] };
+    };
+    await attach(MEMBER, PHONE, 'reused');
+    pgHandler = () => ({ rows: [] });
+    updateUserFailure = { code: 'auth/phone-number-already-exists' };
+
+    const replay = await attach(MEMBER, PHONE, 'reused');
+    expect(replay.status).toBe(401);
+    expect(replay.body.code).toBe('VERIFICATION_ALREADY_USED');
+    expect(updateUser).toHaveBeenCalledTimes(1); // never re-attempted the attach
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+
+  it('a FRESH proof heals the half that did not land — recovery, done properly', async () => {
+    // Attempt 1: Firebase accepts, Postgres refuses. Proof 1 is now spent.
     pgHandler = (sql) => {
       if (/UPDATE users SET/i.test(sql)) throw Object.assign(new Error('deadlock'), { code: '40P01' });
       return { rows: [] };
@@ -232,8 +291,9 @@ describe('verify-signup-mobile: the row may not claim a phone it did not record'
     expect((await attach(MEMBER, PHONE)).status).toBeGreaterThanOrEqual(500);
     expect(fbUsers[MEMBER].phoneNumber).toBe(PHONE); // Firebase kept it
 
-    // Attempt 2: re-attaching a number this uid ALREADY holds must not read as
-    // "belongs to another account" — that would wedge the member out for good.
+    // Attempt 2 with a NEW code, which is what the client now does. Re-attaching
+    // a number this uid ALREADY holds must not read as "belongs to another
+    // account" — that would wedge the member out for good.
     pgCalls.length = 0;
     pgHandler = () => ({ rows: [] });
     updateUserFailure = { code: 'auth/phone-number-already-exists' };
@@ -242,6 +302,36 @@ describe('verify-signup-mobile: the row may not claim a phone it did not record'
     expect(res.body.code).not.toBe('PHONE_IN_USE');
     expect(phonePersisted()).toBe(true);
     expect(markMobileVerified).toHaveBeenCalledWith(MEMBER);
+  });
+
+  it('every POST-burn failure is marked spent, and the PRE-burn refusal is not', async () => {
+    // in_use_by_other (post-burn)
+    fbUsers[OTHER].phoneNumber = PHONE;
+    updateUserFailure = { code: 'auth/phone-number-already-exists' };
+    expect((await attach(MEMBER, PHONE)).body.proofSpent).toBe(true);
+
+    // unresolved attach (post-burn)
+    updateUserFailure = { code: 'auth/internal-error' };
+    expect((await attach(MEMBER, PHONE)).body.proofSpent).toBe(true);
+
+    // 23505 persist (post-burn)
+    updateUserFailure = null;
+    fbUsers[OTHER].phoneNumber = null;
+    pgHandler = (sql) => {
+      if (/UPDATE users SET/i.test(sql)) throw Object.assign(new Error('dup'), { code: '23505' });
+      return { rows: [] };
+    };
+    expect((await attach(MEMBER, PHONE)).body.proofSpent).toBe(true);
+
+    // The burn's OWN fail-closed refusal claims nothing, so the token the
+    // client holds is still good — telling it to throw that away would burn an
+    // SMS for a Redis blip.
+    pgHandler = () => ({ rows: [] });
+    burnStoreUnavailable = true;
+    const outage = await attach(MEMBER, PHONE);
+    expect(outage.status).toBe(503);
+    expect(outage.body.code).toBe('VERIFICATION_UNAVAILABLE');
+    expect(outage.body.proofSpent).toBeUndefined();
   });
 
   it('a number a DIFFERENT account holds is still refused 409, and flips nothing', async () => {
@@ -346,5 +436,53 @@ describe('login 2FA: "no phone on file" is a claim about BOTH stores', () => {
     expect(res.status).toBeGreaterThanOrEqual(500);
     expect(res.body.mfaToken).toBeUndefined();
     expect(verifyCode).not.toHaveBeenCalled();
+  });
+});
+
+// ── THE CLIENT HALF ─────────────────────────────────────────────────────────
+// The server can only ANNOUNCE that the proof is spent; the loop is only
+// actually broken if the caller drops its cached token. SignUpLuxury caches
+// `cachedPhoneVerificationToken` on purpose, so retries after a stage-2/3/4
+// hiccup skip the OTP — correct for pre-burn failures, fatal for post-burn
+// ones. Source-level pin, in the style this repo already uses for cross-file
+// contracts (see verifiedEmailOwnershipSweep / phoneHmac): mounting the signup
+// page in jsdom to assert one setState would cost far more than it proves.
+describe('the client stops reusing a proof the server says is spent', () => {
+  const SRC = readFileSync(
+    resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'SignUpLuxury.tsx'),
+    'utf8',
+  );
+  // The verify-signup-mobile failure branch, up to its `return`.
+  const attachFailureBranch = (() => {
+    const i = SRC.indexOf("verify-signup-mobile");
+    expect(i).toBeGreaterThan(-1);
+    const j = SRC.indexOf('if (!ad.ok)', i);
+    expect(j).toBeGreaterThan(-1);
+    // Stop at the branch's own `return`, so the SUCCESS path's clear (which is
+    // a different, correct clear) is not counted as this branch's.
+    const k = SRC.indexOf('fail(ad.error', j);
+    expect(k).toBeGreaterThan(-1);
+    return SRC.slice(j, SRC.indexOf('return;', k));
+  })();
+
+  it('clears the cached token when the server marks the proof spent', () => {
+    expect(attachFailureBranch).toContain('ad.proofSpent === true');
+    expect(attachFailureBranch).toContain('setCachedPhoneVerificationToken(null)');
+  });
+
+  it('also clears it on VERIFICATION_ALREADY_USED — the lost-response case', () => {
+    // A burn that succeeded but whose response never arrived leaves the client
+    // holding a spent token with no `proofSpent` to read. The next attempt gets
+    // the replay refusal; converging there costs one tap and no extra SMS.
+    expect(attachFailureBranch).toContain("ad.code === 'VERIFICATION_ALREADY_USED'");
+  });
+
+  it('does NOT clear it for a pre-burn failure — that would burn an SMS for nothing', () => {
+    // The clear is guarded, not unconditional: a wrong code or a cold-start
+    // blip above the burn must keep the token so the retry is free.
+    const clears = attachFailureBranch.split('setCachedPhoneVerificationToken(null)').length - 1;
+    expect(clears).toBe(1);
+    const guard = attachFailureBranch.slice(0, attachFailureBranch.indexOf('setCachedPhoneVerificationToken(null)'));
+    expect(guard).toMatch(/if \(ad\.proofSpent === true \|\| ad\.code === 'VERIFICATION_ALREADY_USED'\)/);
   });
 });

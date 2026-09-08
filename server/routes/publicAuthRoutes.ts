@@ -877,6 +877,18 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
         error: smsProofMessage(mobileBurn.reason),
       });
     }
+    // ── THE PROOF IS NOW SPENT ────────────────────────────────────────────
+    // Everything below this line runs AFTER the one-shot nonce was claimed, so
+    // the caller's token can never be presented again (consumeOneShotProof is a
+    // Redis SETNX and is deliberately shared/atomic). The client caches this
+    // token to survive retries, which is right for failures ABOVE this line and
+    // wrong for every failure below it: a retry with the same token dies at the
+    // burn with VERIFICATION_ALREADY_USED, before any recovery branch can run.
+    // So each failure from here on says `proofSpent: true`, and the client
+    // drops its cached token and asks for a fresh code instead of looping on a
+    // dead one. Recovery is then real: the fresh proof burns cleanly, the
+    // Firebase attach reports the number as already this account's, and the
+    // already_ours branch finishes the half that did not land.
     const verifiedPhone = tokenValidation.phone;
     // ATTACH to Firebase, the store that owns phone identity. "Already exists"
     // is not by itself evidence of another owner — a previous attempt of THIS
@@ -885,10 +897,15 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
     // sibling route in #2322.
     const attach = await attachVerifiedPhoneToFirebase(uid, verifiedPhone);
     if (attach === 'in_use_by_other') {
-      return res.status(409).json({ ok: false, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
+      return res.status(409).json({ ok: false, proofSpent: true, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
     }
     if (attach === 'unresolved') {
-      return res.status(500).json({ ok: false, code: 'PHONE_ATTACH_FAILED', error: 'Could not verify mobile — please try again.' });
+      return res.status(500).json({
+        ok: false,
+        proofSpent: true,
+        code: 'PHONE_ATTACH_FAILED',
+        error: 'Could not verify mobile — please request a new code and try again.',
+      });
     }
     // NOT best-effort, and this is the whole point. Firebase now holds the
     // number. The old fallback dropped `phone` and kept `phone_verified = true`,
@@ -904,13 +921,14 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
       // THIS uid, a 23505 means a stale users row squats it with no Firebase
       // record — drift, not a second legitimate owner (#2322).
       if (e?.code === '23505') {
-        return res.status(409).json({ ok: false, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
+        return res.status(409).json({ ok: false, proofSpent: true, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
       }
       logger.error('[Signup] verify-signup-mobile phone persist FAILED', { uid, error: e?.message });
       return res.status(500).json({
         ok: false,
+        proofSpent: true,
         code: 'PHONE_PERSIST_FAILED',
-        error: 'Mobile verified but we could not save it — please try again.',
+        error: 'Mobile verified but we could not save it — please request a new code and try again.',
       });
     }
     // Advance ACTIVATION: markMobileVerified sets mobileVerifiedAt + phoneVerified +
@@ -929,8 +947,9 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
       });
       return res.status(503).json({
         ok: false,
+        proofSpent: true,
         error: 'activation_unavailable',
-        message: 'Mobile verified but activation could not complete; please retry.',
+        message: 'Mobile verified but activation could not complete; please request a new code and try again.',
       });
     }
     return res.json({ ok: true });
