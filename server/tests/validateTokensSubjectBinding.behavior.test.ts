@@ -48,6 +48,17 @@ const ACCOUNTS: Record<string, { id: string; email: string | null; phone: string
 };
 
 // ── Auth: Bearer "<uid>" resolves to that uid ───────────────────────────────
+const fbUpdateUser = vi.fn(async (_uid: string, _p: any) => undefined as any);
+/** Who Firebase says owns a number. Only consulted after an "already exists". */
+let fbPhoneOwnerUid: string | null = null;
+const fbGetUserByPhoneNumber = vi.fn(async (_p: string) => {
+  if (!fbPhoneOwnerUid) {
+    throw Object.assign(new Error('not found'), { code: 'auth/user-not-found' });
+  }
+  return { uid: fbPhoneOwnerUid };
+});
+const phoneAlreadyExists = () =>
+  Object.assign(new Error('taken'), { code: 'auth/phone-number-already-exists' });
 vi.mock('../lib/firebase-admin', () => ({
   auth: {
     verifyIdToken: async (t: string) => {
@@ -58,6 +69,8 @@ vi.mock('../lib/firebase-admin', () => ({
       if (!t || !ACCOUNTS[t]) throw new Error('bad cookie');
       return { uid: t };
     },
+    updateUser: (...a: any[]) => (fbUpdateUser as any)(...a),
+    getUserByPhoneNumber: (...a: any[]) => (fbGetUserByPhoneNumber as any)(...a),
   },
 }));
 
@@ -91,6 +104,7 @@ vi.mock('../services/ActivationService', () => ({
 
 // ── db: account lookup + phone persist ──────────────────────────────────────
 let phoneOwnedByOther: string | null = null;
+let dbUpdateThrows: any = null;
 const dbUpdateSet = vi.fn();
 vi.mock('../db', () => {
   const selectBuilder = (rows: any[]) => ({
@@ -114,7 +128,12 @@ vi.mock('../db', () => {
           }),
         }),
       }),
-      update: () => ({ set: (v: any) => { dbUpdateSet(v); return { where: async () => undefined }; } }),
+      update: () => ({
+        set: (v: any) => {
+          dbUpdateSet(v);
+          return { where: async () => { if (dbUpdateThrows) throw dbUpdateThrows; } };
+        },
+      }),
       insert: () => ({ values: async () => undefined }),
     },
     pool: { query: async () => ({ rows: [] }) },
@@ -167,6 +186,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   smsBurnResult = { ok: true };
   phoneOwnedByOther = null;
+  fbUpdateUser.mockResolvedValue(undefined as any);
+  fbPhoneOwnerUid = null;
+  dbUpdateThrows = null;
 });
 
 /** Nothing in this suite may ever mutate the victim. */
@@ -297,5 +319,169 @@ describe('the route reports the truth about what it did', () => {
     const res = await post({ smsToken: smsTokenFor(VICTIM.phone!) }, VICTIM.id);
     expect(res.status).toBeGreaterThanOrEqual(500);
     expect(res.body.success).not.toBe(true);
+  });
+});
+
+/**
+ * RESIDUAL of the binding fix, closed here.
+ *
+ * The binding permits exactly one gap on purpose: a row with NO phone yet may
+ * accept the attested number, because nothing stored contradicts it. That is
+ * the email-first population — Google / Apple / email signup, whose users row
+ * is born with `phone: decoded.phone_number || null` and therefore NULL, and
+ * whom client/src/pages/AccountActivation.tsx sends here after prompting for a
+ * number precisely because user.phoneNumber is null.
+ *
+ * The route persisted that number to users.phone but NOT to the Firebase
+ * record, and Firebase owns the phone identifier: POST /api/auth/phone-session
+ * resolves the account through fbAdminAuth.getUserByPhoneNumber(). So the
+ * member finished activation with a verified mobile that phone login could not
+ * find — it took the new-user branch and minted a SECOND account for the same
+ * person, stranding their wallet, loyalty and history on the first.
+ *
+ * The three sibling routes have always written the attested contact through
+ * updateUser (verify-signup-mobile, verify-signup-email) or derived the account
+ * FROM it (phone-session). This one only flipped flags.
+ */
+describe('an attached number reaches the store that owns phone identity', () => {
+  it('an email-first row persists the attested number to BOTH stores', async () => {
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(200);
+    // Postgres: users.phone now holds the number.
+    expect(dbUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ phone: '+972500000009' }));
+    // Firebase: the record phone-session resolves against holds it too.
+    expect(fbUpdateUser).toHaveBeenCalledWith(NOPHONE.id, { phoneNumber: '+972500000009' });
+  });
+
+  it('a row that ALREADY holds the number attaches nothing — there is nothing to attach', async () => {
+    const res = await post({ smsToken: smsTokenFor(VICTIM.phone!) }, VICTIM.id);
+    expect(res.status).toBe(200);
+    expect(fbUpdateUser).not.toHaveBeenCalled();
+    expect(markMobileVerified).toHaveBeenCalledWith(VICTIM.id);
+  });
+
+  it('Firebase is the authoritative uniqueness check — its rejection is 409, not 500', async () => {
+    // The users SELECT above is a courtesy that races; updateUser is atomic.
+    // Firebase must also NAME the other owner: "already exists" alone is not
+    // evidence of one (see the contradicted-probe case at the bottom).
+    fbUpdateUser.mockRejectedValueOnce(
+      Object.assign(new Error('taken'), { code: 'auth/phone-number-already-exists' }),
+    );
+    fbPhoneOwnerUid = 'uid_someone_else';
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('PHONE_IN_USE');
+    // Nothing was flipped: no verified flag for a number we could not attach.
+    expect(markMobileVerified).not.toHaveBeenCalled();
+    expect(dbUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('a failed attach is NOT reported as success and flips no flag', async () => {
+    fbUpdateUser.mockRejectedValueOnce(new Error('firebase down'));
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBeGreaterThanOrEqual(500);
+    expect(res.body.success).not.toBe(true);
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+
+  it('email needs no attach — the binding already required it to match the row', async () => {
+    const res = await post({ emailToken: emailTokenFor(VICTIM.email) }, VICTIM.id);
+    expect(res.status).toBe(200);
+    expect(fbUpdateUser).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The attach returns BETWEEN the two stores, so a Firebase-succeeded /
+ * Postgres-failed attempt is a reachable state: the number is on the Firebase
+ * record, no flag is flipped, users.phone is still NULL. The member retries.
+ *
+ * Whether Identity Toolkit no-ops when the SAME uid re-sets the SAME number is
+ * decided server-side and is not knowable from the SDK — firebase-admin only
+ * relays the backend's PHONE_NUMBER_EXISTS. So the route must not depend on the
+ * answer. A blind 409 on "already exists" would tell the member their OWN
+ * number belongs to another account and wedge them out of activation for good.
+ *
+ * Note the probe asks FIREBASE, not Postgres: in this exact failure mode
+ * users.phone is still NULL, so re-reading the users table would find nothing
+ * and confirm the wrong thing.
+ */
+describe('a retry after a half-landed attach heals instead of wedging', () => {
+  it('"already exists" on a number THIS account already holds is not 409 — it completes', async () => {
+    fbUpdateUser.mockRejectedValueOnce(phoneAlreadyExists());
+    fbPhoneOwnerUid = NOPHONE.id; // Firebase: the number is already ours.
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(200);
+    // The half that never landed now does.
+    expect(dbUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ phone: '+972500000009' }));
+    expect(markMobileVerified).toHaveBeenCalledWith(NOPHONE.id);
+  });
+
+  it('...but a number a DIFFERENT account holds is still 409, and flips nothing', async () => {
+    fbUpdateUser.mockRejectedValueOnce(phoneAlreadyExists());
+    fbPhoneOwnerUid = 'uid_someone_else';
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('PHONE_IN_USE');
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+
+  it('an unreadable ownership probe says "try again", never "belongs to someone else"', async () => {
+    fbUpdateUser.mockRejectedValueOnce(phoneAlreadyExists());
+    fbGetUserByPhoneNumber.mockRejectedValueOnce(new Error('firebase unreachable'));
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    // Ownership was never established, so the terminal claim must not be made.
+    expect(res.status).toBeGreaterThanOrEqual(500);
+    expect(res.body.code).not.toBe('PHONE_IN_USE');
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+});
+
+describe('the Postgres half of the attach', () => {
+  it('a UNIQUE violation on users.phone is 409, not an inherited constraint 500', async () => {
+    // Firebase already accepted the number, so 23505 here means a stale row
+    // holds it with no Firebase record — drift, not a second legitimate owner.
+    dbUpdateThrows = Object.assign(new Error('duplicate key value violates unique constraint'), { code: '23505' });
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('PHONE_IN_USE');
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+
+  it('any other write failure is a retryable 500, not a 409', async () => {
+    dbUpdateThrows = new Error('connection terminated');
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(500);
+    expect(res.body.code).toBe('PHONE_ATTACH_FAILED');
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The narrow edge in the already-exists branch: the probe may CONTRADICT the
+ * error that triggered it. Firebase says the number exists, then says nobody
+ * holds it (auth/user-not-found — reachable via a delete/merge race). That is
+ * not evidence someone else owns it, so the terminal 409 must not be returned:
+ * a branch may only say what it has established. Same rule as the unreadable
+ * probe, and the asymmetry is the point — one is retryable, the other is not.
+ */
+describe('the attach only ever claims what it has established', () => {
+  it('a probe that says NOBODY owns the number is not "it belongs to someone else"', async () => {
+    fbUpdateUser.mockRejectedValueOnce(phoneAlreadyExists());
+    fbPhoneOwnerUid = null; // → the mock throws auth/user-not-found
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(500);
+    expect(res.body.code).toBe('PHONE_ATTACH_FAILED');
+    expect(res.body.code).not.toBe('PHONE_IN_USE');
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+
+  it('a probe returning a user with no uid is treated the same way', async () => {
+    fbUpdateUser.mockRejectedValueOnce(phoneAlreadyExists());
+    fbGetUserByPhoneNumber.mockResolvedValueOnce({} as any);
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(500);
+    expect(res.body.code).not.toBe('PHONE_IN_USE');
+    expect(markMobileVerified).not.toHaveBeenCalled();
   });
 });
