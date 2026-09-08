@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  selectDocumentableSales, issuanceBlockers, isIssuable, idempotencyKeyFor,
+  selectDocumentableSales, issuanceBlockers, isIssuable, idempotencyKeyFor, idempotencyKeyForV1,
   buildReceiptInput, applyFiscalCutover, type DocumentableSale,
 } from '../services/nayaxSumitBridge';
 
@@ -87,8 +87,23 @@ describe('prepaid / Monyx redemption — already ours, never re-documented', () 
 
 describe('idempotency — replay must never produce a second document', () => {
   it('derives the key from the Nayax transaction id alone', () => {
-    expect(idempotencyKeyFor('2207959160')).toBe('nayax-bay:2207959160');
-    expect(idempotencyKeyFor(2207959160)).toBe(idempotencyKeyFor('2207959160'));
+    // COMPOSITE since 2026-09-08 — machine is part of the identity, matching
+    // migration 0148's unique index on (machine_id, nayax_transaction_id).
+    expect(idempotencyKeyFor('182443', '2207959160')).toBe('nayax-bay:182443:2207959160');
+    expect(idempotencyKeyFor(182443, 2207959160)).toBe(idempotencyKeyFor('182443', '2207959160'));
+
+    // THE FAILURE THE OLD KEY CAUSED. Nayax does not guarantee transaction-id
+    // uniqueness across the operator (migration 0148 says so). Two different
+    // bays sharing an id are two real, separately-paid washes and must get two
+    // distinct identities — under the old key they collided on one external
+    // reference, and the second claim would have been rejected, leaving a paid
+    // wash with no tax document.
+    expect(idempotencyKeyFor('182443', '999')).not.toBe(idempotencyKeyFor('182462', '999'));
+
+    // v1 stays expressible so the 481 already issued (#10002–#10482) and any
+    // existing claim remain resolvable. Nothing new may use it.
+    expect(idempotencyKeyForV1('2207959160')).toBe('nayax-bay:2207959160');
+    expect(idempotencyKeyFor('182443', '2207959160')).not.toBe(idempotencyKeyForV1('2207959160'));
   });
 
   it('gives a replayed transaction the identical key', () => {

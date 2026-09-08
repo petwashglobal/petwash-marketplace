@@ -16,9 +16,12 @@
  * SAFETY:
  *  - TRIPLE-DARK: no document is issued unless SUMIT is wired AND Lynx is wired AND
  *    NAYAX_SUMIT_BRIDGE_ENABLED=true. Default is DRY-RUN (preview only).
- *  - IDEMPOTENT: a deterministic idempotency key `nayax-bay:<TransactionID>` means
- *    SUMIT returns the same document for a repeated transaction — a re-run can never
- *    issue a second document for the same bay sale.
+ *  - IDEMPOTENT BY OUR OWN LEDGER, not by SUMIT. The deterministic identity is
+ *    `nayax-bay:<MachineID>:<TransactionID>` (machine included — see
+ *    idempotencyKeyFor). SUMIT deduplicates on NEITHER the Idempotency-Key
+ *    header NOR ExternalReference, so the guarantee comes from the claim ledger
+ *    (migration 0148, unique on machine+transaction) plus read-before-recreate
+ *    recovery. Never describe this as SUMIT-side idempotency.
  *  - Reuses the CPA per-class mapping (K9000_PUBLIC_CARD ≡ K9000_WASH: full VAT,
  *    PetWash principal) — no invented tax logic.
  */
@@ -302,8 +305,64 @@ export interface DocumentableSale {
   reference?: string;      // Nayax external-clearing reference for the audit trail
 }
 
-/** Deterministic idempotency key — the guarantee SUMIT never issues twice per tx. */
-export function idempotencyKeyFor(transactionId: string | number): string {
+/**
+ * Deterministic issuance identity for a bay sale.
+ *
+ * ── WHY THIS IS COMPOSITE (2026-09-08) ──────────────────────────────────────
+ * migration 0148 states the reason outright: "Nayax does not formally guarantee
+ * Transaction ID uniqueness across the operator, so the safe key is machine +
+ * transaction", and enforces exactly that with
+ * `uq_nayax_sale_issuance (machine_id, nayax_transaction_id)`.
+ *
+ * The identity handed to SUMIT did NOT match. It was `nayax-bay:<txId>` — no
+ * machine. The two disagreed, and the failure that disagreement produces is a
+ * silent one: if the same transaction id ever appeared on two different bays,
+ * the claim table would (correctly) accept two distinct sales while both
+ * generated the SAME external reference, so `uq_nayax_sale_external_ref` would
+ * reject the second claim and a REAL, PAID wash would never be documented. Not
+ * a duplicate document — a missing one.
+ *
+ * ── AND WHY IT IS VERSIONED RATHER THAN JUST CHANGED ────────────────────────
+ * The 481 documents already in SUMIT (#10002–#10482) carry the v1 form. They
+ * are the bookkeeper's reporting file and must never be re-referenced or
+ * re-issued. So:
+ *   • v2 (composite) is used for NEW claims only.
+ *   • Recovery ALWAYS prefers the external reference persisted on the claim
+ *     (nayaxSaleIssuance.ts) — a v1 claim keeps resolving through its v1
+ *     reference forever. `idempotencyKeyForV1` exists so that path stays
+ *     expressible and testable, not because anything new should call it.
+ *
+ * SUMIT does not deduplicate on this value — neither the Idempotency-Key
+ * header nor ExternalReference — which is precisely why the claim ledger and
+ * the read-before-recreate recovery exist. This key is our identity for a
+ * sale, not a guarantee obtained from SUMIT.
+ */
+export function idempotencyKeyFor(
+  machineId: string | number,
+  transactionId: string | number,
+): string {
+  // A fiscal identity must NEVER contain "undefined". Template interpolation
+  // would happily produce `nayax-bay:undefined:101` and that string would then
+  // be persisted as the external reference of a real tax document — and would
+  // collide with every other machine-less sale. Refuse instead. A sale with no
+  // machine is already unissuable (issuanceBlockers → UNKNOWN_MACHINE); this
+  // makes it impossible to even name.
+  const m = String(machineId ?? '').trim();
+  const t = String(transactionId ?? '').trim();
+  if (!m || m === 'undefined' || m === 'null') {
+    throw new Error(`idempotencyKeyFor: refusing to build an issuance identity without a machine id (transaction ${t || '?'})`);
+  }
+  if (!t || t === 'undefined' || t === 'null') {
+    throw new Error(`idempotencyKeyFor: refusing to build an issuance identity without a transaction id (machine ${m})`);
+  }
+  return `nayax-bay:${m}:${t}`;
+}
+
+/**
+ * The pre-2026-09-08 form, kept ONLY so existing claims and the 481 already
+ * issued remain resolvable. Never use it for a new claim.
+ */
+export function idempotencyKeyForV1(transactionId: string | number): string {
   return `nayax-bay:${transactionId}`;
 }
 
@@ -425,7 +484,7 @@ export function buildReceiptInput(sale: DocumentableSale) {
   const terminal = terminalForMachine(sale.machineId);
   const where = terminal ? terminalLabel(terminal) : (sale.machineName || 'עמדת PetWash');
   return {
-    idempotencyKey: idempotencyKeyFor(sale.transactionId),
+    idempotencyKey: idempotencyKeyFor(sale.machineId, sale.transactionId),
     // Walk-up retail sale — no PII is collected at the bay, so every document is
     // issued to the one general station customer the existing 481 already use.
     customer: { name: K9000_GENERAL_CUSTOMER },
