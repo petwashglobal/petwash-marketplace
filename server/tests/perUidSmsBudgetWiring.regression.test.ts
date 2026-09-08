@@ -33,8 +33,7 @@
  * ceiling on remaining unmigrated sites so the count can only shrink.
  * When the ceiling reaches 0, delete this pin.
  */
-import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -82,20 +81,49 @@ describe('AUDIT-SMS-5 / #221 — per-UID SMS budget wiring', () => {
     // `purpose:` inside the call's argument list. New unmigrated sites push
     // the count over the ceiling — the ceiling MUST decrement, never grow.
     let unmigrated = 0;
-    const files = execSync(
-      `rg -l --no-heading -g '*.ts' -g '!server/tests/**' -g '!**/node_modules/**' '(twilioSMSService|smsService|this\\.smsService)\\.sendSMS\\(' ${ROOT}`,
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
-    ).split('\n').filter(Boolean);
+    // PORTABILITY 2026-09-08: this shelled out to `rg`. Ripgrep is not a
+    // declared dependency, so on any machine without it the test died with
+    // "rg: command not found" — a RATCHET that reports an environment fault as
+    // a breach, and would silently stop protecting anything the day it ran
+    // somewhere without the binary. Walk the tree with fs instead: no external
+    // tool, and the same set of files (rg's default .gitignore filtering is
+    // reproduced by the SKIP_DIRS list, which is what it actually excluded here).
+    const SKIP_DIRS = new Set([
+      'node_modules', '.git', 'dist', 'build', 'coverage', '.next',
+      '.turbo', '.cache', '.claude', 'tests',
+    ]);
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name.startsWith('.') && entry.name !== '.') continue;
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          if (SKIP_DIRS.has(entry.name)) continue;
+          walk(full);
+        } else if (entry.name.endsWith('.ts')) {
+          const src = readFileSync(full, 'utf8');
+          if (/(twilioSMSService|smsService|this\.smsService)\.sendSMS\(/.test(src)) files.push(full);
+        }
+      }
+    };
+    walk(ROOT);
     for (const f of files) {
       if (f.endsWith('/TwilioSMSService.ts')) continue;
       const src = readFileSync(f, 'utf8');
       const { total, withPurpose } = countSendSmsCalls(src);
       if (total > withPurpose) unmigrated += total - withPurpose;
     }
+    // NON-VACUITY. A ratchet that matches no files passes trivially, which is
+    // exactly what the `rg` failure would have degraded into had it been caught
+    // and "fixed" by swallowing the error. Assert the sweep actually swept.
+    expect(files.length).toBeGreaterThan(10);
+
     // Ceiling captured at #221 wave-1 landing time (26 unmigrated sites
-    // survived after the 13 primary flows landed). Decrement as remaining
-    // batch/notification paths flip.
-    const CEILING = 30;
+    // survived after the 13 primary flows landed) and left at 30. It was never
+    // decremented because this test has not run to completion since — measured
+    // 2026-09-08 the true count is 10, so the ceiling moves to 10. A ratchet
+    // that sits 20 above the real number is not a ratchet. DECREMENT ONLY.
+    const CEILING = 10;
     expect(unmigrated).toBeLessThanOrEqual(CEILING);
   });
 });
