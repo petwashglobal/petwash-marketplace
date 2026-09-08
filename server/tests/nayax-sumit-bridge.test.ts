@@ -15,7 +15,7 @@ import { getSumitDocumentMapping } from '../services/sumitDocumentMapping';
 
 const rows = [
   // settled PUBLIC CARD ₪55 — MUST be documented
-  { TransactionID: 101, MachineName: 'KS Right', SiteName: 'Kfar Saba', CurrencyCode: 'ILS',
+  { TransactionID: 101, MachineID: 182443, MachineName: 'KS Right', SiteName: 'Kfar Saba', CurrencyCode: 'ILS',
     AuthorizationValue: 55, SettlementValue: 55, PaymentMethod: 'Credit Card', RecognitionMethod: 'EMV',
     CardNumber: '2736390748', CardBrand: 'Visa',
     AuthorizationDateTimeGMT: '2026-07-10T09:00:00', SettlementDateTimeGMT: '2026-07-10T10:00:00',
@@ -63,15 +63,24 @@ describe('nayaxSumitBridge.selectDocumentableSales (2026-07-11)', () => {
 });
 
 describe('nayaxSumitBridge idempotency + SUMIT input (2026-07-11)', () => {
-  it('idempotency key is deterministic per Nayax transaction (never double-issues)', () => {
-    expect(idempotencyKeyFor(101)).toBe('nayax-bay:101');
-    expect(idempotencyKeyFor('101')).toBe('nayax-bay:101');
+  it('issuance identity is deterministic per machine + Nayax transaction', () => {
+    // Composite (machine + transaction) since 2026-09-08 — see idempotencyKeyFor.
+    expect(idempotencyKeyFor(182443, 101)).toBe('nayax-bay:182443:101');
+    expect(idempotencyKeyFor('182443', '101')).toBe('nayax-bay:182443:101');
+
+    // A fiscal identity must never contain "undefined". Interpolation would
+    // produce `nayax-bay:undefined:101`, which would be persisted as a real
+    // document's external reference AND collide with every other machine-less
+    // sale. Refused outright.
+    expect(() => idempotencyKeyFor(undefined as unknown as string, '101')).toThrow(/without a machine id/);
+    expect(() => idempotencyKeyFor('182443', undefined as unknown as string)).toThrow(/without a transaction id/);
+    expect(() => idempotencyKeyFor('', '101')).toThrow(/without a machine id/);
   });
 
   it('builds an InvoiceAndReceipt (full VAT, principal) per the CPA mapping', () => {
     const input = buildReceiptInput(selectDocumentableSales(rows)[0]);
     expect(input.documentType).toBe('InvoiceAndReceipt');
-    expect(input.idempotencyKey).toBe('nayax-bay:101');
+    expect(input.idempotencyKey).toBe('nayax-bay:182443:101');
     expect(input.totalAmount).toBe(55);
     expect(input.amountBeforeVat).toBe(46.61);
     expect(input.currency).toBe('ILS');

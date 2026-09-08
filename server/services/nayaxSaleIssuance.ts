@@ -210,7 +210,10 @@ export async function recoverSaleClaim(
   }
 
   const lookup = await deps.sumit.findDocumentByExternalReference({
-    externalReference: existing.externalReference || idempotencyKeyFor(txId),
+    // ALWAYS prefer what was persisted: a v1 claim must keep resolving through
+    // its v1 reference. The composite form is only the fallback for a claim
+    // that somehow has none.
+    externalReference: existing.externalReference || idempotencyKeyFor(machineId, txId),
     documentTypes: [...SALE_DOCUMENT_TYPES],
     createAttemptAt: existing.firstCreateAttemptAt ?? undefined,
   });
@@ -344,7 +347,7 @@ export function pgSaleIssuanceStore(pool: QueryablePool): SaleIssuanceStore {
           sale.currency || 'ILS',
           settledAt && !Number.isNaN(settledAt.getTime()) ? settledAt : null,
           SALE_ISSUANCE_STATE.CLAIMED,
-          idempotencyKeyFor(txId),
+          idempotencyKeyFor(machineId, txId),
           now,
           SALE_ISSUANCE_STATE.ISSUED,
         ],

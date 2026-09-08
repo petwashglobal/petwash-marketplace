@@ -57,7 +57,7 @@ function makeStore() {
       }
       const next: SaleClaim = {
         state: SALE_ISSUANCE_STATE.CLAIMED,
-        externalReference: idempotencyKeyFor(String(s.transactionId)),
+        externalReference: idempotencyKeyFor(String(s.machineId), String(s.transactionId)),
         firstCreateAttemptAt: existing?.firstCreateAttemptAt ?? now, // COALESCE
         attemptCount: (existing?.attemptCount ?? 0) + 1,
         sumitDocumentId: existing?.sumitDocumentId ?? null,
