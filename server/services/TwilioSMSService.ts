@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { smsAbuseDetector } from './SmsAbuseDetector';
 import { redis } from './redis';
 import { checkAndBumpUidSmsBudget } from '../lib/perUidSmsBudget';
+import { consumeOneShotProof, type OneShotResult } from '../lib/oneShotProof';
 
 interface VerificationCode {
   code: string;
@@ -28,9 +29,6 @@ const MAX_VERIFICATION_ATTEMPTS = 5;
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const phoneLockouts = new Map<string, number>();
-// Single-use guard for sms-verified proof tokens (nonce -> expiry epoch ms). See
-// consumeVerificationNonce(). Pruned lazily; entries live at most the token TTL.
-const consumedVerificationNonces = new Map<string, number>();
 
 // LAUNCH-SAFETY 2026-06-18: was 5 — a user who mistypes their number or hits a
 // carrier delay burns 5 sends and is locked out until midnight. Raised + env-tunable.
@@ -829,22 +827,41 @@ class TwilioSMSService {
   }
 
   /**
-   * SECURITY (single-use proof token, sweep 2026-07-13): mark a verification-token
-   * nonce as consumed. Returns true on FIRST consume, false if the nonce was already
-   * used — the caller (session-minting) rejects a replay so a captured token can't be
-   * re-POSTed within its 5-min TTL to mint multiple sessions. In-memory (single-instance;
-   * the 5-min TTL keeps the set tiny). Scoped to session minting so multi-step signup
-   * flows that re-validate the same token are unaffected.
+   * SECURITY (single-use proof token, sweep 2026-07-13; store fixed 2026-09-08):
+   * mark a verification-token nonce as consumed. Returns ok:true on the FIRST
+   * consume; every later presentation of the same nonce is refused, so a
+   * captured `sms-verified` token cannot be re-POSTed inside its 5-minute TTL
+   * to mint additional sessions.
+   *
+   * WHY THIS CHANGED. The guard was real but the STORE was a per-process
+   * `Map`. On Cloud Run that is not a shared answer: instance A records the
+   * burn, the replay lands on instance B, B has never heard of the nonce, and
+   * it mints a second session. The guard read as closed and was open in
+   * exactly the deployment it runs in. It now uses the same shared one-shot
+   * store as the step-up and email proofs, so "spent" means spent everywhere.
+   *
+   * FAIL-CLOSED, and that is a real trade: if the store is unreachable this
+   * refuses rather than falling back to the old in-memory behaviour. The
+   * caller distinguishes `store_unavailable` (503, ours) from `already_used`
+   * (401, a replay) so an outage never reads to the customer as a bad code.
+   *
+   * A nonce-less token is also refused now. Both minters have always set one
+   * (here and in UnifiedVerificationService), so the only tokens affected are
+   * those minted in the 5 minutes before the deploy — the same narrow window
+   * the purpose-binding change accepted. "I could not check" is not "it is
+   * fine".
+   *
+   * Still scoped to session minting: complete-registration and
+   * onboarding-verification deliberately re-validate the same token across
+   * multi-step flows without burning it.
    */
-  consumeVerificationNonce(nonce: string): boolean {
-    if (!nonce) return true; // legacy token without a nonce — nothing to dedupe
-    const now = Date.now();
-    for (const [n, exp] of consumedVerificationNonces) {
-      if (exp <= now) consumedVerificationNonces.delete(n);
-    }
-    if (consumedVerificationNonces.has(nonce)) return false;
-    consumedVerificationNonces.set(nonce, now + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000);
-    return true;
+  async consumeVerificationNonce(nonce: string): Promise<OneShotResult> {
+    return consumeOneShotProof({
+      scope: 'smsproof',
+      id: nonce,
+      ttlSeconds: VERIFICATION_TOKEN_EXPIRY_MINUTES * 60,
+      context: { channel: 'sms' },
+    });
   }
 
   async sendWhatsApp(to: string, body: string): Promise<{

@@ -110,6 +110,65 @@ class RedisService {
   }
 
   /**
+   * Atomic SET NX with TTL, TRI-STATE.
+   *
+   * `setNx` above answers a boolean, which is fine for a cache but WRONG for a
+   * one-shot security proof: it returns false both when the key already exists
+   * (a replay) and when the command failed (infrastructure). Those are opposite
+   * facts. Collapsing them means the caller either has to guess — and guessing
+   * from `isConnected()` is not authoritative, because a command can time out
+   * or return a ReplyError while the client still reports itself connected —
+   * or has to blame the customer for our outage.
+   *
+   * So the distinction is made HERE, where it is actually knowable:
+   *
+   *   'SET'          the command SUCCEEDED and this caller won the key.
+   *   'EXISTS'       the command SUCCEEDED and replied nil — the key was
+   *                  already there. Only a successful `SET .. NX` can produce
+   *                  this, so it is authoritative evidence of a replay.
+   *   'UNAVAILABLE'  no client, or the command threw. NOTHING is known about
+   *                  the key. Callers must fail closed.
+   *
+   * A failure NEVER reports as 'EXISTS'.
+   */
+  async setNxStrict(key: string, value: unknown, ttlSeconds: number): Promise<'SET' | 'EXISTS' | 'UNAVAILABLE'> {
+    if (!this.isEnabled || !this.client) return 'UNAVAILABLE';
+
+    try {
+      const serialized = JSON.stringify(value);
+      // Argument order is `EX <s> NX`, not `NX EX <s>`: Redis accepts either,
+      // but only this one matches the ioredis overload, so the call is
+      // type-checked rather than silently falling through to the loose
+      // signature. Same single command, same atomicity.
+      const result = await this.client.set(key, serialized, 'EX', ttlSeconds, 'NX');
+      // The reply is 'OK' or nil, and only a completed command yields either.
+      return result === 'OK' ? 'SET' : 'EXISTS';
+    } catch (error) {
+      logger.error(`[Redis] SETNX(strict) FAILED for key ${key} — reporting UNAVAILABLE, not EXISTS:`, error);
+      return 'UNAVAILABLE';
+    }
+  }
+
+  /**
+   * EXISTS, TRI-STATE. Same reasoning as setNxStrict: "the key is not there"
+   * and "I could not ask" must not be the same answer to a security question.
+   *
+   * Used to read legacy one-shot markers written under a previous key format,
+   * so a proof spent before a key-namespace migration stays spent after it.
+   */
+  async existsStrict(key: string): Promise<'YES' | 'NO' | 'UNAVAILABLE'> {
+    if (!this.isEnabled || !this.client) return 'UNAVAILABLE';
+
+    try {
+      const n = await this.client.exists(key);
+      return n > 0 ? 'YES' : 'NO';
+    } catch (error) {
+      logger.error(`[Redis] EXISTS(strict) FAILED for key ${key} — reporting UNAVAILABLE, not NO:`, error);
+      return 'UNAVAILABLE';
+    }
+  }
+
+  /**
    * Atomic GETDEL — reads a key and deletes it in a single Redis round-trip.
    * Used for one-time consumption handoffs (e.g. AUDIT-LOG-13/#216 one-tap
    * custom-token) where the value must be usable exactly once and never

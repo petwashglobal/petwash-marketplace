@@ -67,7 +67,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../lib/logger';
-import { redis } from './redis';
+import { consumeOneShotProof } from '../lib/oneShotProof';
 
 /** Closed set of sensitive operations. Extend deliberately. */
 export const STEP_UP_PURPOSES = [
@@ -246,7 +246,26 @@ function bindingFingerprintV2(b: StepUpBinding | undefined, secret: string): str
   return b64url(createHmac('sha256', secret).update(canonical, 'utf8').digest()).slice(0, 22);
 }
 
-const CONSUMED_KEY_PREFIX = 'stepup:consumed:';
+/** Key namespace for this proof family in the shared one-shot store. */
+const STEP_UP_ONE_SHOT_SCOPE = 'stepup';
+
+/**
+ * The key format this service used BEFORE the shared one-shot store existed.
+ *
+ * Consumption used to write `stepup:consumed:<uid>:<jti>` directly. The shared
+ * store writes `oneshot:stepup:<uid>:<jti>`. Simply switching would un-spend
+ * every proof burnt in the TTL window before the deploy: the new code looks
+ * for a key nothing has written yet, finds nothing, and accepts the replay.
+ *
+ * A one-shot control does not get to lapse for five minutes because the
+ * affected proofs are rare — that is a replay window with a scheduled start
+ * time. So the legacy key is READ for as long as any proof could still be
+ * carrying it. Only new markers are written, so this fades out on its own.
+ *
+ * SAFE TO DELETE once more than (max step-up TTL = 30 min, plus clock skew)
+ * has elapsed in production after the deploy that introduced it.
+ */
+const LEGACY_CONSUMED_KEY_PREFIX = 'stepup:consumed:';
 
 export interface DecodedProof {
   version: string;
@@ -458,27 +477,39 @@ export async function consumeStepUpProof(proof: DecodedProof): Promise<boolean> 
   const remaining = proof.expiresAt - Math.floor(Date.now() / 1000);
   if (remaining <= 0) return false;
 
-  const key = `${CONSUMED_KEY_PREFIX}${proof.uid}:${proof.nonce}`;
-  let claimed = false;
-  try {
-    claimed = await redis.setNx(key, '1', remaining + 5);
-  } catch (error) {
-    logger.error('[StepUpService] could not reach Redis to burn a proof — refusing (fail-closed)', {
-      uid: proof.uid, purpose: proof.purpose, jti: proof.nonce,
-    });
-    return false;
-  }
+  /**
+   * The SETNX, the fail-closed rule and the marker TTL now live in
+   * server/lib/oneShotProof.ts, because the email and SMS proofs need the
+   * identical answer and a second dialect of "has this been spent" is exactly
+   * the duplication the verification consolidation exists to remove.
+   *
+   * Semantics here are UNCHANGED: first caller wins, every later one refused,
+   * and an unreachable store refuses rather than waves through. The shared
+   * helper distinguishes replay from outage; this function's contract is a
+   * boolean, so both still collapse to false for existing callers.
+   *
+   * The old key is still READ (see LEGACY_CONSUMED_KEY_PREFIX) so the rename
+   * does not un-spend proofs burnt just before the deploy.
+   */
+  const result = await consumeOneShotProof({
+    scope: STEP_UP_ONE_SHOT_SCOPE,
+    id: `${proof.uid}:${proof.nonce}`,
+    ttlSeconds: remaining,
+    // Cross-deploy: a proof burnt under the old key format stays burnt.
+    legacyKeys: [`${LEGACY_CONSUMED_KEY_PREFIX}${proof.uid}:${proof.nonce}`],
+    context: { uid: proof.uid, purpose: proof.purpose },
+  });
 
   // Audit consumption, matching the issuance line by jti.
   logger.info('[StepUpService] Step-up proof consumption', {
-    uid: proof.uid, purpose: proof.purpose, jti: proof.nonce, claimed,
+    uid: proof.uid, purpose: proof.purpose, jti: proof.nonce, claimed: result.ok,
   });
-  if (!claimed) {
-    logger.warn('[StepUpService] REPLAY refused — proof already consumed', {
-      uid: proof.uid, purpose: proof.purpose, jti: proof.nonce,
+  if (!result.ok) {
+    logger.warn('[StepUpService] step-up proof refused at consumption', {
+      uid: proof.uid, purpose: proof.purpose, jti: proof.nonce, reason: result.reason,
     });
   }
-  return claimed;
+  return result.ok;
 }
 
 /**

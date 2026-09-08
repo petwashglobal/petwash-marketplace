@@ -18,8 +18,64 @@ import { pool, db } from '../db';
 import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared/schema';
 import { storage } from '../storage';
 import { ensureUserProvisioned, AuthBootstrapUsersRowFailed } from '../services/authBootstrap';
-import { validateEmailVerifiedToken } from '../lib/emailVerifiedToken';
+import { redeemEmailVerifiedToken, type EmailProofRefusal } from '../lib/emailVerifiedToken';
+import type { OneShotRefusal } from '../lib/oneShotProof';
 import { mintMfaLoginToken } from '../lib/mfaLoginToken';
+
+/**
+ * How a refused email proof is reported to the caller.
+ *
+ * A replay, a timeout and an outage are three different events and the
+ * customer's next move differs for each. Collapsing them into one 401
+ * "invalid or expired" is what makes a support call unanswerable — nobody can
+ * say whether the person waited too long, whether their proof was already
+ * spent by another request, or whether it was us.
+ *
+ *   already_used        401 — the proof was genuine and is now spent. This is
+ *                             the honest wording for the single-use refusal
+ *                             and it must NOT read as "expired".
+ *   store_unavailable   503 — WE could not establish replay status, so we
+ *                             refused (fail-closed). Not the customer's fault
+ *                             and not their code; "try again" is the truth.
+ *   everything else     401 — expired, tampered, wrong purpose, missing.
+ */
+function emailProofStatus(reason?: EmailProofRefusal): number {
+  return reason === 'store_unavailable' ? 503 : 401;
+}
+
+function emailProofCode(reason?: EmailProofRefusal): string {
+  if (reason === 'already_used') return 'VERIFICATION_ALREADY_USED';
+  if (reason === 'store_unavailable') return 'VERIFICATION_UNAVAILABLE';
+  return 'VERIFICATION_INVALID';
+}
+
+function emailProofMessage(reason?: EmailProofRefusal): string {
+  if (reason === 'already_used') {
+    return 'This verification was already used — request a new code.';
+  }
+  if (reason === 'store_unavailable') {
+    return 'Could not complete verification right now — please try again in a moment.';
+  }
+  return 'Invalid or expired verification. Please verify your email again.';
+}
+
+/** Same three-way distinction for the phone proof. See emailProofStatus. */
+function smsProofStatus(reason?: OneShotRefusal): number {
+  return reason === 'store_unavailable' ? 503 : 401;
+}
+
+function smsProofCode(reason?: OneShotRefusal): string {
+  if (reason === 'store_unavailable') return 'VERIFICATION_UNAVAILABLE';
+  if (reason === 'already_used') return 'VERIFICATION_ALREADY_USED';
+  return 'VERIFICATION_INVALID';
+}
+
+function smsProofMessage(reason?: OneShotRefusal): string {
+  if (reason === 'store_unavailable') {
+    return 'Could not complete verification right now — please try again in a moment.';
+  }
+  return 'This verification was already used. Please verify your phone again.';
+}
 
 // Rate limiter: max 3 SMS send attempts per IP per 10 minutes.
 // Tight window prevents bulk enumeration or accidental spam from a single device.
@@ -626,10 +682,18 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     // Attaching a verified address to an account is a SIGNUP-time action. A
     // login proof must not settle it — that is a different question the
     // customer answered.
-    const check = validateEmailVerifiedToken(sessionToken, ['signup']);
+    //
+    // REDEEM, not validate: this spends the proof. It happens BEFORE
+    // updateUser so two concurrent requests bearing the same token cannot both
+    // attach — one wins, the other is told it was already used.
+    const check = await redeemEmailVerifiedToken(sessionToken, ['signup']);
     if (!check.valid || !check.email) {
       logger.warn('[EmailAuth] verify-signup-email rejected proof', { reason: check.reason });
-      return res.status(401).json({ ok: false, error: 'Email verification expired — request a new code.' });
+      return res.status(emailProofStatus(check.reason)).json({
+        ok: false,
+        code: emailProofCode(check.reason),
+        error: emailProofMessage(check.reason),
+      });
     }
     const email = check.email.toLowerCase();
     try {
@@ -755,8 +819,13 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
     if (!tokenValidation.valid || !tokenValidation.phone) {
       return res.status(401).json({ ok: false, error: 'Mobile verification expired — request a new code.' });
     }
-    if (!twilioSMSService.consumeVerificationNonce(tokenValidation.nonce || '')) {
-      return res.status(401).json({ ok: false, error: 'This verification was already used — request a new code.' });
+    const mobileBurn = await twilioSMSService.consumeVerificationNonce(tokenValidation.nonce || '');
+    if (!mobileBurn.ok) {
+      return res.status(smsProofStatus(mobileBurn.reason)).json({
+        ok: false,
+        code: smsProofCode(mobileBurn.reason),
+        error: smsProofMessage(mobileBurn.reason),
+      });
     }
     const verifiedPhone = tokenValidation.phone;
     // Attach the phone to THIS Firebase account (no second account is created).
@@ -907,11 +976,13 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     // SECURITY (single-use, sweep 2026-07-13): consume the proof token so it can't be
     // replayed within its 5-min TTL to mint additional sessions. First use wins; a
     // replay of the same token is rejected here at the session-minting step.
-    if (!twilioSMSService.consumeVerificationNonce(tokenValidation.nonce || '')) {
-      logger.warn('[PhoneAuth] verification token REPLAY rejected at phone-session');
-      return res.status(401).json({
+    const phoneBurn = await twilioSMSService.consumeVerificationNonce(tokenValidation.nonce || '');
+    if (!phoneBurn.ok) {
+      logger.warn('[PhoneAuth] verification token refused at phone-session', { reason: phoneBurn.reason });
+      return res.status(smsProofStatus(phoneBurn.reason)).json({
         ok: false,
-        error: 'This verification was already used. Please verify your phone again.'
+        code: smsProofCode(phoneBurn.reason),
+        error: smsProofMessage(phoneBurn.reason),
       });
     }
 
@@ -1187,10 +1258,18 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
     const lastName  = typeof lastNameRaw  === 'string' ? lastNameRaw.trim().slice(0, 80)  : null;
     // Both are honest routes to a session: a new member finishing signup, and
     // a returning member signing in by code. Anything else is not.
-    const check = validateEmailVerifiedToken(sessionToken, ['signup', 'login']);
+    //
+    // REDEEM, not validate: this spends the proof, before any session is
+    // minted. One token, one session — a captured proof replayed inside its
+    // 5-minute TTL now buys nothing.
+    const check = await redeemEmailVerifiedToken(sessionToken, ['signup', 'login']);
     if (!check.valid || !check.email) {
       logger.warn('[EmailAuth] Invalid or expired email session token', { reason: check.reason });
-      return res.status(401).json({ ok: false, error: 'Invalid or expired verification. Please verify your email again.' });
+      return res.status(emailProofStatus(check.reason)).json({
+        ok: false,
+        code: emailProofCode(check.reason),
+        error: emailProofMessage(check.reason),
+      });
     }
 
     const email = check.email;
