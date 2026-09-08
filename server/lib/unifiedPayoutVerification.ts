@@ -11,7 +11,19 @@ export interface PayoutVerificationInput {
   actorEmail?: string | null;
   operation: string;
   targetId: string;
-  amountCents?: number | null;
+  /**
+   * Minor units. RENAMED from `amountCents` on 2026-09-08 — the old name was a
+   * silent contract break: this helper wrote `amountCents` into the challenge
+   * payload while StepUpService's stepUpProofForChallenge() reads `amountMinor`,
+   * so the proof builder NEVER SAW THE AMOUNT. Every payout proof minted
+   * through this path was amount-unbound: authorising ₪1 authorised ₪1,000,000
+   * to the same target.
+   *
+   * One vocabulary on an authorization boundary. No parallel cents/minor names.
+   */
+  amountMinor?: number | null;
+  /** ISO-4217. Required by StepUpService whenever amountMinor is present. */
+  currency?: string | null;
   payload?: Record<string, unknown>;
 }
 
@@ -49,7 +61,10 @@ export async function requireUnifiedPayoutVerification(
     action: "payout",
     operation: input.operation,
     targetId: input.targetId,
-    amountCents: input.amountCents ?? undefined,
+    // These two names are the contract stepUpProofForChallenge() reads. Getting
+    // them wrong does not fail loudly — it silently produces a broader proof.
+    amountMinor: input.amountMinor ?? undefined,
+    currency: input.currency ?? undefined,
   };
 
   try {

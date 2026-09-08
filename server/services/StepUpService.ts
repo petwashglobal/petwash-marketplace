@@ -89,7 +89,18 @@ export type StepUpPurpose = (typeof STEP_UP_PURPOSES)[number];
 
 const DEFAULT_TTL_SECONDS = 5 * 60; // 5 minutes
 const TOKEN_VERSION_V1 = 'v1';
-const TOKEN_VERSION = 'v2';
+/**
+ * v2 fingerprint = (operation, targetId, amountMinor).
+ * v3 fingerprint = (operation, targetId, amountMinor, currency).
+ *
+ * A new version rather than a quiet change of meaning. v2 tokens exist in the
+ * wild for their TTL, and "v2 meant one thing yesterday and another today" is
+ * not an auditable wire format. Version-aware decoding below lets in-flight v2
+ * identity proofs finish their short life, while NO v1 or v2 proof can ever
+ * satisfy a money purpose.
+ */
+const TOKEN_VERSION_V2 = 'v2';
+const TOKEN_VERSION = 'v3';
 
 /**
  * Purposes that move or redirect money. These may only be issued WITH a
@@ -109,6 +120,103 @@ export interface StepUpBinding {
   operation: string;
   targetId: string;
   amountMinor?: number;
+  /**
+   * ISO-4217, REQUIRED whenever amountMinor is present.
+   *
+   * An amount with no currency is not an amount. Binding 5000 without ILS
+   * means a proof for ₪50.00 and a proof for A$50.00 carry the same
+   * fingerprint and are interchangeable — and the two are not worth the same
+   * thing. Added before the binding model spreads past ILS-only payouts,
+   * because retrofitting it later means invalidating live proofs on a money
+   * path instead of a dead one.
+   */
+  currency?: string;
+}
+
+/**
+ * The currencies this platform actually deals in. Mirrors the canonical
+ * `Currency` union in server/services/unified-booking/types.ts — kept as a
+ * runtime Set here because a TypeScript union cannot check a string that
+ * arrives from a request body at runtime.
+ *
+ * This is a real allowlist, not a shape check. Trimming and upper-casing alone
+ * would let "BANANA" satisfy a "currency required" test while binding a money
+ * proof to a currency that does not exist.
+ */
+const SUPPORTED_CURRENCIES: ReadonlySet<string> = new Set([
+  'ILS', 'USD', 'EUR', 'GBP', 'AUD', 'CAD',
+]);
+
+/**
+ * Currencies compare case-insensitively and without surrounding space, so
+ * 'ils', 'ILS' and ' ILS ' are ONE binding rather than three incompatible
+ * ones. Normalising at the fingerprint makes that true on both the issue and
+ * the verify side from a single line.
+ */
+function normaliseCurrency(c: string | undefined): string {
+  return (c ?? '').trim().toUpperCase();
+}
+
+/** True only for a currency we deliberately support. */
+function isSupportedCurrency(c: string | undefined): boolean {
+  return SUPPORTED_CURRENCIES.has(normaliseCurrency(c));
+}
+
+/**
+ * Minor units are whole numbers. A fractional or unsafe amount cannot be
+ * represented faithfully in the MAC, and "1000.0000000001" must never be
+ * treated as equal to "1000".
+ */
+function isValidAmountMinor(a: number | undefined): boolean {
+  return typeof a === 'number' && Number.isSafeInteger(a) && a > 0;
+}
+
+/**
+ * PURPOSE-SPECIFIC BINDING REQUIREMENTS.
+ *
+ * "money purpose -> needs a binding" was too weak: it let an AMOUNTLESS
+ * payout_action mint, which authorises a payout of any size to the bound
+ * target. The two money purposes are not the same shape and must not share
+ * one rule.
+ *
+ *   payout_action   EXECUTING one payout. operation + targetId + amountMinor
+ *                   + currency, all mandatory. There is no such thing as
+ *                   authorising "a payout" without a sum.
+ *   change_payout   REBINDING where money goes. operation + targetId (the
+ *                   exact destination-change request). No amount, because no
+ *                   sum is being authorised.
+ *
+ * An operation string must never be used to smuggle one purpose through the
+ * other — the purpose decides the rule, not a free-text field.
+ */
+function bindingRequirementFailure(
+  purpose: string,
+  binding: StepUpBinding | undefined,
+): string | null {
+  if (!MONEY_PURPOSES.has(purpose)) {
+    if (binding && (!binding.operation || !binding.targetId)) return 'incomplete_binding';
+    if (binding?.amountMinor != null && !isSupportedCurrency(binding.currency)) {
+      return 'amount_without_supported_currency';
+    }
+    return null;
+  }
+
+  if (!binding) return 'money_proof_requires_binding';
+  if (!binding.operation || !binding.targetId) return 'incomplete_binding';
+
+  if (purpose === 'payout_action') {
+    if (!isValidAmountMinor(binding.amountMinor)) return 'payout_requires_amount_minor';
+    if (!isSupportedCurrency(binding.currency)) return 'payout_requires_supported_currency';
+    return null;
+  }
+
+  // change_payout: a destination, not a sum. An amount is not required, but if
+  // one is supplied it still has to be coherent.
+  if (binding.amountMinor != null) {
+    if (!isValidAmountMinor(binding.amountMinor)) return 'invalid_amount_minor';
+    if (!isSupportedCurrency(binding.currency)) return 'amount_without_supported_currency';
+  }
+  return null;
 }
 
 function bindingFingerprint(b: StepUpBinding | undefined, secret: string): string {
@@ -116,6 +224,24 @@ function bindingFingerprint(b: StepUpBinding | undefined, secret: string): strin
   // Hashed rather than inlined: keeps the token opaque and fixed-length
   // regardless of how long a targetId is, and keeps operation names out of a
   // token that may end up in a log.
+  const canonical = [
+    b.operation,
+    b.targetId,
+    b.amountMinor == null ? '' : String(b.amountMinor),
+    normaliseCurrency(b.currency),
+  ].join('\u0000');
+  return b64url(createHmac('sha256', secret).update(canonical, 'utf8').digest()).slice(0, 22);
+}
+
+/**
+ * The v2 canonical input, kept ONLY so an in-flight v2 identity proof can
+ * still be verified for the rest of its TTL. Never reachable for a money
+ * purpose — decodeStepUpProof refuses any non-v3 version there.
+ *
+ * Delete once no v2 token can still be alive (TTL is at most 30 minutes).
+ */
+function bindingFingerprintV2(b: StepUpBinding | undefined, secret: string): string {
+  if (!b) return '-';
   const canonical = [b.operation, b.targetId, b.amountMinor == null ? '' : String(b.amountMinor)].join('\u0000');
   return b64url(createHmac('sha256', secret).update(canonical, 'utf8').digest()).slice(0, 22);
 }
@@ -172,14 +298,14 @@ export function issueStepUpProof(
   if (!secret) return null;
   if (!uid || !STEP_UP_PURPOSES.includes(purpose)) return null;
 
-  // A money proof without a binding is a blank cheque for its whole TTL.
-  // Refuse to mint one rather than trusting every future caller to remember.
-  if (MONEY_PURPOSES.has(purpose) && !binding) {
-    logger.error('[StepUpService] refused to issue an UNBOUND money proof', { uid, purpose });
-    return null;
-  }
-  if (binding && (!binding.operation || !binding.targetId)) {
-    logger.error('[StepUpService] refused to issue a proof with an incomplete binding', { uid, purpose });
+  // One rule, per purpose, enforced at ISSUE — so a caller cannot mint a broad
+  // money proof by omitting an argument, and every future call site inherits
+  // the constraint instead of having to remember it.
+  const requirementFailure = bindingRequirementFailure(purpose, binding);
+  if (requirementFailure) {
+    logger.error('[StepUpService] refused to issue a proof', {
+      uid, purpose, reason: requirementFailure, operation: binding?.operation,
+    });
     return null;
   }
 
@@ -203,6 +329,7 @@ export function issueStepUpProof(
     operation: binding?.operation,
     targetId: binding?.targetId,
     amountMinor: binding?.amountMinor,
+    currency: normaliseCurrency(binding?.currency) || undefined,
     expiresAt: new Date(expiresAt * 1000).toISOString(),
   });
 
@@ -269,23 +396,41 @@ export function decodeStepUpProof(
       nonce: fields[5],
       bindingFingerprint: fields[6] ?? '-',
     };
-    if (decoded.version !== TOKEN_VERSION && decoded.version !== TOKEN_VERSION_V1) return null;
+    if (
+      decoded.version !== TOKEN_VERSION
+      && decoded.version !== TOKEN_VERSION_V2
+      && decoded.version !== TOKEN_VERSION_V1
+    ) return null;
     if (decoded.uid !== uid) return null;
     if (decoded.purpose !== purpose) return null;
     if (!Number.isFinite(decoded.expiresAt)) return null;
     if (Math.floor(Date.now() / 1000) >= decoded.expiresAt) return null;
 
     /**
-     * A v1 token can never satisfy a money purpose: v1 has no binding field,
-     * so "this person, for payouts" would authorise any payout. v1 stays valid
-     * only for the identity-change purposes it was designed for.
+     * ONLY v3 CAN AUTHORISE MONEY.
+     *
+     * v1 has no binding field at all, so "this person, for payouts" would
+     * authorise any payout. v2 has a binding but its fingerprint does not
+     * include the currency, so a v2 proof for 5000 cannot distinguish ILS from
+     * AUD. Neither is an acceptable authorisation for moving money, and an old
+     * token must not become weaker-but-accepted just because it is still
+     * inside its TTL.
+     *
+     * v1 and v2 remain valid for the identity-change purposes they were
+     * designed for, so in-flight change_email / change_mobile proofs finish
+     * their short life rather than logging people out mid-flow.
      */
-    if (decoded.version === TOKEN_VERSION_V1 && MONEY_PURPOSES.has(purpose)) return null;
+    if (decoded.version !== TOKEN_VERSION && MONEY_PURPOSES.has(purpose)) return null;
 
     // The binding must match EXACTLY, in both directions: a bound proof
     // cannot be replayed against a different target, and an unbound proof
     // cannot be presented where a binding is required.
-    const expectedFp = bindingFingerprint(binding, secret);
+    // Fingerprint per the token's OWN version: a v2 proof was minted without
+    // currency in the canonical input, so recomputing it the v3 way would
+    // reject an in-flight identity proof that is perfectly valid.
+    const expectedFp = decoded.version === TOKEN_VERSION
+      ? bindingFingerprint(binding, secret)
+      : bindingFingerprintV2(binding, secret);
     if (decoded.bindingFingerprint !== expectedFp) return null;
 
     return decoded;
@@ -354,11 +499,33 @@ export async function authoriseMoneyAction(input: {
   operation: string;
   targetId: string;
   amountMinor?: number;
-}): Promise<{ ok: true } | { ok: false; reason: 'INVALID_PROOF' | 'ALREADY_CONSUMED' }> {
+  /** ISO-4217. Required whenever amountMinor is given — see StepUpBinding. */
+  currency?: string;
+}): Promise<{ ok: true } | { ok: false; reason: 'INVALID_PROOF' | 'ALREADY_CONSUMED' | 'BINDING_REQUIREMENT_NOT_MET' }> {
+  // The caller passing an amount without a currency is a programming error on
+  // a money path, so it is refused loudly instead of silently authorising a
+  // currency-agnostic amount.
+  const authFailure = bindingRequirementFailure(input.purpose, {
+    operation: input.operation,
+    targetId: input.targetId,
+    amountMinor: input.amountMinor,
+    currency: input.currency,
+  });
+  if (authFailure) {
+    // The same rule as issue time. An amountless payout_action must be
+    // impossible to MINT and impossible to AUTHORISE — a caller that reaches
+    // here without an amount is a programming error on a money path, refused
+    // loudly before Redis is touched.
+    logger.error('[StepUpService] money action refused — binding requirement not met', {
+      uid: input.uid, purpose: input.purpose, operation: input.operation, reason: authFailure,
+    });
+    return { ok: false, reason: 'BINDING_REQUIREMENT_NOT_MET' };
+  }
   const proof = decodeStepUpProof(input.uid, input.purpose, input.token, {
     operation: input.operation,
     targetId: input.targetId,
     amountMinor: input.amountMinor,
+    currency: input.currency,
   });
   if (!proof) {
     logger.warn('[StepUpService] money action refused — no valid bound proof', {

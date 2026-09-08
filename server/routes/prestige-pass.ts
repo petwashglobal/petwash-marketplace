@@ -11566,7 +11566,10 @@ router.post('/admin/wallet/payout-batches/:batchId/release-request', async (req:
       actorEmail: session.user.email,
       operation: 'payout_release_request',
       targetId: `payout_batch:${batchId}`,
-      amountCents,
+      // net_total_cents is agorot — ILS minor units. Stated explicitly rather
+      // than defaulted, so the currency is a decision and not an assumption.
+      amountMinor: amountCents,
+      currency: 'ILS',
       payload: {
         autoApprove,
         reason,
@@ -11659,7 +11662,8 @@ router.post('/admin/wallet/payout-release-approvals/:id/approve', async (req: Re
       actorEmail: session.user.email,
       operation: 'payout_release_approve',
       targetId: `payout_release_approval:${id}`,
-      amountCents: Number(approval.amount_cents ?? 0),
+      amountMinor: Number(approval.amount_cents ?? 0),
+      currency: 'ILS',
       payload: {
         batchId: approval.batch_id,
       },
