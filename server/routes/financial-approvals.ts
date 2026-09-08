@@ -176,7 +176,7 @@ function requireFinancialAdmin(req: Request, res: Response, next: NextFunction) 
 // ---------------------------------------------------------------------------
 
 // GET /api/financial-approvals/matrix
-router.get('/matrix', async (req: Request, res: Response) => {
+router.get('/matrix', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`
       SELECT * FROM financial_approval_matrix ORDER BY case_type, min_amount_cents
@@ -259,21 +259,36 @@ router.delete('/matrix/:id', requirePolicyAdmin, async (req: Request, res: Respo
 // ---------------------------------------------------------------------------
 
 // POST /api/financial-approvals/check
-router.post('/check', async (req: Request, res: Response) => {
+/**
+ * A DRY RUN IS STILL A POLICY DISCLOSURE.
+ *
+ * This route mutates nothing, which is why it was left unguarded — but the
+ * mount is only validateFirebaseToken, which is authentication and not
+ * authorization: it 401s without a token and then calls next(). Any signed-in
+ * CUSTOMER could ask "what does role X need to move amount Y", and binary-search
+ * the entire approval matrix out of it.
+ *
+ * It also took `user_role` from the body, so a caller could evaluate authority
+ * as somebody else. The role is now the caller's own, derived from the token.
+ * Asking what YOU may do is a legitimate question; asking what an executive may
+ * do is reconnaissance.
+ */
+router.post('/check', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const {
       case_type, action_type, amount_cents,
-      user_role, owner_scope = 'global', owner_id = null,
+      owner_scope = 'global', owner_id = null,
     } = req.body;
 
-    if (!case_type || !action_type || amount_cents === undefined || !user_role) {
-      return res.status(400).json({ error: 'case_type, action_type, amount_cents, user_role required' });
+    if (!case_type || !action_type || amount_cents === undefined) {
+      return res.status(400).json({ error: 'case_type, action_type, amount_cents required' });
     }
 
+    const actingRole = getActingRole(req);
     const decision = await checkFinancialAuthority(
-      case_type, action_type, amount_cents, user_role, owner_scope, owner_id
+      case_type, action_type, amount_cents, actingRole, owner_scope, owner_id
     );
-    return res.json(decision);
+    return res.json({ ...decision, evaluatedForRole: actingRole });
   } catch (err: any) {
     sendSanitizedError(res, err, 'FIN_APPROVALS_CHECK_FAILED', { logContext: { op: 'check-authority' } });
   }
@@ -284,7 +299,7 @@ router.post('/check', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // GET /api/financial-approvals/queue
-router.get('/queue', async (req: Request, res: Response) => {
+router.get('/queue', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const status = (req.query.status as string) || 'pending';
 
@@ -1051,7 +1066,7 @@ router.post('/release-reserve', requireFinancialAdmin, async (req: Request, res:
 });
 
 // GET /api/financial-approvals/reserve-summary
-router.get('/reserve-summary', async (req: Request, res: Response) => {
+router.get('/reserve-summary', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const result = await db.execute(sql`
       SELECT
@@ -1074,7 +1089,7 @@ router.get('/reserve-summary', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 
 // GET /api/financial-approvals/log
-router.get('/log', async (req: Request, res: Response) => {
+router.get('/log', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const caseType = (req.query.case_type as string) || null;
     const statusFilter = (req.query.status as string) || null;
