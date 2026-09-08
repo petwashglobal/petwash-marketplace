@@ -77,11 +77,10 @@ RUNTIME_EXPANSIONS = {"<type>": ["credit", "debit"]}
 # Named rather than silent, and self-expiring: once a rule appears the entry
 # below is reported as stale, so this list can only shrink.
 #
-#   wallet_refund/refund   POST /admin/wallet/refund. The wallet-bands seed
-#                          (#2324) covers wallet_adjust and wallet_support but
-#                          not this route. Raised with that PR's author rather
-#                          than edited into their migration.
-KNOWN_UNSEEDED = {("wallet_refund", "refund")}
+# EMPTY as of #2324, which seeded wallet_refund/refund alongside removing its
+# waiver here — the guard requires exactly that pairing, so neither half can be
+# forgotten. Every pair the gate looks up now has a real rule.
+KNOWN_UNSEEDED: set[tuple[str, str]] = set()
 
 
 def main() -> int:
