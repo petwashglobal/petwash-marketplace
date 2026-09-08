@@ -794,6 +794,56 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
 });
 
 /**
+ * Attach an SMS-attested number to a Firebase account, and say what happened.
+ *
+ * "PERSISTED" IN THIS REPO IS TWO QUESTIONS — Postgres AND the Firebase auth
+ * record. Firebase owns phone IDENTITY: /api/auth/phone-session resolves the
+ * account through getUserByPhoneNumber(), so a number that never reaches the
+ * Firebase record cannot log its owner in, and a users row that records a
+ * verified phone Firebase does not hold is a claim only half the platform can
+ * see. A contact write is not complete until both stores hold it.
+ *
+ * Because the two writes cannot be one transaction, a Firebase-succeeded /
+ * Postgres-failed attempt is reachable, and the member's RETRY then re-attaches
+ * a number their own uid already holds. Whether Identity Toolkit no-ops or
+ * raises there is decided server-side and is not knowable from the SDK, so the
+ * route must not depend on the answer: on "already exists" we ask WHO OWNS IT
+ * rather than assuming a stranger does. Answering a blind 409 would tell the
+ * member their own number belongs to someone else and wedge them out of
+ * activation permanently. Established in #2322 for the sibling route
+ * /api/onboarding-verification/validate-tokens; the reasoning is identical here.
+ *
+ * A branch may only say what it has ESTABLISHED. An ownership probe that throws,
+ * or that names nobody, has not established a second owner — that is
+ * 'unresolved' (retryable), never 'in_use_by_other' (terminal).
+ */
+type PhoneAttachOutcome = 'attached' | 'already_ours' | 'in_use_by_other' | 'unresolved';
+
+async function attachVerifiedPhoneToFirebase(uid: string, phone: string): Promise<PhoneAttachOutcome> {
+  try {
+    await fbAdminAuth.updateUser(uid, { phoneNumber: phone });
+    return 'attached';
+  } catch (e: any) {
+    if (e?.code !== 'auth/phone-number-already-exists') {
+      logger.warn('[Signup] phone attach updateUser failed', { uid, error: e?.message });
+      return 'unresolved';
+    }
+    let ownerUid: string | null = null;
+    try {
+      ownerUid = (await fbAdminAuth.getUserByPhoneNumber(phone))?.uid ?? null;
+    } catch (probeErr: any) {
+      logger.warn('[Signup] phone ownership probe unreadable', { uid, error: probeErr?.message });
+      return 'unresolved';
+    }
+    if (ownerUid === uid) return 'already_ours';
+    // No owner named — the probe CONTRADICTS the error that triggered it.
+    // Nothing here establishes a second owner, so we do not claim one.
+    if (!ownerUid) return 'unresolved';
+    return 'in_use_by_other';
+  }
+}
+
+/**
  * POST /api/auth/verify-signup-mobile — step 2 of dual-verify for signups that START
  * with email / Google / Apple (which give us the email but NOT a phone). The user is
  * already signed in; this proves they also own the phone (6-digit SMS code) and
@@ -828,21 +878,40 @@ publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, 
       });
     }
     const verifiedPhone = tokenValidation.phone;
-    // Attach the phone to THIS Firebase account (no second account is created).
-    try {
-      await fbAdminAuth.updateUser(uid, { phoneNumber: verifiedPhone });
-    } catch (e: any) {
-      if (e?.code === 'auth/phone-number-already-exists') {
-        return res.status(409).json({ ok: false, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
-      }
-      logger.warn('[Signup] verify-signup-mobile updateUser failed', { error: e?.message });
-      return res.status(500).json({ ok: false, error: 'Could not verify mobile — please try again.' });
+    // ATTACH to Firebase, the store that owns phone identity. "Already exists"
+    // is not by itself evidence of another owner — a previous attempt of THIS
+    // member's may have attached the number and then failed to persist it — so
+    // ask who holds it before answering the terminal 409. Same contract as the
+    // sibling route in #2322.
+    const attach = await attachVerifiedPhoneToFirebase(uid, verifiedPhone);
+    if (attach === 'in_use_by_other') {
+      return res.status(409).json({ ok: false, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
     }
-    // Best-effort DB flag (phone is UNIQUE → a collision falls back harmlessly).
+    if (attach === 'unresolved') {
+      return res.status(500).json({ ok: false, code: 'PHONE_ATTACH_FAILED', error: 'Could not verify mobile — please try again.' });
+    }
+    // NOT best-effort, and this is the whole point. Firebase now holds the
+    // number. The old fallback dropped `phone` and kept `phone_verified = true`,
+    // so the row claimed a verified phone it did not record — and
+    // /api/auth/login/2fa/start reads exactly that shape as "no phone on file"
+    // and silently downgrades the member out of the 2-step login they opted
+    // into. A row may not assert a contact it cannot produce. Fail honestly and
+    // retryably instead; the retry heals through the already-ours branch above.
     try {
       await pool.query(`UPDATE users SET phone = $1, phone_verified = true WHERE id = $2`, [verifiedPhone, uid]);
-    } catch {
-      try { await pool.query(`UPDATE users SET phone_verified = true WHERE id = $1`, [uid]); } catch { /* ignore */ }
+    } catch (e: any) {
+      // users.phone is UNIQUE. With Firebase having accepted the number for
+      // THIS uid, a 23505 means a stale users row squats it with no Firebase
+      // record — drift, not a second legitimate owner (#2322).
+      if (e?.code === '23505') {
+        return res.status(409).json({ ok: false, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
+      }
+      logger.error('[Signup] verify-signup-mobile phone persist FAILED', { uid, error: e?.message });
+      return res.status(500).json({
+        ok: false,
+        code: 'PHONE_PERSIST_FAILED',
+        error: 'Mobile verified but we could not save it — please try again.',
+      });
     }
     // Advance ACTIVATION: markMobileVerified sets mobileVerifiedAt + phoneVerified +
     // activationStatus together (verification-drift fix) so a social-then-mobile
@@ -883,6 +952,53 @@ function maskPhoneForHint(p: string): string {
 }
 
 /**
+ * The number a 2-step-login challenge may be sent to — asked of BOTH stores.
+ *
+ * These routes read users.phone alone and treat NULL as "this member has no
+ * phone". That premise is not safe, because phone identity lives in Firebase
+ * (see attachVerifiedPhoneToFirebase) and any write that flipped
+ * phone_verified without landing the contact leaves a row that says verified
+ * with phone NULL while the attested number sits on the Firebase record. Under
+ * that shape /2fa/start's fail-open fires on a condition it was never designed
+ * to see: the member DOES have a verified phone, and the comment's own remedy —
+ * "they can add/verify a phone later" — is something they have already done. A
+ * security control the member explicitly opted into would silently switch
+ * itself off, and nothing would surface it.
+ *
+ * Three outcomes, and the third is not the second:
+ *   ok          a number exists (in either store) and may be challenged
+ *   none        ESTABLISHED that neither store holds one — the fail-open premise
+ *   unresolved  we could not establish it; guessing 'none' here is the silent
+ *               downgrade again, so the caller must refuse visibly instead.
+ *
+ * Read-only by design: it does not heal users.phone. Only the caller holding a
+ * fresh proof may decide which number is attachable to an account (#2322), and
+ * a login route holds none.
+ */
+type TwoFactorPhone =
+  | { status: 'ok'; phone: string }
+  | { status: 'none' }
+  | { status: 'unresolved' };
+
+async function resolveTwoFactorPhone(uid: string, dbPhone: string | null): Promise<TwoFactorPhone> {
+  if (dbPhone) return { status: 'ok', phone: dbPhone };
+  try {
+    const fbPhone = (await fbAdminAuth.getUser(uid))?.phoneNumber || null;
+    if (fbPhone) {
+      logger.warn('[Login2FA] users.phone is NULL but Firebase holds a number — drift', { uid });
+      return { status: 'ok', phone: fbPhone };
+    }
+    return { status: 'none' };
+  } catch (e: any) {
+    // Firebase admin answered verifyIdToken moments ago on this same request,
+    // so a failure here is an anomaly rather than a routine outage — cheap to
+    // refuse visibly, and far cheaper than turning 2FA off without saying so.
+    logger.error('[Login2FA] could not read the Firebase phone', { uid, error: e?.message });
+    return { status: 'unresolved' };
+  }
+}
+
+/**
  * POST /api/auth/login/2fa/start — send a login OTP to the authed user's phone.
  * Called AFTER a password sign-in. Auth = the just-issued password idToken; the
  * phone is read from the account (the client never sees or sends it). Returns
@@ -899,10 +1015,19 @@ publicAuthRouter.post("/api/auth/login/2fa/start", apiLimiter, async (req, res) 
     const { rows } = await pool.query('SELECT phone, two_factor_enabled FROM users WHERE id = $1', [uid]);
     const row = rows[0];
     if (!row || row.two_factor_enabled !== true) return res.json({ ok: true, needed: false });
-    const phone: string | null = row.phone;
-    // Opted in but no phone on file → cannot challenge; fail open to password-only
-    // rather than lock them out (they can add/verify a phone later).
-    if (!phone) return res.json({ ok: true, needed: false, reason: 'no_phone' });
+    const resolved = await resolveTwoFactorPhone(uid, row.phone ?? null);
+    if (resolved.status === 'unresolved') {
+      return res.status(503).json({
+        ok: false,
+        code: 'TWO_FACTOR_UNAVAILABLE',
+        error: 'Could not start 2-step verification right now — please try again.',
+      });
+    }
+    // Opted in and NEITHER store holds a number → cannot challenge; fail open to
+    // password-only rather than lock them out (they can add/verify a phone
+    // later). The premise is now checked rather than assumed.
+    if (resolved.status === 'none') return res.json({ ok: true, needed: false, reason: 'no_phone' });
+    const phone = resolved.phone;
     const send = await twilioSMSService.sendVerificationCode(phone, language || 'he', req.ip);
     if (!send?.success) return res.status(502).json({ ok: false, error: send?.message || 'Could not send the code — try again.' });
     return res.json({ ok: true, needed: true, phoneHint: maskPhoneForHint(phone) });
@@ -925,8 +1050,19 @@ publicAuthRouter.post("/api/auth/login/2fa/verify", apiLimiter, async (req, res)
     try { uid = (await fbAdminAuth.verifyIdToken(idToken, true)).uid; }
     catch { return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' }); }
     const { rows } = await pool.query('SELECT phone FROM users WHERE id = $1', [uid]);
-    const phone: string | null = rows[0]?.phone;
-    if (!phone) return res.status(400).json({ ok: false, error: 'No phone on file for verification.' });
+    // Resolved the SAME way /2fa/start resolved it: verifyCode is keyed by the
+    // number the code was sent to, so a start that challenged the Firebase
+    // number and a verify that only read Postgres would never agree.
+    const resolved = await resolveTwoFactorPhone(uid, rows[0]?.phone ?? null);
+    if (resolved.status === 'unresolved') {
+      return res.status(503).json({
+        ok: false,
+        code: 'TWO_FACTOR_UNAVAILABLE',
+        error: 'Could not complete 2-step verification right now — please try again.',
+      });
+    }
+    if (resolved.status === 'none') return res.status(400).json({ ok: false, error: 'No phone on file for verification.' });
+    const phone = resolved.phone;
     const chk = await twilioSMSService.verifyCode(phone, String(code), language || 'he');
     if (!chk?.success) return res.status(401).json({ ok: false, error: chk?.message || 'Invalid code' });
     return res.json({ ok: true, mfaToken: mintMfaLoginToken(uid) });
