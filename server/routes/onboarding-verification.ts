@@ -910,22 +910,56 @@ router.post('/validate-tokens', async (req: Request, res: Response) => {
     //    address to already equal users.email, so there is never an address
     //    to attach on this route.
     if (phoneToAttach) {
+      const { auth: fbAdmin } = await import('../lib/firebase-admin');
       try {
-        const { auth: fbAdmin } = await import('../lib/firebase-admin');
         await fbAdmin.updateUser(uid, { phoneNumber: phoneToAttach });
       } catch (attachErr: any) {
         if (attachErr?.code === 'auth/phone-number-already-exists') {
-          logger.warn('[Verification] phone attach refused — number belongs to another account', { uid });
-          return res.status(409).json({
-            success: false, code: 'PHONE_IN_USE',
-            message: 'This mobile number is already linked to another account.',
+          // "Already exists" does NOT mean "belongs to someone else". This
+          // route returns between the two stores, so a Firebase-succeeded /
+          // Postgres-failed attempt leaves the number on THIS uid's Firebase
+          // record with no flag flipped and no users.phone. The member
+          // retries — and if Identity Toolkit raises rather than no-ops when
+          // the same uid re-sets the same number, a blind 409 would tell them
+          // their OWN number belongs to another account and wedge them out of
+          // activation permanently.
+          //
+          // Whether it no-ops is decided server-side and is not knowable from
+          // the SDK, so do not depend on the answer: ASK who owns the number.
+          // Firebase is the right store to ask — in exactly this failure mode
+          // users.phone is still NULL, so re-reading Postgres would find
+          // nothing and confirm the wrong thing.
+          let ownerUid: string | null = null;
+          try {
+            ownerUid = (await fbAdmin.getUserByPhoneNumber(phoneToAttach))?.uid ?? null;
+          } catch (probeErr: any) {
+            if (probeErr?.code !== 'auth/user-not-found') {
+              // Ownership unknown. Say "try again", never the terminal-sounding
+              // "belongs to someone else" — that claim must be established.
+              logger.error('[Verification] phone ownership probe FAILED', { uid, error: probeErr?.message });
+              return res.status(500).json({
+                success: false, code: 'PHONE_ATTACH_FAILED',
+                message: 'Your mobile was verified but could not be linked to your account. Please try again.',
+              });
+            }
+          }
+          if (ownerUid !== uid) {
+            logger.warn('[Verification] phone attach refused — number belongs to another account', { uid });
+            return res.status(409).json({
+              success: false, code: 'PHONE_IN_USE',
+              message: 'This mobile number is already linked to another account.',
+            });
+          }
+          // Already attached to THIS account — the retry case. Fall through and
+          // finish the half of the job that did not land.
+          logger.info('[Verification] phone already attached to this account — healing', { uid });
+        } else {
+          logger.error('[Verification] phone attach FAILED', { uid, error: attachErr?.message });
+          return res.status(500).json({
+            success: false, code: 'PHONE_ATTACH_FAILED',
+            message: 'Your mobile was verified but could not be linked to your account. Please try again.',
           });
         }
-        logger.error('[Verification] phone attach FAILED', { uid, error: attachErr?.message });
-        return res.status(500).json({
-          success: false, code: 'PHONE_ATTACH_FAILED',
-          message: 'Your mobile was verified but could not be linked to your account. Please try again.',
-        });
       }
 
       // Firebase has accepted the number, so a UNIQUE violation here means a
