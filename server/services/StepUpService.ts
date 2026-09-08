@@ -109,6 +109,27 @@ export interface StepUpBinding {
   operation: string;
   targetId: string;
   amountMinor?: number;
+  /**
+   * ISO-4217, REQUIRED whenever amountMinor is present.
+   *
+   * An amount with no currency is not an amount. Binding 5000 without ILS
+   * means a proof for ₪50.00 and a proof for A$50.00 carry the same
+   * fingerprint and are interchangeable — and the two are not worth the same
+   * thing. Added before the binding model spreads past ILS-only payouts,
+   * because retrofitting it later means invalidating live proofs on a money
+   * path instead of a dead one.
+   */
+  currency?: string;
+}
+
+/**
+ * Currencies compare case-insensitively and without surrounding space, so
+ * 'ils', 'ILS' and ' ILS ' are ONE binding rather than three incompatible
+ * ones. Normalising at the fingerprint is what makes that true on both the
+ * issue and the verify side, from a single line.
+ */
+function normaliseCurrency(c: string | undefined): string {
+  return (c ?? '').trim().toUpperCase();
 }
 
 function bindingFingerprint(b: StepUpBinding | undefined, secret: string): string {
@@ -116,7 +137,12 @@ function bindingFingerprint(b: StepUpBinding | undefined, secret: string): strin
   // Hashed rather than inlined: keeps the token opaque and fixed-length
   // regardless of how long a targetId is, and keeps operation names out of a
   // token that may end up in a log.
-  const canonical = [b.operation, b.targetId, b.amountMinor == null ? '' : String(b.amountMinor)].join('\u0000');
+  const canonical = [
+    b.operation,
+    b.targetId,
+    b.amountMinor == null ? '' : String(b.amountMinor),
+    normaliseCurrency(b.currency),
+  ].join('\u0000');
   return b64url(createHmac('sha256', secret).update(canonical, 'utf8').digest()).slice(0, 22);
 }
 
@@ -182,6 +208,15 @@ export function issueStepUpProof(
     logger.error('[StepUpService] refused to issue a proof with an incomplete binding', { uid, purpose });
     return null;
   }
+  // An amount with no currency is not an amount. Refuse at ISSUE rather than
+  // minting a proof whose fingerprint silently treats 5000 ILS and 5000 AUD as
+  // the same authorisation.
+  if (binding && binding.amountMinor != null && !normaliseCurrency(binding.currency)) {
+    logger.error('[StepUpService] refused to issue an amount-bound proof with no currency', {
+      uid, purpose, operation: binding.operation,
+    });
+    return null;
+  }
 
   const now = Math.floor(Date.now() / 1000);
   const ttl = Math.max(30, Math.min(30 * 60, ttlSeconds)); // clamp 30s..30min
@@ -203,6 +238,7 @@ export function issueStepUpProof(
     operation: binding?.operation,
     targetId: binding?.targetId,
     amountMinor: binding?.amountMinor,
+    currency: normaliseCurrency(binding?.currency) || undefined,
     expiresAt: new Date(expiresAt * 1000).toISOString(),
   });
 
@@ -354,11 +390,23 @@ export async function authoriseMoneyAction(input: {
   operation: string;
   targetId: string;
   amountMinor?: number;
-}): Promise<{ ok: true } | { ok: false; reason: 'INVALID_PROOF' | 'ALREADY_CONSUMED' }> {
+  /** ISO-4217. Required whenever amountMinor is given — see StepUpBinding. */
+  currency?: string;
+}): Promise<{ ok: true } | { ok: false; reason: 'INVALID_PROOF' | 'ALREADY_CONSUMED' | 'CURRENCY_REQUIRED' }> {
+  // The caller passing an amount without a currency is a programming error on
+  // a money path, so it is refused loudly instead of silently authorising a
+  // currency-agnostic amount.
+  if (input.amountMinor != null && !normaliseCurrency(input.currency)) {
+    logger.error('[StepUpService] money action refused — amount given with no currency', {
+      uid: input.uid, purpose: input.purpose, operation: input.operation,
+    });
+    return { ok: false, reason: 'CURRENCY_REQUIRED' };
+  }
   const proof = decodeStepUpProof(input.uid, input.purpose, input.token, {
     operation: input.operation,
     targetId: input.targetId,
     amountMinor: input.amountMinor,
+    currency: input.currency,
   });
   if (!proof) {
     logger.warn('[StepUpService] money action refused — no valid bound proof', {

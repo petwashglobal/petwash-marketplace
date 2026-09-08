@@ -451,8 +451,13 @@ function stepUpProofForChallenge(challenge: VerificationChallenge): {
   const operation = typeof payload.operation === "string" ? payload.operation : undefined;
   const targetId = typeof payload.targetId === "string" ? payload.targetId : undefined;
   const amountMinor = typeof payload.amountMinor === "number" ? payload.amountMinor : undefined;
+  // Carried through from /start alongside the amount. issueStepUpProof refuses
+  // an amount-bound proof with no currency, so a payout challenge started with
+  // an amount and no currency yields NO proof — loudly — rather than one that
+  // would authorise the same number in any currency.
+  const currency = typeof payload.currency === "string" ? payload.currency : undefined;
   const binding: StepUpBinding | undefined =
-    operation && targetId ? { operation, targetId, amountMinor } : undefined;
+    operation && targetId ? { operation, targetId, amountMinor, currency } : undefined;
 
   // issueStepUpProof refuses an unbound money proof, so a payout challenge
   // started without operation/targetId yields NO proof rather than a broad one.

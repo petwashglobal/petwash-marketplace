@@ -38,7 +38,11 @@ const {
 } = await import('../services/StepUpService');
 
 const UID = 'uid_alice';
-const PAYOUT = { operation: 'payout.execute', targetId: 'po_123', amountMinor: 4200 };
+// 2026-09-08: currency joined the binding. An amount-bound proof with no
+// currency is now REFUSED at issue (5000 ILS and 5000 AUD used to share a
+// fingerprint), so every amount-bearing fixture carries one. The invariants
+// these tests pin are unchanged — only the shape of a valid binding is.
+const PAYOUT = { operation: 'payout.execute', targetId: 'po_123', amountMinor: 4200, currency: 'ILS' };
 
 beforeEach(() => {
   redisStore.clear();
