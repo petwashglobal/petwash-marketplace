@@ -57,6 +57,16 @@ const AUDIENCE_MAP: Record<UserTypeIntent, 'public_customer' | 'provider_applica
   staff_request: 'staff_request',
 };
 
+/**
+ * E.164-ish comparison key. Both sides of every comparison go through it, so
+ * formatting never reads as a different subscriber. Mirrors the helper in
+ * onboarding-verification.ts.
+ */
+function normalisePhoneKey(p: string | null | undefined): string {
+  const digits = (p ?? '').trim().replace(/[^\d]/g, '');
+  return digits ? `+${digits}` : '';
+}
+
 router.post('/complete-registration', async (req: Request, res: Response) => {
   const traceId = crypto.randomUUID().slice(0, 8);
 
@@ -110,6 +120,19 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     if (!smsCheck.valid) {
       logger.warn('[CompleteRegistration] Invalid SMS verification token', { traceId });
       return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
+    }
+    // SUBJECT BINDING (2026-09-08). The email side has always compared the
+    // token's subject to the submitted address; the phone side did not, so a
+    // valid proof for the CALLER'S OWN number authorised registering a row
+    // against any phone number in the body. A proof is about one contact —
+    // check it is the contact being used.
+    if (normalisePhoneKey(smsCheck.phone) !== normalisePhoneKey(phone)) {
+      logger.warn('[CompleteRegistration] phone did not match sms-token subject', { traceId });
+      return res.status(400).json({
+        success: false,
+        code: 'CONTACT_MISMATCH',
+        message: 'phone does not match the verified mobile number',
+      });
     }
 
     const membershipNumber = await generateMembershipId(MEMBERSHIP_CLASS[userType]);
@@ -269,6 +292,19 @@ router.post('/send-welcome-email', async (req: Request, res: Response) => {
     const smsCheck = twilioSMSService.validateVerificationToken(smsToken);
     if (!smsCheck.valid) {
       return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
+    }
+    // Same binding as above whenever the caller names a phone. The recipient
+    // address is already pinned to the email token's subject, so the blast
+    // radius here was never "mail anyone" — but an unbound proof is still an
+    // unbound proof.
+    const claimedPhone = typeof (req.body as any)?.phone === 'string' ? (req.body as any).phone : null;
+    if (claimedPhone && normalisePhoneKey(smsCheck.phone) !== normalisePhoneKey(claimedPhone)) {
+      logger.warn('[SendWelcomeEmail] phone did not match sms-token subject', { traceId });
+      return res.status(400).json({
+        success: false,
+        code: 'CONTACT_MISMATCH',
+        message: 'phone does not match the verified mobile number',
+      });
     }
 
     const result = await WelcomeEmailService.sendWelcomeEmail({
