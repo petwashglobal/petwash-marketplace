@@ -329,8 +329,9 @@ export interface DocumentableSale {
  *   • v2 (composite) is used for NEW claims only.
  *   • Recovery ALWAYS prefers the external reference persisted on the claim
  *     (nayaxSaleIssuance.ts) — a v1 claim keeps resolving through its v1
- *     reference forever. `idempotencyKeyForV1` exists so that path stays
- *     expressible and testable, not because anything new should call it.
+ *     reference forever. `legacyIdempotencyKeyForV1` exists so that identity
+ *     stays expressible for verification — it is QUARANTINED, never called by
+ *     any issuance or recovery path.
  *
  * SUMIT does not deduplicate on this value — neither the Idempotency-Key
  * header nor ExternalReference — which is precisely why the claim ledger and
@@ -359,11 +360,31 @@ export function idempotencyKeyFor(
 }
 
 /**
- * The pre-2026-09-08 form, kept ONLY so existing claims and the 481 already
- * issued remain resolvable. Never use it for a new claim.
+ * LEGACY, pre-2026-09-08. QUARANTINED — do not call from any issuance or
+ * recovery path.
+ *
+ * @deprecated Superseded by the composite {@link idempotencyKeyFor}. Retained
+ * only so the v1 identity stays expressible for verification and tests.
+ *
+ * Production recovery does NOT need this. migration 0148 declares
+ * `external_reference` NOT NULL, so every claim already carries its own
+ * historical identity, and nayaxSaleIssuance.ts uses exactly that persisted
+ * value. Regenerating a v1 reference is therefore never the right answer: if a
+ * claim's reference were ever missing, silently rebuilding a guess would be
+ * worse than failing, because the guess could resolve to a DIFFERENT document
+ * than the one that claim actually produced.
+ *
+ * nayaxLegacyKeyQuarantine.regression.test.ts pins that no production path
+ * calls it.
  */
-export function idempotencyKeyForV1(transactionId: string | number): string {
-  return `nayax-bay:${transactionId}`;
+export function legacyIdempotencyKeyForV1(transactionId: string | number): string {
+  // Validated like the composite form — a legacy identity containing
+  // "undefined" is no less dangerous for being legacy.
+  const t = String(transactionId ?? '').trim();
+  if (!t || t === 'undefined' || t === 'null') {
+    throw new Error('legacyIdempotencyKeyForV1: refusing to build a v1 identity without a transaction id');
+  }
+  return `nayax-bay:${t}`;
 }
 
 /**

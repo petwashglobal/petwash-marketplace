@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  selectDocumentableSales, issuanceBlockers, isIssuable, idempotencyKeyFor, idempotencyKeyForV1,
+  selectDocumentableSales, issuanceBlockers, isIssuable, idempotencyKeyFor, legacyIdempotencyKeyForV1,
   buildReceiptInput, applyFiscalCutover, type DocumentableSale,
 } from '../services/nayaxSumitBridge';
 
@@ -86,7 +86,7 @@ describe('prepaid / Monyx redemption — already ours, never re-documented', () 
 });
 
 describe('idempotency — replay must never produce a second document', () => {
-  it('derives the key from the Nayax transaction id alone', () => {
+  it('derives issuance identity from machine + Nayax transaction id', () => {
     // COMPOSITE since 2026-09-08 — machine is part of the identity, matching
     // migration 0148's unique index on (machine_id, nayax_transaction_id).
     expect(idempotencyKeyFor('182443', '2207959160')).toBe('nayax-bay:182443:2207959160');
@@ -101,9 +101,12 @@ describe('idempotency — replay must never produce a second document', () => {
     expect(idempotencyKeyFor('182443', '999')).not.toBe(idempotencyKeyFor('182462', '999'));
 
     // v1 stays expressible so the 481 already issued (#10002–#10482) and any
-    // existing claim remain resolvable. Nothing new may use it.
-    expect(idempotencyKeyForV1('2207959160')).toBe('nayax-bay:2207959160');
-    expect(idempotencyKeyFor('182443', '2207959160')).not.toBe(idempotencyKeyForV1('2207959160'));
+    // existing claim remain verifiable. It is QUARANTINED — see
+    // nayaxLegacyKeyQuarantine.regression.test.ts — and validates its input
+    // too, because a legacy identity containing "undefined" is no less
+    // dangerous for being legacy.
+    expect(legacyIdempotencyKeyForV1('2207959160')).toBe('nayax-bay:2207959160');
+    expect(idempotencyKeyFor('182443', '2207959160')).not.toBe(legacyIdempotencyKeyForV1('2207959160'));
   });
 
   it('gives a replayed transaction the identical key', () => {

@@ -63,7 +63,7 @@ describe('nayaxSumitBridge.selectDocumentableSales (2026-07-11)', () => {
 });
 
 describe('nayaxSumitBridge idempotency + SUMIT input (2026-07-11)', () => {
-  it('idempotency key is deterministic per Nayax transaction (never double-issues)', () => {
+  it('issuance identity is deterministic per machine + Nayax transaction', () => {
     // Composite (machine + transaction) since 2026-09-08 — see idempotencyKeyFor.
     expect(idempotencyKeyFor(182443, 101)).toBe('nayax-bay:182443:101');
     expect(idempotencyKeyFor('182443', '101')).toBe('nayax-bay:182443:101');
