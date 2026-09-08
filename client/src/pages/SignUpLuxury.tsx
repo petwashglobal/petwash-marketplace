@@ -1592,6 +1592,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     void sendCode();
   }
 
+  // A 2-step account with no mobile number anywhere: password sign-in is refused
+  // on purpose (one-way verification is exactly what this member opted out of),
+  // so this is guidance, not an error to retry. Flipping usePassword off makes
+  // the primary CTA "Email me a one-time code" — the remedy is one tap, and the
+  // member can add a mobile number once they are in.
+  function showNoSecondFactor() {
+    setUsePassword(false);
+    fail(he
+      ? 'כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל, ואז הוסיפו מספר נייד בחשבון.'
+      : 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below, then add a mobile number in your account.');
+  }
+
   // LOGIN (CEO 2026-07-31): returning member signs in with email + password (the
   // Firebase email/password credential set at join). Clear message on bad creds,
   // and a nudge to the code path / join for accounts without a password yet.
@@ -1631,8 +1643,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           return;
         }
         mfaLoginInFlight.current = false;
+        // The gate and this route now share one verdict, so a 428 followed by
+        // MFA_NO_FACTOR means the account lost its number between the two calls.
+        if (sd?.code === 'MFA_NO_FACTOR') { showNoSecondFactor(); return; }
         fail(he ? 'לא ניתן להתחיל אימות דו-שלבי — נסו שוב' : 'Could not start two-step verification — please try again');
         return;
+      }
+      if (r.status === 403) {
+        // Enrolled in 2-step login with no number in either store. Nothing can send
+        // this member a code, so "try again" would be a lie — name the reason and
+        // hand them the one-time-code path, which signs them in AND is itself the
+        // second factor they asked for.
+        const d = await r.json().catch(() => ({} as any));
+        if (d?.errorCode === 'MFA_NO_FACTOR') { mfaLoginInFlight.current = false; showNoSecondFactor(); return; }
       }
       if (!r.ok) { mfaLoginInFlight.current = false; fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
       mfaLoginInFlight.current = false;

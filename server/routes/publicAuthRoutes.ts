@@ -21,6 +21,14 @@ import { ensureUserProvisioned, AuthBootstrapUsersRowFailed } from '../services/
 import { redeemEmailVerifiedToken, type EmailProofRefusal } from '../lib/emailVerifiedToken';
 import type { OneShotRefusal } from '../lib/oneShotProof';
 import { mintMfaLoginToken } from '../lib/mfaLoginToken';
+import {
+  readTwoStepLoginRow,
+  resolveTwoFactorPhone,
+  MFA_NO_FACTOR_CODE,
+  MFA_NO_FACTOR_MESSAGE,
+  TWO_FACTOR_UNAVAILABLE_CODE,
+  TWO_FACTOR_UNAVAILABLE_MESSAGE,
+} from '../lib/twoStepLogin';
 
 /**
  * How a refused email proof is reported to the caller.
@@ -888,6 +896,14 @@ function maskPhoneForHint(p: string): string {
  * phone is read from the account (the client never sees or sends it). Returns
  * { needed:false } when the account did NOT opt in (client proceeds straight to
  * /api/auth/session) — fail-open so a non-2FA user is never blocked.
+ *
+ * An enrolled member with no phone used to get that same { needed:false }. The
+ * intent was fail-open — "cannot challenge; rather that than lock them out" —
+ * but this route does not mint sessions, so it could not open anything: the
+ * session gate answered 428 again on every retry, and the client read the bare
+ * needed:false as a failure. Both verdicts now come from server/lib/twoStepLogin,
+ * so the gate and this route state the same thing about the same member, and
+ * "no phone on file" is a claim about BOTH stores rather than about Postgres.
  */
 publicAuthRouter.post("/api/auth/login/2fa/start", apiLimiter, async (req, res) => {
   try {
@@ -896,13 +912,26 @@ publicAuthRouter.post("/api/auth/login/2fa/start", apiLimiter, async (req, res) 
     let uid: string;
     try { uid = (await fbAdminAuth.verifyIdToken(idToken, true)).uid; }
     catch { return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' }); }
-    const { rows } = await pool.query('SELECT phone, two_factor_enabled FROM users WHERE id = $1', [uid]);
-    const row = rows[0];
-    if (!row || row.two_factor_enabled !== true) return res.json({ ok: true, needed: false });
-    const phone: string | null = row.phone;
-    // Opted in but no phone on file → cannot challenge; fail open to password-only
-    // rather than lock them out (they can add/verify a phone later).
-    if (!phone) return res.json({ ok: true, needed: false, reason: 'no_phone' });
+    const row = await readTwoStepLoginRow(uid);
+    if (row.status === 'unknown') {
+      return res.status(503).json({ ok: false, code: TWO_FACTOR_UNAVAILABLE_CODE, error: TWO_FACTOR_UNAVAILABLE_MESSAGE });
+    }
+    if (row.status === 'not_enrolled') return res.json({ ok: true, needed: false });
+    const resolved = await resolveTwoFactorPhone(uid, row.pgPhone);
+    if (resolved.status === 'unresolved') {
+      // Could not establish whether a number exists. Guessing "none" here is the
+      // silent downgrade; refuse visibly and let the member retry instead.
+      logger.warn('[Login2FA] phone unresolved — refusing rather than guessing', { uid, reason: resolved.reason });
+      return res.status(503).json({ ok: false, code: TWO_FACTOR_UNAVAILABLE_CODE, error: TWO_FACTOR_UNAVAILABLE_MESSAGE });
+    }
+    if (resolved.status === 'none') {
+      // Established: enrolled, and neither store holds a number. Say so with the
+      // code the session gate uses, so the client sees ONE verdict and can offer
+      // the path that works, instead of a "try again" that never can.
+      logger.warn('[Login2FA] enrolled with no challengeable phone', { uid });
+      return res.status(403).json({ ok: false, needed: false, code: MFA_NO_FACTOR_CODE, error: MFA_NO_FACTOR_MESSAGE });
+    }
+    const phone = resolved.phone;
     const send = await twilioSMSService.sendVerificationCode(phone, language || 'he', req.ip);
     if (!send?.success) return res.status(502).json({ ok: false, error: send?.message || 'Could not send the code — try again.' });
     return res.json({ ok: true, needed: true, phoneHint: maskPhoneForHint(phone) });
@@ -924,9 +953,17 @@ publicAuthRouter.post("/api/auth/login/2fa/verify", apiLimiter, async (req, res)
     let uid: string;
     try { uid = (await fbAdminAuth.verifyIdToken(idToken, true)).uid; }
     catch { return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' }); }
-    const { rows } = await pool.query('SELECT phone FROM users WHERE id = $1', [uid]);
-    const phone: string | null = rows[0]?.phone;
-    if (!phone) return res.status(400).json({ ok: false, error: 'No phone on file for verification.' });
+    // Resolve exactly as /2fa/start did — verifyCode is keyed by the number the
+    // code was SENT to, so reading a different store here would reject a correct
+    // code for a member whose number lives only on their Firebase record.
+    const resolved = await resolveTwoFactorPhone(uid);
+    if (resolved.status === 'unresolved') {
+      return res.status(503).json({ ok: false, code: TWO_FACTOR_UNAVAILABLE_CODE, error: TWO_FACTOR_UNAVAILABLE_MESSAGE });
+    }
+    if (resolved.status === 'none') {
+      return res.status(403).json({ ok: false, code: MFA_NO_FACTOR_CODE, error: MFA_NO_FACTOR_MESSAGE });
+    }
+    const phone = resolved.phone;
     const chk = await twilioSMSService.verifyCode(phone, String(code), language || 'he');
     if (!chk?.success) return res.status(401).json({ ok: false, error: chk?.message || 'Invalid code' });
     return res.json({ ok: true, mfaToken: mintMfaLoginToken(uid) });
