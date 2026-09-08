@@ -40,18 +40,22 @@ export const TWO_FACTOR_UNAVAILABLE_CODE = 'TWO_FACTOR_UNAVAILABLE' as const;
  * English only, deliberately: the client owns the Hebrew/English copy and keys
  * it off the code above. This is the fallback for any caller that does not.
  *
- * It offers ONLY the one-time code, and deliberately does not tell the member to
- * add a mobile number afterwards. Self-service phone-add is not reachable today:
- * `/api/user/settings/phone/request-change` is gated on
- * UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED, which production does not set (the
- * Cloud Run deploy sets only _ENABLED/_SIGNUP/_LOGIN), so it answers 503
- * CHANGE_PHONE_DISABLED — and no client screen calls it in any case. Naming a
- * remedy the member cannot perform is the same fault this module exists to fix,
- * one step further along. Restore the second sentence when that flow is live.
+ * The second sentence names a remedy that is REACHABLE, and that was checked
+ * rather than assumed. My Account renders a Phone Number section whose button
+ * reads "Verify" when none is set; it runs the Firebase SMS OTP and confirms
+ * through POST /api/user/settings/phone/confirm-verification, which carries no
+ * feature flag and is mounted at /api/user in production.
+ *
+ * NOT the same thing as /api/user/settings/phone/request-change — that is a
+ * second, server-driven mechanism, and it is genuinely unreachable (no client
+ * screen calls it, and production never sets
+ * UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED, so it answers 503). Checking only
+ * that pair and concluding "phone-add is impossible" is a mistake already made
+ * once here; the wired path is the Firebase one.
  */
 export const MFA_NO_FACTOR_MESSAGE =
   'Two-step login is on for this account, but there is no mobile number to send a code to. '
-  + 'Sign in with a one-time code instead.';
+  + 'Sign in with a one-time code, then add a mobile number under Phone Number in My Account.';
 
 export const TWO_FACTOR_UNAVAILABLE_MESSAGE =
   'Two-step verification is temporarily unavailable — please try again.';

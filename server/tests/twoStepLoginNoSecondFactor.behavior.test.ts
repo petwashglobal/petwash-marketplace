@@ -304,20 +304,35 @@ describe('the client turns the refusal into the path that works', () => {
     expect(helper![0]).not.toMatch(/try again|נסו שוב/);
   });
 
-  it('names ONLY a remedy the member can actually perform', async () => {
-    // An earlier draft of this very fix said "then add a mobile number in your
-    // account". A member cannot: no screen calls
-    // /api/user/settings/phone/request-change, and production does not set
-    // UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED, so it answers 503. Replacing a
-    // retry that cannot succeed with an instruction that cannot be followed is
-    // the same fault one step along. Restore this only with the flow live.
+  it('names a remedy that is actually wired, end to end', async () => {
+    // This pin exists because the check was once SKIPPED. An earlier revision
+    // of this fix deleted the phone-add sentence after finding
+    // /api/user/settings/phone/request-change unwired and flag-off in prod —
+    // without noticing that a SECOND, unflagged path is wired and live. Naming
+    // an unreachable step and deleting a reachable one are the same error:
+    // asserting reachability without establishing it. So assert the chain.
     const { MFA_NO_FACTOR_MESSAGE } = await import('../lib/twoStepLogin');
     const helper = /function showNoSecondFactor\(\)[\s\S]*?\n  \}/.exec(clientSrc)![0];
-    for (const copy of [MFA_NO_FACTOR_MESSAGE, helper]) {
-      expect(copy).not.toMatch(/add a mobile number|הוסיפו מספר נייד/);
-    }
-    // What it DOES say is the path that works, and that path is real.
+
+    // 1. Both messages offer the one-time code — the path that signs them in.
     expect(MFA_NO_FACTOR_MESSAGE).toMatch(/one-time code/);
     expect(helper).toMatch(/קוד חד-פעמי/);
-  });
-});
+
+    // 2. Both point at Phone Number in My Account for the number itself...
+    expect(MFA_NO_FACTOR_MESSAGE).toMatch(/Phone Number in My Account/);
+    expect(helper).toMatch(/מספר טלפון/);
+
+    // 3. ...and that screen really offers it: a Phone Number section that says
+    //    "Verify" when none is set, confirming through the UNFLAGGED route.
+    const myAccount = readFileSync(join(ROOT, 'client/src/pages/MyAccount.tsx'), 'utf8');
+    expect(myAccount).toMatch(/setShowPhoneVerifyDialog\(true\)/);
+    expect(myAccount).toMatch(/'\/api\/user\/settings\/phone\/confirm-verification'/);
+
+    // 4. And that route is not behind a verification flag. If someone gates it,
+    //    the promise above becomes a 503 and this pin says so.
+    const settings = readFileSync(join(ROOT, 'server/routes/profile-settings.ts'), 'utf8');
+    const from = settings.indexOf("router.post('/settings/phone/confirm-verification'");
+    expect(from).toBeGreaterThan(-1);
+    const handler = settings.slice(from, settings.indexOf("\nrouter.", from + 1));
+    expect(handler).not.toMatch(/isUnifiedVerification\w*Enabled\(/);
+  });});

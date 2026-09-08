@@ -1598,17 +1598,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // the primary CTA "Email me a one-time code" — the remedy is one tap, on a
   // button already enabled because they just typed their email.
   //
-  // It stops there on purpose. An earlier draft added "then add a mobile number
-  // in your account", which the member cannot do: no screen calls
-  // /api/user/settings/phone/request-change, and in production it answers 503
-  // because UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED is not set. Telling
-  // someone to take a step that does not exist is the same fault as the retry
-  // loop this replaced. Add that sentence back when the flow is wired and on.
+  // Both halves of the message were checked before being written. The one-time
+  // code signs them in; and once in, My Account's Phone Number section offers
+  // "Verify" when none is set, running the Firebase SMS OTP and confirming via
+  // POST /api/user/settings/phone/confirm-verification — no feature flag, live
+  // in production. (The OTHER phone route, /settings/phone/request-change, is
+  // unwired and flag-off; do not read a check of that one as evidence about
+  // this one.) Never name a step here without confirming a member can take it.
   function showNoSecondFactor() {
     setUsePassword(false);
     fail(he
-      ? 'כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל.'
-      : 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below.');
+      ? 'כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל, ואז הוסיפו מספר נייד ב"החשבון שלי" תחת "מספר טלפון".'
+      : 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below, then add a mobile number under Phone Number in My Account.');
   }
 
   // LOGIN (CEO 2026-07-31): returning member signs in with email + password (the
