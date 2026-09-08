@@ -1924,6 +1924,12 @@ if (isProduction) {
         // Would have caught the 2026-06-17 DB DEGRADED incident. No paid vendor.
         const { startHealthWatchdogCron } = await import('./cron/health-watchdog');
         startHealthWatchdogCron();
+        // Fiscal control: daily Nayax↔SUMIT integrity over the claim ledger,
+        // monthly report on the 1st, every run recorded to
+        // fiscal_watchdog_runs. Emails only on critical/stale/monthly — a daily
+        // all-clear to four inboxes is how a real CRITICAL gets skimmed past.
+        const { startFiscalWatchdog } = await import('./cron/fiscal-watchdog');
+        startFiscalWatchdog();
         const { startMonthlySettlementsCron } = await import('./cron/monthly-settlements');
         startMonthlySettlementsCron();
         const { startWinbackCron } = await import('./cron/winback');
