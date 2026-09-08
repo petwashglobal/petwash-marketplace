@@ -176,6 +176,11 @@ jobs:
       - name: Gate — wallet authority vocabulary matches the seeded bands
         run: python3 scripts/guards/wallet_authority_vocabulary.py --fail
 
+      # A suite that is not in the gate protects nothing, and a path that does
+      # not exist shrinks the gate silently — vitest reports success either way.
+      - name: Gate — the money gate runs every file it lists
+        run: python3 scripts/guards/money_gate_covers_its_files.py --fail
+
   gate-smoke-test-startup:
     name: Gate — routes.ts module-load smoke test
     runs-on: ubuntu-latest
