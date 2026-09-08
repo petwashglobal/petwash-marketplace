@@ -12,6 +12,7 @@ import {
 } from '../lib/financial-approvals';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
+import { logger } from '../lib/logger';
 
 const router = Router();
 
@@ -371,13 +372,23 @@ router.get('/queue', async (req: Request, res: Response) => {
 router.post('/approve', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
     const {
-      case_type, case_ref_id, action_type, amount_cents,
+      case_type, case_ref_id, action_type, amount_cents: assertedAmountCents,
       owner_scope = 'global', owner_id = null, note = null,
     } = req.body;
 
-    if (!case_type || !case_ref_id || !action_type || amount_cents === undefined) {
-      return res.status(400).json({ error: 'case_type, case_ref_id, action_type, amount_cents required' });
+    if (!case_type || !case_ref_id || !action_type) {
+      return res.status(400).json({ error: 'case_type, case_ref_id, action_type required' });
     }
+
+    // Derive from the pending request the server itself recorded.
+    const canonical = await canonicalPendingApprovalAmountCents(case_type, case_ref_id, action_type);
+    if (!canonical.ok) {
+      return res.status(canonical.status).json({ error: canonical.error, code: canonical.code });
+    }
+    const amount_cents = canonical.amountCents;
+    if (!assertClientAmountMatches(assertedAmountCents, amount_cents, res, {
+      route: 'approve', caseType: case_type, caseRefId: case_ref_id,
+    })) return;
 
     const actingRole = getActingRole(req);
     const actingUid = getActingUid(req);
@@ -537,13 +548,112 @@ router.post('/reject', requireFinancialAdmin, async (req: Request, res: Response
 // T164 — Payout release gate
 // ---------------------------------------------------------------------------
 
+
+/**
+ * THE AMOUNT DECIDES THE AUTHORITY, SO THE CLIENT MUST NOT SUPPLY IT.
+ *
+ * getApprovalRule() picks which approval band applies with
+ *
+ *     min_amount_cents <= :amount AND (max_amount_cents IS NULL OR max_amount_cents >= :amount)
+ *
+ * so the amount does not merely get recorded — it SELECTS THE RULE that
+ * decides whether the acting role has authority and whether a second approval
+ * is required. Both handlers below took `amount_cents` from the request body
+ * and passed it straight into checkFinancialAuthority(). Declaring
+ * `amount_cents: 1` on a ₪500,000 settlement selected the lowest band and
+ * could clear a release that should have required a second approver.
+ *
+ * These resolve the figure from the server's own record instead. A supplied
+ * amount is still accepted, but only as an ASSERTION to be checked: if it
+ * disagrees with the canonical value the request is refused rather than
+ * silently corrected, because a disagreement is either tampering or a stale
+ * screen and an operator needs to see which.
+ */
+type CanonicalAmount =
+  | { ok: true; amountCents: number }
+  | { ok: false; status: number; error: string; code: string };
+
+async function canonicalSettlementAmountCents(settlementId: unknown): Promise<CanonicalAmount> {
+  const row = await db.execute(sql`
+    SELECT station_amount_cents FROM station_settlements WHERE id = ${settlementId} LIMIT 1
+  `);
+  const found = row.rows?.[0] as { station_amount_cents?: number } | undefined;
+  if (!found) {
+    return { ok: false, status: 404, error: 'Settlement not found', code: 'SETTLEMENT_NOT_FOUND' };
+  }
+  const amountCents = Number(found.station_amount_cents ?? 0);
+  if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
+    return { ok: false, status: 409, error: 'Settlement has no usable payout amount', code: 'SETTLEMENT_AMOUNT_INVALID' };
+  }
+  return { ok: true, amountCents };
+}
+
+/**
+ * For /approve the canonical figure is the PENDING approval row the server
+ * itself wrote when the action was requested. The admin screen populates
+ * `amount_cents` from a queue item served out of that same table, so the
+ * legitimate flow already agrees with it — and approving something with no
+ * pending request is refused outright, which is the bypass itself.
+ */
+async function canonicalPendingApprovalAmountCents(
+  caseType: unknown, caseRefId: unknown, actionType: unknown,
+): Promise<CanonicalAmount> {
+  const row = await db.execute(sql`
+    SELECT amount_cents FROM financial_approval_log
+    WHERE case_type = ${caseType} AND case_ref_id = ${String(caseRefId)}
+      AND action_type = ${actionType} AND status = 'pending'
+    ORDER BY created_at DESC LIMIT 1
+  `);
+  const found = row.rows?.[0] as { amount_cents?: number } | undefined;
+  if (!found) {
+    return {
+      ok: false, status: 404,
+      error: 'No pending approval request for this case — nothing to approve',
+      code: 'NO_PENDING_APPROVAL',
+    };
+  }
+  const amountCents = Number(found.amount_cents ?? 0);
+  if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
+    return { ok: false, status: 409, error: 'Pending approval has no usable amount', code: 'PENDING_AMOUNT_INVALID' };
+  }
+  return { ok: true, amountCents };
+}
+
+/** A supplied amount is an assertion. Refuse the request when it is wrong. */
+function assertClientAmountMatches(
+  supplied: unknown, canonicalCents: number, res: Response, context: Record<string, unknown>,
+): boolean {
+  if (supplied === undefined || supplied === null) return true;
+  const asNumber = Number(supplied);
+  if (asNumber === canonicalCents) return true;
+  logger.error('[FinancialApprovals] client amount disagrees with the canonical amount', {
+    ...context, suppliedCents: asNumber, canonicalCents,
+  });
+  res.status(409).json({
+    error: 'Amount does not match the current record — reload and try again',
+    code: 'AMOUNT_MISMATCH',
+    canonicalAmountCents: canonicalCents,
+  });
+  return false;
+}
+
 // POST /api/financial-approvals/payout-release-gate
 router.post('/payout-release-gate', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
-    const { settlement_id, amount_cents, owner_scope = 'global', owner_id = null } = req.body;
-    if (!settlement_id || amount_cents === undefined) {
-      return res.status(400).json({ error: 'settlement_id and amount_cents required' });
+    const { settlement_id, amount_cents: assertedAmountCents, owner_scope = 'global', owner_id = null } = req.body;
+    if (!settlement_id) {
+      return res.status(400).json({ error: 'settlement_id required' });
     }
+
+    // Derive the figure from the settlement. Never from the body.
+    const canonical = await canonicalSettlementAmountCents(settlement_id);
+    if (!canonical.ok) {
+      return res.status(canonical.status).json({ error: canonical.error, code: canonical.code });
+    }
+    const amount_cents = canonical.amountCents;
+    if (!assertClientAmountMatches(assertedAmountCents, amount_cents, res, {
+      route: 'payout-release-gate', settlementId: settlement_id,
+    })) return;
 
     const actingRole = getActingRole(req);
     const actingUid = getActingUid(req);
