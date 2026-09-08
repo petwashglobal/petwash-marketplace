@@ -51,8 +51,38 @@ describe("a financial authority decision never uses a client-supplied amount", (
     expect(gate).toContain("canonicalSettlementAmountCents");
   });
 
-  it("approve derives the amount from the pending approval record", () => {
-    expect(approve).toContain("canonicalPendingApprovalAmountCents");
+  /**
+   * CORRECTED. The first version of this pin asserted that /approve should
+   * derive its amount from the pending financial_approval_log row. That was
+   * wrong twice: the log is EVIDENCE OF A DECISION, not a money source (and
+   * before this fix the server wrote caller-supplied amounts into it), and
+   * /queue LEFT JOINs it — it is legitimately absent for a first approval, so
+   * requiring one would have broken the normal flow.
+   */
+  it("approve resolves every authority fact from the business object", () => {
+    expect(approve).toContain("resolveCanonicalFinancialAction");
+    expect(approve).not.toContain("canonicalPendingApprovalAmountCents");
+  });
+
+  it("the approval log is never read as an authority input", () => {
+    const resolver = src.slice(
+      src.indexOf("export async function resolveCanonicalFinancialAction"),
+      src.indexOf("function assertClientAmountMatches"),
+    );
+    expect(resolver).not.toContain("financial_approval_log");
+  });
+
+  it("owner scope and id are derived, not destructured from the body", () => {
+    expect(approve).toContain("canonicalAction.ownerScope");
+    expect(approve).toContain("canonicalAction.ownerId");
+    const gateOwner = gate.slice(0, gate.indexOf("checkFinancialAuthority"));
+    expect(gateOwner).not.toMatch(/owner_scope\s*=\s*'global'\s*,\s*owner_id\s*=\s*null\s*\}\s*=\s*req\.body/);
+  });
+
+  it("a payout batch is never reinterpreted as a station settlement id", () => {
+    const exec = src.slice(src.indexOf("async function executeFinancialAction"));
+    expect(exec).not.toContain("parseInt(caseRefId");
+    expect(exec).toContain("sourceTable !== 'station_settlements'");
   });
 
   it("neither destructures a trusted `amount_cents` straight out of the body", () => {
@@ -72,8 +102,8 @@ describe("a financial authority decision never uses a client-supplied amount", (
     expect(src).toContain("res.status(409)");
   });
 
-  it("approving with no pending request is refused outright", () => {
-    expect(src).toContain("NO_PENDING_APPROVAL");
+  it("an unresolvable case/action pair is refused rather than evaluated", () => {
+    expect(src).toContain("UNSUPPORTED_FINANCIAL_ACTION");
   });
 
   it("the authority call receives the derived value in both handlers", () => {
@@ -82,7 +112,7 @@ describe("a financial authority decision never uses a client-supplied amount", (
       expect(call.slice(0, 200), `${name} passes something other than the derived amount`)
         .toContain("amount_cents");
       // and the derived constant is what that identifier now holds
-      expect(h).toContain("const amount_cents = canonical.amountCents");
+      expect(h).toMatch(/const amount_cents = canonical(Action)?\.amountCents/);
     }
   });
 });

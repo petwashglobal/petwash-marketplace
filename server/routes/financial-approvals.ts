@@ -373,19 +373,22 @@ router.post('/approve', requireFinancialAdmin, async (req: Request, res: Respons
   try {
     const {
       case_type, case_ref_id, action_type, amount_cents: assertedAmountCents,
-      owner_scope = 'global', owner_id = null, note = null,
+      note = null,
+      // owner_scope / owner_id are deliberately NOT destructured. They are
+      // rule-selection inputs and are derived from the canonical record below.
     } = req.body;
 
     if (!case_type || !case_ref_id || !action_type) {
       return res.status(400).json({ error: 'case_type, case_ref_id, action_type required' });
     }
 
-    // Derive from the pending request the server itself recorded.
-    const canonical = await canonicalPendingApprovalAmountCents(case_type, case_ref_id, action_type);
-    if (!canonical.ok) {
-      return res.status(canonical.status).json({ error: canonical.error, code: canonical.code });
+    // Every authority-relevant fact comes from the business object.
+    const resolved = await resolveCanonicalFinancialAction(case_type, case_ref_id, action_type);
+    if (!resolved.ok) {
+      return res.status(resolved.status).json({ error: resolved.error, code: resolved.code });
     }
-    const amount_cents = canonical.amountCents;
+    const canonicalAction = resolved.action;
+    const amount_cents = canonicalAction.amountCents;
     if (!assertClientAmountMatches(assertedAmountCents, amount_cents, res, {
       route: 'approve', caseType: case_type, caseRefId: case_ref_id,
     })) return;
@@ -393,8 +396,12 @@ router.post('/approve', requireFinancialAdmin, async (req: Request, res: Respons
     const actingRole = getActingRole(req);
     const actingUid = getActingUid(req);
 
+    // owner scope/id come from the canonical record, NOT the body. They select
+    // the rule too — an owner-specific rule beats a global one — so a caller
+    // who can send 'global' could step around a stricter owner rule.
     const decision = await checkFinancialAuthority(
-      case_type, action_type, amount_cents, actingRole, owner_scope, owner_id
+      canonicalAction.caseType, canonicalAction.actionType, amount_cents,
+      actingRole, canonicalAction.ownerScope, canonicalAction.ownerId,
     );
 
     if (!decision.allowed) {
@@ -415,13 +422,15 @@ router.post('/approve', requireFinancialAdmin, async (req: Request, res: Respons
       return;
     }
 
+    // The log records the canonical facts the decision was made on — it is the
+    // OUTPUT of the authority decision, never an input to a later one.
     const logId = await logFinancialApproval({
-      case_type,
-      case_ref_id,
-      action_type,
+      case_type: canonicalAction.caseType,
+      case_ref_id: canonicalAction.caseRefId,
+      action_type: canonicalAction.actionType,
       amount_cents,
-      owner_scope,
-      owner_id,
+      owner_scope: canonicalAction.ownerScope,
+      owner_id: canonicalAction.ownerId,
       requested_by_uid: actingUid,
       approved_by_uid: actingUid,
       approval_rule_id: decision.matchedRule?.id ?? null,
@@ -431,7 +440,7 @@ router.post('/approve', requireFinancialAdmin, async (req: Request, res: Respons
 
     // If approved and no second approval required, execute the underlying action
     if (status === 'approved') {
-      await executeFinancialAction(case_type, case_ref_id, action_type, actingUid, logId);
+      await executeFinancialAction(canonicalAction, actingUid, logId);
     }
 
     return res.json({
@@ -495,7 +504,32 @@ router.post('/second-approve/:logId', requireFinancialAdmin, async (req: Request
       WHERE id = ${logId}
     `);
 
-    await executeFinancialAction(logRow.case_type, logRow.case_ref_id, logRow.action_type, actingUid, logId);
+    // Second approval re-resolves from the business object rather than trusting
+    // the log row it is approving. The log records what was decided; the object
+    // says what is true NOW — and between first and second approval the amount
+    // or state may have moved.
+    const resolvedSecond = await resolveCanonicalFinancialAction(
+      logRow.case_type, logRow.case_ref_id, logRow.action_type,
+    );
+    if (!resolvedSecond.ok) {
+      logger.error('[FinancialApprovals] second approval could not re-resolve the canonical action', {
+        logId, caseType: logRow.case_type, caseRefId: logRow.case_ref_id, code: resolvedSecond.code,
+      });
+      return res.status(resolvedSecond.status).json({ error: resolvedSecond.error, code: resolvedSecond.code });
+    }
+    if (resolvedSecond.action.amountCents !== Number(logRow.amount_cents ?? 0)) {
+      logger.error('[FinancialApprovals] amount moved between first and second approval', {
+        logId, approvedCents: Number(logRow.amount_cents ?? 0),
+        canonicalCents: resolvedSecond.action.amountCents,
+      });
+      return res.status(409).json({
+        error: 'The amount changed since the first approval — re-request approval',
+        code: 'AMOUNT_CHANGED_SINCE_APPROVAL',
+        canonicalAmountCents: resolvedSecond.action.amountCents,
+      });
+    }
+
+    await executeFinancialAction(resolvedSecond.action, actingUid, logId);
 
     return res.json({ logId, status: 'approved', message: 'Second approval granted and executed' });
   } catch (err: any) {
@@ -595,28 +629,114 @@ async function canonicalSettlementAmountCents(settlementId: unknown): Promise<Ca
  * legitimate flow already agrees with it — and approving something with no
  * pending request is refused outright, which is the bypass itself.
  */
-async function canonicalPendingApprovalAmountCents(
+/**
+ * THE CANONICAL FINANCIAL ACTION.
+ *
+ * Every fact that selects an approval rule is derived HERE, from the business
+ * object itself — never from the request body.
+ *
+ * getApprovalRule() chooses a rule by (case_type, action_type, owner_scope,
+ * owner_id, amount), preferring an owner-specific rule over a global one. So
+ * the amount is not the only authority input the caller was choosing: the
+ * ownership context and the action identity select the rule too. A caller who
+ * can send `owner_scope: 'global'` can step around a stricter owner-specific
+ * rule, and a caller who can send a different `action_type` can ask to have a
+ * payout evaluated as some cheaper action.
+ *
+ * WHY NOT financial_approval_log. An earlier version of this patch derived the
+ * amount from the pending approval-log row. That was wrong twice over. The log
+ * is EVIDENCE OF A DECISION, not a money source — and before this fix the
+ * server wrote caller-supplied amounts into it, so yesterday's tainted row
+ * would have become today's authority. It is also LEFT JOINed by /queue and is
+ * legitimately absent for first approvals, so requiring one would have broken
+ * the normal flow outright.
+ *
+ * The log is the OUTPUT of an authority decision. It is never an input.
+ */
+interface CanonicalFinancialAction {
+  caseType: string;
+  actionType: string;
+  caseRefId: string;
+  amountCents: number;
+  currency: string;
+  ownerScope: string;
+  ownerId: string | null;
+  currentState: string | null;
+  /** Which table the facts came from — the executor needs this, see below. */
+  sourceTable: 'refund_approvals' | 'payout_batches' | 'booking_disputes' | 'station_settlements';
+  sourceRecordId: string;
+}
+
+type Resolved =
+  | { ok: true; action: CanonicalFinancialAction }
+  | { ok: false; status: number; error: string; code: string };
+
+export async function resolveCanonicalFinancialAction(
   caseType: unknown, caseRefId: unknown, actionType: unknown,
-): Promise<CanonicalAmount> {
-  const row = await db.execute(sql`
-    SELECT amount_cents FROM financial_approval_log
-    WHERE case_type = ${caseType} AND case_ref_id = ${String(caseRefId)}
-      AND action_type = ${actionType} AND status = 'pending'
-    ORDER BY created_at DESC LIMIT 1
-  `);
-  const found = row.rows?.[0] as { amount_cents?: number } | undefined;
-  if (!found) {
-    return {
-      ok: false, status: 404,
-      error: 'No pending approval request for this case — nothing to approve',
-      code: 'NO_PENDING_APPROVAL',
-    };
+): Promise<Resolved> {
+  const ref = String(caseRefId ?? '');
+  const ct = String(caseType ?? '');
+  const at = String(actionType ?? '');
+
+  const unresolved = (code: string, error: string, status = 404): Resolved =>
+    ({ ok: false, status, error, code });
+
+  // The (caseType, actionType) pair is validated by being resolvable at all:
+  // an unknown or mismatched pair falls through to UNSUPPORTED below, so a
+  // caller cannot relabel one operation as another to reach an easier rule.
+  if (ct === 'refund' && at === 'approve') {
+    const r = await db.execute(sql`
+      SELECT refund_request_id, amount_cents, status
+      FROM refund_approvals WHERE refund_request_id = ${ref} LIMIT 1
+    `);
+    const row = r.rows?.[0] as any;
+    if (!row) return unresolved('REFUND_NOT_FOUND', 'Refund request not found');
+    if (row.status !== 'pending') {
+      return unresolved('REFUND_NOT_PENDING', `Refund is '${row.status}', not pending`, 409);
+    }
+    return { ok: true, action: {
+      caseType: ct, actionType: at, caseRefId: ref,
+      amountCents: Number(row.amount_cents ?? 0), currency: 'ILS',
+      ownerScope: 'global', ownerId: null, currentState: row.status,
+      sourceTable: 'refund_approvals', sourceRecordId: String(row.refund_request_id),
+    } };
   }
-  const amountCents = Number(found.amount_cents ?? 0);
-  if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
-    return { ok: false, status: 409, error: 'Pending approval has no usable amount', code: 'PENDING_AMOUNT_INVALID' };
+
+  if (ct === 'payout_release' && at === 'release') {
+    // /queue emits payout_batches.batch_id as caseRefId for this pair.
+    const r = await db.execute(sql`
+      SELECT batch_id, total_net_cents, status
+      FROM payout_batches WHERE batch_id = ${ref} LIMIT 1
+    `);
+    const row = r.rows?.[0] as any;
+    if (!row) return unresolved('PAYOUT_BATCH_NOT_FOUND', 'Payout batch not found');
+    return { ok: true, action: {
+      caseType: ct, actionType: at, caseRefId: ref,
+      amountCents: Number(row.total_net_cents ?? 0), currency: 'ILS',
+      ownerScope: 'global', ownerId: null, currentState: row.status,
+      sourceTable: 'payout_batches', sourceRecordId: String(row.batch_id),
+    } };
   }
-  return { ok: true, amountCents };
+
+  if (ct === 'dispute_close' && at === 'approve') {
+    const r = await db.execute(sql`
+      SELECT id, status FROM booking_disputes WHERE id = ${ref} LIMIT 1
+    `);
+    const row = r.rows?.[0] as any;
+    if (!row) return unresolved('DISPUTE_NOT_FOUND', 'Dispute not found');
+    return { ok: true, action: {
+      caseType: ct, actionType: at, caseRefId: ref,
+      amountCents: 0, currency: 'ILS',
+      ownerScope: 'global', ownerId: null, currentState: row.status,
+      sourceTable: 'booking_disputes', sourceRecordId: String(row.id),
+    } };
+  }
+
+  return unresolved(
+    'UNSUPPORTED_FINANCIAL_ACTION',
+    `No canonical resolver for '${ct}/${at}' — refusing to evaluate authority on unverified facts`,
+    400,
+  );
 }
 
 /** A supplied amount is an assertion. Refuse the request when it is wrong. */
@@ -640,7 +760,11 @@ function assertClientAmountMatches(
 // POST /api/financial-approvals/payout-release-gate
 router.post('/payout-release-gate', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
-    const { settlement_id, amount_cents: assertedAmountCents, owner_scope = 'global', owner_id = null } = req.body;
+    // owner_scope / owner_id are NOT read from the body: like the amount, they
+    // select which approval rule applies (owner-specific beats global).
+    const { settlement_id, amount_cents: assertedAmountCents } = req.body;
+    const owner_scope = 'global';
+    const owner_id: string | null = null;
     if (!settlement_id) {
       return res.status(400).json({ error: 'settlement_id required' });
     }
@@ -852,13 +976,51 @@ router.get('/log', async (req: Request, res: Response) => {
 // Internal helper — execute the approved financial action
 // ---------------------------------------------------------------------------
 
+/**
+ * PAYOUT BATCH IS NOT A STATION SETTLEMENT.
+ *
+ * /queue emits `payout_batches.batch_id` as the caseRefId for
+ * payout_release/release. This function used to do
+ *
+ *     WHERE id = ${parseInt(caseRefId, 10)}        on station_settlements
+ *
+ * Two different objects, one identifier. `parseInt('SCHED-123-…')` is NaN, but
+ * `parseInt('42-abc')` is 42 — which would silently mark STATION SETTLEMENT 42
+ * as released and approved, on the authority of a decision about a payout
+ * batch. Scheduled batches really are created with textual ids.
+ *
+ * Not patched around with a different parse. Approving a payout BATCH and
+ * releasing a station SETTLEMENT are distinct business operations and need
+ * distinct handlers; until the batch handler exists this refuses to execute
+ * rather than mutating the wrong row. The approval is still recorded, so no
+ * decision is lost — the execution is what is withheld.
+ *
+ * Takes the resolved canonical action so the executor and the authority check
+ * can never disagree about which object they are talking about.
+ */
 async function executeFinancialAction(
-  caseType: string,
-  caseRefId: string,
-  actionType: string,
+  action: CanonicalFinancialAction,
   actingUid: string | null,
   logId: number
 ) {
+  const { caseType, caseRefId, actionType, sourceTable } = action;
+
+  if (caseType === 'payout_release' && actionType === 'release') {
+    if (sourceTable !== 'station_settlements') {
+      logger.error('[FinancialApprovals] refusing to execute a payout release against the wrong object', {
+        caseRefId, sourceTable, logId,
+        detail: 'caseRefId is a payout_batches.batch_id; the legacy executor updated station_settlements.id',
+      });
+      await db.execute(sql`
+        UPDATE financial_approval_log
+        SET status = 'approved_execution_withheld',
+            note = COALESCE(note, '') || ' [execution withheld: payout batch has no settlement executor]'
+        WHERE id = ${logId}
+      `);
+      return;
+    }
+  }
+
   if (caseType === 'refund' && actionType === 'approve') {
     await db.execute(sql`
       UPDATE refund_approvals
@@ -869,13 +1031,15 @@ async function executeFinancialAction(
       UPDATE financial_approval_log SET status = 'executed', executed_at = NOW() WHERE id = ${logId}
     `);
   } else if (caseType === 'payout_release' && actionType === 'release') {
+    // Only reachable when the resolver produced a real station settlement —
+    // the guard at the top of this function refuses every other source.
     await db.execute(sql`
       UPDATE station_settlements SET
         status = 'settled',
         payout_release_approved_at = NOW(),
         payout_release_approved_by = ${actingUid},
         second_release_approval_required = false
-      WHERE id = ${parseInt(caseRefId, 10)}
+      WHERE id = ${caseRefId}
     `);
     await db.execute(sql`
       UPDATE financial_approval_log SET status = 'executed', executed_at = NOW() WHERE id = ${logId}
