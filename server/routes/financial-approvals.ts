@@ -1,7 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
-import { timingSafeEqual } from 'crypto';
 import {
   checkFinancialAuthority,
   getApprovalRule,
@@ -13,6 +12,7 @@ import {
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { logger } from '../lib/logger';
+import { getActingRole, getActingUid } from '../lib/financialActingRole';
 
 const router = Router();
 
@@ -20,66 +20,15 @@ const router = Router();
 // Auth helpers
 // ---------------------------------------------------------------------------
 
-const ALLOWED_MACHINE_IPS_FA = (process.env.ALLOWED_MACHINE_IPS || '')
-  .split(',').map(s => s.trim()).filter(Boolean);
-
-function getClientIpFA(req: Request): string {
-  return (req.headers['x-forwarded-for'] as string || '').split(',')[0].trim() || req.socket.remoteAddress || '';
-}
-
-// P0-SEC: getActingRole now throws an Error with { status: 401 } when neither a valid
-// x-admin-secret nor a decoded Firebase token is present on the request.
-// BEFORE: returned 'agent' silently — an unauthenticated caller could reach the
-//         /approve and /payout-release-gate handlers with agent-level authority,
-//         and /matrix POST/PATCH/DELETE with no auth check at all.
-// AFTER:  calling code must catch { status: 401 } and return 401 to the client.
-function getActingRole(req: Request): string {
-  // P1-FIX: Use timing-safe comparison to prevent timing attacks on admin secret.
-  // BEFORE: === comparison leaks timing information about secret length/prefix.
-  // AFTER:  timingSafeEqual with fixed-length buffers eliminates the timing oracle.
-  const adminSecretHeader = req.headers['x-admin-secret'] as string | undefined;
-  const adminSecretEnv = process.env.ADMIN_SECRET;
-  const adminSecretMatch = !!(
-    adminSecretHeader &&
-    adminSecretEnv &&
-    adminSecretHeader.length === adminSecretEnv.length &&
-    timingSafeEqual(Buffer.from(adminSecretHeader), Buffer.from(adminSecretEnv))
-  );
-  if (adminSecretMatch) {
-    if (ALLOWED_MACHINE_IPS_FA.length > 0) {
-      const clientIp = getClientIpFA(req);
-      if (!ALLOWED_MACHINE_IPS_FA.includes(clientIp)) {
-        // IP not in allowlist — fall through to token auth rather than silently downgrading
-        const err: any = new Error('Authentication required');
-        err.status = 401;
-        throw err;
-      }
-    }
-    return 'admin';
-  }
-  // Decoded Firebase token roles (set by validateFirebaseToken outer middleware)
-  const decoded = (req as any).decodedToken ?? (req as any).firebaseUser;
-  // P0-SEC: If no token is present, reject immediately rather than silently assigning 'agent'.
-  if (!decoded) {
-    const err: any = new Error('Authentication required');
-    err.status = 401;
-    throw err;
-  }
-  if (decoded?.executive || decoded?.claims?.executive) return 'executive';
-  if (decoded?.admin || decoded?.claims?.admin) return 'admin';
-  if (decoded?.franchise_owner || decoded?.claims?.franchise_owner) return 'franchise_owner';
-  if (decoded?.manager || decoded?.claims?.manager) return 'manager';
-  if (decoded?.role === 'executive' || decoded?.claims?.role === 'executive') return 'executive';
-  if (decoded?.role === 'franchise_owner' || decoded?.claims?.role === 'franchise_owner') return 'franchise_owner';
-  if (decoded?.role === 'manager' || decoded?.claims?.role === 'manager') return 'manager';
-  // Authenticated but insufficient role — still known; let route handlers decide
-  return 'agent';
-}
-
-function getActingUid(req: Request): string | null {
-  const decoded = (req as any).decodedToken ?? (req as any).firebaseUser;
-  return decoded?.uid ?? null;
-}
+/**
+ * getActingRole / getActingUid moved to server/lib/financialActingRole.ts
+ * (2026-09-08) so the admin wallet money routes ask the SAME question this
+ * router asks. Two copies of "what role is this caller?" on the money path is
+ * how two surfaces end up disagreeing about the same person.
+ *
+ * Behaviour is unchanged, including the fail-closed 401 throw when neither a
+ * valid x-admin-secret nor a decoded token is present.
+ */
 
 function assertFinancialExecutionControl(
   req: Request,

@@ -32,6 +32,7 @@ import { db, pool } from '../db';
 import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { checkWalletMoneyAuthority, recordWalletAuthorityExecution } from '../lib/walletMoneyAuthority';
 import {
   getKillSwitchAllowed as _getKillSwitchAllowed,
   checkIdempotency as _checkIdempotency,
@@ -4283,6 +4284,17 @@ router.post('/admin/wallet/adjust', auditLogMiddleware('CREDIT_WALLET_ADJUST'), 
     if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
     if (type !== 'credit' && type !== 'debit') return res.status(400).json({ error: "type must be 'credit' or 'debit'" });
 
+    // AUTHORITY BAND (census 2026-09-08). This route used to accept any
+    // amountCents behind a bare customClaims.admin check: one admin could
+    // credit any wallet any amount, with no second approver and no ceiling.
+    // The amount IS the admin's intent here, so there is nothing to derive —
+    // the control is a ceiling on that intent, chosen by the acting role's band.
+    const adjustAuthority = { caseType: 'wallet_adjust', actionType: type, amountCents, caseRefId: userId };
+    const adjustAuth = await checkWalletMoneyAuthority(req, adjustAuthority);
+    if (!adjustAuth.ok) {
+      return res.status(adjustAuth.status).json({ error: adjustAuth.message, code: adjustAuth.code, ...adjustAuth.details });
+    }
+
     const { walletService } = await import('../services/WalletService');
     const wallet = await walletService.getOrCreateWallet(userId);
     // Money-audit F4 (2026-08-24): idempotency key used to include Date.now()
@@ -4311,6 +4323,7 @@ router.post('/admin/wallet/adjust', auditLogMiddleware('CREDIT_WALLET_ADJUST'), 
     logger.info('[AdminWallet][Adjust] Adjustment applied', {
       userId, amountCents, type, txnId: result.txnId, adminUid: uid, reason,
     });
+    await recordWalletAuthorityExecution(req, adjustAuthority, adjustAuth, `txn:${result.txnId}`);
 
     // Audit ledger (dangerous admin money action — manual credit/debit).
     await logAuditEvent({
@@ -4409,6 +4422,16 @@ router.post('/admin/wallet/support/release-hold', async (req: Request, res: Resp
     const holdCents = Number(booking.wallet_hold_cents);
     if (holdCents <= 0) return res.status(422).json({ error: 'No hold amount to release' });
 
+    // AUTHORITY BAND. Unlike /adjust the amount is NOT the admin's to choose —
+    // it is the booking's hold. So it is read from the booking (the #2317
+    // rule: derive the figure from the server's own record) and the band is
+    // applied to that.
+    const releaseAuthority = { caseType: 'wallet_support', actionType: 'release_hold', amountCents: holdCents, caseRefId: booking.booking_id };
+    const releaseAuth = await checkWalletMoneyAuthority(req, releaseAuthority);
+    if (!releaseAuth.ok) {
+      return res.status(releaseAuth.status).json({ error: releaseAuth.message, code: releaseAuth.code, ...releaseAuth.details });
+    }
+
     const { walletService } = await import('../services/WalletService');
     const result = await walletService.releaseBookingHold({
       userId:               booking.user_id,
@@ -4480,6 +4503,28 @@ router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Resp
     const found = await fetchSupportBooking(bookingId.trim(), bookingType);
     if (!found) return res.status(404).json({ error: 'Booking not found' });
     const { booking, sourceTable } = found;
+
+    /**
+     * AUTHORITY BAND, on the UPPER BOUND of what this route could move.
+     *
+     * issue-refund branches: a hold_active booking degrades to a release of
+     * wallet_hold_cents, otherwise it refunds against what was debited. Rather
+     * than gate each branch — and risk a future branch slipping past — the band
+     * is applied once to the LARGEST figure any branch could move. Authorising
+     * the ceiling can never authorise less than what actually moves.
+     */
+    const refundUpperBoundCents = Math.max(
+      Number(rawAmount ?? 0) || 0,
+      Number(booking.wallet_hold_cents ?? 0) || 0,
+      (Number(booking.wallet_debited_cents ?? 0) || 0) - (Number(booking.wallet_refunded_cents ?? 0) || 0),
+    );
+    if (refundUpperBoundCents > 0) {
+      const refundAuthority = { caseType: 'wallet_support', actionType: 'issue_refund', amountCents: refundUpperBoundCents, caseRefId: booking.booking_id };
+      const refundAuth = await checkWalletMoneyAuthority(req, refundAuthority);
+      if (!refundAuth.ok) {
+        return res.status(refundAuth.status).json({ error: refundAuth.message, code: refundAuth.code, ...refundAuth.details });
+      }
+    }
 
     const supportMeta = {
       adminId: uid, reason,
@@ -4634,6 +4679,16 @@ router.post('/admin/wallet/support/credit', async (req: Request, res: Response) 
     if (amountCents > 50000) return res.status(400).json({ error: 'amountCents must be <= 50000 (₪500)' });
     if (!reason?.trim() || reason.trim().length < 5) {
       return res.status(400).json({ error: 'reason must be at least 5 characters' });
+    }
+
+    // AUTHORITY BAND. The hard ₪500 ceiling above stays — it is the tighter of
+    // the two and it is this route's own long-standing decision (it is also
+    // what band 1 of the seeded matrix was grounded in). The band adds the part
+    // the ceiling never had: WHICH ROLE may spend up to it.
+    const creditAuthority = { caseType: 'wallet_support', actionType: 'credit', amountCents, caseRefId: userId.trim() };
+    const creditAuth = await checkWalletMoneyAuthority(req, creditAuthority);
+    if (!creditAuth.ok) {
+      return res.status(creditAuth.status).json({ error: creditAuth.message, code: creditAuth.code, ...creditAuth.details });
     }
 
     const { walletService } = await import('../services/WalletService');
