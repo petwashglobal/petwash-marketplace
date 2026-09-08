@@ -26,11 +26,30 @@
  * availability-for-safety trade: a Redis outage turns into "request a new
  * code", never into "waved through".
  *
- * It is, however, reported HONESTLY. StepUpService's own consume collapses
- * both outcomes into `false`, so an operator staring at a refusal cannot tell
- * a replay from an outage. This returns them as distinct reasons so the route
- * can answer 401 "already used" versus 503 "try again in a moment", and so
- * support can tell the two apart from a log line.
+ * ── Replay vs outage is DECIDED, never inferred ─────────────────────────────
+ * A component whose whole job is telling "already spent" apart from "I could
+ * not check" must not sit on a Redis call that returns the same `false` for
+ * both. `redis.setNx()` does exactly that, and the first version of this file
+ * tried to recover the distinction afterwards by asking `redis.isConnected()`.
+ *
+ * That was wrong, and would have shipped the very misdiagnosis this module
+ * exists to prevent. A Redis command can time out, be rejected mid-flight, or
+ * return a ReplyError while the client still reports itself connected — the
+ * `error` event that clears `isEnabled` fires on CONNECTION faults, not on
+ * every command fault. In that window an infrastructure failure would have
+ * been reported to the customer as `already_used`: "you already used this",
+ * about a proof they had never spent.
+ *
+ * So the outcome is now decided at the Redis API boundary, where it is
+ * actually knowable — `setNxStrict` returns 'SET' | 'EXISTS' | 'UNAVAILABLE',
+ * and 'EXISTS' can only come from a COMPLETED `SET .. NX` that replied nil.
+ * Nothing here reads connection state.
+ *
+ * StepUpService's own consume collapses both outcomes into `false`, so an
+ * operator staring at a refusal cannot tell a replay from an outage. This
+ * returns them as distinct reasons so the route can answer 401 "already used"
+ * versus 503 "try again in a moment", and so support can tell the two apart
+ * from a log line.
  */
 import { logger } from './logger';
 import { redis } from '../services/redis';
@@ -57,6 +76,21 @@ export interface OneShotClaim {
    * Slack for clock skew is added here, not by the caller.
    */
   ttlSeconds: number;
+  /**
+   * FULL keys (not scoped ids) written by a PREVIOUS key format for this same
+   * proof family, checked before the new marker is claimed.
+   *
+   * Renaming the key namespace of a one-shot control silently un-spends every
+   * proof burnt under the old name: the new code looks for a key nobody wrote
+   * yet, finds nothing, and accepts a replay. The window is one TTL wide and
+   * lands exactly at deploy — and "one proof, one use" is not a property that
+   * gets to lapse during a rollout because the affected proofs are rare.
+   *
+   * Reading these is additive: it can only ever REFUSE a proof the new key
+   * would have accepted, so it introduces no race. Remove a legacy key from
+   * this list once more than (max proof TTL + skew) has elapsed in production.
+   */
+  legacyKeys?: readonly string[];
   /** Non-PII context for the audit line (uid, purpose, …). Never the token. */
   context?: Record<string, unknown>;
 }
@@ -90,37 +124,57 @@ export async function consumeOneShotProof(claim: OneShotClaim): Promise<OneShotR
   const key = `oneshot:${claim.scope}:${claim.id}`;
   const ttl = Math.ceil(claim.ttlSeconds) + CLOCK_SKEW_SLACK_SECONDS;
 
-  let claimed = false;
+  // Legacy markers FIRST. If this proof was spent under an older key format,
+  // it is spent — the rename must not resurrect it. A read we cannot perform
+  // is not a "no": it fails closed like everything else here.
+  for (const legacyKey of claim.legacyKeys ?? []) {
+    let seen: 'YES' | 'NO' | 'UNAVAILABLE';
+    try {
+      seen = await redis.existsStrict(legacyKey);
+    } catch {
+      seen = 'UNAVAILABLE';
+    }
+    if (seen === 'UNAVAILABLE') {
+      logger.error('[oneShotProof] could not read a legacy marker — refusing (fail-closed)', {
+        scope: claim.scope, jti: claim.id, ...claim.context,
+      });
+      return { ok: false, reason: 'store_unavailable' };
+    }
+    if (seen === 'YES') {
+      logger.warn('[oneShotProof] REPLAY refused — proof was consumed under the LEGACY key', {
+        scope: claim.scope, jti: claim.id, legacyKey, ...claim.context,
+      });
+      return { ok: false, reason: 'already_used' };
+    }
+  }
+
+  let outcome: 'SET' | 'EXISTS' | 'UNAVAILABLE';
   try {
-    claimed = await redis.setNx(key, '1', ttl);
-  } catch (error) {
-    // redis.setNx already swallows its own errors and returns false; this
-    // catch is belt-and-braces so an unexpected throw can never become a pass.
-    logger.error('[oneShotProof] store threw while burning a proof — refusing (fail-closed)', {
-      scope: claim.scope, jti: claim.id, ...claim.context,
-    });
-    return { ok: false, reason: 'store_unavailable' };
+    outcome = await redis.setNxStrict(key, '1', ttl);
+  } catch {
+    // setNxStrict already maps its own throws to 'UNAVAILABLE'; this is
+    // belt-and-braces so an unexpected throw can never become a pass.
+    outcome = 'UNAVAILABLE';
   }
 
-  if (claimed) {
-    // Audit the burn. Matches the issuance line by jti so an operator can walk
-    // a proof from mint to spend.
-    logger.info('[oneShotProof] proof consumed', { scope: claim.scope, jti: claim.id, ...claim.context });
-    return { ok: true };
-  }
-
-  // `false` from setNx is ambiguous by itself — it means "the key was already
-  // there" OR "there was no store to ask". Ask the client which. Checked AFTER
-  // the attempt so a connection that dropped mid-call is classified correctly.
-  if (!redis.isConnected()) {
+  if (outcome === 'UNAVAILABLE') {
+    // NOT 'already_used'. We do not know whether this proof was spent, and
+    // saying we do would blame the customer for our outage.
     logger.error('[oneShotProof] store unreachable — refusing the proof (fail-closed)', {
       scope: claim.scope, jti: claim.id, ...claim.context,
     });
     return { ok: false, reason: 'store_unavailable' };
   }
 
-  logger.warn('[oneShotProof] REPLAY refused — proof already consumed', {
-    scope: claim.scope, jti: claim.id, ...claim.context,
-  });
-  return { ok: false, reason: 'already_used' };
+  if (outcome === 'EXISTS') {
+    logger.warn('[oneShotProof] REPLAY refused — proof already consumed', {
+      scope: claim.scope, jti: claim.id, ...claim.context,
+    });
+    return { ok: false, reason: 'already_used' };
+  }
+
+  // Audit the burn. Matches the issuance line by jti so an operator can walk
+  // a proof from mint to spend.
+  logger.info('[oneShotProof] proof consumed', { scope: claim.scope, jti: claim.id, ...claim.context });
+  return { ok: true };
 }

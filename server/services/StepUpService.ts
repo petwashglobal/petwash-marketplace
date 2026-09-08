@@ -249,6 +249,24 @@ function bindingFingerprintV2(b: StepUpBinding | undefined, secret: string): str
 /** Key namespace for this proof family in the shared one-shot store. */
 const STEP_UP_ONE_SHOT_SCOPE = 'stepup';
 
+/**
+ * The key format this service used BEFORE the shared one-shot store existed.
+ *
+ * Consumption used to write `stepup:consumed:<uid>:<jti>` directly. The shared
+ * store writes `oneshot:stepup:<uid>:<jti>`. Simply switching would un-spend
+ * every proof burnt in the TTL window before the deploy: the new code looks
+ * for a key nothing has written yet, finds nothing, and accepts the replay.
+ *
+ * A one-shot control does not get to lapse for five minutes because the
+ * affected proofs are rare — that is a replay window with a scheduled start
+ * time. So the legacy key is READ for as long as any proof could still be
+ * carrying it. Only new markers are written, so this fades out on its own.
+ *
+ * SAFE TO DELETE once more than (max step-up TTL = 30 min, plus clock skew)
+ * has elapsed in production after the deploy that introduced it.
+ */
+const LEGACY_CONSUMED_KEY_PREFIX = 'stepup:consumed:';
+
 export interface DecodedProof {
   version: string;
   uid: string;
@@ -469,11 +487,16 @@ export async function consumeStepUpProof(proof: DecodedProof): Promise<boolean> 
    * and an unreachable store refuses rather than waves through. The shared
    * helper distinguishes replay from outage; this function's contract is a
    * boolean, so both still collapse to false for existing callers.
+   *
+   * The old key is still READ (see LEGACY_CONSUMED_KEY_PREFIX) so the rename
+   * does not un-spend proofs burnt just before the deploy.
    */
   const result = await consumeOneShotProof({
     scope: STEP_UP_ONE_SHOT_SCOPE,
     id: `${proof.uid}:${proof.nonce}`,
     ttlSeconds: remaining,
+    // Cross-deploy: a proof burnt under the old key format stays burnt.
+    legacyKeys: [`${LEGACY_CONSUMED_KEY_PREFIX}${proof.uid}:${proof.nonce}`],
     context: { uid: proof.uid, purpose: proof.purpose },
   });
 

@@ -36,14 +36,57 @@ let setNxCalls: Array<{ key: string; ttl: number }> = [];
 // even though each individual call is fine.
 let nonAtomicCalls = 0;
 
+/**
+ * THE DANGEROUS FAILURE MODE, modelled explicitly.
+ *
+ * When this is on, Redis COMMANDS fail while the client still reports itself
+ * connected — a timeout, a mid-flight rejection, a ReplyError. This is not
+ * exotic: ioredis clears its connected flag on the `error` CONNECTION event,
+ * not on every command fault, so the two can disagree.
+ *
+ * Any implementation that decides "replay vs outage" by asking the client
+ * whether it is connected reports these as `already_used` — telling a customer
+ * they already spent a proof they never spent. `isConnected` deliberately
+ * stays TRUE here so that mistake cannot pass.
+ */
+let commandsFail = false;
+
+/**
+ * Only the LEGACY-marker read fails; the new-marker write still works.
+ *
+ * Without this separation the "unreadable legacy marker fails closed" test
+ * passes for the wrong reason — the subsequent SETNX fails too, so the refusal
+ * proves nothing about the legacy branch. Mutation-testing caught exactly that.
+ */
+let legacyReadsFail = false;
+
 const yieldToLoop = () => new Promise((r) => setImmediate(r));
 
 vi.mock('../services/redis', () => ({
   redis: {
+    // Stays true under commandsFail — an implementation must not trust it.
     isConnected: () => storeUp,
-    async setNx(key: string, value: unknown, ttlSeconds: number) {
+
+    async setNxStrict(key: string, value: unknown, ttlSeconds: number) {
       await yieldToLoop(); // real interleaving point
-      if (!storeUp) return false;
+      if (!storeUp || commandsFail) return 'UNAVAILABLE';
+      setNxCalls.push({ key, ttl: ttlSeconds });
+      if (store.has(key)) return 'EXISTS';
+      store.set(key, { value: String(value), ttl: ttlSeconds });
+      return 'SET';
+    },
+    async existsStrict(key: string) {
+      await yieldToLoop();
+      if (!storeUp || commandsFail || legacyReadsFail) return 'UNAVAILABLE';
+      return store.has(key) ? 'YES' : 'NO';
+    },
+
+    // The ambiguous boolean the strict pair replaces. Reaching for it collapses
+    // "replay" and "outage" back into one answer.
+    async setNx(key: string, value: unknown, ttlSeconds: number) {
+      await yieldToLoop();
+      nonAtomicCalls++;
+      if (!storeUp || commandsFail) return false;
       setNxCalls.push({ key, ttl: ttlSeconds });
       if (store.has(key)) return false;
       store.set(key, { value: String(value), ttl: ttlSeconds });
@@ -90,6 +133,8 @@ beforeEach(() => {
   setNxCalls = [];
   nonAtomicCalls = 0;
   storeUp = true;
+  commandsFail = false;
+  legacyReadsFail = false;
 });
 
 describe('email proof — single use', () => {
@@ -302,7 +347,9 @@ describe('shared primitive — one implementation for every proof family', () =>
   });
 
   it('StepUpService burns through the SAME store (no second dialect)', async () => {
-    const binding = { operation: 'payout.execute', targetId: 'po_1', amountMinor: 100 };
+    // #2314: a money binding must carry a supported currency — an amount
+    // with no currency is not an amount.
+    const binding = { operation: 'payout.execute', targetId: 'po_1', amountMinor: 100, currency: 'ILS' };
     const issued = issueStepUpProof('uid_x', 'payout_action', 300, binding)!;
     const proof = decodeStepUpProof('uid_x', 'payout_action', issued.token, binding)!;
 
@@ -381,5 +428,147 @@ describe('source pin — every consumer REDEEMS, none merely validates', () => {
     const awaited = src.match(/await\s+twilioSMSService\.consumeVerificationNonce\s*\(/g) || [];
     expect(calls).toHaveLength(2);
     expect(awaited).toHaveLength(calls.length); // a missing await is a silent bypass
+  });
+});
+
+describe('replay vs outage is DECIDED, never inferred from connection state', () => {
+  /**
+   * The defect this section exists for: `redis.setNx()` returns plain `false`
+   * both for "key already exists" and for "the command failed", and the first
+   * cut of oneShotProof tried to tell those apart afterwards by asking
+   * `redis.isConnected()`.
+   *
+   * That is not authoritative. ioredis clears its connected flag on the
+   * CONNECTION `error` event — not on every command fault — so a timeout or a
+   * ReplyError leaves the client reporting itself healthy while the command is
+   * dead. Under the old logic that window reported `already_used`: telling a
+   * customer they had spent a proof they had never spent, which is precisely
+   * the misdiagnosis this module claims to eliminate.
+   */
+  it('a command that FAILS while the client still says connected is store_unavailable', async () => {
+    const token = mintEmailVerifiedToken('user@example.com', 'login');
+    commandsFail = true;
+
+    // The trap: the connection reports healthy throughout.
+    expect(storeUp).toBe(true);
+
+    const r = await redeemEmailVerifiedToken(token, ['login']);
+    expect(r.valid).toBe(false);
+    expect(r.reason).toBe('store_unavailable');
+    expect(r.reason).not.toBe('already_used');
+  });
+
+  it('...and the proof is NOT spent by the failed attempt', async () => {
+    const token = mintEmailVerifiedToken('user@example.com', 'login');
+    commandsFail = true;
+    await redeemEmailVerifiedToken(token, ['login']);
+
+    commandsFail = false;
+    const retry = await redeemEmailVerifiedToken(token, ['login']);
+    expect(retry.valid).toBe(true); // the customer's proof survived our failure
+  });
+
+  it('the same trap on the phone path', async () => {
+    commandsFail = true;
+    const r = await twilioSMSService.consumeVerificationNonce('phone-nonce-cmdfail');
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.reason).toBe('store_unavailable');
+  });
+
+  it('and on the step-up path (its boolean contract still just refuses)', async () => {
+    const binding = { operation: 'payout.execute', targetId: 'po_cmdfail', amountMinor: 100, currency: 'ILS' };
+    const issued = issueStepUpProof('uid_cf', 'payout_action', 300, binding)!;
+    const proof = decodeStepUpProof('uid_cf', 'payout_action', issued.token, binding)!;
+    commandsFail = true;
+    expect(await consumeStepUpProof(proof)).toBe(false);
+  });
+
+  it('never reaches for the ambiguous boolean setNx', async () => {
+    const token = mintEmailVerifiedToken('user@example.com', 'login');
+    await redeemEmailVerifiedToken(token, ['login']);
+    // setNx / get / set collapse replay and outage into one answer. Using any
+    // of them puts the guesswork back.
+    expect(nonAtomicCalls).toBe(0);
+  });
+});
+
+describe('cross-deploy — a key-namespace rename must not un-spend a proof', () => {
+  /**
+   * Step-up consumption used to write `stepup:consumed:<uid>:<jti>`. The shared
+   * store writes `oneshot:stepup:<uid>:<jti>`. If the new code only looked at
+   * the new key, every proof burnt in the TTL window before the deploy would
+   * become spendable again the moment it rolled out — a replay window with a
+   * scheduled start time.
+   */
+  const legacyKeyFor = (uid: string, jti: string) => `stepup:consumed:${uid}:${jti}`;
+
+  it('a proof consumed under the OLD key is still refused after the rename', async () => {
+    const binding = { operation: 'payout.execute', targetId: 'po_mig', amountMinor: 4200, currency: 'ILS' };
+    const issued = issueStepUpProof('uid_mig', 'payout_action', 300, binding)!;
+    const proof = decodeStepUpProof('uid_mig', 'payout_action', issued.token, binding)!;
+
+    // Pre-deploy state: the burn exists ONLY under the legacy key.
+    store.set(legacyKeyFor('uid_mig', proof.nonce), { value: '1', ttl: 300 });
+    expect(store.has(`oneshot:stepup:uid_mig:${proof.nonce}`)).toBe(false);
+
+    // Post-deploy replay.
+    expect(await consumeStepUpProof(proof)).toBe(false);
+  });
+
+  it('a proof with no legacy marker is unaffected', async () => {
+    const binding = { operation: 'payout.execute', targetId: 'po_new', amountMinor: 100, currency: 'ILS' };
+    const issued = issueStepUpProof('uid_new', 'payout_action', 300, binding)!;
+    const proof = decodeStepUpProof('uid_new', 'payout_action', issued.token, binding)!;
+    expect(await consumeStepUpProof(proof)).toBe(true);
+    expect(await consumeStepUpProof(proof)).toBe(false);
+  });
+
+  it('an unreadable legacy marker fails CLOSED, not open', async () => {
+    // "I could not check the old key" must never be treated as "it was clean".
+    const r = await consumeOneShotProof({
+      scope: 'stepup',
+      id: 'uid_x:jti_x',
+      ttlSeconds: 300,
+      legacyKeys: ['stepup:consumed:uid_x:jti_x'],
+    });
+    expect(r.ok).toBe(true); // baseline: readable and absent
+
+    // ONLY the legacy read is blinded. The new-marker write would still
+    // succeed, so a refusal here can only have come from the legacy branch —
+    // otherwise this test passes for the wrong reason.
+    legacyReadsFail = true;
+    const blind = await consumeOneShotProof({
+      scope: 'stepup',
+      id: 'uid_y:jti_y',
+      ttlSeconds: 300,
+      legacyKeys: ['stepup:consumed:uid_y:jti_y'],
+    });
+    expect(blind.ok).toBe(false);
+    expect(blind.ok === false && blind.reason).toBe('store_unavailable');
+    // And it refused BEFORE writing anything.
+    expect(store.has('oneshot:stepup:uid_y:jti_y')).toBe(false);
+  });
+
+  it('the legacy read happens BEFORE the new marker is written', async () => {
+    // Otherwise the replay would be refused but would still leave a fresh
+    // marker behind, muddying the audit trail.
+    await consumeOneShotProof({
+      scope: 'stepup',
+      id: 'uid_z:jti_z',
+      ttlSeconds: 300,
+      legacyKeys: ['stepup:consumed:uid_z:jti_z'],
+    });
+    store.clear();
+    setNxCalls = [];
+
+    store.set('stepup:consumed:uid_w:jti_w', { value: '1', ttl: 300 });
+    const r = await consumeOneShotProof({
+      scope: 'stepup',
+      id: 'uid_w:jti_w',
+      ttlSeconds: 300,
+      legacyKeys: ['stepup:consumed:uid_w:jti_w'],
+    });
+    expect(r.ok === false && r.reason).toBe('already_used');
+    expect(setNxCalls).toHaveLength(0); // never wrote the new key
   });
 });

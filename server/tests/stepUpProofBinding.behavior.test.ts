@@ -17,6 +17,20 @@ let redisUp = true;
 vi.mock('../services/redis', () => ({
   redis: {
     isConnected: () => redisUp,
+    // Tri-state pair (2026-09-08): the one-shot store no longer infers
+    // "replay vs outage" from a boolean plus connection state — a command can
+    // fail while the client still reports connected. 'EXISTS' can only come
+    // from a COMPLETED SET..NX that replied nil.
+    async setNxStrict(key: string) {
+      if (!redisUp) return 'UNAVAILABLE';
+      if (redisStore.has(key)) return 'EXISTS';
+      redisStore.set(key, '1');
+      return 'SET';
+    },
+    async existsStrict(key: string) {
+      if (!redisUp) return 'UNAVAILABLE';
+      return redisStore.has(key) ? 'YES' : 'NO';
+    },
     async setNx(key: string) {
       if (!redisUp) return false;
       if (redisStore.has(key)) return false;
