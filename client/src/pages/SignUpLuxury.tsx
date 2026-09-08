@@ -1595,13 +1595,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // A 2-step account with no mobile number anywhere: password sign-in is refused
   // on purpose (one-way verification is exactly what this member opted out of),
   // so this is guidance, not an error to retry. Flipping usePassword off makes
-  // the primary CTA "Email me a one-time code" — the remedy is one tap, and the
-  // member can add a mobile number once they are in.
+  // the primary CTA "Email me a one-time code" — the remedy is one tap, on a
+  // button already enabled because they just typed their email.
+  //
+  // It stops there on purpose. An earlier draft added "then add a mobile number
+  // in your account", which the member cannot do: no screen calls
+  // /api/user/settings/phone/request-change, and in production it answers 503
+  // because UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED is not set. Telling
+  // someone to take a step that does not exist is the same fault as the retry
+  // loop this replaced. Add that sentence back when the flow is wired and on.
   function showNoSecondFactor() {
     setUsePassword(false);
     fail(he
-      ? 'כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל, ואז הוסיפו מספר נייד בחשבון.'
-      : 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below, then add a mobile number in your account.');
+      ? 'כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל.'
+      : 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below.');
   }
 
   // LOGIN (CEO 2026-07-31): returning member signs in with email + password (the

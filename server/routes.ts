@@ -1424,7 +1424,9 @@ self.addEventListener('notificationclick', (event) => {
               // member's choice stands — one-way verification is refused — but it
               // is refused in terms they can act on, rather than behind a retry
               // that cannot succeed. A one-time code to their email still signs
-              // them in, and is itself the second factor they asked for.
+              // them in, and is itself the second factor they asked for. That is
+              // the ONLY remedy named, because self-service phone-add is not
+              // reachable today — see MFA_NO_FACTOR_MESSAGE.
               logger.warn('[Session] 2-step enrolled with no challengeable phone — password sign-in refused', { uid: preDecoded.uid, traceId });
               return res.status(403).json({ error: MFA_NO_FACTOR_MESSAGE, errorCode: MFA_NO_FACTOR_CODE, needs2fa: false });
             }

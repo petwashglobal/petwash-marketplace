@@ -303,4 +303,21 @@ describe('the client turns the refusal into the path that works', () => {
     expect(helper![0]).toMatch(/setUsePassword\(false\)/);
     expect(helper![0]).not.toMatch(/try again|נסו שוב/);
   });
+
+  it('names ONLY a remedy the member can actually perform', async () => {
+    // An earlier draft of this very fix said "then add a mobile number in your
+    // account". A member cannot: no screen calls
+    // /api/user/settings/phone/request-change, and production does not set
+    // UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED, so it answers 503. Replacing a
+    // retry that cannot succeed with an instruction that cannot be followed is
+    // the same fault one step along. Restore this only with the flow live.
+    const { MFA_NO_FACTOR_MESSAGE } = await import('../lib/twoStepLogin');
+    const helper = /function showNoSecondFactor\(\)[\s\S]*?\n  \}/.exec(clientSrc)![0];
+    for (const copy of [MFA_NO_FACTOR_MESSAGE, helper]) {
+      expect(copy).not.toMatch(/add a mobile number|הוסיפו מספר נייד/);
+    }
+    // What it DOES say is the path that works, and that path is real.
+    expect(MFA_NO_FACTOR_MESSAGE).toMatch(/one-time code/);
+    expect(helper).toMatch(/קוד חד-פעמי/);
+  });
 });

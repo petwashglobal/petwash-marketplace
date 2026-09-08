@@ -39,10 +39,19 @@ export const TWO_FACTOR_UNAVAILABLE_CODE = 'TWO_FACTOR_UNAVAILABLE' as const;
  * Said when an account requires a second factor and has none to challenge.
  * English only, deliberately: the client owns the Hebrew/English copy and keys
  * it off the code above. This is the fallback for any caller that does not.
+ *
+ * It offers ONLY the one-time code, and deliberately does not tell the member to
+ * add a mobile number afterwards. Self-service phone-add is not reachable today:
+ * `/api/user/settings/phone/request-change` is gated on
+ * UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED, which production does not set (the
+ * Cloud Run deploy sets only _ENABLED/_SIGNUP/_LOGIN), so it answers 503
+ * CHANGE_PHONE_DISABLED — and no client screen calls it in any case. Naming a
+ * remedy the member cannot perform is the same fault this module exists to fix,
+ * one step further along. Restore the second sentence when that flow is live.
  */
 export const MFA_NO_FACTOR_MESSAGE =
   'Two-step login is on for this account, but there is no mobile number to send a code to. '
-  + 'Sign in with a one-time code, then add a mobile number in your account.';
+  + 'Sign in with a one-time code instead.';
 
 export const TWO_FACTOR_UNAVAILABLE_MESSAGE =
   'Two-step verification is temporarily unavailable — please try again.';
