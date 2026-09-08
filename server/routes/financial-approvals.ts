@@ -127,6 +127,35 @@ function assertFinancialExecutionControl(
 // customer-scoped token from triggering financial mutations.
 const FINANCIAL_ALLOWED_ROLES = new Set(['admin', 'executive', 'franchise_owner']);
 
+/**
+ * POLICY MUTATION IS NARROWER THAN POLICY USE.
+ *
+ * requireFinancialAdmin admits franchise_owner, which is right for acting on
+ * approvals. It is NOT right for editing the approval MATRIX: those routes set
+ * thresholds, required roles and an arbitrary owner_scope/owner_id, so a
+ * franchise owner could lower the very rule that governs their own authority —
+ * or edit another owner's. A person subject to approval rules must not be able
+ * to rewrite them.
+ */
+const POLICY_MUTATION_ROLES = new Set(['admin', 'executive']);
+
+function requirePolicyAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const role = getActingRole(req);
+    if (!POLICY_MUTATION_ROLES.has(role)) {
+      logger.error('[FinancialApprovals] approval-matrix mutation refused', { role });
+      return res.status(403).json({
+        error: 'Editing the approval matrix requires admin or executive',
+        code: 'POLICY_MUTATION_FORBIDDEN',
+        userRole: role,
+      });
+    }
+    return next();
+  } catch (err: any) {
+    return res.status(err?.status === 401 ? 401 : 403).json({ error: 'Authentication required' });
+  }
+}
+
 function requireFinancialAdmin(req: Request, res: Response, next: NextFunction) {
   try {
     const role = getActingRole(req); // throws 401 if no token/secret
@@ -159,7 +188,7 @@ router.get('/matrix', async (req: Request, res: Response) => {
 });
 
 // POST /api/financial-approvals/matrix
-router.post('/matrix', requireFinancialAdmin, async (req: Request, res: Response) => {
+router.post('/matrix', requirePolicyAdmin, async (req: Request, res: Response) => {
   try {
     const {
       case_type, action_type, owner_scope = 'global', owner_id = null,
@@ -187,7 +216,7 @@ router.post('/matrix', requireFinancialAdmin, async (req: Request, res: Response
 });
 
 // PATCH /api/financial-approvals/matrix/:id
-router.patch('/matrix/:id', requireFinancialAdmin, async (req: Request, res: Response) => {
+router.patch('/matrix/:id', requirePolicyAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     const {
@@ -215,7 +244,7 @@ router.patch('/matrix/:id', requireFinancialAdmin, async (req: Request, res: Res
 });
 
 // DELETE /api/financial-approvals/matrix/:id  (soft deactivate)
-router.delete('/matrix/:id', requireFinancialAdmin, async (req: Request, res: Response) => {
+router.delete('/matrix/:id', requirePolicyAdmin, async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
     await db.execute(sql`UPDATE financial_approval_matrix SET is_active = false WHERE id = ${id}`);
@@ -438,18 +467,28 @@ router.post('/approve', requireFinancialAdmin, async (req: Request, res: Respons
       note,
     });
 
-    // If approved and no second approval required, execute the underlying action
+    // If approved and no second approval required, execute the underlying action.
+    // The outcome is REPORTED — never assumed. The executor deliberately
+    // withholds some actions (a payout batch has no settlement executor), and
+    // telling an operator that money moved when it did not is worse than the
+    // missing feature.
+    let execution: ExecutionOutcome = { executed: false, code: 'AWAITING_SECOND_APPROVAL' };
     if (status === 'approved') {
-      await executeFinancialAction(canonicalAction, actingUid, logId);
+      execution = await executeFinancialAction(canonicalAction, actingUid, logId);
     }
 
     return res.json({
       logId,
       status,
       decision,
+      approved: status === 'approved',
+      executed: execution.executed,
+      executionCode: execution.code,
       message: decision.secondApprovalRequired
         ? `First approval recorded. Awaiting second approval from '${decision.secondApprovalRole}'`
-        : 'Approved and executed',
+        : execution.executed
+          ? 'Approved and executed'
+          : 'Approved — execution NOT performed',
     });
   } catch (err: any) {
     sendSanitizedError(res, err, 'FIN_APPROVALS_APPROVE_FAILED', { logContext: { op: 'approve' } });
@@ -495,19 +534,14 @@ router.post('/second-approve/:logId', requireFinancialAdmin, async (req: Request
       return;
     }
 
-    await db.execute(sql`
-      UPDATE financial_approval_log SET
-        status = 'approved',
-        second_approved_by_uid = ${actingUid},
-        approved_at = NOW(),
-        note = COALESCE(${note}, note)
-      WHERE id = ${logId}
-    `);
-
-    // Second approval re-resolves from the business object rather than trusting
-    // the log row it is approving. The log records what was decided; the object
-    // says what is true NOW — and between first and second approval the amount
-    // or state may have moved.
+    /**
+     * VALIDATE FIRST, MUTATE LAST.
+     *
+     * This used to write status='approved' and stamp second_approved_by_uid
+     * BEFORE re-resolving the object. A later mismatch then returned 409 while
+     * the row already said "approved" — an approval recorded for an execution
+     * that was refused, and a retry that finds a non-pending row.
+     */
     const resolvedSecond = await resolveCanonicalFinancialAction(
       logRow.case_type, logRow.case_ref_id, logRow.action_type,
     );
@@ -517,21 +551,67 @@ router.post('/second-approve/:logId', requireFinancialAdmin, async (req: Request
       });
       return res.status(resolvedSecond.status).json({ error: resolvedSecond.error, code: resolvedSecond.code });
     }
-    if (resolvedSecond.action.amountCents !== Number(logRow.amount_cents ?? 0)) {
-      logger.error('[FinancialApprovals] amount moved between first and second approval', {
-        logId, approvedCents: Number(logRow.amount_cents ?? 0),
-        canonicalCents: resolvedSecond.action.amountCents,
+    const secondAction = resolvedSecond.action;
+
+    // The WHOLE set of authority facts, not the amount alone. An ownership or
+    // currency change matters exactly as much as a figure change.
+    const approvedFingerprint = [
+      logRow.case_type, logRow.action_type, secondAction.sourceTable, secondAction.sourceRecordId,
+      String(Number(logRow.amount_cents ?? NaN)), secondAction.currency,
+      String(logRow.owner_scope ?? ''), String(logRow.owner_id ?? ''),
+    ].join('|');
+    const currentFingerprint = approvalFingerprint(secondAction);
+    if (approvedFingerprint !== currentFingerprint) {
+      logger.error('[FinancialApprovals] authority facts moved between first and second approval', {
+        logId, approvedFingerprint, currentFingerprint,
       });
       return res.status(409).json({
-        error: 'The amount changed since the first approval — re-request approval',
-        code: 'AMOUNT_CHANGED_SINCE_APPROVAL',
-        canonicalAmountCents: resolvedSecond.action.amountCents,
+        error: 'The facts changed since the first approval — re-request approval',
+        code: 'APPROVAL_FACTS_CHANGED',
+        canonicalAmountCents: secondAction.amountCents,
+        canonicalCurrency: secondAction.currency,
       });
     }
 
-    await executeFinancialAction(resolvedSecond.action, actingUid, logId);
+    // A second approver must be a different person.
+    if (logRow.approved_by_uid && actingUid && String(logRow.approved_by_uid) === String(actingUid)) {
+      return res.status(403).json({
+        error: 'The first approver cannot also grant the second approval',
+        code: 'SELF_SECOND_APPROVAL',
+      });
+    }
 
-    return res.json({ logId, status: 'approved', message: 'Second approval granted and executed' });
+    /**
+     * Conditional transition: exactly one concurrent second approval may win.
+     */
+    const transition = await db.execute(sql`
+      UPDATE financial_approval_log SET
+        status = 'approved',
+        second_approved_by_uid = ${actingUid},
+        approved_at = NOW(),
+        note = COALESCE(${note}, note)
+      WHERE id = ${logId} AND status = 'pending'
+      RETURNING id
+    `);
+    if ((transition.rows?.length ?? 0) !== 1) {
+      return res.status(409).json({
+        error: 'This approval is no longer pending — it may already have been granted',
+        code: 'APPROVAL_NOT_PENDING',
+      });
+    }
+
+    const execution = await executeFinancialAction(secondAction, actingUid, logId);
+
+    return res.json({
+      logId,
+      status: 'approved',
+      approved: true,
+      executed: execution.executed,
+      executionCode: execution.code,
+      message: execution.executed
+        ? 'Second approval granted and executed'
+        : 'Second approval granted — execution NOT performed',
+    });
   } catch (err: any) {
     sendSanitizedError(res, err, 'FIN_APPROVALS_SECOND_APPROVE_FAILED', { logContext: { op: 'second-approve' } });
   }
@@ -607,52 +687,6 @@ type CanonicalAmount =
   | { ok: true; amountCents: number }
   | { ok: false; status: number; error: string; code: string };
 
-async function canonicalSettlementAmountCents(settlementId: unknown): Promise<CanonicalAmount> {
-  const row = await db.execute(sql`
-    SELECT station_amount_cents FROM station_settlements WHERE id = ${settlementId} LIMIT 1
-  `);
-  const found = row.rows?.[0] as { station_amount_cents?: number } | undefined;
-  if (!found) {
-    return { ok: false, status: 404, error: 'Settlement not found', code: 'SETTLEMENT_NOT_FOUND' };
-  }
-  const amountCents = Number(found.station_amount_cents ?? 0);
-  if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
-    return { ok: false, status: 409, error: 'Settlement has no usable payout amount', code: 'SETTLEMENT_AMOUNT_INVALID' };
-  }
-  return { ok: true, amountCents };
-}
-
-/**
- * For /approve the canonical figure is the PENDING approval row the server
- * itself wrote when the action was requested. The admin screen populates
- * `amount_cents` from a queue item served out of that same table, so the
- * legitimate flow already agrees with it — and approving something with no
- * pending request is refused outright, which is the bypass itself.
- */
-/**
- * THE CANONICAL FINANCIAL ACTION.
- *
- * Every fact that selects an approval rule is derived HERE, from the business
- * object itself — never from the request body.
- *
- * getApprovalRule() chooses a rule by (case_type, action_type, owner_scope,
- * owner_id, amount), preferring an owner-specific rule over a global one. So
- * the amount is not the only authority input the caller was choosing: the
- * ownership context and the action identity select the rule too. A caller who
- * can send `owner_scope: 'global'` can step around a stricter owner-specific
- * rule, and a caller who can send a different `action_type` can ask to have a
- * payout evaluated as some cheaper action.
- *
- * WHY NOT financial_approval_log. An earlier version of this patch derived the
- * amount from the pending approval-log row. That was wrong twice over. The log
- * is EVIDENCE OF A DECISION, not a money source — and before this fix the
- * server wrote caller-supplied amounts into it, so yesterday's tainted row
- * would have become today's authority. It is also LEFT JOINed by /queue and is
- * legitimately absent for first approvals, so requiring one would have broken
- * the normal flow outright.
- *
- * The log is the OUTPUT of an authority decision. It is never an input.
- */
 interface CanonicalFinancialAction {
   caseType: string;
   actionType: string;
@@ -662,7 +696,6 @@ interface CanonicalFinancialAction {
   ownerScope: string;
   ownerId: string | null;
   currentState: string | null;
-  /** Which table the facts came from — the executor needs this, see below. */
   sourceTable: 'refund_approvals' | 'payout_batches' | 'booking_disputes' | 'station_settlements';
   sourceRecordId: string;
 }
@@ -671,6 +704,72 @@ type Resolved =
   | { ok: true; action: CanonicalFinancialAction }
   | { ok: false; status: number; error: string; code: string };
 
+const SUPPORTED_APPROVAL_CURRENCIES = new Set(['ILS', 'USD', 'EUR', 'GBP', 'AUD', 'CAD']);
+
+/**
+ * ONE validator for every canonical amount.
+ *
+ * `Number(row.x ?? 0)` was the trap: a NULL or absent amount became 0, and 0
+ * lands in the LOWEST approval band — recreating the exact vulnerability this
+ * work exists to remove. A money fact that cannot be established is an error,
+ * never a zero.
+ */
+function validateCanonicalMoney(
+  amountRaw: unknown, currencyRaw: unknown, opts: { amountRequired: boolean },
+): { ok: true; amountCents: number; currency: string } | { ok: false; code: string; error: string } {
+  const currency = String(currencyRaw ?? '').trim().toUpperCase();
+  if (!SUPPORTED_APPROVAL_CURRENCIES.has(currency)) {
+    return { ok: false, code: 'CANONICAL_CURRENCY_INVALID', error: `Unsupported or missing currency '${currency}'` };
+  }
+  if (amountRaw === null || amountRaw === undefined) {
+    if (!opts.amountRequired) return { ok: true, amountCents: 0, currency };
+    return { ok: false, code: 'CANONICAL_AMOUNT_INVALID', error: 'Record has no amount' };
+  }
+  const amountCents = Number(amountRaw);
+  if (!Number.isSafeInteger(amountCents) || amountCents < 0) {
+    return { ok: false, code: 'CANONICAL_AMOUNT_INVALID', error: 'Record amount is not a valid minor-unit integer' };
+  }
+  return { ok: true, amountCents, currency };
+}
+
+/**
+ * OWNERSHIP IS AN AUTHORITY INPUT AND MUST BE READ, NOT ASSUMED.
+ *
+ * getApprovalRule() prefers an owner-specific rule over a global one, so the
+ * ownership context selects the rule just as the amount does. An earlier
+ * version of this patch removed the caller's ability to send owner_scope and
+ * then HARDCODED 'global' — which does not close the bypass, it just moves who
+ * performs it. Worse, payout_batches defaults its owner_scope to 'company',
+ * so 'global' was not even the right vocabulary.
+ *
+ * Unknown ownership on a money object FAILS CLOSED. Defaulting an unidentified
+ * object to the broadest scope is how a franchise-scoped payout escapes a
+ * stricter franchise rule.
+ */
+function ownershipOrFail(
+  scopeRaw: unknown, idRaw: unknown,
+): { ok: true; ownerScope: string; ownerId: string | null } | { ok: false; code: string; error: string } {
+  const ownerScope = String(scopeRaw ?? '').trim();
+  if (!ownerScope) {
+    return { ok: false, code: 'CANONICAL_OWNER_UNKNOWN', error: 'Ownership context could not be established' };
+  }
+  const ownerId = idRaw === null || idRaw === undefined || String(idRaw).trim() === ''
+    ? null : String(idRaw);
+  return { ok: true, ownerScope, ownerId };
+}
+
+/**
+ * THE CANONICAL FINANCIAL ACTION.
+ *
+ * Every fact that selects an approval rule — amount, currency, ownership,
+ * action identity, and the object's own state — is derived HERE from the
+ * business object. None of them come from the request body.
+ *
+ * WHY NOT financial_approval_log. The log is EVIDENCE OF A DECISION, not a
+ * money source, and before this work the server wrote caller-supplied amounts
+ * into it. /queue also LEFT JOINs it, so it is legitimately absent for a first
+ * approval. The log is the OUTPUT of an authority decision, never an input.
+ */
 export async function resolveCanonicalFinancialAction(
   caseType: unknown, caseRefId: unknown, actionType: unknown,
 ): Promise<Resolved> {
@@ -678,42 +777,53 @@ export async function resolveCanonicalFinancialAction(
   const ct = String(caseType ?? '');
   const at = String(actionType ?? '');
 
-  const unresolved = (code: string, error: string, status = 404): Resolved =>
-    ({ ok: false, status, error, code });
+  const fail = (code: string, error: string, status = 404): Resolved => ({ ok: false, status, error, code });
 
-  // The (caseType, actionType) pair is validated by being resolvable at all:
-  // an unknown or mismatched pair falls through to UNSUPPORTED below, so a
-  // caller cannot relabel one operation as another to reach an easier rule.
   if (ct === 'refund' && at === 'approve') {
     const r = await db.execute(sql`
-      SELECT refund_request_id, amount_cents, status
+      SELECT refund_request_id, amount_cents, status, currency, booking_id, booking_type
       FROM refund_approvals WHERE refund_request_id = ${ref} LIMIT 1
     `);
     const row = r.rows?.[0] as any;
-    if (!row) return unresolved('REFUND_NOT_FOUND', 'Refund request not found');
+    if (!row) return fail('REFUND_NOT_FOUND', 'Refund request not found');
     if (row.status !== 'pending') {
-      return unresolved('REFUND_NOT_PENDING', `Refund is '${row.status}', not pending`, 409);
+      return fail('REFUND_NOT_PENDING', `Refund is '${row.status}', not pending`, 409);
     }
+    const money = validateCanonicalMoney(row.amount_cents, row.currency ?? 'ILS', { amountRequired: true });
+    if (!money.ok) return fail(money.code, money.error, 409);
+    // Refunds are company-scoped unless the booking lineage says otherwise;
+    // refund_approvals carries no owner column, so the scope is explicit here
+    // rather than silently defaulted.
+    const owner = ownershipOrFail('company', null);
+    if (!owner.ok) return fail(owner.code, owner.error, 409);
     return { ok: true, action: {
       caseType: ct, actionType: at, caseRefId: ref,
-      amountCents: Number(row.amount_cents ?? 0), currency: 'ILS',
-      ownerScope: 'global', ownerId: null, currentState: row.status,
+      amountCents: money.amountCents, currency: money.currency,
+      ownerScope: owner.ownerScope, ownerId: owner.ownerId, currentState: row.status,
       sourceTable: 'refund_approvals', sourceRecordId: String(row.refund_request_id),
     } };
   }
 
   if (ct === 'payout_release' && at === 'release') {
-    // /queue emits payout_batches.batch_id as caseRefId for this pair.
     const r = await db.execute(sql`
-      SELECT batch_id, total_net_cents, status
+      SELECT batch_id, total_net_cents, status, currency, owner_scope, owner_id
       FROM payout_batches WHERE batch_id = ${ref} LIMIT 1
     `);
     const row = r.rows?.[0] as any;
-    if (!row) return unresolved('PAYOUT_BATCH_NOT_FOUND', 'Payout batch not found');
+    if (!row) return fail('PAYOUT_BATCH_NOT_FOUND', 'Payout batch not found');
+    // Queue filtering is NOT authorization: a direct caller must not approve a
+    // terminal batch.
+    if (!['pending', 'held', 'awaiting_approval'].includes(String(row.status))) {
+      return fail('PAYOUT_BATCH_NOT_APPROVABLE', `Payout batch is '${row.status}'`, 409);
+    }
+    const money = validateCanonicalMoney(row.total_net_cents, row.currency, { amountRequired: true });
+    if (!money.ok) return fail(money.code, money.error, 409);
+    const owner = ownershipOrFail(row.owner_scope, row.owner_id);
+    if (!owner.ok) return fail(owner.code, owner.error, 409);
     return { ok: true, action: {
       caseType: ct, actionType: at, caseRefId: ref,
-      amountCents: Number(row.total_net_cents ?? 0), currency: 'ILS',
-      ownerScope: 'global', ownerId: null, currentState: row.status,
+      amountCents: money.amountCents, currency: money.currency,
+      ownerScope: owner.ownerScope, ownerId: owner.ownerId, currentState: String(row.status),
       sourceTable: 'payout_batches', sourceRecordId: String(row.batch_id),
     } };
   }
@@ -723,20 +833,58 @@ export async function resolveCanonicalFinancialAction(
       SELECT id, status FROM booking_disputes WHERE id = ${ref} LIMIT 1
     `);
     const row = r.rows?.[0] as any;
-    if (!row) return unresolved('DISPUTE_NOT_FOUND', 'Dispute not found');
+    if (!row) return fail('DISPUTE_NOT_FOUND', 'Dispute not found');
+    if (String(row.status) === 'closed') {
+      return fail('DISPUTE_ALREADY_CLOSED', 'Dispute is already closed', 409);
+    }
+    const owner = ownershipOrFail('company', null);
+    if (!owner.ok) return fail(owner.code, owner.error, 409);
     return { ok: true, action: {
       caseType: ct, actionType: at, caseRefId: ref,
       amountCents: 0, currency: 'ILS',
-      ownerScope: 'global', ownerId: null, currentState: row.status,
+      ownerScope: owner.ownerScope, ownerId: owner.ownerId, currentState: String(row.status),
       sourceTable: 'booking_disputes', sourceRecordId: String(row.id),
     } };
   }
 
-  return unresolved(
+  return fail(
     'UNSUPPORTED_FINANCIAL_ACTION',
     `No canonical resolver for '${ct}/${at}' — refusing to evaluate authority on unverified facts`,
     400,
   );
+}
+
+/** Resolve a station settlement into the same canonical shape. */
+export async function resolveCanonicalSettlement(settlementId: unknown): Promise<Resolved> {
+  const r = await db.execute(sql`
+    SELECT id, station_amount_cents, currency, franchise_owner_id, status
+    FROM station_settlements WHERE id = ${settlementId} LIMIT 1
+  `);
+  const row = r.rows?.[0] as any;
+  if (!row) return { ok: false, status: 404, error: 'Settlement not found', code: 'SETTLEMENT_NOT_FOUND' };
+  const money = validateCanonicalMoney(row.station_amount_cents, row.currency, { amountRequired: true });
+  if (!money.ok) return { ok: false, status: 409, error: money.error, code: money.code };
+  // A franchise-owned settlement must select the franchise rule, not global.
+  const owner = row.franchise_owner_id
+    ? ownershipOrFail('franchise', String(row.franchise_owner_id))
+    : ownershipOrFail('company', null);
+  if (!owner.ok) return { ok: false, status: 409, error: owner.error, code: owner.code };
+  return { ok: true, action: {
+    caseType: 'payout_release', actionType: 'release', caseRefId: String(row.id),
+    amountCents: money.amountCents, currency: money.currency,
+    ownerScope: owner.ownerScope, ownerId: owner.ownerId, currentState: String(row.status),
+    sourceTable: 'station_settlements', sourceRecordId: String(row.id),
+  } };
+}
+
+/**
+ * The complete set of facts an approval was granted against. If ANY of them
+ * moves between first and second approval the decision no longer applies —
+ * comparing the amount alone would miss an ownership or state change.
+ */
+function approvalFingerprint(a: CanonicalFinancialAction): string {
+  return [a.caseType, a.actionType, a.sourceTable, a.sourceRecordId,
+          String(a.amountCents), a.currency, a.ownerScope, a.ownerId ?? ''].join('|');
 }
 
 /** A supplied amount is an assertion. Refuse the request when it is wrong. */
@@ -760,21 +908,22 @@ function assertClientAmountMatches(
 // POST /api/financial-approvals/payout-release-gate
 router.post('/payout-release-gate', requireFinancialAdmin, async (req: Request, res: Response) => {
   try {
-    // owner_scope / owner_id are NOT read from the body: like the amount, they
-    // select which approval rule applies (owner-specific beats global).
+    // Neither the amount NOR the ownership context is read from the body: both
+    // select which approval rule applies, and an owner-specific rule beats a
+    // global one. A franchise-owned settlement must reach the franchise rule.
     const { settlement_id, amount_cents: assertedAmountCents } = req.body;
-    const owner_scope = 'global';
-    const owner_id: string | null = null;
     if (!settlement_id) {
       return res.status(400).json({ error: 'settlement_id required' });
     }
 
-    // Derive the figure from the settlement. Never from the body.
-    const canonical = await canonicalSettlementAmountCents(settlement_id);
-    if (!canonical.ok) {
-      return res.status(canonical.status).json({ error: canonical.error, code: canonical.code });
+    const resolvedGate = await resolveCanonicalSettlement(settlement_id);
+    if (!resolvedGate.ok) {
+      return res.status(resolvedGate.status).json({ error: resolvedGate.error, code: resolvedGate.code });
     }
-    const amount_cents = canonical.amountCents;
+    const canonicalGate = resolvedGate.action;
+    const amount_cents = canonicalGate.amountCents;
+    const owner_scope = canonicalGate.ownerScope;
+    const owner_id = canonicalGate.ownerId;
     if (!assertClientAmountMatches(assertedAmountCents, amount_cents, res, {
       route: 'payout-release-gate', settlementId: settlement_id,
     })) return;
@@ -998,26 +1147,30 @@ router.get('/log', async (req: Request, res: Response) => {
  * Takes the resolved canonical action so the executor and the authority check
  * can never disagree about which object they are talking about.
  */
+interface ExecutionOutcome { executed: boolean; code: string }
+
 async function executeFinancialAction(
   action: CanonicalFinancialAction,
   actingUid: string | null,
   logId: number
-) {
+): Promise<ExecutionOutcome> {
   const { caseType, caseRefId, actionType, sourceTable } = action;
 
   if (caseType === 'payout_release' && actionType === 'release') {
     if (sourceTable !== 'station_settlements') {
-      logger.error('[FinancialApprovals] refusing to execute a payout release against the wrong object', {
+      /**
+       * APPROVAL AND EXECUTION ARE SEPARATE FACTS.
+       *
+       * The approval stands and keeps its normal 'approved' status — no new
+       * status vocabulary is invented here, because the schema, reports and UI
+       * do not know one. What is withheld is the EXECUTION, and the caller is
+       * told so explicitly rather than being shown "executed".
+       */
+      logger.error('[FinancialApprovals] payout batch has no executor — approval recorded, execution withheld', {
         caseRefId, sourceTable, logId,
         detail: 'caseRefId is a payout_batches.batch_id; the legacy executor updated station_settlements.id',
       });
-      await db.execute(sql`
-        UPDATE financial_approval_log
-        SET status = 'approved_execution_withheld',
-            note = COALESCE(note, '') || ' [execution withheld: payout batch has no settlement executor]'
-        WHERE id = ${logId}
-      `);
-      return;
+      return { executed: false, code: 'PAYOUT_BATCH_EXECUTOR_NOT_IMPLEMENTED' };
     }
   }
 
@@ -1030,6 +1183,7 @@ async function executeFinancialAction(
     await db.execute(sql`
       UPDATE financial_approval_log SET status = 'executed', executed_at = NOW() WHERE id = ${logId}
     `);
+    return { executed: true, code: 'EXECUTED' };
   } else if (caseType === 'payout_release' && actionType === 'release') {
     // Only reachable when the resolver produced a real station settlement —
     // the guard at the top of this function refuses every other source.
@@ -1044,6 +1198,7 @@ async function executeFinancialAction(
     await db.execute(sql`
       UPDATE financial_approval_log SET status = 'executed', executed_at = NOW() WHERE id = ${logId}
     `);
+    return { executed: true, code: 'EXECUTED' };
   } else if (caseType === 'dispute_close' && actionType === 'approve') {
     await db.execute(sql`
       UPDATE booking_disputes SET status = 'closed', resolved_at = NOW()
@@ -1052,7 +1207,14 @@ async function executeFinancialAction(
     await db.execute(sql`
       UPDATE financial_approval_log SET status = 'executed', executed_at = NOW() WHERE id = ${logId}
     `);
+    return { executed: true, code: 'EXECUTED' };
   }
+
+  // No branch matched: nothing ran, and the caller must not be told otherwise.
+  logger.error('[FinancialApprovals] no executor for this canonical action', {
+    caseType, actionType, sourceTable, logId,
+  });
+  return { executed: false, code: 'NO_EXECUTOR_FOR_ACTION' };
 }
 
 export default router;

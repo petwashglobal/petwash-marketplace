@@ -47,8 +47,39 @@ describe("a financial authority decision never uses a client-supplied amount", (
   const gate = handler("router.post('/payout-release-gate'");
   const approve = handler("router.post('/approve'");
 
-  it("payout-release-gate derives the amount from the settlement", () => {
-    expect(gate).toContain("canonicalSettlementAmountCents");
+  it("payout-release-gate derives amount AND ownership from the settlement", () => {
+    expect(gate).toContain("resolveCanonicalSettlement");
+    // Neither may be hardcoded here: a franchise settlement must reach the
+    // franchise rule, and 'global' was the bypass wearing a different hat.
+    expect(gate).not.toMatch(/const owner_scope = 'global'/);
+    expect(gate).not.toMatch(/const owner_id: string \| null = null/);
+  });
+
+  it("the approval matrix cannot be edited by a role it governs", () => {
+    expect(src).toContain("POLICY_MUTATION_ROLES");
+    for (const r of ["router.post('/matrix'", "router.patch('/matrix/:id'", "router.delete('/matrix/:id'"]) {
+      const at = src.indexOf(r);
+      expect(at, `${r} not found`).toBeGreaterThan(-1);
+      expect(src.slice(at, at + 90)).toContain("requirePolicyAdmin");
+    }
+  });
+
+  it("second approval validates BEFORE it mutates, and transitions conditionally", () => {
+    const second = src.slice(src.indexOf("second_approved_by_uid"));
+    const head = src.slice(0, src.indexOf("UPDATE financial_approval_log SET\n        status = 'approved',"));
+    // the re-resolve and the fingerprint check both precede the write
+    expect(head).toContain("resolveCanonicalFinancialAction(");
+    expect(head).toContain("APPROVAL_FACTS_CHANGED");
+    expect(src).toContain("WHERE id = ${logId} AND status = 'pending'");
+    expect(src).toContain("SELF_SECOND_APPROVAL");
+  });
+
+  it("the API never claims execution it did not perform", () => {
+    expect(src).toContain("PAYOUT_BATCH_EXECUTOR_NOT_IMPLEMENTED");
+    expect(src).toContain("executionCode");
+    expect(src).toContain("Approved — execution NOT performed");
+    // and the invented shadow status is gone
+    expect(src).not.toContain("approved_execution_withheld");
   });
 
   /**
@@ -112,7 +143,7 @@ describe("a financial authority decision never uses a client-supplied amount", (
       expect(call.slice(0, 200), `${name} passes something other than the derived amount`)
         .toContain("amount_cents");
       // and the derived constant is what that identifier now holds
-      expect(h).toMatch(/const amount_cents = canonical(Action)?\.amountCents/);
+      expect(h).toMatch(/const amount_cents = canonical(Action|Gate)\.amountCents/);
     }
   });
 });
