@@ -675,6 +675,44 @@ router.post('/verify-sms-code', async (req: Request, res: Response, next) => {
   }
 });
 
+// ── Proof → account binding ──────────────────────────────────────────────────
+// A verification proof asserts exactly one thing: "the holder controls THIS
+// phone / THIS email". It says nothing about WHICH account may be marked
+// verified. Until 2026-09-08 this route took its write target straight from
+// `req.body.userId` on a mount that carries no auth middleware at all, so a
+// caller holding a perfectly valid proof for their OWN contact could flip
+// phoneVerified / emailVerified — and, through markEmailVerified, acceptedTermsAt
+// — on ANY account id they chose to name, advancing that account's activation
+// state. Reproduced end-to-end against this handler before the fix; the pin is
+// server/tests/validateTokensProofBinding.regression.test.ts.
+//
+// Two INDEPENDENT bindings now, because either one alone still leaves a hole:
+//
+//   1. IDENTITY — the write target is the AUTHENTICATED caller, never the body.
+//      A body userId is honoured only when it agrees with the verified token;
+//      it is never itself the authority. This is the rule /activation-status
+//      below already follows after the ?userId=x disclosure defect.
+//
+//   2. CONTACT — the proof's phone/email must match the contact already on that
+//      account. Auth alone is NOT enough: without this, any signed-in user could
+//      mark their own account's phone verified using a proof for a number they
+//      do not own, which is the same "unattested contact" defect one step in.
+//
+// The contact check permits exactly one gap, and deliberately: a row with no
+// phone recorded yet (an email-first Google/Apple signup — AccountActivation
+// prompts for the number) accepts the attested contact, because there is no
+// stored contact for it to contradict. A row that DOES carry a contact must
+// match it. Note the residual this leaves, so nobody reads more into it than is
+// there: we mark the contact verified without WRITING it onto the row, so a
+// phone-less row can end up phoneVerified while users.phone stays null. That is
+// the pre-existing behaviour of markMobileVerified and is not what this change
+// is fixing — it is recorded here rather than silently inherited.
+const proofPhoneLast9 = (p?: string | null): string => {
+  const digits = String(p ?? '').replace(/\D/g, '');
+  return digits.length >= 9 ? digits.slice(-9) : '';
+};
+const proofEmailKey = (e?: string | null): string => String(e ?? '').toLowerCase().trim();
+
 router.post('/validate-tokens', async (req: Request, res: Response) => {
   try {
     const { emailToken, smsToken, userId } = req.body;
@@ -698,23 +736,105 @@ router.post('/validate-tokens', async (req: Request, res: Response) => {
       phoneNumber = result.phone;
     }
 
-    // If userId provided, persist activation state to DB
+    // No userId → pure token inspection, no write, no auth needed. This is the
+    // multi-step-flow re-validation path and is unchanged; a caller learns only
+    // whether a proof it already holds is still good.
     let activationState: Awaited<ReturnType<typeof getActivationState>> | null = null;
     if (userId && typeof userId === 'string') {
-      try {
+      // BINDING 1 — identity. The mount has no auth middleware, so this handler
+      // self-checks (the optionalFirebaseToken handler class).
+      const callerUid = await resolveActivationUid(req);
+      if (!callerUid) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required to record verification',
+          code: 'AUTH_REQUIRED',
+        });
+      }
+      if (callerUid !== userId) {
+        logger.warn('[Verification] validate-tokens: body userId is not the authenticated caller — refusing', {
+          callerUid,
+          requestedUserId: userId,
+        });
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot record verification for another account',
+          code: 'ACCOUNT_MISMATCH',
+        });
+      }
+
+      // BINDING 2 — contact. Read the account's own contacts and require the
+      // proof to be ABOUT them.
+      const [row] = await db
+        .select({ id: users.id, phone: users.phone, email: users.email })
+        .from(users)
+        .where(eq(users.id, callerUid))
+        .limit(1);
+
+      if (!row) {
+        // Previously this surfaced as markMobileVerified's "User not found"
+        // throw, swallowed by the non-fatal catch below. Same outcome, stated:
+        // the token result still returns, nothing is written.
+        logger.warn('[Verification] validate-tokens: no user row for authenticated caller — write skipped', { callerUid });
+      } else {
         if (phoneValid) {
-          await markMobileVerified(userId);
+          const stored = proofPhoneLast9(row.phone);
+          const attested = proofPhoneLast9(phoneNumber);
+          // Empty stored → email-first row with no number yet (allowed above).
+          // Empty attested → a proof we cannot compare; refuse rather than guess.
+          if (stored !== '' && stored !== attested) {
+            logger.warn('[Verification] validate-tokens: SMS proof is for a different phone than the account holds — refusing', { callerUid });
+            return res.status(403).json({
+              success: false,
+              message: 'The verified phone number does not match this account',
+              code: 'PHONE_PROOF_MISMATCH',
+            });
+          }
+          if (stored === '' && attested === '') {
+            logger.warn('[Verification] validate-tokens: SMS proof carries no comparable phone — refusing', { callerUid });
+            return res.status(403).json({
+              success: false,
+              message: 'The verified phone number does not match this account',
+              code: 'PHONE_PROOF_MISMATCH',
+            });
+          }
         }
         if (emailValid) {
-          await markEmailVerified(userId, { acceptTerms: true });
+          const stored = proofEmailKey(row.email);
+          const attested = proofEmailKey(emailAddress);
+          if (stored !== '' && stored !== attested) {
+            logger.warn('[Verification] validate-tokens: email proof is for a different address than the account holds — refusing', { callerUid });
+            return res.status(403).json({
+              success: false,
+              message: 'The verified email does not match this account',
+              code: 'EMAIL_PROOF_MISMATCH',
+            });
+          }
+          if (stored === '' && attested === '') {
+            logger.warn('[Verification] validate-tokens: email proof carries no comparable address — refusing', { callerUid });
+            return res.status(403).json({
+              success: false,
+              message: 'The verified email does not match this account',
+              code: 'EMAIL_PROOF_MISMATCH',
+            });
+          }
         }
-        activationState = await getActivationState(userId);
-      } catch (activationErr: any) {
-        // Non-fatal — token validation result still returned
-        logger.warn('[Verification] Activation write failed (non-fatal)', {
-          userId,
-          error: activationErr.message,
-        });
+
+        try {
+          if (phoneValid) {
+            await markMobileVerified(callerUid);
+          }
+          if (emailValid) {
+            await markEmailVerified(callerUid, { acceptTerms: true });
+          }
+          activationState = await getActivationState(callerUid);
+        } catch (activationErr: any) {
+          // Non-fatal — token validation result still returned
+          logger.warn('[Verification] Activation write failed (non-fatal)', {
+            userId: callerUid,
+            error: activationErr.message,
+          });
+        }
       }
     }
 

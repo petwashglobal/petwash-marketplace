@@ -57,6 +57,14 @@ const AUDIENCE_MAP: Record<UserTypeIntent, 'public_customer' | 'provider_applica
   staff_request: 'staff_request',
 };
 
+// Last-9-digit phone comparison key. Country-code / national-prefix
+// differences ("+972501234567" vs "0501234567") must not read as a mismatch;
+// an unusable value normalises to '' so callers can refuse rather than guess.
+function last9(p?: string | null): string {
+  const digits = String(p ?? '').replace(/\D/g, '');
+  return digits.length >= 9 ? digits.slice(-9) : '';
+}
+
 router.post('/complete-registration', async (req: Request, res: Response) => {
   const traceId = crypto.randomUUID().slice(0, 8);
 
@@ -110,6 +118,19 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     if (!smsCheck.valid) {
       logger.warn('[CompleteRegistration] Invalid SMS verification token', { traceId });
       return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
+    }
+    // Same binding the email half above has had, which the phone half did not
+    // (2026-09-08). `valid` only says the proof is a real, unexpired proof of
+    // SOME number — it says nothing about the number being registered here. A
+    // caller could satisfy the phone gate with a proof for their own mobile
+    // while submitting anyone's. Compare on the last 9 digits so a stored
+    // "+972501234567" still matches an incoming "0501234567" — the same
+    // normalisation onboarding-verification uses for its DB lookup.
+    const proofLast9 = last9(smsCheck.phone);
+    const submittedLast9 = last9(phone);
+    if (proofLast9 === '' || proofLast9 !== submittedLast9) {
+      logger.warn('[CompleteRegistration] SMS proof is for a different phone than the one submitted', { traceId });
+      return res.status(400).json({ success: false, message: 'Phone does not match verified phone' });
     }
 
     const membershipNumber = await generateMembershipId(MEMBERSHIP_CLASS[userType]);
@@ -270,6 +291,13 @@ router.post('/send-welcome-email', async (req: Request, res: Response) => {
     if (!smsCheck.valid) {
       return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
     }
+    // NOTE (2026-09-08 binding sweep): unlike /complete-registration there is
+    // nothing here to bind this proof TO — the request carries no phone, only
+    // toEmail. So this stays a liveness gate ("the caller holds some valid
+    // phone proof") and is deliberately not dressed up as a binding. What
+    // actually contains this route is the emailCheck above: the send target is
+    // toEmail and toEmail must be the email the proof attests, so a caller can
+    // only ever mail an address they have proven they control.
 
     const result = await WelcomeEmailService.sendWelcomeEmail({
       audience: audience as 'public_customer' | 'provider_applicant' | 'staff_request',
