@@ -933,15 +933,20 @@ router.post('/validate-tokens', async (req: Request, res: Response) => {
           try {
             ownerUid = (await fbAdmin.getUserByPhoneNumber(phoneToAttach))?.uid ?? null;
           } catch (probeErr: any) {
-            if (probeErr?.code !== 'auth/user-not-found') {
-              // Ownership unknown. Say "try again", never the terminal-sounding
-              // "belongs to someone else" — that claim must be established.
-              logger.error('[Verification] phone ownership probe FAILED', { uid, error: probeErr?.message });
-              return res.status(500).json({
-                success: false, code: 'PHONE_ATTACH_FAILED',
-                message: 'Your mobile was verified but could not be linked to your account. Please try again.',
-              });
-            }
+            logger.error('[Verification] phone ownership probe FAILED', { uid, code: probeErr?.code, error: probeErr?.message });
+          }
+          if (!ownerUid) {
+            // Ownership NOT established — the probe was unreadable, or it
+            // contradicted itself (auth/user-not-found: Firebase said the
+            // number exists, then said nobody holds it — a delete/merge race).
+            // Either way we have not shown the number belongs to someone else,
+            // so we do not say so. "Try again" is the only honest answer, and
+            // it is retryable where the 409 is terminal.
+            logger.warn('[Verification] phone ownership unresolved — not claiming it is taken', { uid });
+            return res.status(500).json({
+              success: false, code: 'PHONE_ATTACH_FAILED',
+              message: 'Your mobile was verified but could not be linked to your account. Please try again.',
+            });
           }
           if (ownerUid !== uid) {
             logger.warn('[Verification] phone attach refused — number belongs to another account', { uid });

@@ -362,9 +362,12 @@ describe('an attached number reaches the store that owns phone identity', () => 
 
   it('Firebase is the authoritative uniqueness check — its rejection is 409, not 500', async () => {
     // The users SELECT above is a courtesy that races; updateUser is atomic.
+    // Firebase must also NAME the other owner: "already exists" alone is not
+    // evidence of one (see the contradicted-probe case at the bottom).
     fbUpdateUser.mockRejectedValueOnce(
       Object.assign(new Error('taken'), { code: 'auth/phone-number-already-exists' }),
     );
+    fbPhoneOwnerUid = 'uid_someone_else';
     const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
     expect(res.status).toBe(409);
     expect(res.body.code).toBe('PHONE_IN_USE');
@@ -450,6 +453,35 @@ describe('the Postgres half of the attach', () => {
     const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
     expect(res.status).toBe(500);
     expect(res.body.code).toBe('PHONE_ATTACH_FAILED');
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The narrow edge in the already-exists branch: the probe may CONTRADICT the
+ * error that triggered it. Firebase says the number exists, then says nobody
+ * holds it (auth/user-not-found — reachable via a delete/merge race). That is
+ * not evidence someone else owns it, so the terminal 409 must not be returned:
+ * a branch may only say what it has established. Same rule as the unreadable
+ * probe, and the asymmetry is the point — one is retryable, the other is not.
+ */
+describe('the attach only ever claims what it has established', () => {
+  it('a probe that says NOBODY owns the number is not "it belongs to someone else"', async () => {
+    fbUpdateUser.mockRejectedValueOnce(phoneAlreadyExists());
+    fbPhoneOwnerUid = null; // → the mock throws auth/user-not-found
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(500);
+    expect(res.body.code).toBe('PHONE_ATTACH_FAILED');
+    expect(res.body.code).not.toBe('PHONE_IN_USE');
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+
+  it('a probe returning a user with no uid is treated the same way', async () => {
+    fbUpdateUser.mockRejectedValueOnce(phoneAlreadyExists());
+    fbGetUserByPhoneNumber.mockResolvedValueOnce({} as any);
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(500);
+    expect(res.body.code).not.toBe('PHONE_IN_USE');
     expect(markMobileVerified).not.toHaveBeenCalled();
   });
 });
