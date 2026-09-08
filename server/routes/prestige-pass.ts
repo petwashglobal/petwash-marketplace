@@ -4312,7 +4312,10 @@ router.post('/admin/wallet/adjust', auditLogMiddleware('CREDIT_WALLET_ADJUST'), 
     // until then a ceiling applies. See server/lib/walletMoneyAuthority.ts.
     const moneyAuthority = await authoriseWalletMoneyAction({
       caseType: 'wallet_adjust',
-      actionType: 'adjust',
+      // credit and debit are different acts — minting value and clawing it
+      // back deserve different bands, and the seed in #2324 distinguishes
+      // them. `type` is already validated to be one of the two above.
+      actionType: type,
       amountCents: amountCents,
       actingRole: 'admin',
       fallbackCeilingCents: ADMIN_TIER_CEILING_CENTS,
@@ -4526,8 +4529,8 @@ router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Resp
     // it, not the caller — so only a CHOSEN partial figure is banded.
     if (typeof rawAmount === 'number' && rawAmount > 0) {
       const moneyAuthority = await authoriseWalletMoneyAction({
-        caseType: 'wallet_support_refund',
-        actionType: 'refund',
+        caseType: 'wallet_support',
+        actionType: 'issue_refund',
         amountCents: rawAmount,
         actingRole: 'admin',
         fallbackCeilingCents: SUPPORT_TIER_CEILING_CENTS,
@@ -4699,7 +4702,7 @@ router.post('/admin/wallet/support/credit', async (req: Request, res: Response) 
     // the band below is the shared rule the census says every value-moving
     // route needs. See server/lib/walletMoneyAuthority.ts.
     const moneyAuthority = await authoriseWalletMoneyAction({
-      caseType: 'wallet_support_credit',
+      caseType: 'wallet_support',
       actionType: 'credit',
       amountCents,
       actingRole: 'admin',
