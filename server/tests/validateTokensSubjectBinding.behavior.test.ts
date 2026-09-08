@@ -48,6 +48,7 @@ const ACCOUNTS: Record<string, { id: string; email: string | null; phone: string
 };
 
 // ── Auth: Bearer "<uid>" resolves to that uid ───────────────────────────────
+const fbUpdateUser = vi.fn(async (_uid: string, _p: any) => undefined as any);
 vi.mock('../lib/firebase-admin', () => ({
   auth: {
     verifyIdToken: async (t: string) => {
@@ -58,6 +59,7 @@ vi.mock('../lib/firebase-admin', () => ({
       if (!t || !ACCOUNTS[t]) throw new Error('bad cookie');
       return { uid: t };
     },
+    updateUser: (...a: any[]) => (fbUpdateUser as any)(...a),
   },
 }));
 
@@ -167,6 +169,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   smsBurnResult = { ok: true };
   phoneOwnedByOther = null;
+  fbUpdateUser.mockResolvedValue(undefined as any);
 });
 
 /** Nothing in this suite may ever mutate the victim. */
@@ -297,5 +300,71 @@ describe('the route reports the truth about what it did', () => {
     const res = await post({ smsToken: smsTokenFor(VICTIM.phone!) }, VICTIM.id);
     expect(res.status).toBeGreaterThanOrEqual(500);
     expect(res.body.success).not.toBe(true);
+  });
+});
+
+/**
+ * RESIDUAL of the binding fix, closed here.
+ *
+ * The binding permits exactly one gap on purpose: a row with NO phone yet may
+ * accept the attested number, because nothing stored contradicts it. That is
+ * the email-first population — Google / Apple / email signup, whose users row
+ * is born with `phone: decoded.phone_number || null` and therefore NULL, and
+ * whom client/src/pages/AccountActivation.tsx sends here after prompting for a
+ * number precisely because user.phoneNumber is null.
+ *
+ * The route persisted that number to users.phone but NOT to the Firebase
+ * record, and Firebase owns the phone identifier: POST /api/auth/phone-session
+ * resolves the account through fbAdminAuth.getUserByPhoneNumber(). So the
+ * member finished activation with a verified mobile that phone login could not
+ * find — it took the new-user branch and minted a SECOND account for the same
+ * person, stranding their wallet, loyalty and history on the first.
+ *
+ * The three sibling routes have always written the attested contact through
+ * updateUser (verify-signup-mobile, verify-signup-email) or derived the account
+ * FROM it (phone-session). This one only flipped flags.
+ */
+describe('an attached number reaches the store that owns phone identity', () => {
+  it('an email-first row persists the attested number to BOTH stores', async () => {
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(200);
+    // Postgres: users.phone now holds the number.
+    expect(dbUpdateSet).toHaveBeenCalledWith(expect.objectContaining({ phone: '+972500000009' }));
+    // Firebase: the record phone-session resolves against holds it too.
+    expect(fbUpdateUser).toHaveBeenCalledWith(NOPHONE.id, { phoneNumber: '+972500000009' });
+  });
+
+  it('a row that ALREADY holds the number attaches nothing — there is nothing to attach', async () => {
+    const res = await post({ smsToken: smsTokenFor(VICTIM.phone!) }, VICTIM.id);
+    expect(res.status).toBe(200);
+    expect(fbUpdateUser).not.toHaveBeenCalled();
+    expect(markMobileVerified).toHaveBeenCalledWith(VICTIM.id);
+  });
+
+  it('Firebase is the authoritative uniqueness check — its rejection is 409, not 500', async () => {
+    // The users SELECT above is a courtesy that races; updateUser is atomic.
+    fbUpdateUser.mockRejectedValueOnce(
+      Object.assign(new Error('taken'), { code: 'auth/phone-number-already-exists' }),
+    );
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('PHONE_IN_USE');
+    // Nothing was flipped: no verified flag for a number we could not attach.
+    expect(markMobileVerified).not.toHaveBeenCalled();
+    expect(dbUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('a failed attach is NOT reported as success and flips no flag', async () => {
+    fbUpdateUser.mockRejectedValueOnce(new Error('firebase down'));
+    const res = await post({ smsToken: smsTokenFor('+972500000009') }, NOPHONE.id);
+    expect(res.status).toBeGreaterThanOrEqual(500);
+    expect(res.body.success).not.toBe(true);
+    expect(markMobileVerified).not.toHaveBeenCalled();
+  });
+
+  it('email needs no attach — the binding already required it to match the row', async () => {
+    const res = await post({ emailToken: emailTokenFor(VICTIM.email) }, VICTIM.id);
+    expect(res.status).toBe(200);
+    expect(fbUpdateUser).not.toHaveBeenCalled();
   });
 });

@@ -880,14 +880,77 @@ router.post('/validate-tokens', async (req: Request, res: Response) => {
       }
     }
 
-    // 4. MUTATE — only now, and only ever on the authenticated subject.
+    // 4. ATTACH — write the attested number where the rest of the platform
+    //    actually reads it. Persisting only users.phone left the two stores
+    //    disagreeing: Firebase owns the phone identifier, and POST
+    //    /api/auth/phone-session resolves the account through
+    //    fbAdminAuth.getUserByPhoneNumber(). An email-first member (Google /
+    //    Apple / email signup, which is exactly the population
+    //    AccountActivation serves — it prompts for a number because
+    //    user.phoneNumber is null) finished activation with phone_verified
+    //    true and users.phone set, while their Firebase record still had NO
+    //    phone. Signing in by that number then missed them, took the
+    //    new-user branch, and minted a SECOND account for the same person —
+    //    their wallet, loyalty and history stranded on the first one.
+    //
+    //    Firebase is also the AUTHORITATIVE uniqueness check. The SELECT above
+    //    is a courtesy that races; updateUser is atomic and yields the same
+    //    409 PHONE_IN_USE the sibling routes return, so a raw UPDATE can no
+    //    longer inherit a bare unique-constraint 500 on users.phone.
+    //
+    //    The attach lives HERE, in the route, and NOT inside
+    //    markMobileVerified: the service takes a userId and no contact, and
+    //    its other callers (verify-signup-mobile, phone-session,
+    //    authBootstrap, verify-sms-code) have each already written the
+    //    contact — or derived the account FROM it — before calling. Only the
+    //    caller holds the proof that says which number may be attached; a
+    //    service-side write would be guessing at one.
+    //
+    //    Email needs no equivalent: the binding above requires the proved
+    //    address to already equal users.email, so there is never an address
+    //    to attach on this route.
+    if (phoneToAttach) {
+      try {
+        const { auth: fbAdmin } = await import('../lib/firebase-admin');
+        await fbAdmin.updateUser(uid, { phoneNumber: phoneToAttach });
+      } catch (attachErr: any) {
+        if (attachErr?.code === 'auth/phone-number-already-exists') {
+          logger.warn('[Verification] phone attach refused — number belongs to another account', { uid });
+          return res.status(409).json({
+            success: false, code: 'PHONE_IN_USE',
+            message: 'This mobile number is already linked to another account.',
+          });
+        }
+        logger.error('[Verification] phone attach FAILED', { uid, error: attachErr?.message });
+        return res.status(500).json({
+          success: false, code: 'PHONE_ATTACH_FAILED',
+          message: 'Your mobile was verified but could not be linked to your account. Please try again.',
+        });
+      }
+
+      // Firebase has accepted the number, so a UNIQUE violation here means a
+      // stale users row holds it with no matching Firebase record — drift,
+      // not a legitimate second owner. Say 409, never a raw constraint 500.
+      try {
+        await db.update(users).set({ phone: phoneToAttach }).where(eq(users.id, uid));
+      } catch (dbErr: any) {
+        const unique = String(dbErr?.code) === '23505' || /unique|duplicate key/i.test(dbErr?.message || '');
+        logger.error('[Verification] phone persist FAILED', { uid, unique, error: dbErr?.message });
+        return res.status(unique ? 409 : 500).json({
+          success: false,
+          code: unique ? 'PHONE_IN_USE' : 'PHONE_ATTACH_FAILED',
+          message: unique
+            ? 'This mobile number is already linked to another account.'
+            : 'Your mobile was verified but could not be linked to your account. Please try again.',
+        });
+      }
+    }
+
+    // 5. MUTATE — only now, and only ever on the authenticated subject.
     //    A failed write is NOT reported as success; the previous code swallowed
     //    it as "non-fatal" and answered 200 for a change that never landed.
     let activationState: Awaited<ReturnType<typeof getActivationState>> | null = null;
     try {
-      if (phoneToAttach) {
-        await db.update(users).set({ phone: phoneToAttach }).where(eq(users.id, uid));
-      }
       if (phoneValid) {
         await markMobileVerified(uid);
       }
