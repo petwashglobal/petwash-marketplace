@@ -941,6 +941,10 @@ publicAuthRouter.post("/api/auth/login/2fa/verify", apiLimiter, async (req, res)
  * REQUIRES: verificationToken from successful /verify-code response
  */
 publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
+  // Set the instant the one-shot nonce is claimed. Everything after that point
+  // is unrecoverable for the caller's cached token, and the outer catch-all
+  // below cannot tell on its own which side of the burn it is reporting.
+  let proofSpent = false;
   try {
     // firstName / lastName are optional but STRONGLY recommended: without
     // them the users row lands with nulls, MEMBER_REQUIRED_FIELDS then
@@ -986,6 +990,20 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       });
     }
 
+    // ── THE PROOF IS NOW SPENT ────────────────────────────────────────────
+    // consumeVerificationNonce is a Redis SETNX (server/lib/oneShotProof.ts):
+    // the first claim wins and every replay answers `already_used`. From here
+    // down the caller's verificationToken can never be presented again — and
+    // this route does the heaviest work in the file below this line (Firebase
+    // lookup, account creation, wallet + loyalty + users rows, provisioning,
+    // custom-token mint). SignUpLuxury caches that token so a stage-2/3/4
+    // hiccup does not cost a fresh SMS, which is right for failures ABOVE this
+    // line and wrong for every failure below it: a retry with the same token
+    // dies right here with VERIFICATION_ALREADY_USED. So every failure from
+    // here on says `proofSpent: true`, and the client drops its cached token
+    // and asks for a new code instead of looping on a dead one. Same treatment
+    // as the sibling route /api/auth/verify-signup-mobile (#2327).
+    proofSpent = true;
     const formattedPhone = tokenValidation.phone;
 
     const adminAuth = fbAdminAuth;
@@ -1009,6 +1027,7 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
             if (existing) {
               return res.status(409).json({
                 ok: false,
+                proofSpent: true,
                 code: 'EMAIL_HAS_ACCOUNT',
                 error: 'This email already has a PetWash account. Please sign in, then add your mobile number.',
               });
@@ -1020,7 +1039,7 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
         // 18+ gate — new accounts only.
         const ageCheck = checkSignupAge(req.body?.dateOfBirth);
         if (!ageCheck.ok) {
-          return res.status(403).json({ ok: false, error: ageCheck.error, code: 'AGE_REQUIREMENT' });
+          return res.status(403).json({ ok: false, proofSpent: true, error: ageCheck.error, code: 'AGE_REQUIREMENT' });
         }
         user = await adminAuth.createUser({
           phoneNumber: formattedPhone,
@@ -1174,8 +1193,10 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
         logger.error('[PhoneAuth] users row bootstrap HARD-FAILED — returning 502', { uid: user.uid });
         return res.status(502).json({
           ok: false,
+          proofSpent: true,
           error: 'user_bootstrap_failed',
           code: 'DB_UNAVAILABLE',
+          message: 'We could not finish setting up your account — please request a new code and try again.',
         });
       }
       logger.error('[PhoneAuth] Bootstrap threw an unexpected error — returning 502', {
@@ -1183,8 +1204,10 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       });
       return res.status(502).json({
         ok: false,
+        proofSpent: true,
         error: 'user_bootstrap_failed',
         code: 'BOOTSTRAP_UNAVAILABLE',
+        message: 'We could not finish setting up your account — please request a new code and try again.',
       });
     }
 
@@ -1229,8 +1252,13 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     });
   } catch (err) {
     logger.error('[PublicAuth] Error creating phone session:', err);
+    // A throw anywhere below the burn (the Firebase lookup rethrow, the
+    // custom-token mint, the identity probe) lands here with no named branch
+    // of its own. It is still a post-burn failure and the client must be told,
+    // or it retries with a token that is already gone.
     return res.status(500).json({
       ok: false,
+      ...(proofSpent ? { proofSpent: true } : {}),
       error: 'Server error'
     });
   }
