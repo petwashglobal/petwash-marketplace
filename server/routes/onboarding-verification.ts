@@ -17,6 +17,32 @@ import {
 } from '../services/ActivationService';
 import { buildActivationEmail } from '../lib/luxuryActivationEmail';
 import { redis } from '../services/redis';
+import { consumeOneShotProof } from '../lib/oneShotProof';
+
+/**
+ * How long a spent email-proof marker must live. The email verification JWT is
+ * minted with a 10-minute life elsewhere in this file; the marker is sized to
+ * outlive it (oneShotProof adds its own clock-skew slack on top).
+ */
+const EMAIL_PROOF_ONE_SHOT_TTL_SECONDS = 15 * 60;
+
+/** Contacts compare normalised, so casing or spacing is never a mismatch. */
+function normaliseEmail(e: string | null | undefined): string {
+  return (e ?? '').trim().toLowerCase();
+}
+
+/**
+ * E.164-ish comparison key. Deliberately lossy-but-consistent: both sides of
+ * every comparison go through it, so '+972-50 123' and '+97250123' are ONE
+ * number rather than two, and a stored local-format value cannot masquerade as
+ * a different subscriber.
+ */
+function normalisePhone(p: string | null | undefined): string {
+  const raw = (p ?? '').trim();
+  if (!raw) return '';
+  const digits = raw.replace(/[^\d]/g, '');
+  return digits ? `+${digits}` : '';
+}
 
 // ── Auth helper — derive the current user from Bearer OR pw_session cookie ────
 // Never trust a request-body / query-string userId for anything that returns
@@ -675,51 +701,211 @@ router.post('/verify-sms-code', async (req: Request, res: Response, next) => {
   }
 });
 
+/**
+ * POST /api/onboarding-verification/validate-tokens
+ *
+ * SECURITY REWRITE 2026-09-08. This route MUTATES verified identity state, and
+ * it used to decide whose state to mutate from a `userId` in the request body,
+ * on a mount that has no authentication. A verification token answers exactly
+ * one question — "does the bearer control THIS phone / THIS email?" — and says
+ * nothing about WHICH ACCOUNT that applies to. The route treated the two as the
+ * same fact, so an attacker's own valid token plus a victim's UID mutated the
+ * victim.
+ *
+ * It was never a decorative flag either: markMobileVerified / markEmailVerified
+ * run computeStatus(), and with AUTH_REQUIRE_BOTH_CONTACTS unset (production,
+ * verified 2026-09-08) ONE verified contact yields 'active' — stamping
+ * accountActivatedAt and firing _onFullActivation: wallet seeding, a loyalty
+ * profile with a 100-point join bonus, and domain events.
+ *
+ * The sibling GET /activation-status on this very file had already been fixed
+ * for the read side of this exact defect (PR-AUTH-CONTACTS-3). The write side
+ * was missed.
+ *
+ * FOUR THINGS ARE NOW TRUE, in this order:
+ *
+ *   1. AUTHENTICATED. The subject is derived from the verified Firebase token
+ *      or pw_session cookie. A body `userId` carries NO authority; if it
+ *      disagrees with the authenticated subject the request is refused rather
+ *      than quietly acted on, so a stale client fails loudly.
+ *
+ *   2. BOUND. The verified contact must belong to THIS account. Authentication
+ *      alone is not enough — being signed in as yourself does not entitle you
+ *      to mark someone else's phone as your verified one. An account with no
+ *      phone on file may attach the verified number, subject to a uniqueness
+ *      check, which is how the activation journey legitimately adds a mobile.
+ *
+ *   3. ONE-USE. This is a mutation boundary, not an inspection. Inspection may
+ *      be replayed across a multi-step journey; authority to mutate may not.
+ *      The proof is burned through the shared one-shot store BEFORE the write,
+ *      and an unreachable store fails CLOSED (503, no mutation).
+ *
+ *   4. NOT CONSENT. markEmailVerified no longer receives { acceptTerms: true }.
+ *      Controlling an email address proves control of that address. It is not
+ *      an affirmative agreement to the Terms, and it must not write
+ *      acceptedTermsAt. Terms acceptance needs its own explicit act, with a
+ *      version and its own evidence.
+ *
+ * STILL OWED (deliberately not built here): the phone binding is enforced at
+ * REDEMPTION, not at issuance. The stronger shape is a server-recorded pending
+ * phone-change target bound to the UID when the challenge is created. That is a
+ * flow change, and this is the security fix.
+ */
 router.post('/validate-tokens', async (req: Request, res: Response) => {
   try {
-    const { emailToken, smsToken, userId } = req.body;
+    // 1. WHO — from the verified session only, never the body.
+    const uid = await resolveActivationUid(req);
+    if (!uid) {
+      return res.status(401).json({ success: false, code: 'AUTH_REQUIRED', message: 'Authentication required' });
+    }
+
+    const { emailToken, smsToken, userId: bodyUserId } = req.body || {};
+    if (bodyUserId && typeof bodyUserId === 'string' && bodyUserId !== uid) {
+      logger.warn('[Verification] validate-tokens body userId != authenticated subject — refused', { uid });
+      return res.status(403).json({
+        success: false, code: 'SUBJECT_MISMATCH',
+        message: 'This verification does not belong to the signed-in account.',
+      });
+    }
+
+    if (!emailToken && !smsToken) {
+      return res.status(400).json({ success: false, code: 'NO_TOKEN', message: 'A verification token is required' });
+    }
+
+    const [account] = await db
+      .select({ id: users.id, email: users.email, phone: users.phone })
+      .from(users)
+      .where(eq(users.id, uid))
+      .limit(1);
+    if (!account) {
+      return res.status(404).json({ success: false, code: 'ACCOUNT_NOT_FOUND', message: 'Account not found' });
+    }
 
     let emailValid = false;
     let emailAddress: string | undefined;
     let phoneValid = false;
     let phoneNumber: string | undefined;
+    let phoneToAttach: string | null = null;
 
+    // 2. BIND — the proof must be about THIS account's contact.
     if (emailToken) {
       const check = peekEmailVerificationToken(emailToken);
-      if (check.valid && check.email) {
-        emailValid = true;
-        emailAddress = check.email;
+      if (!check.valid || !check.email) {
+        return res.status(401).json({ success: false, code: 'VERIFICATION_INVALID', message: 'Email verification is invalid or expired' });
       }
+      const proved = normaliseEmail(check.email);
+      const onFile = normaliseEmail(account.email);
+      if (!onFile || onFile !== proved) {
+        logger.warn('[Verification] email proof does not match the account on file — refused', { uid });
+        return res.status(403).json({
+          success: false, code: 'CONTACT_MISMATCH',
+          message: 'That verification is for a different email address.',
+        });
+      }
+      emailValid = true;
+      emailAddress = proved;
     }
 
     if (smsToken) {
       const result = twilioSMSService.validateVerificationToken(smsToken);
-      phoneValid = result.valid;
-      phoneNumber = result.phone;
+      if (!result.valid || !result.phone) {
+        return res.status(401).json({ success: false, code: 'VERIFICATION_INVALID', message: 'Mobile verification is invalid or expired' });
+      }
+      const proved = normalisePhone(result.phone);
+      const onFile = normalisePhone(account.phone);
+      if (onFile) {
+        if (onFile !== proved) {
+          logger.warn('[Verification] phone proof does not match the account on file — refused', { uid });
+          return res.status(403).json({
+            success: false, code: 'CONTACT_MISMATCH',
+            message: 'That verification is for a different mobile number.',
+          });
+        }
+      } else {
+        // No phone on file: attaching the verified number IS the activation
+        // journey. Still refuse a number that already belongs to someone else,
+        // or one account could claim another's identifier.
+        const [taken] = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.phone, proved))
+          .limit(1);
+        if (taken && taken.id !== uid) {
+          return res.status(409).json({
+            success: false, code: 'PHONE_IN_USE',
+            message: 'This mobile number is already linked to another account.',
+          });
+        }
+        phoneToAttach = proved;
+      }
+
+      // 3. ONE-USE — burn before the write. A replay is 401; a store we cannot
+      //    reach is 503 and changes nothing.
+      const burn = await twilioSMSService.consumeVerificationNonce(result.nonce || '');
+      if (!burn.ok) {
+        const unavailable = burn.reason === 'store_unavailable';
+        logger.warn('[Verification] mobile proof refused at the mutation boundary', { uid, reason: burn.reason });
+        return res.status(unavailable ? 503 : 401).json({
+          success: false,
+          code: unavailable ? 'VERIFICATION_UNAVAILABLE' : 'VERIFICATION_ALREADY_USED',
+          message: unavailable
+            ? 'Could not complete verification right now — please try again in a moment.'
+            : 'This verification was already used — request a new code.',
+        });
+      }
+      phoneValid = true;
+      phoneNumber = proved;
     }
 
-    // If userId provided, persist activation state to DB
-    let activationState: Awaited<ReturnType<typeof getActivationState>> | null = null;
-    if (userId && typeof userId === 'string') {
-      try {
-        if (phoneValid) {
-          await markMobileVerified(userId);
-        }
-        if (emailValid) {
-          await markEmailVerified(userId, { acceptTerms: true });
-        }
-        activationState = await getActivationState(userId);
-      } catch (activationErr: any) {
-        // Non-fatal — token validation result still returned
-        logger.warn('[Verification] Activation write failed (non-fatal)', {
-          userId,
-          error: activationErr.message,
+    if (emailToken && emailValid) {
+      // The email proof JWT carries no nonce, so it is burned by content hash:
+      // unique per distinct token, and two identical strings ARE the same
+      // credential. Same fail-closed rules as every other proof.
+      const burn = await consumeOneShotProof({
+        scope: 'emailverifyjwt',
+        id: crypto.createHash('sha256').update(String(emailToken)).digest('hex'),
+        ttlSeconds: EMAIL_PROOF_ONE_SHOT_TTL_SECONDS,
+        context: { route: 'validate-tokens' },
+      });
+      if (!burn.ok) {
+        const unavailable = burn.reason === 'store_unavailable';
+        logger.warn('[Verification] email proof refused at the mutation boundary', { uid, reason: burn.reason });
+        return res.status(unavailable ? 503 : 401).json({
+          success: false,
+          code: unavailable ? 'VERIFICATION_UNAVAILABLE' : 'VERIFICATION_ALREADY_USED',
+          message: unavailable
+            ? 'Could not complete verification right now — please try again in a moment.'
+            : 'This verification was already used — request a new code.',
         });
       }
     }
 
+    // 4. MUTATE — only now, and only ever on the authenticated subject.
+    //    A failed write is NOT reported as success; the previous code swallowed
+    //    it as "non-fatal" and answered 200 for a change that never landed.
+    let activationState: Awaited<ReturnType<typeof getActivationState>> | null = null;
+    try {
+      if (phoneToAttach) {
+        await db.update(users).set({ phone: phoneToAttach }).where(eq(users.id, uid));
+      }
+      if (phoneValid) {
+        await markMobileVerified(uid);
+      }
+      if (emailValid) {
+        // NO acceptTerms. Possession of an address is not consent to the Terms.
+        await markEmailVerified(uid);
+      }
+      activationState = await getActivationState(uid);
+    } catch (activationErr: any) {
+      logger.error('[Verification] Activation write FAILED', { uid, error: activationErr?.message });
+      return res.status(500).json({
+        success: false, code: 'ACTIVATION_WRITE_FAILED',
+        message: 'Verification succeeded but your account could not be updated. Please try again.',
+      });
+    }
+
     return res.json({
-      success: emailValid && phoneValid,
+      success: true,
       emailVerified: emailValid,
       phoneVerified: phoneValid,
       email: emailAddress,
