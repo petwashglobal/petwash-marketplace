@@ -1121,7 +1121,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // cached token that has already been spent can never work again, so
           // hold on to it and the user just re-presses verify into the same
           // refusal forever. Drop it and send them to a fresh code.
-          if (ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
+          // `proofSpent` is the SERVER saying so on the failure itself, which is
+          // one round-trip earlier than waiting for the replay to be refused;
+          // VERIFICATION_ALREADY_USED stays for the case where the response to
+          // a successful burn was lost and we retried blind.
+          if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
           fail(ad.error || ad.message || (he ? 'שמירת האימייל נכשלה. נסה שוב.' : 'Email attach failed. Try again.'));
           return;
         }

@@ -22,6 +22,11 @@
  * off, and nothing surfaced it. Not a read that fails — a safety valve firing
  * on a condition it was never designed to see.
  *
+ * SCOPE: named for the mobile route that surfaced this, but it holds the whole
+ * contract for BOTH contacts — verify-signup-email carried the same defect
+ * inverted (fallback dropped the FLAG, kept the CONTACT) and the same blind 409.
+ * A half-fixed file is how this class survived a review in the first place.
+ *
  * These pins hold both halves:
  *   - the write path may not keep the FLAG while dropping the CONTACT, and a
  *     failed persist must not reach markMobileVerified (which sets
@@ -41,7 +46,8 @@ const OTHER = 'uid_other_account';
 const PHONE = '+972500000111';
 
 // ── Firebase: the store that owns phone identity ────────────────────────────
-type FbUser = { uid: string; phoneNumber: string | null };
+type FbUser = { uid: string; phoneNumber: string | null; email?: string | null };
+let emailOwnerProbe: (() => Promise<FbUser>) | null = null;
 let fbUsers: Record<string, FbUser>;
 /** uid that updateUser should reject with auth/phone-number-already-exists */
 let updateUserFailure: { code?: string; message?: string } | null = null;
@@ -50,12 +56,22 @@ let phoneOwnerProbe: (() => Promise<FbUser>) | null = null;
 
 const updateUser = vi.fn(async (uid: string, patch: any) => {
   if (updateUserFailure) throw Object.assign(new Error('update failed'), updateUserFailure);
-  fbUsers[uid] = { uid, phoneNumber: patch.phoneNumber ?? fbUsers[uid]?.phoneNumber ?? null };
+  fbUsers[uid] = {
+    uid,
+    phoneNumber: patch.phoneNumber ?? fbUsers[uid]?.phoneNumber ?? null,
+    email: patch.email ?? fbUsers[uid]?.email ?? null,
+  };
   return fbUsers[uid];
 });
 const getUserByPhoneNumber = vi.fn(async (phone: string) => {
   if (phoneOwnerProbe) return phoneOwnerProbe();
   const hit = Object.values(fbUsers).find((u) => u.phoneNumber === phone);
+  if (!hit) throw Object.assign(new Error('not found'), { code: 'auth/user-not-found' });
+  return hit;
+});
+const getUserByEmail = vi.fn(async (email: string) => {
+  if (emailOwnerProbe) return emailOwnerProbe();
+  const hit = Object.values(fbUsers).find((u) => u.email === email);
   if (!hit) throw Object.assign(new Error('not found'), { code: 'auth/user-not-found' });
   return hit;
 });
@@ -75,6 +91,7 @@ vi.mock('../lib/firebase-admin', () => ({
     verifySessionCookie: async (t: string) => ({ uid: t }),
     updateUser: (...a: any[]) => (updateUser as any)(...a),
     getUserByPhoneNumber: (...a: any[]) => (getUserByPhoneNumber as any)(...a),
+    getUserByEmail: (...a: any[]) => (getUserByEmail as any)(...a),
     getUser: (...a: any[]) => (getUser as any)(...a),
   },
   db: { collection: () => ({ doc: () => ({ set: async () => undefined, get: async () => ({ exists: false }) }) }) },
@@ -170,7 +187,17 @@ vi.mock('../services/authBootstrap', () => ({
   ensureUserProvisioned: async () => ({ ok: true }),
   AuthBootstrapUsersRowFailed: class extends Error {},
 }));
-vi.mock('../lib/emailVerifiedToken', () => ({ redeemEmailVerifiedToken: async () => ({ ok: false }) }));
+/** Email proof "email:<addr>:<nonce>" — redeemed AND burned, exactly like prod. */
+const burnedEmailNonces = new Set<string>();
+vi.mock('../lib/emailVerifiedToken', () => ({
+  redeemEmailVerifiedToken: async (t: string) => {
+    const m = /^email:([^:]+):(.+)$/.exec(t || '');
+    if (!m) return { valid: false, reason: 'invalid' };
+    if (burnedEmailNonces.has(m[2])) return { valid: false, reason: 'already_used' };
+    burnedEmailNonces.add(m[2]);
+    return { valid: true, email: m[1] };
+  },
+}));
 vi.mock('../lib/mfaLoginToken', () => ({ mintMfaLoginToken: (uid: string) => `mfa:${uid}` }));
 vi.mock('../services/RegistrationOTPService', () => ({ registrationOTPService: {} }));
 vi.mock('../services/MembershipService', () => ({ assignCustomerMembership: async () => undefined }));
@@ -202,6 +229,11 @@ const attach = (uid: string, phone: string, nonce?: string) =>
 const start2fa = (uid: string) =>
   request(app).post('/api/auth/login/2fa/start').send({ idToken: uid });
 
+let emailNonceSeq = 0;
+const attachEmail = (uid: string, email: string, nonce?: string) =>
+  request(app).post('/api/auth/verify-signup-email')
+    .send({ idToken: uid, sessionToken: `email:${email}:${nonce ?? `e${++emailNonceSeq}`}` });
+
 const verify2fa = (uid: string) =>
   request(app).post('/api/auth/login/2fa/verify').send({ idToken: uid, code: '123456' });
 
@@ -217,6 +249,8 @@ const phonePersisted = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   burnedNonces.clear();
+  burnedEmailNonces.clear();
+  emailOwnerProbe = null;
   burnStoreUnavailable = false;
   pgCalls.length = 0;
   fbUsers = { [MEMBER]: { uid: MEMBER, phoneNumber: null }, [OTHER]: { uid: OTHER, phoneNumber: null } };
@@ -373,6 +407,97 @@ describe('verify-signup-mobile: the row may not claim a phone it did not record'
   });
 });
 
+// ── THE EMAIL TWIN ──────────────────────────────────────────────────────────
+// verify-signup-email carried the SAME defect inverted: its fallback dropped
+// the FLAG and kept the CONTACT, so a doubly-failed write let markEmailVerified
+// stamp emailVerified onto a row still holding the OLD address while Firebase
+// held the new one. It also answered the same blind 409 on "already exists".
+// One file, one contract — a half-fixed file is how this class survived.
+const EMAIL = 'member@example.com';
+const emailPersisted = () =>
+  pgCalls.some((c) => /UPDATE users SET email = \$1, email_verified = true/i.test(c.sql) && c.params[0] === EMAIL);
+
+describe('verify-signup-email: the same contract, on the other contact', () => {
+  const failEmailWrite = (code: string) => {
+    pgHandler = (sql) => {
+      if (/SET email = /i.test(sql)) throw Object.assign(new Error('write failed'), { code });
+      return { rows: [] };
+    };
+  };
+
+  it('the happy path writes BOTH stores and only then marks email verified', async () => {
+    const res = await attachEmail(MEMBER, EMAIL);
+    expect(res.status).toBe(200);
+    expect(fbUsers[MEMBER].email).toBe(EMAIL);
+    expect(emailPersisted()).toBe(true);
+    expect(markEmailVerified).toHaveBeenCalledWith(MEMBER, expect.anything());
+  });
+
+  it('a failed email write NEVER falls back to keeping the contact without the flag', async () => {
+    failEmailWrite('40P01');
+    const res = await attachEmail(MEMBER, EMAIL);
+    const flagless = pgCalls.some(
+      (c) => /UPDATE users SET email = /i.test(c.sql) && !/email_verified/i.test(c.sql),
+    );
+    expect(flagless).toBe(false);
+    expect(markEmailVerified).not.toHaveBeenCalled();
+    expect(res.status).toBeGreaterThanOrEqual(500);
+    expect(res.body.code).toBe('EMAIL_PERSIST_FAILED');
+    expect(res.body.proofSpent).toBe(true);
+  });
+
+  it('a FRESH proof heals the half that did not land', async () => {
+    failEmailWrite('40P01');
+    expect((await attachEmail(MEMBER, EMAIL)).status).toBeGreaterThanOrEqual(500);
+    expect(fbUsers[MEMBER].email).toBe(EMAIL);
+
+    pgCalls.length = 0;
+    pgHandler = () => ({ rows: [] });
+    updateUserFailure = { code: 'auth/email-already-exists' };
+    const res = await attachEmail(MEMBER, EMAIL);
+    expect(res.status).toBe(200);
+    expect(res.body.code).not.toBe('EMAIL_IN_USE');
+    expect(emailPersisted()).toBe(true);
+    expect(markEmailVerified).toHaveBeenCalledWith(MEMBER, expect.anything());
+  });
+
+  it('an address a DIFFERENT account holds is still refused 409', async () => {
+    fbUsers[OTHER].email = EMAIL;
+    updateUserFailure = { code: 'auth/email-already-exists' };
+    const res = await attachEmail(MEMBER, EMAIL);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('EMAIL_IN_USE');
+    expect(markEmailVerified).not.toHaveBeenCalled();
+  });
+
+  it('an unreadable ownership probe is retryable, never "belongs to someone else"', async () => {
+    updateUserFailure = { code: 'auth/email-already-exists' };
+    emailOwnerProbe = async () => { throw new Error('identity toolkit unavailable'); };
+    const res = await attachEmail(MEMBER, EMAIL);
+    expect(res.status).toBeGreaterThanOrEqual(500);
+    expect(res.body.code).not.toBe('EMAIL_IN_USE');
+  });
+
+  it('a 23505 on users.email answers 409, not an inherited constraint 500', async () => {
+    failEmailWrite('23505');
+    const res = await attachEmail(MEMBER, EMAIL);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('EMAIL_IN_USE');
+    expect(res.body.proofSpent).toBe(true);
+    expect(markEmailVerified).not.toHaveBeenCalled();
+  });
+
+  it('replaying the spent email proof dies at the redemption', async () => {
+    failEmailWrite('40P01');
+    await attachEmail(MEMBER, EMAIL, 'reused');
+    pgHandler = () => ({ rows: [] });
+    const replay = await attachEmail(MEMBER, EMAIL, 'reused');
+    expect(replay.status).toBe(401);
+    expect(replay.body.code).toBe('VERIFICATION_ALREADY_USED');
+    expect(markEmailVerified).not.toHaveBeenCalled();
+  });
+});
+
 // ── THE READ PATH ───────────────────────────────────────────────────────────
 describe('login 2FA: "no phone on file" is a claim about BOTH stores', () => {
   /** users row: opted into 2FA, but the contact never landed in Postgres. */
@@ -475,6 +600,15 @@ describe('the client stops reusing a proof the server says is spent', () => {
     // holding a spent token with no `proofSpent` to read. The next attempt gets
     // the replay refusal; converging there costs one tap and no extra SMS.
     expect(attachFailureBranch).toContain("ad.code === 'VERIFICATION_ALREADY_USED'");
+  });
+
+  it('does the same for the cached EMAIL proof', () => {
+    const i = SRC.indexOf('verify-signup-email');
+    expect(i).toBeGreaterThan(-1);
+    const j = SRC.indexOf('if (!ad.ok)', i);
+    const branch = SRC.slice(j, SRC.indexOf('return;', SRC.indexOf('fail(ad.error', j)));
+    expect(branch).toContain('ad.proofSpent === true');
+    expect(branch).toContain('setCachedEmailSessionToken(null)');
   });
 
   it('does NOT clear it for a pre-burn failure — that would burn an SMS for nothing', () => {

@@ -661,6 +661,41 @@ async function persistSignupEmail(uid: string, email: unknown): Promise<void> {
 }
 
 /**
+ * Attach a proved email address to a Firebase account — the email twin of
+ * attachVerifiedPhoneToFirebase, and it exists for the same reason.
+ *
+ * Firebase owns the email identifier too (/api/auth/email-session and password
+ * sign-in both resolve through it), so the same two-store rule applies: the
+ * write is not complete until Postgres AND the auth record hold it, and the
+ * same Firebase-succeeded / Postgres-failed gap makes a retry re-attach an
+ * address this uid already holds. On "already exists", ask WHO OWNS IT rather
+ * than telling a member their own address belongs to a stranger.
+ */
+type EmailAttachOutcome = 'attached' | 'already_ours' | 'in_use_by_other' | 'unresolved';
+
+async function attachVerifiedEmailToFirebase(uid: string, email: string): Promise<EmailAttachOutcome> {
+  try {
+    await fbAdminAuth.updateUser(uid, { email, emailVerified: true });
+    return 'attached';
+  } catch (e: any) {
+    if (e?.code !== 'auth/email-already-exists') {
+      logger.warn('[Signup] email attach updateUser failed', { uid, error: e?.message });
+      return 'unresolved';
+    }
+    let ownerUid: string | null = null;
+    try {
+      ownerUid = (await fbAdminAuth.getUserByEmail(email))?.uid ?? null;
+    } catch (probeErr: any) {
+      logger.warn('[Signup] email ownership probe unreadable', { uid, error: probeErr?.message });
+      return 'unresolved';
+    }
+    if (ownerUid === uid) return 'already_ours';
+    if (!ownerUid) return 'unresolved';
+    return 'in_use_by_other';
+  }
+}
+
+/**
  * POST /api/auth/verify-signup-email — step 2 of dual-verify.
  * The user already signed in via phone OTP; this proves they also own the email
  * (via the 6-digit email code) and marks it verified on THEIR account. Auth is the
@@ -696,14 +731,22 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
       });
     }
     const email = check.email.toLowerCase();
-    try {
-      await fbAdminAuth.updateUser(uid, { email, emailVerified: true });
-    } catch (e: any) {
-      if (e?.code === 'auth/email-already-exists') {
-        return res.status(409).json({ ok: false, error: 'This email is already linked to another account.', code: 'EMAIL_IN_USE' });
-      }
-      logger.warn('[Signup] verify-signup-email updateUser failed', { error: e?.message });
-      return res.status(500).json({ ok: false, error: 'Could not verify email — please try again.' });
+    // ── THE PROOF IS SPENT from redeemEmailVerifiedToken above ────────────
+    // Same contract as verify-signup-mobile: every failure below this line
+    // reports `proofSpent` so the client drops its cached sessionToken and
+    // fetches a fresh code, instead of re-presenting a nonce that can only
+    // answer VERIFICATION_ALREADY_USED.
+    const emailAttach = await attachVerifiedEmailToFirebase(uid, email);
+    if (emailAttach === 'in_use_by_other') {
+      return res.status(409).json({ ok: false, proofSpent: true, error: 'This email is already linked to another account.', code: 'EMAIL_IN_USE' });
+    }
+    if (emailAttach === 'unresolved') {
+      return res.status(500).json({
+        ok: false,
+        proofSpent: true,
+        code: 'EMAIL_ATTACH_FAILED',
+        error: 'Could not verify email — please request a new code and try again.',
+      });
     }
     // Set the password the member chose at join (CEO 2026-07-31) so they can log in
     // with email + password. Kept SEPARATE from the email-link update so a weak/bad
@@ -751,11 +794,32 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
       // toast to visit Account Security.
       // (twoFactorPersisted is echoed in the final res.json — see bottom of handler.)
     }
-    // Best-effort DB flag (email_verified column may not exist → harmless skip).
+    // NOT best-effort — the same rule the mobile path now follows, and the
+    // fallback here was the mirror image of that one: it dropped the FLAG and
+    // kept the CONTACT. Its stated premise ("email_verified column may not
+    // exist") is dead — the column is in shared/schema.ts, and markEmailVerified
+    // two lines below writes it through drizzle, so a schema without it would
+    // fail there anyway. What the swallow actually hid was a failed CONTACT
+    // write: both queries lose to the same UNIQUE users.email violation, both
+    // are ignored, and markEmailVerified then stamps emailVerified +
+    // emailVerifiedAt onto a row still holding the OLD address while Firebase
+    // holds the new one. A row may not assert a contact it cannot produce.
     try {
       await pool.query(`UPDATE users SET email = $1, email_verified = true WHERE id = $2`, [email, uid]);
     } catch (e: any) {
-      try { await pool.query(`UPDATE users SET email = $1 WHERE id = $2`, [email, uid]); } catch { /* ignore */ }
+      // users.email is UNIQUE. Firebase already accepted the address for THIS
+      // uid, so a 23505 means a stale row squats it — drift, not a second
+      // legitimate owner (#2322).
+      if (e?.code === '23505') {
+        return res.status(409).json({ ok: false, proofSpent: true, error: 'This email is already linked to another account.', code: 'EMAIL_IN_USE' });
+      }
+      logger.error('[Signup] verify-signup-email email persist FAILED', { uid, error: e?.message });
+      return res.status(500).json({
+        ok: false,
+        proofSpent: true,
+        code: 'EMAIL_PERSIST_FAILED',
+        error: 'Email verified but we could not save it — please request a new code and try again.',
+      });
     }
     // Also advance ACTIVATION (2026-07-24 audit fix): the raw UPDATE above set
     // only the boolean, not emailVerifiedAt, so a phone-then-email dual-verified
@@ -776,8 +840,9 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
       });
       return res.status(503).json({
         ok: false,
+        proofSpent: true,
         error: 'activation_unavailable',
-        message: 'Email verified but activation could not complete; please retry.',
+        message: 'Email verified but activation could not complete; please request a new code and try again.',
       });
     }
     // Include twoFactorPersisted so the client can surface a follow-up toast
