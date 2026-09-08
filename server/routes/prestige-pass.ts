@@ -33,6 +33,11 @@ import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconcil
 import { eq, desc, and, sql, gte, lte, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import {
+  authoriseWalletMoneyAction,
+  SUPPORT_TIER_CEILING_CENTS,
+  ADMIN_TIER_CEILING_CENTS,
+} from '../lib/walletMoneyAuthority';
+import {
   getKillSwitchAllowed as _getKillSwitchAllowed,
   checkIdempotency as _checkIdempotency,
   recordIdempotency as _recordIdempotency,
@@ -4167,6 +4172,25 @@ router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Re
     if (!bookingId) return res.status(400).json({ error: 'bookingId required' });
     if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
 
+    // MONEY AUTHORITY — see server/lib/walletMoneyAuthority.ts and the census.
+    // The amount is OPTIONAL here (absent = full refund), so the band is only
+    // evaluated when the admin chose a figure; a full refund is bounded by the
+    // booking itself, not by the caller.
+    if (typeof amountCents === 'number') {
+      const moneyAuthority = await authoriseWalletMoneyAction({
+        caseType: 'wallet_refund',
+        actionType: 'refund',
+        amountCents: amountCents,
+        actingRole: 'admin',
+        fallbackCeilingCents: ADMIN_TIER_CEILING_CENTS,
+      });
+      if (!moneyAuthority.ok) {
+        return res.status(moneyAuthority.status).json({
+          error: moneyAuthority.error, code: moneyAuthority.code,
+        });
+      }
+    }
+
     // Look up booking
     let booking: any = null;
     let sourceTable: 'booking_requests' | 'trainer_bookings' = 'booking_requests';
@@ -4283,6 +4307,25 @@ router.post('/admin/wallet/adjust', auditLogMiddleware('CREDIT_WALLET_ADJUST'), 
     if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
     if (type !== 'credit' && type !== 'debit') return res.status(400).json({ error: "type must be 'credit' or 'debit'" });
 
+    // MONEY AUTHORITY. The census found this route minting value with no
+    // ceiling and no approval band. The matrix decides when it has a rule;
+    // until then a ceiling applies. See server/lib/walletMoneyAuthority.ts.
+    const moneyAuthority = await authoriseWalletMoneyAction({
+      caseType: 'wallet_adjust',
+      // credit and debit are different acts — minting value and clawing it
+      // back deserve different bands, and the seed in #2324 distinguishes
+      // them. `type` is already validated to be one of the two above.
+      actionType: type,
+      amountCents: amountCents,
+      actingRole: 'admin',
+      fallbackCeilingCents: ADMIN_TIER_CEILING_CENTS,
+    });
+    if (!moneyAuthority.ok) {
+      return res.status(moneyAuthority.status).json({
+        error: moneyAuthority.error, code: moneyAuthority.code,
+      });
+    }
+
     const { walletService } = await import('../services/WalletService');
     const wallet = await walletService.getOrCreateWallet(userId);
     // Money-audit F4 (2026-08-24): idempotency key used to include Date.now()
@@ -4397,6 +4440,7 @@ router.post('/admin/wallet/support/release-hold', async (req: Request, res: Resp
       return res.status(400).json({ error: 'reason must be at least 5 characters' });
     }
 
+
     const found = await fetchSupportBooking(bookingId.trim(), bookingType);
     if (!found) return res.status(404).json({ error: 'Booking not found' });
     const { booking, sourceTable } = found;
@@ -4475,6 +4519,27 @@ router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Resp
     }
     if (rawAmount != null && rawAmount < 0) {
       return res.status(400).json({ error: 'amountCents must be >= 0' });
+    }
+
+    // MONEY AUTHORITY — see server/lib/walletMoneyAuthority.ts and the census.
+    // The amount is OPTIONAL here (absent = full refund), so the band is only
+    // evaluated when the admin chose a figure; a full refund is bounded by the
+    // booking itself, not by the caller.
+    // 0 means "the full refundable amount" on this route — the booking bounds
+    // it, not the caller — so only a CHOSEN partial figure is banded.
+    if (typeof rawAmount === 'number' && rawAmount > 0) {
+      const moneyAuthority = await authoriseWalletMoneyAction({
+        caseType: 'wallet_support',
+        actionType: 'issue_refund',
+        amountCents: rawAmount,
+        actingRole: 'admin',
+        fallbackCeilingCents: SUPPORT_TIER_CEILING_CENTS,
+      });
+      if (!moneyAuthority.ok) {
+        return res.status(moneyAuthority.status).json({
+          error: moneyAuthority.error, code: moneyAuthority.code,
+        });
+      }
     }
 
     const found = await fetchSupportBooking(bookingId.trim(), bookingType);
@@ -4632,6 +4697,22 @@ router.post('/admin/wallet/support/credit', async (req: Request, res: Response) 
     if (!userId?.trim()) return res.status(400).json({ error: 'userId required' });
     if (!amountCents || amountCents <= 0) return res.status(400).json({ error: 'amountCents must be > 0' });
     if (amountCents > 50000) return res.status(400).json({ error: 'amountCents must be <= 50000 (₪500)' });
+
+    // MONEY AUTHORITY. The ₪500 line above is this route's own historical cap;
+    // the band below is the shared rule the census says every value-moving
+    // route needs. See server/lib/walletMoneyAuthority.ts.
+    const moneyAuthority = await authoriseWalletMoneyAction({
+      caseType: 'wallet_support',
+      actionType: 'credit',
+      amountCents,
+      actingRole: 'admin',
+      fallbackCeilingCents: SUPPORT_TIER_CEILING_CENTS,
+    });
+    if (!moneyAuthority.ok) {
+      return res.status(moneyAuthority.status).json({
+        error: moneyAuthority.error, code: moneyAuthority.code,
+      });
+    }
     if (!reason?.trim() || reason.trim().length < 5) {
       return res.status(400).json({ error: 'reason must be at least 5 characters' });
     }

@@ -171,6 +171,11 @@ jobs:
       - name: Gate — the served artifact is written and checked before upload
         run: python3 scripts/guards/served_artifact_gated.py --fail
 
+      # A gate whose vocabulary disagrees with its seeded rules governs nothing.
+      # Two sessions nearly shipped exactly that on 2026-09-08 — see the script.
+      - name: Gate — wallet authority vocabulary matches the seeded bands
+        run: python3 scripts/guards/wallet_authority_vocabulary.py --fail
+
   gate-smoke-test-startup:
     name: Gate — routes.ts module-load smoke test
     runs-on: ubuntu-latest
