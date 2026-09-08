@@ -443,18 +443,54 @@ ${bookingRow}
     error?: string;
   }> {
     try {
-      // Validate provider has bank details
-      if (!provider.bankAccountNumber || !provider.bankName) {
+      /**
+       * THE DESTINATION COMES FROM THE PAYOUT, NEVER FROM THE LIVE PROFILE.
+       *
+       * This used to read provider.bankAccountNumber / bankName / bankCode /
+       * bankBranchCode / legalName. NONE of those are columns on `providers` —
+       * that table has only a `bank_account` jsonb — so the guard below was
+       * ALWAYS true and every payout died here with "bank details not
+       * configured", before it even reached the BANK_PAYOUT_LIVE gate. The
+       * payout path was dead, and the cause was five phantom field reads.
+       *
+       * Adding those columns to `providers` would have been the wrong repair
+       * twice: a FOURTH home for bank data (contractor_bank_details is
+       * canonical), and a MUTABLE destination — edit the profile after a payout
+       * is authorised and the money follows the edit.
+       *
+       * super_app_payouts carries the destination snapshot, frozen at
+       * authorisation. No snapshot means we do not know where this payout was
+       * authorised to go, and the only safe answer is to refuse.
+       */
+      if (!payout.destinationSnapshotAt) {
+        logger.error('[ProviderPayout] refusing transfer — no destination snapshot on this payout', {
+          payoutId: payout.id, providerId: payout.providerId,
+          detail: 'the destination must be frozen at authorisation; re-authorise this payout',
+        });
         return {
           success: false,
-          error: 'Provider bank details not configured',
+          blocked: true,
+          error: 'Payout has no destination snapshot — cannot transfer',
+        };
+      }
+      if (!payout.providerBankAccountNumber || !payout.providerBankName) {
+        logger.error('[ProviderPayout] destination snapshot is incomplete', {
+          payoutId: payout.id, providerId: payout.providerId,
+        });
+        return {
+          success: false,
+          blocked: true,
+          error: 'Payout destination snapshot is incomplete — cannot transfer',
         };
       }
 
       logger.info('[ProviderPayout] Initiating Israeli bank transfer', {
-        providerId: provider.id,
-        providerName: provider.businessName ?? null,
-        bankName: provider.bankName,
+        providerId: payout.providerId,
+        providerName: provider?.businessName ?? null,
+        // From the snapshot, so the log records where the money was AUTHORISED
+        // to go rather than where the profile points today.
+        bankName: payout.providerBankName,
+        destinationSnapshotAt: payout.destinationSnapshotAt,
         netAmount: payout.netAmount,
         currency: payout.currency,
       });
@@ -499,10 +535,12 @@ ${bookingRow}
       // PRODUCTION CODE (commented out):
       /*
       const transferResult = await IsraeliBankAPI.initiateTransfer({
-        accountNumber: provider.bankAccountNumber,
-        bankCode: provider.bankCode,
-        branchCode: provider.bankBranchCode,
-        accountHolderName: provider.legalName || provider.name,
+        // SNAPSHOT ONLY. Never provider.* — see the comment at the top of this
+        // function. Reading the live profile here is the bug this replaced.
+        accountNumber: payout.providerBankAccountNumber,
+        bankCode: payout.providerBankCode,
+        branchCode: payout.providerBankBranchCode,
+        accountHolderName: payout.providerBankAccountHolder,
         amount: parseFloat(payout.netAmount),
         currency: 'ILS',
         description: `Pet Wash payout - Booking ${payout.bookingId}`,
