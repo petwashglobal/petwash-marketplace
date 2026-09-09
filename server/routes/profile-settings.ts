@@ -136,9 +136,21 @@ export function maskEmail(email: string): string {
  *   can point the account's OTP, booking confirmations and receipts at a handset
  *   they never proved they own — and, because the column is unique, can squat a
  *   number belonging to somebody else and block the real owner from registering
- *   it. A mobile CHANGE must go through the SMS-OTP flow (Firebase
- *   updatePhoneNumber -> POST /settings/phone/confirm-verification), which is
- *   the only path that actually proves possession.
+ *   it. A mobile CHANGE must therefore go through a flow that PROVES POSSESSION
+ *   of the number being claimed. There are two, and this comment used to name
+ *   one of them as "the only path", while the block above
+ *   /settings/phone/request-change called the other one "canonical" — the file
+ *   contradicted itself, harmlessly while one of the two was unreachable, and
+ *   misleadingly once both went live:
+ *
+ *     - Firebase updatePhoneNumber -> POST /settings/phone/confirm-verification
+ *       (the client proves the handset; always available, and the only way to
+ *       set a FIRST number)
+ *     - POST /settings/phone/request-change -> /confirm-change (the server
+ *       challenges the NEW number; stronger, and preferred for a CHANGE when
+ *       UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED is on)
+ *
+ *   What matters to THIS rule is only that a generic PATCH is neither of them.
  *
  *   FIRST-SET stays allowed: /booking-contact writes a phone for users who have
  *   none on file, and blocking that breaks a live booking journey. It is still
@@ -1437,8 +1449,13 @@ router.delete('/settings/profile/photo', async (req, res) => {
  * POST /api/user/settings/phone/request-change
  * POST /api/user/settings/phone/confirm-change
  *
- * The canonical way to change the account's security phone number, and the
- * reason PATCH /api/user/profile now refuses a phone CHANGE outright.
+ * The PREFERRED way to change the account's security phone number when its flag
+ * is on, and — together with the Firebase SMS-OTP path above — the reason
+ * PATCH /api/user/profile refuses a phone CHANGE outright.
+ *
+ * Not the sole one, and this block used to claim it was: /settings/phone/status
+ * publishes which of the two is live so the client picks before it sends
+ * anything, and first-set cannot use this one at all.
  *
  * Deliberately a mirror of the email pair above, because the threat is the
  * same one pointed at a different column: a number nobody proved you hold
