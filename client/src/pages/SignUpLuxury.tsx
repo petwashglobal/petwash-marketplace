@@ -849,6 +849,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         }
         const ad = await a.json().catch(() => ({} as any));
         if (!ad.ok) {
+          // THE CACHED TOKEN IS A ONE-SHOT PROOF, and the server burns it before
+          // it touches Firebase or Postgres. Caching it is right for failures
+          // BEFORE that burn — a wrong code, a cold-start blip — and wrong for
+          // every failure after it: reusing a spent nonce dies at the burn with
+          // VERIFICATION_ALREADY_USED, so "try again" would loop forever on a
+          // token that can never work. The server marks post-burn failures
+          // `proofSpent`; VERIFICATION_ALREADY_USED covers the case where the
+          // response to a successful burn was lost and we retried blind. Drop
+          // the token in both, so the next attempt fetches a fresh code — which
+          // the server CAN recover from (it recognises the number as already
+          // attached to this account and finishes the half that did not land).
+          if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') {
+            setCachedPhoneVerificationToken(null);
+          }
           fail(ad.error || ad.message || (he ? 'שמירת הנייד נכשלה. נסה שוב.' : 'Mobile attach failed. Try again.'));
           return;
         }
@@ -1107,7 +1121,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // cached token that has already been spent can never work again, so
           // hold on to it and the user just re-presses verify into the same
           // refusal forever. Drop it and send them to a fresh code.
-          if (ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
+          // `proofSpent` is the SERVER saying so on the failure itself, which is
+          // one round-trip earlier than waiting for the replay to be refused;
+          // VERIFICATION_ALREADY_USED stays for the case where the response to
+          // a successful burn was lost and we retried blind.
+          if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
           fail(ad.error || ad.message || (he ? 'שמירת האימייל נכשלה. נסה שוב.' : 'Email attach failed. Try again.'));
           return;
         }
