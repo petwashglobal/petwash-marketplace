@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { sourceWithoutComments } from "./helpers/sourceWithoutComments";
 
 /**
  * 2026-09-08 — the payout proof builder never saw the amount.
@@ -25,15 +26,10 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 
 /** Comments stripped — a pin must never pass on its own explanation. */
-function code(path: string): string {
-  return readFileSync(resolve(root, path), "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
-}
 
 describe("payout proof: one amount vocabulary on the authorization boundary", () => {
-  const helper = code("server/lib/unifiedPayoutVerification.ts");
-  const service = code("server/services/UnifiedVerificationService.ts");
+  const helper = sourceWithoutComments("server/lib/unifiedPayoutVerification.ts");
+  const service = sourceWithoutComments("server/services/UnifiedVerificationService.ts");
 
   it("the helper writes the field name the proof builder reads", () => {
     expect(helper).toContain("amountMinor");
@@ -51,7 +47,7 @@ describe("payout proof: one amount vocabulary on the authorization boundary", ()
 
   it("every caller passes amountMinor + currency together, never cents", () => {
     for (const path of ["server/routes/prestige-pass.ts", "server/routes/finance/settlements.ts"]) {
-      const src = code(path);
+      const src = sourceWithoutComments(path);
       const calls = src.split("requireUnifiedPayoutVerification(").slice(1);
       expect(calls.length, `${path} has no payout-verification call sites`).toBeGreaterThan(0);
       for (const call of calls) {

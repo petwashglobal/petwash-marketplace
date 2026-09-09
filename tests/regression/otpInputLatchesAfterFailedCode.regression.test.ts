@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { sourceWithoutComments } from "../../server/tests/helpers/sourceWithoutComments";
 
 /**
  * 2026-09-08 — one rejected code killed the OTP form.
@@ -27,14 +28,9 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 
 /** Comments stripped: a pin must never pass on its own explanation. */
-function code(path: string): string {
-  return readFileSync(resolve(root, path), "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
-}
 
 describe("OtpCodeInput lets the customer try a second code", () => {
-  const src = code("client/src/components/OtpCodeInput.tsx");
+  const src = sourceWithoutComments("client/src/components/OtpCodeInput.tsx");
 
   /** Slice one useCallback body, stopping at the NEXT top-level useCallback. */
   const body = (fnName: string): string => {
@@ -60,7 +56,7 @@ describe("OtpCodeInput lets the customer try a second code", () => {
   it("records that no call site passes `error`, so that reset path is dead", () => {
     // If someone later wires `error`, this pin should be revisited rather than
     // silently kept — the comment above explains why the latch cannot rely on it.
-    const page = code("client/src/pages/SignUpLuxury.tsx");
+    const page = sourceWithoutComments("client/src/pages/SignUpLuxury.tsx");
     const usages = page.match(/<OtpCodeInput[^>]*>/g) ?? [];
     expect(usages.length).toBeGreaterThanOrEqual(3);
     for (const usage of usages) {

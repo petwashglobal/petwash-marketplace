@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { sourceWithoutComments } from "./helpers/sourceWithoutComments";
 
 /**
  * 2026-09-08 — the payout executor read a destination that did not exist, and
@@ -29,13 +30,8 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 
 /** Comments stripped — a pin must never pass on its own explanation. */
-function code(path: string): string {
-  return readFileSync(resolve(root, path), "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
-}
 
-const svc = code("server/services/ProviderPayoutService.ts");
+const svc = sourceWithoutComments("server/services/ProviderPayoutService.ts");
 
 function transferBody(): string {
   // Anchor on the DEFINITION, not the first occurrence — indexOf finds the
@@ -79,7 +75,7 @@ describe("the payout destination is snapshotted, never looked up live", () => {
   });
 
   it("the snapshot columns exist in the schema and the migration", () => {
-    const schema = code("shared/schema.ts");
+    const schema = sourceWithoutComments("shared/schema.ts");
     const mig = readFileSync(resolve(root, "migrations/0152_payout_destination_snapshot.sql"), "utf8");
     for (const col of [
       "provider_bank_code", "provider_bank_branch_code",

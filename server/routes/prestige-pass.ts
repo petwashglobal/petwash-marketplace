@@ -7361,6 +7361,36 @@ router.post('/admin/wallet/refund-requests/:id/approve', async (req: Request, re
       return res.status(403).json({ error: 'Second approver cannot be the original requester', refundRequestId });
     }
 
+    /**
+     * MONEY AUTHORITY. The census listed nine value-moving wallet routes; the
+     * previous passes banded eight and this one was missed — "all eight now
+     * governed" undercounted by one.
+     *
+     * This route is otherwise the STRONGEST of the nine: super-admin only, a
+     * state check, an amount derived from the record, and a real four-eyes
+     * rule above (the second approver cannot be the requester). What it had no
+     * concept of was SIZE — a ₪5 refund and a ₪500,000 refund needed exactly
+     * the same authority.
+     *
+     * Banded as wallet_refund/refund, the pair migration 0150 already seeds,
+     * rather than minting a new case_type for a near-identical act. Its
+     * four-eyes rule is stricter than the matrix would require at the low
+     * band, so nothing is weakened by sharing it.
+     */
+    const refundAmountCents = Number(row.amount_cents);
+    const moneyAuthority = await authoriseWalletMoneyAction({
+      caseType: 'wallet_refund',
+      actionType: 'refund',
+      amountCents: refundAmountCents,
+      actingRole: 'admin',
+      fallbackCeilingCents: ADMIN_TIER_CEILING_CENTS,
+    });
+    if (!moneyAuthority.ok) {
+      return res.status(moneyAuthority.status).json({
+        error: moneyAuthority.error, code: moneyAuthority.code,
+      });
+    }
+
     // Execute wallet refund using the same internal helper
     let refundResult: any;
     try {
