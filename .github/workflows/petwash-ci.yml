@@ -1226,6 +1226,24 @@ jobs:
           # debugging when address autocomplete misbehaves on iPad Safari.
           # docs/GOOGLE_PLACES_AUTOCOMPLETE_AUDIT.md §1.
           VITE_GOOGLE_PLACES_LIVE: 'true'
+          # THE ROLLOUT SWITCH FOR THE SHARED VERIFICATION EXPERIENCE.
+          #
+          # A repository VARIABLE, not a secret — it is a boolean, and the point
+          # is that flipping it needs no code change and no review. Unset is
+          # falsy, so the default stays the legacy screen; rolloutSwitch.ts reads
+          # `=== 'true'`.
+          #
+          # Until now this flag appeared NOWHERE in the pipeline, so
+          # VerificationFlow could not be switched on at all: everything in
+          # #2283/#2284/#2285/#2286 was unreachable in production, including the
+          # correct /api/auth/email/resend wiring. Building a switch and never
+          # connecting it is the same defect as a guard that inspects nothing.
+          #
+          # ROLL OUT IN THIS ORDER — "the flag is on" is not a rollout plan:
+          #   1. ?pwverify=new against production, one real journey, per-session
+          #   2. then set this repository variable to 'true'
+          #   3. only then delete the legacy branch and this switch
+          VITE_UNIFIED_VERIFICATION_UI: ${{ vars.VITE_UNIFIED_VERIFICATION_UI }}
 
           # ── Shop browse-only soft opening (CEO 2026-06-11) ──
           # Storefront is PUBLIC (catalog + cart + engraving preview), but
@@ -2754,6 +2772,24 @@ jobs:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
           VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
           VITE_GOOGLE_PLACES_LIVE: 'true'
+          # THE ROLLOUT SWITCH FOR THE SHARED VERIFICATION EXPERIENCE.
+          #
+          # A repository VARIABLE, not a secret — it is a boolean, and the point
+          # is that flipping it needs no code change and no review. Unset is
+          # falsy, so the default stays the legacy screen; rolloutSwitch.ts reads
+          # `=== 'true'`.
+          #
+          # Until now this flag appeared NOWHERE in the pipeline, so
+          # VerificationFlow could not be switched on at all: everything in
+          # #2283/#2284/#2285/#2286 was unreachable in production, including the
+          # correct /api/auth/email/resend wiring. Building a switch and never
+          # connecting it is the same defect as a guard that inspects nothing.
+          #
+          # ROLL OUT IN THIS ORDER — "the flag is on" is not a rollout plan:
+          #   1. ?pwverify=new against production, one real journey, per-session
+          #   2. then set this repository variable to 'true'
+          #   3. only then delete the legacy branch and this switch
+          VITE_UNIFIED_VERIFICATION_UI: ${{ vars.VITE_UNIFIED_VERIFICATION_UI }}
       - name: Install Chrome for prerender
         run: npx puppeteer browsers install chrome
 
