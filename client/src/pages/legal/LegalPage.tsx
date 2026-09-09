@@ -117,7 +117,7 @@ function AcceptTermsGate() {
         disabled={state === "saving"}
         data-testid="terms-accept-button"
         className="flex items-center gap-2 rounded-xl px-6 py-3 font-bold disabled:opacity-50"
-        style={{ background: "#D4AF37", color: "#063B22" }}
+        style={{ background: "#D4AF37", color: "#0A0A0A" }}
       >
         {state === "saving" ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
         {user ? (he ? "אני מאשר/ת את התנאים" : "I accept the terms") : (he ? "התחברות ואישור" : "Sign in to accept")}
