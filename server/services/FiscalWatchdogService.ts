@@ -31,13 +31,16 @@ import { createHash } from 'node:crypto';
 import { pool, isDatabaseAvailable } from '../db';
 import { logger } from '../lib/logger';
 import { sendGuardedEmail } from '../lib/guarded-sendgrid';
+import { matchBankForPeriod, type BankVerdict } from './FiscalSettlementIngest';
 
 export type WatchdogStatus =
   | 'FAIL'
   | 'PENDING_SOURCE'
   | 'PENDING_STATEMENT'
+  | 'PENDING_REVIEW'
   | 'PENDING_BANK'
-  | 'AC_PASS_ONLY';
+  | 'PENDING_BANK_REVIEW'
+  | 'CLOSED';
 
 export interface WatchdogException {
   check: string;
@@ -53,8 +56,9 @@ export interface WatchdogRun {
   period: string | null;
   status: WatchdogStatus;
   acResult: 'PASS' | 'FAIL';
-  abResult: 'NOT_CHECKED';
-  bdResult: 'NOT_CHECKED';
+  abResult: 'PASS' | 'FAIL' | 'NOT_CHECKED';
+  bdResult: BankVerdict | 'NOT_CHECKED';
+  bdDetail?: string;
   sourceALatestAt: Date | null;
   sourceCFetchedAt: Date;
   sourcesFresh: boolean;
@@ -236,15 +240,53 @@ export async function runFiscalWatchdog(opts: {
   const sourcesFresh = !latest || (Date.now() - latest.getTime()) / 3_600_000 <= maxAgeH;
 
   const acResult: 'PASS' | 'FAIL' = exceptions.length ? 'FAIL' : 'PASS';
-  // B and D are not ingested in production, so this can never be CLOSED here.
+
+  // ══ B↔D — the only independent cash control ═════════════════════════════
+  // Runs only for a specific period: "did the money for month X arrive" is not
+  // a question an all-claims sweep can answer.
+  let bdResult: BankVerdict | 'NOT_CHECKED' = 'NOT_CHECKED';
+  let bdDetail: string | undefined;
+  let statementUnclassified = 0;
+  if (period) {
+    try {
+      const m = await matchBankForPeriod(period, Number(process.env.WATCHDOG_BANK_WINDOW_DAYS ?? '7'));
+      bdResult = m.verdict;
+      bdDetail = m.detail;
+      if (m.verdict === 'NO_CREDIT') {
+        exceptions.push({ check: 'BANK_NO_CREDIT', ref: period,
+          amountMinor: m.statementTotalMinor ?? undefined, detail: m.detail });
+      } else if (m.verdict === 'AMBIGUOUS') {
+        warnings.push({ check: 'BANK_AMBIGUOUS', ref: period,
+          amountMinor: m.statementTotalMinor ?? undefined,
+          detail: `${m.detail} Candidates: ${m.candidates.map((c) => `${c.date} ${ils(c.amountMinor)}`).join(' | ')}` });
+      }
+      const { rows: su } = await pool.query(
+        `SELECT unclassified_count FROM fiscal_nayax_statements
+          WHERE period = $1 ORDER BY imported_at DESC LIMIT 1`, [period]);
+      statementUnclassified = su.length ? Number(su[0].unclassified_count) : 0;
+      if (statementUnclassified) {
+        warnings.push({ check: 'UNCLASSIFIED_STATEMENT_ADJUSTMENT', ref: period,
+          detail: `${statementUnclassified} statement line(s) could not be classified against a known Nayax label — reported verbatim, no meaning assigned` });
+      }
+    } catch (e) {
+      // A control that cannot run must say so, not quietly report NOT_CHECKED
+      // as though nothing were expected.
+      warnings.push({ check: 'BD_CHECK_FAILED', ref: period, detail: (e as Error).message });
+    }
+  }
+
   const status: WatchdogStatus =
-      exceptions.length ? 'FAIL'
-    : !sourcesFresh     ? 'PENDING_SOURCE'
-    : 'AC_PASS_ONLY';
+      exceptions.length                ? 'FAIL'
+    : !sourcesFresh                    ? 'PENDING_SOURCE'
+    : bdResult === 'NOT_CHECKED'
+      || bdResult === 'NO_STATEMENT'   ? 'PENDING_STATEMENT'
+    : statementUnclassified            ? 'PENDING_REVIEW'
+    : bdResult === 'AMBIGUOUS'         ? 'PENDING_BANK_REVIEW'
+    : 'CLOSED';
 
   return {
     runId, runKind, period, status, acResult,
-    abResult: 'NOT_CHECKED', bdResult: 'NOT_CHECKED',
+    abResult: 'NOT_CHECKED', bdResult, bdDetail,
     sourceALatestAt: latest, sourceCFetchedAt, sourcesFresh,
     txnCount: rows.length,
     expectInvoiceCount: rows.filter((r: { state: string }) => r.state === 'ISSUED' || r.state === 'CLAIMED' || r.state === 'PENDING_FISCAL').length,
@@ -272,12 +314,12 @@ export function renderReport(run: WatchdogRun, recipients: { to: string[]; unres
     <table cellpadding="6" border="1" style="border-collapse:collapse">
       <tr><td>A&harr;C&nbsp; Nayax &harr; SUMIT (claim ledger)</td><td><strong>${run.acResult}</strong></td></tr>
       <tr><td>A&harr;B&nbsp; Nayax internal consistency</td><td>${run.abResult}</td></tr>
-      <tr><td>B&harr;D&nbsp; statement &harr; bank</td><td>${run.bdResult}</td></tr>
+      <tr><td>B&harr;D&nbsp; statement &harr; bank</td><td><strong>${run.bdResult}</strong>${run.bdDetail ? `<br><small>${run.bdDetail}</small>` : ''}</td></tr>
     </table>
-    <p><small>A&harr;B and B&harr;D are NOT checked here: the Nayax settlement statement and the
-    bank statement arrive as files and are not yet ingested in production. This run therefore
-    <strong>cannot</strong> report a month CLOSED — it verifies the issuance rail only. The full
-    four-layer reconciliation is run against exports in the fiscal bridge.</small></p>
+    <p><small>A&harr;B (Nayax's transaction feed against their own statement) is not checked here —
+    it needs the transaction export, which is not ingested in production. B&harr;D runs from
+    imported sources (migration 0150) and is the only leg Nayax does not control: A, B and MoMa
+    are all Nayax's own data, so without the bank nothing proves cash arrived.</small></p>
 
     <h3>Counts</h3>
     <p>claims in scope <strong>${run.txnCount}</strong> ·
