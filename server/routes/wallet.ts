@@ -13,6 +13,9 @@ import { AppleWalletService } from '../appleWallet';
 import { logger } from '../lib/logger';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { db } from '../lib/firebase-admin';
+import { db as pgDb } from '../db';
+import { eq } from 'drizzle-orm';
+import { privilegeMembers } from '@shared/schema';
 import { walletFraudProtection, WalletFraudDetection } from '../middleware/fraudDetection';
 import { WalletTelemetryService } from '../services/WalletTelemetryService';
 import sgMail from '../lib/sendgrid';
@@ -24,6 +27,23 @@ import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contac
 // router (a scan burns discount + writes a redemption row).
 import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 import { isSuperAdmin } from '../middleware/rbac';
+
+// Enrollment truth shared with lib/userCapabilities: an active privilegeMembers
+// row for the member's email. Fail-closed to "not enrolled" on any error.
+async function isPrestigeEnrolled(email: string | undefined | null): Promise<boolean> {
+  if (!email) return false;
+  try {
+    const [row] = await pgDb
+      .select({ status: privilegeMembers.status })
+      .from(privilegeMembers)
+      .where(eq(privilegeMembers.email, email.toLowerCase()))
+      .limit(1);
+    return !!row && (row.status ?? 'active') === 'active';
+  } catch (e: any) {
+    logger.warn('[Wallet] prestige lookup failed (defaulting not enrolled)', { error: e?.message });
+    return false;
+  }
+}
 
 const router = express.Router();
 
@@ -152,8 +172,16 @@ router.post('/vip-card', requireAuth, async (req, res) => {
 
     const userData = userDoc.data();
     
-    // Get loyalty data from trusted server storage only
-    const tier = userData?.loyaltyTier || 'new';
+    // Get loyalty data from trusted server storage only.
+    // users.loyaltyTier is written as 'bronze' at signup for EVERY account, so
+    // it cannot say whether the member joined PetWash Prestige. Enrollment is
+    // an active privilegeMembers row for the email — the same truth
+    // /api/me/capabilities uses. Without it the tier is 'new' (not enrolled):
+    // /my-account rendered "Bronze Member · 5% permanent discount" for a
+    // member who never joined (live QA 2026-09-09).
+    const tier = (await isPrestigeEnrolled(userData?.email || (req as any).user?.email))
+      ? (userData?.loyaltyTier || 'bronze')
+      : 'new';
     const points = userData?.loyaltyPoints || 0;
     const discountPercent = userData?.loyaltyDiscountPercent || 0;
     const memberSince = userData?.loyaltyMemberSince?.toDate() || userData?.createdAt?.toDate() || new Date();
