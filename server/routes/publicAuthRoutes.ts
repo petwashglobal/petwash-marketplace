@@ -1044,53 +1044,6 @@ function maskPhoneForHint(p: string): string {
 }
 
 /**
- * The number a 2-step-login challenge may be sent to — asked of BOTH stores.
- *
- * These routes read users.phone alone and treat NULL as "this member has no
- * phone". That premise is not safe, because phone identity lives in Firebase
- * (see attachVerifiedPhoneToFirebase) and any write that flipped
- * phone_verified without landing the contact leaves a row that says verified
- * with phone NULL while the attested number sits on the Firebase record. Under
- * that shape /2fa/start's fail-open fires on a condition it was never designed
- * to see: the member DOES have a verified phone, and the comment's own remedy —
- * "they can add/verify a phone later" — is something they have already done. A
- * security control the member explicitly opted into would silently switch
- * itself off, and nothing would surface it.
- *
- * Three outcomes, and the third is not the second:
- *   ok          a number exists (in either store) and may be challenged
- *   none        ESTABLISHED that neither store holds one — the fail-open premise
- *   unresolved  we could not establish it; guessing 'none' here is the silent
- *               downgrade again, so the caller must refuse visibly instead.
- *
- * Read-only by design: it does not heal users.phone. Only the caller holding a
- * fresh proof may decide which number is attachable to an account (#2322), and
- * a login route holds none.
- */
-type TwoFactorPhone =
-  | { status: 'ok'; phone: string }
-  | { status: 'none' }
-  | { status: 'unresolved' };
-
-async function resolveTwoFactorPhone(uid: string, dbPhone: string | null): Promise<TwoFactorPhone> {
-  if (dbPhone) return { status: 'ok', phone: dbPhone };
-  try {
-    const fbPhone = (await fbAdminAuth.getUser(uid))?.phoneNumber || null;
-    if (fbPhone) {
-      logger.warn('[Login2FA] users.phone is NULL but Firebase holds a number — drift', { uid });
-      return { status: 'ok', phone: fbPhone };
-    }
-    return { status: 'none' };
-  } catch (e: any) {
-    // Firebase admin answered verifyIdToken moments ago on this same request,
-    // so a failure here is an anomaly rather than a routine outage — cheap to
-    // refuse visibly, and far cheaper than turning 2FA off without saying so.
-    logger.error('[Login2FA] could not read the Firebase phone', { uid, error: e?.message });
-    return { status: 'unresolved' };
-  }
-}
-
-/**
  * POST /api/auth/login/2fa/start — send a login OTP to the authed user's phone.
  * Called AFTER a password sign-in. Auth = the just-issued password idToken; the
  * phone is read from the account (the client never sees or sends it). Returns
