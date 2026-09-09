@@ -102,7 +102,10 @@ export function useJourneyCheckpoint<TPayload extends Record<string, unknown>>(
     let cancelled = false;
     (async () => {
       try {
-        const r = await apiRequest('GET', `/api/journey/checkpoint/${domain}`);
+        // 404 = NO_ACTIVE_CHECKPOINT — the normal first-visit answer, not an
+        // error. Without expectedStatuses every fresh journey logged an
+        // "[API Error] 404" (live QA 2026-09-09).
+        const r = await apiRequest('GET', `/api/journey/checkpoint/${domain}`, undefined, { expectedStatuses: [404] });
         if (cancelled) return;
         if (r.status === 200) {
           const body = await r.json();
