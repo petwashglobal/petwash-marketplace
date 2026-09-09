@@ -202,7 +202,7 @@ export default function DashboardV2() {
         <SectionHead title={t(he, 'Your pets', 'החיות שלי')} href="/pets" cta={t(he, 'Manage', 'ניהול')} />
         {pets.length === 0 ? (
           <div style={{ ...card, textAlign: 'center', padding: '24px 16px' }}>
-            <PawPrint size={28} color={C.ink} strokeWidth={1.5} />
+            <PawPrint size={28} color={C.ink} strokeWidth={1.6} />
             <div style={{ fontWeight: 600, margin: '10px 0 4px' }}>{t(he, 'Add your first pet', 'הוסיפו את החיה הראשונה')}</div>
             <div style={{ fontSize: 12.5, color: C.sub, marginBottom: 16, lineHeight: 1.5 }}>{t(he, 'Save their size & coat so every wash is pre-set. Takes 30 seconds.', 'שמרו את הגודל והפרווה כדי שכל שטיפה תהיה מותאמת מראש. לוקח 30 שניות.')}</div>
             <Link href="/pets" style={pill(true)}><Plus size={14} /> {t(he, 'Add a pet', 'הוספת חיה')}</Link>
