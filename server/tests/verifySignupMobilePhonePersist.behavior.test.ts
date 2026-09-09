@@ -516,13 +516,17 @@ describe('login 2FA: "no phone on file" is a claim about BOTH stores', () => {
     expect(sendVerificationCode).toHaveBeenCalledWith(PHONE, expect.anything(), expect.anything());
   });
 
-  it('a member with genuinely NO number in either store still fails open', async () => {
+  // Reconciled with server/lib/twoStepLogin (two-step-no-second-factor): an
+  // enrolled member with NO number in either store is refused visibly with the
+  // same verdict the session gate gives (403 MFA_NO_FACTOR), not a bare
+  // needed:false the client could only read as "try again".
+  it('a member with genuinely NO number in either store is refused as MFA_NO_FACTOR', async () => {
     driftedRow();
     fbUsers[MEMBER].phoneNumber = null;
     const res = await start2fa(MEMBER);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
     expect(res.body.needed).toBe(false);
-    expect(res.body.reason).toBe('no_phone');
+    expect(res.body.code).toBe('MFA_NO_FACTOR');
     expect(sendVerificationCode).not.toHaveBeenCalled();
   });
 
