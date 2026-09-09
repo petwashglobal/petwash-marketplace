@@ -62,7 +62,15 @@ function getUserMessage(status: number, serverMsg: string): string {
   }
 }
 
-async function throwIfResNotOk(res: Response) {
+/**
+ * Statuses the CALLER told us are a normal answer, not a failure — e.g. a
+ * "no checkpoint yet" 404. They are neither logged as [API Error] nor thrown;
+ * the Response is handed back for the caller to branch on.
+ */
+export type ApiRequestOptions = { expectedStatuses?: number[] };
+
+export async function throwIfResNotOk(res: Response, expectedStatuses: number[] = []) {
+  if (!res.ok && expectedStatuses.includes(res.status)) return;
   if (!res.ok) {
     const traceId = res.headers.get('x-trace-id') || '';
     let body: any = null;
@@ -108,7 +116,9 @@ export async function apiRequest(
   methodOrUrl: string,
   urlOrOptions?: string | Record<string, any>,
   data?: unknown | undefined,
+  options?: ApiRequestOptions,
 ): Promise<Response> {
+  const expectedStatuses = options?.expectedStatuses ?? [];
   let method: string;
   let url: string;
   let body: any;
@@ -195,12 +205,12 @@ export async function apiRequest(
         body,
         credentials: "include",
       });
-      await throwIfResNotOk(retryRes);
+      await throwIfResNotOk(retryRes, expectedStatuses);
       return retryRes;
     }
   }
 
-  await throwIfResNotOk(res);
+  await throwIfResNotOk(res, expectedStatuses);
   return res;
 }
 
