@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { sourceWithoutComments } from "./helpers/sourceWithoutComments";
 
 /**
  * 2026-09-08 — five routes in this router had no per-route guard.
@@ -28,13 +29,8 @@ import { resolve } from "node:path";
 const root = resolve(import.meta.dirname, "../..");
 
 /** Comments stripped — a pin must never pass on its own explanation. */
-function code(path: string): string {
-  return readFileSync(resolve(root, path), "utf8")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/(^|[^:])\/\/.*$/gm, "$1");
-}
 
-const src = code("server/routes/financial-approvals.ts");
+const src = sourceWithoutComments("server/routes/financial-approvals.ts");
 const AUTHZ = new Set(["requireFinancialAdmin", "requirePolicyAdmin"]);
 
 type Route = { verb: string; path: string; guard: string };
