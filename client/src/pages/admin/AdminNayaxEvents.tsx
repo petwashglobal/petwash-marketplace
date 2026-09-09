@@ -4,8 +4,12 @@
  *
  * Token-free view over nayax_transaction_events (webhook-ingested and/or
  * manually imported from a Nayax Core report export). Three sections:
- *   1. CPA monthly settlement summary (bay money books into SUMIT MONTHLY —
- *      per the 2026-07-12 CPA decision there is NO per-transaction invoice)
+ *   1. Monthly settlement summary (the 2026-07-12 CPA note said bay money books
+ *      into SUMIT monthly). OBSERVED SINCE: 481 individual tax documents were
+ *      issued for K9000 washes with issue date 05/09/2026, and the bookkeeper
+ *      confirmed in writing on 2026-09-06 that they stand as issued. This screen
+ *      therefore REPORTS what documents exist and does not assert how the period
+ *      is treated — that is the bookkeeper's call, not this UI's.
  *   2. Filterable event list with station/bay labels + channel chips
  *   3. Manual report import (CSV parsed in-browser → JSON rows). RECORD-ONLY:
  *      idempotent server-side, never awards points, never touches wallets.
@@ -15,7 +19,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  RefreshCw, Upload, Loader2, AlertTriangle, CheckCircle2, Landmark, Filter,
+  RefreshCw, Upload, Loader2, AlertTriangle, CheckCircle2, Landmark, Filter, BarChart3,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -24,7 +28,33 @@ import { parseCsv } from '@/lib/csv';
 
 const GOLD = '#D4AF37';
 
+/** Agorot → "₪1,234.50". Shekel figures ONLY — never used for a foreign row. */
+const ils = (n: number) =>
+  `₪${n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 // ── Types (mirror admin-nayax-events.ts responses) ──────────────────────────
+interface RollupRow { key: string; washes: number; grossAgorot: number; withTaxDoc: number }
+interface BayRow {
+  stationId: string | null; terminalId: string | null; baySide: string | null;
+  month: string; washes: number; grossIls: number; withTaxDocument: number;
+  stationNameHe: string | null; bayNameHe: string | null; registered: boolean;
+  /** The registry's station id — the key byStation groups on. Join on THIS,
+   *  never on `stationId` (the raw column, inconsistent between importers). */
+  registryStationId: string | null;
+}
+interface NonIlsRow {
+  currency: string; terminalId: string | null; month: string; washes: number;
+  gross: number; stationNameHe: string | null; bayNameHe: string | null; registered: boolean;
+}
+interface AnalyticsResponse {
+  currency: 'ILS';
+  totals: { washes: number; grossAgorot: number; grossIls: number; withTaxDocument: number };
+  byStation: RollupRow[];
+  byMonth: RollupRow[];
+  byBay: BayRow[];
+  /** Reported separately and NEVER added to the shekel totals. */
+  nonIls: NonIlsRow[];
+}
 interface EventRow {
   id: number;
   externalTransactionId: string;
@@ -100,6 +130,21 @@ export default function AdminNayaxEvents() {
 
   const { data: list, isLoading, refetch, isFetching } = useQuery<ListResponse>({ queryKey: [listKey] });
   const { data: summary } = useQuery<SummaryResponse>({ queryKey: ['/api/admin/nayax-events/summary'] });
+  const { data: analytics } = useQuery<AnalyticsResponse>({ queryKey: ['/api/admin/nayax-events/analytics'] });
+
+  /**
+   * stationId → Hebrew name, derived from the bay rows the API already labels
+   * via the terminal registry. Deliberately NOT a hard-coded map here: a second
+   * list of station names would drift from nayaxTerminals.ts the moment a
+   * station is added, and this screen would quietly show the wrong one.
+   */
+  const stationHe = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const b of analytics?.byBay ?? []) {
+      if (b.registered && b.registryStationId && b.stationNameHe) m.set(b.registryStationId, b.stationNameHe);
+    }
+    return m;
+  }, [analytics]);
 
   const importMutation = useMutation({
     mutationFn: async (rows: Record<string, string>[]) => {
@@ -158,6 +203,146 @@ export default function AdminNayaxEvents() {
         </Button>
       </div>
 
+      {/* 0 — Live revenue analytics: station / bay / month, from k9000_wash_events */}
+      {analytics && (
+        <section className="mb-8 border border-gray-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <BarChart3 className="w-4 h-4" style={{ color: GOLD }} />
+            <h2 className="font-semibold">פדיון K9000 — תחנות, מפרצים וחודשים</h2>
+          </div>
+          <p className="text-xs text-gray-500 mb-4">
+            מתוך רישומי השטיפות. סכומים בשקלים בלבד; שורות במטבע זר מוצגות בנפרד ואינן מחוברות לסכום.
+          </p>
+
+          {/* Totals — shekels only */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-5">
+            <div className="border border-gray-100 rounded-lg p-3">
+              <div className="text-xs text-gray-500">סה״כ פדיון (₪)</div>
+              <div className="text-xl font-medium tabular-nums">{ils(analytics.totals.grossAgorot / 100)}</div>
+            </div>
+            <div className="border border-gray-100 rounded-lg p-3">
+              <div className="text-xs text-gray-500">שטיפות</div>
+              <div className="text-xl font-medium tabular-nums">
+                {analytics.totals.washes.toLocaleString('he-IL')}
+              </div>
+            </div>
+            <div className="border border-gray-100 rounded-lg p-3">
+              <div className="text-xs text-gray-500">עם מסמך מס</div>
+              <div className="text-xl font-medium tabular-nums">
+                {analytics.totals.withTaxDocument.toLocaleString('he-IL')}
+                <span className="text-sm text-gray-400"> / {analytics.totals.washes.toLocaleString('he-IL')}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* By station */}
+          <h3 className="text-sm font-medium mb-2">לפי תחנה</h3>
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-right text-gray-500 border-b border-gray-100">
+                  <th className="py-2 pl-4 font-normal">תחנה</th>
+                  <th className="py-2 pl-4 font-normal">שטיפות</th>
+                  <th className="py-2 pl-4 font-normal">פדיון</th>
+                  <th className="py-2 pl-4 font-normal">עם מסמך מס</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.byStation.map((r) => (
+                  <tr key={r.key} className="border-b border-gray-50">
+                    <td className="py-2 pl-4">
+                      {r.key === 'unregistered' ? (
+                        <span className="text-red-600 font-medium">מסוף לא רשום</span>
+                      ) : stationHe.get(r.key) ?? r.key}
+                    </td>
+                    <td className="py-2 pl-4 tabular-nums">{r.washes.toLocaleString('he-IL')}</td>
+                    <td className="py-2 pl-4 font-medium tabular-nums">{ils(r.grossAgorot / 100)}</td>
+                    <td className="py-2 pl-4 tabular-nums">
+                      {r.withTaxDoc.toLocaleString('he-IL')}
+                      {r.withTaxDoc !== r.washes && (
+                        <span className="text-amber-600"> / {r.washes.toLocaleString('he-IL')}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* By bay */}
+          <h3 className="text-sm font-medium mb-2">לפי מפרץ</h3>
+          <div className="overflow-x-auto mb-5">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-right text-gray-500 border-b border-gray-100">
+                  <th className="py-2 pl-4 font-normal">מפרץ</th>
+                  <th className="py-2 pl-4 font-normal">חודש</th>
+                  <th className="py-2 pl-4 font-normal">שטיפות</th>
+                  <th className="py-2 pl-4 font-normal">פדיון</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.byBay.map((r, i) => (
+                  <tr key={`${r.terminalId}-${r.month}-${i}`} className="border-b border-gray-50">
+                    <td className="py-2 pl-4">
+                      {r.registered
+                        ? `${r.stationNameHe} — ${r.bayNameHe}`
+                        : <span className="text-red-600 font-medium">מסוף {r.terminalId} — לא רשום</span>}
+                    </td>
+                    <td className="py-2 pl-4 tabular-nums">{r.month}</td>
+                    <td className="py-2 pl-4 tabular-nums">{r.washes.toLocaleString('he-IL')}</td>
+                    <td className="py-2 pl-4 font-medium tabular-nums">{ils(r.grossIls)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* By month */}
+          <h3 className="text-sm font-medium mb-2">לפי חודש</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-right text-gray-500 border-b border-gray-100">
+                  <th className="py-2 pl-4 font-normal">חודש</th>
+                  <th className="py-2 pl-4 font-normal">שטיפות</th>
+                  <th className="py-2 pl-4 font-normal">פדיון</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.byMonth.map((r) => (
+                  <tr key={r.key} className="border-b border-gray-50">
+                    <td className="py-2 pl-4 tabular-nums">{r.key}</td>
+                    <td className="py-2 pl-4 tabular-nums">{r.washes.toLocaleString('he-IL')}</td>
+                    <td className="py-2 pl-4 font-medium tabular-nums">{ils(r.grossAgorot / 100)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Foreign currency — reported, NEVER summed into the shekel figures.
+              A real AUD 10 row exists (terminal mis-set), and an earlier report
+              added it straight into the shekel total as a phantom ₪10 line. */}
+          {analytics.nonIls.length > 0 && (
+            <div className="mt-5 border border-amber-200 bg-amber-50 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <h3 className="text-sm font-medium text-amber-900">שורות במטבע זר — לא נכללות בסכומים שלמעלה</h3>
+              </div>
+              <ul className="text-sm text-amber-900 space-y-1">
+                {analytics.nonIls.map((r, i) => (
+                  <li key={`${r.terminalId}-${r.month}-${i}`} className="tabular-nums">
+                    {r.month} · {r.registered ? `${r.stationNameHe} — ${r.bayNameHe}` : `מסוף ${r.terminalId}`} ·{' '}
+                    {r.washes} עסקאות · {r.gross.toLocaleString('he-IL')} {r.currency}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* 1 — CPA monthly settlement summary */}
       <section className="mb-8 border border-gray-200 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-1">
@@ -165,7 +350,11 @@ export default function AdminNayaxEvents() {
           <h2 className="font-semibold">סיכום חודשי — התחשבנות SUMIT</h2>
         </div>
         <p className="text-xs text-gray-500 mb-3">
-          הכנסות המפרץ נרשמות ב-SUMIT פעם בחודש (החלטת רו״ח 12.07.2026) — אין חשבונית פר-עסקה.
+          {analytics
+            ? `נצפו ${analytics.totals.withTaxDocument.toLocaleString('he-IL')} מסמכי מס פר-עסקה מתוך ${analytics.totals.washes.toLocaleString('he-IL')} שטיפות שנרשמו.`
+            : 'סופרים מסמכי מס פר-עסקה…'}{' '}
+          הנהלת החשבונות אישרה בכתב (06.09.2026) שהמסמכים שהופקו עומדים כפי שהם. המסך מדווח אילו
+          מסמכים קיימים בפועל — אופן הרישום והדיווח נקבע על ידי הנהלת החשבונות, לא כאן.
         </p>
         {monthGroups.length === 0 ? (
           <p className="text-sm text-gray-400">אין עדיין עסקאות — ייבאו דוח Nayax Core למטה או המתינו ל-webhook.</p>

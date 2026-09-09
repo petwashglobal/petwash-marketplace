@@ -231,6 +231,13 @@ spec:
           value: 'true'
         - name: UNIFIED_VERIFICATION_LOGIN_ENABLED
           value: 'true'
+        # Required by POST /api/mfa/two-step/disable: startChallenge() refuses
+        # any purpose whose flag is off, so without this the only way to turn
+        # two-step login off answers 503 for every member. Also makes
+        # DELETE /api/mfa/enrollment/:id demand its challenge — with the flag
+        # off that route removes an enrolment on a session alone.
+        - name: UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED
+          value: 'true'
         startupProbe:
           httpGet:
             path: /health

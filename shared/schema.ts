@@ -9033,6 +9033,18 @@ export const superAppPayouts = pgTable("super_app_payouts", {
   // Israeli bank transfer fields (NO STRIPE EVER)
   bankTransferReference: varchar("bank_transfer_reference"), // Israeli bank ACH reference number
   providerBankIban: varchar("provider_bank_iban"), // Provider's Israeli bank IBAN
+  // ── DESTINATION SNAPSHOT (migration 0152) ──────────────────────────────
+  // Frozen at authorisation from the VERIFIED contractor_bank_details row.
+  // The executor reads THESE, never the live provider profile: a payout
+  // authorised for destination A must not follow a later profile edit to B.
+  providerBankCode: varchar("provider_bank_code", { length: 20 }),
+  providerBankBranchCode: varchar("provider_bank_branch_code", { length: 20 }),
+  providerBankAccountNumber: varchar("provider_bank_account_number", { length: 255 }),
+  providerBankAccountHolder: varchar("provider_bank_account_holder", { length: 255 }),
+  destinationSourceId: varchar("destination_source_id", { length: 120 }),
+  destinationVerifiedAt: timestamp("destination_verified_at"),
+  /** NULL means no snapshot was taken — the executor must refuse to transfer. */
+  destinationSnapshotAt: timestamp("destination_snapshot_at"),
   providerBankName: varchar("provider_bank_name"), // Bank name (e.g., Bank Hapoalim, Leumi)
   
   // Payout amounts

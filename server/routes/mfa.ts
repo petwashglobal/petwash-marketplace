@@ -6,7 +6,9 @@ import { logger } from '../lib/logger';
 import {
   isUnifiedVerificationDisable2faEnabled,
   isUnifiedVerificationEnable2faEnabled,
+  isUnifiedVerificationPurposeEnabled,
 } from '../lib/feature-flags/unifiedVerification';
+import { pool } from '../db';
 import {
   UnifiedVerificationError,
   unifiedVerificationService,
@@ -79,11 +81,43 @@ function mfaRateLimiter(req: Request, res: Response, next: NextFunction) {
   return next();
 }
 
+/**
+ * TWO CONTROLS LIVE HERE, AND THIS ROUTE USED TO REPORT ONLY ONE.
+ *
+ *   `enrolled`      — mfa_enrollments (TOTP/SMS/email), stepped up on sensitive
+ *                     ACTIONS. Nothing about it gates signing in.
+ *   `twoStepLogin`  — users.two_factor_enabled, the member's join-time choice
+ *                     that a password alone must not be enough. THIS is what
+ *                     POST /api/auth/session enforces on a password sign-in.
+ *
+ * They share no state. So a member with two_factor_enabled = true and no TOTP
+ * enrolment was told `enrolled: false`, and My Account rendered "Two-step
+ * verification is off" with an Off badge — while the session gate was actively
+ * challenging them for exactly that. The panel stated the opposite of the truth
+ * about a live security control, which is worse than saying nothing.
+ *
+ * `enrolled` keeps its meaning for existing callers; the login control is
+ * reported alongside it rather than folded into it, because collapsing two
+ * different controls into one boolean is how this happened.
+ */
 mfaRouter.get('/status', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const uid = req.firebaseUser!.uid;
     const enrollments = await totpService.getUserEnrollments(uid);
+    // A read failure must not be rendered as "off" — that is the same false
+    // claim in a new place. `null` means unknown and the UI says so.
+    let twoStepLoginEnabled: boolean | null = null;
+    try {
+      const { rows } = await pool.query(
+        'SELECT two_factor_enabled FROM users WHERE id = $1 LIMIT 1',
+        [uid],
+      );
+      twoStepLoginEnabled = rows[0] ? rows[0].two_factor_enabled === true : false;
+    } catch (e: any) {
+      logger.warn('[MFA-API] could not read two_factor_enabled', { uid, error: e?.message });
+    }
     res.json({
+      twoStepLogin: { enabled: twoStepLoginEnabled },
       enrolled: enrollments.some(e => e.isActive && e.verified),
       enrollments: enrollments.map(e => ({
         id: e.id,
@@ -386,6 +420,133 @@ mfaRouter.delete('/enrollment/:id', validateFirebaseToken, async (req: Request, 
     if (handleUnifiedVerificationError(res, error)) return;
     logger.error('[MFA-API] Remove enrollment error:', error);
     res.status(500).json({ error: 'Removal failed' });
+  }
+});
+
+/**
+ * POST /api/mfa/two-step/disable — turn OFF users.two_factor_enabled.
+ *
+ * THE EXIT THAT DID NOT EXIST. The column was written in exactly one place,
+ * POST /api/auth/verify-signup-email at join, and nowhere else: no route
+ * cleared it, PATCH /api/user/profile refuses it, and the enrolment routes in
+ * this file operate on mfa_enrollments and never touch it. A member who chose
+ * two-step login at signup could never un-choose it — and if their number
+ * disappeared from both stores, the session gate refused their password
+ * sign-in with nothing they could do about it.
+ *
+ * A CHALLENGE IS REQUIRED, AND ITS ABSENCE REFUSES RATHER THAN DOWNGRADES.
+ * Removing one of several enrolments falls back to session-only when the
+ * unified runtime is off (see DELETE /enrollment/:id); switching the account's
+ * whole login gate off is not the same act, so when the challenge machinery is
+ * unavailable this answers 503 instead of quietly doing it on a session alone.
+ * A security control may not be switched off by a caller who proved nothing.
+ *
+ * The code goes to the account EMAIL on purpose. The member who most needs
+ * this route is the one with no phone in either store — sending the proof to a
+ * number that does not exist is the loop this exists to break.
+ *
+ * Two-phase, like every other sensitive change here: call once to get a
+ * challenge, again with the code to apply it.
+ */
+mfaRouter.post('/two-step/disable', validateFirebaseToken, mfaRateLimiter, async (req: Request, res: Response) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const email = req.firebaseUser!.email || '';
+
+    // Already off → nothing to prove and nothing to change. Reported honestly
+    // rather than emailing a code for a no-op.
+    const { rows } = await pool.query(
+      'SELECT two_factor_enabled FROM users WHERE id = $1 LIMIT 1',
+      [uid],
+    );
+    if (!rows[0]) {
+      return res.status(404).json({ error: 'Account not found', code: 'USER_NOT_FOUND' });
+    }
+    if (rows[0].two_factor_enabled !== true) {
+      return res.json({ disabled: true, alreadyDisabled: true });
+    }
+
+    // THE PRECONDITION IS THE ONE THE SERVICE ITSELF ENFORCES.
+    //
+    // startChallenge() refuses any purpose whose flag is off, with
+    // PURPOSE_FLAG_DISABLED. Checking the UMBRELLA flag here instead looked
+    // right and was not: the umbrella is on in production while
+    // UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED is not set at all, so this route
+    // sailed past its own guard and died inside the service — an exit that
+    // existed in the code and not in production.
+    //
+    // Calling the same predicate the service calls means the two cannot drift:
+    // if the purpose is off, the member is told so HERE, plainly, instead of
+    // receiving a generic failure from three layers down.
+    if (!isUnifiedVerificationPurposeEnabled('disable_2fa')) {
+      logger.warn('[MFA-API] two-step disable refused — disable_2fa purpose is switched off', { uid });
+      return res.status(503).json({
+        error: 'Two-step login cannot be changed right now. Please contact support.',
+        code: 'VERIFICATION_UNAVAILABLE',
+      });
+    }
+    if (!email) {
+      return res.status(400).json({
+        error: 'A verified email is required to turn two-step login off.',
+        code: 'EMAIL_REQUIRED',
+      });
+    }
+
+    const { verificationChallengeId, verificationCode } = req.body ?? {};
+    if (!verificationChallengeId || !verificationCode) {
+      const challenge = await unifiedVerificationService.startChallenge({
+        purpose: 'disable_2fa',
+        channel: 'email',
+        destination: email,
+        payload: { target: 'two_step_login' },
+        actor: verificationActorFromRequest(req, uid),
+      });
+      return res.status(202).json({
+        requiresVerification: true,
+        verificationChallengeId: challenge.challenge.challengeId,
+        expiresAt: challenge.challenge.expiresAt,
+        message: 'Verification code sent to your email',
+      });
+    }
+
+    const verificationResult = await unifiedVerificationService.verifyChallenge({
+      challengeId: verificationChallengeId,
+      code: verificationCode,
+      actor: verificationActorFromRequest(req, uid),
+    });
+    const metadata = (verificationResult.action as any)?.metadata || {};
+    if (metadata.action !== 'disable_2fa') {
+      return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
+    }
+    // A proof names a subject. assertActorCanVerify already refuses a challenge
+    // belonging to another account; this re-checks the binding at the point of
+    // the WRITE, because that is where getting it wrong changes someone else's
+    // security settings.
+    if (metadata.userId && metadata.userId !== uid) {
+      logger.error('[MFA-API] two-step disable proof bound to a different account', { uid });
+      return res.status(403).json({ error: 'Invalid verification challenge', code: 'ACTOR_MISMATCH' });
+    }
+
+    const updated = await pool.query(
+      'UPDATE users SET two_factor_enabled = false WHERE id = $1 RETURNING id',
+      [uid],
+    );
+    if (!updated.rowCount) {
+      // The proof was spent. Saying "disabled" when no row changed would be the
+      // false-success this codebase keeps having to undo.
+      logger.error('[MFA-API] two-step disable matched 0 rows after a verified challenge', { uid });
+      return res.status(500).json({
+        error: 'The code was correct but the setting could not be saved. Please try again.',
+        code: 'TWO_STEP_DISABLE_FAILED',
+      });
+    }
+
+    logger.info('[MFA-API] two-step login disabled by member', { uid });
+    return res.json({ disabled: true });
+  } catch (error) {
+    if (handleUnifiedVerificationError(res, error)) return;
+    logger.error('[MFA-API] two-step disable error:', error);
+    return res.status(500).json({ error: 'Could not turn two-step login off' });
   }
 });
 

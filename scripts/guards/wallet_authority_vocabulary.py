@@ -57,6 +57,46 @@ def gate_lookups() -> list[tuple[str, str, str]]:
     return out
 
 
+def seeded_bands(files: list[str]) -> list[tuple[int, int | None]]:
+    """(min_amount_cents, max_amount_cents) of every seeded band."""
+    bands: list[tuple[int, int | None]] = []
+    for f in files:
+        text = open(f, encoding="utf-8").read()
+        # `<min>, <max|NULL>, '<role>'` in the VALUES/SELECT of each band insert
+        for m in re.finditer(r"\n\s*(\d+),\s*(\d+|NULL),\s*'[a-z_]+'", text):
+            lo = int(m.group(1))
+            hi = None if m.group(2) == "NULL" else int(m.group(2))
+            bands.append((lo, hi))
+    return sorted(set(bands))
+
+
+def coverage_gaps(bands: list[tuple[int, int | None]]) -> list[str]:
+    """
+    A range no band covers is a SILENT ceiling fallback.
+
+    getApprovalRule() matches on min <= amount <= max. An amount that falls in
+    a hole between bands finds no rule, and the gate quietly drops back to its
+    ceiling — the same invisible non-enforcement this guard exists to catch,
+    reached through a dimension the (case, action) check cannot see.
+    """
+    if not bands:
+        return ["no amount bands parsed from the seed — the gate would never match a rule"]
+    problems = []
+    if bands[0][0] != 0:
+        problems.append(f"no band covers 0..{bands[0][0] - 1} minor units")
+    cursor = bands[0][1]
+    for lo, hi in bands[1:]:
+        if cursor is None:
+            problems.append(f"a band already runs to infinity; the band starting at {lo} is unreachable")
+            break
+        if lo > cursor + 1:
+            problems.append(f"no band covers {cursor + 1}..{lo - 1} minor units")
+        cursor = hi if hi is not None else None
+    if cursor is not None:
+        problems.append(f"no band covers amounts above {cursor} minor units — the ceiling silently applies")
+    return problems
+
+
 def seeded_pairs() -> tuple[set[tuple[str, str]], list[str]]:
     files = sorted(glob.glob(MIGRATION_GLOB))
     pairs: set[tuple[str, str]] = set()
@@ -106,7 +146,10 @@ def main() -> int:
         return 0
 
     print(f"seed files: {', '.join(files)}")
-    problems = []
+    problems = list(coverage_gaps(seeded_bands(files)))
+    for b in seeded_bands(files):
+        hi = "∞" if b[1] is None else b[1]
+        print(f"  band {b[0]}..{hi}")
     for case_type, action, kind in lookups:
         actions = RUNTIME_EXPANSIONS.get(action, [action]) if kind == "runtime" else [action]
         if kind == "runtime" and action not in RUNTIME_EXPANSIONS:

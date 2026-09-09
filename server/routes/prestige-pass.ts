@@ -4115,6 +4115,22 @@ router.post('/admin/wallet/release', async (req: Request, res: Response) => {
     const holdCents = Number(booking.wallet_hold_cents);
     if (holdCents <= 0) return res.status(422).json({ error: 'No hold amount to release' });
 
+    // MONEY AUTHORITY on the DERIVED amount — see walletMoneyAuthority.ts and
+    // docs/security/money-authority-census-2026-09-08.md. The
+    // figure is booking.wallet_hold_cents, never a caller-supplied one.
+    const moneyAuthority = await authoriseWalletMoneyAction({
+      caseType: 'wallet_release',
+      actionType: 'release',
+      amountCents: holdCents,
+      actingRole: 'admin',
+      fallbackCeilingCents: ADMIN_TIER_CEILING_CENTS,
+    });
+    if (!moneyAuthority.ok) {
+      return res.status(moneyAuthority.status).json({
+        error: moneyAuthority.error, code: moneyAuthority.code,
+      });
+    }
+
     const { walletService } = await import('../services/WalletService');
     const result = await walletService.releaseBookingHold({
       userId:               booking.user_id,
@@ -4452,6 +4468,21 @@ router.post('/admin/wallet/support/release-hold', async (req: Request, res: Resp
     }
     const holdCents = Number(booking.wallet_hold_cents);
     if (holdCents <= 0) return res.status(422).json({ error: 'No hold amount to release' });
+
+    // MONEY AUTHORITY on the DERIVED amount. booking.wallet_hold_cents, never a
+    // caller-supplied figure. Support tier.
+    const moneyAuthority = await authoriseWalletMoneyAction({
+      caseType: 'wallet_support',
+      actionType: 'release_hold',
+      amountCents: holdCents,
+      actingRole: 'admin',
+      fallbackCeilingCents: SUPPORT_TIER_CEILING_CENTS,
+    });
+    if (!moneyAuthority.ok) {
+      return res.status(moneyAuthority.status).json({
+        error: moneyAuthority.error, code: moneyAuthority.code,
+      });
+    }
 
     const { walletService } = await import('../services/WalletService');
     const result = await walletService.releaseBookingHold({
@@ -6292,11 +6323,45 @@ router.post('/admin/wallet/payout-entries/mark-paid', async (req: Request, res: 
     if (entryIds && entryIds.length > 0) {
       // Explicit ID list
       const existing: any = await db.execute(sql`
-        SELECT id, status FROM provider_payout_entries
+        SELECT id, status, net_cents FROM provider_payout_entries
         WHERE id = ANY(${sql`ARRAY[${sql.join(entryIds.map(id => sql`${id}`), sql`, `)}]::int[]`})
       `);
       const rows = existing?.rows ?? existing ?? [];
-      const payable = rows.filter((r: any) => r.status === 'earned' || r.status === 'held').map((r: any) => Number(r.id));
+      const payableRows = rows.filter((r: any) => r.status === 'earned' || r.status === 'held');
+      const payable = payableRows.map((r: any) => Number(r.id));
+      // The query used to select only (id, status) — there was no amount to
+      // band on. net_cents is what actually gets paid, so the authority
+      // decision is made on the SUM of the entries this call would settle.
+      //
+      // A MISSING net_cents IS AN ERROR, NOT A ZERO. If the SELECT above ever
+      // stops projecting the column, `Number(undefined ?? 0)` quietly yields 0,
+      // the `> 0` test below is false, and this guard turns itself off with no
+      // type error and no failing test. Refuse instead.
+      const missingAmount = payableRows.some((r: any) => r.net_cents === undefined || r.net_cents === null);
+      if (missingAmount) {
+        logger.error('[AdminWallet][MarkPaid] payout entries carry no net_cents — refusing to settle unbanded', {
+          entryCount: payableRows.length, adminUid: uid,
+        });
+        return res.status(500).json({
+          error: 'Payout entries are missing their amount — cannot evaluate authority',
+          code: 'CANONICAL_AMOUNT_UNAVAILABLE',
+        });
+      }
+      const payableTotalCents = payableRows.reduce((t: number, r: any) => t + Number(r.net_cents), 0);
+      if (payableTotalCents > 0) {
+        const moneyAuthority = await authoriseWalletMoneyAction({
+          caseType: 'wallet_payout_entry',
+          actionType: 'mark_paid',
+          amountCents: payableTotalCents,
+          actingRole: 'admin',
+          fallbackCeilingCents: ADMIN_TIER_CEILING_CENTS,
+        });
+        if (!moneyAuthority.ok) {
+          return res.status(moneyAuthority.status).json({
+            error: moneyAuthority.error, code: moneyAuthority.code,
+          });
+        }
+      }
       skippedIds  = rows.filter((r: any) => r.status === 'paid').map((r: any) => Number(r.id));
 
       if (payable.length > 0) {
@@ -6957,6 +7022,28 @@ router.post('/admin/wallet/disputes/:caseRef/apply-resolution', async (req: Requ
     }
 
     let result: Record<string, any> = { action, caseRef };
+
+    /**
+     * MONEY AUTHORITY. Unlike the release routes, refundAmountCents and
+     * clawbackCents are CHOSEN by the caller — there is nothing to derive, so
+     * the band applies to the figure they picked. Both move value, so the
+     * decision is made on their total.
+     */
+    const disputeValueCents = Number(refundAmountCents ?? 0) + Number(clawbackCents ?? 0);
+    if (disputeValueCents > 0) {
+      const moneyAuthority = await authoriseWalletMoneyAction({
+        caseType: 'wallet_dispute',
+        actionType: 'apply_resolution',
+        amountCents: disputeValueCents,
+        actingRole: 'admin',
+        fallbackCeilingCents: ADMIN_TIER_CEILING_CENTS,
+      });
+      if (!moneyAuthority.ok) {
+        return res.status(moneyAuthority.status).json({
+          error: moneyAuthority.error, code: moneyAuthority.code,
+        });
+      }
+    }
 
     if (action === 'refund') {
       if (!refundAmountCents || !refundBookingId) {

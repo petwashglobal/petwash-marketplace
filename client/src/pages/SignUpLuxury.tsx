@@ -849,6 +849,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         }
         const ad = await a.json().catch(() => ({} as any));
         if (!ad.ok) {
+          // THE CACHED TOKEN IS A ONE-SHOT PROOF, and the server burns it before
+          // it touches Firebase or Postgres. Caching it is right for failures
+          // BEFORE that burn — a wrong code, a cold-start blip — and wrong for
+          // every failure after it: reusing a spent nonce dies at the burn with
+          // VERIFICATION_ALREADY_USED, so "try again" would loop forever on a
+          // token that can never work. The server marks post-burn failures
+          // `proofSpent`; VERIFICATION_ALREADY_USED covers the case where the
+          // response to a successful burn was lost and we retried blind. Drop
+          // the token in both, so the next attempt fetches a fresh code — which
+          // the server CAN recover from (it recognises the number as already
+          // attached to this account and finishes the half that did not land).
+          if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') {
+            setCachedPhoneVerificationToken(null);
+          }
           fail(ad.error || ad.message || (he ? 'שמירת הנייד נכשלה. נסה שוב.' : 'Mobile attach failed. Try again.'));
           return;
         }
@@ -871,7 +885,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         });
       } catch (netErr) {
         logger.error('[signup] phone-session network', netErr);
-        fail(he ? 'תקלת רשת. הקוד עדיין תקף — לחץ אמת שוב.' : 'Network error. Your code is still valid — press verify again.');
+        // We do NOT clear the cached token here: this request may never have
+        // left the device, and discarding a still-good proof would cost the
+        // member a fresh SMS for a flaky connection. If it DID reach the
+        // server and burn, the retry converges one tap later — the burn
+        // answers VERIFICATION_ALREADY_USED and the branch below clears.
+        // What we can no longer claim is that the code is definitely valid.
+        fail(he ? 'תקלת רשת. לחץ אמת שוב — ייתכן שיידרש קוד חדש.' : 'Network error. Press verify again — you may need a new code.');
         return;
       }
       const sd = await s.json().catch(() => ({} as any));
@@ -899,6 +919,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         return;
       }
       if (!sd?.customToken) {
+        // THE CACHED TOKEN IS A ONE-SHOT PROOF, and /phone-session burns it
+        // BEFORE it looks up Firebase, creates the account, or writes a single
+        // row. Caching is right for failures ABOVE that burn (a wrong code, a
+        // cold-start blip) and wrong for every failure below it: replaying a
+        // spent nonce dies at the burn, so "try again" would loop forever on a
+        // token that can never work. The server marks post-burn failures
+        // `proofSpent`; VERIFICATION_ALREADY_USED covers the case where the
+        // response to a successful burn was lost and we retried blind. Drop
+        // the token in both, so the next attempt fetches a fresh code — which
+        // the server CAN recover from: the phone lookup finds the account this
+        // chain already created and mints the session that did not land.
+        if (sd?.proofSpent === true || sd?.code === 'VERIFICATION_ALREADY_USED') {
+          setCachedPhoneVerificationToken(null);
+        }
         fail(sd?.message || sd?.error || (he ? 'הפעלת החשבון נכשלה. נסה שוב.' : 'Account activation failed. Try again.'));
         return;
       }
@@ -909,7 +943,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         cred = await signInWithCustomToken(auth, sd.customToken);
       } catch (fbErr: any) {
         logger.error('[signup] signInWithCustomToken failed', fbErr);
-        fail(he ? 'ההתחברות ל-Firebase נכשלה. הקוד עדיין תקף — לחץ אמת שוב.' : 'Firebase sign-in failed. Your code is still valid — press verify again.');
+        // No `proofSpent` to read here, and none needed: the server hands out
+        // a customToken only after the burn. The cached proof is gone for
+        // certain, so keeping it would guarantee a dead retry.
+        setCachedPhoneVerificationToken(null);
+        fail(he ? 'ההתחברות ל-Firebase נכשלה. בקש קוד חדש ונסה שוב.' : 'Firebase sign-in failed. Please request a new code and try again.');
         return;
       }
       const idToken = await cred.user.getIdToken(true);
@@ -923,15 +961,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         });
       } catch (netErr) {
         logger.error('[signup] /session network', netErr);
-        fail(he ? 'שמירת הכניסה נכשלה. נסה שוב.' : 'Session save failed. Try again.');
+        // Stage 4 is reached only with a customToken in hand, so the proof was
+        // burned regardless of what became of THIS request. The account
+        // already exists; a retry with a fresh code is cheap, a retry with the
+        // cached one is guaranteed to die at the burn.
+        setCachedPhoneVerificationToken(null);
+        fail(he ? 'שמירת הכניסה נכשלה. בקש קוד חדש ונסה שוב.' : 'Session save failed. Please request a new code and try again.');
         return;
       }
       if (!sessionRes.ok) {
         const errBody = await sessionRes.json().catch(() => ({} as any));
+        // Same reasoning as the network branch above — including the 502, where
+        // "wait and press verify again" used to send the member back through a
+        // burn that could only answer already_used.
+        setCachedPhoneVerificationToken(null);
         if (sessionRes.status === 502) {
-          fail(he ? 'השרת מתעורר. חכה כמה שניות ולחץ אמת שוב.' : 'Server is warming up. Wait a few seconds and press verify again.');
+          fail(he ? 'השרת מתעורר. חכה כמה שניות, בקש קוד חדש ונסה שוב.' : 'Server is warming up. Wait a few seconds, request a new code and try again.');
         } else {
-          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessionRes.status}). נסה שוב.` : `Session save failed (${sessionRes.status}). Try again.`));
+          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessionRes.status}). בקש קוד חדש ונסה שוב.` : `Session save failed (${sessionRes.status}). Request a new code and try again.`));
         }
         return;
       }
@@ -1107,7 +1154,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // cached token that has already been spent can never work again, so
           // hold on to it and the user just re-presses verify into the same
           // refusal forever. Drop it and send them to a fresh code.
-          if (ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
+          // `proofSpent` is the SERVER saying so on the failure itself, which is
+          // one round-trip earlier than waiting for the replay to be refused;
+          // VERIFICATION_ALREADY_USED stays for the case where the response to
+          // a successful burn was lost and we retried blind.
+          if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
           fail(ad.error || ad.message || (he ? 'שמירת האימייל נכשלה. נסה שוב.' : 'Email attach failed. Try again.'));
           return;
         }

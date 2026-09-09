@@ -41,45 +41,73 @@ import { resolve } from 'path';
 
 const R = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 
-describe('HIGH FINDING: GET /api/pin-auth/status is unauth + enumeration vector', () => {
+// INVERTED 2026-09-08. These two were CHARACTERISATION pins: they asserted the
+// endpoint was still unauthenticated and still enumerable, deliberately, so
+// that "a future PR that adds a guard will trip this test". A guard did land
+// (pin-auth.ts: `validateFirebaseToken`, caller-scoped, 2026-08-17) — and the
+// test tripped exactly as designed, then sat red for three weeks because no CI
+// job runs this file. Nobody read the trip as the good news it was.
+//
+// A characterisation pin has to be inverted the moment the defect is fixed, or
+// it inverts the incentive instead: the cheapest way to a green suite becomes
+// re-introducing the vulnerability. These now assert the CLOSED state.
+describe('CLOSED (was HIGH): GET /api/pin-auth/status is authenticated + caller-scoped', () => {
   const SRC = R('routes/pin-auth.ts');
+  const region = () => {
+    const idx = SRC.indexOf("router.get('/status'");
+    expect(idx).toBeGreaterThan(-1);
+    return SRC.slice(idx, idx + 1500);
+  };
   it('the /status handler is registered', () => {
     expect(SRC).toMatch(/router\.get\('\/status'/);
   });
-  it('the handler currently reads email from req.query (no auth check on ownership)', () => {
-    const idx = SRC.indexOf("router.get('/status'");
-    const region = SRC.slice(idx, idx + 1500);
-    expect(region).toContain('req.query.email');
-    // The handler DOES NOT gate on req.firebaseUser? / requireAuth /
-    // requireStaffPass — pinning the current (broken) state so a future
-    // PR that adds a guard will trip this test.
-    expect(region).not.toMatch(/req\.firebaseUser\?/);
-    expect(region).not.toMatch(/requireAuth/);
+  it('it is behind auth, and no longer keyed on an attacker-supplied email', () => {
+    expect(region()).toMatch(/validateFirebaseToken|requireAuth|req\.firebaseUser/);
+    expect(region()).not.toContain('req.query.email');
   });
-  it('response leaks hasPin / pinLength / isLocked — enumeration', () => {
-    const idx = SRC.indexOf("router.get('/status'");
-    const region = SRC.slice(idx, idx + 1500);
-    expect(region).toContain('hasPin');
-    expect(region).toContain('pinLength');
-    expect(region).toContain('isLocked');
+  it('the identity resolver reads the TOKEN, never a supplied email', () => {
+    // The assertion above is only meaningful if the resolver it trusts is
+    // itself token-derived. Pin that too, or the guard moves one function away.
+    const i = SRC.indexOf('export async function resolvePinIdentityFromRequest');
+    expect(i).toBeGreaterThan(-1);
+    const fn = SRC.slice(i, SRC.indexOf('\n}', i));
+    expect(fn).toMatch(/req\.firebaseUser\?\.uid/);
+    expect(fn).not.toMatch(/req\.query/);
+    expect(fn).not.toMatch(/req\.body/);
+  });
+  it('the PIN posture it reports is the CALLER\'s own', () => {
+    // hasPin / pinLength / isLocked are fine to return — about YOURSELF. The
+    // finding was never these fields; it was answering them for anyone.
+    const r = region();
+    expect(r).toContain('hasPin');
+    // Identity comes from resolvePinIdentityFromRequest, which reads
+    // req.firebaseUser?.uid and the TOKEN email — never the query string —
+    // and the PIN lookup is keyed on the id it returns.
+    expect(r).toMatch(/resolvePinIdentityFromRequest\(req\)/);
+    expect(r).toMatch(/eq\(userPins\.userId,\s*userInfo\.id\)/);
+    expect(r).not.toMatch(/req\.query/);
   });
 });
 
-describe('MEDIUM FINDING: GET /messages/lookup-user returns UID + email + name for any queried email', () => {
+describe('CLOSED (was MEDIUM): GET /messages/lookup-user no longer resolves anyone by email', () => {
   const SRC = R('routes/messages.ts');
   it('the lookup handler is registered', () => {
     expect(SRC).toMatch(/router\.get\('\/lookup-user'/);
   });
-  it('the handler does NOT restrict lookups to the caller\'s own email', () => {
+  it('the handler is RETIRED — it can no longer resolve anyone by email', () => {
     const idx = SRC.indexOf("router.get('/lookup-user'");
     const region = SRC.slice(idx, idx + 1200);
-    // Authenticated but no ownership check on the queried email.
-    expect(region).toContain("req.firebaseUser?.uid");
-    expect(region).toContain('req.query.email');
-    // Response returns uid + email + displayName for any queried email.
-    expect(region).toMatch(/uid:\s*userRecord\.uid/);
-    expect(region).toMatch(/email:\s*userRecord\.email/);
-    expect(region).toMatch(/displayName:/);
+    // INVERTED 2026-09-08. This asserted the endpoint STILL leaked — it was a
+    // characterisation test for an open finding. The endpoint was RETIRED
+    // (410 ENDPOINT_RETIRED), so the test began failing BECAUSE the hole was
+    // closed, and the only way to make it green again was to reopen the hole.
+    // A guard that rewards re-introducing the defect is worse than no guard.
+    expect(region).toMatch(/410/);
+    expect(region).toMatch(/ENDPOINT_RETIRED|INBOX_LOOKUP_RETIRED/);
+    // Nothing about another account may come back from here, ever again.
+    expect(region).not.toMatch(/uid:\s*userRecord\.uid/);
+    expect(region).not.toMatch(/email:\s*userRecord\.email/);
+    expect(region).not.toContain('req.query.email');
   });
 });
 

@@ -176,6 +176,11 @@ jobs:
       - name: Gate — wallet authority vocabulary matches the seeded bands
         run: python3 scripts/guards/wallet_authority_vocabulary.py --fail
 
+      # A suite that is not in the gate protects nothing, and a path that does
+      # not exist shrinks the gate silently — vitest reports success either way.
+      - name: Gate — the money gate runs every file it lists
+        run: python3 scripts/guards/money_gate_covers_its_files.py --fail
+
   gate-smoke-test-startup:
     name: Gate — routes.ts module-load smoke test
     runs-on: ubuntu-latest
@@ -259,6 +264,11 @@ jobs:
           # under the production resolver (the #669/#670 failure class) and
           # reports ALL failures in one run, not one per deploy cycle.
           npx tsx scripts/smoke-test-route-imports.ts
+          # Dynamic-import interop guard — `await import('./lib/firebase-admin')`
+          # must return the module namespace (db/auth/adminAuth), not the raw
+          # firebase-admin CJS object (the 2026-09-09 "Authentication setup
+          # failed" class). Same tsx resolver as production.
+          npx tsx scripts/smoke-test-firebase-admin-interop.ts
 
       - name: Upload smoke-test artifacts (always)
         if: always()
@@ -1216,6 +1226,24 @@ jobs:
           # debugging when address autocomplete misbehaves on iPad Safari.
           # docs/GOOGLE_PLACES_AUTOCOMPLETE_AUDIT.md §1.
           VITE_GOOGLE_PLACES_LIVE: 'true'
+          # THE ROLLOUT SWITCH FOR THE SHARED VERIFICATION EXPERIENCE.
+          #
+          # A repository VARIABLE, not a secret — it is a boolean, and the point
+          # is that flipping it needs no code change and no review. Unset is
+          # falsy, so the default stays the legacy screen; rolloutSwitch.ts reads
+          # `=== 'true'`.
+          #
+          # Until now this flag appeared NOWHERE in the pipeline, so
+          # VerificationFlow could not be switched on at all: everything in
+          # #2283/#2284/#2285/#2286 was unreachable in production, including the
+          # correct /api/auth/email/resend wiring. Building a switch and never
+          # connecting it is the same defect as a guard that inspects nothing.
+          #
+          # ROLL OUT IN THIS ORDER — "the flag is on" is not a rollout plan:
+          #   1. ?pwverify=new against production, one real journey, per-session
+          #   2. then set this repository variable to 'true'
+          #   3. only then delete the legacy branch and this switch
+          VITE_UNIFIED_VERIFICATION_UI: ${{ vars.VITE_UNIFIED_VERIFICATION_UI }}
 
           # ── Shop browse-only soft opening (CEO 2026-06-11) ──
           # Storefront is PUBLIC (catalog + cart + engraving preview), but
@@ -1885,7 +1913,7 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            --set-env-vars=NODE_ENV=production,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,NAYAX_ENABLED=true,SUMIT_ENABLED=true,SUMIT_SANDBOX=false,SMS_GLOBAL_HOURLY_LIMIT=120,SMS_GLOBAL_DAILY_LIMIT=400,IDENTITY_UNIFIED_ENABLED=true,LYNX_ENABLED=true,LYNX_SANDBOX=false,LYNX_OPERATOR_ID=2002942146,UNIFIED_VERIFICATION_ENABLED=true,UNIFIED_VERIFICATION_SIGNUP_ENABLED=true,UNIFIED_VERIFICATION_LOGIN_ENABLED=true
+            --set-env-vars=NODE_ENV=production,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,NAYAX_ENABLED=true,SUMIT_ENABLED=true,SUMIT_SANDBOX=false,SMS_GLOBAL_HOURLY_LIMIT=120,SMS_GLOBAL_DAILY_LIMIT=400,IDENTITY_UNIFIED_ENABLED=true,LYNX_ENABLED=true,LYNX_SANDBOX=false,LYNX_OPERATOR_ID=2002942146,UNIFIED_VERIFICATION_ENABLED=true,UNIFIED_VERIFICATION_SIGNUP_ENABLED=true,UNIFIED_VERIFICATION_LOGIN_ENABLED=true,UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED=true
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
             --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30
@@ -2744,6 +2772,24 @@ jobs:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
           VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
           VITE_GOOGLE_PLACES_LIVE: 'true'
+          # THE ROLLOUT SWITCH FOR THE SHARED VERIFICATION EXPERIENCE.
+          #
+          # A repository VARIABLE, not a secret — it is a boolean, and the point
+          # is that flipping it needs no code change and no review. Unset is
+          # falsy, so the default stays the legacy screen; rolloutSwitch.ts reads
+          # `=== 'true'`.
+          #
+          # Until now this flag appeared NOWHERE in the pipeline, so
+          # VerificationFlow could not be switched on at all: everything in
+          # #2283/#2284/#2285/#2286 was unreachable in production, including the
+          # correct /api/auth/email/resend wiring. Building a switch and never
+          # connecting it is the same defect as a guard that inspects nothing.
+          #
+          # ROLL OUT IN THIS ORDER — "the flag is on" is not a rollout plan:
+          #   1. ?pwverify=new against production, one real journey, per-session
+          #   2. then set this repository variable to 'true'
+          #   3. only then delete the legacy branch and this switch
+          VITE_UNIFIED_VERIFICATION_UI: ${{ vars.VITE_UNIFIED_VERIFICATION_UI }}
       - name: Install Chrome for prerender
         run: npx puppeteer browsers install chrome
 
