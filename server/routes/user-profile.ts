@@ -57,10 +57,15 @@ const profileUpdateSchema = z.object({
    * `twoFactorEnabled` used to be a plain optional boolean on this schema,
    * applied straight into the UPDATE at the bottom of the handler. That let
    * ANY authenticated PATCH /api/user/profile turn a security control on or
-   * off — bypassing mfa.ts entirely, which is where enabling 2FA actually
-   * means something: an enable_2fa / disable_2fa challenge, TwoFactorAuthService
-   * enrolment, and the metadata.action check that binds the verification to
-   * the operation.
+   * off — bypassing mfa.ts entirely, which is where changing it actually means
+   * something: a disable_2fa challenge and the metadata.action check that binds
+   * the verification to the operation.
+   *
+   * The refusal below used to name POST /api/mfa/enable and /api/mfa/disable.
+   * NEITHER EVER EXISTED, so the one place that explains where to go sent the
+   * caller nowhere — and the column had no off switch at all until
+   * POST /api/mfa/two-step/disable. Refusing with a pointer is only better than
+   * refusing silently if the pointer is real.
    *
    * A generic profile endpoint must never mutate security state. It is kept in
    * the schema only so the handler can refuse it with a message that says
@@ -80,8 +85,9 @@ const SECURITY_FIELDS_REQUIRING_CANONICAL_FLOW = {
   twoFactorEnabled: {
     code: 'TWO_FACTOR_REQUIRES_VERIFICATION',
     message:
-      'Two-factor authentication cannot be changed from the profile endpoint. '
-      + 'Use POST /api/mfa/enable or /api/mfa/disable, which require a verified challenge.',
+      'Two-step login cannot be changed from the profile endpoint. '
+      + 'Use POST /api/mfa/two-step/disable, which requires a verified challenge. '
+      + 'Turning it on is part of signup, which proves a mobile number first.',
   },
   email: {
     code: 'EMAIL_CHANGE_REQUIRES_VERIFICATION',
