@@ -1153,9 +1153,24 @@ a {
   box-sizing: border-box;
 }
 
+/*
+ * NO TOP PADDING ON body. (2026-09-10)
+ *
+ * .pw-header is `position: sticky`, which means it occupies its own space in
+ * normal flow. Reserving room for it here reserves the space TWICE: the header
+ * renders below an empty band, and every page opens a screen-height short.
+ *
+ * Four breakpoints each reserved a different amount — 76px, 6.5rem, 7rem, 8rem
+ * — so the dead band changed size as the window did, in portrait and in
+ * landscape. Reported from a phone as "a hidden box at the top, always
+ * dropped down".
+ *
+ * Only add padding back here if the header becomes `position: fixed`. It is
+ * not fixed at any breakpoint; grep before assuming otherwise.
+ */
 body {
   font-family: sans-serif;
-  padding-top: 0; /* No top padding - header sits flush at top */
+  padding-top: 0;
   overflow-x: hidden !important; /* Prevent horizontal scrolling */
   max-width: 100vw !important; /* Ensure body doesn't exceed viewport width */
   position: relative;
@@ -1553,7 +1568,10 @@ html[lang="en"] *,
 /* Extra small mobile devices */
 @media (max-width: 480px) {
   body {
-    padding-top: 76px;
+    /* was 76px — see the note at the base `body` rule. The header is
+       position:sticky, so it occupies its own space; this reserved a
+       second copy of it and left a dead band under the browser chrome. */
+    padding-top: 0;
   }
   
   .top-bar {
@@ -1610,7 +1628,7 @@ html[lang="en"] *,
 /* Tablet responsive design - LAYOUT NEVER CHANGES */
 @media (min-width: 769px) and (max-width: 1024px) {
   body {
-    padding-top: 6.5rem; /* More space for tablet header */
+    padding-top: 0; /* header is sticky — see the base `body` rule */
   }
   
   .top-bar {
@@ -1669,7 +1687,7 @@ html[lang="en"] *,
 /* Large desktop screens */
 @media (min-width: 1025px) {
   body {
-    padding-top: 7rem; /* More space for desktop header */
+    padding-top: 0; /* header is sticky — see the base `body` rule */
   }
   
   .top-bar {
@@ -1731,7 +1749,7 @@ html[lang="en"] *,
 /* Ultra-wide screens */
 @media (min-width: 1440px) {
   body {
-    padding-top: 8rem; /* More space for ultra-wide screens */
+    padding-top: 0; /* header is sticky — see the base `body` rule */
   }
   
   .top-bar {

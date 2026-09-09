@@ -1488,3 +1488,87 @@
 .pw-language-luxury {
   min-height: 44px !important;
 }
+
+/* ===========================================================================
+   HEADER LANGUAGE PILL — 44pt hit area WITHOUT a 44px painted box
+   (2026-09-10)
+
+   The tap-target floor above is correct and stays. But a native <select> IS
+   its own hit area, so putting the floor on the element also enlarged what
+   the user sees: a 44px empty rectangle next to the 2rem gold burger circle
+   and the profile ring. The block above explicitly did NOT want that for the
+   other controls — it gave them a transparent ::after so the painted box
+   never moved — and the select could not use the same trick.
+
+   Two jobs, two elements:
+     .pw-language-tap-pill  paints the pill at the header's own scale
+     the <select>           keeps the 44px hit area, painted transparent,
+                            layered over the pill
+
+   Only the HEADER instance is wrapped. The drawer copy keeps the plain 44px
+   control, which is the right shape for a menu row.
+   =========================================================================== */
+.pw-language-tap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pw-language-tap-pill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  height: 2rem;                 /* matches .pw-burger-luxury */
+  /* border-box so the painted height is exactly 2rem like the burger —
+     content-box would add the 1.5px stroke twice and sit 3px taller. */
+  box-sizing: border-box;
+  border: 1.5px solid #000000;  /* matches the burger's stroke weight */
+  border-radius: 999px;
+  background: #FFFFFF;
+  /* Purely decorative — every click must reach the select above it. */
+  pointer-events: none;
+}
+
+/* Inside the wrapper the select keeps its 44px floor but paints nothing. */
+.pw-language-tap > .pw-language-select,
+.pw-language-tap > .pw-language-luxury {
+  position: relative;
+  z-index: 1;
+  min-height: 44px !important;
+  height: 44px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 999px !important;
+  padding: 0 0.7rem !important;
+  font-size: 0.6rem !important;
+  text-align: center !important;
+  text-align-last: center;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* The hover state belonged to the painted box, so it moves to the pill. */
+.pw-language-tap:hover .pw-language-tap-pill {
+  background: #000000;
+}
+.pw-language-tap:hover > .pw-language-luxury {
+  color: #FFFFFF !important;
+}
+.pw-language-tap > .pw-language-luxury:hover {
+  background: transparent !important;
+  color: #FFFFFF !important;
+}
+
+/* Keyboard focus must still be visible — it was on the select's own border,
+   which is now transparent. */
+.pw-language-tap:focus-within .pw-language-tap-pill {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.15);
+}
+.pw-language-tap > .pw-language-select:focus {
+  outline: none !important;
+}
