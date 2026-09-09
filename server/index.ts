@@ -331,6 +331,7 @@ import { SystemEventService as _SystemEventService } from "./services/SystemEven
 
 import cookieParser from "cookie-parser";
 import session from "express-session";
+import { NullSessionStore } from "./lib/nullSessionStore";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import { doubleCsrf } from "csrf-csrf";
@@ -988,6 +989,12 @@ app.use(doubleCsrfProtection);
 app.use(
   session({
     name: 'pw.sid', // Custom session cookie name (obscure default)
+    // Firebase Hosting forwards only `__session`, so this cookie never returns
+    // and no session is ever read back. The default MemoryStore therefore kept
+    // a 7-day object per authenticated request that nothing would read — a
+    // per-container leak. `req.session` stays a per-request scratchpad
+    // (customerId / adminId for same-request readers); nothing is persisted.
+    store: new NullSessionStore(),
     secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (() => {
       // Same rule as CSRF (index.ts:724-733): hard-fail in production so a
       // misconfigured revision is marked unhealthy by Cloud Run instead of

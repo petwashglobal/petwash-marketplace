@@ -11,6 +11,42 @@ import { logger } from './lib/logger';
 
 const PostgresStore = connectPgSimple(session);
 
+// ── Bridge cache ─────────────────────────────────────────────────────────────
+// requireAuth used to cache the Firebase→Postgres customer id on req.session.
+// Firebase Hosting forwards only the `__session` cookie, so the `pw.sid`
+// session never returned and the Firestore read + customers lookup ran on
+// EVERY request. The id is now cached in-process per uid (bounded, TTL) and
+// still mirrored onto req.session for same-request readers
+// (enterprise/userDeletion.ts). Sessions themselves persist nothing — see
+// lib/nullSessionStore.ts.
+const BRIDGE_CACHE_TTL_MS = 10 * 60 * 1000;
+const BRIDGE_CACHE_MAX_ENTRIES = 5000;
+const bridgedCustomerIdByUid = new Map<string, { customerId: number; expiresAt: number }>();
+
+function getCachedCustomerId(uid: string): number | undefined {
+  const hit = bridgedCustomerIdByUid.get(uid);
+  if (!hit) return undefined;
+  if (hit.expiresAt <= Date.now()) {
+    bridgedCustomerIdByUid.delete(uid);
+    return undefined;
+  }
+  return hit.customerId;
+}
+
+function cacheCustomerId(uid: string, customerId: number): void {
+  if (bridgedCustomerIdByUid.size >= BRIDGE_CACHE_MAX_ENTRIES) {
+    // Map iterates in insertion order — drop the oldest entry.
+    const oldest = bridgedCustomerIdByUid.keys().next().value;
+    if (oldest !== undefined) bridgedCustomerIdByUid.delete(oldest);
+  }
+  bridgedCustomerIdByUid.set(uid, { customerId, expiresAt: Date.now() + BRIDGE_CACHE_TTL_MS });
+}
+
+/** Test hook — clears the per-uid bridge cache. */
+export function _resetBridgeCacheForTests(): void {
+  bridgedCustomerIdByUid.clear();
+}
+
 declare global {
   namespace Express {
     interface User {
@@ -236,10 +272,12 @@ export async function requireAuth(req: Request, res: Response, next: any) {
     (req as any).userId = decodedClaims.uid;
     (req as any).firebaseUser = decodedClaims;
 
-    // PERFORMANCE: Check session cache first - avoid querying DB on every request
-    if ((req.session as any).customerId) {
-      // Customer ID already cached in session - skip bridge
-      logger.debug(`Using cached customerId from session: ${(req.session as any).customerId}`);
+    // PERFORMANCE: per-uid bridge cache — skip the Firestore read + customers
+    // lookup on repeat requests. Mirrored onto req.session so same-request
+    // readers keep working; the session itself is never persisted.
+    const cachedCustomerId = getCachedCustomerId(decodedClaims.uid);
+    if (cachedCustomerId !== undefined) {
+      if (req.session) (req.session as any).customerId = cachedCustomerId;
     } else {
       // CRITICAL: Bridge Firebase session to PostgreSQL customer (first time only)
       try {
@@ -289,8 +327,8 @@ export async function requireAuth(req: Request, res: Response, next: any) {
 
         // GUARANTEE: Always set customerId for backwards compatibility + caching
         if (customer) {
-          (req.session as any).customerId = customer.id;
-          logger.debug(`Cached customerId in session: ${customer.id}`);
+          if (req.session) (req.session as any).customerId = customer.id;
+          cacheCustomerId(decodedClaims.uid, customer.id);
         } else {
           // This should never happen, but if it does, fail the request
           logger.error(`CRITICAL: Could not bridge user ${decodedClaims.uid} to customer record`);
