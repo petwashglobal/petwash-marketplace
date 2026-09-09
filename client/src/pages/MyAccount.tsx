@@ -74,7 +74,7 @@ import {
   Send,
   Receipt,
 } from 'lucide-react';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -233,6 +233,18 @@ const tierConfig: Record<string, {
   nextTier?: string;
   discount: number;
 }> = {
+  // Not enrolled in Prestige. The wallet summary sends loyaltyTier 'new' for
+  // these members; mapping that to Bronze told them they had a tier and a
+  // "5% permanent discount" they do not have (live QA 2026-09-09).
+  new: {
+    gradient: 'from-white/30 via-white/50 to-white/30',
+    bgGradient: 'from-white/10 to-white/5',
+    label: 'Member',
+    labelHe: 'חבר',
+    icon: Star,
+    pointsRequired: 0,
+    discount: 0
+  },
   bronze: {
     gradient: 'from-[#B8901E] via-[#D4AF37] to-[#9E7B16]',
     bgGradient: 'from-[#D4AF37]/15 to-[#B8901E]/10',
@@ -1740,8 +1752,9 @@ export default function MyAccount() {
   };
 
   const wallet = walletData?.wallet;
-  const tier = wallet?.loyaltyTier?.toLowerCase() || 'bronze';
-  const tierInfo = tierConfig[tier] || tierConfig.bronze;
+  const tier = wallet?.loyaltyTier?.toLowerCase() || 'new';
+  const tierInfo = tierConfig[tier] || tierConfig.new;
+  const isPrestigeMember = tier !== 'new';
   const TierIcon = tierInfo.icon;
   
   const nextTierInfo = tierInfo.nextTier ? tierConfig[tierInfo.nextTier] : null;
@@ -1960,8 +1973,20 @@ export default function MyAccount() {
               )}
             </div>
 
+            {/* Not enrolled: say so, and offer the door — no invented tier */}
+            {!isPrestigeMember && !walletLoading && (
+              <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} data-testid="account-prestige-not-enrolled">
+                <p className="text-xs text-white/50 tracking-wide">
+                  {isHebrew ? 'עדיין לא חבר/ת PetWash Prestige.' : 'Not a PetWash Prestige member yet.'}{' '}
+                  <Link href="/prestige/enroll" className="text-[#D4AF37] font-semibold underline" data-testid="account-prestige-join">
+                    {isHebrew ? 'הצטרפות ל-Prestige' : 'Join Prestige'}
+                  </Link>
+                </p>
+              </div>
+            )}
+
             {/* Loyalty progress bar */}
-            {nextTierInfo && (
+            {isPrestigeMember && nextTierInfo && (
               <div className="mt-8 pt-6" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <div className="flex justify-between mb-2.5">
                   <span className="text-xs text-white/40 tracking-wide uppercase">
