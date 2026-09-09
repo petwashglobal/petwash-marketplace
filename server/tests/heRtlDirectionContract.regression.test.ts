@@ -121,3 +121,82 @@ describe('HE-RTL direction contract · customer surfaces', () => {
     expect(src).toMatch(/language/);
   });
 });
+
+/**
+ * Directional-icon mirroring — regression pin (added 2026-09-10).
+ *
+ * `dir="rtl"` mirrors the LAYOUT but never the GLYPH. A lucide
+ * <ArrowRight/> still draws an arrow pointing right inside an RTL
+ * page, so a "forward / next / learn more" affordance ends up
+ * pointing BACKWARDS for the Hebrew reader — the default reader on
+ * petwash.co.il.
+ *
+ * Two spellings are canonical and both are accepted here:
+ *   1. flip the glyph  — `className="... rtl:rotate-180"`
+ *      (or the older `${isHebrew ? 'rotate-180' : ''}` form)
+ *   2. swap the icon   — `const BackArrow = isRtl ? ArrowRight : ArrowLeft`
+ *      and render `<BackArrow/>`, so `<ArrowRight` never appears raw.
+ *
+ * Measured on the running app at 1280px before this pin landed:
+ * 9 of 11 directional icons on `/` and 6 of 6 on `/k9000` rendered
+ * with `transform: none` under `dir="rtl"`, while the Prestige
+ * chevron on the same page correctly reported
+ * `matrix(-1, 0, 0, -1, 0, 0)`. Same page, same icon, two behaviours.
+ */
+describe('HE-RTL directional icons flip in Hebrew', () => {
+  /** Surfaces audited on 2026-09-10 across `?lang=he` / `?lang=en`. */
+  const ICON_SURFACES: readonly { label: string; file: string }[] = [
+    { label: 'K9000 overview — "Learn More" cards', file: 'client/src/pages/k9000/Overview.tsx' },
+    { label: 'GiftCards — "Send Gift" + "View all"', file: 'client/src/components/GiftCards.tsx' },
+    { label: 'WashPackages — express checkout', file: 'client/src/components/WashPackages.tsx' },
+  ];
+
+  /** Horizontal, meaning-bearing lucide icons. Vertical/decorative ones are out of scope. */
+  const DIRECTIONAL_TAG = /<(ArrowRight|ArrowLeft|ChevronRight|ChevronLeft)\b([^>]*)\/?>/g;
+  const FLIPPED = /rtl:rotate-180|rotate-180/;
+
+  for (const surface of ICON_SURFACES) {
+    it(`${surface.label} flips every directional icon under dir="rtl"`, () => {
+      const src = read(surface.file);
+      const offenders: string[] = [];
+      for (const m of src.matchAll(DIRECTIONAL_TAG)) {
+        const [whole, , attrs] = m;
+        if (!FLIPPED.test(attrs)) offenders.push(whole.trim().slice(0, 120));
+      }
+      expect(
+        offenders,
+        `${surface.file}: directional icon(s) rendered raw — in Hebrew these point the wrong way. ` +
+          `Add \`rtl:rotate-180\`, or swap the icon via a direction-aware variable.`,
+      ).toEqual([]);
+    });
+  }
+
+  it('K9000 "Learn More" arrow spaces itself with a LOGICAL margin, not margin-left', () => {
+    // `ml-2` is physical: under dir="rtl" it resolved to margin-inline-END,
+    // putting the 8px gap between the arrow and the button edge instead of
+    // between the arrow and the label. Measured live: mis 0px / mie 8px
+    // before, mis 8px / mie 0px after.
+    const src = read('client/src/pages/k9000/Overview.tsx');
+    expect(src).not.toMatch(/<ArrowRight[^>]*\bml-2\b/);
+    expect(src).toMatch(/<ArrowRight[^>]*\bms-2\b/);
+  });
+
+  it('sign-in "remember me" row does not double-reverse its flex direction', () => {
+    /**
+     * `dir="rtl"` ALREADY lays a `flex-direction: row` out right-to-left.
+     * Adding `row-reverse` on top of that reverses it a second time and
+     * lands the control back in its LTR position.
+     *
+     * Measured live on /signin?lang=he at 1280px: the row spans x 73..594;
+     * the checkbox sat at x 73 (left edge) with `row-reverse`, and moves to
+     * x 581 (right edge) without it — which is where the /signup consent
+     * checkboxes already sit. English is unaffected (checkbox stays left).
+     */
+    const src = read('client/src/pages/SignUpLuxury.tsx');
+    expect(
+      src,
+      'SignUpLuxury re-introduced a language-conditional row-reverse; ' +
+        'dir="rtl" already mirrors a plain flex row.',
+    ).not.toMatch(/flexDirection:\s*he\s*\?\s*['"]row-reverse['"]/);
+  });
+});

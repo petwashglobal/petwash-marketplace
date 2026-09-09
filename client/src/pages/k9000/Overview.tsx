@@ -179,7 +179,7 @@ export default function K9000Overview() {
                     </p>
                     <Button className="luxury-btn-outline w-full" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
                       {t('common.learnMore')}
-                      <ArrowRight className="h-4 w-4 ml-2" />
+                      <ArrowRight className="h-4 w-4 ms-2 rtl:rotate-180" />
                     </Button>
                   </div>
                 </div>
