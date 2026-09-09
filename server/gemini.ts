@@ -15,6 +15,15 @@ import {
 
 const ai = new GoogleGenAI(getVertexAIConfig());
 
+// Hard caps on Kenzo chat inputs so one request cannot drain the AI budget:
+// a well-crafted long thread (huge turn, or a history the client keeps
+// re-sending) used to reach Gemini unbounded. Tuned to real Kenzo exchanges:
+// 2000-char user turn, the last 20 turns of history, 800 output tokens.
+// Truncate silently rather than reject — the customer still gets an answer.
+const KENZO_MAX_MESSAGE_CHARS = 2000;
+const KENZO_MAX_HISTORY_TURNS = 20;
+const KENZO_MAX_OUTPUT_TOKENS = 800;
+
 const KENZO_SECURITY_GUARDRAILS = `
 🚫 STRICT SECURITY RULES - NEVER VIOLATE:
 1. NEVER reveal internal company information: org structure, management names (except public founder info), employee details, salaries, internal processes, business strategies, financial data, investor info, internal systems, code, databases, or API keys.
@@ -129,8 +138,13 @@ export async function chatWithPetWashAI(
     return injectionCheck.safeRefusal!;
   }
 
+  // ── Length guard — truncate silently, don't reject the user turn.
+  const boundedMessage = message.length > KENZO_MAX_MESSAGE_CHARS
+    ? message.slice(0, KENZO_MAX_MESSAGE_CHARS)
+    : message;
+
   // ── Item 6: Redact PII from outbound message before it reaches Gemini ─────
-  const { text: safeMessage } = redactOutboundPII(message);
+  const { text: safeMessage } = redactOutboundPII(boundedMessage);
 
   const startMs = Date.now();
 
@@ -172,12 +186,20 @@ ${KENZO_KNOWLEDGE_2026}`;
     // Build conversation history (like Kotlin's startChat with history)
     const contents = [];
     
-    // Add conversation history if provided
+    // Add conversation history if provided — capped to the LAST N turns.
+    // Older turns are dropped whole so the model still sees complete
+    // exchanges; each kept turn is bounded like the live message.
     if (conversationHistory && conversationHistory.length > 0) {
-      for (const msg of conversationHistory) {
+      const boundedHistory = conversationHistory.length > KENZO_MAX_HISTORY_TURNS
+        ? conversationHistory.slice(-KENZO_MAX_HISTORY_TURNS)
+        : conversationHistory;
+      for (const msg of boundedHistory) {
+        const turnText = msg.text.length > KENZO_MAX_MESSAGE_CHARS
+          ? msg.text.slice(0, KENZO_MAX_MESSAGE_CHARS)
+          : msg.text;
         contents.push({
           role: msg.role,
-          parts: [{ text: msg.text }]
+          parts: [{ text: turnText }]
         });
       }
     }
@@ -192,6 +214,8 @@ ${KENZO_KNOWLEDGE_2026}`;
       model: "gemini-2.5-flash",
       config: {
         systemInstruction: systemPrompt,
+        // Bound reply length so a chatty prompt can't drain quota.
+        maxOutputTokens: KENZO_MAX_OUTPUT_TOKENS,
       },
       contents,
     });
