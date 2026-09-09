@@ -2617,6 +2617,47 @@ export const translations: TranslationStrings = {
 
   // Shop — waitlist subject line
   'PetWash Shop — Waitlist': { en: 'PetWash Shop — Waitlist', he: 'חנות PetWash — רשימת המתנה' },
+
+  // Account security / trusted devices (SecuritySettings.tsx, DeviceManagement.tsx).
+  // These pages rendered their raw keys in production (live QA 2026-09-09):
+  // nothing below existed. English + Hebrew; other languages fall back to English.
+  'security.title': { en: 'Security', he: 'אבטחה' },
+  'security.subtitle': { en: 'Passkeys and trusted devices for your account', he: 'מפתחות גישה ומכשירים מהימנים לחשבון שלך' },
+  'security.yourPasskeys': { en: 'Your passkeys', he: 'מפתחות הגישה שלך' },
+  'security.addPasskey': { en: 'Add passkey', he: 'הוספת מפתח גישה' },
+  'security.creating': { en: 'Creating…', he: 'יוצר…' },
+  'security.noPasskeys': { en: 'No passkeys yet', he: 'אין עדיין מפתחות גישה' },
+  'security.noPasskeysDesc': { en: 'Add a passkey to sign in with Face ID, Touch ID or your device PIN.', he: 'הוסיפו מפתח גישה כדי להתחבר עם Face ID, Touch ID או קוד המכשיר.' },
+  'security.passkeyCreated': { en: 'Passkey created', he: 'מפתח הגישה נוצר' },
+  'security.passkeyCreatedDesc': { en: 'You can now sign in with this device.', he: 'מעכשיו אפשר להתחבר עם המכשיר הזה.' },
+  'security.passkeyFailed': { en: 'Could not create passkey', he: 'לא ניתן ליצור מפתח גישה' },
+  'security.passkeyFailedDesc': { en: 'Your device or browser cancelled the request. Please try again.', he: 'המכשיר או הדפדפן ביטלו את הבקשה. נסו שוב.' },
+  'security.passkeyRevoked': { en: 'Passkey removed', he: 'מפתח הגישה הוסר' },
+  'devices.title': { en: 'Trusted devices', he: 'מכשירים מהימנים' },
+  'devices.subtitle': { en: 'Devices that can sign in to this account', he: 'מכשירים שיכולים להתחבר לחשבון הזה' },
+  'devices.addDevice': { en: 'Add device', he: 'הוספת מכשיר' },
+  'devices.addFirstDevice': { en: 'Add your first device', he: 'הוסיפו את המכשיר הראשון' },
+  'devices.backupDevice': { en: 'Backup device', he: 'מכשיר גיבוי' },
+  'devices.browser': { en: 'Browser', he: 'דפדפן' },
+  'devices.platform': { en: 'Platform', he: 'פלטפורמה' },
+  'devices.registeredOn': { en: 'Registered on', he: 'נרשם ב-' },
+  'devices.lastUsed': { en: 'Last used', he: 'שימוש אחרון' },
+  'devices.justNow': { en: 'Just now', he: 'הרגע' },
+  'devices.trustScore': { en: 'Trust score', he: 'דירוג אמון' },
+  'devices.highTrust': { en: 'High trust', he: 'אמון גבוה' },
+  'devices.mediumTrust': { en: 'Medium trust', he: 'אמון בינוני' },
+  'devices.lowTrust': { en: 'Low trust', he: 'אמון נמוך' },
+  'devices.noDevices': { en: 'No devices yet', he: 'אין עדיין מכשירים' },
+  'devices.noDevicesDesc': { en: 'Add a passkey on this device to see it here.', he: 'הוסיפו מפתח גישה במכשיר הזה כדי לראות אותו כאן.' },
+  'devices.remove': { en: 'Remove', he: 'הסרה' },
+  'devices.removing': { en: 'Removing…', he: 'מסיר…' },
+  'devices.removeDevice': { en: 'Remove device', he: 'הסרת מכשיר' },
+  'devices.removeDeviceDesc': { en: 'This device will no longer be able to sign in with its passkey.', he: 'המכשיר הזה לא יוכל עוד להתחבר עם מפתח הגישה שלו.' },
+  'devices.deviceRemoved': { en: 'Device removed', he: 'המכשיר הוסר' },
+  'devices.deviceRenamed': { en: 'Device renamed', he: 'שם המכשיר עודכן' },
+  'devices.cannotRemoveLast': { en: 'Cannot remove your last device', he: 'לא ניתן להסיר את המכשיר האחרון' },
+  'devices.cannotRemoveLastDesc': { en: 'Keep at least one passkey so you can still sign in.', he: 'השאירו לפחות מפתח גישה אחד כדי שתוכלו להמשיך להתחבר.' },
+  'devices.securityTip': { en: 'Tip: register a passkey on a second device as a backup.', he: 'טיפ: רשמו מפתח גישה במכשיר נוסף כגיבוי.' },
 };
 // Supported languages with English as global default
 export type Language = 'en' | 'he' | 'ar' | 'ru' | 'fr' | 'es';
