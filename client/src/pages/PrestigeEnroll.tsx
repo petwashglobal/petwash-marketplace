@@ -25,7 +25,7 @@
  *   Auth: Firebase Bearer (server reads firebaseUser.uid — CEO §7).
  */
 import { useEffect, useState } from 'react';
-import { Redirect, useLocation } from 'wouter';
+import { Link, Redirect, useLocation } from 'wouter';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Crown, Check, Loader2 } from 'lucide-react';
 import { useWhoami } from '@/auth/useWhoami';
@@ -71,6 +71,11 @@ export default function PrestigeEnroll() {
   const email = w.email || '';
   const phone = w.phone || '';
   const canSubmit = consent && !!firstName && !!lastName && !!email && !!phone;
+  // Say WHY the button is off. A grey "Join Prestige" with no reason was a
+  // dead end in live QA (2026-09-09): the account had no verified mobile, the
+  // row showed "—", and nothing on the page said what to do next.
+  const missingMobile = !phone;
+  const missingName = !firstName || !lastName;
 
   const join = useMutation({
     mutationFn: async () => {
@@ -189,6 +194,32 @@ export default function PrestigeEnroll() {
             data-testid="prestige-enroll-error"
           >
             {error}
+          </div>
+        )}
+
+        {(missingMobile || missingName) && (
+          <div
+            className="mb-4 rounded-lg border border-[#ECDFB4] bg-[#FFFDF7] p-3 text-sm text-gray-700"
+            data-testid="prestige-enroll-blocker"
+          >
+            {missingMobile && (
+              <p>
+                Prestige needs a verified mobile number for bay redemption.{' '}
+                <Link href="/activate-account" className="font-medium underline" style={{ color: '#0c6b48' }} data-testid="prestige-enroll-verify-mobile">
+                  Verify your mobile
+                </Link>{' '}
+                and come back — your details here are kept.
+              </p>
+            )}
+            {missingName && (
+              <p className={missingMobile ? 'mt-2' : ''}>
+                Add your first and last name in{' '}
+                <Link href="/my-account" className="font-medium underline" style={{ color: '#0c6b48' }} data-testid="prestige-enroll-add-name">
+                  My Account
+                </Link>{' '}
+                first.
+              </p>
+            )}
           </div>
         )}
 
