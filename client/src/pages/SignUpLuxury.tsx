@@ -1643,6 +1643,26 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     void sendCode();
   }
 
+  // A 2-step account with no mobile number anywhere: password sign-in is refused
+  // on purpose (one-way verification is exactly what this member opted out of),
+  // so this is guidance, not an error to retry. Flipping usePassword off makes
+  // the primary CTA "Email me a one-time code" — the remedy is one tap, on a
+  // button already enabled because they just typed their email.
+  //
+  // Both halves of the message were checked before being written. The one-time
+  // code signs them in; and once in, My Account's Phone Number section offers
+  // "Verify" when none is set, running the Firebase SMS OTP and confirming via
+  // POST /api/user/settings/phone/confirm-verification — no feature flag, live
+  // in production. (The OTHER phone route, /settings/phone/request-change, is
+  // unwired and flag-off; do not read a check of that one as evidence about
+  // this one.) Never name a step here without confirming a member can take it.
+  function showNoSecondFactor() {
+    setUsePassword(false);
+    fail(he
+      ? 'כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל, ואז הוסיפו מספר נייד ב"החשבון שלי" תחת "מספר טלפון".'
+      : 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below, then add a mobile number under Phone Number in My Account.');
+  }
+
   // LOGIN (CEO 2026-07-31): returning member signs in with email + password (the
   // Firebase email/password credential set at join). Clear message on bad creds,
   // and a nudge to the code path / join for accounts without a password yet.
@@ -1682,8 +1702,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           return;
         }
         mfaLoginInFlight.current = false;
+        // The gate and this route now share one verdict, so a 428 followed by
+        // MFA_NO_FACTOR means the account lost its number between the two calls.
+        if (sd?.code === 'MFA_NO_FACTOR') { showNoSecondFactor(); return; }
         fail(he ? 'לא ניתן להתחיל אימות דו-שלבי — נסו שוב' : 'Could not start two-step verification — please try again');
         return;
+      }
+      if (r.status === 403) {
+        // Enrolled in 2-step login with no number in either store. Nothing can send
+        // this member a code, so "try again" would be a lie — name the reason and
+        // hand them the one-time-code path, which signs them in AND is itself the
+        // second factor they asked for.
+        const d = await r.json().catch(() => ({} as any));
+        if (d?.errorCode === 'MFA_NO_FACTOR') { mfaLoginInFlight.current = false; showNoSecondFactor(); return; }
       }
       if (!r.ok) { mfaLoginInFlight.current = false; fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
       mfaLoginInFlight.current = false;

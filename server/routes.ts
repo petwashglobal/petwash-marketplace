@@ -1401,18 +1401,34 @@ self.addEventListener('notificationclick', (event) => {
         // every other member and for social / OTP / passkey logins (those have
         // signInProvider !== 'password'). FAIL-SAFE: any error reading the flag falls
         // through to a normal login rather than locking anyone out.
+        //
+        // The flag alone used to decide this, which made 428 MFA_REQUIRED a demand
+        // this gate had not established could be met: a member enrolled with no
+        // phone in EITHER store was told to produce a code that no route would
+        // ever send. decidePasswordLoginTwoStep resolves the phone across both
+        // stores first, so a challenge is only ever asked for when one can be
+        // issued — and /api/auth/login/2fa/start reaches its verdict through the
+        // same primitives, so the two can no longer answer differently for the
+        // same member. (Its fail-safe on an unreadable row is preserved: `allow`.)
         if (signInProvider === 'password' && !isPreSuperAdmin && !isPrivileged) {
           try {
-            const tfaRes: any = await db.execute(sql`SELECT two_factor_enabled FROM users WHERE id = ${preDecoded.uid} LIMIT 1`);
-            const tfaRow = tfaRes?.rows?.[0] ?? (Array.isArray(tfaRes) ? tfaRes[0] : undefined);
-            if (tfaRow && tfaRow.two_factor_enabled === true) {
-              const mfaToken = req.body?.mfaToken || '';
-              const { validateMfaLoginToken } = await import('./lib/mfaLoginToken');
-              const proof = validateMfaLoginToken(mfaToken, preDecoded.uid);
-              if (!proof.valid) {
-                logger.info('[Session] 2-step verification required', { uid: preDecoded.uid, reason: proof.reason, traceId });
-                return res.status(428).json({ error: 'Two-step verification required.', errorCode: 'MFA_REQUIRED', needs2fa: true });
-              }
+            const { decidePasswordLoginTwoStep, MFA_NO_FACTOR_CODE, MFA_NO_FACTOR_MESSAGE } =
+              await import('./lib/twoStepLogin');
+            const decision = await decidePasswordLoginTwoStep(preDecoded.uid, req.body?.mfaToken);
+            if (decision.action === 'challenge') {
+              logger.info('[Session] 2-step verification required', { uid: preDecoded.uid, reason: decision.reason, traceId });
+              return res.status(428).json({ error: 'Two-step verification required.', errorCode: 'MFA_REQUIRED', needs2fa: true });
+            }
+            if (decision.action === 'no_factor') {
+              // Enrolled, and established that neither store holds a number. The
+              // member's choice stands — one-way verification is refused — but it
+              // is refused in terms they can act on, rather than behind a retry
+              // that cannot succeed. A one-time code to their email still signs
+              // them in, and is itself the second factor they asked for; from
+              // there My Account's Phone Number section can add a number. Both
+              // steps were verified reachable — see MFA_NO_FACTOR_MESSAGE.
+              logger.warn('[Session] 2-step enrolled with no challengeable phone — password sign-in refused', { uid: preDecoded.uid, traceId });
+              return res.status(403).json({ error: MFA_NO_FACTOR_MESSAGE, errorCode: MFA_NO_FACTOR_CODE, needs2fa: false });
             }
           } catch (mfaErr: any) {
             logger.warn('[Session] 2-step check errored — allowing (fail-safe)', { error: mfaErr?.message, traceId });
