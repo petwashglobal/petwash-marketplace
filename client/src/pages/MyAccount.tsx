@@ -157,6 +157,15 @@ interface MfaEnrollment {
 interface MfaStatus {
   enrolled: boolean;
   enrollments: MfaEnrollment[];
+  /**
+   * users.two_factor_enabled — the control that gates PASSWORD SIGN-IN, which
+   * is a different thing from `enrolled` (step-up on sensitive actions). This
+   * panel used to render only `enrolled`, so a member whose password logins
+   * were being challenged was shown "Two-step verification is off".
+   * `enabled: null` means the server could not read it — shown as unknown,
+   * never as off.
+   */
+  twoStepLogin?: { enabled: boolean | null };
 }
 
 interface TotpEnrollmentResponse {
@@ -813,6 +822,59 @@ export default function MyAccount() {
     onError: (error: any) => {
       toast({
         title: isHebrew ? 'לא ניתן להסיר 2FA' : 'Could not remove MFA',
+        description: error?.body?.message || error?.body?.error || error?.userMessage,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Turning OFF two-step LOGIN (users.two_factor_enabled) — distinct from
+  // removing an enrolment above, and a different server route.
+  const [twoStepDisableChallengeId, setTwoStepDisableChallengeId] = useState('');
+  const [twoStepDisableCode, setTwoStepDisableCode] = useState('');
+
+  const disableTwoStepLoginMutation = useMutation({
+    mutationFn: async (payload: { verificationChallengeId?: string; verificationCode?: string }) => {
+      const res = await apiRequest('POST', '/api/mfa/two-step/disable', {
+        verificationChallengeId: payload.verificationChallengeId,
+        verificationCode: payload.verificationCode,
+      });
+      return await res.json() as {
+        disabled?: boolean; alreadyDisabled?: boolean;
+        requiresVerification?: boolean; verificationChallengeId?: string;
+      };
+    },
+    onSuccess: (data) => {
+      if (data.requiresVerification && data.verificationChallengeId) {
+        setTwoStepDisableChallengeId(data.verificationChallengeId);
+        toast({
+          title: isHebrew ? 'קוד אימות נשלח לאימייל' : 'Verification code sent',
+          description: isHebrew
+            ? 'הזינו את הקוד כדי לכבות כניסה דו-שלבית.'
+            : 'Enter the code to turn two-step login off.',
+        });
+        return;
+      }
+      setTwoStepDisableChallengeId('');
+      setTwoStepDisableCode('');
+      queryClient.invalidateQueries({ queryKey: ['/api/mfa/status'] });
+      toast({
+        title: isHebrew ? 'כניסה דו-שלבית כבויה' : 'Two-step login is off',
+        description: isHebrew
+          ? 'תוכלו להתחבר עם אימייל וסיסמה.'
+          : 'You can now sign in with your email and password.',
+      });
+    },
+    onError: (error: any) => {
+      // A wrong or expired code kills the pending challenge, so drop back to
+      // the start rather than leave a code box that can no longer succeed.
+      const code = error?.body?.code;
+      if (code === 'TOO_MANY_ATTEMPTS' || code === 'CODE_EXPIRED') {
+        setTwoStepDisableChallengeId('');
+        setTwoStepDisableCode('');
+      }
+      toast({
+        title: isHebrew ? 'לא ניתן לכבות כניסה דו-שלבית' : 'Could not turn two-step login off',
         description: error?.body?.message || error?.body?.error || error?.userMessage,
         variant: 'destructive',
       });
@@ -3345,6 +3407,102 @@ export default function MyAccount() {
                     {mfaStatus?.enrolled ? (isHebrew ? 'פעיל' : 'Active') : (isHebrew ? 'כבוי' : 'Off')}
                   </Badge>
                 </div>
+
+                {/* TWO-STEP LOGIN — users.two_factor_enabled. Rendered separately
+                    from the enrolment card above because they are different
+                    controls: this one decides whether a PASSWORD sign-in needs
+                    a second factor. Folding it into `enrolled` is what made
+                    this panel say "off" to members the login gate was actively
+                    challenging. */}
+                {mfaStatus?.twoStepLogin && (
+                  <div className="mt-3 flex items-center justify-between gap-3 p-4 rounded-2xl border border-gray-100 bg-white">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">
+                        {isHebrew ? 'כניסה דו-שלבית (סיסמה + קוד)' : 'Two-step login (password + code)'}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {mfaStatus.twoStepLogin.enabled === null
+                          ? (isHebrew ? 'לא הצלחנו לקרוא את ההגדרה כרגע.' : 'We could not read this setting right now.')
+                          : mfaStatus.twoStepLogin.enabled
+                            ? (isHebrew
+                                ? 'בכניסה עם סיסמה נשלח קוד לנייד שלכם.'
+                                : 'Signing in with a password also sends a code to your mobile.')
+                            : (isHebrew
+                                ? 'כניסה עם סיסמה אינה דורשת קוד נוסף.'
+                                : 'Signing in with a password does not ask for an extra code.')}
+                      </p>
+                    </div>
+                    <Badge
+                      data-testid="badge-two-step-login"
+                      className={mfaStatus.twoStepLogin.enabled === null
+                        ? 'bg-gray-100 text-gray-600 hover:bg-gray-100'
+                        : mfaStatus.twoStepLogin.enabled
+                          ? 'bg-green-100 text-green-700 hover:bg-green-100'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-100'}
+                    >
+                      {mfaStatus.twoStepLogin.enabled === null
+                        ? (isHebrew ? 'לא ידוע' : 'Unknown')
+                        : mfaStatus.twoStepLogin.enabled
+                          ? (isHebrew ? 'פעיל' : 'On')
+                          : (isHebrew ? 'כבוי' : 'Off')}
+                    </Badge>
+                  </div>
+                )}
+
+                {mfaStatus?.twoStepLogin?.enabled === true && (
+                  <div className="mt-3 rounded-xl border border-gray-100 bg-white p-4">
+                    {twoStepDisableChallengeId ? (
+                      <>
+                        <Label htmlFor="two-step-disable-code" className="text-xs font-semibold text-[#1a1a1a]">
+                          {isHebrew ? 'קוד אימייל לכיבוי כניסה דו-שלבית' : 'Email code to turn two-step login off'}
+                        </Label>
+                        <div className="mt-2 flex gap-2">
+                          <Input
+                            id="two-step-disable-code"
+                            inputMode="numeric"
+                            maxLength={6}
+                            value={twoStepDisableCode}
+                            onChange={(e) => setTwoStepDisableCode(e.target.value.replace(/\D/g, ''))}
+                            placeholder="000000"
+                            className="text-center font-mono tracking-widest"
+                            data-testid="input-two-step-disable-code"
+                          />
+                          <Button
+                            type="button"
+                            disabled={twoStepDisableCode.length !== 6 || disableTwoStepLoginMutation.isPending}
+                            onClick={() => disableTwoStepLoginMutation.mutate({
+                              verificationChallengeId: twoStepDisableChallengeId,
+                              verificationCode: twoStepDisableCode,
+                            })}
+                            data-testid="button-confirm-two-step-disable"
+                          >
+                            {disableTwoStepLoginMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                            {isHebrew ? 'אישור' : 'Confirm'}
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-xs text-gray-500">
+                          {isHebrew
+                            ? 'נשלח קוד לאימייל שלכם כדי לאשר את הכיבוי.'
+                            : 'We will email you a code to confirm turning it off.'}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={disableTwoStepLoginMutation.isPending}
+                          onClick={() => disableTwoStepLoginMutation.mutate({})}
+                          data-testid="button-start-two-step-disable"
+                        >
+                          {disableTwoStepLoginMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                          {isHebrew ? 'כבו כניסה דו-שלבית' : 'Turn off two-step login'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {mfaStatus?.enrollments?.some(enrollment => enrollment.isActive) && (
                   <div className="mt-3 space-y-2">

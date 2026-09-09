@@ -30,8 +30,21 @@ describe('OTP now persists verification', () => {
   });
 
   it('verify-signup-email advances activation (timestamp, not just the boolean)', () => {
-    const block = s.slice(s.indexOf('verify-signup-email'), s.indexOf('verify-signup-email') + 2000);
-    expect(s).toMatch(/verify-signup-email activation advance failed/);
+    // The route logs '[Signup] verify-signup-email activation advance FAILED'.
+    // This asserted the lowercase spelling, so it went red the day the log line
+    // was written and stayed red — asserting nothing ever since. Match the
+    // spelling case-insensitively, and assert it INSIDE the handler rather than
+    // anywhere in a 9k-line file (the `block` slice was computed and dropped).
+    const i = s.indexOf('publicAuthRouter.post("/api/auth/verify-signup-email"');
+    expect(i).toBeGreaterThan(-1);
+    // Bound the region by the NEXT route definition, not a character count —
+    // a fixed window silently stops covering the handler as the file grows.
+    const next = s.indexOf('publicAuthRouter.post(', i + 30);
+    const block = s.slice(i, next > -1 ? next : s.length);
+    expect(block).toMatch(/verify-signup-email activation advance failed/i);
+    // The point of the pin: the advance is awaited and its failure is NOT
+    // swallowed — a 5xx goes back to the caller.
+    expect(block).toMatch(/await markMobileVerified\(|await markEmailVerified\(/);
   });
 
   it('the markers write BOTH the boolean and the timestamp (single source)', () => {

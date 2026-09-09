@@ -129,7 +129,17 @@ describe('AUDIT-SMS-14 / #225 — write-path mirror wiring', () => {
       'utf8',
     );
     expect(src).toMatch(/import\s*\{\s*phoneLookupHash\s*\}\s*from\s*['"]\.\.\/lib\/phoneHmac['"]/);
-    expect(src).toMatch(/phoneHash:\s*phoneLookupHash\(firebaseUser\.phoneNumber\)/);
+    // WAS: /phoneHash: phoneLookupHash\(firebaseUser\.phoneNumber\)/ — a pin on
+    // one LOCAL VARIABLE's name. #2243 renamed it to verifiedPhone / newPhone
+    // and the guard went red while the property it guards stayed true, so it
+    // has been asserting nothing since. Assert the PROPERTY instead: every
+    // write that claims a verified phone also writes the lookup hash beside it.
+    const writes = src.match(/\.set\(\{[\s\S]{0,400}?phoneVerified:\s*true[\s\S]{0,400}?\}\)/g) || [];
+    expect(writes.length).toBeGreaterThanOrEqual(1);
+    for (const w of writes) {
+      expect(w).toMatch(/phoneHash:\s*phoneLookupHash\(/);
+      expect(w).toMatch(/\bphone:\s*/);
+    }
   });
 });
 

@@ -36,6 +36,43 @@ jobs:
         env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
         run: npm run test:money
 
+  auth-identity-tests:
+    name: auth-identity-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      # This workflow has been called the "Money & AUTH Safety Gate" since it was
+      # created, and until now it gated no auth test at all. Every suite below
+      # existed and ran only when someone happened to run it by hand — which is
+      # how six of them rotted into asserting things that were no longer true,
+      # including two that had inverted into rewarding the re-introduction of a
+      # fixed enumeration vulnerability. Guards nobody runs are not guards.
+      - name: Auth / identity / one-shot-proof invariants
+        env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
+        run: >
+          npx vitest run
+          server/tests/validateTokensSubjectBinding.behavior.test.ts
+          server/tests/proofSingleUse.regression.test.ts
+          server/tests/emailVerifiedToken.regression.test.ts
+          server/tests/otpPersistVerified.regression.test.ts
+          server/tests/authPhoneOtpContract.regression.test.ts
+          server/tests/authSessionOrphanRollbackAll.regression.test.ts
+          server/tests/authCookieLoggingLeaks.regression.test.ts
+          server/tests/otpAndCodeLoggingLeaks.regression.test.ts
+          server/tests/publicAuthRateLimitWiring.regression.test.ts
+          server/tests/verifiedEmailOwnershipSweep.regression.test.ts
+          server/tests/loginOrLinkFeederCoverage.regression.test.ts
+          server/tests/emailChangeIdentity.behavior.test.ts
+          server/tests/identity-login-enumeration.test.ts
+          server/tests/legacyOtpPurposeMap.behavior.test.ts
+          server/tests/phoneHmac.behavior.test.ts
+          server/tests/perUidSmsBudgetWiring.regression.test.ts
+
   wallet-ledger-tests:
     name: wallet-ledger-tests
     runs-on: ubuntu-latest

@@ -68,31 +68,34 @@ describe('PR-AUTH-FIX-CONTRACT-1 — B. client sends `phone`', () => {
 
   const src = read(CLIENT_CALLER);
 
-  it('B1. posts to both phone endpoints', () => {
-    expect(src).toContain('/api/auth/phone/send-code');
-    expect(src).toContain('/api/auth/phone/verify-code');
+  // RETARGETED 2026-09-08. B2/B3 sliced 160/180 characters after the first
+  // occurrence of '/api/auth/phone/send-code' and looked for `phone: user`.
+  // The client has since migrated to the canonical /api/auth/sms/start and
+  // /api/auth/sms/verify (the phone/* pair is @deprecated in
+  // publicAuthRoutes.ts), so the only surviving match was the COMMENT naming
+  // the old route — the window landed on prose and the pins went red while
+  // the contract they guard (body key `phone`, never `phoneNumber`) held.
+  //
+  // The contract is what matters, not which route carries it, so assert it
+  // against whichever OTP endpoints this caller actually posts to.
+  const OTP_POSTS = [...src.matchAll(
+    /apiRequest\(\s*["']POST["']\s*,\s*["'](\/api\/auth\/(?:sms\/(?:start|verify)|phone\/(?:send-code|verify-code)))["']\s*,\s*\{([\s\S]{0,220}?)\}\s*\)/g,
+  )];
+
+  it('B1. posts to the canonical OTP endpoints', () => {
+    const routes = OTP_POSTS.map((m) => m[1]);
+    expect(routes).toContain('/api/auth/sms/start');
+    expect(routes).toContain('/api/auth/sms/verify');
   });
 
-  it('B2. send-code body uses the `phone:` key', () => {
-    // Pin the request body shape: the property sent to the server is
-    // `phone`, sourced from the Firebase user.phoneNumber field. The
-    // SOURCE property (user.phoneNumber) is correct Firebase API; only
-    // the BODY KEY must be `phone`.
-    const sendBlock = src.slice(
-      src.indexOf('/api/auth/phone/send-code'),
-      src.indexOf('/api/auth/phone/send-code') + 160,
-    );
-    expect(sendBlock).toMatch(/\bphone:\s*user/);
-    expect(sendBlock).not.toMatch(/\bphoneNumber:\s*user/);
-  });
-
-  it('B3. verify-code body uses the `phone:` key', () => {
-    const verifyBlock = src.slice(
-      src.indexOf('/api/auth/phone/verify-code'),
-      src.indexOf('/api/auth/phone/verify-code') + 180,
-    );
-    expect(verifyBlock).toMatch(/\bphone:\s*user/);
-    expect(verifyBlock).not.toMatch(/\bphoneNumber:\s*user/);
+  it('B2/B3. every OTP body uses the `phone` key, never `phoneNumber`', () => {
+    expect(OTP_POSTS.length).toBeGreaterThanOrEqual(2);
+    for (const m of OTP_POSTS) {
+      const [, route, body] = m;
+      // `phone,` shorthand or `phone:` explicit — both send the key `phone`.
+      expect(body, `body for ${route}`).toMatch(/(^|[\s{,])phone\s*[,:]/);
+      expect(body, `body for ${route}`).not.toMatch(/\bphoneNumber\s*[,:]/);
+    }
   });
 });
 

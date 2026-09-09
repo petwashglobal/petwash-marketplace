@@ -175,4 +175,26 @@ console.log('✅ Firebase Admin services exported:', {
 // Note: Biometric storage lifecycle rules are now managed by server/infra/biometricStorage.ts
 // This uses Google Cloud Storage SDK directly for better control and error handling
 
-export default admin;
+// DEFAULT EXPORT — deliberately NOT the raw `admin` object (2026-09-09).
+// Production runs under tsx. When a module's default export is a CommonJS
+// `module.exports` object carrying `__esModule: true` (which `firebase-admin`
+// is), `await import('./lib/firebase-admin')` returns THAT object instead of
+// this module's namespace — so every named export (db, auth, adminAuth,
+// storage) read as `undefined` at the ~80 dynamic call sites. Observed live:
+// customAuth.requireAuth → "Cannot read properties of undefined (reading
+// 'collection')" → 500 "Authentication setup failed" on every route it guards;
+// onboarding-verification.resolveActivationUid → `fbAdmin.verifyIdToken` not a
+// function → 401 with a valid token. Static `import admin from` was never
+// affected. The Proxy hides only `__esModule`; every other property (auth(),
+// firestore(), apps, credential, FieldValue …) is read live from the real
+// namespace. Guarded by scripts/smoke-test-firebase-admin-interop.ts in CI.
+const adminDefaultExport: typeof admin = new Proxy(admin as unknown as object, {
+  get(target, key, receiver) {
+    return key === '__esModule' ? undefined : Reflect.get(target, key, receiver);
+  },
+  has(target, key) {
+    return key === '__esModule' ? false : Reflect.has(target, key);
+  },
+}) as typeof admin;
+
+export default adminDefaultExport;
