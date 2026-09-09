@@ -241,8 +241,16 @@ router.get('/analytics', async (_req: Request, res: Response) => {
       const t = terminalForMachine(terminalId);
       // An unregistered machine is surfaced as such — never silently blanked.
       return t
-        ? { stationNameHe: t.stationNameHe, bayNameHe: t.bayNameHe, registered: true }
-        : { stationNameHe: null, bayNameHe: null, registered: false };
+        ? {
+            stationNameHe: t.stationNameHe, bayNameHe: t.bayNameHe, registered: true,
+            // The REGISTRY's station id, deliberately separate from the raw
+            // station_id column below. byStation groups on this one, so a client
+            // joining bay rows to station rows must use it — the raw column has
+            // carried different keys for the same physical station depending on
+            // which importer wrote the row, and joining on it silently loses names.
+            registryStationId: t.stationId,
+          }
+        : { stationNameHe: null, bayNameHe: null, registered: false, registryStationId: null };
     };
 
     const roll = (keyOf: (r: typeof ils[number]) => string) => {
