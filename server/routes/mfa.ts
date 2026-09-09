@@ -4,9 +4,9 @@ import { totpService } from '../services/TOTPService';
 import { twoFactorAuth } from '../services/TwoFactorAuthService';
 import { logger } from '../lib/logger';
 import {
-  isUnifiedVerificationEnabled,
   isUnifiedVerificationDisable2faEnabled,
   isUnifiedVerificationEnable2faEnabled,
+  isUnifiedVerificationPurposeEnabled,
 } from '../lib/feature-flags/unifiedVerification';
 import { pool } from '../db';
 import {
@@ -466,10 +466,22 @@ mfaRouter.post('/two-step/disable', validateFirebaseToken, mfaRateLimiter, async
       return res.json({ disabled: true, alreadyDisabled: true });
     }
 
-    if (!isUnifiedVerificationEnabled()) {
-      logger.warn('[MFA-API] two-step disable refused — verification runtime unavailable', { uid });
+    // THE PRECONDITION IS THE ONE THE SERVICE ITSELF ENFORCES.
+    //
+    // startChallenge() refuses any purpose whose flag is off, with
+    // PURPOSE_FLAG_DISABLED. Checking the UMBRELLA flag here instead looked
+    // right and was not: the umbrella is on in production while
+    // UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED is not set at all, so this route
+    // sailed past its own guard and died inside the service — an exit that
+    // existed in the code and not in production.
+    //
+    // Calling the same predicate the service calls means the two cannot drift:
+    // if the purpose is off, the member is told so HERE, plainly, instead of
+    // receiving a generic failure from three layers down.
+    if (!isUnifiedVerificationPurposeEnabled('disable_2fa')) {
+      logger.warn('[MFA-API] two-step disable refused — disable_2fa purpose is switched off', { uid });
       return res.status(503).json({
-        error: 'Two-step login cannot be changed right now. Please try again later.',
+        error: 'Two-step login cannot be changed right now. Please contact support.',
         code: 'VERIFICATION_UNAVAILABLE',
       });
     }

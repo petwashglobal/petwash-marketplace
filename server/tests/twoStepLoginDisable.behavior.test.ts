@@ -69,13 +69,24 @@ vi.mock('../middleware/firebase-auth', () => ({
   },
 }));
 
-const startChallenge = vi.fn(async () => ({
-  challenge: { challengeId: 'chal_1', expiresAt: new Date(Date.now() + 300_000) },
-}));
+// startChallenge REFUSES any purpose whose flag is off (PURPOSE_FLAG_DISABLED,
+// 503). Modelled here because a mock that always succeeds would have declared
+// this route working in a production that never set the flag — which is exactly
+// how it shipped broken.
+class FakeUnifiedVerificationError extends Error {
+  constructor(public reasonCode: string, message: string, public statusCode: number) { super(message); }
+}
+const startChallenge = vi.fn(async (input: any) => {
+  const { isUnifiedVerificationPurposeEnabled } = await import('../lib/feature-flags/unifiedVerification');
+  if (!isUnifiedVerificationPurposeEnabled(input.purpose)) {
+    throw new FakeUnifiedVerificationError('PURPOSE_FLAG_DISABLED', 'This verification purpose is disabled.', 503);
+  }
+  return { challenge: { challengeId: 'chal_1', expiresAt: new Date(Date.now() + 300_000) } };
+});
 let verifyMetadata: any = { action: 'disable_2fa', userId: UID };
 const verifyChallenge = vi.fn(async () => ({ action: { metadata: verifyMetadata } }));
 vi.mock('../services/UnifiedVerificationService', () => ({
-  UnifiedVerificationError: class extends Error {},
+  UnifiedVerificationError: FakeUnifiedVerificationError,
   unifiedVerificationService: {
     startChallenge: (...a: any[]) => (startChallenge as any)(...a),
     verifyChallenge: (...a: any[]) => (verifyChallenge as any)(...a),
@@ -108,6 +119,7 @@ beforeEach(() => {
   pgThrows = null;
   verifyMetadata = { action: 'disable_2fa', userId: UID };
   process.env.UNIFIED_VERIFICATION_ENABLED = 'true';
+  process.env.UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED = 'true';
 });
 
 describe('status reports the control that actually gates password sign-in', () => {
@@ -169,6 +181,40 @@ describe('the exit exists, and it costs a proof', () => {
     const r = await disable({ verificationChallengeId: 'chal_1', verificationCode: '123456' });
     expect(r.status).toBe(400);
     expect(queries.some(q => /UPDATE users SET two_factor_enabled/i.test(q.sql))).toBe(false);
+  });
+
+  it('refuses HERE, plainly, when the disable_2fa purpose is switched off', async () => {
+    // THE BUG THIS PIN EXISTS FOR. The route first guarded on the UMBRELLA
+    // flag, which production sets — while UNIFIED_VERIFICATION_DISABLE_2FA_
+    // ENABLED is not set at all. So it passed its own check and died inside
+    // startChallenge: an exit that existed in the code and not in production.
+    // The guard now calls the same predicate the service calls.
+    delete process.env.UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED;
+    const r = await disable();
+    expect(r.status).toBe(503);
+    expect(r.body.code).toBe('VERIFICATION_UNAVAILABLE');
+    // Refused BEFORE the service was asked — not by falling into its error.
+    expect(startChallenge).not.toHaveBeenCalled();
+    expect(queries.some(q => /UPDATE users SET two_factor_enabled/i.test(q.sql))).toBe(false);
+  });
+
+  it('is reachable under the flag set production actually deploys', async () => {
+    // The umbrella alone is what prod had, and it is NOT enough. This asserts
+    // the route works under the exact env the deploy produces, so if the flag
+    // is dropped from the Cloud Run config the pin fails rather than a member.
+    const deploy = readFileSync(join(ROOT, '.github/workflows/petwash-ci.yml'), 'utf8');
+    const setVars = /--set-env-vars=([^\s\\]+)/.exec(deploy);
+    expect(setVars, 'Cloud Run --set-env-vars not found').toBeTruthy();
+    const prodEnv: Record<string, string> = {};
+    for (const pair of setVars![1].split(',')) {
+      const [k, v] = pair.split('=');
+      if (k?.startsWith('UNIFIED_VERIFICATION')) prodEnv[k] = v;
+    }
+    process.env = { ...process.env, ...prodEnv };
+    delete process.env.UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED;
+    Object.assign(process.env, prodEnv);
+    const r = await disable();
+    expect(r.status, 'the deploy does not set UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED, so this route 503s for every member').toBe(202);
   });
 
   it('REFUSES rather than downgrades when the challenge runtime is unavailable', async () => {
