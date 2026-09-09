@@ -34,6 +34,23 @@ afterEach(() => {
 });
 
 describe('journeyCheckpoints · saveCheckpoint', () => {
+  it('returns the saved row (RETURNING) — the route 500s on null, so void was a 500 on every save', async () => {
+    const now = new Date();
+    const pool = makePool(async (text) => {
+      expect(text).toMatch(/RETURNING id, user_uid, domain, payload, expires_at, created_at, updated_at/);
+      return { rowCount: 1, rows: [{ id: 'ck1', user_uid: 'u1', domain: 'provider_apply', payload: { step: 1 }, expires_at: now, created_at: now, updated_at: now }] };
+    });
+    const row = await saveCheckpoint(pool, { userUid: 'u1', domain: 'provider_apply', payload: { step: 1 } });
+    expect(row).toMatchObject({ id: 'ck1', userUid: 'u1', domain: 'provider_apply', payload: { step: 1 } });
+    expect(row?.expiresAt).toBeInstanceOf(Date);
+  });
+
+  it('returns null (and logs) when the write throws — the route turns that into 500', async () => {
+    const pool = makePool(async () => { throw new Error('relation missing'); });
+    const row = await saveCheckpoint(pool, { userUid: 'u1', domain: 'provider_apply', payload: {} });
+    expect(row).toBeNull();
+  });
+
   it('UPSERTs with ON CONFLICT DO UPDATE (never stacks)', async () => {
     let seenSql = '';
     let seenParams: unknown[] = [];

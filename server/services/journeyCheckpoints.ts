@@ -67,19 +67,34 @@ export async function saveCheckpoint(
     payload: unknown;
     ttlHours?: number;
   },
-): Promise<void> {
+): Promise<JourneyCheckpointRow | null> {
+  // Returns the saved row. The route answers 500 CHECKPOINT_WRITE_FAILED when
+  // this is null — which, while this returned void, was EVERY save (live QA
+  // 2026-09-10: the row was written and the client still saw a 500).
   const expiresAt = ttlToTimestamp(args.ttlHours);
   try {
-    await pool.query(
+    const r = await pool.query(
       `INSERT INTO journey_checkpoints
          (user_uid, domain, payload, expires_at, created_at, updated_at)
        VALUES ($1, $2, $3::jsonb, $4, now(), now())
        ON CONFLICT (user_uid, domain) DO UPDATE
          SET payload = EXCLUDED.payload,
              expires_at = EXCLUDED.expires_at,
-             updated_at = now()`,
+             updated_at = now()
+       RETURNING id, user_uid, domain, payload, expires_at, created_at, updated_at`,
       [args.userUid, args.domain, JSON.stringify(args.payload ?? {}), expiresAt],
     );
+    const row = r.rows?.[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      userUid: row.user_uid,
+      domain: row.domain as JourneyDomain,
+      payload: row.payload,
+      expiresAt: new Date(row.expires_at),
+      createdAt: new Date(row.created_at),
+      updatedAt: new Date(row.updated_at),
+    };
   } catch (err: any) {
     // Fail-soft: a broken checkpoint save must NEVER take down the
     // wizard's happy path. Log and move on — the user just won't see
@@ -89,6 +104,7 @@ export async function saveCheckpoint(
       domain: args.domain,
       error: err?.message,
     });
+    return null;
   }
 }
 
