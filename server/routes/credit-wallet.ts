@@ -5,7 +5,7 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import { db } from '../db';
-import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
+import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys, privilegeMembers } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { requireNayaxStationDevice } from '../middleware/nayaxStationDeviceAuth';
@@ -18,6 +18,25 @@ import { deriveAdminCreditIdempotencyKey } from '../lib/admin-credit-idempotency
 import { verifyNayaxTopup, type WalletTopupVerifyReason } from '../lib/wallet-topup-verify';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { CreditType } from '../../shared/petwash-operating-system';
+
+// Prestige enrollment truth shared with lib/userCapabilities: an active
+// privilegeMembers row for the member's email. users.loyaltyTier is written as
+// 'bronze' at signup for EVERY account, so it cannot answer "did they join?".
+// Fail closed to "not enrolled" on any error.
+async function isPrestigeEnrolled(email: string | undefined | null): Promise<boolean> {
+  if (!email) return false;
+  try {
+    const [row] = await db
+      .select({ status: privilegeMembers.status })
+      .from(privilegeMembers)
+      .where(eq(privilegeMembers.email, email.toLowerCase()))
+      .limit(1);
+    return !!row && (row.status ?? 'active') === 'active';
+  } catch (e: any) {
+    logger.warn('[CreditWallet] prestige lookup failed (defaulting not enrolled)', { error: e?.message });
+    return false;
+  }
+}
 
 const router = Router();
 
@@ -423,6 +442,10 @@ router.get('/summary', async (req, res) => {
     }
 
     const summary = await walletService.getWalletSummary(userId);
+    // /my-account rendered "Bronze Member · 5% permanent discount" for a member
+    // who never joined Prestige (live QA 2026-09-09): getWalletSummary defaults
+    // loyaltyTier to 'bronze'. Display 'new' unless actually enrolled.
+    const prestigeEnrolled = await isPrestigeEnrolled(req.user?.email || req.firebaseUser?.email);
 
     // Fetch unified voucher aggregates
     const activeStatuses = ['ISSUED', 'ACTIVE', 'PARTIALLY_REDEEMED'];
@@ -459,6 +482,7 @@ router.get('/summary', async (req, res) => {
       success: true,
       wallet: {
         ...summary,
+        loyaltyTier: prestigeEnrolled ? summary.loyaltyTier : 'new',
         unifiedVouchers: {
           totalPlatformCreditRemainingCents,
           totalWashPackagesRemaining,
