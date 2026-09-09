@@ -672,19 +672,31 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 name — no <label>, no aria-label. A screen reader announced
                 only "English, combo box", giving no clue it switches the
                 site language. Measured named=false on the rendered header. */}
-            <select
-              className="pw-language-select pw-language-luxury"
-              aria-label={t('nav.language', currentLanguage)}
-              value={currentLanguage}
-              onChange={(e) => handleLanguageChange(e.target.value)}
-              data-testid="select-language"
-            >
-              {LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code}>
-                  {lang.label}
-                </option>
-              ))}
-            </select>
+            {/* The 44pt tap floor (2026-09-05) was applied to this select's
+                PAINTED box, unlike the burger and profile buttons which got a
+                transparent overlay. A native <select> is its own hit area, so
+                the floor had to live on the element — and the header ended up
+                with a 44px empty rectangle beside two 2rem circles.
+
+                Split the two jobs: the span paints the pill at the header's
+                own scale, the select stays 44px but transparent and sits over
+                it. Same hit area, the look it had before. */}
+            <span className="pw-language-tap">
+              <span className="pw-language-tap-pill" aria-hidden="true" />
+              <select
+                className="pw-language-select pw-language-luxury"
+                aria-label={t('nav.language', currentLanguage)}
+                value={currentLanguage}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                data-testid="select-language"
+              >
+                {LANGUAGES.map((lang) => (
+                  <option key={lang.code} value={lang.code}>
+                    {lang.label}
+                  </option>
+                ))}
+              </select>
+            </span>
           </div>
         </div>
 
