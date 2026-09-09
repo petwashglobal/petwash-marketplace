@@ -231,6 +231,11 @@ spec:
           value: 'true'
         - name: UNIFIED_VERIFICATION_LOGIN_ENABLED
           value: 'true'
+        # Turns on POST /api/user/settings/phone/{request-change,confirm-change}.
+        # Without it those answer 503 and My Account falls back to the Firebase
+        # OTP path, so the stronger flow was unreachable in production.
+        - name: UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED
+          value: 'true'
         startupProbe:
           httpGet:
             path: /health

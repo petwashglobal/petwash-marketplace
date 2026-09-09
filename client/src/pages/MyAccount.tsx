@@ -679,6 +679,15 @@ export default function MyAccount() {
   const [showPhoneVerifyDialog, setShowPhoneVerifyDialog] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  // The server-driven change_phone flow (see phoneStatus.changeFlow). Kept
+  // separate from the Firebase-OTP state above because both remain live: this
+  // one CHANGES a number that already exists, the other SETS the first one.
+  const [showPhoneChangeDialog, setShowPhoneChangeDialog] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [phoneChangeCode, setPhoneChangeCode] = useState('');
+  const [phoneChangeChallengeId, setPhoneChangeChallengeId] = useState('');
+  const [phoneChangeStep, setPhoneChangeStep] = useState<'request' | 'verify'>('request');
+  const [phoneChangeMasked, setPhoneChangeMasked] = useState('');
   const phoneVerification = usePhoneVerification();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -1510,6 +1519,10 @@ export default function MyAccount() {
     canonicalPhone?: string | null;
     verified: boolean;
     inSync?: boolean;
+    // Which change mechanism the server currently has live. Absent on an older
+    // server, which is why the routing below treats only an explicit 'unified'
+    // as permission to use it — never the absence of a value.
+    changeFlow?: 'unified' | 'firebase';
   }>({
     queryKey: ['/api/user/settings/phone/status'],
     enabled: !!user,
@@ -1537,6 +1550,98 @@ export default function MyAccount() {
         variant: 'destructive',
         title: isHebrew ? 'שגיאה' : 'Error',
         description: error?.message || (isHebrew ? 'אימות הטלפון נכשל' : 'Phone verification failed'),
+      });
+    },
+  });
+
+  const resetPhoneChange = () => {
+    setShowPhoneChangeDialog(false);
+    setNewPhone('');
+    setPhoneChangeCode('');
+    setPhoneChangeChallengeId('');
+    setPhoneChangeStep('request');
+    setPhoneChangeMasked('');
+  };
+
+  const requestPhoneChangeMutation = useMutation({
+    mutationFn: async (data: { newPhone: string }) => {
+      const res = await apiRequest('POST', '/api/user/settings/phone/request-change', data);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setPhoneChangeChallengeId(data.verificationChallengeId || '');
+      setPhoneChangeMasked(data.maskedDestination || '');
+      setPhoneChangeStep('verify');
+      toast({
+        title: isHebrew ? 'קוד אימות נשלח' : 'Verification Code Sent',
+        description: isHebrew ? 'בדקו את ההודעות במספר החדש.' : 'Check the messages on your new number.',
+      });
+    },
+    onError: (error: any) => {
+      // Mirrors the email request handler: the server code lives at
+      // error.body.code, not error.code — reading the wrong one is why that
+      // branch silently never fired there (fixed 2026-09-05).
+      const needsReauth = isReauthRequired(error);
+      toast({
+        variant: 'destructive',
+        title: needsReauth
+          ? (isHebrew ? 'נדרש אימות מחדש' : 'Re-authentication Required')
+          : (isHebrew ? 'שגיאה' : 'Error'),
+        description: identityErrorMessage(
+          error,
+          isHebrew,
+          isHebrew ? 'לא ניתן לשלוח קוד אימות' : 'Failed to send verification code',
+        ),
+      });
+      if (needsReauth) resetPhoneChange();
+    },
+  });
+
+  const confirmPhoneChangeMutation = useMutation({
+    mutationFn: async (data: { verificationCode: string }) => {
+      const res = await apiRequest('POST', '/api/user/settings/phone/confirm-change', {
+        ...data,
+        verificationChallengeId: phoneChangeChallengeId || undefined,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      resetPhoneChange();
+      refetchPhoneStatus();
+      queryClient.invalidateQueries({ queryKey: ['/api/user/profile'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/user/settings/profile'] });
+      if (firebaseUser) firebaseUser.reload();
+      // Say only what the server did. otherSessionsRevoked is a COUNT — the
+      // email flow learned this the hard way; claiming devices were signed out
+      // when the number is zero would be false.
+      const revoked = typeof data.otherSessionsRevoked === 'number' ? data.otherSessionsRevoked : 0;
+      toast({
+        title: isHebrew ? 'מספר הנייד עודכן' : 'Mobile Number Updated',
+        description: revoked > 0
+          ? (isHebrew
+              ? `${revoked} מכשירים אחרים נותקו`
+              : `${revoked} other device(s) signed out`)
+          : (isHebrew ? 'המספר החדש נשמר' : 'Your new number is saved'),
+      });
+    },
+    onError: (error: any) => {
+      const code = error?.body?.code;
+      // A finite attempt budget: the try that exhausts it destroys the pending
+      // change, so send them back to step 1 rather than leave them typing into
+      // a code box that can no longer succeed.
+      if (code === 'TOO_MANY_ATTEMPTS' || code === 'CODE_EXPIRED') {
+        setPhoneChangeStep('request');
+        setPhoneChangeCode('');
+        setPhoneChangeChallengeId('');
+      }
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: identityErrorMessage(
+          error,
+          isHebrew,
+          isHebrew ? 'עדכון המספר נכשל' : 'Could not update the number',
+        ),
       });
     },
   });
@@ -2868,7 +2973,21 @@ export default function MyAccount() {
                       variant="outline"
                       size="sm"
                       className="border-gray-200 text-gray-600 hover:bg-white"
-                      onClick={() => setShowPhoneVerifyDialog(true)}
+                      onClick={() => {
+                        // CHANGING an existing number goes through the stronger
+                        // server-driven flow when it is live: it checks the new
+                        // number against both stores before sending, takes the
+                        // number from the verification rather than the request,
+                        // and signs other sessions out. SETTING the first one
+                        // cannot use it — there is nothing to change from — so
+                        // that stays on the Firebase OTP path, as does every
+                        // case where the server has not published 'unified'.
+                        if (phoneStatus?.verified && phoneStatus?.changeFlow === 'unified') {
+                          setShowPhoneChangeDialog(true);
+                        } else {
+                          setShowPhoneVerifyDialog(true);
+                        }
+                      }}
                     >
                       <Phone className="w-4 h-4 mr-2" />
                       {phoneStatus?.verified 
@@ -4016,6 +4135,141 @@ export default function MyAccount() {
                       className="bg-gray-900 text-white hover:bg-gray-800"
                     >
                       {confirmEmailChangeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      {isHebrew ? 'אשר שינוי' : 'Confirm Change'}
+                    </Button>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Mobile Number Change Dialog — the server-driven change_phone flow.
+                Separate from the Firebase OTP dialog below, which still owns
+                first-set. The code goes to the NEW number, and the server
+                applies whatever the verification proved, never this form. */}
+            <Dialog open={showPhoneChangeDialog} onOpenChange={(open) => {
+              if (!open) resetPhoneChange(); else setShowPhoneChangeDialog(true);
+            }}>
+              <DialogContent className="bg-white border-gray-200 text-gray-900 max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-3 text-xl">
+                    <Phone className="w-6 h-6 text-gray-400" />
+                    {isHebrew ? 'שינוי מספר נייד' : 'Change Mobile Number'}
+                  </DialogTitle>
+                  <DialogDescription className="text-gray-500">
+                    {phoneChangeStep === 'request'
+                      ? (isHebrew
+                          ? 'הזינו את המספר החדש. נשלח קוד אימות למספר החדש.'
+                          : 'Enter your new mobile number. We\'ll send a verification code to the new number.')
+                      : (isHebrew
+                          ? 'הזינו את קוד האימות שנשלח למספר החדש.'
+                          : 'Enter the verification code sent to your new number.')}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  {phoneChangeStep === 'request' ? (
+                    <>
+                      <div>
+                        <Label className="text-gray-600 mb-2 block">
+                          {isHebrew ? 'המספר הנוכחי' : 'Current Number'}
+                        </Label>
+                        <Input
+                          value={phoneStatus?.phone || profile?.phone || ''}
+                          disabled
+                          dir="ltr"
+                          className="bg-white border-gray-200 text-gray-400"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-gray-600 mb-2 block">
+                          {isHebrew ? 'מספר נייד חדש' : 'New Mobile Number'}
+                        </Label>
+                        <Input
+                          type="tel"
+                          inputMode="tel"
+                          dir="ltr"
+                          maxLength={20}
+                          autoComplete="tel"
+                          value={newPhone}
+                          onChange={(e) => setNewPhone(e.target.value)}
+                          placeholder={isHebrew ? '0541234567' : '0541234567'}
+                          className="bg-white border-gray-200 text-gray-900"
+                          data-testid="input-new-phone"
+                        />
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-white border border-amber-200">
+                        <div className="flex items-start gap-3">
+                          <Shield className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+                          <p className="text-gray-500 text-sm">
+                            {isHebrew
+                              ? 'המספר מקבל את קודי ההתחברות והקבלות. לאחר השינוי תנותקו משאר המכשירים.'
+                              : 'This number receives your login codes and receipts. Other devices will be signed out after the change.'}
+                          </p>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-center mb-4">
+                        <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white border border-gray-200 flex items-center justify-center">
+                          <KeyRound className="w-8 h-8 text-stone-700" />
+                        </div>
+                        <p className="text-gray-500">
+                          {isHebrew ? 'קוד אימות נשלח אל:' : 'Verification code sent to:'}
+                        </p>
+                        {/* The MASKED destination from the server. The raw new
+                            number is never echoed back by the challenge API. */}
+                        <p className="text-gray-900 font-medium" dir="ltr" data-testid="phone-change-target">
+                          {phoneChangeMasked || newPhone}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label className="text-gray-600 mb-2 block">
+                          {isHebrew ? 'קוד אימות (6 ספרות)' : 'Verification Code (6 digits)'}
+                        </Label>
+                        <Input
+                          type="text"
+                          maxLength={6}
+                          value={phoneChangeCode}
+                          onChange={(e) => setPhoneChangeCode(e.target.value.replace(/\D/g, ''))}
+                          placeholder="000000"
+                          className="bg-white border-gray-200 text-gray-900 text-center text-2xl font-mono tracking-widest"
+                          data-testid="input-phone-change-code"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <DialogFooter className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={resetPhoneChange}
+                    className="border-gray-200 text-gray-600 hover:bg-white"
+                  >
+                    {isHebrew ? 'ביטול' : 'Cancel'}
+                  </Button>
+
+                  {phoneChangeStep === 'request' ? (
+                    <Button
+                      onClick={() => requestPhoneChangeMutation.mutate({ newPhone: normalizePhoneE164(newPhone) })}
+                      disabled={!/^\+[1-9]\d{7,14}$/.test(normalizePhoneE164(newPhone)) || requestPhoneChangeMutation.isPending}
+                      className="bg-gray-900 text-white hover:bg-gray-800"
+                      data-testid="button-request-phone-change"
+                    >
+                      {requestPhoneChangeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+                      {isHebrew ? 'שלח קוד אימות' : 'Send Verification Code'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => confirmPhoneChangeMutation.mutate({ verificationCode: phoneChangeCode })}
+                      disabled={phoneChangeCode.length !== 6 || confirmPhoneChangeMutation.isPending}
+                      className="bg-gray-900 text-white hover:bg-gray-800"
+                      data-testid="button-confirm-phone-change"
+                    >
+                      {confirmPhoneChangeMutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
                       {isHebrew ? 'אשר שינוי' : 'Confirm Change'}
                     </Button>
                   )}

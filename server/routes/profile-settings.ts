@@ -1203,11 +1203,34 @@ router.get('/settings/phone/status', async (req, res) => {
     const canonicalPhone = dbUser?.phone ? normalizePhoneE164(dbUser.phone) : null;
     const inSync = firebasePhone === canonicalPhone;
 
+    // WHICH MECHANISM THE UI SHOULD DRIVE FOR A CHANGE.
+    //
+    // Two exist, and the difference is not cosmetic:
+    //
+    //   'firebase' — client proves the handset via the Firebase SMS OTP, then
+    //                POST /settings/phone/confirm-verification reads the number
+    //                off the Firebase record. Always available; the only way to
+    //                set a FIRST number, since the account has nothing to
+    //                re-verify against yet.
+    //   'unified'  — POST /settings/phone/request-change + /confirm-change: a
+    //                change_phone challenge to the NEW number, uniqueness
+    //                checked in BOTH stores before a code is sent AND again at
+    //                apply time, the number read out of the verification result
+    //                rather than the request body, and every other session
+    //                revoked on success. Gated on
+    //                UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED.
+    //
+    // Published so the client can CHOOSE, instead of driving the stronger flow
+    // and discovering a 503 mid-journey — a customer who has already typed a
+    // number and is waiting for a code is the worst place to learn a route is
+    // switched off. Like /verification/status's flowFlags, this is a
+    // convenience for rendering: both routes still enforce the flag themselves.
     res.json({
       phone: firebasePhone,
       canonicalPhone,
       verified: !!firebasePhone,
       inSync,
+      changeFlow: isUnifiedVerificationChangePhoneEnabled() ? 'unified' : 'firebase',
     });
   } catch (error: any) {
     logger.error('[ProfileSettings] Phone status error:', error);
