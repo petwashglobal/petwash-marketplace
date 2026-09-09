@@ -18159,14 +18159,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         .doc(req.user.uid)
         .get();
 
-      const userData = userDoc.data();
-      if (!userData) {
-        return res.status(404).json({ error: 'User profile not found' });
-      }
+      // A member without a Firestore users/{uid} document is still a signed-in
+      // member (email/phone signups only get one after profile completion).
+      // Answering 404 here surfaced as an "[API Error]" on every home load
+      // (live QA 2026-09-09); greet them from the token instead.
+      const userData = userDoc.data() ?? {};
+      const tokenEmail: string | undefined = req.user?.email || undefined;
 
       // Prepare user data for greeting
       const greetingUserData = {
-        name: userData.firstName || userData.email?.split('@')[0] || 'Friend',
+        name: userData.firstName || (userData.email || tokenEmail)?.split('@')[0] || 'Friend',
         preferredLanguage: (userData.preferredLanguage || 'he') as 'he' | 'en',
         dateOfBirth: userData.dateOfBirth,
         uid: req.user.uid
