@@ -489,6 +489,14 @@ describe("nothing claims a fact it does not have", () => {
     expect(src).toMatch(/!product \|\| isPlaceholderProduct\(product\)/);
   });
 
+  it("the pagination count follows the filtered list", () => {
+    // Filtering the page but leaving pagination.total at the unfiltered number
+    // made production answer {"products":[],"pagination":{"total":10}} — an
+    // empty page claiming ten results.
+    const src = read("server/routes/shop.ts");
+    expect(src).toMatch(/pg\.total = Math\.max\(0, pg\.total - removed\)/);
+  });
+
   /**
    * credit-wallet returns 'new' for a member who never enrolled (#2345). The
    * wallet's `TIER_LABELS[tier] || TIER_LABELS.bronze` turned that explicit
@@ -517,5 +525,54 @@ describe("nothing claims a fact it does not have", () => {
     expect(src).toMatch(/const currentTier: string \| null = null/);
     // and no hardcoded progress percentage
     expect(src).not.toMatch(/width: '25%'/);
+  });
+});
+
+/**
+ * 2026-09-10 — the "send us better documents" link went to NotFound.
+ *
+ * A reviewer asking for a clearer photo emails
+ * `${appUrl}/provider-application/resubmit?token=…`, and /my/status returns
+ * the same string as `resubmitUrl` for the status page to render. No such
+ * route existed in App.tsx and no page file existed, so every one of those
+ * links hit the SPA catch-all.
+ *
+ * It was the only way back in: `pending_resubmission` also sits in the
+ * existing-application list that blocks a fresh POST /apply, so an applicant
+ * asked for documents could neither upload them nor start over.
+ *
+ * The endpoint was already built and is PUBLIC by design — the single-use
+ * secure token is the credential, claimed atomically and expiring — so the
+ * page must not sit behind RequireAuth.
+ */
+describe("the resubmission link the server emails has somewhere to land", () => {
+  const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8")
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+
+  it("the route the email builds is registered", () => {
+    const emailed = readFileSync(resolve(root, "server/routes/provider-onboarding.ts"), "utf8");
+    expect(emailed, "the server no longer emails this path — this pin needs rewriting")
+      .toMatch(/\/provider-application\/resubmit\?token=/);
+    expect(app).toMatch(/<Route path="\/provider-application\/resubmit">/);
+  });
+
+  it("it is not gated behind a sign-in the token holder cannot pass", () => {
+    const at = app.indexOf('<Route path="/provider-application/resubmit">');
+    expect(at).toBeGreaterThan(-1);
+    // Stop at this route's own closing tag — a fixed window bleeds into the
+    // NEXT route, which is legitimately behind RequireAuth.
+    const block = app.slice(at, app.indexOf("</Route>", at));
+    expect(block).not.toMatch(/RequireAuth/);
+  });
+
+  it("the page posts the token to the endpoint that already exists", () => {
+    // Comments stripped: this page's own comment says the word "Authorization"
+    // to explain why it sends none, and a pin must not read its explanation.
+    const page = readFileSync(resolve(root, "client/src/pages/ProviderApplicationResubmit.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    expect(page).toMatch(/provider-onboarding\/resubmit\//);
+    // The token is the credential — sending a Bearer here would be wrong.
+    expect(page).not.toMatch(/Authorization/);
   });
 });

@@ -426,6 +426,7 @@ const AdminProviderVerification = lazy(() => import("@/pages/admin/AdminProvider
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
 const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
+const ProviderApplicationResubmit = lazy(() => import("@/pages/ProviderApplicationResubmit"));
 const ProviderDeclarations = lazy(() => import("@/pages/ProviderDeclarations"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminWashPackages = lazy(() => import("@/pages/AdminWashPackages"));
@@ -2787,6 +2788,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
 
         {/* Applicant: check own application status */}
+        {/* PUBLIC on purpose — NO RequireAuth. The server emails this URL with
+            a single-use secure token and treats that token as the credential
+            (POST /api/provider-onboarding/resubmit/:token takes no Bearer).
+            Forcing a sign-in here would lock out exactly the applicant the
+            email is trying to help. The route existed nowhere until now, so
+            every "send us better documents" email landed on NotFound — and
+            pending_resubmission also blocks a fresh /apply, so this link was
+            the only way back in. */}
+        <Route path="/provider-application/resubmit">
+          {() => <ProviderApplicationResubmit />}
+        </Route>
+
         <Route path="/provider-application/status">
           {() => <RequireAuth><ProviderApplicationStatus /></RequireAuth>}
         </Route>

@@ -185,7 +185,21 @@ router.get('/products', async (req: Request, res: Response) => {
           const query = ProductQuerySchema.parse(req.query);
           const result = await shopService.listProducts(query);
           if (Array.isArray((result as any)?.products)) {
+            const before = (result as any).products.length;
             (result as any).products = (result as any).products.filter((p: any) => !isPlaceholderProduct(p));
+            const removed = before - (result as any).products.length;
+            // The count has to follow the list. Filtering the page but leaving
+            // pagination.total at the unfiltered number made production answer
+            // `{"products":[],"pagination":{"total":10}}` — an empty page that
+            // claims ten results, which is its own small lie and would drive a
+            // client to page through nothing.
+            if (removed > 0 && (result as any).pagination) {
+              const pg = (result as any).pagination;
+              if (typeof pg.total === 'number') pg.total = Math.max(0, pg.total - removed);
+              if (typeof pg.limit === 'number' && pg.limit > 0 && typeof pg.total === 'number') {
+                pg.pages = Math.max(1, Math.ceil(pg.total / pg.limit));
+              }
+            }
           } else if (Array.isArray(result)) {
             // Some callers get a bare array — filter that shape too.
             for (let i = (result as any[]).length - 1; i >= 0; i--) {
