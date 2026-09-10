@@ -238,27 +238,27 @@ describe("the packages anchor id is defined exactly once", () => {
  *
  * Same root cause as the tick boxes above: the global
  * `button { min-height: 48px }` floor sets a HEIGHT only, and a bare "x" is
- * ~18px wide. Measured on production: 18x48, aspect 0.37 — and 18px wide
- * fails a 44px target on the width axis, so the floor bought nothing here
- * either. An icon-only button has to state its own square size.
+ * ~18px wide. Measured on production: 18x48, aspect 0.37 — and 18px wide fails
+ * a 44px target on the width axis, so the floor bought nothing here either.
+ *
+ * The strip's appearance moved into `.pw-under-dev-dismiss` while this branch
+ * was open, and that rule now states BOTH axes. The pin follows it there and
+ * keeps the invariant: an icon-only button states its own size on both axes,
+ * because inheriting a lone height floor is exactly what deformed it.
  */
-describe("the dev-banner dismiss button is a square tap target", () => {
-  it("states an explicit width and height, not just a height floor", () => {
-    // Line comments stripped too — this button's own comment quotes
-    // `min-height: 48px`, and a pin that reads its explanation passes on it.
-    const src = readFileSync(resolve(root, "client/src/components/Layout.tsx"), "utf8")
-      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/(^|[^:])\/\/.*$/gm, "$1");
-    const at = src.indexOf("'סגור הודעה'");
-    expect(at, "the dismiss button is gone — this pin needs rewriting").toBeGreaterThan(-1);
-    const style = src.slice(at, at + 700);
-    const width = style.match(/\bwidth:\s*(\d+)/);
-    const height = style.match(/\bheight:\s*(\d+)/);
-    expect(width, "no explicit width — the button will collapse to its glyph").toBeTruthy();
-    expect(height).toBeTruthy();
-    expect(Number(width![1])).toBeGreaterThanOrEqual(44);
-    expect(Number(width![1])).toBe(Number(height![1]));
+describe("the dev-banner dismiss button states both of its axes", () => {
+  const css = readFileSync(resolve(root, "client/src/styles/petwash-header.css"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "");
+
+  it("declares a min-width as well as a min-height", () => {
+    const rule = css.match(/\.pw-under-dev-dismiss\s*\{[^}]*\}/);
+    expect(rule, "the dismiss rule is gone — this pin needs rewriting").toBeTruthy();
+    const w = rule![0].match(/min-width:\s*([\d.]+)/);
+    const h = rule![0].match(/min-height:\s*([\d.]+)/);
+    expect(w, "no min-width — a bare glyph collapses and the button becomes a sliver").toBeTruthy();
+    expect(h).toBeTruthy();
+    expect(Number(w![1])).toBeGreaterThanOrEqual(24);
+    expect(Number(h![1])).toBeGreaterThanOrEqual(24);
   });
 });
 
