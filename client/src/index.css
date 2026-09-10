@@ -1171,8 +1171,16 @@ a {
 body {
   font-family: sans-serif;
   padding-top: 0;
-  overflow-x: hidden !important; /* Prevent horizontal scrolling */
-  max-width: 100vw !important; /* Ensure body doesn't exceed viewport width */
+  /* `overflow-x: hidden` is declared ONCE, on the `html, body` rule above.
+     It used to be repeated here and a third time further down; three copies
+     of one guard make it look load-bearing in three places when it is a
+     single declaration.
+
+     `max-width: 100vw !important` was removed, not moved. It read as a safety
+     belt and did the opposite: `100vw` INCLUDES the classic scrollbar, so on
+     desktop it permitted body to be ~15px WIDER than the content area it was
+     meant to constrain — and the overflow guard above was hiding the gap it
+     opened. */
   position: relative;
 }
 
@@ -3994,11 +4002,9 @@ html[lang="en"] *,
   }
 }
 
-/* Prevent horizontal scroll on ALL devices */
-body {
-  overflow-x: hidden;
-  max-width: 100vw;
-}
+/* The horizontal-scroll guard lives on the `html, body` rule near the top of
+   this file. This was a third copy of it, carrying the same `max-width: 100vw`
+   that is wider than the content area once a scrollbar exists. Removed. */
 
 * {
   box-sizing: border-box;
@@ -4009,6 +4015,17 @@ body {
   .min-h-screen {
     min-height: 100dvh;
   }
+}
+
+/* Full-viewport page floor, safe on iOS.
+   A React inline `style={{ minHeight: '100vh' }}` cannot carry the
+   `100vh; 100dvh` fallback pair — one declaration is all it gets, so it is
+   either wrong on iOS (where `vh` is the LARGE viewport) or unsupported on an
+   old browser. This utility gives those call sites both. Prefer it over an
+   inline 100vh. */
+.pw-viewport-min-h {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ============================================================================
