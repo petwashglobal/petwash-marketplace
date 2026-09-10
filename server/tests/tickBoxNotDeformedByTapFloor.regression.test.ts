@@ -445,3 +445,77 @@ describe("the provider dashboard does not invent what it cannot know", () => {
     expect(read("client/src/pages/provider-os/POSAssistant.tsx")).not.toMatch(/pending \/ 100/);
   });
 });
+
+/**
+ * 2026-09-10 — four surfaces that told the user something untrue.
+ */
+describe("nothing claims a fact it does not have", () => {
+  const read = (p: string) =>
+    readFileSync(resolve(root, p), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  /**
+   * A rejected or withdrawn applicant could never apply again. The submit
+   * claims `provider_onboarding_apply:${uid}` — per user, marked 'done' on
+   * success, never released. Inside 24h that answers DONE (409 already
+   * submitted); after 24h the helper's own created_at window misses the row
+   * and it answers IN_FLIGHT, so the applicant is told "your application is
+   * already being submitted" permanently. The code itself says re-applying
+   * after a rejection "is deliberately allowed".
+   */
+  it("releases the submit claim when an application is rejected or withdrawn", () => {
+    const src = read("server/routes/provider-onboarding.ts");
+    expect(src).toMatch(/async function reopenApplyClaim/);
+    expect(src).toMatch(/reopenApplyClaim\([^)]*'application_rejected'\)/);
+    expect(src).toMatch(/reopenApplyClaim\([^)]*'application_withdrawn'\)/);
+    // The release must actually delete the row — finalize(key, false) does.
+    expect(src).toMatch(/finalizeBusinessClaim\(applyClaimKey\(uid\), false\)/);
+  });
+
+  /**
+   * GET /api/shop/products served ten rows whose own description reads
+   * "EXAMPLE ONLY — Replace with real supplier item", with real prices and
+   * stock, publicly and unauthenticated. Only a CLIENT-side SKU filter stood
+   * between a shopper and a demo product.
+   */
+  it("never serves placeholder inventory from the public catalogue", () => {
+    const src = read("server/routes/shop.ts");
+    expect(src).toMatch(/function isPlaceholderProduct/);
+    expect(src).toMatch(/startsWith\('EX-'\)/);
+    // Both the list and the by-id route must refuse it.
+    expect(src).toMatch(/filter\(\(p: any\) => !isPlaceholderProduct\(p\)\)/);
+    expect(src).toMatch(/!product \|\| isPlaceholderProduct\(product\)/);
+  });
+
+  /**
+   * credit-wallet returns 'new' for a member who never enrolled (#2345). The
+   * wallet's `TIER_LABELS[tier] || TIER_LABELS.bronze` turned that explicit
+   * "not a member" straight back into a "Member" badge.
+   */
+  it("does not fall back to a membership tier the server refused to give", () => {
+    const src = read("client/src/pages/MyWallet.tsx");
+    expect(src).not.toMatch(/\|\| TIER_LABELS\.bronze/);
+    expect(src).toMatch(/TIER_LABELS\[tier\] \?\? null/);
+  });
+
+  it("prints no shekel value for points, because no conversion rate exists", () => {
+    // formatCurrency takes agorot, so `points * 10` asserted 10 points = ₪1 —
+    // a rate nobody set, for something no code can redeem.
+    expect(read("client/src/pages/MyWallet.tsx")).not.toMatch(/loyaltyPointsBalance \|\| 0\) \* 10/);
+  });
+
+  /**
+   * /loyalty/tiers is public — no auth, no fetch — yet hardcoded the visitor's
+   * tier to 'bronze', rendering "Your Tier" on Member and a padlock on all six
+   * above it for everyone, including real top-tier members.
+   */
+  it("the public tier ladder does not assert a tier for an unknown visitor", () => {
+    const src = read("client/src/pages/LoyaltyTiers.tsx");
+    expect(src).not.toMatch(/const currentTier = 'bronze'/);
+    expect(src).toMatch(/const currentTier: string \| null = null/);
+    // and no hardcoded progress percentage
+    expect(src).not.toMatch(/width: '25%'/);
+  });
+});

@@ -157,10 +157,41 @@ const ProductQuerySchema = z.object({
  * GET /api/shop/products
  * Browse product catalog — public, no auth required
  */
+/**
+ * PLACEHOLDER INVENTORY NEVER LEAVES THE SERVER. (2026-09-10)
+ *
+ * The seed catalogue ships rows whose own description reads "EXAMPLE ONLY —
+ * ... Replace with real supplier item", with real prices and stock counts.
+ * Verified live: GET /api/shop/products returned ten of them, publicly and
+ * unauthenticated, including EX-TREAT-CHICKEN at 3490 agorot, stock 100,
+ * is_featured true.
+ *
+ * Shop.tsx filtered them out on the CLIENT, so no customer saw them today —
+ * but the filter was the only thing between a shopper and a demo product. A
+ * build flag flip, a second consumer, the native apps, or anyone calling the
+ * API directly all bypass it. A placeholder is not a product; the catalogue
+ * endpoint is where that belongs.
+ *
+ * Same predicate as the client's, kept deliberately identical so the two
+ * cannot drift: SKU prefix EX- or an `example` tag.
+ */
+function isPlaceholderProduct(p: any): boolean {
+  return String(p?.sku ?? '').startsWith('EX-')
+    || (Array.isArray(p?.tags) && p.tags.includes('example'));
+}
+
 router.get('/products', async (req: Request, res: Response) => {
     try {
           const query = ProductQuerySchema.parse(req.query);
           const result = await shopService.listProducts(query);
+          if (Array.isArray((result as any)?.products)) {
+            (result as any).products = (result as any).products.filter((p: any) => !isPlaceholderProduct(p));
+          } else if (Array.isArray(result)) {
+            // Some callers get a bare array — filter that shape too.
+            for (let i = (result as any[]).length - 1; i >= 0; i--) {
+              if (isPlaceholderProduct((result as any[])[i])) (result as any[]).splice(i, 1);
+            }
+          }
           // Public catalog → cacheable. Browser 60s, CDN/Cloud-Run edge 5min,
           // serve-stale-while-revalidate 10min. A viral spike hits the cache,
           // not the DB. Per-query-string key, so category filters stay correct.
@@ -182,7 +213,8 @@ router.get('/products/:id', async (req: Request, res: Response) => {
           const id = parseInt(req.params.id);
           if (isNaN(id)) return res.status(400).json({ error: 'Invalid product ID' });
           const product = await shopService.getProduct(id);
-          if (!product) return res.status(404).json({ error: 'Product not found' });
+          // A placeholder must not be reachable by direct id either.
+          if (!product || isPlaceholderProduct(product)) return res.status(404).json({ error: 'Product not found' });
           res.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
           res.json(product);
     } catch (err: any) {

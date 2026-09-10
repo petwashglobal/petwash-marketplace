@@ -511,6 +511,30 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
 // =================== PROVIDER APPLICATION SUBMISSION ===================
 
 // Submit provider application (with biometric KYC)
+/** The submit claim is keyed on the applicant, not on one attempt. */
+const applyClaimKey = (uid: string) => `provider_onboarding_apply:${uid}`;
+
+/**
+ * Let a finished applicant apply again.
+ *
+ * finalizeBusinessClaim(key, false) DELETEs the row, which is exactly the
+ * release we want: the next /apply gets a clean CLAIMED instead of a 409 that
+ * can never clear. Called when an application reaches a state the product
+ * says is re-appliable — rejected, or withdrawn by the applicant.
+ *
+ * Best-effort on purpose: a failure here must not fail the rejection or the
+ * withdrawal itself. The worst case is the pre-existing behaviour.
+ */
+async function reopenApplyClaim(uid: string | null | undefined, reason: string): Promise<void> {
+  if (!uid) return;
+  try {
+    await finalizeBusinessClaim(applyClaimKey(uid), false);
+    logger.info('[Provider Onboarding] apply-claim released', { userId: uid, reason });
+  } catch (err: any) {
+    logger.warn('[Provider Onboarding] apply-claim release failed', { userId: uid, reason, error: err?.message });
+  }
+}
+
 router.post('/apply', wrapUpload(upload.fields([
   { name: 'selfiePhoto', maxCount: 1 },
   { name: 'governmentId', maxCount: 1 },
@@ -554,7 +578,19 @@ router.post('/apply', wrapUpload(upload.fields([
     // DONE on success, via one `res.on('finish')` hook rather than a
     // finalize() call bolted onto each of the ~20 early returns below — that
     // list drifts, a `finish` hook cannot.
-    const idempKey = `provider_onboarding_apply:${authenticatedUser.uid}`;
+    // The key is per USER, and a SUCCESSFUL submit marks it 'done' forever —
+    // nothing expires or deletes it. That is right for its stated job (two
+    // tabs, a double-tap, a client retry) and wrong for the case 380 lines
+    // below, which says in as many words that "re-applying after a rejection
+    // or a withdrawal is deliberately allowed". It was not: inside 24h the
+    // claim answers DONE -> 409 ALREADY_SUBMITTED, and after 24h the lookup's
+    // own `created_at > NOW() - INTERVAL '24 hours'` filter misses the row and
+    // it answers IN_FLIGHT -> the applicant is told "Your application is
+    // already being submitted. Please wait a moment." for the rest of time.
+    //
+    // reopenApplyClaim() below releases it when an application actually ends,
+    // so the door the code says is open really is. See its two callers.
+    const idempKey = applyClaimKey(authenticatedUser.uid);
     const claim = await claimBusinessOnce(idempKey, 'POST /api/provider-onboarding/apply');
     if (claim === 'DB_ERROR') {
       // FAIL-CLOSED: never let a duplicate through because the guard is down.
@@ -2869,6 +2905,10 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
       }
     }
 
+    // A rejected applicant is allowed to apply again — release the submit
+    // claim so /apply does not answer 409 for the rest of their life.
+    await reopenApplyClaim(application.userId, 'application_rejected');
+
     res.json({
       success: true,
       message: 'Application rejected'
@@ -3420,6 +3460,8 @@ router.post('/withdraw', async (req: Request, res: Response) => {
     );
 
     logger.info('[ProviderOnboarding] Application withdrawn by applicant', { applicationId: app.id, uid: decodedToken.uid });
+    // Same door: withdrawing is the applicant choosing to start over.
+    await reopenApplyClaim(decodedToken.uid, 'application_withdrawn');
     res.json({ success: true, status: 'withdrawn' });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] Withdraw error', { error: err.message });

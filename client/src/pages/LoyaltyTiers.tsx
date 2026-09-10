@@ -14,7 +14,15 @@ export default function LoyaltyTiers() {
     canonical: 'https://petwash.co.il/loyalty/tiers',
     ogType: 'website',
   });
-  const currentTier = 'bronze';
+  // THIS PAGE DOES NOT KNOW WHO YOU ARE. (2026-09-10)
+  // It is public: no auth, no fetch, no member context. It nonetheless
+  // hardcoded 'bronze', which rendered "Your Tier" on the Member card and a
+  // padlock on all six above it — so a real Black Reserve member was told
+  // they were a Member with everything above them locked, and so was a logged
+  // -out stranger. A ladder overview is honest; a personalised one it cannot
+  // compute is not. Null = "we have no tier for you", and the card states
+  // below fall out of that rather than asserting one.
+  const currentTier: string | null = null;
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
   const tierIcons: Record<string, typeof Star> = {
@@ -37,7 +45,8 @@ export default function LoyaltyTiers() {
     royal: 'rgba(217, 184, 76,0.4)',
   };
 
-  const currentTierIndex = TIER_CONFIGS.findIndex(t => t.id === currentTier);
+  // -1 when there is no current tier, so nothing renders as locked.
+  const currentTierIndex = currentTier ? TIER_CONFIGS.findIndex(t => t.id === currentTier) : TIER_CONFIGS.length;
 
   return (
     <div
@@ -177,20 +186,9 @@ export default function LoyaltyTiers() {
                     )}
                   </div>
 
-                  {isActive && (
-                    <div className="mb-4">
-                      <div className="flex justify-between text-xs text-[#8A8078] mb-1.5">
-                        <span>{isHebrew ? 'התקדמות לדרגה הבאה' : 'Progress to next tier'}</span>
-                        <span>25%</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-[#E8E3D9] overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-1000"
-                          style={{ width: '25%', background: `linear-gradient(90deg, ${tier.color}, #D9B84C)` }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  {/* The progress bar here was a hardcoded 25% in both the
+                      label and the width — not a computation, a decoration.
+                      Removed with the fake "your tier" state that gated it. */}
 
                   <div className={`border-t border-[#E8E3D9] pt-4 space-y-2 transition-all duration-300 ${isExpanded ? 'opacity-100 max-h-[500px]' : 'opacity-70 max-h-[120px] overflow-hidden'}`}>
                     {tier.benefits.prioritySupport && (
