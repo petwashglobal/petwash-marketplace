@@ -54,17 +54,25 @@ export default function POSAssistant() {
 
   const buildSystemContext = () => {
     const providerName = user?.displayName || 'Provider';
-    const rating = (stats as any)?.averageRating || 'N/A';
-    const completed = (stats as any)?.completedBookings || 0;
-    const active = (stats as any)?.activeBookings || 0;
-    const pending = (stats as any)?.pendingPayouts || 0;
+    // TWO bugs, and fixing only one makes it worse. (2026-09-10)
+    // 1. The endpoint answers { success, stats: {...} }
+    //    (provider-dashboard-v2.ts:527) — reading the ROOT made all four
+    //    undefined, so the assistant narrated 'N/A' and 0 to every provider.
+    // 2. pendingPayouts is ALREADY in shekels (:535 divides cents by 100).
+    //    The `/ 100` below divided a second time, so unwrapping alone would
+    //    have told a provider with ₪1,200 pending that they had ₪12.00.
+    const s: any = (stats as any)?.stats ?? stats ?? {};
+    const rating = s?.averageRating || 'N/A';
+    const completed = s?.completedBookings || 0;
+    const active = s?.activeBookings || 0;
+    const pending = s?.pendingPayouts || 0;
     return `You are the PetWash™‎ Provider AI Assistant. You help ${providerName}, a pet care provider on PetWash.co.il.
 
 Provider context:
 - Rating: ${rating} ⭐
 - Completed bookings: ${completed}
 - Active bookings: ${active}
-- Pending payout: ₪${(pending / 100).toFixed(2)}
+- Pending payout: ₪${Number(pending).toFixed(2)}
 - Platform: PetWash™‎ Israel (Hebrew/RTL market, ILS currency, VAT 18%)
 - Services: PetSitter, Walk My Pet, Academy (PetTrek coming soon)
 

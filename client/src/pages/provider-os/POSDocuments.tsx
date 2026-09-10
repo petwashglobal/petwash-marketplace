@@ -57,20 +57,20 @@ export default function POSDocuments() {
   const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // NO AUDIT TRAIL EXISTS. (2026-09-10) This set local React state and told
+  // the provider their acceptance "has been recorded with audit trail". There
+  // is no API call — nothing is recorded, and the tick is gone on refresh.
+  // Say what actually happens until an endpoint backs it.
   const handleAccept = (id: string) => {
     setAccepted(prev => ({ ...prev, [id]: true }));
-    toast({ title: 'Document accepted', description: 'Your acceptance has been recorded with audit trail.' });
+    toast({ title: 'Marked as read', description: 'This is not yet recorded on your account.' });
   };
 
   const handleSignDoc = (id: string) => {
     setSigningDoc(id);
   };
 
-  const simulateSign = (id: string) => {
-    setEsignStatus(prev => ({ ...prev, [id]: 'signed' }));
-    setSigningDoc(null);
-    toast({ title: 'Document signed', description: 'E-signature recorded and PDF saved to your account.' });
-  };
+
 
   const handleUploadClick = (docId: string) => {
     setUploadingDoc(docId);
@@ -331,20 +331,33 @@ export default function POSDocuments() {
             <div className="p-5">
               <div className="bg-white border border-gray-200 rounded-xl p-8 text-center mb-4">
                 <PenLine className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-600 mb-1">DocuSign integration</p>
-                <p className="text-xs text-gray-400">In production, the document will open in an embedded signing panel powered by DocuSign or Dropbox Sign. No page redirect required.</p>
+                <p className="text-sm text-gray-600 mb-1">Signing is not wired up yet</p>
+                <p className="text-xs text-gray-400">When it is, the document will open in an embedded signing panel here.</p>
               </div>
+              {/* NO SIGNATURE IS TAKEN HERE. (2026-09-10)
+                  "Sign Now" called simulateSign(), which set local React state
+                  and toasted "E-signature recorded and PDF saved to your
+                  account". There was no API call in the whole module bar the
+                  file upload: nothing was stored, nothing was hashed, and the
+                  status reverted to "Required" on the next refresh. The eight
+                  documents offered included the Provider Agreement, the NDA and
+                  the Payout & Commission Agreement, so this told providers they
+                  had a contract they did not have.
+                  DocuSealService exists (server/services/DocuSealService.ts)
+                  but its only route, POST /api/provider-declarations/:key/start,
+                  has no client caller. Until that is wired, this panel says so
+                  instead of pretending. */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
-                <p className="text-xs text-amber-800">By signing, you confirm you have read and agree to the full document. Your signature will be timestamped and SHA-256 hashed for legal validity.</p>
+                <p className="text-xs text-amber-800">
+                  E-signature is not available yet. Nothing is signed, stored or
+                  recorded on this screen. Our team will send you the documents
+                  to sign before your account goes live.
+                </p>
               </div>
               <div className="flex gap-3">
                 <button onClick={() => setSigningDoc(null)}
                   className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 hover:bg-white transition-colors">
-                  Cancel
-                </button>
-                <button onClick={() => simulateSign(signingDoc!)}
-                  className="flex-1 py-2.5 bg-[#B8932F] text-white rounded-xl text-sm font-semibold hover:bg-[#B8932F] transition-colors flex items-center justify-center gap-2">
-                  <PenLine className="w-4 h-4" /> Sign Now
+                  Close
                 </button>
               </div>
             </div>

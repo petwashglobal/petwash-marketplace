@@ -368,3 +368,80 @@ describe("the mobile drawer takes focus when it opens and gives it back", () => 
     expect(parseFloat(rule![0].match(/outline:\s*(\d+)/)?.[1] ?? "0")).toBeGreaterThanOrEqual(2);
   });
 });
+
+/**
+ * 2026-09-10 — the provider dashboard told providers things that were not true.
+ *
+ * Three separate fictions, all on the surface a provider runs their business
+ * from. Each was verified against the code before being fixed.
+ */
+describe("the provider dashboard does not invent what it cannot know", () => {
+  const read = (p: string) =>
+    readFileSync(resolve(root, p), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  /**
+   * The payout tab offered `paidPayouts` — money that has ALREADY left for the
+   * provider's bank — as "Available to withdraw", and "Max" pre-filled it. The
+   * server clamps against `status IN ('completed','reviewed') AND payout_status
+   * != 'paid_out'` (provider-dashboard-v2.ts), i.e. the PENDING balance. So the
+   * headline was the one number you cannot have and Max always earned a 400.
+   */
+  it("offers the withdrawable balance, not the already-paid one", () => {
+    const src = read("client/src/pages/provider-os/POSWallet.tsx");
+    const line = src.split("\n").find((l) => l.includes("Available to withdraw"));
+    expect(line, "the payout tab's balance line is gone — this pin needs rewriting").toBeTruthy();
+    expect(line).toMatch(/\bpending\b/);
+    expect(line).not.toMatch(/\bpaid\b/);
+    // "Max" must fill the same balance the server will honour.
+    expect(src).toMatch(/setPayoutAmount\(String\(pending/);
+    expect(src).not.toMatch(/setPayoutAmount\(String\(paid/);
+  });
+
+  it("states no payout minimum, because none is enforced", () => {
+    // The server rejects only amount <= 0. A "Minimum ₪100" line turned away
+    // providers who could in fact withdraw ₪40.
+    expect(read("client/src/pages/provider-os/POSWallet.tsx")).not.toMatch(/Minimum ₪/);
+  });
+
+  it("does not invent a 48-hour hold that exists nowhere in the payout path", () => {
+    expect(read("client/src/pages/provider-os/POSWallet.tsx")).not.toMatch(/48h hold/);
+  });
+
+  /**
+   * "Sign Now" called simulateSign(), which set local React state and toasted
+   * "E-signature recorded and PDF saved to your account" — with no API call in
+   * the module bar the file upload. The eight documents included the Provider
+   * Agreement, the NDA and the Payout & Commission Agreement.
+   */
+  it("never claims to have taken a signature it did not take", () => {
+    const src = read("client/src/pages/provider-os/POSDocuments.tsx");
+    expect(src).not.toMatch(/simulateSign/);
+    expect(src).not.toMatch(/E-signature recorded/);
+    expect(src).not.toMatch(/SHA-256 hashed for legal validity/);
+    expect(src).not.toMatch(/recorded with audit trail/);
+  });
+
+  /**
+   * /api/provider-dashboard/v2/stats answers { success, stats: {...} }
+   * (provider-dashboard-v2.ts:527). Three consumers read the ROOT, so every
+   * field was undefined even on a 200 with real data — a five-star, 300-job
+   * provider saw "0.0★ · 0 completed · 0% · 0 reviews", the availability
+   * toggle never persisted, and the documents warning could never fire.
+   */
+  it("unwraps the stats envelope everywhere it is consumed", () => {
+    for (const page of ["ProviderOS", "POSDashboard", "POSAssistant"]) {
+      const src = read(`client/src/pages/provider-os/${page}.tsx`);
+      if (!src.includes("provider-dashboard/v2/stats")) continue;
+      expect(src, `${page} reads the stats envelope's root`).toMatch(/\?\.stats \?\?/);
+    }
+  });
+
+  it("does not divide an already-shekel figure by 100 a second time", () => {
+    // pendingPayouts is converted from cents server-side (v2:535). The
+    // assistant divided again, so ₪1,200 was narrated to the provider as ₪12.
+    expect(read("client/src/pages/provider-os/POSAssistant.tsx")).not.toMatch(/pending \/ 100/);
+  });
+});
