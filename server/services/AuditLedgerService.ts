@@ -10,6 +10,7 @@
  */
 
 import { db } from '../db';
+import { isUniqueViolation } from '../lib/dbErrors';
 import { 
   auditLedger, 
   voucherRedemptions, 
@@ -50,6 +51,9 @@ export interface ChainVerificationResult {
   errors: string[];
 }
 
+// Stable key for pg_advisory_xact_lock — any constant, unique to this ledger.
+const AUDIT_LEDGER_APPEND_LOCK = 7_411_001;
+
 export class AuditLedgerService {
   
   /**
@@ -57,10 +61,27 @@ export class AuditLedgerService {
    * Uses SERIALIZABLE transaction with SELECT FOR UPDATE to prevent chain forks
    */
   static async recordEvent(event: AuditEvent): Promise<number> {
+    // Two writers used to fork the chain: FOR UPDATE on the tail row only
+    // serialises access to THAT row — the second writer, once unblocked, still
+    // saw its snapshot's tail and computed the same blockNumber
+    // (audit_ledger_block_number_unique, CEO sign-in 2026-09-10 07:10Z; the
+    // event was dropped). A transaction-scoped advisory lock serialises the
+    // whole append, and one retry covers a writer that lost anyway.
+    try {
+      return await AuditLedgerService.appendOnce(event);
+    } catch (err) {
+      if (!isUniqueViolation(err)) throw err;
+      logger.warn('[AuditLedger] chain tail moved under us — retrying once');
+      return await AuditLedgerService.appendOnce(event);
+    }
+  }
+
+  private static async appendOnce(event: AuditEvent): Promise<number> {
     return await db.transaction(async (tx) => {
       try {
-        // Lock the tail of the chain to prevent concurrent forks
-        // Use FOR UPDATE to serialize access
+        // Serialise every append (lock released at commit/rollback).
+        await tx.execute(sql`select pg_advisory_xact_lock(${AUDIT_LEDGER_APPEND_LOCK})`);
+        // Read the tail AFTER taking the lock so a committed append is visible.
         const lastRecord = await tx
           .select()
           .from(auditLedger)
