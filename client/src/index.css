@@ -4319,6 +4319,37 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
   }
 }
 
+/* TINY PHONES (2026-09-10): the 44px coarse-pointer floor makes the date grid
+   wider than a padded dialog can hold on a small screen.
+
+   MEASURED, not calculated — and the measurement corrected the arithmetic. A
+   `min-width: 44px` cell RENDERS at 46px once its own box is accounted for, so
+   seven columns need 322px, not the 308px the declaration suggests. Against
+   <DialogContent>'s `p-6` that means:
+
+     320px viewport   272px available   322px needed   overflows by 50px
+     360px viewport   312px available   322px needed   overflows by 12px
+     375px viewport   327px available   322px needed   fits, by 3px
+     390px viewport   342px available   322px needed   fits
+
+   So the cutoff is 375px, NOT 360px — a first guess of 360 would have left the
+   Galaxy Fold cover screen broken by 12px.
+
+   No padding value rescues it: even `p-2` leaves 304px against 322px. Below
+   375px the columns shrink instead. 36px is the largest value that still fits
+   320px (7 x 38px rendered = 266px against 272px). The 44px MIN-HEIGHT is
+   deliberately untouched — the vertical half of the tap target is the half
+   there is room for. */
+@media (pointer: coarse) and (max-width: 374px) {
+  .rdp-day,
+  .rdp-cell {
+    min-width: 36px;
+  }
+  .rdp-head_cell {
+    min-width: 36px;
+  }
+}
+
 /* Nav buttons need touch-manipulation too */
 .rdp-nav_button {
   touch-action: manipulation;
