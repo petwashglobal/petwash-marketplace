@@ -1622,7 +1622,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // the "use a one-time code" link; social + passkey remain on both modes.
   const loginReady = !busy && emailValid && password.length >= 1;
 
-  const ctaLabel = busy ? '…' : (he ? 'המשך' : 'Continue');
+  const ctaLabel = busy ? (he ? 'שולח…' : 'Sending…') : (he ? 'המשך' : 'Continue');
 
   function startSignup() {
     if (phoneValid) { setMethod('mobile'); void sendCode(); }
@@ -1918,7 +1918,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <PhoneInput value={phone} onChange={(v) => { setPhone(v); setCachedPhoneVerificationToken(null); }} language={language} defaultCountry="IL" />
               </div>
               <button className="sl-cta" disabled={busy || !phoneValid} onClick={() => { void sendCode(); }}>
-                <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
+                <FaMobileAlt aria-hidden /> {busy ? (he ? 'שולח קוד…' : 'Sending code…') : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
               </button>
             </>
           )}
@@ -2586,7 +2586,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 // existing user through phone-session (isNewUser=false).
                 <button className="sl-cta" disabled={busy || !phoneValid}
                   onClick={() => { void sendCode(); }}>
-                  <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
+                  <FaMobileAlt aria-hidden /> {busy ? (he ? 'שולח קוד…' : 'Sending code…') : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
                 </button>
               ) : usePassword ? (
                 <>

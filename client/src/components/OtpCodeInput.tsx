@@ -189,6 +189,12 @@ export function OtpCodeInput({
             onFocus={(e) => e.target.select()}
             onPaste={handlePaste}
             disabled={loading}
+            // Tailwind's text-center is dead under Hebrew: index.css has
+            // `html[lang="he"] * { text-align: inherit }` (0,1,1), which beats
+            // every `.text-*` utility (0,1,0). The digit then inherits `start`
+            // and, inside this dir="ltr" row, hugs the LEFT edge of its box
+            // (iPhone screenshot, 2026-09-10). Inline style outranks the rule.
+            style={{ textAlign: 'center' }}
             aria-label={`Digit ${i + 1} of ${length}`}
             className={cn(
               'flex-1 min-w-0 aspect-square max-w-[3.25rem] p-0 text-center leading-none text-2xl font-bold rounded-xl border-2 transition-all duration-150 bg-white dark:bg-white',
