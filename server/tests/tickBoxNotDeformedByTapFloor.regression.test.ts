@@ -652,3 +652,70 @@ describe("the grooming funnel advances", () => {
       .toMatch(/<Route path="\/groomers\/explore">/);
   });
 });
+
+/**
+ * 2026-09-10 — the Care Card, and the distance that was computed and thrown away.
+ *
+ * Rover's signature trust artifact is a post-walk card: arrival and departure
+ * times, the route actually taken, duration and distance. PetWash already
+ * recorded every one of those and then scattered them — GPS points in
+ * walk_gps_tracking, times on the booking, photos and notes loose in the chat
+ * scroll — so the owner had to reassemble it themselves.
+ *
+ * The distance was worse than scattered. It is computed on completion from the
+ * GPS points, written into the blockchain audit block, and the column that
+ * exists for it on the booking (total_distance_meters) was never set. Anything
+ * reading the booking saw NULL for a walk that had a real distance.
+ */
+describe("the walk care card reports what happened, and nothing else", () => {
+  const server = readFileSync(resolve(root, "server/routes/walk-my-pet.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  it("completion persists the distance it just computed", () => {
+    // Anchor on the COMPLETION update specifically — walk-my-pet.ts updates
+    // walkBookings in several places (cancel, accept), and the first one is a
+    // cancellation.
+    const marker = server.indexOf("walkCompletedSuccessfully: true");
+    expect(marker, "the completion update moved — this pin needs rewriting").toBeGreaterThan(-1);
+    const at = server.lastIndexOf(".update(walkBookings)", marker);
+    const block = server.slice(at, server.indexOf(".where(", marker));
+    expect(block, "total_distance_meters is computed and then dropped")
+      .toMatch(/totalDistanceMeters:\s*Math\.round\(totalDistance\)/);
+  });
+
+  it("the card is owner/walker/admin only, and 404s rather than 403s", () => {
+    const at = server.indexOf("'/walks/:bookingId/care-card'");
+    expect(at).toBeGreaterThan(-1);
+    const route = server.slice(at, at + 3000);
+    expect(route).toMatch(/requireAuth/);
+    expect(route).toMatch(/isOwner && !isWalker && !isAdmin/);
+    // A 403 would confirm the booking id exists to a stranger.
+    expect(route).toMatch(/if \(!isOwner && !isWalker && !isAdmin\)[\s\S]{0,200}status\(404\)/);
+  });
+
+  it("a missing distance stays null — it never becomes a confident zero", () => {
+    const at = server.indexOf("'/walks/:bookingId/care-card'");
+    const route = server.slice(at, at + 3000);
+    expect(route).toMatch(/distanceMeters: booking\.totalDistanceMeters \?\? null/);
+    expect(route).not.toMatch(/totalDistanceMeters \|\| 0/);
+  });
+
+  it("the card renders only for a walk that actually completed", () => {
+    const at = server.indexOf("'/walks/:bookingId/care-card'");
+    const route = server.slice(at, at + 3000);
+    expect(route).toMatch(/status !== 'completed'/);
+    expect(route).toMatch(/available: false/);
+  });
+
+  it("the component distinguishes a failed load from an untracked walk", () => {
+    const ui = readFileSync(resolve(root, "client/src/components/walk/WalkCareCard.tsx"), "utf8");
+    // isError must have its own branch: an empty card would read to the owner
+    // as "your walk was never tracked".
+    expect(ui).toMatch(/isError/);
+    expect(ui).toMatch(/role="alert"/);
+    // and no zero-fallbacks on the measured values
+    expect(ui).not.toMatch(/distanceMeters \|\| 0/);
+    expect(ui).not.toMatch(/durationMinutes \|\| 0/);
+  });
+});

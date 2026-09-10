@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { ContactParty } from '@/components/ContactParty';
+import { WalkCareCard } from '@/components/walk/WalkCareCard';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { useParams, useLocation } from 'wouter';
@@ -626,6 +627,18 @@ export default function WalkTracking() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* THE CARE CARD (2026-09-10) — arrival, departure, duration,
+                distance and the actual route, in one artifact. Every piece was
+                already recorded during the walk and then scattered across the
+                chat scroll; this is the assembly. It renders nothing unless the
+                walk is completed and has a real start time, so an in-progress
+                or cancelled walk is unaffected. */}
+            {walk.status === 'completed' && walk.bookingId && (
+              <div className="luxury-animate-scale-in luxury-delay-6">
+                <WalkCareCard bookingId={walk.bookingId} />
               </div>
             )}
 
