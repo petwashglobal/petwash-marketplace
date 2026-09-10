@@ -429,10 +429,16 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           </div>
         </section>
 
-        {/* Wash Packages Section */}
-        <div id="packages">
-          <WashPackages language={language} />
-        </div>
+        {/* Wash Packages Section.
+            NO `id="packages"` wrapper here — WashPackages already puts that id
+            on its own <section>, so the wrapper made the homepage ship the id
+            TWICE (measured: a DIV and a SECTION, both id="packages", both at
+            y=6895). Duplicate ids are invalid HTML: getElementById and a
+            `#packages` anchor resolve to the first match only, and any
+            aria-labelledby / aria-controls pointing at it silently picks one.
+            The section keeps the id, so `#packages` still lands on the real
+            section — now on the section itself rather than a bare wrapper. */}
+        <WashPackages language={language} />
 
         {/* Gift Cards Section */}
         <GiftCards language={language} />

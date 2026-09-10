@@ -169,3 +169,95 @@ describe("the sign-in remember-me row mirrors with the document, not against it"
     expect(tag).not.toMatch(/row-reverse/);
   });
 });
+
+/**
+ * 2026-09-10 — picking a language did not survive a refresh.
+ *
+ * readUrlLanguage() is authoritative on boot AND writes what it finds into
+ * pw_lang. Nothing updated the query string when the user chose a different
+ * language, so a `?lang=he` link stayed `?lang=he` while English was on
+ * screen — and the next boot read that stale param and put Hebrew back.
+ * Measured on production, three steps:
+ *
+ *   land on /?lang=he   url ?lang=he   pw_lang=he   html lang=he
+ *   pick English        url ?lang=he   pw_lang=en   html lang=en
+ *   reload              url ?lang=he   pw_lang=HE   html lang=he   <- choice gone
+ *
+ * The switcher leaves the param behind, so the links it produces are exactly
+ * the ones on which it can never stick — as are shared and bookmarked links.
+ */
+describe("an explicit language choice is written back to the URL", () => {
+  const src = readFileSync(resolve(root, "client/src/lib/languageStore.tsx"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  it("a URL sync exists and uses replaceState, not pushState", () => {
+    expect(src).toMatch(/function syncUrlLanguage/);
+    expect(src).toMatch(/history\.replaceState/);
+    expect(src).not.toMatch(/history\.pushState/);
+  });
+
+  it("it runs on the language actually rendered, not only inside setLanguage", () => {
+    // The header writes pw_lang directly in both its controlled and
+    // uncontrolled paths; those reach the provider through the poller, never
+    // through setLanguage. An effect keyed on `language` catches all of them.
+    expect(src).toMatch(/useEffect\(\s*\(\)\s*=>\s*\{\s*syncUrlLanguage\(language\);?\s*\}\s*,\s*\[language\]\s*\)/);
+  });
+
+  it("it rewrites a param that is present and never invents one", () => {
+    const fn = src.slice(src.indexOf("function syncUrlLanguage"));
+    const body = fn.slice(0, fn.indexOf("\n}") + 2);
+    expect(body).toMatch(/keys\.length === 0\)\s*return/);
+    expect(body).toMatch(/searchParams\.set/);
+  });
+});
+
+/**
+ * 2026-09-10 — the homepage shipped id="packages" twice.
+ *
+ * WashPackages puts that id on its own <section>; Landing wrapped it in a
+ * second <div id="packages">. Measured on production: two elements match
+ * `#packages`, a DIV and a SECTION, both at y=6895. Duplicate ids are invalid
+ * HTML — getElementById, a `#packages` anchor and any aria-labelledby /
+ * aria-controls pointing at it resolve to the first match only.
+ */
+describe("the packages anchor id is defined exactly once", () => {
+  it("Landing does not re-declare the id WashPackages already owns", () => {
+    const landing = readFileSync(resolve(root, "client/src/pages/Landing.tsx"), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    const section = readFileSync(resolve(root, "client/src/components/WashPackages.tsx"), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "");
+    expect(section, "WashPackages no longer owns the id — this pin needs rewriting")
+      .toMatch(/id="packages"/);
+    expect(landing).not.toMatch(/id="packages"/);
+  });
+});
+
+/**
+ * 2026-09-10 — the dev-banner dismiss button was an 18x48 sliver.
+ *
+ * Same root cause as the tick boxes above: the global
+ * `button { min-height: 48px }` floor sets a HEIGHT only, and a bare "x" is
+ * ~18px wide. Measured on production: 18x48, aspect 0.37 — and 18px wide
+ * fails a 44px target on the width axis, so the floor bought nothing here
+ * either. An icon-only button has to state its own square size.
+ */
+describe("the dev-banner dismiss button is a square tap target", () => {
+  it("states an explicit width and height, not just a height floor", () => {
+    // Line comments stripped too — this button's own comment quotes
+    // `min-height: 48px`, and a pin that reads its explanation passes on it.
+    const src = readFileSync(resolve(root, "client/src/components/Layout.tsx"), "utf8")
+      .replace(/\{\/\*[\s\S]*?\*\/\}/g, "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const at = src.indexOf("'סגור הודעה'");
+    expect(at, "the dismiss button is gone — this pin needs rewriting").toBeGreaterThan(-1);
+    const style = src.slice(at, at + 700);
+    const width = style.match(/\bwidth:\s*(\d+)/);
+    const height = style.match(/\bheight:\s*(\d+)/);
+    expect(width, "no explicit width — the button will collapse to its glyph").toBeTruthy();
+    expect(height).toBeTruthy();
+    expect(Number(width![1])).toBeGreaterThanOrEqual(44);
+    expect(Number(width![1])).toBe(Number(height![1]));
+  });
+});
