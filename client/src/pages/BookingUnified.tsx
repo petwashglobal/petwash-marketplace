@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useLanguage } from "@/lib/languageStore";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 
 export default function BookingUnified() {
-  const { t } = useTranslation();
+  const { language } = useLanguage();
+  const he = language === "he";
   const [, setLocation] = useLocation();
 
   const services = [
@@ -22,32 +23,32 @@ export default function BookingUnified() {
       icon: Droplets,
       name: "K9000™‎",
       href: "/k9000",
-      desc: "Self-service wash station",
+      desc: he ? "עמדת שטיפה בשירות עצמי" : "Self-service wash station",
     },
     {
       icon: Home,
       name: "Sitter Suite™‎",
       href: "/sitter-suite/browse",
-      desc: "Find trusted pet sitters",
+      desc: he ? "מצאו שמרטפים מהימנים" : "Find trusted pet sitters",
     },
     {
       icon: Dog,
       name: "Walk My Pet™‎",
       href: "/walk-my-pet/explore",
-      desc: "Book professional dog walks",
+      desc: he ? "הזמינו טיולי כלבים מקצועיים" : "Book professional dog walks",
     },
     {
       icon: RouteIcon,
       name: "PetTrek™‎",
       href: "/pettrek",
-      desc: "Coming Soon",
+      desc: he ? "בקרוב" : "Coming Soon",
       comingSoon: true,
     },
     {
       icon: GraduationCap,
       name: "Pet Wash Academy™‎",
       href: "/academy",
-      desc: "Professional pet training",
+      desc: he ? "אילוף מקצועי לחיות מחמד" : "Professional pet training",
     },
   ];
 
@@ -58,14 +59,14 @@ export default function BookingUnified() {
         <div className="text-center mb-16 luxury-animate-fade-in">
           <div className="luxury-badge luxury-delay-1 inline-flex items-center gap-2 mb-6 opacity-0 luxury-animate-fade-in">
             <Sparkles className="w-4 h-4" />
-            Unified Booking System
+            {he ? "מערכת הזמנות אחת" : "Unified Booking System"}
           </div>
           <Calendar className="w-16 h-16 text-[#0a2540] mx-auto mb-6 opacity-0 luxury-animate-scale-in luxury-delay-2" />
           <h1 className="luxury-heading-xl mb-6 opacity-0 luxury-animate-slide-up luxury-delay-3">
-            Smart Booking
+            {he ? "הזמנה חכמה" : "Smart Booking"}
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto opacity-0 luxury-animate-fade-in luxury-delay-4">
-            ⁦PetWash™⁩ unified booking engine for all platforms. One account, seamless scheduling across all services.
+            {he ? "מנוע הזמנות אחד לכל הפלטפורמות של ⁦PetWash™⁩. חשבון אחד, תיאום פשוט בכל השירותים." : "⁦PetWash™⁩ unified booking engine for all platforms. One account, seamless scheduling across all services."}
           </p>
         </div>
 
@@ -82,7 +83,7 @@ export default function BookingUnified() {
               >
                 {isComingSoon && (
                   <div className="absolute top-4 right-4 bg-[#D4AF37] text-white text-xs font-bold px-3 py-1 rounded-full">
-                    Coming Soon
+                    {he ? "בקרוב" : "Coming Soon"}
                   </div>
                 )}
                 <div className="flex flex-col gap-6">
@@ -98,7 +99,7 @@ export default function BookingUnified() {
                     data-testid={`button-book-${service.name.toLowerCase().replace(' ', '-')}`}
                     disabled={isComingSoon}
                   >
-                    {isComingSoon ? 'Coming Soon' : 'Book Now'}
+                    {isComingSoon ? (he ? 'בקרוב' : 'Coming Soon') : (he ? 'הזמינו עכשיו' : 'Book Now')}
                   </Button>
                 </div>
               </div>
@@ -112,9 +113,9 @@ export default function BookingUnified() {
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
               <Clock className="w-8 h-8 text-[#0a2540] dark:text-black" />
             </div>
-            <h3 className="luxury-heading-sm mb-3">Instant Confirmation</h3>
+            <h3 className="luxury-heading-sm mb-3">{he ? "סטטוס ברור בכל שלב" : "Clear status at every step"}</h3>
             <p className="luxury-text-small">
-              Real-time availability and instant booking confirmation
+              {he ? "בקשה, אישור הספק, אישור סופי — תמיד רואים איפה ההזמנה עומדת." : "Request, provider acceptance, confirmation — you always see where a booking stands."}
             </p>
           </div>
 
@@ -122,9 +123,9 @@ export default function BookingUnified() {
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
               <CreditCard className="w-8 h-8 text-[#0a2540] dark:text-black" />
             </div>
-            <h3 className="luxury-heading-sm mb-3">Secure Payments</h3>
+            <h3 className="luxury-heading-sm mb-3">{he ? "תשלום מאובטח" : "Secure payments"}</h3>
             <p className="luxury-text-small">
-              Safe 72-hour escrow with Nayax Israel
+              {he ? "תשלום בכרטיס דרך ספק סליקה ישראלי מורשה; הכסף מוחזק עד להשלמת השירות." : "Card payments through a licensed Israeli payment provider; funds are held until the service is completed."}
             </p>
           </div>
 
@@ -132,9 +133,9 @@ export default function BookingUnified() {
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#e8f0fe] to-[#d1e3ff] dark:from-[#0a2540] dark:to-[#1a365d] flex items-center justify-center mx-auto mb-6">
               <Calendar className="w-8 h-8 text-[#0a2540] dark:text-black" />
             </div>
-            <h3 className="luxury-heading-sm mb-3">Flexible Scheduling</h3>
+            <h3 className="luxury-heading-sm mb-3">{he ? "תיאום גמיש" : "Flexible scheduling"}</h3>
             <p className="luxury-text-small">
-              Easy rebooking and cancellation policies
+              {he ? "שינוי מועד או ביטול לפי מדיניות הביטולים המפורסמת." : "Reschedule or cancel under the published cancellation policy."}
             </p>
           </div>
         </div>

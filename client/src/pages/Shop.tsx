@@ -20,6 +20,7 @@ import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useSEO, pageSEO } from '@/lib/seo';
 import { apiRequest } from '@/lib/queryClient';
+import { useLanguage } from '@/lib/languageStore';
 import { getApiUrl } from '@/lib/apiConfig';
 import {
   Tag, Heart, Sparkles, ShoppingBag, Mail, ArrowRight, Gift,
@@ -124,6 +125,8 @@ const CATEGORIES: LifeCategory[] = [
 ];
 
 export default function Shop() {
+  const { language } = useLanguage();
+  const he = language === 'he';
   useSEO(pageSEO.shop);
   const [, setLocation] = useLocation();
   const [submittedCategory, setSubmittedCategory] = useState<string | null>(null);
@@ -181,21 +184,20 @@ export default function Shop() {
 
       <div className="sh-frame">
         <button type="button" className="sh-back" onClick={() => setLocation('/')}>
-          ← Back
+          {he ? '→ חזרה' : '← Back'}
         </button>
 
         {/* ── Hero ─────────────────────────────────────────────────────── */}
         <header className="sh-hero">
           <div className="sh-eyebrow">PetWash™‎ Shop</div>
           <h1 className="sh-h1">
-            The pet-lifestyle shop.<br />
-            <span className="sh-gold">In development — join the waitlist.</span>
+            {he ? 'חנות הלייף-סטייל לחיות מחמד.' : 'The pet-lifestyle shop.'}<br />
+            <span className="sh-gold">{he ? 'בפיתוח — הצטרפו לרשימת ההמתנה.' : 'In development — join the waitlist.'}</span>
           </h1>
           <p className="sh-intro">
-            We are curating a tight lineup of branded merch, personalised accessories,
-            and clean-ingredient treats. Honest preview below; no products are on
-            sale yet. Tell us what you want first and you'll be notified when each
-            category opens.
+            {he
+              ? 'אנחנו אוצרים מבחר ממוקד של מוצרי מותג, אביזרים בהתאמה אישית וחטיפים ממרכיבים נקיים. תצוגה מקדימה כנה למטה; שום מוצר עדיין לא נמכר. ספרו לנו מה אתם רוצים קודם ונעדכן אתכם כשכל קטגוריה תיפתח.'
+              : "We are curating a tight lineup of branded merch, personalised accessories, and clean-ingredient treats. Honest preview below; no products are on sale yet. Tell us what you want first and you'll be notified when each category opens."}
           </p>
         </header>
 
@@ -262,9 +264,9 @@ export default function Shop() {
                   aria-pressed={isPicked}
                 >
                   {isPicked ? (
-                    <><CheckCircle2 size={16} /> Interested</>
+                    <><CheckCircle2 size={16} /> {he ? 'מעניין אותי' : 'Interested'}</>
                   ) : (
-                    <><Mail size={16} /> Notify me</>
+                    <><Mail size={16} /> {he ? 'עדכנו אותי' : 'Notify me'}</>
                   )}
                 </button>
               </article>
@@ -275,10 +277,9 @@ export default function Shop() {
         {/* ── Waitlist form ───────────────────────────────────────────── */}
         <section className="sh-waitlist">
           <div className="sh-waitInner">
-            <h2 className="sh-h2">Join the waitlist</h2>
+            <h2 className="sh-h2">{he ? 'הצטרפו לרשימת ההמתנה' : 'Join the waitlist'}</h2>
             <p className="sh-intro sh-intro--small">
-              Tap a category above to mark interest. Add your email here and we'll
-              notify you per category as each opens.
+              {he ? 'הקישו על קטגוריה למעלה כדי לסמן עניין. הוסיפו אימייל ונעדכן אתכם על כל קטגוריה כשהיא נפתחת.' : "Tap a category above to mark interest. Add your email here and we'll notify you per category as each opens."}
             </p>
             <form onSubmit={submitWaitlist} className="sh-form">
               <input
@@ -292,7 +293,7 @@ export default function Shop() {
                 onChange={(e) => setEmail(e.target.value)}
               />
               <button type="submit" className="sh-submit">
-                Join {interest.length > 0 && <span className="sh-count">({interest.length} selected)</span>}
+                {he ? 'הצטרפות' : 'Join'} {interest.length > 0 && <span className="sh-count">({interest.length} {he ? 'נבחרו' : 'selected'})</span>}
                 <ArrowRight size={16} />
               </button>
             </form>

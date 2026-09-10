@@ -135,9 +135,9 @@ export default function PetWashInbox() {
   const shown = CATS.find(x => x.id === cat)?.list ?? active;
 
   const TABS: { id: Tab; label: string; badge?: number }[] = [
-    { id: 'messages',  label: 'Messages',  badge: unreadMsgs },
-    { id: 'concierge', label: 'Concierge' },
-    { id: 'alerts',    label: 'Alerts',    badge: unreadAlerts },
+    { id: 'messages',  label: he ? 'הודעות' : 'Messages',  badge: unreadMsgs },
+    { id: 'concierge', label: he ? 'קונסיירז׳' : 'Concierge' },
+    { id: 'alerts',    label: he ? 'התראות' : 'Alerts',    badge: unreadAlerts },
   ];
 
   return (
@@ -147,7 +147,7 @@ export default function PetWashInbox() {
         {/* Header — compact */}
         <div className="sticky top-0 z-10 bg-white px-4 pt-3 pb-2 border-b border-gray-100">
           <div className="flex items-center justify-between">
-            <h1 className="text-[20px] font-medium text-gray-900 leading-none">Inbox</h1>
+            <h1 className="text-[20px] font-medium text-gray-900 leading-none">{he ? 'תיבת הודעות' : 'Inbox'}</h1>
             <Bell className="w-[18px] h-[18px] text-gray-400" />
           </div>
           {/* Segmented tabs */}
