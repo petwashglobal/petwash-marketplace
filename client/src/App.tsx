@@ -2075,7 +2075,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Provider OS — Full Operating System */}
         <Route path="/provider-os">
           {() => (
-            <RoleProtectedRoute minRole="provider">
+            /* A non-provider used to be bounced to "/" with no explanation
+               (live QA 2026-09-10). /choose-path says why and offers the door. */
+            <RoleProtectedRoute minRole="provider" fallbackPath="/choose-path">
               {/* PROVIDER-app agreement gate (fail-open, native provider flavor only; web/customer pass-through). */}
               <AppTermsGate flavor="provider" language={language}>
                 <Suspense fallback={<PageLoader />}>
@@ -2089,7 +2091,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Luxury provider home — dark rollout, reachable for preview */}
         <Route path="/provider/home">
           {() => (
-            <RoleProtectedRoute minRole="provider">
+            <RoleProtectedRoute minRole="provider" fallbackPath="/choose-path">
               <Suspense fallback={<PageLoader />}>
                 <ProviderHome />
               </Suspense>

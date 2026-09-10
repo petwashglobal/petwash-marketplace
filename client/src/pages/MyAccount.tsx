@@ -964,6 +964,12 @@ export default function MyAccount() {
     code: string; claimed: boolean; expiresAt: string; calendarLink: string; discountPercent: number; year: number;
   } | { error: string }>({
     queryKey: ['/api/promo/birthday'],
+    // 400 = no birthday on file — the page renders that as the { error } shape.
+    // Without expectedStatuses every /my-account load logged an [API Error].
+    queryFn: async () => {
+      const r = await apiRequest('GET', '/api/promo/birthday', undefined, { expectedStatuses: [400] });
+      return r.json();
+    },
     enabled: !!user,
     retry: false,
   });
