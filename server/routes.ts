@@ -419,6 +419,61 @@ import {
   userConsents,
   pets
 } from "@shared/schema";
+
+/**
+ * THE TIER LADDER WAS A PICTURE ON A WALL. (2026-09-11)
+ *
+ * /loyalty/tiers advertises 5% + a per-tier bonus — Silver 6% up to Black
+ * Reserve 15% — and the payment engine below paid a flat 5% to every club
+ * member regardless of tier. calculateTotalDiscount(), the one function that
+ * turns a tier into a discount, was defined in shared/schema-loyalty.ts and
+ * CALLED FROM NOWHERE in the entire repository. A Black Reserve member was
+ * promised 15% and charged as if they were on day one.
+ *
+ * WHICH TABLE IS AUTHORITATIVE. Three disagreed:
+ *   1. shared/schema-loyalty.ts — 7 tiers, base 5% + tierBonusPercent, capped
+ *      at MAX_DISCOUNT_CAP = 15. This is the one the customer-facing page
+ *      advertises and the one the CEO-locked tier names come from.
+ *   2. server/services/loyalty.ts getTierDiscount() — a stale 5-tier table
+ *      (BRONZE..DIAMOND, 0-20%) that BREACHES the 15% cap and matches no
+ *      surface. Not used here; left alone so this change moves money in one
+ *      place only, but it should be deleted before someone wires it.
+ *   3. this engine — flat 5%.
+ * (1) wins because it is what we publicly promise.
+ *
+ * NOBODY IS CHARGED MORE THAN TODAY. The tier discount is applied with
+ * Math.max against whatever the priority ladder already produced, so a member
+ * who qualifies for the KYC / birthday / new-member 10% keeps it, and a
+ * higher-tier member finally gets the number on the page. The result is
+ * clamped to MAX_DISCOUNT_CAP so no path can exceed the documented ceiling.
+ *
+ * Tier truth is privilege_members, NOT users.loyaltyTier — that column is what
+ * made non-enrolled members read as "Bronze" (#2345/#2357). A member with no
+ * privilege_members row is not enrolled and gets no tier bonus.
+ */
+async function resolveMemberTierDiscount(userId: string): Promise<{ percent: number; tier: string } | null> {
+  try {
+    const { privilegeMembers } = await import('@shared/schema');
+    const { calculateTotalDiscount } = await import('@shared/schema-loyalty');
+    const [member] = await db
+      .select({ tier: privilegeMembers.tier, status: privilegeMembers.status })
+      .from(privilegeMembers)
+      .where(eq(privilegeMembers.firebaseUid, userId))
+      .limit(1);
+    if (!member || member.status !== 'active') return null;
+    const tier = String(member.tier || 'bronze');
+    const percent = calculateTotalDiscount(tier as any, 'none', false);
+    return Number.isFinite(percent) ? { percent, tier } : null;
+  } catch (err: any) {
+    // A lookup failure must never change the price. Fall through to whatever
+    // the priority ladder decided — the member keeps today's discount.
+    logger.warn('[Loyalty] tier discount lookup failed — leaving discount unchanged', {
+      userId, error: err?.message,
+    });
+    return null;
+  }
+}
+
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
 import { legacyGiftCardRedeemHandler } from "./lib/legacy-gift-card-redeem-handler";
@@ -7742,6 +7797,18 @@ self.addEventListener('notificationclick', (event) => {
         // Regular member discount (5%)
         discount = 5;
         discountType = 'regular_member';
+      }
+
+      // HONOUR THE TIER THE PAGE ADVERTISES. See resolveMemberTierDiscount.
+      // max(), so this can only ever raise a member's discount, never lower
+      // one; min(MAX_DISCOUNT_CAP) so no path exceeds the documented ceiling.
+      if (user?.isClubMember) {
+        const tierDiscount = await resolveMemberTierDiscount(userId);
+        if (tierDiscount && tierDiscount.percent > discount) {
+          const { MAX_DISCOUNT_CAP } = await import('@shared/schema-loyalty');
+          discount = Math.min(tierDiscount.percent, MAX_DISCOUNT_CAP);
+          discountType = `tier_${tierDiscount.tier}`;
+        }
       }
 
       const discountAmount = (Number(pkg.price) * discount) / 100;

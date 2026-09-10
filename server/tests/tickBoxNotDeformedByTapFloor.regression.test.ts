@@ -769,3 +769,55 @@ describe("the provider activation gate is asked with an answer", () => {
     expect(body).toMatch(/insuranceWaivedByCompliance: false/);
   });
 });
+
+/**
+ * 2026-09-11 — the tier ladder was a picture on a wall.
+ *
+ * /loyalty/tiers advertises 5% + a per-tier bonus, Silver 6% up to Black
+ * Reserve 15%. The payment engine paid a FLAT 5% to every club member.
+ * calculateTotalDiscount() — the one function that turns a tier into a
+ * discount — was defined in shared/schema-loyalty.ts and called from NOWHERE
+ * in the repository. A Black Reserve member was promised 15% and charged as if
+ * they had joined that morning.
+ */
+describe("a member is charged the discount the page promises them", () => {
+  const src = readFileSync(resolve(root, "server/routes.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  it("the canonical discount function is actually called", () => {
+    const shared = readFileSync(resolve(root, "shared/schema-loyalty.ts"), "utf8");
+    expect(shared, "calculateTotalDiscount is gone — this pin needs rewriting")
+      .toMatch(/export function calculateTotalDiscount/);
+    expect(src).toMatch(/calculateTotalDiscount/);
+  });
+
+  it("tier truth is privilege_members, never users.loyaltyTier", () => {
+    const fn = src.slice(src.indexOf("async function resolveMemberTierDiscount"));
+    const body = fn.slice(0, fn.indexOf("\n}\n"));
+    expect(body).toMatch(/privilegeMembers\.firebaseUid/);
+    expect(body).not.toMatch(/loyaltyTier/);
+    // An inactive or absent membership is not a tier.
+    expect(body).toMatch(/status !== 'active'/);
+  });
+
+  it("the tier can only raise a discount, never lower one", () => {
+    const at = src.indexOf("resolveMemberTierDiscount(userId)");
+    const block = src.slice(at, at + 500);
+    expect(block).toMatch(/tierDiscount\.percent > discount/);
+  });
+
+  it("no path can exceed the documented cap", () => {
+    const at = src.indexOf("resolveMemberTierDiscount(userId)");
+    const block = src.slice(at, at + 500);
+    expect(block).toMatch(/Math\.min\(tierDiscount\.percent, MAX_DISCOUNT_CAP\)/);
+  });
+
+  it("a lookup failure leaves the price alone", () => {
+    const fn = src.slice(src.indexOf("async function resolveMemberTierDiscount"));
+    const body = fn.slice(0, fn.indexOf("\n}\n"));
+    // Returning null means the priority ladder's number stands — a database
+    // hiccup must never change what a customer is charged.
+    expect(body).toMatch(/catch[\s\S]{0,300}return null/);
+  });
+});
