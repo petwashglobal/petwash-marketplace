@@ -111,9 +111,17 @@ export default function ProviderOS() {
     queryFn: () => apiRequest('GET', '/api/provider-dashboard/v2/stats').then(r => r.json()),
     staleTime: 30_000,
   });
-  const providerId: number | undefined = provStats?.platforms?.[0]?.id;
+  // UNWRAP `.stats`. (2026-09-10) The endpoint answers
+  // { success: true, stats: { ... } } (provider-dashboard-v2.ts:527), so every
+  // read off the ROOT was undefined even on a 200 with real data. That made
+  // providerId undefined, and the availability toggle below returns early on
+  // `if (!providerId)` — so "Available/Offline" flipped in the UI and NEVER
+  // persisted. The provider believed they were offline and stayed bookable.
+  // ProviderHome.tsx:61 already unwrapped correctly; these did not.
+  const provStatsInner: any = (provStats as any)?.stats ?? provStats ?? {};
+  const providerId: number | undefined = provStatsInner?.platforms?.[0]?.id;
   useEffect(() => {
-    const serverAvail = provStats?.platforms?.[0]?.isAvailable;
+    const serverAvail = provStatsInner?.platforms?.[0]?.isAvailable;
     if (typeof serverAvail === 'boolean') setIsAvailable(serverAvail);
   }, [provStats]);
 

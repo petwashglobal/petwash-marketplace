@@ -58,10 +58,18 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  // UNWRAP `.stats`. (2026-09-10) The endpoint answers
+  // { success: true, stats: { ... } } (provider-dashboard-v2.ts:527). Reading
+  // the ROOT made every field undefined even on a 200 with real data, so the
+  // `?? 0` fallbacks below rendered a five-star, 300-job provider as
+  // "0.0★ · 0 completed · 0% · 0 reviews", the availability toggle never
+  // persisted (providerId undefined), and the "documents pending" warning at
+  // the foot of this file could never fire.
+  const { data: statsRes, isLoading: statsLoading } = useQuery({
     queryKey: ['/api/provider-dashboard/v2/stats'],
     queryFn: () => fetchWithAuth('/api/provider-dashboard/v2/stats'),
   });
+  const stats: any = (statsRes as any)?.stats ?? statsRes ?? {};
 
   const { data: profileData } = useQuery<{
     exists: boolean;

@@ -217,7 +217,10 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
           {earningsLoading ? <div className="h-7 bg-white rounded animate-pulse mb-1" /> : (
             <p className="text-xl font-bold text-gray-900">{pending !== null ? FMT_ILS(pending) : '—'}</p>
           )}
-          <p className="text-xs text-gray-500">Pending (48h hold)</p>
+          {/* No 48-hour hold exists anywhere in the payout path. The server
+              field is simply "completed and not yet paid out" — which is the
+              balance the payout tab now offers as withdrawable. */}
+          <p className="text-xs text-gray-500">Pending payout</p>
         </div>
 
         {/* Last month */}
@@ -364,23 +367,35 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
 
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Request Payout</h3>
+            {/* WITHDRAWABLE = pendingPayouts, NOT paidPayouts. (2026-09-10)
+                `paid` is money that has ALREADY LEFT for the provider's bank
+                (SUM WHERE payout_status = 'paid_out'). This line offered it as
+                the balance to withdraw, and "Max" pre-filled it — while the
+                server clamps the request against
+                  status IN ('completed','reviewed') AND payout_status != 'paid_out'
+                (provider-dashboard-v2.ts:1540-1553), i.e. `pending`. So the
+                headline was the one number you cannot have, and Max always
+                earned a 400 "exceeds your available payout balance". */}
             <p className="text-xs text-gray-500 mb-3">
-              Available to withdraw: <strong className="text-green-700">{paid !== null ? FMT_ILS(paid) : '₪0.00'}</strong>
+              Available to withdraw: <strong className="text-green-700">{pending !== null ? FMT_ILS(pending) : '₪0.00'}</strong>
             </p>
             <div className="flex gap-3 mb-3">
               <input type="number" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)}
                 placeholder="Amount ₪"
                 className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
-              <button onClick={() => setPayoutAmount(String(paid ?? 0))}
+              <button onClick={() => setPayoutAmount(String(pending ?? 0))}
                 className="px-3 py-2.5 bg-white text-gray-700 text-xs font-medium rounded-xl hover:bg-white transition-colors">
                 Max
               </button>
             </div>
-            <button onClick={handleRequestPayout} disabled={payoutLoading || !hasAnyEarnings}
+            <button onClick={handleRequestPayout} disabled={payoutLoading || !(pending !== null && pending > 0)}
               className="w-full py-3 bg-amber-500 text-white rounded-xl text-sm font-semibold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
               {payoutLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : 'Request Payout'}
             </button>
-            <p className="text-[10px] text-gray-400 text-center mt-2">Transfers take 1–3 business days · Minimum ₪100</p>
+            {/* No minimum is enforced anywhere: the server rejects only
+                amount <= 0 (provider-dashboard-v2.ts). Claiming a ₪100 floor
+                turned away providers who could in fact withdraw ₪40. */}
+            <p className="text-[10px] text-gray-400 text-center mt-2">Transfers take 1–3 business days</p>
           </div>
         </div>
       )}
