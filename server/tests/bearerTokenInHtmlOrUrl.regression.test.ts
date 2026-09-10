@@ -36,9 +36,25 @@
  * WHY the pattern is banned.
  */
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { repoGrep } from './helpers/repoGrep';
+
+/*
+ * WHOLE-TREE SCAN BUDGET (2026-09-10). These pins walk every .ts (and for some,
+ * .tsx) under server/, shared/ and client/ in-process. They used to shell out
+ * to ripgrep — a purpose-built parallel scanner — but ripgrep is not a
+ * dependency of this repo and is often a shell function rather than a binary,
+ * so `execSync` could never find it and NONE of these tests could run.
+ *
+ * In-process, a single file finishes in well under a second. But `test:money`
+ * runs these files in PARALLEL workers that each fill their own cache and
+ * contend for I/O, and that is enough to blow vitest's 5s default. A timeout
+ * presents identically to a real regression, so the budget is explicit and
+ * generous rather than left to chance.
+ */
+vi.setConfig({ testTimeout: 60_000 });
+
 
 const ROOT = join(__dirname, '..', '..');
 
@@ -51,16 +67,13 @@ const ALLOWED = new Set<string>([
 ]);
 
 function grepRepo(pattern: string): string[] {
-  try {
-    const out = execSync(
-      `rg --no-heading -n -g '*.ts' -g '!server/tests/**' -g '!**/node_modules/**' -g '!client/**' ${JSON.stringify(pattern)} ${ROOT}`,
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30_000 },
-    );
-    return out.split('\n').filter(Boolean);
-  } catch (err: any) {
-    if (err?.status === 1) return [];
-    throw err;
-  }
+  // Was `execSync("rg ...")`. ripgrep is not a dependency of this repo and
+  // is frequently a shell function rather than a binary, so /bin/sh could not
+  // find it and every test in this file died before asserting. See
+  // server/tests/helpers/repoGrep.ts.
+  return repoGrep(ROOT, pattern, {
+    includeExt: ['ts'],
+  });
 }
 
 function stray(hits: string[]): string[] {

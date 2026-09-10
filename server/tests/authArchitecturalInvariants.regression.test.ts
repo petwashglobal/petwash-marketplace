@@ -27,32 +27,48 @@
  * That's ~10 pins already; this file adds the ones NOT yet pinned.
  */
 import { readFileSync } from 'node:fs';
-import { execSync } from 'node:child_process';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { repoGrep } from './helpers/repoGrep';
+
+/*
+ * WHOLE-TREE SCAN BUDGET (2026-09-10). These pins walk every .ts (and for some,
+ * .tsx) under server/, shared/ and client/ in-process. They used to shell out
+ * to ripgrep — a purpose-built parallel scanner — but ripgrep is not a
+ * dependency of this repo and is often a shell function rather than a binary,
+ * so `execSync` could never find it and NONE of these tests could run.
+ *
+ * In-process, a single file finishes in well under a second. But `test:money`
+ * runs these files in PARALLEL workers that each fill their own cache and
+ * contend for I/O, and that is enough to blow vitest's 5s default. A timeout
+ * presents identically to a real regression, so the budget is explicit and
+ * generous rather than left to chance.
+ */
+vi.setConfig({ testTimeout: 60_000 });
+
 
 const ROOT = join(__dirname, '..', '..');
 
 function grepRepo(pattern: string, opts: { includeExt?: string[]; excludeGlobs?: string[] } = {}): string[] {
-  const ext = (opts.includeExt || ['ts', 'tsx']).map((e) => `-g '*.${e}'`).join(' ');
-  const exclude = (opts.excludeGlobs || [])
-    .concat(['**/node_modules/**', '**/dist/**', '**/build/**', 'server/tests/**'])
-    .map((g) => `-g '!${g}'`)
-    .join(' ');
-  try {
-    const out = execSync(
-      `rg --no-heading -n ${ext} ${exclude} ${JSON.stringify(pattern)} ${ROOT}`,
-      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
-    );
-    return out.split('\n').filter(Boolean);
-  } catch (err: any) {
-    // rg exits 1 when no matches — that's a passing case for most
-    // of these invariants.
-    if (err?.status === 1) return [];
-    throw err;
-  }
+  // Was `execSync("rg ...")` — see server/tests/helpers/repoGrep.ts for why
+  // that could never run.
+  return repoGrep(ROOT, pattern, {
+    includeExt: opts.includeExt ?? ['ts', 'tsx'],
+    excludeGlobs: opts.excludeGlobs,
+    includeClient: true,
+  });
 }
 
+/*
+ * TIMEOUTS (2026-09-10): the two whole-tree scans below carry an explicit 60s
+ * budget. They used to shell out to ripgrep — a parallel scanner written for
+ * exactly this — and now walk the tree in-process instead, because ripgrep is
+ * not a dependency of this repo and these pins could never actually run. The
+ * in-process walk caches file contents, but the FIRST pattern still has to
+ * read every .ts and .tsx under client/ and server/, which does not fit in
+ * vitest's 5s default. A timeout here reads as a failure identical to a real
+ * regression, so it is set generously and deliberately.
+ */
 describe('auth-rebuild architectural invariants', () => {
   // ─────────────────────────────────────────────────────────────
   // 1. Auth token in URL — bearers and session ids must never
