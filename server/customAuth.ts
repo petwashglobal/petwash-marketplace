@@ -8,6 +8,7 @@ import { storage } from './storage';
 import { insertCustomerSchema } from '@shared/schema';
 import { z } from 'zod';
 import { logger } from './lib/logger';
+import { isUniqueViolation } from './lib/dbErrors';
 
 const PostgresStore = connectPgSimple(session);
 
@@ -314,8 +315,11 @@ export async function requireAuth(req: Request, res: Response, next: any) {
             });
             logger.info(`Created new customer record for Firebase user: ${decodedClaims.uid}`);
           } catch (createError: any) {
-            // If duplicate email error, retry lookup (another request created it)
-            if (createError?.code === '23505' || createError?.message?.includes('unique')) {
+            // If duplicate email error, retry lookup (another request created it).
+            // Drizzle wraps the pg error ("Failed query: …") and keeps the real
+            // code on .cause — `createError.code` is undefined on the wrapper,
+            // so this branch never fired and a first-screen race answered 500.
+            if (isUniqueViolation(createError)) {
               customer = await storage.getCustomerByEmail(userEmail);
             } else {
               // Log validation/schema errors and use a fallback
