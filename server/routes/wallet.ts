@@ -11,6 +11,7 @@
 import express from 'express';
 import { AppleWalletService } from '../appleWallet';
 import { logger } from '../lib/logger';
+import { resolveMemberTier } from '../lib/memberTier';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { db } from '../lib/firebase-admin';
 import { walletFraudProtection, WalletFraudDetection } from '../middleware/fraudDetection';
@@ -153,7 +154,7 @@ router.post('/vip-card', requireAuth, async (req, res) => {
     const userData = userDoc.data();
     
     // Get loyalty data from trusted server storage only
-    const tier = userData?.loyaltyTier || 'new';
+    const tier = await resolveMemberTier(userData?.loyaltyTier, userData?.email);
     const points = userData?.loyaltyPoints || 0;
     const discountPercent = userData?.loyaltyDiscountPercent || 0;
     const memberSince = userData?.loyaltyMemberSince?.toDate() || userData?.createdAt?.toDate() || new Date();
@@ -338,7 +339,7 @@ router.post('/update-vip', requireAuth, async (req, res) => {
     
     // Get current loyalty data for update
     const points = userData?.loyaltyPoints || 0;
-    const tier = userData?.loyaltyTier || 'new';
+    const tier = await resolveMemberTier(userData?.loyaltyTier, userData?.email);
     const discountPercent = userData?.loyaltyDiscountPercent || 0;
 
     // Update pass with server-validated current data
@@ -820,7 +821,7 @@ router.get('/pass/:linkId', async (req, res) => {
     let filename: string;
     
     if (linkData.passType === 'vip') {
-      const tier = userData?.loyaltyTier || 'new';
+      const tier = await resolveMemberTier(userData?.loyaltyTier, userData?.email);
       const points = userData?.loyaltyPoints || 0;
       const discountPercent = userData?.loyaltyDiscountPercent || 0;
       const memberSince = userData?.loyaltyMemberSince?.toDate() || userData?.createdAt?.toDate() || new Date();
@@ -941,7 +942,7 @@ router.post('/email-cards', requireAuth, async (req, res) => {
       return res.status(503).json({ error: 'Apple Wallet is not configured' });
     }
 
-    const tier = userData?.loyaltyTier || 'new';
+    const tier = await resolveMemberTier(userData?.loyaltyTier, userData?.email);
     const points = userData?.loyaltyPoints || 0;
     const discountPercent = userData?.loyaltyDiscountPercent || 0;
 
@@ -1172,7 +1173,7 @@ router.post('/admin-send', async (req, res) => {
       if (userDoc.exists) {
         const d = userDoc.data()!;
         userName = d.displayName || d.firstName ? `${d.firstName || ''} ${d.lastName || ''}`.trim() : userName;
-        userTier = d.loyaltyTier || 'gold';
+        userTier = await resolveMemberTier(d.loyaltyTier, d.email);
         userPoints = d.loyaltyPoints || 0;
         userDiscount = d.loyaltyDiscountPercent || 0;
       }
@@ -1628,7 +1629,7 @@ router.post('/nayax/redeem-loyalty', auditLogMiddleware('WALLET_BURN'), async (r
     }
 
     const userData = userDoc.data();
-    const currentTier = userData?.loyaltyTier || 'new';
+    const currentTier = await resolveMemberTier(userData?.loyaltyTier, userData?.email);
     const currentPoints = userData?.loyaltyPoints || 0;
     const currentDiscount = userData?.loyaltyDiscountPercent || 0;
 
@@ -1700,7 +1701,7 @@ router.get('/nayax/verify-loyalty/:userId', async (req, res) => {
 
     res.json({
       userId,
-      tier: userData?.loyaltyTier || 'new',
+      tier: await resolveMemberTier(userData?.loyaltyTier, userData?.email),
       discountPercent: userData?.loyaltyDiscountPercent || 0,
       points: userData?.loyaltyPoints || 0,
       active: true

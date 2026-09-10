@@ -20,10 +20,9 @@ describe('credit-wallet summary tier truth', () => {
   it('the summary route exists', () => {
     expect(start).toBeGreaterThan(0);
   });
-  it('looks enrollment up in privilegeMembers by email on the Postgres client, failing closed', () => {
-    expect(SRC).toMatch(/async function isPrestigeEnrolled\(email/);
-    expect(SRC).toMatch(/\.from\(privilegeMembers\)\s*\.where\(eq\(privilegeMembers\.email, email\.toLowerCase\(\)\)\)/);
-    expect(SRC).toContain("prestige lookup failed (defaulting not enrolled)");
+  it('looks enrollment up through the shared lib/memberTier helper (fail-closed there)', () => {
+    expect(SRC).toContain("import { isPrestigeEnrolled } from '../lib/memberTier';");
+    expect(SRC).not.toMatch(/async function isPrestigeEnrolled\(email/);
   });
   it("overrides loyaltyTier to 'new' unless enrolled, after spreading the service summary", () => {
     expect(handler).toContain("const prestigeEnrolled = await isPrestigeEnrolled(req.user?.email || req.firebaseUser?.email);");
