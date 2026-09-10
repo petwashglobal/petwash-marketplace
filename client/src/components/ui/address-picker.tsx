@@ -294,7 +294,7 @@ export function AddressPicker({
                 <button
                   type="button"
                   onClick={() => deleteMutation.mutate(addr.id)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 text-gray-300 hover:text-red-400 transition-all"
+                  className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 p-1.5 text-gray-300 hover:text-red-400 transition-all"
                   title={isHebrew ? "הסר" : "Remove"}
                 >
                   ✕

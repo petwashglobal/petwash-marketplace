@@ -161,7 +161,7 @@ export default function AdminBookingChat() {
                   )}
                   
                   {/* Moderation Panel */}
-                  <div className="absolute top-2 -right-12 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute top-2 end-2 sm:-end-12 flex flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                     {!msg.isDeleted && (
                       <Button 
                         size="icon" 
