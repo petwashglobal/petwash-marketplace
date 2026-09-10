@@ -1345,6 +1345,41 @@
 
 /* LANDSCAPE MODE - All mobile devices with short height */
 @media (orientation: landscape) and (max-height: 500px) {
+  /* LANDSCAPE HEADER BUDGET (2026-09-10)
+   *
+   * Measured on a booted app at real device sizes, Hebrew, before this block
+   * was extended: on a 667x375 landscape iPhone SE the header was 156px —
+   * 42% of the screen — before a single line of content. Three stacked rows:
+   *
+   *   .pw-header-row-logo       50px
+   *   .pw-header-row-controls   52px
+   *   .pw-mobile-nav-strip      53px
+   *
+   * The rules already in this block never touched any of them. They target
+   * `.pw-header-inner`, and the mobile header does not render that element at
+   * all — verified against the live DOM, `.pw-header-inner` is absent at this
+   * size. So the landscape block matched, and did nothing to the three rows
+   * that actually make the height. That declaration is left in place rather
+   * than deleted because a wider header variant may still use it; it is a
+   * no-op here either way.
+   *
+   * The nav strip is the single biggest line item and it is ALREADY hidden at
+   * >= 768px (see the `min-width: 768px` block above). Hiding it on the short
+   * axis is that same decision applied to the other dimension, not a new
+   * product call — and the burger drawer still carries full navigation, which
+   * was verified present at this size, so nothing becomes unreachable. */
+  .pw-mobile-nav-strip {
+    display: none !important;
+  }
+
+  /* The logo image is already pulled to 2.25rem below, but the link wrapping
+     it holds a 48px min-height that kept the row at 50px regardless. The
+     crown stays centred — `justify-content: center` on .pw-header-row-logo is
+     a CEO rule and is untouched; only the vertical box shrinks. */
+  .pw-logo-link {
+    min-height: 2.25rem !important;
+  }
+
   .pw-header-inner {
     height: 3rem !important;
     padding: 0 0.5rem !important;
