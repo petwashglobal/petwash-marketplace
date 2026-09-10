@@ -43,6 +43,11 @@ const ROUTES = [
   '/prestige-club',
   '/trust',
   '/support',
+  // 2026-09-10: these two were rewritten to Cloud Run, which served the API
+  // image's OWN client build (stale entry chunk → blank page). Hosting serves
+  // them now; snapshot them so crawlers still get real HTML.
+  '/stations',
+  '/pettrek',
 ];
 
 const MIME = {
