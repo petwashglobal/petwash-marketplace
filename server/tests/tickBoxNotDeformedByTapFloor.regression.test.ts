@@ -576,3 +576,79 @@ describe("the resubmission link the server emails has somewhere to land", () => 
     expect(page).not.toMatch(/Authorization/);
   });
 });
+
+/**
+ * 2026-09-10 — security upgrades, and the upload path that needed them most.
+ *
+ * npm audit: 8 high-severity advisories, 3 of which have no fixed release.
+ * The one that mattered was multer <= 2.2.0 (GHSA-wc9g-mqfw-jrwm, CVSS 7.5):
+ * two crafted multipart FIELD NAMES raise an uncaught RangeError that bypasses
+ * the application error handler and terminates the Node process. Remote,
+ * unauthenticated, one request. This repo has already been taken down once by
+ * an uncaught exception in a crash loop.
+ */
+describe("the upload stack is on patched versions and trusts bytes, not headers", () => {
+  const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
+
+  it("multer is at or above the release that fixed the field-name DoS", () => {
+    const range = String(pkg.dependencies?.multer ?? "");
+    const min = range.replace(/^[^0-9]*/, "").split(".").map(Number);
+    expect(min.length, `unreadable multer range: ${range}`).toBeGreaterThanOrEqual(2);
+    const [maj, minor] = min;
+    expect(maj > 2 || (maj === 2 && minor >= 3), `multer ${range} is below 2.3.0`).toBe(true);
+  });
+
+  it("the transitive advisories stay pinned by an override", () => {
+    const ov = pkg.overrides ?? {};
+    for (const dep of ["js-yaml", "fast-uri", "browserslist", "@xmldom/xmldom"]) {
+      expect(ov[dep], `no override pinning ${dep}`).toBeTruthy();
+    }
+  });
+
+  /**
+   * sharp carries unpatched libvips CVEs with no fixed release, and
+   * POST /api/avatars/guest takes an upload with NO authentication. Its
+   * fileFilter read file.mimetype — the client's declared Content-Type — while
+   * sharp sniffs the real bytes and picks the matching libvips decoder. The
+   * repo already had a magic-number validator; this route just never used it.
+   */
+  it("both avatar upload routes validate the magic number, not the declared type", () => {
+    const src = readFileSync(resolve(root, "server/routes/avatars.ts"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    const posts = src.split("\n").filter((l) => l.includes("upload.single('photo')"));
+    expect(posts.length, "the avatar upload routes moved — this pin needs rewriting").toBeGreaterThanOrEqual(2);
+    for (const line of posts) {
+      expect(line, `an upload route with no content validation: ${line.trim().slice(0, 80)}`)
+        .toMatch(/requireValidFileContent\(/);
+    }
+  });
+});
+
+/**
+ * 2026-09-10 — the grooming platform's primary CTA reloaded the page you were on.
+ *
+ * /groomers renders groomers/Overview.tsx. Its hero button AND its "Find a
+ * Groomer" feature card both linked to "/groomers" — itself. The real browse
+ * view is /groomers/explore (App.tsx -> Groomers.tsx, which queries
+ * /api/providers/search). So the first thing a customer clicks on the grooming
+ * platform did nothing at all.
+ *
+ * Rover's equivalent card is the top of its funnel; ours was a loop.
+ */
+describe("the grooming funnel advances", () => {
+  it("no CTA on the grooming overview points at the overview itself", () => {
+    const src = readFileSync(resolve(root, "client/src/pages/groomers/Overview.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    expect(src).not.toMatch(/["'`]\/groomers["'`]/);
+  });
+
+  it("it points at the route that actually lists groomers", () => {
+    const src = readFileSync(resolve(root, "client/src/pages/groomers/Overview.tsx"), "utf8");
+    expect(src).toMatch(/\/groomers\/explore/);
+    const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
+    expect(app, "/groomers/explore is gone — this pin needs rewriting")
+      .toMatch(/<Route path="\/groomers\/explore">/);
+  });
+});

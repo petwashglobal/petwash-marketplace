@@ -28,7 +28,11 @@ export default function GroomersOverview() {
       icon: <Search className="h-8 w-8 text-[#B8932F]" />,
       title: "Find a Groomer",
       description: "Browse professional groomers in your area",
-      link: "/groomers",
+      // /groomers is THIS page. Both "Find a Groomer" CTAs pointed at it, so
+      // the primary call to action of the whole grooming platform reloaded the
+      // page you were already on. The browse view is /groomers/explore
+      // (App.tsx -> Groomers.tsx, which queries /api/providers/search).
+      link: "/groomers/explore",
       color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
@@ -89,7 +93,7 @@ export default function GroomersOverview() {
                 Haircuts, baths, nail trims, and spa treatments.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/groomers">
+                <Link href="/groomers/explore">
                   <Button size="lg" className="luxury-btn-primary px-8" data-testid="button-find-groomer">
                     <Scissors className="h-5 w-5 mr-2" />
                     Find a Groomer
