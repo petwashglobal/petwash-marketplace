@@ -317,7 +317,7 @@ export default function PetWashInbox() {
         {/* Trust footer — Airbnb/Uber style */}
         <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-100 mt-1">
           <Lock className="w-[15px] h-[15px]" style={{ color: EMERALD }} />
-          <span className="text-[11.5px] text-gray-500">Chat stays inside PetWash — your phone number is never shared</span>
+          <span className="text-[11.5px] text-gray-500">{he ? 'הצ׳אט נשאר בתוך PetWash — מספר הטלפון שלכם לעולם לא משותף' : 'Chat stays inside PetWash — your phone number is never shared'}</span>
         </div>
 
       </div>
