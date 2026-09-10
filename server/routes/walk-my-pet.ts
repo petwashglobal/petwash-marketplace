@@ -1371,6 +1371,101 @@ router.get('/walks/:bookingId', requireAuth, async (req, res) => {
 });
 
 // Lightweight status poll for pending_match screen (real-time two-way matching)
+/**
+ * GET /walks/:bookingId/care-card
+ *
+ * THE CARE CARD — one artifact for a finished walk: when the walker arrived
+ * and left, how long and how far, the route they actually took, and the photos
+ * and notes they sent along the way.
+ *
+ * Every piece of this was ALREADY being recorded and then scattered:
+ *   - arrival / departure  walk_bookings.actual_start_time / actual_end_time
+ *   - duration             walk_bookings.actual_duration_minutes
+ *   - distance             walk_bookings.total_distance_meters
+ *   - the route            walk_gps_tracking rows for the booking
+ *   - photos and notes     chat_messages (session_photo / care_summary)
+ * The owner had to piece them together from a chat scroll. This assembles
+ * them, and invents nothing: every field is null when it was never captured,
+ * so the client can say "not recorded" instead of printing a confident 0.
+ *
+ * Authorization is the same predicate as GET /walks/:bookingId directly above
+ * — owner, the assigned walker, or a verified super-admin — and the same
+ * 404-not-403 on failure, so this endpoint cannot be used to probe whether a
+ * booking id exists.
+ */
+router.get('/walks/:bookingId/care-card', requireAuth, async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const callerUid = (req as any).user?.uid;
+    if (!callerUid) return res.status(401).json({ error: 'Authentication required' });
+
+    const [row] = await db
+      .select({
+        booking: walkBookings,
+        walker: {
+          walkerId: walkerProfiles.walkerId,
+          userId: walkerProfiles.userId,
+          displayName: walkerProfiles.displayName,
+          profilePhotoUrl: walkerProfiles.profilePhotoUrl,
+        },
+      })
+      .from(walkBookings)
+      .leftJoin(walkerProfiles, eq(walkerProfiles.walkerId, walkBookings.walkerId))
+      .where(eq(walkBookings.bookingId, bookingId))
+      .limit(1);
+
+    if (!row?.booking) return res.status(404).json({ error: 'Booking not found' });
+    const { booking, walker } = row;
+
+    const isOwner = booking.ownerId === callerUid;
+    const isWalker = walker?.userId === callerUid;
+    const isAdmin = isSuperAdminVerified(req as any);
+    if (!isOwner && !isWalker && !isAdmin) {
+      logger.warn('[Walk My Pet] Unauthorized care-card read', { bookingId, callerUid });
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // A card only exists for a walk that actually happened. Anything else and
+    // the client shows nothing rather than an empty frame.
+    if (booking.status !== 'completed' || !booking.actualStartTime) {
+      return res.json({ available: false, reason: 'WALK_NOT_COMPLETED' });
+    }
+
+    const points = await db
+      .select({
+        lat: walkGpsTracking.latitude,
+        lng: walkGpsTracking.longitude,
+        at: walkGpsTracking.recordedAt,
+      })
+      .from(walkGpsTracking)
+      .where(eq(walkGpsTracking.bookingId, bookingId))
+      .orderBy(walkGpsTracking.recordedAt);
+
+    const route = points
+      .map((p) => ({ lat: Number(p.lat), lng: Number(p.lng), at: p.at }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+
+    res.json({
+      available: true,
+      bookingId,
+      walker: walker?.walkerId
+        ? { displayName: walker.displayName, profilePhotoUrl: walker.profilePhotoUrl }
+        : null,
+      startedAt: booking.actualStartTime,
+      endedAt: booking.actualEndTime ?? null,
+      durationMinutes: booking.actualDurationMinutes ?? null,
+      // null, never 0 — a walk with no GPS points has an UNKNOWN distance, and
+      // "0.00 km" would be a confident lie about a walk that did happen.
+      distanceMeters: booking.totalDistanceMeters ?? null,
+      route,
+      notes: booking.completionNotes ?? null,
+    });
+  } catch (error: any) {
+    logger.error('[Walk My Pet] Care card error', { error: error?.message });
+    res.status(500).json({ error: 'Failed to build care card' });
+  }
+});
+
 router.get('/walks/bookings/:bookingId/status', async (req, res) => {
   try {
     const { bookingId } = req.params;
@@ -1793,6 +1888,13 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
         status: 'completed',
         actualEndTime: new Date(),
         actualDurationMinutes: actualDuration,
+        // PERSIST THE DISTANCE. (2026-09-10) totalDistance is computed right
+        // above from walk_gps_tracking, and was written ONLY into the
+        // blockchain audit block. walk_bookings.total_distance_meters — a
+        // column that already exists for exactly this — stayed NULL forever,
+        // so anything reading the booking (the care card below, any receipt,
+        // any report) saw no distance for a walk that had one.
+        totalDistanceMeters: Math.round(totalDistance),
         walkCompletedSuccessfully: true,
         completionNotes,
         isLiveTrackingActive: false,
