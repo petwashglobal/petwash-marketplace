@@ -2295,7 +2295,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           restarts (browserLocalPersistence). Choice is remembered
                           per-browser via localStorage so the user does not have to
                           re-tick it on every visit. */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', opacity: 0.85, cursor: 'pointer', padding: '6px 0', flexDirection: he ? 'row-reverse' : 'row' }}
+                      {/* NO `row-reverse` FOR HEBREW HERE (2026-09-10).
+                          The panel is already dir="rtl", so plain `row` packs
+                          the tick box on the right, exactly like the three
+                          consent rows in .sl-consentBox. Adding row-reverse
+                          on top of that flipped it BACK to left-to-right: on
+                          production at 390px this box measured x=27 (the far
+                          LEFT of the card) while the consent boxes measured
+                          x=350 — two checkbox rows in one form disagreeing
+                          about which side a tick box lives on. */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', opacity: 0.85, cursor: 'pointer', padding: '6px 0' }}
                         data-testid="signin-remember-me-label">
                         <input type="checkbox" checked={rememberMe}
                           onChange={(e) => {

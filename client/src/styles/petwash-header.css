@@ -1128,6 +1128,21 @@
   text-align: right;
 }
 
+/* The mobile nav strip lives INSIDE .pw-header, so it inherited the forced
+   `direction: ltr` above and never got the override every other text-bearing
+   header descendant has (.pw-nav-link, .pw-mega-link, .pw-mobile-link).
+   In Hebrew its three items therefore ran left-to-right: measured on
+   production at 390px, "תווי שי דיגיטליים" sat at x=69 (leftmost) and
+   "פלטפורמות" at x=268 — source order painted LTR, the opposite of every
+   other Hebrew row on the page.
+
+   This flips the STRIP's own reading order only. The header's physical
+   chrome — logo centred, burger right — is set by the rules above and is
+   untouched, so the "layout never changes on RTL" requirement still holds. */
+[dir="rtl"] .pw-mobile-nav-strip-row {
+  direction: rtl;
+}
+
 [dir="rtl"] .pw-mobile-link {
   direction: rtl;
   text-align: right;
