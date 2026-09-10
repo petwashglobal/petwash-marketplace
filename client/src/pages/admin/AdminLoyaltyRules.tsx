@@ -368,29 +368,31 @@ function ReportingTab() {
 
       {/* Event type table */}
       <SectionCard title="פעילות לפי סוג אירוע">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-gray-400 border-b border-gray-50">
-              <th className="text-right py-2 font-semibold">סוג</th>
-              <th className="text-center py-2 font-semibold">עסקאות</th>
-              <th className="text-center py-2 font-semibold">משתמשים</th>
-              <th className="text-left py-2 font-semibold">סכום</th>
-            </tr>
-          </thead>
-          <tbody>
-            {eventTotals.map(e => (
-              <tr key={e.eventType} className="border-b border-gray-50 last:border-0">
-                <td className="py-2 text-gray-700 font-medium">{e.eventType}</td>
-                <td className="py-2 text-center text-gray-500">{e.txCount}</td>
-                <td className="py-2 text-center text-gray-500">{e.userCount}</td>
-                <td className="py-2 text-left text-gray-700">{ils(e.totalCents)}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-gray-400 border-b border-gray-50">
+                <th className="text-right py-2 font-semibold">סוג</th>
+                <th className="text-center py-2 font-semibold">עסקאות</th>
+                <th className="text-center py-2 font-semibold">משתמשים</th>
+                <th className="text-left py-2 font-semibold">סכום</th>
               </tr>
-            ))}
-            {eventTotals.length === 0 && (
-              <tr><td colSpan={4} className="py-4 text-center text-gray-300">אין נתונים</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {eventTotals.map(e => (
+                <tr key={e.eventType} className="border-b border-gray-50 last:border-0">
+                  <td className="py-2 text-gray-700 font-medium">{e.eventType}</td>
+                  <td className="py-2 text-center text-gray-500">{e.txCount}</td>
+                  <td className="py-2 text-center text-gray-500">{e.userCount}</td>
+                  <td className="py-2 text-left text-gray-700">{ils(e.totalCents)}</td>
+                </tr>
+              ))}
+              {eventTotals.length === 0 && (
+                <tr><td colSpan={4} className="py-4 text-center text-gray-300">אין נתונים</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </SectionCard>
 
       {/* Rule claim counts */}
@@ -423,25 +425,27 @@ function ReportingTab() {
             return (
               <div key={expKey} className="mb-4 last:mb-0">
                 <p className="text-xs font-bold text-gray-700 mb-2">{expKey}</p>
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-gray-400 border-b border-gray-50">
-                      <th className="text-right py-1 font-semibold">וריאנט</th>
-                      {events.map(ev => <th key={ev} className="text-center py-1 font-semibold">{ev}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {variants.map(variant => (
-                      <tr key={variant} className="border-b border-gray-50 last:border-0">
-                        <td className="py-1.5 text-gray-600">{variant}</td>
-                        {events.map(ev => {
-                          const cell = rows.find(r => r.variant === variant && r.event === ev);
-                          return <td key={ev} className="py-1.5 text-center text-gray-700">{cell?.cnt ?? "—"}</td>;
-                        })}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-gray-400 border-b border-gray-50">
+                        <th className="text-right py-1 font-semibold">וריאנט</th>
+                        {events.map(ev => <th key={ev} className="text-center py-1 font-semibold">{ev}</th>)}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {variants.map(variant => (
+                        <tr key={variant} className="border-b border-gray-50 last:border-0">
+                          <td className="py-1.5 text-gray-600">{variant}</td>
+                          {events.map(ev => {
+                            const cell = rows.find(r => r.variant === variant && r.event === ev);
+                            return <td key={ev} className="py-1.5 text-center text-gray-700">{cell?.cnt ?? "—"}</td>;
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             );
           })}
@@ -948,28 +952,30 @@ function WinbackTab() {
 
       {/* Status matrix by trigger */}
       <SectionCard title="סטטוס לפי טריגר">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-gray-400 border-b border-gray-50">
-              <th className="text-right py-1.5 font-semibold">טריגר</th>
-              {statuses.map(s => <th key={s} className="text-center py-1.5 font-semibold capitalize">{s}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {triggers.map(trigger => (
-              <tr key={trigger} className="border-b border-gray-50 last:border-0">
-                <td className="py-2 text-gray-700 font-medium">{trigger}</td>
-                {statuses.map(status => {
-                  const cell = statusBreakdown.find(r => r.trigger === trigger && r.status === status);
-                  return <td key={status} className="py-2 text-center text-gray-600">{cell?.cnt ?? "—"}</td>;
-                })}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-gray-400 border-b border-gray-50">
+                <th className="text-right py-1.5 font-semibold">טריגר</th>
+                {statuses.map(s => <th key={s} className="text-center py-1.5 font-semibold capitalize">{s}</th>)}
               </tr>
-            ))}
-            {triggers.length === 0 && (
-              <tr><td colSpan={5} className="py-4 text-center text-gray-300">אין נתונים</td></tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {triggers.map(trigger => (
+                <tr key={trigger} className="border-b border-gray-50 last:border-0">
+                  <td className="py-2 text-gray-700 font-medium">{trigger}</td>
+                  {statuses.map(status => {
+                    const cell = statusBreakdown.find(r => r.trigger === trigger && r.status === status);
+                    return <td key={status} className="py-2 text-center text-gray-600">{cell?.cnt ?? "—"}</td>;
+                  })}
+                </tr>
+              ))}
+              {triggers.length === 0 && (
+                <tr><td colSpan={5} className="py-4 text-center text-gray-300">אין נתונים</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </SectionCard>
 
       {/* Experiment variant funnel */}
@@ -1109,48 +1115,50 @@ function WinbackTab() {
           )}
 
           {/* Channel conversion table: sent / clicked / completed / CVR */}
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="text-gray-400 border-b border-gray-100">
-                <th className="text-right py-1.5 font-semibold">ערוץ</th>
-                <th className="text-center py-1.5 font-semibold">נשלח</th>
-                <th className="text-center py-1.5 font-semibold">נלחץ</th>
-                <th className="text-center py-1.5 font-semibold">הושלם</th>
-                <th className="text-center py-1.5 font-semibold text-purple-500">CTR%</th>
-                <th className="text-center py-1.5 font-semibold text-emerald-600">המרה%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(['inapp', 'sms', 'whatsapp'] as const).map(ch => {
-                const row = data.channelConversion?.find(r => r.channel === ch);
-                const sent    = row?.sent      ?? 0;
-                const clicked = row?.clicked   ?? 0;
-                const done    = row?.completed ?? 0;
-                const ctr     = sent > 0 ? `${((clicked / sent) * 100).toFixed(1)}%` : '—';
-                const cvr     = sent > 0 ? `${((done   / sent) * 100).toFixed(1)}%` : '—';
-                const LABEL: Record<string, string> = { inapp: 'In-App', sms: 'SMS', whatsapp: 'WhatsApp' };
-                const DOT: Record<string, string> = {
-                  inapp: 'bg-blue-400', sms: 'bg-amber-400', whatsapp: 'bg-emerald-400',
-                };
-                return (
-                  <tr key={ch} className="border-b border-gray-50 last:border-0">
-                    <td className="py-2 pr-2 font-medium text-gray-700 flex items-center gap-1.5">
-                      <span className={`inline-block w-2 h-2 rounded-full ${DOT[ch]}`} />
-                      {LABEL[ch]}
-                    </td>
-                    <td className="py-2 text-center text-gray-600">{sent  || '—'}</td>
-                    <td className="py-2 text-center text-gray-600">{clicked || '—'}</td>
-                    <td className="py-2 text-center text-gray-600">{done   || '—'}</td>
-                    <td className="py-2 text-center text-blue-600 font-mono">{ctr}</td>
-                    <td className="py-2 text-center text-emerald-600 font-mono font-bold">{cvr}</td>
-                  </tr>
-                );
-              })}
-              {!data.channelConversion?.length && (
-                <tr><td colSpan={6} className="py-4 text-center text-gray-300 text-xs">אין נתוני ערוץ עדיין</td></tr>
-              )}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gray-400 border-b border-gray-100">
+                  <th className="text-right py-1.5 font-semibold">ערוץ</th>
+                  <th className="text-center py-1.5 font-semibold">נשלח</th>
+                  <th className="text-center py-1.5 font-semibold">נלחץ</th>
+                  <th className="text-center py-1.5 font-semibold">הושלם</th>
+                  <th className="text-center py-1.5 font-semibold text-purple-500">CTR%</th>
+                  <th className="text-center py-1.5 font-semibold text-emerald-600">המרה%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(['inapp', 'sms', 'whatsapp'] as const).map(ch => {
+                  const row = data.channelConversion?.find(r => r.channel === ch);
+                  const sent    = row?.sent      ?? 0;
+                  const clicked = row?.clicked   ?? 0;
+                  const done    = row?.completed ?? 0;
+                  const ctr     = sent > 0 ? `${((clicked / sent) * 100).toFixed(1)}%` : '—';
+                  const cvr     = sent > 0 ? `${((done   / sent) * 100).toFixed(1)}%` : '—';
+                  const LABEL: Record<string, string> = { inapp: 'In-App', sms: 'SMS', whatsapp: 'WhatsApp' };
+                  const DOT: Record<string, string> = {
+                    inapp: 'bg-blue-400', sms: 'bg-amber-400', whatsapp: 'bg-emerald-400',
+                  };
+                  return (
+                    <tr key={ch} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 pr-2 font-medium text-gray-700 flex items-center gap-1.5">
+                        <span className={`inline-block w-2 h-2 rounded-full ${DOT[ch]}`} />
+                        {LABEL[ch]}
+                      </td>
+                      <td className="py-2 text-center text-gray-600">{sent  || '—'}</td>
+                      <td className="py-2 text-center text-gray-600">{clicked || '—'}</td>
+                      <td className="py-2 text-center text-gray-600">{done   || '—'}</td>
+                      <td className="py-2 text-center text-blue-600 font-mono">{ctr}</td>
+                      <td className="py-2 text-center text-emerald-600 font-mono font-bold">{cvr}</td>
+                    </tr>
+                  );
+                })}
+                {!data.channelConversion?.length && (
+                  <tr><td colSpan={6} className="py-4 text-center text-gray-300 text-xs">אין נתוני ערוץ עדיין</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </SectionCard>
       )}
 
@@ -1184,60 +1192,62 @@ function WinbackTab() {
 
         return (
           <SectionCard title="הכנסות מול עלויות (ROI)">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-gray-400 border-b border-gray-100">
-                  <th className="text-right py-1.5 font-semibold">ערוץ</th>
-                  <th className="text-center py-1.5 font-semibold">המרות</th>
-                  <th className="text-center py-1.5 font-semibold text-emerald-600">הכנסה ₪</th>
-                  <th className="text-center py-1.5 font-semibold text-red-400">עלות $</th>
-                  <th className="text-center py-1.5 font-semibold text-blue-600">רווח</th>
-                  <th className="text-center py-1.5 font-semibold text-purple-500">ROI%</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ ch, conversions, revenue, cost, profit, roi }) => (
-                  <tr key={ch} className="border-b border-gray-50 last:border-0">
-                    <td className="py-2 pr-2 font-medium text-gray-700 flex items-center gap-1.5">
-                      <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${DOT[ch]}`} />
-                      {LABEL[ch]}
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-gray-400 border-b border-gray-100">
+                    <th className="text-right py-1.5 font-semibold">ערוץ</th>
+                    <th className="text-center py-1.5 font-semibold">המרות</th>
+                    <th className="text-center py-1.5 font-semibold text-emerald-600">הכנסה ₪</th>
+                    <th className="text-center py-1.5 font-semibold text-red-400">עלות $</th>
+                    <th className="text-center py-1.5 font-semibold text-blue-600">רווח</th>
+                    <th className="text-center py-1.5 font-semibold text-purple-500">ROI%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ ch, conversions, revenue, cost, profit, roi }) => (
+                    <tr key={ch} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 pr-2 font-medium text-gray-700 flex items-center gap-1.5">
+                        <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${DOT[ch]}`} />
+                        {LABEL[ch]}
+                      </td>
+                      <td className="py-2 text-center text-gray-600 font-mono">{conversions || '—'}</td>
+                      <td className="py-2 text-center text-emerald-600 font-mono font-medium">
+                        {revenue > 0 ? `₪${revenue.toFixed(0)}` : '—'}
+                      </td>
+                      <td className="py-2 text-center text-red-400 font-mono">
+                        {cost > 0 ? `$${cost.toFixed(2)}` : ch === 'inapp' ? 'חינם' : '—'}
+                      </td>
+                      <td className={`py-2 text-center font-mono font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
+                        {revenue > 0 || cost > 0 ? `₪${profit.toFixed(0)}` : '—'}
+                      </td>
+                      <td className={`py-2 text-center font-bold ${roi === '∞' ? 'text-emerald-500' : roi === '—' ? 'text-gray-300' : Number(roi) >= 0 ? 'text-purple-600' : 'text-red-500'}`}>
+                        {roi !== '—' && roi !== '∞' ? `${roi}%` : roi}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Totals row */}
+                  <tr className="bg-white border-t border-gray-200 font-bold text-gray-700">
+                    <td className="py-2 pr-2 text-xs">סה״כ</td>
+                    <td className="py-2 text-center text-xs font-mono">
+                      {rows.reduce((s, r) => s + r.conversions, 0) || '—'}
                     </td>
-                    <td className="py-2 text-center text-gray-600 font-mono">{conversions || '—'}</td>
-                    <td className="py-2 text-center text-emerald-600 font-mono font-medium">
-                      {revenue > 0 ? `₪${revenue.toFixed(0)}` : '—'}
+                    <td className="py-2 text-center text-xs font-mono text-emerald-700">
+                      {totalRevenue > 0 ? `₪${totalRevenue.toFixed(0)}` : '—'}
                     </td>
-                    <td className="py-2 text-center text-red-400 font-mono">
-                      {cost > 0 ? `$${cost.toFixed(2)}` : ch === 'inapp' ? 'חינם' : '—'}
+                    <td className="py-2 text-center text-xs font-mono text-red-500">
+                      {totalCost > 0 ? `$${totalCost.toFixed(2)}` : '—'}
                     </td>
-                    <td className={`py-2 text-center font-mono font-bold ${profit >= 0 ? 'text-blue-600' : 'text-red-500'}`}>
-                      {revenue > 0 || cost > 0 ? `₪${profit.toFixed(0)}` : '—'}
+                    <td className={`py-2 text-center text-xs font-mono ${totalProfit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
+                      {totalRevenue > 0 || totalCost > 0 ? `₪${totalProfit.toFixed(0)}` : '—'}
                     </td>
-                    <td className={`py-2 text-center font-bold ${roi === '∞' ? 'text-emerald-500' : roi === '—' ? 'text-gray-300' : Number(roi) >= 0 ? 'text-purple-600' : 'text-red-500'}`}>
-                      {roi !== '—' && roi !== '∞' ? `${roi}%` : roi}
+                    <td className="py-2 text-center text-xs font-bold text-purple-700">
+                      {totalCost > 0 ? `${((totalProfit / totalCost) * 100).toFixed(0)}%` : totalRevenue > 0 ? '∞' : '—'}
                     </td>
                   </tr>
-                ))}
-                {/* Totals row */}
-                <tr className="bg-white border-t border-gray-200 font-bold text-gray-700">
-                  <td className="py-2 pr-2 text-xs">סה״כ</td>
-                  <td className="py-2 text-center text-xs font-mono">
-                    {rows.reduce((s, r) => s + r.conversions, 0) || '—'}
-                  </td>
-                  <td className="py-2 text-center text-xs font-mono text-emerald-700">
-                    {totalRevenue > 0 ? `₪${totalRevenue.toFixed(0)}` : '—'}
-                  </td>
-                  <td className="py-2 text-center text-xs font-mono text-red-500">
-                    {totalCost > 0 ? `$${totalCost.toFixed(2)}` : '—'}
-                  </td>
-                  <td className={`py-2 text-center text-xs font-mono ${totalProfit >= 0 ? 'text-blue-700' : 'text-red-600'}`}>
-                    {totalRevenue > 0 || totalCost > 0 ? `₪${totalProfit.toFixed(0)}` : '—'}
-                  </td>
-                  <td className="py-2 text-center text-xs font-bold text-purple-700">
-                    {totalCost > 0 ? `${((totalProfit / totalCost) * 100).toFixed(0)}%` : totalRevenue > 0 ? '∞' : '—'}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                </tbody>
+              </table>
+            </div>
             <p className="mt-2 text-[10px] text-gray-300 text-right">
               עלויות מוערכות: SMS $0.045 / הודעה · WhatsApp $0.065 / הודעה · In-App חינם
             </p>
@@ -1432,32 +1442,34 @@ function OpsTab() {
       <SectionCard title="ROI ערוצים — 24ש' / 7י'">
         {healthQ.isLoading
           ? <div className="py-3 text-center text-xs text-gray-400">טוען…</div>
-          : <table className="w-full text-xs">
-              <thead>
-                <tr className="text-gray-400 border-b border-gray-50">
-                  <th className="text-right py-1.5 font-semibold">ערוץ</th>
-                  <th className="text-center py-1.5 font-semibold">נשלחו 24ש'</th>
-                  <th className="text-center py-1.5 font-semibold">ROI 24ש'</th>
-                  <th className="text-center py-1.5 font-semibold">נשלחו 7י'</th>
-                  <th className="text-center py-1.5 font-semibold">ROI 7י'</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(health?.roiDetail ?? []).map(r => (
-                  <tr key={r.channel} className="border-b border-gray-50 last:border-0">
-                    <td className="py-2 font-medium text-gray-700 capitalize">{r.channel}</td>
-                    <td className="py-2 text-center text-gray-500">{r.sent24h}</td>
-                    <td className={`py-2 text-center font-mono ${roiColor(r.roi24h)}`}>
-                      {r.roi24h !== null ? `${r.roi24h.toFixed(0)}%` : '—'}
-                    </td>
-                    <td className="py-2 text-center text-gray-500">{r.sent7d}</td>
-                    <td className={`py-2 text-center font-mono ${roiColor(r.roi7d)}`}>
-                      {r.roi7d !== null ? `${r.roi7d.toFixed(0)}%` : '—'}
-                    </td>
+          : <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-gray-400 border-b border-gray-50">
+                    <th className="text-right py-1.5 font-semibold">ערוץ</th>
+                    <th className="text-center py-1.5 font-semibold">נשלחו 24ש'</th>
+                    <th className="text-center py-1.5 font-semibold">ROI 24ש'</th>
+                    <th className="text-center py-1.5 font-semibold">נשלחו 7י'</th>
+                    <th className="text-center py-1.5 font-semibold">ROI 7י'</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {(health?.roiDetail ?? []).map(r => (
+                    <tr key={r.channel} className="border-b border-gray-50 last:border-0">
+                      <td className="py-2 font-medium text-gray-700 capitalize">{r.channel}</td>
+                      <td className="py-2 text-center text-gray-500">{r.sent24h}</td>
+                      <td className={`py-2 text-center font-mono ${roiColor(r.roi24h)}`}>
+                        {r.roi24h !== null ? `${r.roi24h.toFixed(0)}%` : '—'}
+                      </td>
+                      <td className="py-2 text-center text-gray-500">{r.sent7d}</td>
+                      <td className={`py-2 text-center font-mono ${roiColor(r.roi7d)}`}>
+                        {r.roi7d !== null ? `${r.roi7d.toFixed(0)}%` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          </div>
         }
         <p className="text-[10px] text-gray-300 mt-2">
           ROI = (המרות × ₪100 – עלות שליחה) / עלות שליחה × 100 · SMS ₪0.03 / WA ₪0.02 לשליחה

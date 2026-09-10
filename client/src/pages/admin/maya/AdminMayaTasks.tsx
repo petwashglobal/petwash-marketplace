@@ -59,7 +59,7 @@ export default function AdminMayaTasks() {
       ) : !q.data?.tasks.length ? (
         <MayaEmptyState message={`No ${filter === 'all' ? '' : filter + ' '}tasks.`} />
       ) : (
-        <div className="overflow-hidden rounded-sm border border-neutral-200 bg-white">
+        <div className="overflow-x-auto rounded-sm border border-neutral-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50">

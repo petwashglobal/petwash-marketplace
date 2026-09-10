@@ -74,7 +74,7 @@ export default function AdminMayaInbox() {
       ) : !q.data?.conversations.length ? (
         <MayaEmptyState message={`No ${filter === 'all' ? '' : filter + ' '}conversations.`} />
       ) : (
-        <div className="overflow-hidden rounded-sm border border-neutral-200 bg-white">
+        <div className="overflow-x-auto rounded-sm border border-neutral-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50">

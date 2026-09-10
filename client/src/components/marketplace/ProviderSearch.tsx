@@ -854,7 +854,7 @@ export function ProviderSearch({
               <Popover open={petTypeDropdownOpen} onOpenChange={setPetTypeDropdownOpen}>
                 <PopoverTrigger asChild>
                   <button
-                    className="flex-1 h-12 px-3 flex items-center justify-between bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
+                    className="flex-1 min-w-0 h-12 px-3 flex items-center justify-between bg-white border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
                     data-testid="dropdown-pet-type"
                   >
                     <div className="flex items-center gap-2 min-w-0 overflow-hidden">

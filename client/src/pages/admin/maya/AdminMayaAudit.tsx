@@ -65,7 +65,7 @@ export default function AdminMayaAudit() {
       ) : !q.data?.entries.length ? (
         <MayaEmptyState message="No audit entries yet." />
       ) : (
-        <div className="overflow-hidden rounded-sm border border-neutral-200 bg-white">
+        <div className="overflow-x-auto rounded-sm border border-neutral-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-neutral-200 bg-neutral-50">
