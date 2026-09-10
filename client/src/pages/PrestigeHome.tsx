@@ -207,6 +207,20 @@ export default function PrestigeHome() {
   // canonical CtaAction enum (client/src/lib/ctaActions.ts) so it
   // survives i18n / CSS refactors. Actions still under construction
   // (PetTrek) OR without a distinct booking-journey identity yet
+  // PET PASSPORT ENTRY POINT (2026-09-10): "My Pets" points at /pet-passport,
+  // not /pets. PetPassportHome.tsx is the CEO's canonical multi-pet passport
+  // screen — green marble (#063B22/#D6B56D/#FAFAF7), RTL, 8 species, its own
+  // bottom nav — and it was ROUTED (App.tsx) but UNREACHABLE: a grep of the
+  // whole client for "/pet-passport" returned only two hits outside the
+  // passport's own files, and neither was a link (immersive-routes.ts, a
+  // nav-suppression list; workspaceFromPath.ts, a path classifier). A member
+  // could reach it only by typing the URL.
+  //
+  // /pets stays reachable and is NOT orphaned by this: PetPassportHome links
+  // to it from "see all pets", Vaccines, Reminders, Vet, More and its Health
+  // tab — those targets are deliberate, because the per-pet PetHealthPanel
+  // that owns vaccine/deworming/vet-visit events lives on /pets.
+  //
   // (Book Wash, Buy Package, My Pets) leave actionId undefined; the
   // button renders the same but skips the emit + attribute.
   const actions: {
@@ -226,7 +240,7 @@ export default function PrestigeHome() {
     { label: 'Buy Package',   labelHe: 'רכישת חבילה',    icon: CreditCard,    to: '/packages' },
     { label: 'Wallet Top Up', labelHe: 'טעינת ארנק',     icon: WalletIcon,    to: '/my-wallet',       actionId: 'WALLET_TOP_UP',       testId: 'petparent-home-wallet-top-up' },
     { label: 'Academy',       labelHe: 'Academy',       icon: GraduationCap, to: '/academy',         actionId: 'BOOK_ACADEMY_ENTRY',  testId: 'petparent-home-book-academy' },
-    { label: 'My Pets',       labelHe: 'החיות שלי',     icon: PawPrint,      to: '/pets',            actionId: 'PET_ADD',             testId: 'petparent-home-pets' },
+    { label: 'My Pets',       labelHe: 'החיות שלי',     icon: PawPrint,      to: '/pet-passport',    actionId: 'PET_ADD',             testId: 'petparent-home-pets' },
     { label: 'PetTrek',       labelHe: 'PetTrek',       icon: Mountain,      to: '#', soon: true },
   ];
 
