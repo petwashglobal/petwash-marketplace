@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
+import { useLanguage } from "@/lib/languageStore";
 import { Bell, BellOff, Check, CheckCheck, ArrowLeft, Calendar, Package, User, CreditCard, Star, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -56,20 +57,23 @@ function groupNotificationsByDate(notifications: InAppNotification[]) {
   return groups.filter((g) => g.items.length > 0);
 }
 
-function formatRelativeTime(dateStr: string) {
+function formatRelativeTime(dateStr: string, he = false) {
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffMins < 1) return he ? "הרגע" : "Just now";
+  if (diffMins < 60) return he ? `לפני ${diffMins} דק׳` : `${diffMins}m ago`;
   const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 24) return he ? `לפני ${diffHours} שע׳` : `${diffHours}h ago`;
   return date.toLocaleDateString("he-IL", { day: "numeric", month: "short" });
 }
 
 export default function NotificationsPage() {
   const [, navigate] = useLocation();
+  const { language } = useLanguage();
+  const he = language === "he";
+  const groupLabel = (l: string) => he ? ({ Today: "היום", Yesterday: "אתמול", Earlier: "מוקדם יותר" }[l] ?? l) : l;
 
   const { data, isLoading } = useQuery<{ notifications: InAppNotification[] }>({
     queryKey: ["/api/notifications"],
@@ -115,15 +119,15 @@ export default function NotificationsPage() {
               type="button"
               onClick={() => window.history.back()}
               className="p-2 rounded-full hover:bg-white dark:hover:bg-white transition-colors"
-              aria-label="Go back"
+              aria-label={he ? "חזרה" : "Go back"}
             >
               <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-black" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-black">Notifications</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-black">{he ? "התראות" : "Notifications"}</h1>
               {unreadCount > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {unreadCount} unread
+                  {he ? `${unreadCount} שלא נקראו` : `${unreadCount} unread`}
                 </p>
               )}
             </div>
@@ -137,7 +141,7 @@ export default function NotificationsPage() {
               className="text-[#B8932F] hover:text-[#B8932F] gap-1"
             >
               <CheckCheck className="w-4 h-4" />
-              Mark all read
+              {he ? "סמן הכל כנקרא" : "Mark all read"}
             </Button>
           )}
         </div>
@@ -167,10 +171,10 @@ export default function NotificationsPage() {
               <BellOff className="w-8 h-8 text-gray-400" />
             </div>
             <h2 className="text-lg font-semibold text-gray-800 dark:text-black mb-1">
-              You're all caught up
+              {he ? "הכול מעודכן" : "You're all caught up"}
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              No notifications yet. We'll let you know when something happens.
+              {he ? "אין התראות עדיין. נעדכן אתכם כשיקרה משהו." : "No notifications yet. We'll let you know when something happens."}
             </p>
           </div>
         )}
@@ -179,7 +183,7 @@ export default function NotificationsPage() {
         {!isLoading && groups.map((group) => (
           <div key={group.label} className="mb-6">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2 px-1">
-              {group.label}
+              {groupLabel(group.label)}
             </h2>
             <div className="space-y-2">
               {group.items.map((n) => (
@@ -210,7 +214,7 @@ export default function NotificationsPage() {
                         {n.title || n.templateKey}
                       </p>
                       <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0">
-                        {formatRelativeTime(n.createdAt)}
+                        {formatRelativeTime(n.createdAt, he)}
                       </span>
                     </div>
                     {n.body && (
