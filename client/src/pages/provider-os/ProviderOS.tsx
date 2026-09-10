@@ -317,7 +317,7 @@ export default function ProviderOS() {
             <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
             <aside className="absolute start-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
               <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs text-gray-500">Provider OS</p>
                   <p className="text-sm font-semibold text-gray-900 truncate">{displayName}</p>
                 </div>

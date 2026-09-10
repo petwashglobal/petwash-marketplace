@@ -233,26 +233,28 @@ export default function AdminExpansionMarketing() {
                 <div className="border-b bg-gray-50 px-5 py-3 text-sm font-semibold" style={{ borderColor: "#ECECEC" }}>
                   {tx(`Scoring model (0–${sc.model.scaleMax})`, `מודל ניקוד (0–${sc.model.scaleMax})`)}
                 </div>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-gray-500">
-                      <th className="px-5 py-2 text-start font-medium">{tx("Factor", "גורם")}</th>
-                      <th className="px-5 py-2 text-end font-medium">{tx("Weight", "משקל")}</th>
-                      <th className="px-5 py-2 text-end font-medium">{tx("Direction", "כיוון")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sc.model.factors.map((f) => (
-                      <tr key={f.key} className="border-t" style={{ borderColor: "#F3F3F3" }}>
-                        <td className="px-5 py-2">{he ? f.labelHe : f.label}</td>
-                        <td className="px-5 py-2 text-end font-semibold" style={{ color: GOLD }}>{f.weight}</td>
-                        <td className="px-5 py-2 text-end text-xs text-gray-500">
-                          {f.higherIsBetter ? tx("Higher better", "גבוה עדיף") : tx("Lower better", "נמוך עדיף")}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-gray-500">
+                        <th className="px-5 py-2 text-start font-medium">{tx("Factor", "גורם")}</th>
+                        <th className="px-5 py-2 text-end font-medium">{tx("Weight", "משקל")}</th>
+                        <th className="px-5 py-2 text-end font-medium">{tx("Direction", "כיוון")}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {sc.model.factors.map((f) => (
+                        <tr key={f.key} className="border-t" style={{ borderColor: "#F3F3F3" }}>
+                          <td className="px-5 py-2">{he ? f.labelHe : f.label}</td>
+                          <td className="px-5 py-2 text-end font-semibold" style={{ color: GOLD }}>{f.weight}</td>
+                          <td className="px-5 py-2 text-end text-xs text-gray-500">
+                            {f.higherIsBetter ? tx("Higher better", "גבוה עדיף") : tx("Lower better", "נמוך עדיף")}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Pipeline stages */}
@@ -376,26 +378,28 @@ export default function AdminExpansionMarketing() {
                     {tx("No coupons yet.", "אין קופונים עדיין.")}
                   </div>
                 ) : (
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-gray-500">
-                        <th className="px-5 py-2 text-start font-medium">{tx("Channel", "ערוץ")}</th>
-                        <th className="px-5 py-2 text-end font-medium">{tx("Coupons", "קופונים")}</th>
-                        <th className="px-5 py-2 text-end font-medium">{tx("Active", "פעילים")}</th>
-                        <th className="px-5 py-2 text-end font-medium">{tx("Redemptions", "מימושים")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {mk.couponEngine.byChannel.map((ch) => (
-                        <tr key={ch.channel} className="border-t" style={{ borderColor: "#F3F3F3" }}>
-                          <td className="px-5 py-2 font-medium">{ch.channel}</td>
-                          <td className="px-5 py-2 text-end">{num(ch.couponCount)}</td>
-                          <td className="px-5 py-2 text-end">{num(ch.activeCount)}</td>
-                          <td className="px-5 py-2 text-end">{num(ch.totalRedemptions)}</td>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-gray-500">
+                          <th className="px-5 py-2 text-start font-medium">{tx("Channel", "ערוץ")}</th>
+                          <th className="px-5 py-2 text-end font-medium">{tx("Coupons", "קופונים")}</th>
+                          <th className="px-5 py-2 text-end font-medium">{tx("Active", "פעילים")}</th>
+                          <th className="px-5 py-2 text-end font-medium">{tx("Redemptions", "מימושים")}</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {mk.couponEngine.byChannel.map((ch) => (
+                          <tr key={ch.channel} className="border-t" style={{ borderColor: "#F3F3F3" }}>
+                            <td className="px-5 py-2 font-medium">{ch.channel}</td>
+                            <td className="px-5 py-2 text-end">{num(ch.couponCount)}</td>
+                            <td className="px-5 py-2 text-end">{num(ch.activeCount)}</td>
+                            <td className="px-5 py-2 text-end">{num(ch.totalRedemptions)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
                 <div className="border-t px-5 py-3 text-xs text-gray-500" style={{ borderColor: "#F3F3F3" }}>
                   {tx("Coupon discount (real ledger):", "הנחת קופונים (ספר אמיתי):")}{" "}

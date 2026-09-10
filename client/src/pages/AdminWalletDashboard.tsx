@@ -5776,7 +5776,7 @@ export default function AdminWalletDashboard() {
                   {pendingReleasesLoading ? (
                     <div className="h-16 bg-white animate-pulse rounded"/>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-amber-50">
                         <tr className="text-gray-500">
                           <th className="text-left p-2">Batch</th><th className="text-right p-2">Amount</th>
@@ -5944,46 +5944,48 @@ export default function AdminWalletDashboard() {
                     ) : !remittanceLogData?.entries?.length ? (
                       <div className="text-xs text-gray-400 py-2">No remittances sent for this batch yet. Click "✉ Send Remittances" above.</div>
                     ) : (
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-left text-gray-400 border-b">
-                            <th className="pb-1 pr-3">Provider UID</th>
-                            <th className="pb-1 pr-3">Status</th>
-                            <th className="pb-1 pr-3">Sent At</th>
-                            <th className="pb-1 pr-3">Retries</th>
-                            <th className="pb-1 pr-3">Error</th>
-                            <th className="pb-1">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {remittanceLogData.entries.map((e: any) => (
-                            <tr key={e.id} className="border-b last:border-0">
-                              <td className="py-1.5 pr-3 font-mono text-gray-700">{e.providerUid}</td>
-                              <td className="py-1.5 pr-3">
-                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                  e.status === 'sent'    ? 'bg-green-100 text-green-700' :
-                                  e.status === 'failed'  ? 'bg-red-100 text-red-700' :
-                                                           'bg-yellow-100 text-yellow-700'
-                                }`}>{e.status}</span>
-                              </td>
-                              <td className="py-1.5 pr-3 text-gray-500">{e.sentAt ? new Date(e.sentAt).toLocaleString() : '—'}</td>
-                              <td className="py-1.5 pr-3 text-gray-400">{e.retryCount ?? 0}</td>
-                              <td className="py-1.5 pr-3 text-red-500 truncate max-w-[160px]">{e.errorDetail ?? '—'}</td>
-                              <td className="py-1.5">
-                                {e.status !== 'sent' && (
-                                  <button
-                                    disabled={resendPending}
-                                    onClick={() => resendRemittance(e.providerUid)}
-                                    className="text-[10px] px-2 py-0.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50 disabled:opacity-40"
-                                  >
-                                    Retry
-                                  </button>
-                                )}
-                              </td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-gray-400 border-b">
+                              <th className="pb-1 pr-3">Provider UID</th>
+                              <th className="pb-1 pr-3">Status</th>
+                              <th className="pb-1 pr-3">Sent At</th>
+                              <th className="pb-1 pr-3">Retries</th>
+                              <th className="pb-1 pr-3">Error</th>
+                              <th className="pb-1">Action</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {remittanceLogData.entries.map((e: any) => (
+                              <tr key={e.id} className="border-b last:border-0">
+                                <td className="py-1.5 pr-3 font-mono text-gray-700">{e.providerUid}</td>
+                                <td className="py-1.5 pr-3">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                    e.status === 'sent'    ? 'bg-green-100 text-green-700' :
+                                    e.status === 'failed'  ? 'bg-red-100 text-red-700' :
+                                                             'bg-yellow-100 text-yellow-700'
+                                  }`}>{e.status}</span>
+                                </td>
+                                <td className="py-1.5 pr-3 text-gray-500">{e.sentAt ? new Date(e.sentAt).toLocaleString() : '—'}</td>
+                                <td className="py-1.5 pr-3 text-gray-400">{e.retryCount ?? 0}</td>
+                                <td className="py-1.5 pr-3 text-red-500 truncate max-w-[160px]">{e.errorDetail ?? '—'}</td>
+                                <td className="py-1.5">
+                                  {e.status !== 'sent' && (
+                                    <button
+                                      disabled={resendPending}
+                                      onClick={() => resendRemittance(e.providerUid)}
+                                      className="text-[10px] px-2 py-0.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50 disabled:opacity-40"
+                                    >
+                                      Retry
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
                   </div>
 
@@ -6056,32 +6058,34 @@ export default function AdminWalletDashboard() {
                     {reconData?.providers?.length > 0 && (
                       <div className="mt-3">
                         <div className="text-[10px] text-gray-400 uppercase font-semibold mb-1">Provider Settlement Status</div>
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="text-left text-gray-400 border-b">
-                              <th className="pb-1 pr-3">Provider UID</th>
-                              <th className="pb-1 pr-3">Net (₪)</th>
-                              <th className="pb-1 pr-3">Bank Ref</th>
-                              <th className="pb-1">Settled</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {reconData.providers.map((p: any) => (
-                              <tr key={p.providerUid} className="border-b last:border-0">
-                                <td className="py-1.5 pr-3 font-mono text-gray-700">{p.providerUid}</td>
-                                <td className="py-1.5 pr-3">₪{(p.netCents / 100).toFixed(2)}</td>
-                                <td className="py-1.5 pr-3 font-mono text-gray-400">{p.bankRef ?? '—'}</td>
-                                <td className="py-1.5">
-                                  {p.settled ? (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">Settled</span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white text-gray-500">Pending</span>
-                                  )}
-                                </td>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-left text-gray-400 border-b">
+                                <th className="pb-1 pr-3">Provider UID</th>
+                                <th className="pb-1 pr-3">Net (₪)</th>
+                                <th className="pb-1 pr-3">Bank Ref</th>
+                                <th className="pb-1">Settled</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody>
+                              {reconData.providers.map((p: any) => (
+                                <tr key={p.providerUid} className="border-b last:border-0">
+                                  <td className="py-1.5 pr-3 font-mono text-gray-700">{p.providerUid}</td>
+                                  <td className="py-1.5 pr-3">₪{(p.netCents / 100).toFixed(2)}</td>
+                                  <td className="py-1.5 pr-3 font-mono text-gray-400">{p.bankRef ?? '—'}</td>
+                                  <td className="py-1.5">
+                                    {p.settled ? (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-green-100 text-green-700">Settled</span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white text-gray-500">Pending</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -6115,24 +6119,26 @@ export default function AdminWalletDashboard() {
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">By Provider</div>
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-left text-gray-400 border-b">
-                            <th className="pb-1 pr-3">Provider UID</th>
-                            <th className="pb-1 pr-3">Count</th>
-                            <th className="pb-1">Total Clawback</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(clawbackSummaryData.byProvider ?? []).map((p: any) => (
-                            <tr key={p.providerUid} className="border-b last:border-0">
-                              <td className="py-1.5 pr-3 font-mono text-gray-700">{p.providerUid}</td>
-                              <td className="py-1.5 pr-3">{p.count}</td>
-                              <td className="py-1.5 font-semibold text-red-600">₪{(p.totalClawbackCents / 100).toFixed(2)}</td>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-gray-400 border-b">
+                              <th className="pb-1 pr-3">Provider UID</th>
+                              <th className="pb-1 pr-3">Count</th>
+                              <th className="pb-1">Total Clawback</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {(clawbackSummaryData.byProvider ?? []).map((p: any) => (
+                              <tr key={p.providerUid} className="border-b last:border-0">
+                                <td className="py-1.5 pr-3 font-mono text-gray-700">{p.providerUid}</td>
+                                <td className="py-1.5 pr-3">{p.count}</td>
+                                <td className="py-1.5 font-semibold text-red-600">₪{(p.totalClawbackCents / 100).toFixed(2)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -6184,7 +6190,7 @@ export default function AdminWalletDashboard() {
                   !releasePolicies?.policies?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No release policies — all batches use the global env var fallback</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Division</th><th className="text-left p-2">Range (₪)</th><th className="text-left p-2">Auto-Release</th><th className="text-left p-2">2nd Approval</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
@@ -7937,7 +7943,7 @@ export default function AdminWalletDashboard() {
                       ))}
                     </div>
                     <div className="text-xs font-semibold text-gray-600 mb-1 flex items-center gap-1"><Activity className="w-3 h-3"/>Day-by-Day Breakdown ({forecastData.horizonDays}d)</div>
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead className="bg-white"><tr className="text-gray-500">
                           <th className="text-left p-2">Date</th>
@@ -8011,7 +8017,7 @@ export default function AdminWalletDashboard() {
                         ⚠ Biggest miss: <strong>{accuracyData.summary.biggestMiss.targetDate}</strong> — error {accuracyData.summary.biggestMiss.pctError.toFixed(1)}%
                       </div>
                     )}
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500">
                           <th className="text-left p-2">Date</th><th className="text-left p-2">Horizon</th>
@@ -8057,7 +8063,7 @@ export default function AdminWalletDashboard() {
                   !forecastWeights?.weights?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No forecast weight overrides — using system defaults</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Signal</th><th className="text-left p-2">Division</th><th className="text-right p-2">Weight</th><th className="text-left p-2">Last Updated</th></tr>
                       </thead><tbody>
@@ -8187,7 +8193,7 @@ export default function AdminWalletDashboard() {
                   ) : !scheduleRunsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No runs yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Schedule</th><th className="text-left p-2">Ran</th><th className="text-left p-2">Result</th><th className="text-left p-2">Batch</th></tr>
                       </thead><tbody>
@@ -8327,7 +8333,7 @@ export default function AdminWalletDashboard() {
                 ) : !routingRulesData?.rules?.length ? (
                   <div className="text-sm text-gray-400 py-8 text-center border-2 border-dashed rounded-lg">No routing rules yet. Add rules above to enable auto-routing.</div>
                 ) : (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-x-auto">
                     <table className="w-full text-xs"><thead className="bg-white">
                       <tr className="text-gray-500">
                         <th className="text-left p-2">P</th><th className="text-left p-2">Division</th>
@@ -8476,7 +8482,7 @@ export default function AdminWalletDashboard() {
                 ) : !controlSubsData?.subscriptions?.length ? (
                   <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No subscriptions yet</div>
                 ) : (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-x-auto">
                     <table className="w-full text-xs"><thead className="bg-white">
                       <tr className="text-gray-500">
                         <th className="text-left p-2">Signal</th><th className="text-left p-2">Channel</th><th className="text-left p-2">Status</th>
@@ -8675,7 +8681,7 @@ export default function AdminWalletDashboard() {
                   ) : !execDigestLog?.entries?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No digests sent yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Week</th><th className="text-left p-2">Sent To</th><th className="text-left p-2">Status</th><th className="text-left p-2">Sent At</th></tr>
                       </thead><tbody>
@@ -8826,7 +8832,7 @@ export default function AdminWalletDashboard() {
                   ) : !archiveArtifactsData?.artifacts?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive artifacts yet — run Execute Archive to produce artifact records</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500">
                           <th className="text-left p-2">Entity</th><th className="text-left p-2">Storage Ref</th>
@@ -8852,7 +8858,7 @@ export default function AdminWalletDashboard() {
                 ) : !archivePoliciesData?.policies?.length ? (
                   <div className="text-sm text-gray-400 py-6 text-center border-2 border-dashed rounded-lg">No policies configured</div>
                 ) : (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="border rounded-lg overflow-x-auto">
                     <table className="w-full text-xs"><thead className="bg-white">
                       <tr className="text-gray-500">
                         <th className="text-left p-2">Entity Type</th>
@@ -8890,7 +8896,7 @@ export default function AdminWalletDashboard() {
                   ) : !archiveRunsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive runs yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Ran</th><th className="text-left p-2">Status</th><th className="text-right p-2">Eligible</th></tr>
                       </thead><tbody>
@@ -8946,7 +8952,7 @@ export default function AdminWalletDashboard() {
                   !retrievals?.retrievals?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No archive retrievals requested yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Reason</th><th className="text-left p-2">Status</th><th className="text-left p-2">Requested</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
@@ -9098,7 +9104,7 @@ export default function AdminWalletDashboard() {
                   {pendingReplayApprovalsLoading ? (
                     <div className="h-16 bg-white animate-pulse rounded"/>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-rose-50">
                         <tr className="text-gray-500">
                           <th className="text-left p-2">Replay Type</th><th className="text-left p-2">Requested By</th>
@@ -9200,7 +9206,7 @@ export default function AdminWalletDashboard() {
                         {filter && <span className="text-gray-500 font-normal">showing {diffs.length} matching “{diffEntityFilter}”</span>}
                       </div>
                       {diffs.length > 0 && (
-                        <div className="border rounded-lg overflow-hidden bg-white">
+                        <div className="border rounded-lg overflow-x-auto bg-white">
                           <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Changed fields</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th></tr>
                           </thead><tbody>
@@ -9363,7 +9369,7 @@ export default function AdminWalletDashboard() {
                 {!idempKeyLoading && idempotencyKeys45?.keys?.length > 0 && (
                   <div>
                     <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent Idempotency Records ({idempotencyKeys45.total})</div>
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Key</th><th className="text-left p-2">Endpoint</th><th className="text-right p-2">Recorded</th></tr>
                       </thead><tbody>
@@ -9481,7 +9487,7 @@ export default function AdminWalletDashboard() {
                 )}
                 {alertHistoryLoading ? <div className="h-12 bg-white animate-pulse rounded" /> :
                   alertTestHistory?.tests?.length > 0 && (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Channel</th><th className="text-right p-2">Response</th><th className="text-center p-2">Status</th></tr>
                       </thead><tbody>
@@ -9650,7 +9656,7 @@ export default function AdminWalletDashboard() {
                   !policyRules?.rules?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No policy rules found</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">Value</th><th className="text-left p-2">Division</th><th className="text-left p-2">Active</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
@@ -10133,7 +10139,7 @@ export default function AdminWalletDashboard() {
                   !entityScoresData?.scores?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No entity scores yet — enter a Scenario ID and record scores above</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Entity</th><th className="text-left p-2">Rev Adj</th><th className="text-left p-2">Vol Adj</th><th className="text-left p-2">Risk Adj</th><th className="text-right p-2">Total Score</th></tr>
                       </thead><tbody>
@@ -10205,7 +10211,7 @@ export default function AdminWalletDashboard() {
                     !simHistory?.simulations?.length ? (
                       <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No past simulations</div>
                     ) : (
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="border rounded-lg overflow-x-auto">
                         <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">From → To</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Affected</th><th className="text-left p-2">Date</th><th className="text-left p-2">Promote</th></tr>
                         </thead><tbody>
@@ -10338,7 +10344,7 @@ export default function AdminWalletDashboard() {
                   !policyPromotionsData?.promotions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No promotions yet. Use "Promote to Policy" on a completed simulation.</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Policy Key</th><th className="text-left p-2">Live Value</th><th className="text-left p-2">Rollback To</th><th className="text-left p-2">Promoted</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
@@ -10423,7 +10429,7 @@ export default function AdminWalletDashboard() {
                   !forecastBacktestsData?.backtests?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No backtest history</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Scenario</th><th className="text-left p-2">Period</th><th className="text-left p-2">Score</th><th className="text-left p-2">Date</th></tr>
                       </thead><tbody>
@@ -10591,7 +10597,7 @@ export default function AdminWalletDashboard() {
                           </span>
                         </div>
                       )}
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="border rounded-lg overflow-x-auto">
                         <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Scenario</th><th className="text-right p-2">Rank</th><th className="text-right p-2">Reuse</th><th className="text-right p-2">Backtest</th><th className="text-right p-2">Entity</th></tr>
                         </thead><tbody>
@@ -10736,7 +10742,7 @@ export default function AdminWalletDashboard() {
                     {governanceReport.recentSimulations?.length > 0 && (
                       <div className="border-t pt-3">
                         <div className="text-xs font-semibold text-gray-700 mb-2">Recent Policy Simulations</div>
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border rounded-lg overflow-x-auto">
                           <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Policy</th><th className="text-left p-2">Risk</th><th className="text-left p-2">Summary</th></tr>
                           </thead><tbody>
@@ -10842,7 +10848,7 @@ export default function AdminWalletDashboard() {
                   !assistantActionsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No assistant action runs yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Action</th><th className="text-left p-2">Status</th><th className="text-left p-2">Reason</th><th className="text-left p-2">Date</th></tr>
                       </thead><tbody>
@@ -10917,7 +10923,7 @@ export default function AdminWalletDashboard() {
                   !govPackLog?.log?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No packs sent yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Period</th><th className="text-left p-2">Signature</th><th className="text-left p-2">Sent</th></tr>
                       </thead><tbody>
@@ -11028,7 +11034,7 @@ export default function AdminWalletDashboard() {
                   !financeEntitiesData?.entities?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No entities configured</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Code</th><th className="text-left p-2">Name</th><th className="text-left p-2">Country</th><th className="text-left p-2">Currency</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
@@ -11196,7 +11202,7 @@ export default function AdminWalletDashboard() {
                   !distributionRulesData?.rules?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No distribution rules yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Pack</th><th className="text-left p-2">Group</th><th className="text-left p-2">Schedule</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
@@ -11270,7 +11276,7 @@ export default function AdminWalletDashboard() {
                   !packSubsData?.subscriptions?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No subscriptions yet — create an audience rule above</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Audience</th><th className="text-left p-2">Pack</th><th className="text-left p-2">Entity</th><th className="text-left p-2">Recipients</th><th className="text-left p-2">Options</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
@@ -11376,7 +11382,7 @@ export default function AdminWalletDashboard() {
                         </div>
                       )}
                       {govDeliveryData.analytics?.length > 0 && (
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border rounded-lg overflow-x-auto">
                           <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Audience</th><th className="text-left p-2">Pack</th><th className="text-left p-2">Period</th><th className="text-right p-2">Sent</th><th className="text-right p-2">Delivered</th><th className="text-right p-2">Failed</th></tr>
                           </thead><tbody>
@@ -11520,7 +11526,7 @@ export default function AdminWalletDashboard() {
                       {!followUpData.actions?.length ? (
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No follow-up actions for this filter — create the first one above</div>
                       ) : (
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border rounded-lg overflow-x-auto">
                           <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Title</th><th className="text-left p-2">Owner</th><th className="text-left p-2">Due</th><th className="text-left p-2">Priority</th><th className="text-left p-2">Status</th><th className="p-2"></th></tr>
                           </thead><tbody>
@@ -11615,7 +11621,7 @@ export default function AdminWalletDashboard() {
                       {!followUps43.followUps?.length ? (
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No follow-ups match the current filter</div>
                       ) : (
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border rounded-lg overflow-x-auto">
                           <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Title</th><th className="text-left p-2">Owner</th><th className="text-left p-2">Due</th><th className="text-left p-2">Priority</th><th className="text-left p-2">Status</th><th className="text-right p-2">Escalation</th><th className="text-left p-2">Actions</th></tr>
                           </thead><tbody>
@@ -11817,7 +11823,7 @@ export default function AdminWalletDashboard() {
                 </div>
                 {deliveriesLoading ? <div className="h-16 bg-white animate-pulse rounded" /> :
                   reviewDeliveries?.deliveries?.length ? (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Period</th><th className="text-left p-2">Recipients</th><th className="text-center p-2">Status</th><th className="text-right p-2">Sent At</th></tr>
                       </thead><tbody>
@@ -11926,7 +11932,7 @@ export default function AdminWalletDashboard() {
                           ✗ Unprotected: {permissionAudit.summary?.unprotected}
                         </span>
                       </div>
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="border rounded-lg overflow-x-auto">
                         <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Endpoint</th><th className="text-left p-2">Required Role</th><th className="text-left p-2">Guard</th><th className="text-center p-2">Status</th></tr>
                         </thead><tbody>
@@ -12319,7 +12325,7 @@ export default function AdminWalletDashboard() {
                   !orchRunsData?.runs?.length ? (
                     <div className="text-xs text-gray-400 text-center py-6 border border-dashed rounded">No orchestration runs yet</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Entity</th><th className="text-left p-2">Status</th><th className="text-left p-2">Retries</th><th className="text-left p-2">Started</th><th className="text-left p-2">Error</th><th className="text-left p-2">Actions</th></tr>
                       </thead><tbody>
@@ -12474,7 +12480,7 @@ export default function AdminWalletDashboard() {
                         </div>
                       )}
                       {workloadData.byApprover?.length > 0 && (
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border rounded-lg overflow-x-auto">
                           <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Approver</th><th className="text-right p-2">Open</th><th className="text-right p-2">Avg Age</th><th className="text-right p-2">Overdue</th><th className="text-right p-2">Rebalance?</th></tr>
                           </thead><tbody>
@@ -12571,7 +12577,7 @@ export default function AdminWalletDashboard() {
                   !retryPoliciesData?.policies?.length ? (
                     <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No retry policies yet — add one to enable self-healing for safe failure classes</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Run Type</th><th className="text-left p-2">Error Pattern</th><th className="text-left p-2">Max Retries</th><th className="text-left p-2">Delay</th><th className="text-left p-2">Status</th></tr>
                       </thead><tbody>
@@ -12596,7 +12602,7 @@ export default function AdminWalletDashboard() {
                 {retryPoliciesData?.attempts?.length > 0 && (
                   <div>
                     <div className="text-xs font-semibold text-gray-600 mb-1">Recent Auto-Retry Attempts</div>
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Run</th><th className="text-left p-2">Attempt</th><th className="text-left p-2">Status</th><th className="text-left p-2">Started</th><th className="text-left p-2">Error</th></tr>
                       </thead><tbody>
@@ -12653,7 +12659,7 @@ export default function AdminWalletDashboard() {
                       {bottleneckData.byChainType?.length > 0 && (
                         <div>
                           <div className="text-xs font-semibold text-gray-600 mb-1">By Chain Type</div>
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border rounded-lg overflow-x-auto">
                             <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Chain Type</th><th className="text-right p-2">Total</th><th className="text-right p-2">Avg Resolution</th></tr>
                             </thead><tbody>
@@ -12749,7 +12755,7 @@ export default function AdminWalletDashboard() {
                       {reviewerPerfData.liveWorkload?.length > 0 && (
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Live Workload — Last 30 Days</div>
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border rounded-lg overflow-x-auto">
                             <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-right p-2">Accepted</th><th className="text-right p-2">Rejected</th><th className="text-right p-2">Snoozed</th><th className="text-right p-2">SLA Breaches</th><th className="text-right p-2">Avg Age</th></tr>
                             </thead><tbody>
@@ -12770,7 +12776,7 @@ export default function AdminWalletDashboard() {
                       {reviewerPerfData.snapshots?.length > 0 && (
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Historical Snapshots</div>
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border rounded-lg overflow-x-auto">
                             <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-left p-2">Period</th><th className="text-right p-2">Reviewed</th><th className="text-right p-2">Reversal %</th><th className="text-right p-2">Overdue %</th><th className="text-right p-2">Quality Score</th></tr>
                             </thead><tbody>
@@ -12888,7 +12894,7 @@ export default function AdminWalletDashboard() {
                       {reviewerAnalytics.liveWorkload?.length > 0 && (
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Live Workload — 30 Days</div>
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border rounded-lg overflow-x-auto">
                             <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-right p-2">Total</th><th className="text-right p-2">Accept</th><th className="text-right p-2">Reject</th><th className="text-right p-2">SLA Breaches</th><th className="text-right p-2">Avg SLA h</th></tr>
                             </thead><tbody>
@@ -12909,7 +12915,7 @@ export default function AdminWalletDashboard() {
                       {reviewerAnalytics.snapshots?.length > 0 && (
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wide">Historical Snapshots (with Quality Band)</div>
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border rounded-lg overflow-x-auto">
                             <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Reviewer</th><th className="text-left p-2">Period</th><th className="text-right p-2">Accept Rate</th><th className="text-right p-2">SLA Rate</th><th className="text-right p-2">Overdue %</th><th className="text-left p-2">Band</th></tr>
                             </thead><tbody>
@@ -13248,7 +13254,7 @@ export default function AdminWalletDashboard() {
                   !recScoresData?.scores?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No recommendation scores yet — record the first one above</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Type</th><th className="text-left p-2">Entity</th><th className="text-right p-2">Confidence</th><th className="text-right p-2">Impact</th><th className="text-right p-2">Urgency</th><th className="text-left p-2">Note</th></tr>
                       </thead><tbody>
@@ -13445,7 +13451,7 @@ export default function AdminWalletDashboard() {
                           ))}
                         </div>
                       )}
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="border rounded-lg overflow-x-auto">
                         <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">Score</th><th className="text-left p-2">Action</th><th className="text-left p-2">Actor</th><th className="text-left p-2">SLA Due</th><th className="text-left p-2">SLA Met</th><th className="text-left p-2">Reason</th></tr>
                         </thead><tbody>
@@ -13528,7 +13534,7 @@ export default function AdminWalletDashboard() {
                       {!outcomesData.outcomes?.length ? (
                         <div className="text-xs text-gray-400 text-center py-3 border border-dashed rounded">No outcome records yet — record before/after metrics for a completed plan</div>
                       ) : (
-                        <div className="border rounded-lg overflow-hidden">
+                        <div className="border rounded-lg overflow-x-auto">
                           <table className="w-full text-xs"><thead className="bg-white">
                             <tr className="text-gray-500"><th className="text-left p-2">Plan</th><th className="text-left p-2">Metric</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th><th className="text-left p-2">Unit</th><th className="text-left p-2">Status</th></tr>
                           </thead><tbody>
@@ -13715,7 +13721,7 @@ export default function AdminWalletDashboard() {
                       {bottlenecks43.blockedOwners?.length > 0 && (
                         <div>
                           <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">Top Blocked Owners</div>
-                          <div className="border rounded-lg overflow-hidden">
+                          <div className="border rounded-lg overflow-x-auto">
                             <table className="w-full text-xs"><thead className="bg-white">
                               <tr className="text-gray-500"><th className="text-left p-2">Owner</th><th className="text-right p-2">Overdue</th><th className="text-right p-2">Max Escalation</th></tr>
                             </thead><tbody>
@@ -13812,7 +13818,7 @@ export default function AdminWalletDashboard() {
                           </div>
                         </div>
                       )}
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="border rounded-lg overflow-x-auto">
                         <table className="w-full text-xs"><thead className="bg-white">
                           <tr className="text-gray-500"><th className="text-left p-2">#</th><th className="text-left p-2">Title</th><th className="text-right p-2">Priority Score</th><th className="text-right p-2">Urgency</th><th className="text-right p-2">Value</th><th className="text-right p-2">Bottleneck</th><th className="text-left p-2">Why?</th></tr>
                         </thead><tbody>
@@ -14012,7 +14018,7 @@ export default function AdminWalletDashboard() {
                   !priorityAdjustments?.adjustments?.length ? (
                     <div className="text-xs text-gray-400 text-center py-4 border border-dashed rounded">No adjustments yet — run feedback loop after outcomes have effectiveness scores recorded</div>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-x-auto">
                       <table className="w-full text-xs"><thead className="bg-white">
                         <tr className="text-gray-500"><th className="text-left p-2">Recommendation</th><th className="text-right p-2">Before</th><th className="text-right p-2">After</th><th className="text-right p-2">Delta</th><th className="text-left p-2">Reason</th></tr>
                       </thead><tbody>

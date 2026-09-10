@@ -220,8 +220,8 @@ export default function OpsTodayPage() {
       ) : (
         <div className="mx-4 mt-4 mb-8">
           {/* Table Header */}
-          <div className="luxury-glass-card luxury-shadow-lg overflow-hidden rounded-2xl luxury-animate-slide-up luxury-delay-2">
-            <div className="luxury-glass-panel px-6 py-3 flex items-center text-xs font-semibold text-[#B8932F] uppercase tracking-wider">
+          <div className="luxury-glass-card luxury-shadow-lg overflow-x-auto rounded-2xl luxury-animate-slide-up luxury-delay-2">
+            <div className="luxury-glass-panel min-w-[680px] px-6 py-3 flex items-center text-xs font-semibold text-[#B8932F] uppercase tracking-wider">
               <div className="w-10">
                 <input
                   type="checkbox"
@@ -250,7 +250,7 @@ export default function OpsTodayPage() {
                 return (
                   <div
                     key={key}
-                    className={`luxury-glass-minimal luxury-hover-lift px-6 py-4 flex items-center text-sm transition-all duration-300 ${
+                    className={`luxury-glass-minimal luxury-hover-lift min-w-[680px] px-6 py-4 flex items-center text-sm transition-all duration-300 ${
                       isSelected ? 'bg-[#D4AF37] bg-opacity-50' : ''
                     }`}
                     style={{ animationDelay: `${(index + 3) * 0.05}s` }}

@@ -271,7 +271,7 @@ export function AddressPicker({
                 <button
                   type="button"
                   onClick={() => selectSaved(addr)}
-                  className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-right transition-all
+                  className={`flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-right transition-all
                     ${isSelected
                       ? "bg-amber-50 border border-amber-300 text-amber-900"
                       : "bg-white border border-gray-100 hover:bg-white text-gray-800"
@@ -362,7 +362,7 @@ export function AddressPicker({
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <div className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
+          <div className="flex-1 min-w-0 flex items-center gap-2 px-3 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-900">
             <MapPin className="w-4 h-4 shrink-0 text-emerald-500" />
             <span className="flex-1 truncate text-right">{value}</span>
           </div>
