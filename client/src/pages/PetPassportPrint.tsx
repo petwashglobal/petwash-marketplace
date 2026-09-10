@@ -121,10 +121,9 @@ export default function PetPassportPrint() {
       `}</style>
 
       <div
-        className="pw-print-page"
+        className="pw-print-page pw-viewport-min-h"
         dir={isHe ? 'rtl' : 'ltr'}
         style={{
-          minHeight: '100vh',
           background: MARBLE,
           padding: 32,
           fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Hebrew", sans-serif',

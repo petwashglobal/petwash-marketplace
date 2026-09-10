@@ -50,11 +50,13 @@
 .luxury-dark-bg {
   background: #ffffff;
   min-height: 100vh;
+  min-height: 100dvh; /* iOS: vh is the LARGE viewport */
 }
 
 .luxury-dark-mesh {
   background: #ffffff;
   min-height: 100vh;
+  min-height: 100dvh; /* iOS: vh is the LARGE viewport */
 }
 
 .luxury-dark-gradient {

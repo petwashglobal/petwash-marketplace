@@ -125,8 +125,8 @@ export class AuthRouteErrorBoundary extends Component<Props, State> {
       <div
         role="alert"
         data-testid="auth-route-error-boundary"
+        className="pw-viewport-min-h"
         style={{
-          minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

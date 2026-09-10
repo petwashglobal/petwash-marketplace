@@ -882,7 +882,15 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 }
 
 .pc-page {
+  /* iOS SAFARI (2026-09-10): `vh` is the LARGE viewport on iOS, so `100vh`
+     adds ~90px of phantom scroll below the fold and pins a 390px floor in
+     landscape. The pair is the pattern already used by .pw-mobile-drawer. */
   min-height: 100vh;
+  min-height: 100dvh;
+  /* The belt Landing.tsx has (`overflow-x-clip`) and this page did not.
+     `clip` rather than `hidden`: it does not make the element a scroll
+     container, so sticky descendants keep working. */
+  overflow-x: clip;
   background: radial-gradient(1200px 700px at 50% -100px, rgba(198,167,94,.12), transparent 60%),
               linear-gradient(180deg, var(--pc-pearl), var(--pc-white));
   color: var(--pc-ink);
@@ -890,12 +898,23 @@ button[data-testid="button-gmail-signin-quick"]:hover {
   letter-spacing: -.2px;
 }
 
+/* FULL-BLEED WIDTH (2026-09-10) — the bug class PR #1371 fixed, still live on
+   this one page. `.pc-wrap` wraps EVERY top-level section of PrestigeClub.tsx
+   including the hero. It was sized `calc(100% - 48px)`: a CONTAINER
+   percentage. `body { overflow-x: hidden }` does not hold on iOS Safari — the
+   page inflates, the containing block grows with it, and a `%`-derived width
+   then computes WIDER than the screen and clips on the right. Chrome renders
+   the same CSS cleanly, which is precisely why this reads as "Safari only".
+
+   `vw` is the device width and is immune to that inflation. `max-width: 100%`
+   is the belt. Do not put a container `%` back on a full-bleed column. */
 .pc-wrap {
-  width: min(var(--pc-max), calc(100% - 48px));
+  width: min(var(--pc-max), calc(100vw - 48px));
+  max-width: 100%;
   margin: 0 auto;
 }
 @media (max-width: 740px) {
-  .pc-wrap { width: calc(100% - 28px); }
+  .pc-wrap { width: min(var(--pc-max), calc(100vw - 28px)); }
 }
 
 .pc-btn {

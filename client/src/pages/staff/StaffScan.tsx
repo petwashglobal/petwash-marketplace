@@ -102,7 +102,7 @@ export default function StaffScan() {
 
   return (
     <Layout>
-      <div style={{ background: '#FFFFFF', minHeight: '100vh', paddingBottom: '40px' }}>
+      <div className="pw-viewport-min-h" style={{ background: '#FFFFFF', paddingBottom: '40px' }}>
 
         {/* ── Header ── */}
         <div style={{

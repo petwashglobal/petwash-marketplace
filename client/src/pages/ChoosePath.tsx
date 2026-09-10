@@ -75,7 +75,7 @@ export default function ChoosePath({ language }: ChoosePathProps) {
   ];
 
   return (
-    <div dir={he ? 'rtl' : 'ltr'} style={{ minHeight: '100vh', background: '#0b0b0d', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+    <div dir={he ? 'rtl' : 'ltr'} className="pw-viewport-min-h" style={{ background: '#0b0b0d', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ width: '100%', maxWidth: 560 }}>
         <h1 style={{ fontSize: 'clamp(26px,4vw,36px)', fontWeight: 700, textAlign: 'center', margin: '0 0 6px' }}>
           {he ? 'מה תרצה/י לעשות?' : 'What do you want to do?'}
