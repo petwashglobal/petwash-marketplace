@@ -24,6 +24,19 @@ const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
 const PHOTON_URL = 'https://photon.komoot.io/api/';
 const IL_BBOX = '34.2,29.4,35.95,33.4'; // minLon,minLat,maxLon,maxLat
 
+// BUILDING_LEVEL_POSTCODE (2026-09-11)
+// An Israeli מיקוד is 7 digits and identifies a BUILDING, not a street or a city.
+// OSM/Photon will happily hand back the postcode of a whole street segment,
+// district or city object, and it splits a long street into segments that carry
+// DIFFERENT codes. Verified live on our own station address:
+//   q="ויצמן 185 כפר סבא" -> 6 predictions, 5 of them the identical string
+//   "ויצמן, כפר סבא, מחוז המרכז", carrying 4445810 / 4426119 / 4425416.
+// Whichever row the customer tapped, they were shown — and saved — a postcode
+// belonging to some other stretch of Weizmann. So: a postcode is emitted ONLY
+// when the hit is a building (it carries its own house number). Everywhere else
+// the field stays empty and the customer types it. An empty מיקוד is honest; a
+// confident wrong one is a misdelivered package.
+
 interface Prediction {
   placeId: string;
   description: string;
@@ -54,6 +67,34 @@ const suggestLimiter = rateLimit({
   store: redisRateLimitStore('geocode_suggest'),
 });
 
+/** Exported for the regression pin — pure, no network. */
+export function photonFeatureToPrediction(f: any): Prediction {
+  const p = f?.properties || {};
+  const coords = f?.geometry?.coordinates || [];
+  const street = p.street || p.name || '';
+  const streetNumber = p.housenumber ? String(p.housenumber) : '';
+  const city = p.city || p.district || p.county || '';
+  const state = p.state || '';
+  const mainText = [street, streetNumber].filter(Boolean).join(' ');
+  const secondaryText = [city, state].filter(Boolean).join(', ');
+  const description = [mainText, secondaryText].filter(Boolean).join(', ');
+  return {
+    placeId: `photon:${p.osm_type || 'X'}${p.osm_id || ''}`,
+    description,
+    mainText: mainText || description,
+    secondaryText,
+    street,
+    streetNumber,
+    city,
+    state,
+    // Building-level only — see BUILDING_LEVEL_POSTCODE note above.
+    postalCode: p.housenumber && p.postcode ? String(p.postcode) : undefined,
+    countryCode: p.countrycode || 'IL',
+    lat: typeof coords[1] === 'number' ? coords[1] : undefined,
+    lng: typeof coords[0] === 'number' ? coords[0] : undefined,
+  };
+}
+
 async function photonSuggest(q: string): Promise<Prediction[]> {
   const url = `${PHOTON_URL}?q=${encodeURIComponent(q)}&limit=6&lang=default&bbox=${IL_BBOX}`;
   const controller = new AbortController();
@@ -65,31 +106,7 @@ async function photonSuggest(q: string): Promise<Prediction[]> {
     const feats: any[] = Array.isArray(data?.features) ? data.features : [];
     return feats
       .filter((f) => (f?.properties?.countrycode || 'IL') === 'IL')
-      .map((f) => {
-        const p = f.properties || {};
-        const coords = f.geometry?.coordinates || [];
-        const street = p.street || p.name || '';
-        const streetNumber = p.housenumber ? String(p.housenumber) : '';
-        const city = p.city || p.district || p.county || '';
-        const state = p.state || '';
-        const mainText = [street, streetNumber].filter(Boolean).join(' ');
-        const secondaryText = [city, state].filter(Boolean).join(', ');
-        const description = [mainText, secondaryText].filter(Boolean).join(', ');
-        return {
-          placeId: `photon:${p.osm_type || 'X'}${p.osm_id || ''}`,
-          description,
-          mainText: mainText || description,
-          secondaryText,
-          street,
-          streetNumber,
-          city,
-          state,
-          postalCode: p.postcode || undefined,
-          countryCode: p.countrycode || 'IL',
-          lat: typeof coords[1] === 'number' ? coords[1] : undefined,
-          lng: typeof coords[0] === 'number' ? coords[0] : undefined,
-        } as Prediction;
-      })
+      .map(photonFeatureToPrediction)
       .filter((p) => p.description);
   } finally {
     clearTimeout(timeout);
@@ -123,7 +140,8 @@ async function nominatimSuggest(q: string, lang: string): Promise<Prediction[]> 
         streetNumber,
         city,
         state: a.state || undefined,
-        postalCode: a.postcode || undefined,
+        // Building-level only — see BUILDING_LEVEL_POSTCODE note above.
+        postalCode: streetNumber && a.postcode ? String(a.postcode) : undefined,
         countryCode: 'IL',
         lat: Number(x.lat),
         lng: Number(x.lon),
@@ -167,6 +185,29 @@ function localCitySuggest(q: string): Prediction[] {
   });
 }
 
+/**
+ * OSM splits one street into many segments, so a single street can come back as
+ * several features with the SAME description and different coordinates. Untouched,
+ * the customer saw six rows of which five read identically
+ * ("ויצמן, כפר סבא, מחוז המרכז") — a dropdown you cannot choose from, which is
+ * why address search "did not bring the address". Collapse on what the customer
+ * actually reads, and keep the most specific row for each (a hit carrying a house
+ * number beats a bare street).
+ */
+export function dedupePredictions(list: Prediction[]): Prediction[] {
+  const best = new Map<string, Prediction>();
+  for (const p of list) {
+    const key = (p.description || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!key) continue;
+    const seen = best.get(key);
+    if (!seen) { best.set(key, p); continue; }
+    // Prefer a building-level hit: it has a house number, and with it a postcode
+    // we are actually allowed to keep.
+    if (!seen.streetNumber && p.streetNumber) best.set(key, p);
+  }
+  return Array.from(best.values());
+}
+
 // GET /api/geocode/suggest?q=...&lang=he — address predictions with parts + lat/lng inline.
 router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
   const q = String(req.query.q || '').trim();
@@ -208,6 +249,8 @@ router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
     predictions = localCitySuggest(q); // guaranteed offline city floor
   }
 
+  predictions = dedupePredictions(predictions);
+
   if (cache.size >= CACHE_MAX) cache.clear();
   cache.set(cacheKey, { at: Date.now(), data: predictions });
   return res.json({ predictions });
@@ -245,7 +288,9 @@ router.get('/reverse', suggestLimiter, async (req: Request, res: Response) => {
       street: a.road || a.pedestrian || undefined,
       streetNumber: a.house_number || undefined,
       city: a.city || a.town || a.village || a.municipality,
-      postalCode: a.postcode,
+      // Building-level only — see BUILDING_LEVEL_POSTCODE note above. "Use my
+      // location" that lands mid-street must not stamp that segment's code.
+      postalCode: a.house_number ? a.postcode : undefined,
       countryCode: (a.country_code || 'il').toUpperCase(),
       lat, lng,
     };
