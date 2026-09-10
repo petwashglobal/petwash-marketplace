@@ -20,7 +20,6 @@ import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { CreditType } from '../../shared/petwash-operating-system';
 
 import { isPrestigeEnrolled } from '../lib/memberTier';
-}
 
 const router = Router();
 
