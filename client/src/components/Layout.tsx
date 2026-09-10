@@ -48,8 +48,12 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
   // (marketplace payment, provider payout, egift live) are still in
   // integration and the CEO wants every visitor to see one honest one-line
   // notice before they hit any of them. Overrides the 2026-07-25 removal
-  // note. The strip is 24 px tall, low-contrast amber, and self-dismissible
+  // note. The strip is ~26 px tall, brand metal (gold on graphite), and self-dismissible
   // via a small × so a returning customer never has to re-read it.
+  // 2026-09-10: the amber/brown paint was replaced with the brand metal
+  // (graphite ground, gold lettering, brushed-gold hairline). Appearance
+  // now lives in client/src/styles/under-dev-notice.css so the strip can
+  // carry media queries; the copy and the dismissal contract are unchanged.
   //
   // Copy is bilingual (HE first, EN second) inside a single narrow strip.
   // Payment-related surfaces (Nayax / SUMIT / K9000 wallet) still gate their
@@ -74,7 +78,7 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
   return (
     <div className="min-h-[100dvh] bg-white">
       {/* UNDER-DEV-NOTICE (CEO 2026-08-23): the small honest strip that some
-          flows aren't live yet. Amber, 24 px tall, dismissible. Hidden after
+          flows aren't live yet. Brand metal, ~26 px tall, dismissible. Hidden after
           the viewer clicks × (per-device). Text is bilingual in one line —
           HE first for the primary Israel audience, EN in parentheses so an
           English visitor still sees it clearly. */}
@@ -83,22 +87,8 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
           role="status"
           aria-live="polite"
           data-testid="under-dev-notice"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 10,
-            padding: '4px 14px',
-            minHeight: 24,
-            background: '#FEF3C7',
-            color: '#78350F',
-            fontSize: 12.5,
-            lineHeight: 1.35,
-            borderBottom: '1px solid rgba(120, 53, 15, 0.15)',
-            direction: isRTL ? 'rtl' : 'ltr',
-            textAlign: 'center',
-            fontFamily: 'system-ui, -apple-system, "Segoe UI", Arial, sans-serif',
-          }}
+          className="pw-under-dev"
+          style={{ direction: isRTL ? 'rtl' : 'ltr' }}
         >
           {/* RTL FIX (agent-13, 2026-09-05): this strip mixes Hebrew and Latin in
               one string. Rendered as a single text node inside `direction: rtl`
@@ -112,7 +102,7 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
               `<bdi>` isolates the embedded run so its own direction is
               resolved independently and its punctuation stays attached to it.
               Both language branches embed the other script, so both need it. */}
-          <span style={{ flex: 1, textAlign: 'center' }}>
+          <span className="pw-under-dev-copy">
             {isRTL ? (
               <>
                 {'האתר עדיין בפיתוח — אין תשלום חי כרגע. '}
@@ -129,16 +119,7 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
             type="button"
             onClick={dismissUnderDevNotice}
             aria-label={isRTL ? 'סגור הודעה' : 'Dismiss notice'}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#78350F',
-              cursor: 'pointer',
-              fontSize: 16,
-              lineHeight: 1,
-              padding: '0 4px',
-              opacity: 0.75,
-            }}
+            className="pw-under-dev-dismiss"
           >
             ×
           </button>
