@@ -6,6 +6,7 @@ import { petAvatars, insertPetAvatarSchema, type PetAvatar } from '@shared/schem
 import { eq, and, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import multer from 'multer';
+import { requireValidFileContent } from '../lib/fileMagicValidation';
 import sharp from 'sharp';
 import { nanoid } from 'nanoid';
 import { storage } from '../lib/firebase-admin';
@@ -19,6 +20,24 @@ const router = Router();
 const genAI = new GoogleGenAI(getVertexAIConfig());
 
 // Configure multer for memory storage
+/**
+ * The fileFilter below reads file.mimetype, which is the CLIENT'S declared
+ * Content-Type from the multipart headers — attacker-controlled, and not what
+ * sharp will act on. sharp sniffs the real bytes and hands them to the
+ * matching libvips decoder, so declaring image/png and sending something else
+ * reaches a decoder this allowlist believes it excluded.
+ *
+ * That matters more than usual right now: sharp carries unpatched libvips
+ * CVEs (GHSA-f88m-g3jw-g9cj) with no fixed release available, and
+ * POST /api/avatars/guest takes an upload with NO authentication at all.
+ *
+ * ALLOWED_AVATAR_MIME is the same list, enforced against the magic number by
+ * requireValidFileContent — the validator this repo already uses on the
+ * provider-onboarding uploads. Declared type stays as a cheap first pass; the
+ * bytes are what decide.
+ */
+const ALLOWED_AVATAR_MIME = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -26,7 +45,7 @@ const upload = multer({
   },
   fileFilter: (_req, file, cb) => {
     // Explicit allowlist — rejects SVG (XSS vector), TIFF, BMP, ICO, etc.
-    const ALLOWED_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']);
+    const ALLOWED_MIME = new Set(ALLOWED_AVATAR_MIME);
     if (ALLOWED_MIME.has(file.mimetype)) {
       cb(null, true);
     } else {
@@ -123,7 +142,7 @@ router.get('/:avatarId', validateFirebaseToken, async (req, res) => {
 });
 
 // GUEST ENDPOINT: Create avatar preview without authentication or persistence
-router.post('/guest', runUpload(upload.single('photo')), async (req, res) => {
+router.post('/guest', runUpload(upload.single('photo')), requireValidFileContent(ALLOWED_AVATAR_MIME), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Photo is required' });
@@ -325,7 +344,7 @@ router.post('/generate-from-preset', validateFirebaseToken, async (req, res) => 
 });
 
 // Create new avatar with photo upload (AUTHENTICATED)
-router.post('/', validateFirebaseToken, runUpload(upload.single('photo')), async (req, res) => {
+router.post('/', validateFirebaseToken, runUpload(upload.single('photo')), requireValidFileContent(ALLOWED_AVATAR_MIME), async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     
