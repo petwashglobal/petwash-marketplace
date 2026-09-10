@@ -16,16 +16,17 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
 import waldStationPhoto from '@assets/wald_kfarsaba_station.jpg';
 import greenKfarSabaStationPhoto from '@assets/green_kfarsaba_station.jpg';
+import { STANDARD_WASH_PRICE_LINE } from '@/lib/washPrice';
 
 // AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines
 // (ChatGPT/Claude/Perplexity) can lift a factual sentence verbatim. Truthful,
-// legal-safe (no guaranteed/medical claims); price ₪55 incl VAT per CEO 2026-07-09.
+// legal-safe (no guaranteed/medical claims); price line from lib/washPrice (CEO 2026-07-09).
 const STATION_FAQ: { qHe: string; qEn: string; aHe: string; aEn: string }[] = [
   {
     qHe: 'כמה עולה שטיפת כלב בשירות עצמי?',
     qEn: 'How much is a self-service dog wash?',
-    aHe: 'שטיפה עצמית סטנדרטית עולה ₪55 (כולל מע״מ).',
-    aEn: 'A standard self-service wash is ₪55 (VAT included).',
+    aHe: STANDARD_WASH_PRICE_LINE.he,
+    aEn: STANDARD_WASH_PRICE_LINE.en,
   },
   {
     qHe: 'איפה אפשר לשטוף כלב בכפר סבא?',

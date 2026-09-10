@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Check, ArrowRight, ArrowLeft, Leaf, Sparkles, ShieldCheck, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
+import { STANDARD_WASH_PRICE_LINE } from '@/lib/washPrice';
 import { CheckoutLegalNotice } from '@/components/legal/CheckoutLegalNotice';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -20,14 +21,14 @@ import { SeoFaqSection, type SeoFaqItem } from '@/components/SeoFaqSection';
 const WASH_PRICE = 55;
 
 // AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines can
-// lift a factual sentence verbatim. Truthful, legal-safe; price ₪55 incl VAT
+// lift a factual sentence verbatim. Truthful, legal-safe; price line from lib/washPrice
 // (CEO 2026-07-09). Module-level = stable reference (no effect re-run per render).
 const PACKAGES_FAQ: SeoFaqItem[] = [
   {
     qHe: 'כמה עולה שטיפה אחת?',
     qEn: 'How much is a single wash?',
-    aHe: 'שטיפה עצמית סטנדרטית עולה ₪55 (כולל מע״מ).',
-    aEn: 'A standard self-service wash is ₪55 (VAT included).',
+    aHe: STANDARD_WASH_PRICE_LINE.he,
+    aEn: STANDARD_WASH_PRICE_LINE.en,
   },
   {
     qHe: 'האם חבילות רב-שטיפה זולות יותר לשטיפה?',
@@ -393,6 +394,13 @@ export default function Packages() {
             <div className="text-center py-16" data-testid="packages-empty">
               <p className="text-[13px] text-[#888]">
                 {isHe ? 'אין חבילות פעילות כעת. חזרו בקרוב.' : 'No active packages right now. Please check back soon.'}
+              </p>
+              {/* A pricing page with no price is a dead end (live QA 2026-09-10).
+                  Single washes are always available at the bay; the line is the
+                  same approved sentence /locations publishes, from ONE source. */}
+              <p className="mt-4 text-[15px] text-[#222]" data-testid="packages-single-wash-price">
+                {isHe ? 'שטיפות בודדות זמינות תמיד בעמדה, ללא חבילה. ' : 'Single washes are always available at the bay, no package needed. '}
+                {isHe ? STANDARD_WASH_PRICE_LINE.he : STANDARD_WASH_PRICE_LINE.en}
               </p>
             </div>
           )}
