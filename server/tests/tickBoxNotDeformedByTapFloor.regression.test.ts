@@ -574,6 +574,10 @@ describe("the resubmission link the server emails has somewhere to land", () => 
     expect(page).toMatch(/provider-onboarding\/resubmit\//);
     // The token is the credential — sending a Bearer here would be wrong.
     expect(page).not.toMatch(/Authorization/);
+  });
+});
+
+/**
  * 2026-09-10 — security upgrades, and the upload path that needed them most.
  *
  * npm audit: 8 high-severity advisories, 3 of which have no fixed release.
