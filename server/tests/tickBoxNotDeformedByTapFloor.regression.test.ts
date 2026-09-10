@@ -620,3 +620,31 @@ describe("the upload stack is on patched versions and trusts bytes, not headers"
     }
   });
 });
+
+/**
+ * 2026-09-10 — the grooming platform's primary CTA reloaded the page you were on.
+ *
+ * /groomers renders groomers/Overview.tsx. Its hero button AND its "Find a
+ * Groomer" feature card both linked to "/groomers" — itself. The real browse
+ * view is /groomers/explore (App.tsx -> Groomers.tsx, which queries
+ * /api/providers/search). So the first thing a customer clicks on the grooming
+ * platform did nothing at all.
+ *
+ * Rover's equivalent card is the top of its funnel; ours was a loop.
+ */
+describe("the grooming funnel advances", () => {
+  it("no CTA on the grooming overview points at the overview itself", () => {
+    const src = readFileSync(resolve(root, "client/src/pages/groomers/Overview.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+    expect(src).not.toMatch(/["'`]\/groomers["'`]/);
+  });
+
+  it("it points at the route that actually lists groomers", () => {
+    const src = readFileSync(resolve(root, "client/src/pages/groomers/Overview.tsx"), "utf8");
+    expect(src).toMatch(/\/groomers\/explore/);
+    const app = readFileSync(resolve(root, "client/src/App.tsx"), "utf8");
+    expect(app, "/groomers/explore is gone — this pin needs rewriting")
+      .toMatch(/<Route path="\/groomers\/explore">/);
+  });
+});
