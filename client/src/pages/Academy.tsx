@@ -220,7 +220,7 @@ export default function Academy() {
                     <Star className="h-5 w-5 text-white" />
                   </div>
                   <span className="luxury-heading-lg">
-                    {(trainers.reduce((sum, t) => sum + parseFloat(t.averageRating), 0) / trainers.length).toFixed(2)}
+                    {trainers.length > 0 ? (trainers.reduce((sum, t) => sum + parseFloat(t.averageRating), 0) / trainers.length).toFixed(2) : '—'}
                   </span>
                 </div>
                 <p className="luxury-text-small">
