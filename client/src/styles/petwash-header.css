@@ -1417,9 +1417,6 @@
   .pw-header-left .pw-social-link {
     display: none !important;
   }
-  .pw-header-logo-img {
-    height: 3.25rem !important;
-  }
   .pw-header-row-logo {
     padding-top: 0.125rem;
   }
@@ -1427,6 +1424,39 @@
     height: 3.5rem;
   }
 }
+
+/* LOGO HEIGHT — scoped out of the de-salad block (2026-09-10).
+ *
+ * The block above is "appended last so it wins the cascade", and it did: its
+ * `.pw-header-logo-img { height: 3.25rem !important }` sat at the same (0,1,0)
+ * specificity as three earlier per-device rules and, being last, beat all of
+ * them. Source order alone decided — which is not what "wins the cascade" was
+ * meant to buy. That was about hiding the social links.
+ *
+ * What it silently broke, measured:
+ *
+ *   <=375px    the XS tier asks for height 2.75rem / max-width 120px. Only the
+ *              max-width survived, so a 320px phone rendered a 52px-tall logo
+ *              in a 120px-wide box; with `object-fit: contain` that letterboxes
+ *              the mark SMALLER than the tier intended, not larger.
+ *
+ *   landscape  the landscape tier asks for 2.25rem, and `.pw-header-inner` is
+ *   <=767px    pinned to 3rem !important (48px). The logo was forced to
+ *              3.25rem = 52px: a 52px logo inside a 48px bar, overflowing its
+ *              own header. Measured on 667x375 (iPhone SE landscape).
+ *
+ * Re-scoped to the one band nothing else covers: 640-767px wide AND tall
+ * enough not to be a landscape phone. `min-height: 501px` rather than
+ * `not (orientation: landscape) and ...` because media-query boolean `not`
+ * inside a condition is Safari 16.4+, and this has to hold on older iPhones —
+ * which are exactly the devices in question.
+ */
+@media (min-width: 640px) and (max-width: 767px) and (min-height: 501px) {
+  .pw-header-logo-img {
+    height: 3.25rem !important;
+  }
+}
+
 
 /* ===========================================================================
    TAP-TARGET FLOOR — Apple HIG 44×44pt / WCAG 2.5.8 (agent-13, 2026-09-05)
