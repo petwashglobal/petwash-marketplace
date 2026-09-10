@@ -1,5 +1,5 @@
 /**
- * PetWash™ — App-Flavor Terms Gate
+ * PetWash™‎ — App-Flavor Terms Gate
  *
  * Lightweight, FAIL-OPEN consent gate that runs ONLY inside the matching native
  * Capacitor app flavor (customer vs provider). It ensures a signed-in user has
@@ -51,15 +51,15 @@ interface GateCopy {
 const COPY: Record<AppFlavor, Record<'he' | 'en', GateCopy>> = {
   customer: {
     he: {
-      title: 'תנאי השימוש של PetWash™',
-      body: 'כדי להמשיך אל החשבון שלך, יש לאשר את תנאי השימוש ומדיניות הפרטיות של PetWash™.',
+      title: 'תנאי השימוש של PetWash™‎',
+      body: 'כדי להמשיך אל החשבון שלך, יש לאשר את תנאי השימוש ומדיניות הפרטיות של PetWash™‎.',
       accept: 'אני מאשר/ת וממשיך/ה',
       view: 'צפייה בתנאים המלאים',
       busy: 'מאשר…',
     },
     en: {
-      title: 'PetWash™ Terms of Service',
-      body: 'To continue to your account, please accept the PetWash™ Terms of Service and Privacy Policy.',
+      title: 'PetWash™‎ Terms of Service',
+      body: 'To continue to your account, please accept the PetWash™‎ Terms of Service and Privacy Policy.',
       accept: 'I agree & continue',
       view: 'View full terms',
       busy: 'Accepting…',
@@ -67,15 +67,15 @@ const COPY: Record<AppFlavor, Record<'he' | 'en', GateCopy>> = {
   },
   provider: {
     he: {
-      title: 'הסכם נותני השירות של PetWash™',
-      body: 'כדי להמשיך אל מערכת נותני השירות, יש לאשר את הסכם נותני השירות של PetWash™.',
+      title: 'הסכם נותני השירות של PetWash™‎',
+      body: 'כדי להמשיך אל מערכת נותני השירות, יש לאשר את הסכם נותני השירות של PetWash™‎.',
       accept: 'אני מאשר/ת את ההסכם',
       view: 'צפייה בהסכם המלא',
       busy: 'מאשר…',
     },
     en: {
-      title: 'PetWash™ Provider Agreement',
-      body: 'To continue to Provider OS, please accept the PetWash™ Provider Agreement.',
+      title: 'PetWash™‎ Provider Agreement',
+      body: 'To continue to Provider OS, please accept the PetWash™‎ Provider Agreement.',
       accept: 'I accept the agreement',
       view: 'View full agreement',
       busy: 'Accepting…',

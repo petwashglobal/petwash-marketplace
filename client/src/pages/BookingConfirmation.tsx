@@ -61,13 +61,13 @@ const IMPORTANT_INFO_HE: Record<string, string[]> = {
     'משך השמירה מוגבלת. אנא הכן/י את החיה בזמן להחזרה.',
     'הכן/י מזון, קערות, תרופות ומיטה קרוב לכניסה.',
     'השמרטף/ית ייצור/תיצור קשר שעה לפני ההגעה.',
-    'במקרה חירום ניתן לפנות ל-PetWash™ בכל שעה.',
+    'במקרה חירום ניתן לפנות ל-PetWash™‎ בכל שעה.',
   ],
   daycare: [
     'משך השמירה מוגבלת. אנא הכן/י את החיה בזמן להחזרה.',
     'הכן/י מזון, קערות, תרופות ומיטה קרוב לכניסה.',
     'השמרטף/ית ייצור/תיצור קשר שעה לפני ההגעה.',
-    'במקרה חירום ניתן לפנות ל-PetWash™ בכל שעה.',
+    'במקרה חירום ניתן לפנות ל-PetWash™‎ בכל שעה.',
   ],
   dog_walking: [
     'המוליך/ה יגיע/תגיע לכתובת שנקבעה בדיוק בזמן.',
@@ -105,13 +105,13 @@ const IMPORTANT_INFO_EN: Record<string, string[]> = {
     'Sitting duration is limited. Please have your pet ready for pick-up on time.',
     'Prepare food, bowls, medication and bedding near the entrance.',
     'Your sitter will contact you one hour before arrival.',
-    'For emergencies, PetWash™ support is available 24/7.',
+    'For emergencies, PetWash™‎ support is available 24/7.',
   ],
   daycare: [
     'Daycare hours are fixed. Please collect your pet on time.',
     'Prepare food, bowls, medication and bedding near the entrance.',
     'Your caregiver will reach out an hour before arrival.',
-    'For emergencies, PetWash™ support is available 24/7.',
+    'For emergencies, PetWash™‎ support is available 24/7.',
   ],
   dog_walking: [
     'Your walker will arrive at the agreed address exactly on time.',
@@ -168,7 +168,7 @@ const labels = {
     emailSent:        'קבלה נשלחה במייל',
     back:             'כל ההזמנות',
     escrow:           'נתיב מאובטח 72 שעות',
-    thankYou:         'תודה שבחרת ב-PetWash™! נשמח לראותך שוב 😊',
+    thankYou:         'תודה שבחרת ב-PetWash™‎! נשמח לראותך שוב 😊',
     paymentSuccessTitle: 'התשלום התקבל · ההזמנה מאושרת',
     paymentSuccessSub:   'הכספים מוחזקים במסלול מאובטח עד לסיום השירות.',
     paymentFailedTitle:  'התשלום לא עבר',
@@ -260,7 +260,7 @@ const labels = {
     emailSent:        'Receipt sent to email',
     back:             'All Bookings',
     escrow:           '72-Hour Secure Escrow',
-    thankYou:         'Thank you for choosing PetWash™! We hope to see you again 😊',
+    thankYou:         'Thank you for choosing PetWash™‎! We hope to see you again 😊',
     paymentSuccessTitle: 'Payment received · booking confirmed',
     paymentSuccessSub:   'Funds are held in secure escrow until the service is complete.',
     paymentFailedTitle:  'Payment could not be processed',
@@ -948,10 +948,10 @@ export default function BookingConfirmation() {
   /* ── Quick-action handlers ── */
   const handleShare = async () => {
     const text = isRTL
-      ? `הזמנה #${booking?.requestId} ב-PetWash™ — ${SERVICE_NAMES_HE[booking?.serviceType] ?? ''}`
-      : `Booking #${booking?.requestId} at PetWash™ — ${SERVICE_NAMES_EN[booking?.serviceType] ?? ''}`;
+      ? `הזמנה #${booking?.requestId} ב-PetWash™‎ — ${SERVICE_NAMES_HE[booking?.serviceType] ?? ''}`
+      : `Booking #${booking?.requestId} at PetWash™‎ — ${SERVICE_NAMES_EN[booking?.serviceType] ?? ''}`;
     if (navigator.share) {
-      await navigator.share({ title: 'PetWash™', text });
+      await navigator.share({ title: 'PetWash™‎', text });
     } else {
       await navigator.clipboard?.writeText(text);
       toast({ title: isRTL ? 'הועתק!' : 'Copied!' });
@@ -963,7 +963,7 @@ export default function BookingConfirmation() {
     const start = new Date(booking.startDate);
     const end   = booking.endDate ? new Date(booking.endDate) : new Date(start.getTime() + 3600_000);
     const title = encodeURIComponent(
-      `PetWash™ — ${isRTL ? SERVICE_NAMES_HE[booking.serviceType] ?? '' : SERVICE_NAMES_EN[booking.serviceType] ?? ''}`
+      `PetWash™‎ — ${isRTL ? SERVICE_NAMES_HE[booking.serviceType] ?? '' : SERVICE_NAMES_EN[booking.serviceType] ?? ''}`
     );
     const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${toGCalDate(start)}/${toGCalDate(end)}&details=${encodeURIComponent(`Booking #${booking.requestId}`)}`;
     window.open(url, '_blank', 'noopener');
@@ -1325,7 +1325,7 @@ export default function BookingConfirmation() {
                 <PawPrint className="w-7 h-7 text-white" />
               </div>
               <h1 className="text-white font-bold text-lg leading-tight">
-                {booking.providerName || (isRTL ? SERVICE_NAMES_HE[booking.serviceType] : SERVICE_NAMES_EN[booking.serviceType]) || 'PetWash™'}
+                {booking.providerName || (isRTL ? SERVICE_NAMES_HE[booking.serviceType] : SERVICE_NAMES_EN[booking.serviceType]) || 'PetWash™‎'}
               </h1>
               {booking.providerAddress && (
                 <p className="text-white/60 text-xs mt-1 flex items-center justify-center gap-1">

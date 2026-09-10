@@ -52,7 +52,7 @@ export default function RefundForm() {
   }
 
   return (
-    <FormLayout title="Refund Request" titleHe="בקשת החזר כספי" description="Submit a refund request for any PetWash™ service. Our finance team reviews all requests within 2–5 business days and will notify you by email." descriptionHe="הגישו בקשה להחזר כספי. צוות הכספים שלנו בוחן כל בקשה תוך 2–5 ימי עסקים." icon="↩️">
+    <FormLayout title="Refund Request" titleHe="בקשת החזר כספי" description="Submit a refund request for any PetWash™‎ service. Our finance team reviews all requests within 2–5 business days and will notify you by email." descriptionHe="הגישו בקשה להחזר כספי. צוות הכספים שלנו בוחן כל בקשה תוך 2–5 ימי עסקים." icon="↩️">
       <div className="mb-4 bg-amber-950/30 border border-amber-700/30 rounded-lg p-3 flex gap-2 text-sm text-amber-200">
         <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5 text-amber-400" />
         <span>For urgent issues or disputes, please also contact us directly at <strong>finance@petwash.co.il</strong></span>
@@ -116,7 +116,7 @@ export default function RefundForm() {
             <select className={selectCls} value={form.refundMethod} onChange={set('refundMethod')}>
               <option value="">Select method...</option>
               <option>Original payment method / שיטת התשלום המקורית</option>
-              <option>Credit to PetWash™ Wallet / קרדיט לארנק</option>
+              <option>Credit to PetWash™‎ Wallet / קרדיט לארנק</option>
               <option>Bank Transfer / העברה בנקאית</option>
             </select>
           </Field>

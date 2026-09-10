@@ -137,7 +137,7 @@ export default function FranchisePartners() {
               {isHe ? 'שמירה על המותג' : 'Brand Compliance'}
             </h3>
             <p className="luxury-text-body">
-              {isHe ? 'כל שימוש בשם PetWash™, שילוט, מחיר, מבצע או פרסום מחייב כללים ואישור.' : 'Any use of the PetWash™ name, signage, pricing, offer, or advertising requires rules and approval.'}
+              {isHe ? 'כל שימוש בשם PetWash™‎, שילוט, מחיר, מבצע או פרסום מחייב כללים ואישור.' : 'Any use of the PetWash™‎ name, signage, pricing, offer, or advertising requires rules and approval.'}
             </p>
           </div>
 

@@ -242,7 +242,7 @@ export default function CheckoutCanon() {
             <ShieldCheck className="h-6 w-6" style={{ color: GOLD }} />
           </div>
           <h1 className="text-2xl font-bold" style={{ color: DEEP }}>תשלום מאובטח</h1>
-          <p className="mt-1 text-sm text-neutral-500">PetWash™ · SUMIT · ללא שמירת פרטי אשראי אצלנו</p>
+          <p className="mt-1 text-sm text-neutral-500">PetWash™‎ · SUMIT · ללא שמירת פרטי אשראי אצלנו</p>
         </div>
 
         {/* Product */}

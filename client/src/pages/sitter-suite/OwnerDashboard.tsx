@@ -166,7 +166,7 @@ export default function OwnerDashboard() {
                   </div>
                 </div>
                 <div>
-                  <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#D4AF37] block">The Sitter Suite™</span>
+                  <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#D4AF37] block">The Sitter Suite™‎</span>
                   <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight leading-none">
                     {t('sitterHub.title')}
                   </h1>

@@ -8,67 +8,67 @@ import { useSEO, pageSEO } from '@/lib/seo';
 const galleryImages = [
   {
     src: '/gallery/C4EFE9DA-C7A6-4252-AB3F-7ED77BAC1A9B_1761100129902.png',
-    alt: 'PetWash™ Station Signage',
+    alt: 'PetWash™‎ Station Signage',
     category: 'branding',
     featured: true
   },
   {
     src: '/gallery/D8595123-1F98-4FC8-BE89-7D609439F334_1761100129902.png',
-    alt: 'PetWash™ Logo',
+    alt: 'PetWash™‎ Logo',
     category: 'branding',
     featured: false
   },
   {
     src: '/gallery/IMG_8664_1761100129901.jpeg',
-    alt: 'PetWash™ Station',
+    alt: 'PetWash™‎ Station',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/IMG_8665_1761100129901.jpeg',
-    alt: 'PetWash™ Station Interior',
+    alt: 'PetWash™‎ Station Interior',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8666_1761100129901.jpeg',
-    alt: 'PetWash™ Equipment',
+    alt: 'PetWash™‎ Equipment',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8667_1761100129901.jpeg',
-    alt: 'PetWash™ Station Setup',
+    alt: 'PetWash™‎ Station Setup',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/IMG_8668_1761100129901.jpeg',
-    alt: 'PetWash™ Station Details',
+    alt: 'PetWash™‎ Station Details',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8435_1761100129902.jpeg',
-    alt: 'PetWash™ Station',
+    alt: 'PetWash™‎ Station',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_9080_1761100129901.jpeg',
-    alt: 'PetWash™ Station',
+    alt: 'PetWash™‎ Station',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/35f36f7e-65cb-4c8c-8b8e-0207879dcc16_1761100129902.jpeg',
-    alt: 'PetWash™ Station',
+    alt: 'PetWash™‎ Station',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8935_1761100227728.jpeg',
-    alt: 'PetWash™ Station',
+    alt: 'PetWash™‎ Station',
     category: 'station',
     featured: false
   }
@@ -107,7 +107,7 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-8">
                 <h2 className="luxury-heading-lg mb-4">
-                  {language === 'he' ? 'איך משתמשים בעמדת ⁦PetWash™⁩' : language === 'ar' ? 'كيفية استخدام محطة ⁦PetWash™⁩' : language === 'ru' ? 'Как пользоваться станцией PetWash™' : language === 'fr' ? 'Comment utiliser une borne PetWash™' : language === 'es' ? 'Cómo usar una estación PetWash™' : 'How to Use a PetWash™ Station'}
+                  {language === 'he' ? 'איך משתמשים בעמדת ⁦PetWash™⁩' : language === 'ar' ? 'كيفية استخدام محطة ⁦PetWash™⁩' : language === 'ru' ? 'Как пользоваться станцией PetWash™‎' : language === 'fr' ? 'Comment utiliser une borne PetWash™‎' : language === 'es' ? 'Cómo usar una estación PetWash™‎' : 'How to Use a PetWash™‎ Station'}
                 </h2>
                 <p className="luxury-text-body">
                   {language === 'he' ? 'מדריך קצר לעמדת הרחיצה העצמית החכמה שלנו — צעד אחר צעד' : language === 'ar' ? 'دليل سريع لمحطة الغسيل الذاتي الذكية لدينا — خطوة بخطوة' : language === 'ru' ? 'Краткое пошаговое руководство по нашей умной станции самообслуживания' : language === 'fr' ? 'Un guide rapide, étape par étape, de notre borne intelligente en libre-service' : language === 'es' ? 'Una guía rápida paso a paso de nuestra estación inteligente de autoservicio' : 'A quick, step-by-step guide to your smart self-service dog-wash hub'}
@@ -119,7 +119,7 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                   <iframe
                     className="absolute inset-0 w-full h-full"
                     src="https://www.youtube-nocookie.com/embed/UHqb_8gCOag?rel=0"
-                    title="PetWash™ — How to use the smart self-service station"
+                    title="PetWash™‎ — How to use the smart self-service station"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                     loading="lazy"

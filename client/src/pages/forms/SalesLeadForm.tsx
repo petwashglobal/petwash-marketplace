@@ -51,7 +51,7 @@ export default function SalesLeadForm() {
   }
 
   return (
-    <FormLayout title="Business Inquiry & Sales Lead" titleHe="פנייה עסקית ולידים" description="Interested in partnering with PetWash™ or using our enterprise services? Fill in the form and our sales team will contact you within 24 hours." descriptionHe="מעוניינים בשיתוף פעולה עסקי עם PetWash™? נחזור אליכם תוך 24 שעות." icon="🤝">
+    <FormLayout title="Business Inquiry & Sales Lead" titleHe="פנייה עסקית ולידים" description="Interested in partnering with PetWash™‎ or using our enterprise services? Fill in the form and our sales team will contact you within 24 hours." descriptionHe="מעוניינים בשיתוף פעולה עסקי עם PetWash™‎? נחזור אליכם תוך 24 שעות." icon="🤝">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormSection title="Contact Details / פרטי יצירת קשר" />
@@ -133,7 +133,7 @@ export default function SalesLeadForm() {
             </select>
           </Field>
           <Field label="Number of Pets / Animals" labelHe="מספר בעלי חיים"><input className={inputCls} value={form.numberOfPets} onChange={set('numberOfPets')} placeholder="e.g. 50 dogs monthly" /></Field>
-          <Field label="How did you hear about PetWash™?">
+          <Field label="How did you hear about PetWash™‎?">
             <select className={selectCls} value={form.referralSource} onChange={set('referralSource')}>
               <option value="">Select...</option>
               <option>Google</option><option>LinkedIn</option><option>Referral</option>
@@ -143,7 +143,7 @@ export default function SalesLeadForm() {
 
           <div className="col-span-full">
             <Field label="Describe Your Needs" labelHe="תיאור הצרכים שלכם" required>
-              <textarea className={textareaCls} rows={5} value={form.description} onChange={set('description')} placeholder="Tell us about your business, your needs, and what you're looking to achieve with PetWash™..." />
+              <textarea className={textareaCls} rows={5} value={form.description} onChange={set('description')} placeholder="Tell us about your business, your needs, and what you're looking to achieve with PetWash™‎..." />
             </Field>
           </div>
         </div>

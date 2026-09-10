@@ -369,7 +369,7 @@ export default function AdminCoupons() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-black">מנהל קופונים</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">PetWash™ Coupon Engine — Phase 2</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">PetWash™‎ Coupon Engine — Phase 2</p>
             </div>
           </div>
           <div className="flex items-center gap-2">

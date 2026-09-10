@@ -30,7 +30,7 @@ const COPY: Record<Lang, Record<string, string>> = {
   en: {
     title: 'Media, Photos and Videos',
     subtitle: 'Brand assets, press materials, and media resources',
-    videoTitle: 'How to Use a PetWash™ Station',
+    videoTitle: 'How to Use a PetWash™‎ Station',
     videoSubtitle: 'A quick, step-by-step guide to our smart self-service dog-wash hub',
     clickToPlay: 'Click to Play',
     galleryTitle: 'Photo Gallery',
@@ -68,7 +68,7 @@ const COPY: Record<Lang, Record<string, string>> = {
   ru: {
     title: 'Медиа, фото и видео',
     subtitle: 'Фирменные материалы, пресс-материалы и медиаресурсы',
-    videoTitle: 'Как пользоваться станцией PetWash™',
+    videoTitle: 'Как пользоваться станцией PetWash™‎',
     videoSubtitle: 'Краткое пошаговое руководство по нашей умной станции самообслуживания',
     clickToPlay: 'Нажмите для воспроизведения',
     galleryTitle: 'Фотогалерея',
@@ -87,7 +87,7 @@ const COPY: Record<Lang, Record<string, string>> = {
   fr: {
     title: 'Médias, photos et vidéos',
     subtitle: 'Ressources de marque, matériel de presse et médias',
-    videoTitle: 'Comment utiliser une borne PetWash™',
+    videoTitle: 'Comment utiliser une borne PetWash™‎',
     videoSubtitle: 'Un guide rapide, étape par étape, de notre borne intelligente en libre-service',
     clickToPlay: 'Cliquez pour lire',
     galleryTitle: 'Galerie photos',
@@ -106,7 +106,7 @@ const COPY: Record<Lang, Record<string, string>> = {
   es: {
     title: 'Medios, fotos y videos',
     subtitle: 'Recursos de marca, material de prensa y medios',
-    videoTitle: 'Cómo usar una estación PetWash™',
+    videoTitle: 'Cómo usar una estación PetWash™‎',
     videoSubtitle: 'Una guía rápida, paso a paso, de nuestra estación inteligente de autoservicio',
     clickToPlay: 'Haz clic para reproducir',
     galleryTitle: 'Galería de fotos',
@@ -157,7 +157,7 @@ export default function Media() {
               <iframe
                 className="absolute inset-0 w-full h-full"
                 src="https://www.youtube-nocookie.com/embed/UHqb_8gCOag?rel=0"
-                title="PetWash™ — How to use the smart self-service station"
+                title="PetWash™‎ — How to use the smart self-service station"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 allowFullScreen
                 loading="lazy"

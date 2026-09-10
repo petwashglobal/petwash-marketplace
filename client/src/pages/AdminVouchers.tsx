@@ -1,5 +1,5 @@
 /**
- * 🌟 PET WASH™ ADMIN VOUCHERS - 7-STAR LUXURY DASHBOARD
+ * 🌟 PET WASH™‎ ADMIN VOUCHERS - 7-STAR LUXURY DASHBOARD
  * Premium Voucher Management Control Center
  */
 

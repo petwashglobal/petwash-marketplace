@@ -458,7 +458,7 @@ export default function AdminOpsMonitor() {
           </div>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <MessageSquare className="w-3.5 h-3.5" />
-            <span>PetWash™ Operations</span>
+            <span>PetWash™‎ Operations</span>
           </div>
         </div>
 

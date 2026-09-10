@@ -41,7 +41,7 @@ interface FranchiseProps {
 // for ru/fr/es/ar — kept local while we lock down wording.
 const COPY = {
   en: {
-    eyebrow: 'PetWash™ Franchise Program',
+    eyebrow: 'PetWash™‎ Franchise Program',
     h1: 'Modern urban pet-care infrastructure.',
     h1b: 'Built city by city.',
     intro:
@@ -100,7 +100,7 @@ const COPY = {
     contactEmail: 'franchise@petwash.co.il',
   },
   he: {
-    eyebrow: 'תכנית הזיכיון של PetWash™',
+    eyebrow: 'תכנית הזיכיון של PetWash™‎',
     h1: 'תשתית עירונית מודרנית לטיפוח חיות מחמד.',
     h1b: 'נבנית עיר אחר עיר.',
     intro:

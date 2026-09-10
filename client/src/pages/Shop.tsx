@@ -186,7 +186,7 @@ export default function Shop() {
 
         {/* ── Hero ─────────────────────────────────────────────────────── */}
         <header className="sh-hero">
-          <div className="sh-eyebrow">PetWash™ Shop</div>
+          <div className="sh-eyebrow">PetWash™‎ Shop</div>
           <h1 className="sh-h1">
             The pet-lifestyle shop.<br />
             <span className="sh-gold">In development — join the waitlist.</span>

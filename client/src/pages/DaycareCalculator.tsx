@@ -434,7 +434,7 @@ export default function DaycareCalculator() {
               },
               {
                 q: 'Can I book daycare for 2 dogs and 1 cat for a week?',
-                a: 'Yes. PetWash™ supports multi-pet weekly bookings. Add each pet with their type and size, set 7 days, and the calculator applies all discounts automatically: 14% multi-pet discount for 3 pets, 12% weekly discount, plus VAT at 18%.',
+                a: 'Yes. PetWash™‎ supports multi-pet weekly bookings. Add each pet with their type and size, set 7 days, and the calculator applies all discounts automatically: 14% multi-pet discount for 3 pets, 12% weekly discount, plus VAT at 18%.',
               },
               {
                 q: 'Is the price I see here guaranteed?',

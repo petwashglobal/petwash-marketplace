@@ -258,17 +258,17 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         )}
 
         {/* How-to video (CEO 2026-08-04): sits right below the platforms / "World of
-            PetWash" section. youtube-nocookie for privacy; ™ isolated for RTL. */}
+            PetWash" section. youtube-nocookie for privacy; ™‎ isolated for RTL. */}
         <section className="py-10 px-4 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-6">
               <h2 className="font-serif text-2xl sm:text-3xl font-light text-[#111] mb-2 tracking-tight">
                 {language === 'he' ? 'איך משתמשים בעמדת ⁦PetWash™⁩'
                   : language === 'ar' ? 'كيفية استخدام محطة ⁦PetWash™⁩'
-                  : language === 'ru' ? 'Как пользоваться станцией PetWash™'
-                  : language === 'fr' ? 'Comment utiliser une borne PetWash™'
-                  : language === 'es' ? 'Cómo usar una estación PetWash™'
-                  : 'How to Use a PetWash™ Station'}
+                  : language === 'ru' ? 'Как пользоваться станцией PetWash™‎'
+                  : language === 'fr' ? 'Comment utiliser une borne PetWash™‎'
+                  : language === 'es' ? 'Cómo usar una estación PetWash™‎'
+                  : 'How to Use a PetWash™‎ Station'}
               </h2>
               <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-3" />
             </div>
@@ -447,7 +447,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             <div className="text-center mb-14">
               <p className="text-[10px] font-light tracking-[5px] uppercase mb-4 text-[#C6A664]"
                 style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", letterSpacing: '0.35em' }}>
-                PETWASH PRESTIGE™
+                PETWASH PRESTIGE™‎
               </p>
               <h2 className="text-3xl sm:text-4xl font-light text-[#0A0A0A] mb-4"
                 style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>

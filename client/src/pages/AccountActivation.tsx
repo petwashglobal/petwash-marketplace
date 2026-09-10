@@ -121,7 +121,7 @@ export default function AccountActivation() {
   const isHe = lang === 'he';
 
   const t = {
-    brand: 'PetWash™',
+    brand: 'PetWash™‎',
     kicker: isHe ? 'הפעלת חשבון' : 'Account Activation',
     heading: isHe ? 'השלימו את החשבון שלכם' : 'Complete your account',
     intro: isHe
@@ -170,8 +170,8 @@ export default function AccountActivation() {
     needHelp: isHe ? 'צריכים עזרה?' : 'Need help?',
     activated: isHe ? 'החשבון הופעל' : 'Account activated',
     activatedDesc: isHe
-      ? 'ברוכים הבאים ל-PetWash™. החשבון שלכם פעיל במלואו.'
-      : 'Welcome to PetWash™. Your account is now fully active.',
+      ? 'ברוכים הבאים ל-PetWash™‎. החשבון שלכם פעיל במלואו.'
+      : 'Welcome to PetWash™‎. Your account is now fully active.',
     codeSent: isHe ? 'הקוד נשלח' : 'Code sent',
     codeSentDesc: isHe ? 'בדקו את הטלפון לקבלת הקוד.' : 'Check your phone for the verification code.',
     codeSendFailed: isHe ? 'שליחת הקוד נכשלה' : 'Failed to send code',

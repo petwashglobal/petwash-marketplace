@@ -53,7 +53,7 @@ export default function HRApplicationForm() {
   }
 
   return (
-    <FormLayout title="HR Job Application" titleHe="בקשת מועמדות לתפקיד" description="Apply for a position at PetWash™. We are a fast-growing Israeli pet care technology company with operations across multiple countries. We'll review your application within 5 business days." descriptionHe="הגישו מועמדות לתפקיד ב-PetWash™. אנו חברת טכנולוגיה ישראלית בצמיחה מהירה." icon="💼">
+    <FormLayout title="HR Job Application" titleHe="בקשת מועמדות לתפקיד" description="Apply for a position at PetWash™‎. We are a fast-growing Israeli pet care technology company with operations across multiple countries. We'll review your application within 5 business days." descriptionHe="הגישו מועמדות לתפקיד ב-PetWash™‎. אנו חברת טכנולוגיה ישראלית בצמיחה מהירה." icon="💼">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormSection title="Personal Details / פרטים אישיים" />
@@ -159,7 +159,7 @@ export default function HRApplicationForm() {
           <FormSection title="Cover Letter / מכתב מוטיבציה" />
           <div className="col-span-full">
             <Field label="Cover Letter" labelHe="מכתב מוטיבציה" required>
-              <textarea className={textareaCls} rows={7} value={form.coverLetter} onChange={set('coverLetter')} placeholder="Tell us why you want to work at PetWash™ and what you bring to the team. Minimum 50 characters." />
+              <textarea className={textareaCls} rows={7} value={form.coverLetter} onChange={set('coverLetter')} placeholder="Tell us why you want to work at PetWash™‎ and what you bring to the team. Minimum 50 characters." />
               <p className="text-xs text-gray-600 mt-1">{form.coverLetter.length} characters (minimum 50)</p>
             </Field>
           </div>

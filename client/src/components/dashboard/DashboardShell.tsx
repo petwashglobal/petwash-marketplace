@@ -1,7 +1,7 @@
 /**
  * DashboardShell — the single luxury chrome shared by the executive role
  * dashboards (Admin, CEO). White background, black text, emerald accents,
- * the REAL PetWash™ logo asset top-center (never recreated/recolored), and
+ * the REAL PetWash™‎ logo asset top-center (never recreated/recolored), and
  * ONE consolidated "Tools" drawer that surfaces every back-office dashboard
  * (see executive-nav.ts) so admins no longer hit dead-end URLs.
  *

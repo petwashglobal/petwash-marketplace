@@ -48,8 +48,8 @@ export default function LoyaltyRefer() {
   // one — never share the generic non-attributable fallback.
   const codeSuffix = referralCode ? (isHebrew ? ` השתמשו בקוד ההזמנה שלי: ${referralCode}` : ` Use my referral code: ${referralCode}`) : '';
   const shareText = (isHebrew
-    ? `הצטרפו ל-PetWash™ — הטיפוח והשמירה הטובים ביותר לחיות מחמד!`
-    : `Join PetWash™ — the best pet care app!`) + codeSuffix;
+    ? `הצטרפו ל-PetWash™‎ — הטיפוח והשמירה הטובים ביותר לחיות מחמד!`
+    : `Join PetWash™‎ — the best pet care app!`) + codeSuffix;
   const siteUrl = 'https://petwash.co.il';
 
   const handleCopy = async () => {
@@ -100,7 +100,7 @@ export default function LoyaltyRefer() {
     {
       icon: Mail,
       label: isHebrew ? 'אימייל' : 'Email',
-      href: `mailto:?subject=${encodeURIComponent(isHebrew ? 'הזמנה ל-PetWash™' : 'Join PetWash™')}&body=${encodeURIComponent(shareText + '\n' + siteUrl)}`,
+      href: `mailto:?subject=${encodeURIComponent(isHebrew ? 'הזמנה ל-PetWash™‎' : 'Join PetWash™‎')}&body=${encodeURIComponent(shareText + '\n' + siteUrl)}`,
     },
     {
       icon: Send,

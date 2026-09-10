@@ -234,7 +234,7 @@ const BLOCKED_KEYWORDS = [
   'superman', 'batman', 'spiderman', 'spider-man', 'ironman', 'iron man',
   'wonder woman', 'hulk', 'thor', 'wolverine', 'marvel', 'dc comics',
   'captain america', 'black panther', 'avengers', 'justice league',
-  'copyright', '©', '™', '®', 'logo', 'brand', 'trademark'
+  'copyright', '©', '™‎', '®', 'logo', 'brand', 'trademark'
 ];
 
 export function sanitizePrompt(prompt: string): { safe: boolean; sanitized: string } {

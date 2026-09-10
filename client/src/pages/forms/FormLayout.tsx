@@ -43,7 +43,7 @@ export function FormLayout({ title, titleHe, description, descriptionHe, icon, c
       </div>
 
       <footer className="border-t border-[#C6A35B]/10 mt-12 py-6 px-4 text-center">
-        <p className="text-xs text-gray-600">PetWash™ · <Link href="https://petwash.co.il" className="text-[#C6A35B]/50 hover:text-[#C6A35B]">petwash.co.il</Link></p>
+        <p className="text-xs text-gray-600">PetWash™‎ · <Link href="https://petwash.co.il" className="text-[#C6A35B]/50 hover:text-[#C6A35B]">petwash.co.il</Link></p>
       </footer>
     </div>
   );

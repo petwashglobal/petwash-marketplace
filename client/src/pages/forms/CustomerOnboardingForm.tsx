@@ -47,13 +47,13 @@ export default function CustomerOnboardingForm() {
   if (success) {
     return (
       <FormLayout title="Customer Onboarding" titleHe="אונבורדינג לקוחות" description="" descriptionHe="" icon="🐾">
-        <FormSuccess title={`Welcome to PetWash™! 🐾`} subtitle="ברוכים הבאים ל-PetWash™!" refId={success} detail={`${form.petName} is now registered. You'll receive a confirmation email shortly.`} onReset={() => setSuccess(null)} />
+        <FormSuccess title={`Welcome to PetWash™‎! 🐾`} subtitle="ברוכים הבאים ל-PetWash™‎!" refId={success} detail={`${form.petName} is now registered. You'll receive a confirmation email shortly.`} onReset={() => setSuccess(null)} />
       </FormLayout>
     );
   }
 
   return (
-    <FormLayout title="Customer Onboarding & Pet Registration" titleHe="אונבורדינג לקוחות ורישום חיית מחמד" description="Welcome to PetWash™! Complete your profile and register your pet to unlock all our services. It takes about 3 minutes." descriptionHe="ברוכים הבאים ל-PetWash™! השלימו את פרופילכם ורשמו את חיית המחמד שלכם." icon="🐾">
+    <FormLayout title="Customer Onboarding & Pet Registration" titleHe="אונבורדינג לקוחות ורישום חיית מחמד" description="Welcome to PetWash™‎! Complete your profile and register your pet to unlock all our services. It takes about 3 minutes." descriptionHe="ברוכים הבאים ל-PetWash™‎! השלימו את פרופילכם ורשמו את חיית המחמד שלכם." icon="🐾">
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <FormSection title="Owner Details / פרטי הבעלים" />
@@ -153,7 +153,7 @@ export default function CustomerOnboardingForm() {
               <textarea className={textareaCls} rows={3} value={form.medicalNotes} onChange={set('medicalNotes')} placeholder="Any conditions, medications, or special needs we should know about..." />
             </Field>
           </div>
-          <Field label="How did you hear about PetWash™?">
+          <Field label="How did you hear about PetWash™‎?">
             <select className={selectCls} value={form.referralSource} onChange={set('referralSource')}>
               <option value="">Select...</option>
               <option>Google</option><option>App Store</option><option>Social Media</option>

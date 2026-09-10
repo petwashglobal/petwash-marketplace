@@ -42,7 +42,7 @@ const services = [
     descHe: 'טיפול לילי בבית מארח אוהב',
     path: '/sitter-suite',
     image: 'https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=900&h=600&fit=crop',
-    badge: 'THE SITTER SUITE™',
+    badge: 'THE SITTER SUITE™‎',
     accent: '#00C569',
   },
   {
@@ -54,7 +54,7 @@ const services = [
     descHe: 'המטפל נשאר בביתך עם חיית המחמד',
     path: '/sitter-suite',
     image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=900&h=600&fit=crop',
-    badge: 'THE SITTER SUITE™',
+    badge: 'THE SITTER SUITE™‎',
     accent: '#00C569',
   },
   {
@@ -66,7 +66,7 @@ const services = [
     descHe: 'טיפול יומי בזמן שאתה בעבודה',
     path: '/sitter-suite',
     image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=900&h=600&fit=crop',
-    badge: 'THE SITTER SUITE™',
+    badge: 'THE SITTER SUITE™‎',
     accent: '#00C569',
   },
   {
@@ -78,7 +78,7 @@ const services = [
     descHe: 'טיולים של 30 או 60 דקות עם מעקב GPS',
     path: '/walk-my-pet',
     image: 'https://images.unsplash.com/photo-1558788353-f76d92427f16?w=900&h=600&fit=crop',
-    badge: 'WALK MY PET™',
+    badge: 'WALK MY PET™‎',
     accent: '#0099CC',
   },
   {
@@ -90,7 +90,7 @@ const services = [
     descHe: 'הסעה בטוחה לכל מקום שתצטרך',
     path: '/pettrek',
     image: 'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=900&h=600&fit=crop',
-    badge: 'PETTREK™',
+    badge: 'PETTREK™‎',
     accent: '#7C3AED',
   },
   {
@@ -102,19 +102,19 @@ const services = [
     descHe: 'אימון פרטי עם מאלפים מוסמכים',
     path: '/academy',
     image: 'https://images.unsplash.com/photo-1587764379873-97837921fd44?w=900&h=600&fit=crop',
-    badge: 'PET WASH ACADEMY™',
+    badge: 'PET WASH ACADEMY™‎',
     accent: '#D97706',
   },
   {
     id: 'wash',
     icon: Droplets,
-    name: 'K9000™ Smart Hub',
-    nameHe: 'K9000™ עמדה חכמה',
+    name: 'K9000™‎ Smart Hub',
+    nameHe: 'K9000™‎ עמדה חכמה',
     desc: 'Outdoor DIY pet wash station 24/7',
     descHe: 'עמדת שטיפה חיצונית בשירות עצמי 24/7',
     path: '/k9000',
     image: 'https://images.unsplash.com/photo-1581888227599-779811939961?w=900&h=600&fit=crop',
-    badge: 'K9000™',
+    badge: 'K9000™‎',
     accent: '#00C569',
     isPhysical: true,
   },
@@ -540,7 +540,7 @@ export default function PlatformHub() {
         <section className="bg-white py-28">
           <div className="max-w-6xl mx-auto px-6">
 
-            {/* PR-LEGAL-B: replaced the "PET WASH PROTECT™" eyebrow with
+            {/* PR-LEGAL-B: replaced the "PET WASH PROTECT™‎" eyebrow with
                 a neutral safety-information label per §8 of the Provider
                 & Host Services Agreement. */}
             <div className="text-center mb-20">
@@ -781,7 +781,7 @@ export default function PlatformHub() {
                 backgroundClip: 'text',
               }}
             >
-              PET WASH™
+              PET WASH™‎
             </h3>
             <p className="text-[10px] font-light tracking-[4px] uppercase text-[#9CA3AF]" style={{ fontFamily: sans }}>
               Premium Natural Pet Care Ecosystem
@@ -792,7 +792,7 @@ export default function PlatformHub() {
               }} />
             </div>
             <p className="text-[10px] font-light text-[#D1D5DB] tracking-wider" style={{ fontFamily: sans }}>
-              © 2026 PetWash™ · Israel
+              © 2026 PetWash™‎ · Israel
             </p>
           </div>
         </section>

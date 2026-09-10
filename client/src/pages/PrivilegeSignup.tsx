@@ -78,7 +78,7 @@ const PLATFORMS: Array<{ name: string; icon: string; comingSoon?: boolean }> = [
   { name: '⁦Sitter Suite™⁩', icon: '🏠' },
   { name: '⁦Walk My Pet™⁩', icon: '🚶' },
   { name: '⁦PetTrek™⁩', icon: '🚗', comingSoon: true },
-  { name: 'Academy™', icon: '🎓' },
+  { name: 'Academy™‎', icon: '🎓' },
   { name: '⁦The Plush Lab™⁩', icon: '🧸' },
   { name: '⁦Wash Hub™⁩', icon: '💎' },
 ];

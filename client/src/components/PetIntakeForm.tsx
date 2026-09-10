@@ -324,8 +324,8 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
                 />
                 <label htmlFor="consentTreatment" className="text-xs text-gray-700 leading-relaxed cursor-pointer">
                   {isHebrew
-                    ? `אני מאשר/ת כי ${petName} במצב בריאותי טוב ומתאים לקבלת שירות. אני מרשה לצוות PetWash™ לטפל בחיית המחמד שלי בהתאם לתנאי השירות.`
-                    : `I confirm that ${petName} is in good health and fit for service. I authorize the PetWash™ team to care for my pet in accordance with the service terms.`}
+                    ? `אני מאשר/ת כי ${petName} במצב בריאותי טוב ומתאים לקבלת שירות. אני מרשה לצוות PetWash™‎ לטפל בחיית המחמד שלי בהתאם לתנאי השירות.`
+                    : `I confirm that ${petName} is in good health and fit for service. I authorize the PetWash™‎ team to care for my pet in accordance with the service terms.`}
                 </label>
               </div>
               <div className="flex items-start gap-3">
@@ -338,8 +338,8 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
                 />
                 <label htmlFor="consentEmergency" className="text-xs text-gray-700 leading-relaxed cursor-pointer">
                   {isHebrew
-                    ? 'במקרה חירום רפואי, אני מרשה ל-PetWash™ לפנות לטיפול וטרינרי דחוף. אני אישית אחראי/ת לעלויות הטיפול.'
-                    : 'In a medical emergency, I authorize PetWash™ to seek urgent veterinary care. I am personally responsible for the cost of treatment.'}
+                    ? 'במקרה חירום רפואי, אני מרשה ל-PetWash™‎ לפנות לטיפול וטרינרי דחוף. אני אישית אחראי/ת לעלויות הטיפול.'
+                    : 'In a medical emergency, I authorize PetWash™‎ to seek urgent veterinary care. I am personally responsible for the cost of treatment.'}
                 </label>
               </div>
               <div className="flex items-start gap-3">

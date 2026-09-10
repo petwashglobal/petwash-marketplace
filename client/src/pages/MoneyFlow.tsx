@@ -70,7 +70,7 @@ function MarketplaceFlowDiagram() {
         <Badge className="bg-blue-100 text-blue-700">ספק קיים</Badge>
       </div>
       <p className="text-sm text-gray-500">
-        לקוח מזמין שירות מספק דרך הפלטפורמה (הליכות, שמירה, טיפוח). PetWash™ גובה עמלה ומחזיקה בנאמנות.
+        לקוח מזמין שירות מספק דרך הפלטפורמה (הליכות, שמירה, טיפוח). PetWash™‎ גובה עמלה ומחזיקה בנאמנות.
       </p>
 
       {/* Flow diagram */}
@@ -78,7 +78,7 @@ function MarketplaceFlowDiagram() {
         <FlowStep icon={CreditCard} title="תשלום לקוח" subtitle="מחיר בסיס + עמלה + מע״מ" color="bg-blue-50 border-blue-300 text-blue-900" badge="Step 1" />
         <FlowStep icon={Landmark} title="Nayax / מעבד" subtitle="עמלת עיבוד מנוכה" color="bg-white border-gray-300 text-gray-800" badge="Step 2" />
         <FlowStep icon={Receipt} title="מע״מ 18%" subtitle="על עמלת הפלטפורמה בלבד" color="bg-amber-50 border-amber-300 text-amber-900" badge="Step 3" />
-        <FlowStep icon={Building2} title="עמלת פלטפורמה" subtitle="15% עמלת PetWash™" color="bg-purple-50 border-purple-300 text-purple-900" badge="Step 4" />
+        <FlowStep icon={Building2} title="עמלת פלטפורמה" subtitle="15% עמלת PetWash™‎" color="bg-purple-50 border-purple-300 text-purple-900" badge="Step 4" />
         <FlowStep icon={ShieldCheck} title="נאמנות (Escrow)" subtitle="מוחזק 72 שעות" color="bg-indigo-50 border-indigo-300 text-indigo-900" badge="Step 5" />
         <FlowStep icon={Banknote} title="תשלום לספק" subtitle="85% לספק לאחר שחרור" color="bg-green-50 border-green-300 text-green-900" badge="Step 6" last />
       </div>
@@ -89,7 +89,7 @@ function MarketplaceFlowDiagram() {
           { icon: CreditCard, title: 'תשלום לקוח', sub: 'בסיס + עמלה + מע״מ', color: 'bg-blue-50 border-blue-300 text-blue-900', badge: '1' },
           { icon: Landmark, title: 'Nayax', sub: 'עמלת עיבוד', color: 'bg-white border-gray-300 text-gray-800', badge: '2' },
           { icon: Receipt, title: 'מע״מ 18%', sub: 'על עמלה בלבד', color: 'bg-amber-50 border-amber-300 text-amber-900', badge: '3' },
-          { icon: Building2, title: 'עמלת פלטפורמה', sub: '15% PetWash™', color: 'bg-purple-50 border-purple-300 text-purple-900', badge: '4' },
+          { icon: Building2, title: 'עמלת פלטפורמה', sub: '15% PetWash™‎', color: 'bg-purple-50 border-purple-300 text-purple-900', badge: '4' },
           { icon: ShieldCheck, title: 'נאמנות 72ש׳', sub: 'מוחזק בבטחה', color: 'bg-indigo-50 border-indigo-300 text-indigo-900', badge: '5' },
           { icon: Banknote, title: 'תשלום לספק', sub: '85% לספק', color: 'bg-green-50 border-green-300 text-green-900', badge: '6' },
         ].map((step, i, arr) => (
@@ -126,7 +126,7 @@ function MarketplaceFlowDiagram() {
           'מע״מ שנגבה:         +₪2.70',
           'עמלת עיבוד (Nayax): -₪X',
           '─────────────────────────',
-          'הכנסה נטו PetWash™:  ₪15 - עמלות',
+          'הכנסה נטו PetWash™‎:  ₪15 - עמלות',
         ]} />
         <FormulaBox accent="amber" title="המע״מ (18%)" lines={[
           'מע״מ חל על: עמלת הפלטפורמה בלבד',
@@ -134,7 +134,7 @@ function MarketplaceFlowDiagram() {
           '',
           'מע״מ = עמלה × 0.18',
           'מע״מ = ₪15 × 0.18 = ₪2.70',
-          'PetWash™ מעביר מע״מ לרשות המסים.',
+          'PetWash™‎ מעביר מע״מ לרשות המסים.',
         ]} />
       </div>
 
@@ -169,7 +169,7 @@ function MarketplaceFlowDiagram() {
               <p className="text-xs text-gray-600 mt-1">עוסק פטור: פטור מגביית מע״מ</p>
             </div>
           </div>
-          <p className="text-xs text-amber-700 mt-2">* PetWash™ אינה מספקת ייעוץ מס. מומלץ להתייעץ עם רואה חשבון.</p>
+          <p className="text-xs text-amber-700 mt-2">* PetWash™‎ אינה מספקת ייעוץ מס. מומלץ להתייעץ עם רואה חשבון.</p>
         </CardContent>
       </Card>
     </div>
@@ -183,11 +183,11 @@ function DirectSaleFlowDiagram() {
     <div className="space-y-6">
       <div className="flex items-center gap-2">
         <Gift className="w-5 h-5 text-emerald-600" />
-        <h3 className="font-semibold text-gray-900">Flow B — מכירה ישירה של PetWash™ (ללא ספק)</h3>
+        <h3 className="font-semibold text-gray-900">Flow B — מכירה ישירה של PetWash™‎ (ללא ספק)</h3>
         <Badge className="bg-emerald-100 text-emerald-700">ללא ספק</Badge>
       </div>
       <p className="text-sm text-gray-500">
-        לקוח רוכש גיפט קארד / קרדיט ארנק / חבילת שטיפה ישירות מ-PetWash™ דרך Nayax. אין ספק מעורב.
+        לקוח רוכש גיפט קארד / קרדיט ארנק / חבילת שטיפה ישירות מ-PetWash™‎ דרך Nayax. אין ספק מעורב.
       </p>
 
       {/* Flow diagram */}
@@ -196,7 +196,7 @@ function DirectSaleFlowDiagram() {
           { icon: CreditCard, title: 'תשלום לקוח', sub: 'מחיר מוצר כולל מע״מ', color: 'bg-emerald-50 border-emerald-300 text-emerald-900', badge: '1' },
           { icon: Landmark, title: 'Nayax', sub: 'עמלת עיבוד', color: 'bg-white border-gray-300 text-gray-800', badge: '2' },
           { icon: Receipt, title: 'מע״מ 18%', sub: 'על כל המכירה', color: 'bg-amber-50 border-amber-300 text-amber-900', badge: '3' },
-          { icon: Building2, title: 'הכנסת PetWash™', sub: 'מחיר נטו', color: 'bg-emerald-50 border-emerald-400 text-emerald-900', badge: '4' },
+          { icon: Building2, title: 'הכנסת PetWash™‎', sub: 'מחיר נטו', color: 'bg-emerald-50 border-emerald-400 text-emerald-900', badge: '4' },
         ].map((step, i, arr) => (
           <div key={step.title} className="flex items-center gap-2">
             <div className={`flex flex-col items-center p-3 rounded-xl border-2 w-36 text-center shadow-sm ${step.color} relative`}>
@@ -215,7 +215,7 @@ function DirectSaleFlowDiagram() {
         <FlowStep icon={CreditCard} title="תשלום לקוח" subtitle="מחיר מוצר כולל מע״מ" color="bg-emerald-50 border-emerald-300 text-emerald-900" badge="Step 1" />
         <FlowStep icon={Landmark} title="Nayax" subtitle="עמלת עיבוד מנוכה" color="bg-white border-gray-300 text-gray-800" badge="Step 2" />
         <FlowStep icon={Receipt} title="מע״מ 18%" subtitle="על כל המכירה" color="bg-amber-50 border-amber-300 text-amber-900" badge="Step 3" />
-        <FlowStep icon={Building2} title="הכנסת PetWash™" subtitle="מחיר נטו" color="bg-emerald-50 border-emerald-400 text-emerald-900" badge="Step 4" last />
+        <FlowStep icon={Building2} title="הכנסת PetWash™‎" subtitle="מחיר נטו" color="bg-emerald-50 border-emerald-400 text-emerald-900" badge="Step 4" last />
       </div>
 
       {/* What does NOT happen */}
@@ -253,16 +253,16 @@ function DirectSaleFlowDiagram() {
           'הכנסה לפני עמלת עיבוד:   ₪100',
           'עמלת Nayax:             -₪X',
           '─────────────────────────',
-          'הכנסה נטו PetWash™:       ₪100 - עמלות',
+          'הכנסה נטו PetWash™‎:       ₪100 - עמלות',
         ]} />
         <FormulaBox accent="amber" title="מע״מ — מכירה ישירה" lines={[
-          'PetWash™ היא המוכר.',
+          'PetWash™‎ היא המוכר.',
           'מע״מ חל על כל מחיר המכירה.',
           '',
           'מחיר ללא מע״מ × 1.18 = מחיר ללקוח',
           'או: מחיר ÷ 1.18 = בסיס מע״מ',
           '',
-          'PetWash™ מעבירה מע״מ לרשות המסים.',
+          'PetWash™‎ מעבירה מע״מ לרשות המסים.',
         ]} />
       </div>
 
@@ -285,7 +285,7 @@ function DirectSaleFlowDiagram() {
             <div className="flex-1 bg-white rounded-lg p-3 border border-blue-200">
               <p className="font-semibold text-xs text-blue-700 mb-1">שלב 2 — מימוש</p>
               <p className="text-xs text-gray-600">אם שירות עם ספק → הופך ל-Flow A (marketplace)</p>
-              <p className="text-xs text-gray-600">אם שירות PetWash™ → נשאר Flow B (direct sale)</p>
+              <p className="text-xs text-gray-600">אם שירות PetWash™‎ → נשאר Flow B (direct sale)</p>
             </div>
           </div>
         </CardContent>
@@ -344,12 +344,12 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            {isHebrew ? 'תרשים זרימת כסף — PetWash™' : 'Money Flow Architecture — PetWash™'}
+            {isHebrew ? 'תרשים זרימת כסף — PetWash™‎' : 'Money Flow Architecture — PetWash™‎'}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             {isHebrew
               ? 'שני זרמי תשלום מופרדים: הזמנות מרקטפלייס עם ספק | מכירות ישירות ללא ספק'
-              : 'Two separated financial flows: Marketplace bookings with provider | Direct PetWash™ sales without provider'}
+              : 'Two separated financial flows: Marketplace bookings with provider | Direct PetWash™‎ sales without provider'}
           </p>
         </div>
 
@@ -366,7 +366,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
             <Card className="border-0 shadow-sm">
               <CardHeader>
                 <CardTitle className="text-base">Flow A — הזמנת מרקטפלייס (עם ספק)</CardTitle>
-                <CardDescription>לקוח מזמין שירות מספק דרך PetWash™</CardDescription>
+                <CardDescription>לקוח מזמין שירות מספק דרך PetWash™‎</CardDescription>
               </CardHeader>
               <CardContent><MarketplaceFlowDiagram /></CardContent>
             </Card>
@@ -375,8 +375,8 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
 
             <Card className="border-0 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-base">Flow B — מכירה ישירה של PetWash™ (ללא ספק)</CardTitle>
-                <CardDescription>גיפט קארד, ארנק, חבילות — PetWash™ היא המוכר</CardDescription>
+                <CardTitle className="text-base">Flow B — מכירה ישירה של PetWash™‎ (ללא ספק)</CardTitle>
+                <CardDescription>גיפט קארד, ארנק, חבילות — PetWash™‎ היא המוכר</CardDescription>
               </CardHeader>
               <CardContent><DirectSaleFlowDiagram /></CardContent>
             </Card>
@@ -434,7 +434,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                     <KpiCard icon={Landmark} label="עמלות עיבוד (Nayax)" value={`₪${(summary?.totalProcessorFeesILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-gray-500" />
                     <KpiCard icon={Receipt} label='סה"כ מע"מ (VAT)' value={`₪${(summary?.totalVATAllFlowsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} sub="שני הזרמים — totalVATByFlow" color="text-amber-500" />
                     <KpiCard icon={TrendingUp} label="הכנסת פלטפורמה (₪)" value={`₪${(summary?.totalPlatformRevenue ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} sub="עמלות + מכירות נטו" color="text-green-600" />
-                    <KpiCard icon={TrendingUp} label="הכנסה נטו PetWash™" value={`₪${(summary?.totalNetRevenueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-green-600" />
+                    <KpiCard icon={TrendingUp} label="הכנסה נטו PetWash™‎" value={`₪${(summary?.totalNetRevenueILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-green-600" />
                     <KpiCard icon={AlertCircle} label="החזרים" value={`₪${(summary?.totalRefundsILS ?? 0).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`} color="text-red-500" />
                     <KpiCard icon={AlertCircle} label="Chargebacks" value={(summary?.totalChargebacks ?? 0).toString()} sub="ערעורי כרטיס אשראי" color="text-red-600" />
                   </div>
@@ -515,7 +515,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                     </div>
                     <div className="space-y-2">
                       {[
-                        { type: 'direct_platform_sale', desc: 'מכירת חבילה / מוצר ישירות', note: 'PetWash™ המוכר, אין ספק' },
+                        { type: 'direct_platform_sale', desc: 'מכירת חבילה / מוצר ישירות', note: 'PetWash™‎ המוכר, אין ספק' },
                         { type: 'egift_sale', desc: 'מכירת גיפט קארד / stored value', note: 'ללא ספק — התחייבות כספית לחברה' },
                         { type: 'wallet_topup', desc: 'טעינת ארנק לקוח', note: 'ללא ספק — stored value liability' },
                         { type: 'wallet_redemption', desc: 'מימוש ארנק / גיפט קארד', note: 'מפעיל זרם חדש — A או B לפי השימוש' },
@@ -577,7 +577,7 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                     <div className="bg-white rounded-lg p-3 border border-orange-200">
                       <p className="font-semibold text-xs text-orange-800">מודל 2 — Taxable Sale</p>
                       <p className="text-xs text-gray-600 mt-1">אירוע מע״מ = בעת <strong>רכישת</strong> הגיפט קארד / ארנק</p>
-                      <p className="text-xs text-gray-500">PetWash™ היא המוכרת הישירה של ה-stored value</p>
+                      <p className="text-xs text-gray-500">PetWash™‎ היא המוכרת הישירה של ה-stored value</p>
                     </div>
                   </div>
                   <p className="text-xs text-orange-700 mt-2 font-medium">
@@ -629,12 +629,12 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs font-medium text-gray-500 uppercase">מס חברות PetWash™</p>
+                    <p className="text-xs font-medium text-gray-500 uppercase">מס חברות PetWash™‎</p>
                     <div className="flex items-center justify-between p-2 bg-white rounded">
                       <span className="text-sm">מס חברות (Israel 2026)</span>
                       <Badge className="bg-white text-gray-700">23%</Badge>
                     </div>
-                    <p className="text-xs text-gray-500">PetWash™ משלמת 23% מס חברות על הרווחים הנקיים.</p>
+                    <p className="text-xs text-gray-500">PetWash™‎ משלמת 23% מס חברות על הרווחים הנקיים.</p>
                   </div>
                 </CardContent>
               </Card>

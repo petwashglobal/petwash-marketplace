@@ -278,7 +278,7 @@ export default function UserCoupons() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-black">הקופונים שלי</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">PetWash™</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">PetWash™‎</p>
           </div>
         </div>
 

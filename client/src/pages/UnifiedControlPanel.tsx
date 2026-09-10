@@ -186,7 +186,7 @@ export default function UnifiedControlPanel() {
               <CardContent>
                 <div className="space-y-3">
                   {[
-                    { name: "The Hub™", status: "operational", uptime: "99.9%" },
+                    { name: "The Hub™‎", status: "operational", uptime: "99.9%" },
                     { name: "⁦The Sitter Suite™⁩", status: "operational", uptime: "99.8%" },
                     { name: "⁦Walk My Pet™⁩", status: "operational", uptime: "99.7%" },
                     { name: "⁦PetTrek™⁩", status: "operational", uptime: "99.9%" },

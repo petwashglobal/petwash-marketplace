@@ -25,7 +25,7 @@ export default function InvestorPresentation() {
           <div className="text-center max-w-4xl mx-auto luxury-fade-in">
             <div className="text-9xl mb-8 animate-bounce">🐾</div>
             <h1 className="luxury-heading-xl mb-8">
-              PET WASH™
+              PET WASH™‎
             </h1>
             <p className="text-4xl font-bold mb-6 luxury-gradient-text">
               The World's Most Advanced Pet Care Platform

@@ -98,7 +98,7 @@ export function EgiftBalanceCard({ egiftId, title }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] font-bold" style={{ color: GOLD }}>
             <Wallet className="w-3.5 h-3.5" />
-            <span>{title ?? tr('PetWash™ · eGift balance', 'PetWash™ · יתרת eGift')}</span>
+            <span>{title ?? tr('PetWash™‎ · eGift balance', 'PetWash™‎ · יתרת eGift')}</span>
           </div>
           {p.frozen && (
             <span

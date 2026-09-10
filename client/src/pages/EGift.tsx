@@ -1531,7 +1531,7 @@ export default function EGift() {
             </div>
             <div className="text-center sm:text-left">
               <p className="text-[10px] md:text-[12px] tracking-[0.4em] uppercase mb-3 font-semibold text-ink-900">
-                PetWash™ Premium
+                PetWash™‎ Premium
               </p>
               <h2
                 className="text-2xl sm:text-3xl md:text-[2.1rem] lg:text-[2.4rem] font-extralight mb-2 text-ink-900"

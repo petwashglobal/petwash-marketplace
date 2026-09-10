@@ -1,6 +1,6 @@
 /**
- * PetWash™ Admin Platform Login
- * Secure administrative access for PetWash™ business management
+ * PetWash™‎ Admin Platform Login
+ * Secure administrative access for PetWash™‎ business management
  * 
  * Features:
  * - Biometric/Passkey authentication (Touch ID/Face ID)
@@ -403,7 +403,7 @@ export default function AdminLoginV2() {
     >
       {/* Main Login Card */}
       <Card className="w-full max-w-md luxury-glass-card luxury-shadow-xl p-5 sm:p-7 md:p-8">
-        {/* Header — PetWash™ logo */}
+        {/* Header — PetWash™‎ logo */}
         <div className="text-center mb-6 sm:mb-8">
           <div className="mb-3 sm:mb-4 flex justify-center">
             <img
@@ -572,7 +572,7 @@ export default function AdminLoginV2() {
             <span>Audit-logged</span>
           </div>
           <p className="text-xs text-gray-500">
-            PetWash™ admin access
+            PetWash™‎ admin access
           </p>
         </div>
       </Card>

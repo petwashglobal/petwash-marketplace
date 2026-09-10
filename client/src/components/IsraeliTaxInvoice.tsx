@@ -163,7 +163,7 @@ export function IsraeliTaxInvoice({ data, language = 'he', showActions = true }:
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #1A1A1A', padding: '24px 32px 20px', background: '#fff' }}>
           <div>
-            <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -1, color: '#000' }}>PetWash™</h1>
+            <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -1, color: '#000' }}>PetWash™‎</h1>
             <p style={{ fontSize: 11, color: '#555', marginTop: 2 }}>פט וואש בע"מ — ח.פ. 517145033</p>
             <p style={{ fontSize: 10, color: '#999', marginTop: 2 }}>www.petwash.co.il</p>
           </div>

@@ -192,7 +192,7 @@ export default function PetPassport() {
           {/* Header band with gold rule */}
           <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b" style={{ borderColor: `${GOLD}33` }}>
             <span className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: GOLD }}>
-              {tr('PetWash™ · Pet Passport', 'PetWash™ · דרכון חיה')}
+              {tr('PetWash™‎ · Pet Passport', 'PetWash™‎ · דרכון חיה')}
             </span>
             <ShieldCheck className="w-4 h-4" style={{ color: GOLD }} />
           </div>

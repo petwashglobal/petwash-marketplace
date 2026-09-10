@@ -92,7 +92,7 @@ export default function WalkMyPetOwnerDashboard() {
             <div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2 inline-flex items-center gap-2" data-testid="page-title">
                 <PetWashIcon name="brand_paw" size={34} label="Paw" />
-                <span className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent">Walk My Pet™</span>
+                <span className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent">Walk My Pet™‎</span>
               </h1>
               <p className="text-slate-600 text-lg" data-testid="page-subtitle">לוח בעלי כלבים / Owner Dashboard</p>
             </div>

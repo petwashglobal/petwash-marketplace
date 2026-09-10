@@ -60,7 +60,7 @@ const FORMS: FormCard[] = [
     emoji: '🐕',
     title: 'Pet Onboarding',
     titleHe: 'רישום חיית מחמד',
-    description: 'Register your pet and upload health documents to your PetWash™ profile',
+    description: 'Register your pet and upload health documents to your PetWash™‎ profile',
     href: '/forms/onboarding',
     color: '#8B5CF6',
     department: 'Customer Experience',
@@ -69,7 +69,7 @@ const FORMS: FormCard[] = [
     emoji: '↩️',
     title: 'Refund Request',
     titleHe: 'בקשת החזר כספי',
-    description: 'Request a refund for any PetWash™ service or product',
+    description: 'Request a refund for any PetWash™‎ service or product',
     href: '/forms/refund',
     color: '#EF4444',
     department: 'Finance & Billing',
@@ -89,7 +89,7 @@ const FORMS: FormCard[] = [
     emoji: '💼',
     title: 'Job Application',
     titleHe: 'מועמדות לעבודה',
-    description: 'Apply to join the PetWash™ team — upload CV and cover letter',
+    description: 'Apply to join the PetWash™‎ team — upload CV and cover letter',
     href: '/forms/hr-application',
     color: '#F97316',
     department: 'HR & People',
@@ -119,7 +119,7 @@ export default function FormsHub() {
         <div className="max-w-lg mx-auto flex items-center gap-3 pt-3">
           <PetWashIcon name="brand_paw" size={24} label="PetWash Forms" />
           <div>
-            <h1 className="text-lg font-bold">PetWash™ Forms</h1>
+            <h1 className="text-lg font-bold">PetWash™‎ Forms</h1>
             <p className="text-[#C6A35B] text-xs" dir="rtl">כל הטפסים במקום אחד</p>
           </div>
         </div>
@@ -177,7 +177,7 @@ export default function FormsHub() {
         })}
 
         <div className="text-center pt-4">
-          <p className="text-white/20 text-xs">PetWash™ Ltd. · petwash.co.il</p>
+          <p className="text-white/20 text-xs">PetWash™‎ Ltd. · petwash.co.il</p>
           <p className="text-white/15 text-xs mt-1">GDPR & Israeli Privacy Law compliant · Encrypted · Google Drive backup</p>
         </div>
       </div>

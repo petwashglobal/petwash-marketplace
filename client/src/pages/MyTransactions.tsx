@@ -199,7 +199,7 @@ export default function MyTransactions() {
           <div className="flex items-center justify-between">
             <div style={{ textAlign: isHe ? 'right' : 'left' }}>
               <div className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: GOLD }}>
-                {tr('PetWash™ · My transactions', 'PetWash™ · העסקאות שלי')}
+                {tr('PetWash™‎ · My transactions', 'PetWash™‎ · העסקאות שלי')}
               </div>
               <div className="mt-1 text-[24px] font-extrabold" style={{ color: GOLD }}>
                 {tr('Receipts & orders', 'קבלות והזמנות')}
@@ -377,7 +377,7 @@ export function MyTransactionDetail() {
         {/* Green hero */}
         <div className="rounded-[22px] p-5 shadow-lg" style={{ background: GREEN }}>
           <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: GOLD }}>
-            <span>{tr('PetWash™ · Receipt', 'PetWash™ · קבלה')}</span>
+            <span>{tr('PetWash™‎ · Receipt', 'PetWash™‎ · קבלה')}</span>
             <span dir="ltr">{p.transactionRef}</span>
           </div>
           <div className="mt-3" style={{ textAlign: isHe ? 'right' : 'left' }}>

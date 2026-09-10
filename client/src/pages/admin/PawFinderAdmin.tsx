@@ -1,5 +1,5 @@
 /**
- * Paw Finder™ Admin Moderation Dashboard
+ * Paw Finder™‎ Admin Moderation Dashboard
  * Real moderation queue | Approve / Reject / Archive | Event trail | Analytics
  */
 
@@ -434,7 +434,7 @@ export default function PawFinderAdmin() {
               <ChevronLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-lg font-semibold text-slate-800">Paw Finder™ Moderation</h1>
+              <h1 className="text-lg font-semibold text-slate-800">Paw Finder™‎ Moderation</h1>
               <p className="text-xs text-slate-400">Lost & Found Pet Platform</p>
             </div>
           </div>

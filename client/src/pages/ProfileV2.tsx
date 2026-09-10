@@ -157,7 +157,7 @@ export default function ProfileV2() {
         </button>
 
         <div style={{ textAlign: 'center', fontSize: 11, color: C.faint, marginTop: 24, lineHeight: 1.7 }}>
-          PetWash™ · <bdi>support@petwash.co.il</bdi>
+          PetWash™‎ · <bdi>support@petwash.co.il</bdi>
         </div>
       </div>
     </div>

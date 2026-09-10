@@ -83,7 +83,7 @@ export default function Trademarks() {
 
               <p className="text-xs text-gray-500 mt-4">
                 {isHebrew
-                  ? "הסימן ™PetWash, הלוגו של PetWash, וכל הסימנים הנלווים מוחזקים תחת רישוי לטובת חברת Pet Wash Ltd. כל הזכויות שמורות."
+                  ? "הסימן ™‎PetWash, הלוגו של PetWash, וכל הסימנים הנלווים מוחזקים תחת רישוי לטובת חברת Pet Wash Ltd. כל הזכויות שמורות."
                   : "The PetWash® mark, the PetWash logo, and all related marks are held under license for the benefit of Pet Wash Ltd. All rights reserved."}
               </p>
             </div>
@@ -92,7 +92,7 @@ export default function Trademarks() {
           {/* Unregistered marks */}
           <section className="mb-10">
             <h2 className="luxury-heading-lg text-gray-900 mb-4">
-              {isHebrew ? "סימני מסחר נוספים (™)" : "Additional Trademarks (™)"}
+              {isHebrew ? "סימני מסחר נוספים (™‎)" : "Additional Trademarks (™‎)"}
             </h2>
             <p className="text-gray-700 mb-4 leading-relaxed">
               {isHebrew
@@ -100,7 +100,7 @@ export default function Trademarks() {
                 : "The following marks are used by Pet Wash Ltd as trademarks in the ordinary course of business. These marks are not registered, but the Company's rights in them are reserved under common-law principles."}
             </p>
             <div className="flex flex-wrap gap-2 text-sm">
-              {["K9000™", "PetWash Academy™", "The Sitter Suite™", "Walk My Pet™", "PetWash Prestige™", "Pet Wash Pass™"].map((m) => (
+              {["K9000™‎", "PetWash Academy™‎", "The Sitter Suite™‎", "Walk My Pet™‎", "PetWash Prestige™‎", "Pet Wash Pass™‎"].map((m) => (
                 <span
                   key={m}
                   className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-800 border border-gray-200"

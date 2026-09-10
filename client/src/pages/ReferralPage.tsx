@@ -165,7 +165,7 @@ export default function ReferralPage() {
   const shareNative = async () => {
     if (!referralData?.referralLink) return;
     const outcome = await shareOrCopy({
-      title: "PetWash™",
+      title: "PetWash™‎",
       text: `🐾 קבל ₪25 קרדיט ב-⁦PetWash™⁩ עם הקישור שלי:`,
       url: referralData.referralLink,
     });
