@@ -5,7 +5,7 @@ import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import { db } from '../db';
-import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys, privilegeMembers } from '@shared/schema';
+import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { requireNayaxStationDevice } from '../middleware/nayaxStationDeviceAuth';
@@ -19,23 +19,7 @@ import { verifyNayaxTopup, type WalletTopupVerifyReason } from '../lib/wallet-to
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { CreditType } from '../../shared/petwash-operating-system';
 
-// Prestige enrollment truth shared with lib/userCapabilities: an active
-// privilegeMembers row for the member's email. users.loyaltyTier is written as
-// 'bronze' at signup for EVERY account, so it cannot answer "did they join?".
-// Fail closed to "not enrolled" on any error.
-async function isPrestigeEnrolled(email: string | undefined | null): Promise<boolean> {
-  if (!email) return false;
-  try {
-    const [row] = await db
-      .select({ status: privilegeMembers.status })
-      .from(privilegeMembers)
-      .where(eq(privilegeMembers.email, email.toLowerCase()))
-      .limit(1);
-    return !!row && (row.status ?? 'active') === 'active';
-  } catch (e: any) {
-    logger.warn('[CreditWallet] prestige lookup failed (defaulting not enrolled)', { error: e?.message });
-    return false;
-  }
+import { isPrestigeEnrolled } from '../lib/memberTier';
 }
 
 const router = Router();

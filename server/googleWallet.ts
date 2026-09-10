@@ -10,6 +10,7 @@
  */
 
 import { logger } from './lib/logger';
+import { tierLabel } from './lib/memberTier';
 import { db } from './lib/firebase-admin';
 
 interface GoogleWalletVIPData {
@@ -123,7 +124,7 @@ export class GoogleWalletService {
         textModulesData: [
           {
             header: 'Tier / דרגה',
-            body: data.tier.toUpperCase(),
+            body: tierLabel(data.tier),
             id: 'tier'
           },
           {

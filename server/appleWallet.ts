@@ -10,6 +10,7 @@
  */
 
 import crypto from 'crypto';
+import { tierLabel } from './lib/memberTier';
 import { PKPass } from 'passkit-generator';
 import QRCode from 'qrcode';
 import { db } from './lib/firebase-admin';
@@ -20,7 +21,7 @@ interface VIPCardData {
   userId: string;
   userName: string;
   userEmail: string;
-  tier: 'new' | 'silver' | 'gold' | 'platinum' | 'diamond';
+  tier: string; // resolved by lib/memberTier; 'new' = not enrolled (printed as MEMBER)
   points: number;
   discountPercent: number;
   memberSince: Date;
@@ -146,14 +147,15 @@ export class AppleWalletService {
    * Generate VIP Loyalty Card pass.json template
    */
   private static getVIPCardTemplate(data: VIPCardData, qrCodeData: string) {
-    const colors = this.TIER_COLORS[data.tier];
+    // Tiers without a palette (bronze, black…) fall back to the entry palette.
+    const colors = (this.TIER_COLORS as Record<string, typeof AppleWalletService.TIER_COLORS.new>)[data.tier] ?? this.TIER_COLORS.new;
     
     return {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.vip',
       teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
       organizationName: '⁦PetWash™⁩',
-      description: `Pet Wash ${data.tier.toUpperCase()} VIP Card`,
+      description: `Pet Wash ${tierLabel(data.tier)} VIP Card`,
       logoText: '⁦PetWash™⁩',
       serialNumber: `VIP_${data.userId}_${data.tier}_${Date.now()}`,
       
@@ -180,7 +182,7 @@ export class AppleWalletService {
           {
             key: 'tier',
             label: 'TIER',
-            value: data.tier.toUpperCase()
+            value: tierLabel(data.tier)
           },
           {
             key: 'discount',
