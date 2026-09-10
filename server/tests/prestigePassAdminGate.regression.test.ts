@@ -22,57 +22,41 @@
  * `session?.user?.isAdmin` pattern anywhere in the repo. Zero
  * occurrences allowed.
  */
-import { execSync } from 'node:child_process';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { repoGrep } from './helpers/repoGrep';
+
+/*
+ * WHOLE-TREE SCAN BUDGET (2026-09-10). These pins walk every .ts (and for some,
+ * .tsx) under server/, shared/ and client/ in-process. They used to shell out
+ * to ripgrep — a purpose-built parallel scanner — but ripgrep is not a
+ * dependency of this repo and is often a shell function rather than a binary,
+ * so `execSync` could never find it and NONE of these tests could run.
+ *
+ * In-process, a single file finishes in well under a second. But `test:money`
+ * runs these files in PARALLEL workers that each fill their own cache and
+ * contend for I/O, and that is enough to blow vitest's 5s default. A timeout
+ * presents identically to a real regression, so the budget is explicit and
+ * generous rather than left to chance.
+ */
+vi.setConfig({ testTimeout: 60_000 });
+
 
 const ROOT = join(__dirname, '..', '..');
 
-function hasRipgrep(): boolean {
-  try {
-    execSync('rg --version', { stdio: ['pipe', 'pipe', 'pipe'] });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
- * Search the tree for `pattern`, preferring ripgrep but falling back to POSIX
- * grep. Previously this shelled out to `rg` unconditionally, so on any machine
- * without ripgrep the spawn failed with status 127 and the whole security pin
- * threw instead of running — a RED that looks identical to a real regression.
- * Exit status 1 means "no matches" for both tools; anything else is a genuine
- * tool error and must still throw (never swallow it into a passing []).
+ * Search the tree for `pattern`. This used to shell out to ripgrep with a
+ * POSIX-grep fallback; both are gone in favour of an in-process walk, so the
+ * pin no longer depends on which binaries happen to exist on the machine.
  */
 function grepRepo(pattern: string): string[] {
-  const cmd = hasRipgrep()
-    ? `rg --no-heading -n -g '*.ts' -g '!server/tests/**' -g '!**/node_modules/**' ${JSON.stringify(pattern)} ${ROOT}`
-    : [
-        'grep -rnE',
-        "--include='*.ts'",
-        // Prune everything that cannot hold first-party source. Without this
-        // the fallback walks .git and the build output and takes >5s, which
-        // trips vitest's default per-test timeout.
-        '--exclude-dir=node_modules',
-        '--exclude-dir=tests',
-        '--exclude-dir=.git',
-        '--exclude-dir=dist',
-        '--exclude-dir=build',
-        '--exclude-dir=coverage',
-        '--exclude-dir=.next',
-        '--exclude-dir=ios',
-        '--exclude-dir=android',
-        JSON.stringify(pattern),
-        ROOT,
-      ].join(' ');
-  try {
-    const out = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-    return out.split('\n').filter(Boolean);
-  } catch (err: any) {
-    if (err?.status === 1) return [];
-    throw err;
-  }
+  // Was `execSync("rg ...")`. ripgrep is not a dependency of this repo and
+  // is frequently a shell function rather than a binary, so /bin/sh could not
+  // find it and every test in this file died before asserting. See
+  // server/tests/helpers/repoGrep.ts.
+  return repoGrep(ROOT, pattern, {
+    includeExt: ['ts'],
+  });
 }
 
 describe('prestige-pass admin gate — must never reintroduce broken pattern (AUDIT-AUTH-7 / #240)', () => {
