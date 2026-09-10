@@ -1004,6 +1004,17 @@
   border-color: #000000;
 }
 
+/* :focus, not only :focus-visible. Opening the drawer moves focus here
+   PROGRAMMATICALLY, and the focus-visible heuristic does not fire for a
+   scripted .focus() on a button — measured on production with the drawer open:
+   focusing this button changed outline, box-shadow, border and background not
+   at all. Focus that lands invisibly is worse than focus that never moved, so
+   this control states its own ring. */
+.pw-mobile-close:focus {
+  outline: 2px solid #0B57D0;
+  outline-offset: 2px;
+}
+
 .pw-mobile-logo-wrap {
   padding: 1.5rem 1rem;
   display: flex;

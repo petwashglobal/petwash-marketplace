@@ -261,3 +261,110 @@ describe("the dev-banner dismiss button is a square tap target", () => {
     expect(Number(width![1])).toBe(Number(height![1]));
   });
 });
+
+/**
+ * 2026-09-10 — the auth form's visible labels were not attached to anything.
+ *
+ * Six `<label className="sl-label">` elements sat directly above their input
+ * with no htmlFor, and the inputs had no id. Sighted users saw "אימייל" /
+ * "סיסמה"; a screen reader got only the placeholder, which is the documented
+ * anti-pattern and disappears the moment the user types. Two fields in the
+ * same file (signup-first-name / signup-last-name) already did it correctly,
+ * so this was an omission from an established local pattern, on the one form
+ * every returning user has to get through.
+ *
+ * NOTE deliberately NOT changed: `required` is false on the password input on
+ * purpose — the panel offers a passwordless one-time-code path and the hint
+ * says so ("or leave blank to get a one-time code"). Marking it required would
+ * break that flow. This pin covers naming only.
+ */
+describe("every text field on the auth panel is named by its own label", () => {
+  const src = readFileSync(resolve(root, "client/src/pages/SignUpLuxury.tsx"), "utf8");
+
+  it("no sl-label is left dangling in front of a raw <input>", () => {
+    const dangling: string[] = [];
+    const re = /<label className="sl-label"(?![^>]*htmlFor)([^>]*)>([\s\S]*?)<\/label>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(src)) !== null) {
+      const tail = src.slice(m.index + m[0].length, m.index + m[0].length + 1200);
+      const input = tail.search(/<input\s/);
+      // A label in front of a <PhoneInput> component names that component, not
+      // a raw input — out of scope for htmlFor, and flagged separately.
+      if (input === -1 || tail.slice(0, input).includes("<PhoneInput")) continue;
+      dangling.push(m[2].trim().slice(0, 40));
+    }
+    expect(dangling, `labels with no htmlFor: ${dangling.join(" | ")}`).toEqual([]);
+  });
+
+  it("each htmlFor points at an id that exists exactly once", () => {
+    const fors = [...src.matchAll(/htmlFor="([^"]+)"/g)].map((m) => m[1]);
+    expect(fors.length).toBeGreaterThanOrEqual(6);
+    for (const id of fors) {
+      // (?<![\w-]) or `data-testid="x"` counts as a second `id="x"`.
+      const hits = [...src.matchAll(new RegExp(`(?<![\\w-])id="${id}"`, "g"))].length;
+      expect(hits, `id="${id}" appears ${hits} times`).toBe(1);
+    }
+  });
+});
+
+/**
+ * 2026-09-10 — /signup and /signin had no h1 at all on a phone.
+ *
+ * `.sl-h1 { display: none }` in the small-screen block. Hiding the marketing
+ * headline there is the right call — the form has to win the fold — but
+ * display:none also drops it from the document outline and the accessibility
+ * tree. Measured at 390px: zero visible h1, the first heading was the panel's
+ * h2. Clipping keeps the pixels identical and the outline intact.
+ */
+describe("the auth page keeps an h1 on small screens", () => {
+  it("the mobile rule clips .sl-h1 instead of removing it", () => {
+    const src = readFileSync(resolve(root, "client/src/pages/SignUpLuxury.tsx"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    expect(src).not.toMatch(/\.sl-h1\{\s*display:\s*none\s*\}/);
+    const rule = src.match(/\.sl-h1\s*\{[^}]*clip-path[^}]*\}/);
+    expect(rule, "no clipped .sl-h1 rule — the heading is either visible or gone").toBeTruthy();
+    expect(rule![0]).toMatch(/position:\s*absolute/);
+  });
+});
+
+/**
+ * 2026-09-10 — a dialog that declared aria-modal but never took focus.
+ *
+ * The mobile drawer is role="dialog" aria-modal="true". Opening it left
+ * document.activeElement on the burger — measured on production, focus stayed
+ * outside the dialog — so a screen reader remained on a control it had just
+ * announced as expanded, and a keyboard user had to tab forward through the
+ * page to reach a menu already covering it. Closing it left focus wherever it
+ * had drifted instead of returning it to the burger.
+ *
+ * The close button also needs a plain :focus ring, not only :focus-visible:
+ * focus arrives here from a scripted .focus(), and the focus-visible heuristic
+ * does not fire for that on a button — measured with the drawer open, focusing
+ * it changed outline, box-shadow, border and background not at all.
+ */
+describe("the mobile drawer takes focus when it opens and gives it back", () => {
+  const src = readFileSync(resolve(root, "client/src/components/PetWashHeader.tsx"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  it("still claims to be a modal dialog, so the promise applies", () => {
+    expect(src).toMatch(/aria-modal="true"/);
+  });
+
+  it("moves focus into the drawer on open", () => {
+    expect(src).toMatch(/\.pw-mobile-close'\)\?\.focus\(\)/);
+  });
+
+  it("remembers the opener and restores focus on close", () => {
+    expect(src).toMatch(/const opener = document\.activeElement/);
+    expect(src).toMatch(/opener\?\.isConnected.*opener\.focus\(\)/s);
+  });
+
+  it("the close button paints a ring on plain :focus", () => {
+    const css = readFileSync(resolve(root, "client/src/styles/petwash-header.css"), "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "");
+    const rule = css.match(/\.pw-mobile-close:focus\s*\{[^}]*\}/);
+    expect(rule, "no :focus rule — programmatic focus would land invisibly").toBeTruthy();
+    expect(parseFloat(rule![0].match(/outline:\s*(\d+)/)?.[1] ?? "0")).toBeGreaterThanOrEqual(2);
+  });
+});

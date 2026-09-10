@@ -358,9 +358,29 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
       document.body.style.overflow = 'hidden';
       const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsMobileOpen(false); };
       document.addEventListener('keydown', onKey);
+
+      // FOCUS FOLLOWS THE DIALOG (2026-09-10). This drawer declares
+      // role="dialog" aria-modal="true", which is a promise that it owns focus
+      // while it is open. It did not keep it: measured on production, opening
+      // the drawer left document.activeElement on the burger, outside the
+      // dialog — so a screen reader stayed on a control it had just told the
+      // user was expanded, and a keyboard user had to tab back through the
+      // page to reach a menu already covering it.
+      //
+      // The rAF is for `inert`: it was removed a line ago and focus() on a
+      // still-inert subtree is a no-op, so let the attribute land first.
+      const opener = document.activeElement as HTMLElement | null;
+      const raf = requestAnimationFrame(() => {
+        drawer?.querySelector<HTMLElement>('.pw-mobile-close')?.focus();
+      });
+
       return () => {
+        cancelAnimationFrame(raf);
         document.body.style.overflow = prevOverflow;
         document.removeEventListener('keydown', onKey);
+        // Put focus back where it was taken from. Guarded on isConnected so an
+        // unmount (route change) never yanks focus to a detached node.
+        if (opener?.isConnected) opener.focus();
       };
     }
     drawer?.setAttribute('inert', '');
