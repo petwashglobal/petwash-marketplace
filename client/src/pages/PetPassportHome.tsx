@@ -1,5 +1,5 @@
 /**
- * PetPassportHome — the PetWash™ Pet Passport HOME screen.
+ * PetPassportHome — the PetWash™‎ Pet Passport HOME screen.
  *
  * Wired PIXEL-FAITHFUL to the CEO's 2026-07-07 canonical mockup + spec (see
  * memory pet-passport-canonical-spec-2026-07-07). Same React + Tailwind stack as

@@ -149,7 +149,7 @@ export default function PetPassportPrint() {
               color: GOLD, fontSize: 11, letterSpacing: '0.22em', textTransform: 'uppercase',
               fontWeight: 700,
             }}>
-              <span>PetWash™ · {tr('Pet Passport', 'דרכון חיה')}</span>
+              <span>PetWash™‎ · {tr('Pet Passport', 'דרכון חיה')}</span>
               <span dir="ltr">{pet.id.slice(-8).toUpperCase()}</span>
             </div>
             <div style={{

@@ -147,7 +147,7 @@ export default function ProviderOS() {
     <div className="min-h-screen bg-white flex flex-col" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
       {/* Brand crown + utility bar — sticky together */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
-      {/* Real PetWash™ logo, top-center crown (brand rule: never recreate, always centered) */}
+      {/* Real PetWash™‎ logo, top-center crown (brand rule: never recreate, always centered) */}
       <div className="flex flex-col items-center pt-2 pb-1.5">
         <img src="/brand/petwash-logo-official.png" alt="PetWash" className="h-6 object-contain" loading="eager" />
         <span className="text-[8px] tracking-[0.3em] text-[#9a8a5c] mt-0.5">PROVIDER</span>

@@ -141,7 +141,7 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
         {/* LOGO — dominant focal point (official asset only) */}
         <img
           src={OFFICIAL_LOGO}
-          alt="PetWash™"
+          alt="PetWash™‎"
           style={{
             width: 'min(210px, 58vw)',
             height: 'auto',
@@ -981,7 +981,7 @@ function PrestigeKioskPass({
               <path d="M12 9.5c-4.2 0-7.5 2.8-7.5 6 0 3 2.8 5.5 7.5 5.5s7.5-2.5 7.5-5.5c0-3.2-3.3-6-7.5-6z" fill="#C6A35B" />
             </svg>
             <span style={{ fontSize: '22px', fontWeight: 800, color: '#C6A35B', letterSpacing: '-0.02em', fontFamily: "'SF Pro Display','Helvetica Neue',sans-serif" }}>
-              PetWash™
+              PetWash™‎
             </span>
           </div>
 

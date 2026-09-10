@@ -243,7 +243,7 @@ export default function TrainerDetail() {
           backPath="/academy"
           breadcrumbs={[
             { label: isHebrew ? 'ראשי' : 'Home', path: '/' },
-            { label: 'Pet Academy™', path: '/academy' },
+            { label: 'Pet Academy™‎', path: '/academy' },
             { label: trainerData.name, path: '#' },
           ]}
         />

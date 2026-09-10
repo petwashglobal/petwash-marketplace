@@ -107,14 +107,14 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
             </Badge>
             <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               <Star className="w-4 h-4 mr-2" />
-              Academy™
+              Academy™‎
             </Badge>
             <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
-              Plush Lab™
+              Plush Lab™‎
             </Badge>
             <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               <Globe className="w-4 h-4 mr-2" />
-              Club™
+              Club™‎
             </Badge>
             <Badge variant="outline" className="px-4 py-2 bg-white/80 dark:bg-white/80 backdrop-blur-sm border-2">
               Main Wash

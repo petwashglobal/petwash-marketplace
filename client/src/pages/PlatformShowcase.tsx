@@ -182,7 +182,7 @@ export default function PlatformShowcase() {
       ]
     },
     {
-      category: "📱 Paw-Connect™ Mobile (Coming 2026)",
+      category: "📱 Paw-Connect™‎ Mobile (Coming 2026)",
       icon: <Smartphone className="h-8 w-8" />,
       color: "from-rose-500 to-pink-500",
       items: [

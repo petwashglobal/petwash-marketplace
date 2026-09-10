@@ -6,7 +6,7 @@
  * page is the boutique storefront for those listings.
  *
  * RTL DISCIPLINE (PetWash is Hebrew-first): the whole surface is dir="rtl",
- * everything anchors from the RIGHT (never the left), the ™ wordmark sits
+ * everything anchors from the RIGHT (never the left), the ™‎ wordmark sits
  * top-CENTER, and "forward/more" arrows point LEFT (←) because forward = leftward
  * in RTL. Brand palette: pure white, black text, one metallic-gold (#D4AF37) hairline.
  */
@@ -48,8 +48,8 @@ export default function AdoptionMaison() {
     <div dir="rtl" className="min-h-screen bg-white text-black">
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <header className="px-6 pt-12 pb-8 text-center">
-        {/* ™ wordmark — top-center ("crown"), never modified */}
-        <div className="text-sm tracking-[0.2px] font-serif">PetWash™</div>
+        {/* ™‎ wordmark — top-center ("crown"), never modified */}
+        <div className="text-sm tracking-[0.2px] font-serif">PetWash™‎</div>
         <div className="mt-6 text-[11px] tracking-[4px]" style={{ color: '#9A7B2E' }}>אימוץ · ADOPTION</div>
         <h1 className="mt-3 font-serif font-normal leading-tight text-black" style={{ fontSize: 'clamp(2rem, 8vw, 3.25rem)' }}>
           {isHe ? 'לכל נשמה מגיע בית.' : 'Every soul deserves a home.'}
@@ -114,7 +114,7 @@ export default function AdoptionMaison() {
         )}
 
         <p className="mt-12 text-center text-[11px] tracking-[1px] text-black/45">
-          {isHe ? 'כל חיה נבדקת · אימוץ אחראי · מבית PetWash™' : 'Every pet checked · Responsible adoption · By PetWash™'}
+          {isHe ? 'כל חיה נבדקת · אימוץ אחראי · מבית PetWash™‎' : 'Every pet checked · Responsible adoption · By PetWash™‎'}
         </p>
       </main>
     </div>

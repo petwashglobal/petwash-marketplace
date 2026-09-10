@@ -109,7 +109,7 @@ export default function ReportProblemPage() {
             </p>
             <div className="flex items-center justify-center gap-2 text-[#B8932F] text-sm font-medium mb-6">
               <Shield className="w-4 h-4" />
-              {isHebrew ? "PetWash™ ערבות השירות מגנה עליך" : "PetWash™ Service Guarantee protects you"}
+              {isHebrew ? "PetWash™‎ ערבות השירות מגנה עליך" : "PetWash™‎ Service Guarantee protects you"}
             </div>
             <Button
               onClick={() => navigate("/bookings")}
@@ -184,8 +184,8 @@ export default function ReportProblemPage() {
                 <Shield className="w-4 h-4 text-[#B8932F] mt-0.5 shrink-0" />
                 <p className="text-xs text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew
-                    ? "PetWash™ מציעה ערבות שביעות רצון. אם השירות לא עמד בסטנדרטים שלנו, נפעל לפתרון."
-                    : "PetWash™ offers a satisfaction guarantee. If the service didn't meet our standards, we will work to resolve it."}
+                    ? "PetWash™‎ מציעה ערבות שביעות רצון. אם השירות לא עמד בסטנדרטים שלנו, נפעל לפתרון."
+                    : "PetWash™‎ offers a satisfaction guarantee. If the service didn't meet our standards, we will work to resolve it."}
                 </p>
               </div>
             </div>

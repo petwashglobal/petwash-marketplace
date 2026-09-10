@@ -56,7 +56,7 @@ export default function StationPage({ slug }: StationPageProps) {
 
   // Per-station SEO: city-targeted title built from LIVE data only.
   useSEO(station ? {
-    title: `שטיפת כלבים בשירות עצמי ב${station.city} — ${station.stationName} | PetWash™`,
+    title: `שטיפת כלבים בשירות עצמי ב${station.city} — ${station.stationName} | PetWash™‎`,
     description: `Self-service K9000 dog wash at ${station.stationName}, ${station.address}, ${station.city}. שטיפת כלבים בשירות עצמי ב${station.city} — ${station.address}. מוצרים המותאמים לחיות מחמד, קל, בטוח ונקי.`,
     keywords: `שטיפת כלבים ${station.city}, שטיפת כלבים בשירות עצמי ${station.city}, dog wash ${station.city}, K9000, מקלחת לכלב ${station.city}`,
     canonical: `https://petwash.co.il/stations/${station.stationCode.toLowerCase()}`,
@@ -80,7 +80,7 @@ export default function StationPage({ slug }: StationPageProps) {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
       '@id': `https://petwash.co.il/stations/${station.stationCode.toLowerCase()}#station`,
-      name: `PetWash™ — ${station.stationName}`,
+      name: `PetWash™‎ — ${station.stationName}`,
       url: `https://petwash.co.il/stations/${station.stationCode.toLowerCase()}`,
       image: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
       address: {
@@ -223,7 +223,7 @@ export default function StationPage({ slug }: StationPageProps) {
             latitude={lat}
             longitude={lng}
             address={`${station.address}, ${station.city}`}
-            placeName={`PetWash™ — ${station.stationName}`}
+            placeName={`PetWash™‎ — ${station.stationName}`}
             variant="default"
             size="lg"
             className="luxury-btn-primary luxury-shadow-xl"

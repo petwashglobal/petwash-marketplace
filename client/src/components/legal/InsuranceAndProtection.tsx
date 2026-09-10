@@ -2,7 +2,7 @@
  * InsuranceAndProtection — safety disclaimer component.
  *
  * PR-LEGAL-B: previously this file rendered a multi-section
- * "Pet Wash™ Accident Cover" panel naming Harel Insurance
+ * "Pet Wash™‎ Accident Cover" panel naming Harel Insurance
  * Company Ltd. as the underwriter, policy PW-2026-IL-001,
  * effective January 2026, with hard-coded coverage amounts
  * (₪20M general liability, ₪250K pet & property, ₪50K

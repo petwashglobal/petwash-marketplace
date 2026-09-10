@@ -70,7 +70,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
       },
       {
         icon: Users,
-        name: isHebrew ? "Daycare™" : "Daycare™",
+        name: isHebrew ? "Daycare™‎" : "Daycare™‎",
         service: isHebrew ? "גן יום לכלבים" : "Dog Daycare",
         rateRange: "₪80 - ₪150",
         perUnit: isHebrew ? "ליום" : "per day",
@@ -81,7 +81,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
       },
       {
         icon: Scissors,
-        name: isHebrew ? "Groomers™" : "Groomers™",
+        name: isHebrew ? "Groomers™‎" : "Groomers™‎",
         service: isHebrew ? "טיפוח ותספורות" : "Grooming & Styling",
         rateRange: "₪100 - ₪400",
         perUnit: isHebrew ? "לטיפול" : "per session",
@@ -92,7 +92,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
       },
       {
         icon: GraduationCap,
-        name: isHebrew ? "Training Academy™" : "Training Academy™",
+        name: isHebrew ? "Training Academy™‎" : "Training Academy™‎",
         service: isHebrew ? "אילוף כלבים" : "Dog Training",
         rateRange: "₪150 - ₪400",
         perUnit: isHebrew ? "לשיעור" : "per lesson",

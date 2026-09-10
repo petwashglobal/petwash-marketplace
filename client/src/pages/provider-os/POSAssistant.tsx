@@ -58,14 +58,14 @@ export default function POSAssistant() {
     const completed = (stats as any)?.completedBookings || 0;
     const active = (stats as any)?.activeBookings || 0;
     const pending = (stats as any)?.pendingPayouts || 0;
-    return `You are the PetWash™ Provider AI Assistant. You help ${providerName}, a pet care provider on PetWash.co.il.
+    return `You are the PetWash™‎ Provider AI Assistant. You help ${providerName}, a pet care provider on PetWash.co.il.
 
 Provider context:
 - Rating: ${rating} ⭐
 - Completed bookings: ${completed}
 - Active bookings: ${active}
 - Pending payout: ₪${(pending / 100).toFixed(2)}
-- Platform: PetWash™ Israel (Hebrew/RTL market, ILS currency, VAT 18%)
+- Platform: PetWash™‎ Israel (Hebrew/RTL market, ILS currency, VAT 18%)
 - Services: PetSitter, Walk My Pet, Academy (PetTrek coming soon)
 
 Be helpful, concise, and practical. Answer in English unless the user writes in Hebrew. Provide general information and insights for Israeli pet care providers — not directives. Providers are independent contractors who run their own businesses and set their own prices; never tell them what to charge, and frame pricing only as general market information and factors to consider.`;

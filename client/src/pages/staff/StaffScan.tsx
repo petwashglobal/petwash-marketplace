@@ -115,7 +115,7 @@ export default function StaffScan() {
             </div>
             <div>
               <div style={{ color: '#0a0a0a', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>Staff POS</div>
-              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem' }}>PetWash™ Prestige Card Scanner</div>
+              <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem' }}>PetWash™‎ Prestige Card Scanner</div>
             </div>
           </div>
         </div>

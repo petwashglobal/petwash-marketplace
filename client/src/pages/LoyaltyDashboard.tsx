@@ -306,7 +306,7 @@ export default function LoyaltyDashboard() {
       const data = await res.json();
       setAiLoyaltyMsg(data.message || null);
     } catch {
-      setAiLoyaltyMsg('Your loyalty means everything to us, PetWash™ member! Keep washing, keep shining. 🐾');
+      setAiLoyaltyMsg('Your loyalty means everything to us, PetWash™‎ member! Keep washing, keep shining. 🐾');
     } finally {
       setFetchingAiMsg(false);
     }

@@ -2,7 +2,7 @@
  * ReturnLogin — the ONE returning-user door (Phase 4, CEO auth-rebuild
  * directive 2026-09-01).
  *
- *   PET WASH™
+ *   PET WASH™‎
  *   Welcome back, Nir
  *   [ Continue with Face ID ]
  *   Use another account
@@ -147,7 +147,7 @@ export default function ReturnLogin({ hintOverride }: ReturnLoginProps = {}) {
         {/* Brand mark — the existing logo asset is referenced elsewhere;
             here we keep the type-set wordmark clean per §0 brand rules. */}
         <div className="text-[11px] tracking-[0.28em] uppercase text-black/60 mb-8">
-          PET&nbsp;WASH™
+          PET&nbsp;WASH™‎
         </div>
 
         <h1 className="text-[28px] font-normal text-black leading-tight mb-1">

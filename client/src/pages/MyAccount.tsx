@@ -1022,7 +1022,7 @@ export default function MyAccount() {
   function buildGoogleCalendarUrl(petName: string, vaccine: string, dueDateStr: string): string {
     const dateNoHyphens = dueDateStr.replace(/-/g, '');
     const title = encodeURIComponent(`${petName} — ${vaccine} Vaccine`);
-    const details = encodeURIComponent(`PetWash™ Reminder: ${petName} is due for ${vaccine} vaccine on ${dueDateStr}`);
+    const details = encodeURIComponent(`PetWash™‎ Reminder: ${petName} is due for ${vaccine} vaccine on ${dueDateStr}`);
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateNoHyphens}/${dateNoHyphens}&details=${details}&crm=AVAILABLE`;
   }
 
@@ -1036,7 +1036,7 @@ export default function MyAccount() {
     if (next < today) year += 1;
     const dateStr = `${year}${monthStr}${dayStr}`;
     const title = encodeURIComponent(`${emoji} יום הולדת של ${petName} 🎂`);
-    const details = encodeURIComponent(`PetWash™: יום הולדת של ${petName}! זמן לפינוק 🐾`);
+    const details = encodeURIComponent(`PetWash™‎: יום הולדת של ${petName}! זמן לפינוק 🐾`);
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}&details=${details}&recur=RRULE:FREQ=YEARLY`;
   }
 
@@ -2431,8 +2431,8 @@ export default function MyAccount() {
                       />
                       <label htmlFor="marketingConsent" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
                         {isHebrew
-                          ? 'אני מסכים לקבל הצעות שיווקיות, מבצעים וחדשות מ-PetWash™ בדוא"ל ו-SMS. ניתן לבטל בכל עת.'
-                          : 'I agree to receive marketing offers, promotions and news from PetWash™ by email & SMS. You can unsubscribe anytime.'}
+                          ? 'אני מסכים לקבל הצעות שיווקיות, מבצעים וחדשות מ-PetWash™‎ בדוא"ל ו-SMS. ניתן לבטל בכל עת.'
+                          : 'I agree to receive marketing offers, promotions and news from PetWash™‎ by email & SMS. You can unsubscribe anytime.'}
                       </label>
                     </div>
                   )}
@@ -5261,7 +5261,7 @@ export default function MyAccount() {
                   SUMIT customer hasn't been synced yet — no error surface. ── */}
               <MyInvoicesLink language={isHebrew ? 'he' : 'en'} />
 
-              {/* ── PetWash™ transaction passport — one place, all payments.
+              {/* ── PetWash™‎ transaction passport — one place, all payments.
                   Consumes /api/fiscal/my/transactions (see
                   server/routes/fiscal-passport.ts). Wired into MyAccount so
                   customers can actually reach the fiscal-passport surface. ── */}
@@ -5320,7 +5320,7 @@ export default function MyAccount() {
                           <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-base">🧾</div>
                           <div>
                             <p className="text-sm font-semibold text-gray-800">
-                              {tx.serviceNameHe || tx.serviceName || (isHebrew ? 'שירות PetWash™' : 'PetWash™ Service')}
+                              {tx.serviceNameHe || tx.serviceName || (isHebrew ? 'שירות PetWash™‎' : 'PetWash™‎ Service')}
                             </p>
                             <p className="text-xs text-gray-400">
                               {tx.createdAt ? new Date(tx.createdAt).toLocaleDateString(isHebrew ? 'he-IL' : 'en-US') : ''} · ₪{parseFloat(tx.totalAmount || tx.amount || 0).toFixed(2)}

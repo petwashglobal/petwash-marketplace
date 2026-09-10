@@ -756,8 +756,8 @@ export default function ProviderOnboarding() {
   const t = {
     // PR Phase A: Hebrew "Pet Wash" wrapped in U+2066/U+2069 (LTR isolate /
     // pop directional isolate) so iOS Safari renders the brand mark left-to-
-    // right inside the Hebrew sentence. Matches the §0 brand mark "PetWash™".
-    title: isHebrew ? 'הצטרפו לצוות ⁦PetWash™⁩' : 'Join the PetWash™ Team',
+    // right inside the Hebrew sentence. Matches the §0 brand mark "PetWash™‎".
+    title: isHebrew ? 'הצטרפו לצוות ⁦PetWash™⁩' : 'Join the PetWash™‎ Team',
     subtitle: isHebrew ? 'הירשם כשותף עצמאי והתחל להרוויח' : 'Sign up as an independent contractor and start earning',
     providerTypeTitle: isHebrew ? 'סוג שותף' : 'Provider Type',
     walker: isHebrew ? 'מטייל כלבים (Walk My Pet)' : 'Dog Walker (Walk My Pet)',
@@ -2033,7 +2033,7 @@ export default function ProviderOnboarding() {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                     {isHebrew
                       ? 'אנא סמן את כל ההצהרות הרלוונטיות לתפקיד שלך. מסמכים יאומתו ידנית על ידי צוות ⁦PetWash™⁩.'
-                      : 'Please check all declarations relevant to your role. Documents will be manually verified by the PetWash™ team.'}
+                      : 'Please check all declarations relevant to your role. Documents will be manually verified by the PetWash™‎ team.'}
                   </p>
 
                   {/* Driver Declarations (PetTrek) */}

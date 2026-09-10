@@ -72,7 +72,7 @@ export default function Follow() {
           </a>
         )}
 
-        <p className="mt-10 text-xs text-gray-300">PetWash™ · פארק ולד, כפר סבא</p>
+        <p className="mt-10 text-xs text-gray-300">PetWash™‎ · פארק ולד, כפר סבא</p>
       </div>
     </div>
   );

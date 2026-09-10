@@ -173,7 +173,7 @@ export default function CEODashboard() {
     <DashboardShell
       role="ceo"
       title="CEO Suite"
-      subtitle="Welcome back, Nir Hadad — Founder &amp; CEO of PetWash™"
+      subtitle="Welcome back, Nir Hadad — Founder &amp; CEO of PetWash™‎"
       actions={<Crown className="w-7 h-7 text-[#D4AF37]" />}
     >
       {/* Issue Complimentary Gift Card */}
@@ -187,7 +187,7 @@ export default function CEODashboard() {
               <div>
                 <CardTitle className="text-black text-2xl">Issue Complimentary Gift Card</CardTitle>
                 <CardDescription className="text-black/55">
-                  Send a complimentary PetWash™ gift card to anyone.
+                  Send a complimentary PetWash™‎ gift card to anyone.
                 </CardDescription>
               </div>
             </div>

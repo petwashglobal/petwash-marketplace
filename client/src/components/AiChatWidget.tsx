@@ -1,5 +1,5 @@
 /**
- * Kenzo AI Chat Widget — PetWash™
+ * Kenzo AI Chat Widget — PetWash™‎
  * Mobile: full-width bottom sheet (slides up from bottom)
  * Desktop ≥768px: right-side popup, 420px wide
  */

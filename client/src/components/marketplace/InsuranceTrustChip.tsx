@@ -1,7 +1,7 @@
 /**
  * InsuranceTrustChip — Provider-safety disclaimer chip.
  *
- * PR-LEGAL-B: previously named "Covered by PetWash™" and
+ * PR-LEGAL-B: previously named "Covered by PetWash™‎" and
  * displayed a specific underwriter (Harel Insurance), policy
  * number (PW-2026-IL-001) and coverage amounts (₪20M, ₪250K,
  * ₪50K). Those claims contradicted §8 of the Provider & Host

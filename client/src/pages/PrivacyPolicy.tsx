@@ -347,10 +347,10 @@ export default function PrivacyPolicy() {
             >
               <Card className="luxury-glass-panel luxury-shadow-md">
                 <CardHeader>
-                  <CardTitle className="luxury-heading-sm">12. Paw Finder™ — עיבוד מידע מיוחד</CardTitle>
+                  <CardTitle className="luxury-heading-sm">12. Paw Finder™‎ — עיבוד מידע מיוחד</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 luxury-text-body">
-                <p>שירות Paw Finder™ מאפשר פרסום ואיתור חיות מחמד אבודות. עיבוד המידע בשירות זה כולל:</p>
+                <p>שירות Paw Finder™‎ מאפשר פרסום ואיתור חיות מחמד אבודות. עיבוד המידע בשירות זה כולל:</p>
                 <ul className="list-disc mr-6 space-y-2 text-sm">
                   <li>
                     <strong>תמונות חיות:</strong> תמונות שהועלו על-ידך מועברות לשרתי PetWash ומעובדות ע"י ספריית Sharp לדחיסה ואופטימיזציה. לאחר עיבוד, התמונה נשמרת בשרת. התמונות כפופות לבדיקת בטיחות אוטומטית ע"י Google Gemini AI לפני פרסום. <strong>הסכמה לעיבוד זה נדרשת כתנאי לשימוש בשירות Paw Finder.</strong>

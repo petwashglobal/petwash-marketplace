@@ -168,7 +168,7 @@ export default function MyJobPassport() {
         {/* Hero */}
         <div className="rounded-[22px] p-5 shadow-lg" style={{ background: GREEN }}>
           <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: GOLD }}>
-            <span>{tr('PetWash™ · Job Passport', 'PetWash™ · דרכון עבודה')}</span>
+            <span>{tr('PetWash™‎ · Job Passport', 'PetWash™‎ · דרכון עבודה')}</span>
             <span dir="ltr">{p.jobRef}</span>
           </div>
           <div className="mt-3" style={{ textAlign: isHe ? 'right' : 'left' }}>

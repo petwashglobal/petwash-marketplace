@@ -122,7 +122,7 @@ export default function QuickBookingForm() {
       emoji="📅"
       title="Quick Booking"
       titleHe="הזמנה מהירה"
-      subtitle="Book any PetWash™ service in 2 minutes"
+      subtitle="Book any PetWash™‎ service in 2 minutes"
       step={step}
       totalSteps={TOTAL}
       onBack={step > 1 ? () => setStep(s => s - 1) : undefined}

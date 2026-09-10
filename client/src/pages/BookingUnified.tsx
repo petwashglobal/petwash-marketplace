@@ -20,32 +20,32 @@ export default function BookingUnified() {
   const services = [
     {
       icon: Droplets,
-      name: "K9000™",
+      name: "K9000™‎",
       href: "/k9000",
       desc: "Self-service wash station",
     },
     {
       icon: Home,
-      name: "Sitter Suite™",
+      name: "Sitter Suite™‎",
       href: "/sitter-suite/browse",
       desc: "Find trusted pet sitters",
     },
     {
       icon: Dog,
-      name: "Walk My Pet™",
+      name: "Walk My Pet™‎",
       href: "/walk-my-pet/explore",
       desc: "Book professional dog walks",
     },
     {
       icon: RouteIcon,
-      name: "PetTrek™",
+      name: "PetTrek™‎",
       href: "/pettrek",
       desc: "Coming Soon",
       comingSoon: true,
     },
     {
       icon: GraduationCap,
-      name: "Pet Wash Academy™",
+      name: "Pet Wash Academy™‎",
       href: "/academy",
       desc: "Professional pet training",
     },

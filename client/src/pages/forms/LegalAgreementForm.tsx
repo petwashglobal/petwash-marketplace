@@ -11,14 +11,14 @@ const AGREEMENTS = [
     title: 'Terms of Service',
     titleHe: 'תנאי שימוש',
     version: 'v4.2 – March 2026',
-    description: 'General terms governing use of all PetWash™ platforms',
-    content: `PETWASH™ TERMS OF SERVICE – VERSION 4.2 (MARCH 2026)
+    description: 'General terms governing use of all PetWash™‎ platforms',
+    content: `PETWASH™‎ TERMS OF SERVICE – VERSION 4.2 (MARCH 2026)
 
 1. PARTIES
-These Terms of Service ("Agreement") are entered into between PetWash™ Ltd., company registration number 515234567, registered in Israel ("PetWash", "we", "us"), and the user ("you", "User").
+These Terms of Service ("Agreement") are entered into between PetWash™‎ Ltd., company registration number 515234567, registered in Israel ("PetWash", "we", "us"), and the user ("you", "User").
 
 2. SERVICES
-PetWash™ operates the following platforms: K9000 automated pet wash stations, Sitter Suite, Walk My Pet, PetTrek, Academy, and Plush Lab. By using any of our platforms, you agree to these terms.
+PetWash™‎ operates the following platforms: K9000 automated pet wash stations, Sitter Suite, Walk My Pet, PetTrek, Academy, and Plush Lab. By using any of our platforms, you agree to these terms.
 
 3. ELIGIBILITY
 You must be at least 18 years old to use our services. By accepting, you represent that you meet this requirement.
@@ -27,13 +27,13 @@ You must be at least 18 years old to use our services. By accepting, you represe
 All prices include VAT at the current Israeli rate (18% as of 2026). Payments are processed via secure PCI-DSS compliant gateways. Refunds are processed within 3–7 business days.
 
 5. PET SAFETY
-You are responsible for ensuring your pet is healthy and fit for the requested service. PetWash™ reserves the right to refuse service if a pet displays signs of illness, aggression, or other conditions that may compromise safety.
+You are responsible for ensuring your pet is healthy and fit for the requested service. PetWash™‎ reserves the right to refuse service if a pet displays signs of illness, aggression, or other conditions that may compromise safety.
 
 6. CANCELLATION POLICY
 Free cancellation up to 2 hours before scheduled service. Late cancellations may incur a fee of 50% of the service price.
 
 7. LIABILITY
-PetWash™ carries full commercial liability insurance. In the event of an incident, please contact us immediately at support@petwash.co.il.
+PetWash™‎ carries full commercial liability insurance. In the event of an incident, please contact us immediately at support@petwash.co.il.
 
 8. DATA PROTECTION
 Your personal data is processed in accordance with Israeli Privacy Protection Law 5742-1981 and GDPR principles. See our Privacy Policy at petwash.co.il/privacy-policy.
@@ -42,21 +42,21 @@ Your personal data is processed in accordance with Israeli Privacy Protection La
 This agreement is governed by the laws of the State of Israel. Disputes shall be resolved in Tel Aviv courts.
 
 10. CONTACT
-PetWash™ Ltd. | 1 Rothschild Blvd, Tel Aviv 6688101 | support@petwash.co.il | 1-800-PETWASH`,
+PetWash™‎ Ltd. | 1 Rothschild Blvd, Tel Aviv 6688101 | support@petwash.co.il | 1-800-PETWASH`,
   },
   {
     id: 'provider-agreement',
     title: 'Provider Service Agreement',
     titleHe: 'הסכם ספק שירות',
     version: 'v3.1 – March 2026',
-    description: 'Agreement for service providers on all PetWash™ platforms',
-    content: `PETWASH™ PROVIDER SERVICE AGREEMENT – VERSION 3.1
+    description: 'Agreement for service providers on all PetWash™‎ platforms',
+    content: `PETWASH™‎ PROVIDER SERVICE AGREEMENT – VERSION 3.1
 
 1. ENGAGEMENT
-This agreement governs the independent contractor relationship between PetWash™ Ltd. and the Provider. The Provider is not an employee of PetWash™.
+This agreement governs the independent contractor relationship between PetWash™‎ Ltd. and the Provider. The Provider is not an employee of PetWash™‎.
 
 2. COMMISSION STRUCTURE
-PetWash™ retains a platform commission of 15–25% depending on the service tier. Providers receive payment within 3 business days of service completion.
+PetWash™‎ retains a platform commission of 15–25% depending on the service tier. Providers receive payment within 3 business days of service completion.
 
 3. STANDARDS OF SERVICE
 All providers must maintain a minimum rating of 4.2 stars. Providers are required to comply with all animal welfare laws in force in Israel.
@@ -68,10 +68,10 @@ All providers consent to identity verification and background checks. False info
 Providers are required to maintain professional liability insurance with a minimum coverage of ₪500,000.
 
 6. INTELLECTUAL PROPERTY
-PetWash™ retains all rights to its brand, marks, and platform content. Providers may not use the PetWash™ brand independently.
+PetWash™‎ retains all rights to its brand, marks, and platform content. Providers may not use the PetWash™‎ brand independently.
 
 7. TERMINATION
-Either party may terminate this agreement with 14 days written notice. PetWash™ may terminate immediately for breach of conduct standards.`,
+Either party may terminate this agreement with 14 days written notice. PetWash™‎ may terminate immediately for breach of conduct standards.`,
   },
   {
     id: 'club-membership',
@@ -79,7 +79,7 @@ Either party may terminate this agreement with 14 days written notice. PetWash�
     titleHe: 'הסכם חברות במועדון',
     version: 'v2.0 – March 2026',
     description: 'Terms for Prestige Club Gold, Platinum, and Diamond members',
-    content: `PETWASH™ PRESTIGE CLUB MEMBERSHIP AGREEMENT – VERSION 2.0
+    content: `PETWASH™‎ PRESTIGE CLUB MEMBERSHIP AGREEMENT – VERSION 2.0
 
 1. MEMBERSHIP TIERS
 Gold: ₪89/month | Platinum: ₪149/month | Diamond: ₪249/month
@@ -95,7 +95,7 @@ Membership fees are billed monthly by automatic credit card charge. You may canc
 Monthly fees are non-refundable after the 14-day cooling-off period. Unused wash credits roll over for one month.
 
 5. SUSPENSION
-PetWash™ reserves the right to suspend a membership for violation of our Terms of Service.`,
+PetWash™‎ reserves the right to suspend a membership for violation of our Terms of Service.`,
   },
   {
     id: 'data-processing',
@@ -103,12 +103,12 @@ PetWash™ reserves the right to suspend a membership for violation of our Terms
     titleHe: 'הסכם עיבוד נתונים',
     version: 'v1.5 – March 2026',
     description: 'GDPR & Israeli Privacy Law DPA for business customers',
-    content: `PETWASH™ DATA PROCESSING AGREEMENT – VERSION 1.5
+    content: `PETWASH™‎ DATA PROCESSING AGREEMENT – VERSION 1.5
 
-This Data Processing Agreement ("DPA") applies to the processing of personal data by PetWash™ on behalf of business customers ("Controller").
+This Data Processing Agreement ("DPA") applies to the processing of personal data by PetWash™‎ on behalf of business customers ("Controller").
 
 1. ROLES
-PetWash™ acts as Data Processor. The business customer acts as Data Controller.
+PetWash™‎ acts as Data Processor. The business customer acts as Data Controller.
 
 2. DATA CATEGORIES
 Personal data processed includes: name, email, phone, address, payment data, and pet health information.

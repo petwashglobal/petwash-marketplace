@@ -272,7 +272,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                       PRIVILEGE LOYALTY CARD
                     </div>
                     <div style={{ fontSize: 'clamp(6px, 1.6%, 8px)', color: 'rgba(255,255,255,0.55)', letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: '2px', fontWeight: 400 }}>
-                      PetWash™ Exclusive Member
+                      PetWash™‎ Exclusive Member
                     </div>
                   </div>
                   {/* Gold chip — scales with card */}
@@ -329,7 +329,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                           fontWeight: 500,
                         }}
                       >
-                        PETWASH™ MEMBER
+                        PETWASH™‎ MEMBER
                       </div>
                     </div>
                     <div style={{ textAlign: 'end' }}>
@@ -442,7 +442,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="text-[10px] tracking-[0.22em] font-semibold" style={{ color: tier.labelColor, fontFamily: serif }}>
-                            PetWash™
+                            PetWash™‎
                           </div>
                           <div className="text-[8px] tracking-[0.25em] uppercase mt-0.5 font-light" style={{ color: tier.labelColor, opacity: 0.6 }}>
                             PRESTIGE CLUB

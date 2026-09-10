@@ -1,5 +1,5 @@
 /**
- * Paw Finder™ — Lost & Found Pet Platform
+ * Paw Finder™‎ — Lost & Found Pet Platform
  * PostgreSQL-backed | Gemini-moderated | Loyalty-gated posting
  */
 
@@ -229,7 +229,7 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
           ) : null}
           {/* Spread the alert — every share helps a lost pet get home (viral loop). */}
           <SocialShare
-            title={`עזרו למצוא את ${post.pet_name || 'החיה האבודה'} | PawFinder™`}
+            title={`עזרו למצוא את ${post.pet_name || 'החיה האבודה'} | PawFinder™‎`}
             description={post.description || ''}
             showLabels={false}
           />
@@ -759,7 +759,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
 
       if (!r.ok) {
         if (j.error === 'loyalty_membership_required' || j.error === 'club_membership_required') {
-          toast({ variant: 'destructive', title: '🔐 נדרשת חברות מועדון מאומתת', description: 'כדי לפרסם ב-Paw Finder יש להיות חבר מועדון PetWash™ מאומת.' });
+          toast({ variant: 'destructive', title: '🔐 נדרשת חברות מועדון מאומתת', description: 'כדי לפרסם ב-Paw Finder יש להיות חבר מועדון PetWash™‎ מאומת.' });
         } else if (j.error === 'phone_verification_required') {
           toast({ variant: 'destructive', title: '📱 נדרש אימות SMS', description: 'יש לאמת את מספר הטלפון לפני פרסום. גש להגדרות החשבון.' });
         } else if (j.error === 'DAILY_LIMIT_REACHED') {
@@ -1010,7 +1010,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
 
       {/* ── Point-of-collection consent disclosure (Israeli Privacy Law §11) ── */}
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600 space-y-1.5" dir="rtl">
-        <p className="font-semibold text-slate-700 text-sm">הודעת עיבוד מידע — Paw Finder™</p>
+        <p className="font-semibold text-slate-700 text-sm">הודעת עיבוד מידע — Paw Finder™‎</p>
         <ul className="space-y-1 list-disc list-inside">
           <li><strong>תמונות:</strong> הקובץ שהעלת מועבר לשרתי PetWash, נדחס אוטומטית ונבדק ע"י AI לאיתור תוכן פוגעני לפני פרסום. לא מועבר לגורמים חיצוניים.</li>
           <li><strong>מיקום GPS:</strong> אם לחצת על כפתור המיקום — המיקום המדויק <em>אינו נשמר</em>; נשמרת קירוב ברדיוס ~1.1 ק"מ בלבד.</li>
@@ -1345,7 +1345,7 @@ export default function PawFinder({ language }: PawFinderProps) {
         <div className="relative max-w-7xl mx-auto px-4 pt-10 pb-8">
           {/* Top label */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{isHe ? 'PetWash™ · פורטל חיפוש חברתי ללא עלות' : 'PetWash™ · Community Search Portal · No Cost'}</span>
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{isHe ? 'PetWash™‎ · פורטל חיפוש חברתי ללא עלות' : 'PetWash™‎ · Community Search Portal · No Cost'}</span>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
@@ -1363,7 +1363,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   : "We're here for that. A community search portal at no cost — post, discover, and help lost pets find their way home. You can even offer a reward to the finder."}
               </p>
               <p className="text-white/60 text-sm mt-1">
-                {isHe ? 'שירות קהילתי ללא עלות · תל אביב, רמת גן וכל ישראל · מבית PetWash™' : 'Free community service · Tel Aviv, Ramat Gan & all Israel · Powered by PetWash™'}
+                {isHe ? 'שירות קהילתי ללא עלות · תל אביב, רמת גן וכל ישראל · מבית PetWash™‎' : 'Free community service · Tel Aviv, Ramat Gan & all Israel · Powered by PetWash™‎'}
               </p>
 
               {/* Live stats */}
@@ -1666,7 +1666,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">פוסט חדש</div>
                   <h2 className="text-2xl font-bold">הגשת דיווח</h2>
                   <p className="text-slate-500 text-sm mt-1">
-                    זמין לחברי מועדון PetWash™ מאומתי SMS. כל פוסט עובר בדיקה אוטומטית לפני פרסום.
+                    זמין לחברי מועדון PetWash™‎ מאומתי SMS. כל פוסט עובר בדיקה אוטומטית לפני פרסום.
                   </p>
                 </div>
                 <div className="bg-white rounded-3xl border border-slate-200 p-6">

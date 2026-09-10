@@ -181,6 +181,12 @@ jobs:
       - name: Gate — the money gate runs every file it lists
         run: python3 scripts/guards/money_gate_covers_its_files.py --fail
 
+      # U+2122 is bidi-NEUTRAL: typed bare, it flips to the LEFT of the product
+      # name in Hebrew and Arabic. Nothing looks wrong in English, in review or
+      # in the diff — only to the visitor. CEO brand rule, 2026-09-10.
+      - name: Gate — trademark mark stays right of the word in every language
+        run: python3 scripts/guards/trademark_bidi_anchored.py --fail
+
   gate-smoke-test-startup:
     name: Gate — routes.ts module-load smoke test
     runs-on: ubuntu-latest

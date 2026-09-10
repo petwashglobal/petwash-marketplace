@@ -1,12 +1,12 @@
 /**
  * FollowUsBar — "Follow / Join us" social row for the app home screens.
- * Reuses the canonical PetWash™ handles (all @petwashltd, #PetWashLtd) already
+ * Reuses the canonical PetWash™‎ handles (all @petwashltd, #PetWashLtd) already
  * used in PetWashHeader. Drop into the Prestige (customer) home + Provider home
  * above the tab bar. Brand: gold accent on white (customer) — neutral, theme-safe.
  */
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from 'react-icons/si';
 
-// Canonical PetWash™ social links (all @petwashltd, #PetWashLtd). Exported so the
+// Canonical PetWash™‎ social links (all @petwashltd, #PetWashLtd). Exported so the
 // /follow QR-destination page reuses the exact same handles — one source of truth.
 export const SOCIAL_LINKS = [
   { key: 'instagram', href: 'https://www.instagram.com/petwashltd', label: 'Pet Wash on Instagram', Icon: SiInstagram },

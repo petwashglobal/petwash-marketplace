@@ -164,7 +164,7 @@ export default function PetWashDayPlanner() {
           </h2>
 
           <p className="text-gray-400 max-w-2xl mx-auto text-lg font-light leading-relaxed">
-            Precision weather forecasting powered by Google Cloud™ for the ultimate luxury pet care experience
+            Precision weather forecasting powered by Google Cloud™‎ for the ultimate luxury pet care experience
           </p>
         </motion.div>
 
@@ -448,7 +448,7 @@ export default function PetWashDayPlanner() {
             <div className="inline-flex items-center gap-2 px-6 py-2 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
               <Sparkles className="w-3 h-3 text-amber-400" />
               <span className="text-xs font-light tracking-[0.2em] text-gray-400 uppercase">
-                Powered by Google Weather API™
+                Powered by Google Weather API™‎
               </span>
             </div>
             <p className="text-gray-600 text-xs max-w-md mx-auto font-light leading-relaxed">

@@ -18,7 +18,7 @@ interface TrustSafetySectionProps {
 }
 
 // PR-LEGAL-B: the first trust feature previously claimed
-// "Every booking protected by PetWash Protect™ insurance"
+// "Every booking protected by PetWash Protect™‎ insurance"
 // and a "₪25,000 Guarantee" — both contradict §8 of the
 // Provider & Host Services Agreement merged in PR-LEGAL-A
 // (#246). Replaced with the CEO-approved canonical safety
@@ -134,7 +134,7 @@ export function TrustSafetySection({ variant = "full", className }: TrustSafetyS
     <div className={cn("py-20 bg-white", className)}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="text-center mb-16">
-          {/* PR-LEGAL-B: previously a "PetWash Protect™" chip. Removed —
+          {/* PR-LEGAL-B: previously a "PetWash Protect™‎" chip. Removed —
               the "Protect" branding implies an insurance/protection program
               that Pet Wash does not provide (§8). Replaced with a neutral
               "Trust & Safety" label. */}
@@ -149,7 +149,7 @@ export function TrustSafetySection({ variant = "full", className }: TrustSafetyS
             {isRTL ? "בטיחות ואמון ללא פשרות" : "Uncompromising Safety & Trust"}
           </h2>
           {/* PR-LEGAL-B: previously claimed every booking is backed by a
-              ₪25,000 PetWash Protect™ guarantee. Replaced with a neutral
+              ₪25,000 PetWash Protect™‎ guarantee. Replaced with a neutral
               description per §8 of the Provider & Host Services Agreement. */}
           <p className="text-gray-500 max-w-2xl mx-auto text-lg">
             {isRTL
@@ -214,7 +214,7 @@ export function TrustSafetySection({ variant = "full", className }: TrustSafetyS
           </div>
         </div>
 
-        {/* PR-LEGAL-B: previously rendered a "PetWash Protect™ ₪25,000 Guarantee"
+        {/* PR-LEGAL-B: previously rendered a "PetWash Protect™‎ ₪25,000 Guarantee"
             badge. Replaced with a neutral Trust & Safety badge per §8 of the
             Provider & Host Services Agreement. */}
         <div className="mt-16 text-center">

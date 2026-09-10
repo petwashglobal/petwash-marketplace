@@ -291,7 +291,7 @@ export default function ProviderRegistrationForm() {
               <Briefcase className="w-7 h-7 text-[#E7C978]" />
               <div>
                 <p className="font-bold text-white">{form.platform || 'Provider'} Application</p>
-                <p className="text-white/40 text-xs">PetWash™ Provider Network</p>
+                <p className="text-white/40 text-xs">PetWash™‎ Provider Network</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -305,7 +305,7 @@ export default function ProviderRegistrationForm() {
           <div className="space-y-3">
             {[
               { key: 'acceptTerms', label: 'I accept the Provider Terms & Conditions and Service Agreement', he: 'אני מקבל/ת את תנאי ספק השירות', req: true },
-              { key: 'acceptBackground', label: 'I consent to a background check and identity verification by PetWash™', he: 'אני מסכים/ה לבדיקת רקע', req: true },
+              { key: 'acceptBackground', label: 'I consent to a background check and identity verification by PetWash™‎', he: 'אני מסכים/ה לבדיקת רקע', req: true },
             ].map(item => (
               <label key={item.key} className="flex gap-3 items-start p-4 bg-white/[0.03] border border-white/8 rounded-xl cursor-pointer">
                 <input type="checkbox" className="mt-0.5 w-5 h-5 rounded accent-[#C6A35B]"

@@ -43,8 +43,8 @@ const DEFAULT_PROMO: PromoAdConfig = {
   // shows and fills the viewport on iPhone (portrait) and laptop (wide) with
   // clean white pillar/letterbox — never cropped, never black.
   imageUrl: '/petwash-popup.png',
-  title: 'PetWash™',
-  titleHe: 'PetWash™',
+  title: 'PetWash™‎',
+  titleHe: 'PetWash™‎',
   subtitle: 'ONE WORLD. EVERY PET.',
   subtitleHe: 'עולם אחד. כל חיית מחמד.',
   ctaText: 'Explore Platforms',

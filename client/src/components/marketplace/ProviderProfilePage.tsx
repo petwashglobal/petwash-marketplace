@@ -271,7 +271,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
 
         {/* Breadcrumb */}
         <nav className="mb-6 text-xs text-gray-400 flex items-center gap-2">
-          <span className="cursor-pointer hover:text-gray-600" onClick={() => navigate('/')}>PetWash™</span>
+          <span className="cursor-pointer hover:text-gray-600" onClick={() => navigate('/')}>PetWash™‎</span>
           <span>/</span>
           <span className="cursor-pointer hover:text-gray-600" onClick={() => navigate(`/${platform}-suite`)}>
             {isHebrew ? config.titleHe : config.title}
@@ -305,7 +305,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                     <Check className="w-4 h-4 text-white" />
                   </div>
                   <span className="text-sm font-medium text-gray-900">
-                    {isHebrew ? 'מאומת PetWash™' : 'PetWash™ Verified'}
+                    {isHebrew ? 'מאומת PetWash™‎' : 'PetWash™‎ Verified'}
                   </span>
                 </div>
               )}
@@ -844,7 +844,7 @@ function BookingWidget({
           <div className="flex items-center gap-3 text-sm">
             <Shield className="w-4 h-4 text-emerald-500 shrink-0" />
             <span className="text-emerald-600 font-medium">
-              {isHebrew ? 'מאומת PetWash™' : 'PetWash™ Verified'}
+              {isHebrew ? 'מאומת PetWash™‎' : 'PetWash™‎ Verified'}
             </span>
           </div>
         )}

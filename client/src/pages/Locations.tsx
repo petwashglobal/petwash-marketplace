@@ -31,7 +31,7 @@ const STATION_FAQ: { qHe: string; qEn: string; aHe: string; aEn: string }[] = [
     qHe: 'איפה אפשר לשטוף כלב בכפר סבא?',
     qEn: 'Where can I wash my dog in Kfar Saba?',
     aHe: 'בעמדת ⁦PetWash™⁩ בפארק יצחק ולד, כפר סבא — עמדת שטיפה עצמית ⁦K9000⁩, פתוחה עכשיו.',
-    aEn: 'At the PetWash™ station in Isaac Wald Park, Kfar Saba — a self-service K9000 bay, open now.',
+    aEn: 'At the PetWash™‎ station in Isaac Wald Park, Kfar Saba — a self-service K9000 bay, open now.',
   },
   {
     qHe: 'איך עובדת עמדת השטיפה?',
@@ -49,7 +49,7 @@ const STATION_FAQ: { qHe: string; qEn: string; aHe: string; aEn: string }[] = [
     qHe: 'אילו אמצעי תשלום מתקבלים?',
     qEn: 'What payment methods are accepted?',
     aHe: 'תשלום בכרטיס אשראי בעמדה, ולחברי מועדון גם דרך אפליקציית ⁦PetWash™⁩.',
-    aEn: 'Credit card at the station, and members can also pay via the PetWash™ app.',
+    aEn: 'Credit card at the station, and members can also pay via the PetWash™‎ app.',
   },
 ];
 
@@ -148,7 +148,7 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
 export default function Locations() {
   useSEO({
     ...pageSEO.locations,
-    title: 'שטיפת כלבים בשירות עצמי בכפר סבא — עמדות ⁦K9000⁩ | PetWash™',
+    title: 'שטיפת כלבים בשירות עצמי בכפר סבא — עמדות ⁦K9000⁩ | PetWash™‎',
     description: 'עמדת שטיפת כלבים בשירות עצמי ⁦K9000⁩ בפארק יצחק ולד, כפר סבא — פתוחה עכשיו. קל, נקי ובשליטה שלכם. מצאו את התחנה הקרובה.',
     keywords: 'שטיפת כלבים כפר סבא, שטיפת כלבים בשירות עצמי, עמדת שטיפה לכלבים, מקלחת לכלב כפר סבא, dog wash Kfar Saba, K9000',
   });
@@ -173,7 +173,7 @@ export default function Locations() {
         // Same @id the site-wide Organization uses in index.html — one canonical
         // Organization node, referenced (not re-declared thin) across the graph.
         '@id': 'https://petwash.co.il/#organization',
-        name: 'PetWash™',
+        name: 'PetWash™‎',
         url: 'https://petwash.co.il',
         logo: 'https://petwash.co.il/brand/petwash-logo-official.png',
         sameAs: socials,
@@ -183,7 +183,7 @@ export default function Locations() {
       ...openStations.map((s) => ({
         '@type': 'LocalBusiness',
         '@id': `https://petwash.co.il/locations#${s.code}`,
-        name: `PetWash™ — ${s.nameEn}`,
+        name: `PetWash™‎ — ${s.nameEn}`,
         url: 'https://petwash.co.il/locations',
         image: s.photo ? new URL(s.photo, 'https://petwash.co.il').href : 'https://petwash.co.il/brand/petwash-logo-official.png',
         priceRange: '₪₪',

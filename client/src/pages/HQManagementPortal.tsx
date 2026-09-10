@@ -216,7 +216,7 @@ function OverviewModule({ metrics }: { metrics?: AdminMetrics }) {
     <div className="space-y-8">
       <div>
         <h2 className="text-xl font-bold text-slate-900 mb-1">Platform Overview</h2>
-        <p className="text-sm text-slate-500">Real-time management intelligence for PetWash™ Israel operations</p>
+        <p className="text-sm text-slate-500">Real-time management intelligence for PetWash™‎ Israel operations</p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -339,7 +339,7 @@ export default function HQManagementPortal() {
           </div>
           {sidebarOpen && (
             <div>
-              <p className="text-sm font-bold text-slate-900">PetWash™ HQ</p>
+              <p className="text-sm font-bold text-slate-900">PetWash™‎ HQ</p>
               <p className="text-xs text-slate-400">Management Portal</p>
             </div>
           )}
@@ -452,7 +452,7 @@ export default function HQManagementPortal() {
         {/* Footer */}
         <div className="border-t border-slate-100 px-8 py-3 bg-white">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>PetWash™ HQ Management Portal v2.0 — Israel Operations</span>
+            <span>PetWash™‎ HQ Management Portal v2.0 — Israel Operations</span>
             <div className="flex items-center gap-4">
               <span>Neon PostgreSQL</span>
               <span>•</span>

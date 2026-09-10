@@ -100,7 +100,7 @@ export default function K9000BayStatus() {
           </button>
           <h1 className="luxury-heading-md luxury-text-gradient flex items-center gap-2" data-testid="page-title">
             <PetWashIcon name="brand_paw" size={24} label="PetWash" />
-            {isHebrew ? 'תחנת K9000™' : 'K9000™ Wash Station'}
+            {isHebrew ? 'תחנת K9000™‎' : 'K9000™‎ Wash Station'}
           </h1>
           <p className="luxury-text-body mt-1 opacity-70">
             {isHebrew

@@ -702,7 +702,7 @@ export default function Dashboard() {
                 as the header, bigger here. Replaces the old blurry card-raster. */}
             <img
               src="/brand/petwash-logo-official.png"
-              alt="PetWash™"
+              alt="PetWash™‎"
               width={3072}
               height={1186}
               className="w-44 sm:w-52 md:w-60 h-auto mx-auto mb-3"
@@ -779,7 +779,7 @@ export default function Dashboard() {
                     style={{ width: 38, height: 28, borderRadius: 6, background: 'linear-gradient(135deg, #F1DA83, #D4AF37 60%, #B8902F)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }}
                   />
                   <span className="text-[13px] tracking-[0.04em]" style={{ fontFamily: "'Playfair Display', serif", color: '#111111', fontWeight: 700 }}>
-                    PetWash<span style={{ fontSize: '0.7em', verticalAlign: 'super' }}>™</span> <span style={{ fontWeight: 400, fontSize: '0.8em', color: '#444' }}>Ltd</span>
+                    PetWash<span style={{ fontSize: '0.7em', verticalAlign: 'super' }}>™‎</span> <span style={{ fontWeight: 400, fontSize: '0.8em', color: '#444' }}>Ltd</span>
                   </span>
                 </div>
                 <div className="text-end">

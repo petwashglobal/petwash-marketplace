@@ -88,7 +88,7 @@ export default function ExecutiveSuiteHome() {
             <BarChart3 className="w-10 h-10 text-primary" />
             <div>
               <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400">
-                Pet Wash Ltd™
+                Pet Wash Ltd™‎
               </h1>
               <p className="text-lg text-muted-foreground">Executive Suite</p>
             </div>

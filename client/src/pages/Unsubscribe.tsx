@@ -59,8 +59,8 @@ export default function Unsubscribe() {
     body: {
       loading: isHebrew ? 'רק רגע — מעדכן את ההעדפות שלך.' : 'One moment — updating your preferences.',
       ok:      isHebrew
-        ? 'לא תקבל/י יותר מיילים שיווקיים מ־Pet Wash™. עדכונים חיוניים על ההזמנות ובטיחות החשבון ימשיכו להישלח.'
-        : 'You will no longer receive marketing emails from Pet Wash™. Essential booking and account-security notifications will still be delivered.',
+        ? 'לא תקבל/י יותר מיילים שיווקיים מ־Pet Wash™‎. עדכונים חיוניים על ההזמנות ובטיחות החשבון ימשיכו להישלח.'
+        : 'You will no longer receive marketing emails from Pet Wash™‎. Essential booking and account-security notifications will still be delivered.',
       expired: isHebrew
         ? 'ייתכן שכבר לחצת על הקישור בעבר, או שהקישור הזה ישן מדי. שלחו לנו הודעה ואנחנו נטפל בזה ידנית.'
         : 'You may have already used this link, or it may have expired. Contact support and we’ll take care of it manually.',

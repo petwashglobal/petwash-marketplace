@@ -92,7 +92,7 @@ export default function LocationPermissionBanner({
                 : 'To see results near you, allow location in browser settings and refresh')
             : (isHebrew
                 ? 'התאמה מדויקת לפי קרבה — ספקים ולקוחות בסביבה שלך. ניתן גם להזין כתובת ידנית.'
-                : 'Precision proximity matching across the PetWash™ network. Typing an address works too.')
+                : 'Precision proximity matching across the PetWash™‎ network. Typing an address works too.')
           }
         </p>
       </div>

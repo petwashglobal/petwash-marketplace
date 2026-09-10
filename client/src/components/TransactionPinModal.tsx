@@ -191,7 +191,7 @@ export default function TransactionPinModal({
               textTransform: "uppercase",
               marginBottom: 6,
             }}>
-              PetWash™ &nbsp;{t.subtitle}
+              PetWash™‎ &nbsp;{t.subtitle}
             </p>
 
             {/* Title */}
