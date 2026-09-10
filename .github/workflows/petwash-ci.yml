@@ -1542,6 +1542,11 @@ jobs:
             "VOUCHER_ES256_PRIVATE_KEY_PEM=VOUCHER_ES256_PRIVATE_KEY_PEM:latest"
             "VOUCHER_ES256_PUBLIC_KEY_PEM=VOUCHER_ES256_PUBLIC_KEY_PEM:latest"
             "KYC_SALT=KYC_SALT:latest"
+            # AuthEventService hashes login IPs with this salt and THROWS in
+            # production without it — every login event since go-live was
+            # dropped ("FATAL: IP_HASH_SALT is required", CEO sign-in 2026-09-10).
+            # Secret created 2026-09-10; Cloud Run SA granted secretAccessor.
+            "IP_HASH_SALT=IP_HASH_SALT:latest"
             "GMAIL_TOKEN_ENCRYPTION_KEY=GMAIL_TOKEN_ENCRYPTION_KEY:latest"
             "BIOMETRIC_BUCKET_NAME=BIOMETRIC_BUCKET_NAME:latest"
             "BIOMETRIC_PREFIX=BIOMETRIC_PREFIX:latest"
