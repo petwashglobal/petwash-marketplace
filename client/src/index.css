@@ -1112,14 +1112,50 @@ textarea::placeholder {
 }
 
 /* Ensure 48px minimum touch targets for accessibility */
-button, 
+button,
 .clickable,
-[role="button"],
-input[type="checkbox"],
-input[type="radio"] {
+[role="button"] {
   min-height: 48px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * A TICK BOX IS SQUARE. THE TAP FLOOR GOES ON THE LABEL. (2026-09-10)
+ *
+ * A checkbox and a radio are the one control whose WIDTH the author never
+ * sets — the UA paints a ~13px square. Putting `min-height: 48px` on them
+ * (with no matching min-width) does not enlarge the target, it DEFORMS it:
+ * measured on production at 390px, every checkbox rendered 13x48 in Chrome
+ * and 12x48 in Safari — aspect ratio 0.27, a vertical sliver. On the signup
+ * consent rows (`align-items: flex-start`) the sliver then hung ~29px below
+ * its own one-line label and read as a box that had slipped out of place.
+ *
+ * The floor was not even doing its job: 13px wide fails a 44px target on the
+ * OTHER axis, so the rule cost the look and bought no reach.
+ *
+ * Same defect class as the 44px language <select> in #2350 — a tap floor
+ * applied to a PAINTED box instead of to the hit area. Same fix shape: keep
+ * the reach, drop it on something that is allowed to be 48px tall. Clicking
+ * a <label> toggles the control it wraps, so the label IS the hit area.
+ *
+ * If a tick box ever needs to be bigger, size it (width AND height) or scale
+ * it — never re-add a lone min-height.
+ */
+input[type="checkbox"],
+input[type="radio"],
+[role="checkbox"],
+[role="radio"] {
+  min-height: 0;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+label:has(> input[type="checkbox"]),
+label:has(> input[type="radio"]),
+label:has(> [role="checkbox"]),
+label:has(> [role="radio"]) {
+  min-height: 48px;
 }
 
 /* Anchor tags: tap-highlight only; no forced min-height/width which breaks inline text and captures swipe gestures */

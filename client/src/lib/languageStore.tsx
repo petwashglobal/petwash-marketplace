@@ -72,6 +72,44 @@ function saveLanguage(lang: Language): void {
   localStorage.setItem('pw_lang', lang);
 }
 
+/**
+ * THE URL MUST NOT CONTRADICT THE PAGE. (2026-09-10)
+ *
+ * readUrlLanguage() above is authoritative on boot AND writes what it finds
+ * into pw_lang. Nothing used to update the query string when the user picked
+ * a different language, so a `?lang=he` link stayed `?lang=he` while English
+ * was on screen — and the next boot read that stale param and overwrote the
+ * user's choice back to Hebrew. Measured on production:
+ *
+ *   land on /?lang=he      -> url ?lang=he   pw_lang=he   html lang=he
+ *   pick English           -> url ?lang=he   pw_lang=en   html lang=en
+ *   reload                 -> url ?lang=he   pw_lang=HE   html lang=he   <-- choice gone
+ *
+ * The comment on readUrlLanguage claims "any language switcher call to
+ * setLanguage() continues to overwrite pw_lang, so this doesn't lock the user
+ * into the URL value". That is only true once the query string is gone. While
+ * it is still there it wins on every single boot, so the switcher could never
+ * stick — on exactly the links the switcher itself leaves behind, and on every
+ * shared or bookmarked one.
+ *
+ * Only ever REWRITES a parameter that is already present: a clean URL stays
+ * clean. replaceState, not pushState — picking a language is not a navigation
+ * and must not add a history entry the back button has to walk through.
+ */
+function syncUrlLanguage(lang: Language): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const url = new URL(window.location.href);
+    const keys = ['lang', 'hl'].filter((k) => url.searchParams.has(k));
+    if (keys.length === 0) return;
+    if (keys.every((k) => url.searchParams.get(k)?.toLowerCase().split(/[-_]/)[0] === lang)) return;
+    for (const k of keys) url.searchParams.set(k, lang);
+    window.history.replaceState(window.history.state, '', url.toString());
+  } catch {
+    /* malformed URL, or a history quota — the language itself is already applied */
+  }
+}
+
 function applyDirToDOM(lang: Language) {
   document.documentElement.lang = lang;
   document.documentElement.dir = isRTL(lang) ? 'rtl' : 'ltr';
@@ -118,10 +156,20 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, []);
 
+  // Keyed on the language actually being rendered, NOT on setLanguage — the
+  // header writes pw_lang directly in both its controlled and uncontrolled
+  // paths (PetWashHeader.handleLanguageChange, App.tsx), and those reach this
+  // provider through the poller above rather than through setLanguage. One
+  // hook here covers every writer; a call inside setLanguage would miss two.
+  useEffect(() => {
+    syncUrlLanguage(language);
+  }, [language]);
+
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     saveLanguage(lang);
     applyDirToDOM(lang);
+    syncUrlLanguage(lang);
   };
 
   const t = (key: string) => translate(key, language);

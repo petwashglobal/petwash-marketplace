@@ -2102,10 +2102,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           wired step-2 (verify mobile → then verify email) fires. Returning
                           users still log in with one method — this is signup only. */}
                       <div className="sl-field">
-                        <label className="sl-label">{t.emailLabel}</label>
+                        <label className="sl-label" htmlFor="sl-signup-email">{t.emailLabel}</label>
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
-                          <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                          <input id="sl-signup-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                             value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{he ? 'נאמת גם את האימייל — חשבון חדש מאמת נייד + אימייל.' : "We'll verify your email too — a new account confirms mobile + email."}</div>
@@ -2148,19 +2148,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         </div>
                       )}
                       <div className="sl-field">
-                        <label className="sl-label">{t.emailLabel}</label>
+                        <label className="sl-label" htmlFor="sl-join-email">{t.emailLabel}</label>
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
-                          <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                          <input id="sl-join-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                             value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); if (emailConflictInfo) setEmailConflictInfo(null); }} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
                       </div>
                       <div className="sl-field">
-                        <label className="sl-label">{he ? 'סיסמה' : 'Password'}</label>
+                        <label className="sl-label" htmlFor="sl-join-password">{he ? 'סיסמה' : 'Password'}</label>
                         <div className="sl-inputWrap">
                           <FaLock className="sl-inputIcon" aria-hidden />
-                          <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
+                          <input id="sl-join-password" className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
                             value={password} onChange={(e) => setPassword(e.target.value)}
                             placeholder={he ? 'בחרו סיסמה (6 תווים לפחות)' : 'Choose a password (min 6 chars)'} />
                         </div>
@@ -2264,10 +2264,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {authMode === 'login' && method !== 'mobile' && (
                 <>
                   <div className="sl-field">
-                    <label className="sl-label">{t.emailLabel}</label>
+                    <label className="sl-label" htmlFor="sl-login-email">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
                       <FaEnvelope className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                      <input id="sl-login-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                         value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                     </div>
                   </div>
@@ -2276,10 +2276,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   {usePassword && (
                     <>
                       <div className="sl-field">
-                        <label className="sl-label">{t.pwd}</label>
+                        <label className="sl-label" htmlFor="sl-login-password">{t.pwd}</label>
                         <div className="sl-inputWrap">
                           <FaLock className="sl-inputIcon" aria-hidden />
-                          <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="current-password"
+                          <input id="sl-login-password" className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="current-password"
                             value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'הסיסמה שלך' : 'Your password'}
                             onKeyDown={(e) => { if (e.key === 'Enter' && loginReady) { void loginWithPassword(); } }} />
                         </div>
@@ -2295,7 +2295,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           restarts (browserLocalPersistence). Choice is remembered
                           per-browser via localStorage so the user does not have to
                           re-tick it on every visit. */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', opacity: 0.85, cursor: 'pointer', padding: '6px 0', flexDirection: he ? 'row-reverse' : 'row' }}
+                      {/* NO `row-reverse` FOR HEBREW HERE (2026-09-10).
+                          The panel is already dir="rtl", so plain `row` packs
+                          the tick box on the right, exactly like the three
+                          consent rows in .sl-consentBox. Adding row-reverse
+                          on top of that flipped it BACK to left-to-right: on
+                          production at 390px this box measured x=27 (the far
+                          LEFT of the card) while the consent boxes measured
+                          x=350 — two checkbox rows in one form disagreeing
+                          about which side a tick box lives on. */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', opacity: 0.85, cursor: 'pointer', padding: '6px 0' }}
                         data-testid="signin-remember-me-label">
                         <input type="checkbox" checked={rememberMe}
                           onChange={(e) => {
@@ -2469,10 +2478,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {linkState.methods.includes('password') ? (
                 <>
                   <div className="sl-field">
-                    <label className="sl-label">{he ? 'הסיסמה שלך' : 'Your password'}</label>
+                    <label className="sl-label" htmlFor="sl-link-password">{he ? 'הסיסמה שלך' : 'Your password'}</label>
                     <div className="sl-inputWrap">
                       <FaLock className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type="password" autoComplete="current-password"
+                      <input id="sl-link-password" className="sl-input sl-input--icon" type="password" autoComplete="current-password"
                         value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter' && !busy && linkPassword) void linkViaPassword(); }} />
                     </div>
@@ -3096,7 +3105,16 @@ function styles(he: boolean) {
       .sl-hero{ gap:0; padding-top:0 }
       .sl-logo{ width:min(46vw, 205px) }
       .sl-eyebrow{ display:none }
-      .sl-h1{ display:none }
+      /* The marketing headline is intentionally OFF on phones (the form has to
+         win the fold) — but display:none also took it out of the document
+         outline and the accessibility tree, so /signup and /signin had NO h1
+         at all at 390px: measured 0 visible h1, and the only heading left was
+         the panel's h2. Clip it instead of removing it. Same pixels, the
+         outline still starts at h1. */
+      .sl-h1{
+        position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+        overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+      }
       .sl-sub{ display:none }
       .sl-divPaw{ display:none }
       /* Bring the brand dog back on phones (CEO 2026-08-08) but COMPACT — a small
