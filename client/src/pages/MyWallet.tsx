@@ -263,8 +263,14 @@ export default function MyWallet() {
 
   if (isLoading) return <WalletSkeleton />;
 
-  const tier = wallet?.loyaltyTier || 'bronze';
-  const tierInfo = TIER_LABELS[tier] || TIER_LABELS.bronze;
+  // 'new' IS THE SERVER SAYING "NOT ENROLLED". (2026-09-10)
+  // credit-wallet.ts returns `prestigeEnrolled ? summary.loyaltyTier : 'new'`
+  // — the #2345 fix. TIER_LABELS has no 'new' key, so `|| TIER_LABELS.bronze`
+  // turned that explicit "not a member" back into a "Member" badge on this
+  // page: the exact bug #2345 removed, re-created by a fallback.
+  // A fallback must never manufacture the answer the server refused to give.
+  const tier = wallet?.loyaltyTier || 'new';
+  const tierInfo = TIER_LABELS[tier] ?? null;
   const uv = wallet?.unifiedVouchers;
 
   return (
@@ -299,9 +305,14 @@ export default function MyWallet() {
                 <span className="text-sm max-[375px]:text-xs text-gray-500">
                   {isHebrew ? 'סך הקרדיטים' : 'Total Credits Value'}
                 </span>
-                <Badge className="bg-white border border-gray-200 text-gray-700 text-xs font-semibold">
-                  {tierInfo.emoji} {isHebrew ? tierInfo.he : tierInfo.en}
-                </Badge>
+                {/* No badge for a non-enrolled member. Showing one is how the
+                    old `|| TIER_LABELS.bronze` fallback told people they were
+                    in a club they had never joined. */}
+                {tierInfo && (
+                  <Badge className="bg-white border border-gray-200 text-gray-700 text-xs font-semibold">
+                    {tierInfo.emoji} {isHebrew ? tierInfo.he : tierInfo.en}
+                  </Badge>
+                )}
               </div>
               <div className="text-4xl max-[375px]:text-2xl font-bold text-gray-900 mb-1">
                 {formatCurrency(wallet?.totalCreditsValueCents || 0)}
@@ -410,9 +421,13 @@ export default function MyWallet() {
                   {(wallet?.loyaltyPointsBalance || 0).toLocaleString()}
                   <span className="text-sm font-normal text-gray-400 ml-1">{isHebrew ? "נק'" : 'pts'}</span>
                 </div>
-                <p className="text-[10px] text-gray-400 mt-0.5">
-                  ≈ {formatCurrency((wallet?.loyaltyPointsBalance || 0) * 10)}
-                </p>
+                {/* NO POINTS->MONEY RATE EXISTS. (2026-09-10) formatCurrency
+                    takes AGOROT, so `points * 10` claimed 10 points = ₪1. The
+                    canonical pointsToCredit (100 for Member down to 40 for
+                    Black Reserve) is referenced nowhere outside its own
+                    definition, and no code converts points to money at all.
+                    This printed a cash value for something that cannot be
+                    cashed, at a rate nobody set. */}
               </CardContent>
             </Card>
 
