@@ -719,3 +719,53 @@ describe("the walk care card reports what happened, and nothing else", () => {
     expect(ui).not.toMatch(/durationMinutes \|\| 0/);
   });
 });
+
+/**
+ * 2026-09-10 — nobody could be approved as a provider. Ever. Not one.
+ *
+ * The KYC review screen's Approve button called assertOperatingControl for
+ * PROVIDER_ACTIVATION with NO `facts`. applyProviderActivation requires eight
+ * of them, so with facts = {} every one was missing, the gate raised eight
+ * blockers, and the handler returned 409 PETWASH_OPERATING_CONTROL_BLOCKED
+ * before the UPDATE ran. The reviewer got a red toast every time and the
+ * applicant sat on /provider/pending indefinitely.
+ *
+ * The gate is not removed — it encodes real policy. What was missing was the
+ * answer, now derived from the application row the wizard already fills.
+ */
+describe("the provider activation gate is asked with an answer", () => {
+  const src = readFileSync(resolve(root, "server/routes/provider-onboarding.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  it("the approve route passes facts to the gate", () => {
+    const at = src.indexOf("'/admin/applications/approve'");
+    expect(at, "the approve route moved — this pin needs rewriting").toBeGreaterThan(-1);
+    const call = src.slice(src.indexOf("assertOperatingControl(req, res, {", at));
+    const block = call.slice(0, call.indexOf("})"));
+    expect(block).toMatch(/actionType: 'PROVIDER_ACTIVATION'/);
+    expect(block, "PROVIDER_ACTIVATION is gated with no facts — every approval 409s")
+      .toMatch(/facts:\s*deriveActivationFacts\(application\)/);
+  });
+
+  it("the gate itself is still there", () => {
+    // The fix must never become "delete the compliance gate".
+    expect(src).toMatch(/assertOperatingControl\(req, res, \{[\s\S]{0,200}PROVIDER_ACTIVATION/);
+  });
+
+  it("the mechanical facts are read from the record, not asserted true", () => {
+    const fn = src.slice(src.indexOf("function deriveActivationFacts"));
+    const body = fn.slice(0, fn.indexOf("\n}\n"));
+    expect(body).toMatch(/const bankVerified = has\(application\.bankIban\)/);
+    expect(body).toMatch(/complianceApproved: backgroundOk/);
+    expect(body).toMatch(/taxDeclarationSigned: has\(application\.taxStatus\)/);
+  });
+
+  it("insurance is never auto-waived", () => {
+    const fn = src.slice(src.indexOf("function deriveActivationFacts"));
+    const body = fn.slice(0, fn.indexOf("\n}\n"));
+    // A waiver is a compliance decision a person makes. Auto-clearing it here
+    // would be the silent self-clearance this gate exists to prevent.
+    expect(body).toMatch(/insuranceWaivedByCompliance: false/);
+  });
+});

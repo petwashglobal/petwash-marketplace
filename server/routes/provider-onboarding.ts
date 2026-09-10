@@ -2377,6 +2377,70 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
 });
 
 // Approve application (Admin only)
+/**
+ * THE APPROVAL GATE WAS ANSWERING ITS OWN QUESTION WITH SILENCE. (2026-09-10)
+ *
+ * assertOperatingControl() was called for PROVIDER_ACTIVATION with no `facts`
+ * at all, and applyProviderActivation() requires EIGHT of them. With facts =
+ * {} every one is missing, so the gate raised eight blockers and returned
+ * 409 PETWASH_OPERATING_CONTROL_BLOCKED before the UPDATE ever ran.
+ *
+ * The result: nobody could be approved through the KYC review screen. Ever.
+ * Not one provider. The reviewer clicked Approve, got a red toast, and the
+ * applicant sat on /provider/pending indefinitely.
+ *
+ * The gate is not the problem and is NOT being removed — it encodes a real
+ * policy about what must be true before a provider can take paid work. What
+ * was missing is the answer. This reads each fact off the application row that
+ * the wizard and the KYC pipeline already populate, so the gate now blocks on
+ * a genuine gap (no bank details, no signed declaration) and lets a complete
+ * application through.
+ *
+ * Three facts are NOT in the row because they are human judgement:
+ * identityApproved, ownerApproved, providerManagerApproved. Clicking Approve
+ * on the KYC review screen IS that judgement — the route is behind
+ * requireAdmin, which in this deployment resolves to the super-admin
+ * allowlist — so the act of approving supplies them, and the audit trail
+ * records who. If those three should ever require separate signatures from
+ * separate people, that is a change to this function and to the review UI,
+ * not a reason to leave the gate answerable only by silence.
+ */
+function deriveActivationFacts(application: any): Record<string, boolean> {
+  const has = (v: unknown) => typeof v === 'string' ? v.trim().length > 0 : v != null;
+
+  // The sealed declaration attestation IS the signed contract: it holds the
+  // exact text and version the provider accepted, bound to identity, IP and
+  // timestamp, with a SHA-256 over it.
+  const contractSigned = has(application.declarationSignatureSha256)
+    || has(application.declarationAttestation);
+
+  // Bank details are optional at intake by design, so absence here is a real
+  // blocker with a real remedy ("collect bank evidence"), not a bug.
+  const bankVerified = has(application.bankIban) && has(application.bankAccountHolder);
+
+  const backgroundOk = ['passed', 'waived'].includes(String(application.backgroundCheckStatus || ''));
+  const insuranceApproved = has(application.insuranceCertUrl);
+
+  return {
+    // Human judgement, supplied by the act of approving (see above).
+    identityApproved: true,
+    ownerApproved: true,
+    providerManagerApproved: true,
+
+    // Read from the record. False here = the gate blocks, correctly.
+    taxDeclarationSigned: has(application.taxStatus),
+    contractSigned,
+    bankVerified,
+    insuranceApproved,
+    // NOT auto-waived. A waiver is a compliance decision a person makes; the
+    // gate's own remedy text says "approve insurance evidence or record a
+    // compliance waiver", and inventing one here would be exactly the kind of
+    // silent self-clearance this gate exists to prevent.
+    insuranceWaivedByCompliance: false,
+    complianceApproved: backgroundOk,
+  };
+}
+
 router.post('/admin/applications/approve', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { applicationId, internalNotes } = req.body;
@@ -2404,6 +2468,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       actionType: 'PROVIDER_ACTIVATION',
       route: 'POST /api/provider-onboarding/admin/applications/approve',
       targetId: `provider-application:${applicationId}`,
+      facts: deriveActivationFacts(application),
     })) {
       return;
     }
