@@ -326,6 +326,34 @@ export function GooglePlacesAutocomplete({
     selectingRef.current = false;
   }, [onChange, onPlaceSelected]);
 
+  /**
+   * Reveal the detail boxes for an address the customer typed themselves.
+   *
+   * THE HIDDEN BLOCKER (2026-09-11): the building-number / apartment / floor /
+   * entrance / מיקוד / access-notes boxes render only when `selectedPlace` is
+   * set, and `selectedPlace` is set only by picking a row from the dropdown.
+   * This escape hatch used to live ONLY in the "no matches" empty state, so the
+   * moment the provider returned ANY row — even six unusable near-identical
+   * ones — there was no way to reveal those boxes. The customer then hit a
+   * server-side `postalCode: z.string().min(1)` on delivery flows and was
+   * rejected for a field they had never been shown a box for. It is now offered
+   * in both dropdown states.
+   */
+  const useTypedAddress = useCallback(() => {
+    setShowDropdown(false);
+    setShowManualHint(true);
+    const manualPlace: PlaceDetails = {
+      formattedAddress: value,
+      street: value,
+      city: '',
+      country: 'Israel',
+      countryCode: 'IL',
+    };
+    setSelectedPlace(manualPlace);
+    onChange(value, manualPlace);
+    onPlaceSelected?.(manualPlace);
+  }, [value, onChange, onPlaceSelected]);
+
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     onChange(val);
@@ -505,27 +533,34 @@ export function GooglePlacesAutocomplete({
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#B8932F] text-white text-sm font-semibold hover:bg-[#B8932F] active:bg-[#B8932F] transition-colors"
                   onPointerDown={(e) => {
                     e.preventDefault();
-                    setShowDropdown(false);
-                    setShowManualHint(true);
-                    // Synthesize a placeholder PlaceDetails so the apartment / building / postal
-                    // helper fields appear and the parent form unblocks save. The user can edit
-                    // every field by hand from here.
-                    const manualPlace: PlaceDetails = {
-                      formattedAddress: value,
-                      street: value,
-                      city: '',
-                      country: 'Israel',
-                      countryCode: 'IL',
-                    };
-                    setSelectedPlace(manualPlace);
-                    onChange(value, manualPlace);
-                    onPlaceSelected?.(manualPlace);
+                    useTypedAddress();
                   }}
                 >
                   <MapPin className="h-4 w-4" />
                   הזן כתובת ידנית · Enter manually
                 </button>
               </div>
+            )}
+            {/* Always reachable, not only in the "no matches" state — see
+                useTypedAddress(). None of the rows above may actually be the
+                customer's address (OSM has no building #185 on Weizmann, for
+                one), and without this they could never open the detail boxes. */}
+            {predictions.length > 0 && (
+              <button
+                type="button"
+                className="w-full text-start px-4 py-3 border-t border-gray-100 text-xs font-semibold text-[#B8932F] active:bg-[#FAF7EF]"
+                style={{ minHeight: '44px', touchAction: 'manipulation' }}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  useTypedAddress();
+                }}
+                data-testid="places-use-typed-address"
+              >
+                לא מוצאים את הכתובת? המשיכו עם מה שהקלדתם
+                <span className="block text-[10px] font-normal text-gray-400 [direction:ltr]">
+                  None of these? Continue with what you typed
+                </span>
+              </button>
             )}
           </div>
         </div>,
@@ -729,7 +764,10 @@ export function GooglePlacesAutocomplete({
         </p>
       ) : !selectedPlace ? (
         <p className="text-[10px] text-gray-400 mt-0.5">
-          הקלידו לקבלת הצעות אוטומטיות מ-Google
+          {/* Google was removed from the address path entirely in #1575/#1578 —
+              suggestions come from OpenStreetMap and our own baked-in Israeli
+              street registry. Promising Google was simply untrue. */}
+          הקלידו רחוב, מספר ועיר לקבלת הצעות
         </p>
       ) : null}
 
