@@ -120,6 +120,33 @@ export class BackgroundJobProcessor {
     // Start auto-void cron for expired payment authorizations (every 5 minutes)
     startAutoVoidCron();
 
+    // NAYAX FEED WATCHDOG (2026-09-11) — hourly. The 5+1 punch card is computed
+    // from the Nayax transaction webhook, NOT from Nayax's Campaign module
+    // (which is absent from our operator account). That makes the feed
+    // load-bearing with no alarm on it: if the payload shape changes the
+    // handler answers 400 and punches stop SILENTLY, and nobody finds out
+    // until a customer's sixth wash is not free.
+    //
+    // Timed deliberately: Nayax is migrating Monyx -> Wallyx during September
+    // 2026 and told operators "nothing changes on your side". That is true of
+    // PAYMENTS. Our punch card does not ride payments, it rides their payload.
+    //
+    // Hourly is plenty for a 12-hour staleness threshold, and the check is a
+    // single indexed MAX() — it costs nothing when healthy.
+    cron.schedule('7 * * * *', async () => {
+      if (await this.acquireLock('nayaxFeedWatchdog')) {
+        try {
+          const { checkNayaxFeedFreshness } = await import('./services/NayaxFeedWatchdog');
+          const r = await checkNayaxFeedFreshness();
+          if (r.alerted) logger.error('[NayaxFeedWatchdog] alert sent', r);
+        } catch (e: any) {
+          logger.error('[NayaxFeedWatchdog] check failed', { error: e?.message });
+        } finally {
+          this.releaseLock('nayaxFeedWatchdog');
+        }
+      }
+    });
+
     // K9000 Cortina pre-paid redemption — release sweep (every minute) + daily
     // reconciliation. The release sweep is the RELEASE half of the reserve→commit
     // →release model: the K9000 emits no "wash finished" signal, so we expire
