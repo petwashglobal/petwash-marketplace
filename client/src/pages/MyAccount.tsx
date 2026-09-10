@@ -1918,7 +1918,7 @@ export default function MyAccount() {
                   <Button
                     onClick={handlePhotoDelete}
                     disabled={isUploadingPhoto}
-                    className="absolute -top-1 -left-1 p-1.5 rounded-full shadow-sm bg-[#111118] text-red-400 border border-red-900/30 hover:bg-red-950 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                    className="absolute -top-1 -left-1 p-1.5 rounded-full shadow-sm bg-[#111118] text-red-400 border border-red-900/30 hover:bg-red-950 transition-all duration-200 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100"
                     title={isHebrew ? 'הסר תמונה' : 'Remove photo'}
                   >
                     <Trash2 className="w-3 h-3" />
@@ -2868,7 +2868,7 @@ export default function MyAccount() {
                             <p className="text-sm text-gray-700 truncate mt-0.5">{addr.address}</p>
                             {addr.city && <p className="text-xs text-gray-400">{addr.city}{addr.postalCode ? ` · ${addr.postalCode}` : ''}</p>}
                           </div>
-                          <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <div className="flex flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
                             {!addr.isDefault && (
                               <button
                                 type="button"

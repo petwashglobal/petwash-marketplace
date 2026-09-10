@@ -611,7 +611,7 @@ export default function ProviderKycReview() {
                     <div className="relative group cursor-pointer" onClick={() => setLightbox({ url: app.selfieSignedUrl!, label: 'Selfie' })}>
                       <img src={app.selfieSignedUrl} alt="Applicant selfie"
                         className="w-full rounded-lg object-cover border border-slate-200 transition-opacity group-hover:opacity-90" style={{ maxHeight: 280 }} />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-0 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <div className="bg-black/50 rounded-full p-2">
                           <ZoomIn className="h-5 w-5 text-white" />
                         </div>
@@ -636,7 +636,7 @@ export default function ProviderKycReview() {
                     <div className="relative group cursor-pointer" onClick={() => setLightbox({ url: app.idSignedUrl!, label: 'Government ID' })}>
                       <img src={app.idSignedUrl} alt="Government ID"
                         className="w-full rounded-lg object-cover border border-slate-200 transition-opacity group-hover:opacity-90" style={{ maxHeight: 280 }} />
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute inset-0 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <div className="bg-black/50 rounded-full p-2">
                           <ZoomIn className="h-5 w-5 text-white" />
                         </div>

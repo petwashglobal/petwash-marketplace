@@ -1449,20 +1449,20 @@ export default function BookingChat() {
                   <div className="flex items-center gap-1">
                     {!msg.isDeleted && (
                       <button onClick={() => setReplyingTo(msg)}
-                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-[#D4AF37] flex items-center gap-1 transition-opacity">
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-[#D4AF37] flex items-center gap-1 transition-opacity">
                         <Reply className="w-3 h-3" /> Reply
                       </button>
                     )}
                     {!msg.isDeleted && (
                       <button onClick={() => setReactionPickerMsgId(reactionPickerMsgId === msg.messageId ? null : msg.messageId)}
-                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-yellow-400 flex items-center gap-1 transition-opacity">
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-yellow-400 flex items-center gap-1 transition-opacity">
                         <Smile className="w-3 h-3" />
                       </button>
                     )}
                     {!msg.isDeleted && msg.messageType === 'text' && msg.content.length > 2 && (
                       <button onClick={() => translateMessage(msg)}
                         disabled={translatingId === msg.messageId}
-                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-[#D4AF37] flex items-center gap-1 transition-opacity disabled:opacity-30"
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-[#D4AF37] flex items-center gap-1 transition-opacity disabled:opacity-30"
                         title={translations[msg.messageId] ? (showOriginal.has(msg.messageId) ? "Show translation" : "Show original") : "Translate"}>
                         {translatingId === msg.messageId
                           ? <span className="w-2.5 h-2.5 border border-gray-300 border-t-[#D4AF37] rounded-full animate-spin" />
@@ -1472,7 +1472,7 @@ export default function BookingChat() {
                     )}
                     {!isMe && !msg.isDeleted && (
                       <button onClick={() => setReportingMsg(msg)}
-                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-red-400 flex items-center gap-1 transition-opacity">
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-red-400 flex items-center gap-1 transition-opacity">
                         <Flag className="w-3 h-3" /> Report
                       </button>
                     )}

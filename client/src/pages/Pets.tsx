@@ -309,7 +309,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                       {ev.notes && <span className="truncate">{ev.notes}</span>}
                     </div>
                   </div>
-                  <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                     <a
                       href={calUrl}
                       target="_blank"
