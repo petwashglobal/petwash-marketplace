@@ -856,6 +856,32 @@ jobs:
           ensure_secret "MOBILE_LINK_SECRET" "$(openssl rand -hex 32)"
           ensure_secret "WALLET_LINK_SECRET" "$(openssl rand -hex 32)"
 
+          # ── Keys the code REFUSES to run without in production (audit 2026-09-12) ──
+          # Each of these throws or fails closed when unset, and none of them was
+          # mapped into the live revision (the pre-deploy smoke test hid it by
+          # injecting dummy values). Auto-generate once; stable thereafter.
+          #   TREASURY_FIELD_ENCRYPTION_KEY — AES-256-GCM for national IDs / bank fields
+          #     (secretFieldCrypto.ts throws in prod → any ID-number save was a 500).
+          #     64 hex chars required. NEVER rotate without a key migration.
+          #   UNSUBSCRIBE_HMAC_SECRET — emailService unsubscribe links (throws in prod →
+          #     booking confirmations / reminders / receipts could not be built).
+          #   EMAIL_UNSUB_SECRET — lib/unsubToken.ts marketing unsubscribe (≥32 chars, throws).
+          #   QR_SECRET — utils/generateQrPayload.ts station QR signing (throws in prod).
+          #   STEP_UP_HMAC_SECRET — StepUpService (≥32 chars; CLOSED when unset →
+          #     change-phone / disable-2FA proofs could not be issued).
+          #   INTERNAL_SERVICE_SECRET — loopback auth for /api/wallet/notify-pass-update
+          #     (503 when unset → Apple Wallet passes never refreshed after a wash).
+          #   HANDOFF_HMAC_SECRET — job-passport handoff codes (throws in prod).
+          #   HOME_ACCESS_ENC_KEY — AES-256-GCM for sitter home-access details (64 hex).
+          ensure_secret "TREASURY_FIELD_ENCRYPTION_KEY" "$(openssl rand -hex 32)"
+          ensure_secret "UNSUBSCRIBE_HMAC_SECRET"       "$(openssl rand -hex 32)"
+          ensure_secret "EMAIL_UNSUB_SECRET"            "$(openssl rand -hex 32)"
+          ensure_secret "QR_SECRET"                     "$(openssl rand -hex 32)"
+          ensure_secret "STEP_UP_HMAC_SECRET"           "$(openssl rand -hex 32)"
+          ensure_secret "INTERNAL_SERVICE_SECRET"       "$(openssl rand -hex 32)"
+          ensure_secret "HANDOFF_HMAC_SECRET"           "$(openssl rand -hex 32)"
+          ensure_secret "HOME_ACCESS_ENC_KEY"           "$(openssl rand -hex 32)"
+
           # VOUCHER_SALT — HMAC salt for voucher code derivation.
           ensure_secret "VOUCHER_SALT" "$(openssl rand -hex 32)"
 
@@ -1569,6 +1595,16 @@ jobs:
             "PRESTIGE_QR_SECRET=PRESTIGE_QR_SECRET:latest"
             "PASS_LINK_SECRET=PASS_LINK_SECRET:latest"
             "DOCUMENT_ENCRYPTION_KEY=DOCUMENT_ENCRYPTION_KEY:latest"
+            # Fail-loud runtime keys (audit 2026-09-12) — auto-created by the
+            # "Ensure required GCP secrets exist" step earlier in this job.
+            "TREASURY_FIELD_ENCRYPTION_KEY=TREASURY_FIELD_ENCRYPTION_KEY:latest"
+            "UNSUBSCRIBE_HMAC_SECRET=UNSUBSCRIBE_HMAC_SECRET:latest"
+            "EMAIL_UNSUB_SECRET=EMAIL_UNSUB_SECRET:latest"
+            "QR_SECRET=QR_SECRET:latest"
+            "STEP_UP_HMAC_SECRET=STEP_UP_HMAC_SECRET:latest"
+            "INTERNAL_SERVICE_SECRET=INTERNAL_SERVICE_SECRET:latest"
+            "HANDOFF_HMAC_SECRET=HANDOFF_HMAC_SECRET:latest"
+            "HOME_ACCESS_ENC_KEY=HOME_ACCESS_ENC_KEY:latest"
             "SENDGRID_TEMPLATE_ID_MEMBER_PASS=SENDGRID_TEMPLATE_ID_MEMBER_PASS:latest"
             "MACHINE_SECRET_KEY=MACHINE_SECRET_KEY:latest"
             "MACHINE_ACTIVATION_URL=MACHINE_ACTIVATION_URL:latest"

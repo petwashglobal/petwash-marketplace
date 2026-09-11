@@ -159,7 +159,9 @@ class AlertManager {
   }
 
   private async sendSlackAlert(alert: Alert) {
-    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    // ALERTS_SLACK_WEBHOOK is the secret that is actually mapped into Cloud Run
+    // (SLACK_WEBHOOK_URL was never provisioned) — same fallback as monitoring.ts.
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK;
 
     if (!webhookUrl) {
       logger.debug('Slack webhook not configured - Slack alert skipped');
