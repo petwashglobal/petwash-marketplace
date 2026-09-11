@@ -1501,7 +1501,8 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
         try {
           const { logNewUserRegistration } = await import('../services/bookingEventLogger');
           logNewUserRegistration({
-            userId: user.uid, firstName: firstName || 'User', lastName: lastName || '', email,
+            // Never store the placeholder 'User' as a human's name — see customAuth.ts.
+            userId: user.uid, firstName: firstName || '', lastName: lastName || '', email,
             phone: '', country: 'IL', registrationSource: 'email_code', language: 'he',
           }).catch(() => {});
         } catch (logErr) {
