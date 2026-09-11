@@ -71,6 +71,7 @@ const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
 // LAZY LOAD: All other routes (code split for performance)
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
+const WelcomeBack = lazy(() => import("@/pages/WelcomeBack"));
 const ChoosePath = lazy(() => import("@/pages/ChoosePath"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
 // Pet Parent ↔ Provider workspace picker for any approved provider (every
@@ -1064,6 +1065,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <CompleteProfile />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Returning member after sign-in: greet by name, then continue (CEO flow 2026-09-12). */}
+        <Route path="/welcome-back">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <WelcomeBack />
+              </Suspense>
             </RequireAuth>
           )}
         </Route>

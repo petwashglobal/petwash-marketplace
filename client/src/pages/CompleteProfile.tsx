@@ -1,28 +1,46 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { Link } from "wouter";
+import { Loader2, Check, ShieldCheck } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
-import { Loader2, UserCircle, Gift, Crown } from "lucide-react";
+import { OtpCodeInput } from "@/components/OtpCodeInput";
+import { PetWashLogo } from "@/components/brand/PetWashLogo";
 import { getApiUrl } from "@/lib/apiConfig";
+import { apiRequest } from "@/lib/queryClient";
 import { resolvePostLogin } from "@/lib/postLoginCoordinator";
 import { useToast } from "@/hooks/use-toast";
 import { readReturnTo } from "@/auth/returnTo";
 
+/**
+ * /complete-profile — "עוד רגע מסיימים את ההצטרפות".
+ *
+ * Google / Apple / OTP are AUTHENTICATION only; this PetWash™-owned screen
+ * finishes the membership (CEO spec 2026-09-12):
+ *   • name + email pre-filled from the account — asked only if missing
+ *   • mobile + OTP (the signed-in phone flow; also reclaims a number held by
+ *     an empty phone-only record — lib/phoneClaim)
+ *   • ONE explicit consent line: 18+ attestation + Terms + Privacy
+ *   • marketing consent separate, unchecked by default
+ *   • NO date of birth, gender, address or pet — those are not base-member
+ *     fields (provider KYC has its own flow)
+ * A returning member with a complete profile never sees this page: the
+ * server routes them to their home (and SignUpLuxury greets them on
+ * /welcome-back).
+ *
+ * Text is centred with inline styles on purpose: Tailwind's text-center is
+ * dead under html[lang="he"].
+ */
+
 interface WhoamiUser {
-  id: number;
-  email: string;
+  id: number | string;
+  email?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
+  phoneVerified?: boolean;
   role?: string;
   profilePictureUrl?: string;
 }
-
 interface WhoamiResponse {
   user: WhoamiUser;
   profileStatus: string;
@@ -30,58 +48,11 @@ interface WhoamiResponse {
   role: string;
 }
 
-function getRoleConfig(role: string) {
-  switch (role) {
-    case "loyalty":
-      return {
-        titleHe: "הצטרפות לתוכנית הנאמנות",
-        titleEn: "Join Our Loyalty Program",
-        subtitleHe: "מלאו את הפרטים לקבלת הטבות בלעדיות וברכת יום הולדת",
-        subtitleEn: "Fill in your details for exclusive perks and birthday rewards",
-        icon: Crown,
-        iconBg: "bg-amber-100",
-        iconColor: "text-amber-600",
-      };
-    case "provider":
-      return {
-        titleHe: "השלמת פרטים אישיים",
-        titleEn: "Complete Personal Details",
-        subtitleHe: "פרטים בסיסיים לפני תחילת תהליך ההרשמה כספק",
-        subtitleEn: "Basic details before starting your provider application",
-        icon: UserCircle,
-        iconBg: "bg-green-100",
-        iconColor: "text-green-600",
-      };
-    case "staff":
-      return {
-        titleHe: "השלמת פרופיל צוות",
-        titleEn: "Complete Staff Profile",
-        subtitleHe: "מלאו את הפרטים לבקשת גישה",
-        subtitleEn: "Fill in your details for access request",
-        icon: UserCircle,
-        iconBg: "bg-[#D4AF37]",
-        iconColor: "text-[#B8932F]",
-      };
-    default:
-      return {
-        titleHe: "השלמת פרופיל",
-        titleEn: "Complete Your Profile",
-        subtitleHe: "מלאו את הפרטים כדי להתחיל",
-        subtitleEn: "Fill in your details to get started",
-        icon: UserCircle,
-        iconBg: "bg-[#D4AF37]",
-        iconColor: "text-[#B8932F]",
-      };
-  }
-}
+type PhoneStep = "idle" | "sending" | "code" | "verifying" | "verified";
 
 export default function CompleteProfile() {
   const [, navigate] = useLocation();
   const searchString = useSearch();
-  // Phase 8 migration (2026-09-01): canonical readReturnTo helper.
-  // Accepts ?returnTo (canonical) OR ?from / ?redirect / ?next (legacy
-  // transition), validates as a safe internal path, blocks open-redirect
-  // vectors. See client/src/auth/returnTo.ts.
   const fromParam = readReturnTo(searchString);
   const { toast } = useToast();
   const lang = localStorage.getItem("i18nextLng") || "he";
@@ -91,19 +62,18 @@ export default function CompleteProfile() {
   const [submitting, setSubmitting] = useState(false);
   const [role, setRole] = useState("customer");
   const [requiredFields, setRequiredFields] = useState<string[]>([]);
-
+  const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [dateOfBirth, setDateOfBirth] = useState("");
-  const [gender, setGender] = useState(""); // optional: male | female | other | prefer_not_to_say
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [postalCode, setPostalCode] = useState("");
-  const [country, setCountry] = useState("IL");
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [marketingConsent, setMarketingConsent] = useState(false);
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>("idle");
+  const [phoneVerified, setPhoneVerified] = useState(false);
+  const [challengeId, setChallengeId] = useState<string>("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false); // 18+ + Terms + Privacy — one explicit line
+  const [marketingConsent, setMarketingConsent] = useState(false); // marketing — optional, unchecked
+
+  const needs = (field: string) => requiredFields.includes(field);
 
   useEffect(() => {
     (async () => {
@@ -114,17 +84,14 @@ export default function CompleteProfile() {
           return;
         }
         const data: WhoamiResponse = await res.json();
-
         setRole(data.role || "customer");
         setRequiredFields(data.requiredFields || []);
-
         if (data.user) {
           if (data.user.firstName) setFirstName(data.user.firstName);
           if (data.user.lastName) setLastName(data.user.lastName);
+          if (data.user.email) setEmail(data.user.email);
           if (data.user.phone) setPhone(data.user.phone);
-          // Prefill DOB too — the birthday the user gave at signup is now saved
-          // (2026-07-24), so never make them re-enter it here.
-          if (data.user.dateOfBirth) setDateOfBirth(String(data.user.dateOfBirth).slice(0, 10));
+          if (data.user.phone && data.user.phoneVerified) { setPhoneVerified(true); setPhoneStep("verified"); }
         }
       } catch {
         toast({ variant: "destructive", title: isHe ? "שגיאה בטעינת הפרופיל" : "Failed to load profile" });
@@ -132,103 +99,115 @@ export default function CompleteProfile() {
         setInitialLoading(false);
       }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const config = getRoleConfig(role);
-  const IconComp = config.icon;
-
-  const needs = (field: string) => requiredFields.includes(field);
-
-  const handlePlaceSelect = (place: PlaceDetails) => {
-    if (place.street) setAddress(place.street);
-    if (place.city) setCity(place.city);
-    if (place.postalCode) setPostalCode(place.postalCode);
-    if (place.country) setCountry(place.country);
+  // ── Mobile: the signed-in phone flow (request → OTP → confirm) ─────────────
+  const phoneErrorText = (code: string | undefined): string => {
+    switch (code) {
+      case "REAUTH_REQUIRED":
+        return isHe ? "לצורך אבטחה יש להתחבר מחדש ואז לאמת את הנייד." : "For security, please sign in again and then verify your mobile.";
+      case "CHANGE_PHONE_DISABLED":
+        return isHe ? "אימות הנייד אינו זמין כרגע. נסו שוב בעוד רגע." : "Mobile verification is unavailable right now. Try again shortly.";
+      case "PHONE_ALREADY_IN_USE":
+        return isHe ? "המספר הזה כבר משויך לחשבון אחר." : "That mobile number already belongs to another account.";
+      case "TOO_MANY_REQUESTS":
+      case "RATE_LIMITED":
+        return isHe ? "נשלחו יותר מדי קודים. נסו שוב בעוד כמה דקות." : "Too many codes sent. Try again in a few minutes.";
+      default:
+        return isHe ? "לא הצלחנו לשלוח או לאמת את הקוד. נסו שוב." : "We could not send or verify the code. Please try again.";
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function sendCode() {
+    setPhoneError(null);
+    if (!phone || phone.replace(/\D/g, "").length < 8) {
+      setPhoneError(isHe ? "הזינו מספר נייד תקין" : "Enter a valid mobile number");
+      return;
+    }
+    setPhoneStep("sending");
+    try {
+      const res = await apiRequest("POST", "/api/user/settings/phone/request-change", { newPhone: phone });
+      const d = await res.json().catch(() => ({} as any));
+      setChallengeId(d?.verificationChallengeId || "");
+      setPhoneStep("code");
+    } catch (err: any) {
+      setPhoneStep("idle");
+      setPhoneError(phoneErrorText(err?.body?.code || err?.body?.error));
+    }
+  }
+
+  async function confirmCode(code: string) {
+    setPhoneError(null);
+    setPhoneStep("verifying");
+    try {
+      await apiRequest("POST", "/api/user/settings/phone/confirm-change", {
+        verificationCode: code,
+        verificationChallengeId: challengeId || undefined,
+      });
+      setPhoneVerified(true);
+      setPhoneStep("verified");
+    } catch (err: any) {
+      setPhoneStep("code");
+      setPhoneError(err?.body?.code === "INVALID_CODE" || err?.status === 400
+        ? (isHe ? "קוד שגוי או שפג תוקפו. נסו שוב או בקשו קוד חדש." : "Wrong or expired code. Try again or request a new one.")
+        : phoneErrorText(err?.body?.code || err?.body?.error));
+    }
+  }
+
+  // ── Continue ────────────────────────────────────────────────────────────────
+  const nameOk = (!needs("firstName") || !!firstName.trim()) && (!needs("lastName") || !!lastName.trim());
+  const consentNeeded = needs("termsAcceptedAt") || needs("privacyAcceptedAt");
+  // Continue only with a VERIFIED mobile and the explicit 18+/Terms/Privacy consent.
+  const canContinue =
+    nameOk &&
+    (!needs("phone") || phoneVerified) &&
+    (!consentNeeded || consent) &&
+    !submitting;
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    if (needs("firstName") && !firstName.trim()) {
-      toast({ variant: "destructive", title: isHe ? "שם פרטי נדרש" : "First name is required" });
-      return;
-    }
-    if (needs("lastName") && !lastName.trim()) {
-      toast({ variant: "destructive", title: isHe ? "שם משפחה נדרש" : "Last name is required" });
-      return;
-    }
-    if (needs("phone") && !phone) {
-      toast({ variant: "destructive", title: isHe ? "מספר טלפון נדרש" : "Phone number is required" });
-      return;
-    }
-    if (needs("dateOfBirth") && !dateOfBirth) {
-      toast({ variant: "destructive", title: isHe ? "תאריך לידה נדרש" : "Date of birth is required" });
-      return;
-    }
-    if (needs("termsAcceptedAt") && (!termsAccepted || !privacyAccepted)) {
-      toast({ variant: "destructive", title: isHe ? "יש לאשר את התנאים ומדיניות הפרטיות" : "Please accept terms and privacy policy" });
-      return;
-    }
-
+    if (!canContinue) return;
     setSubmitting(true);
     try {
-      const payload: Record<string, any> = {
-        address,
-        city,
-        postalCode,
-        country,
+      const payload: Record<string, unknown> = {
         marketingConsent,
+        ...(needs("firstName") ? { firstName: firstName.trim() } : {}),
+        ...(needs("lastName") ? { lastName: lastName.trim() } : {}),
+        ...(consentNeeded
+          ? {
+              termsAccepted: consent,
+              privacyAccepted: consent,
+              ageConfirmed18Plus: consent,
+            }
+          : {}),
       };
-
-      if (needs("firstName")) payload.firstName = firstName.trim();
-      if (needs("lastName")) payload.lastName = lastName.trim();
-      if (needs("phone")) payload.phone = phone;
-      if (needs("dateOfBirth")) payload.dateOfBirth = dateOfBirth;
-      if (gender) payload.gender = gender;
-      if (needs("termsAcceptedAt")) {
-        payload.termsAccepted = termsAccepted;
-        payload.privacyAccepted = privacyAccepted;
-      }
-
       const res = await fetch(getApiUrl("/api/auth/complete-profile"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
       });
-
-      const data = await res.json();
-      if (res.ok) {
-        toast({ title: isHe ? "הפרופיל נשמר בהצלחה!" : "Profile saved!" });
-        // PR-FRES-B: routed through postLoginCoordinator so completion of
-        // profile during a concurrent OneTap/Account-tap flow does not
-        // double-fire post-login.
-        const postLoginData = await resolvePostLogin();
-        // Restore booking or page context that was interrupted by the profile-completion redirect.
-        // ?from= param is set by post-login when it redirects here (e.g. /booking/123).
-        // Server nextUrl takes priority only if it is not /complete-profile itself (avoid loops).
-        const serverNext = postLoginData.nextUrl || postLoginData.redirectTo;
-        const isLoop = serverNext && serverNext.startsWith('/complete-profile');
-        // A brand-new member with no interrupted context (no ?from=, no server-directed
-        // next) lands on the light role choice (Pet owner / Provider / Both) — CEO
-        // 2026-08-01: "after base account is complete, then ask role". Booking-context
-        // users and server-routed roles (provider→/provider-os etc.) are unaffected.
-        navigate(fromParam || (!isLoop ? serverNext : null) || "/choose-path");
-      } else if (data.error === "UNDER_18") {
+      const data = await res.json().catch(() => ({} as any));
+      if (!res.ok) {
         toast({
           variant: "destructive",
-          title: isHe ? "יש להיות בני 18 ומעלה" : "You must be 18 or older",
-          description: isHe ? "הצטרפות ל-PetWash מותרת מגיל 18." : "PetWash membership is for ages 18 and over.",
+          title: data?.error === "AGE_CONFIRMATION_REQUIRED"
+            ? (isHe ? "יש לאשר שאתם בני 18 ומעלה" : "Please confirm you are 18 or older")
+            : (isHe ? "שגיאה בשמירת הפרופיל" : "Error saving profile"),
         });
-      } else {
-        toast({ variant: "destructive", title: data.message || data.error || "Error saving profile" });
+        return;
       }
+      // Where next: the interrupted page if any, else the server's decision.
+      if (fromParam) { navigate(fromParam); return; }
+      const postLogin: any = await resolvePostLogin({});
+      navigate(postLogin?.nextUrl || postLogin?.redirectTo || "/pet-parent/home");
     } catch {
       toast({ variant: "destructive", title: isHe ? "שגיאה בשמירת הפרופיל" : "Error saving profile" });
     } finally {
       setSubmitting(false);
     }
-  };
+  }
 
   if (initialLoading) {
     return (
@@ -238,173 +217,135 @@ export default function CompleteProfile() {
     );
   }
 
+  const initial = (firstName || email || "?").slice(0, 1).toUpperCase();
+  const title = firstName
+    ? (isHe ? `ברוכים הבאים ל־PetWash™, ${firstName}` : `Welcome to PetWash™, ${firstName}`)
+    : (isHe ? "ברוכים הבאים ל־PetWash™" : "Welcome to PetWash™");
+  const subtitle = role === "provider"
+    ? (isHe ? "פרטים בסיסיים לפני תחילת ההרשמה כספק" : "Basic details before your provider application")
+    : (isHe ? "עוד רגע מסיימים את ההצטרפות" : "One more moment and you're in");
+
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4" dir={isHe ? "rtl" : "ltr"}>
-      <Card className="w-full max-w-lg">
-        <CardHeader className="text-center">
-          <div className={`mx-auto ${config.iconBg} p-3 rounded-full w-fit mb-4`}>
-            <IconComp className={`h-10 w-10 ${config.iconColor}`} />
+    <div className="min-h-screen bg-white flex flex-col" dir={isHe ? "rtl" : "ltr"} data-testid="complete-profile">
+      <header className="flex items-center justify-between px-5 pt-5">
+        <PetWashLogo className="h-9" />
+        <div className="w-9 h-9 rounded-full bg-[#0c6b48] text-white flex items-center justify-center font-semibold" aria-hidden>
+          {initial}
+        </div>
+      </header>
+
+      <main className="flex-1 px-5 pb-10 pt-6 max-w-md w-full mx-auto">
+        <h1 className="text-[28px] leading-tight font-semibold text-gray-900" style={{ textAlign: isHe ? "right" : "left" }}>
+          {title}
+        </h1>
+        <p className="text-gray-500 mt-1" style={{ textAlign: isHe ? "right" : "left" }}>{subtitle}</p>
+
+        {/* Identity from the sign-in provider — shown, not asked again */}
+        {(firstName || email) && !needs("firstName") && !needs("lastName") && (
+          <div className="mt-5 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm" data-testid="complete-profile-identity">
+            <div className="font-medium text-gray-900">{[firstName, lastName].filter(Boolean).join(" ")}</div>
+            {email && <div className="text-gray-500">{email}</div>}
           </div>
-          <CardTitle className="text-2xl">
-            {isHe ? config.titleHe : config.titleEn}
-          </CardTitle>
-          <p className="text-gray-500 text-sm mt-1">
-            {isHe ? config.subtitleHe : config.subtitleEn}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {(needs("firstName") || needs("lastName")) && (
-              <div className="grid grid-cols-2 gap-4">
-                {needs("firstName") && (
-                  <div>
-                    <Label>{isHe ? "שם פרטי" : "First Name"}</Label>
-                    <Input
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder={isHe ? "שם פרטי" : "First name"}
-                      required
-                    />
-                  </div>
-                )}
-                {needs("lastName") && (
-                  <div>
-                    <Label>{isHe ? "שם משפחה" : "Last Name"}</Label>
-                    <Input
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder={isHe ? "שם משפחה" : "Last name"}
-                      required
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+        )}
 
-            {needs("phone") && (
-              <div>
-                <Label>{isHe ? "טלפון נייד" : "Mobile Phone"}</Label>
-                <PhoneInput
-                  value={phone}
-                  onChange={(val) => setPhone(val || "")}
-                  defaultCountry="IL"
-                />
-              </div>
-            )}
+        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+          {(needs("firstName") || needs("lastName")) && (
+            <section className="grid grid-cols-2 gap-3">
+              {needs("firstName") && (
+                <label className="block">
+                  <span className="text-sm text-gray-700">{isHe ? "שם פרטי" : "First name"}</span>
+                  <input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name"
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/40"
+                    data-testid="complete-profile-first-name" />
+                </label>
+              )}
+              {needs("lastName") && (
+                <label className="block">
+                  <span className="text-sm text-gray-700">{isHe ? "שם משפחה" : "Last name"}</span>
+                  <input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name"
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-3 text-base focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/40"
+                    data-testid="complete-profile-last-name" />
+                </label>
+              )}
+            </section>
+          )}
 
-            {needs("dateOfBirth") && (
-              <div>
-                <Label className="flex items-center gap-2">
-                  <Gift className="h-4 w-4 text-amber-500" />
-                  {isHe ? "תאריך לידה" : "Date of Birth"}
-                  <span className="text-red-500 text-xs">*</span>
-                </Label>
-                <Input
-                  type="date"
-                  value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
-                  max={new Date().toISOString().split("T")[0]}
-                  required
-                  className="mt-1"
-                />
-                {role === "loyalty" && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    {isHe
-                      ? "נדרש לקבלת ברכת יום הולדת והטבה מיוחדת"
-                      : "Required for birthday greeting and special reward"}
-                  </p>
+          {needs("phone") && (
+            <section data-testid="complete-profile-phone">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-900">{isHe ? "מספר טלפון נייד" : "Mobile number"}</span>
+                {phoneVerified && (
+                  <span className="inline-flex items-center gap-1 text-xs text-[#0c6b48]" data-testid="complete-profile-phone-verified">
+                    <Check className="w-3.5 h-3.5" /> {isHe ? "אומת" : "Verified"}
+                  </span>
                 )}
               </div>
-            )}
-
-            {/* Sex / gender — optional. */}
-            <div>
-              <Label>{isHe ? "מין (אופציונלי)" : "Sex (optional)"}</Label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                data-testid="select-gender"
-              >
-                <option value="">{isHe ? "לא לציין" : "Prefer not to say"}</option>
-                <option value="female">{isHe ? "נקבה" : "Female"}</option>
-                <option value="male">{isHe ? "זכר" : "Male"}</option>
-                <option value="other">{isHe ? "אחר" : "Other"}</option>
-              </select>
-            </div>
-
-            <div>
-              <Label>{isHe ? "כתובת" : "Address"}</Label>
-              <GooglePlacesAutocomplete
-                value={address}
-                onChange={(val) => setAddress(val)}
-                onPlaceSelected={handlePlaceSelect}
-                placeholder={isHe ? "הקלידו כתובת..." : "Start typing address..."}
-                country={["il"]}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>{isHe ? "עיר" : "City"}</Label>
-                <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder={isHe ? "עיר" : "City"} />
-              </div>
-              <div>
-                <Label>{isHe ? "מיקוד" : "Postal Code"}</Label>
-                <Input value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder={isHe ? "מיקוד" : "Postal code"} />
-              </div>
-            </div>
-
-            <div className="space-y-3 pt-4 border-t">
-              {needs("termsAcceptedAt") && (
+              {!phoneVerified && (
                 <>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="terms"
-                      checked={termsAccepted}
-                      onCheckedChange={(val) => setTermsAccepted(!!val)}
-                    />
-                    <Label htmlFor="terms" className="text-sm leading-snug cursor-pointer">
-                      {isHe
-                        ? "אני מסכים/ה לתנאי השימוש של PetWash™‎"
-                        : "I agree to PetWash™‎ Terms of Service"}
-                    </Label>
+                  <div className="mt-2">
+                    <PhoneInput value={phone} onChange={(v: string) => { setPhone(v); setPhoneError(null); if (phoneStep === "code") setPhoneStep("idle"); }} language={isHe ? "he" : "en"} defaultCountry="IL" />
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="privacy"
-                      checked={privacyAccepted}
-                      onCheckedChange={(val) => setPrivacyAccepted(!!val)}
-                    />
-                    <Label htmlFor="privacy" className="text-sm leading-snug cursor-pointer">
-                      {isHe
-                        ? "אני מסכים/ה למדיניות הפרטיות"
-                        : "I agree to the Privacy Policy"}
-                    </Label>
-                  </div>
+                  {phoneStep !== "code" && phoneStep !== "verifying" && (
+                    <button type="button" onClick={sendCode} disabled={phoneStep === "sending"}
+                      className="mt-3 w-full rounded-full border border-gray-900 py-3 text-sm font-medium text-gray-900 disabled:opacity-50"
+                      data-testid="complete-profile-send-code">
+                      {phoneStep === "sending" ? (isHe ? "שולח קוד…" : "Sending code…") : (isHe ? "שליחת קוד" : "Send code")}
+                    </button>
+                  )}
+                  {(phoneStep === "code" || phoneStep === "verifying") && (
+                    <div className="mt-3">
+                      <OtpCodeInput
+                        length={6}
+                        onComplete={confirmCode}
+                        loading={phoneStep === "verifying"}
+                        error={phoneError || undefined}
+                        language={isHe ? "he" : "en"}
+                        title={isHe ? "הזינו את הקוד שנשלח לנייד" : "Enter the code we sent"}
+                        subtitle={phone}
+                      />
+                      <button type="button" onClick={sendCode} className="mt-2 text-xs text-gray-500 underline-offset-4 hover:underline" data-testid="complete-profile-resend">
+                        {isHe ? "שלח קוד חדש" : "Send a new code"}
+                      </button>
+                    </div>
+                  )}
+                  {phoneError && phoneStep !== "code" && (
+                    <p className="mt-2 text-sm text-red-600" data-testid="complete-profile-phone-error">{phoneError}</p>
+                  )}
                 </>
               )}
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="marketing"
-                  checked={marketingConsent}
-                  onCheckedChange={(val) => setMarketingConsent(!!val)}
-                />
-                <Label htmlFor="marketing" className="text-sm leading-snug cursor-pointer">
-                  {isHe
-                    ? "אני מעוניין/ת לקבל עדכונים ומבצעים (אופציונלי)"
-                    : "I'd like to receive updates and promotions (optional)"}
-                </Label>
-              </div>
-            </div>
+            </section>
+          )}
 
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              {isHe ? "המשך" : "Continue"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          {consentNeeded && (
+            <section className="space-y-3" data-testid="complete-profile-consent">
+              <label className="flex items-start gap-3 text-sm text-gray-800">
+                <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4" data-testid="complete-profile-consent-checkbox" />
+                <span>
+                  {isHe ? "אני בן/בת 18 ומעלה ומסכים/ה ל" : "I am 18 or older and I agree to the "}
+                  <Link href="/terms" className="underline underline-offset-2">{isHe ? "תנאי השימוש" : "Terms of Service"}</Link>
+                  {isHe ? " ול" : " and the "}
+                  <Link href="/privacy" className="underline underline-offset-2">{isHe ? "מדיניות הפרטיות" : "Privacy Policy"}</Link>
+                  {isHe ? " של PetWash™." : " of PetWash™."}
+                </span>
+              </label>
+              <label className="flex items-start gap-3 text-sm text-gray-600">
+                <input type="checkbox" checked={marketingConsent} onChange={(e) => setMarketingConsent(e.target.checked)} className="mt-1 h-4 w-4" data-testid="complete-profile-marketing-checkbox" />
+                <span>{isHe ? "אני רוצה לקבל הטבות, עדכונים ומבצעים — אופציונלי" : "Send me perks, updates and offers — optional"}</span>
+              </label>
+            </section>
+          )}
+
+          <button type="submit" disabled={!canContinue}
+            className="w-full rounded-full bg-black text-white py-4 text-base font-medium disabled:opacity-40 active:scale-[0.99] transition"
+            data-testid="complete-profile-continue">
+            {submitting ? (isHe ? "שומר…" : "Saving…") : (isHe ? "המשך" : "Continue")}
+          </button>
+
+          <p className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400">
+            <ShieldCheck className="w-3.5 h-3.5" /> {isHe ? "מאובטח ומוצפן · הנתונים שלך בטוחים" : "Secure and encrypted · your data is safe"}
+          </p>
+        </form>
+      </main>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { logger } from '../lib/logger';
-import { MEMBER_REQUIRED_FIELDS } from '@shared/memberRequiredFields';
+import { MEMBER_REQUIRED_FIELDS, isMemberFieldMissing } from '@shared/memberRequiredFields';
 
 const ONBOARDING_BYPASS_PATHS = [
   '/api/auth',
@@ -72,7 +72,8 @@ export function getRoleRequiredFields(
   role: string,
   providerApp?: Record<string, any> | null,
 ): string[] {
-  const base = MEMBER_REQUIRED_FIELDS.filter((f) => !user?.[f]);
+  // Shared predicate: 'phone' means a VERIFIED mobile (@shared/memberRequiredFields).
+  const base = MEMBER_REQUIRED_FIELDS.filter((f) => isMemberFieldMissing(user, f));
   if (role !== 'provider') return base;
   // A reviewed, complete application means the KYC is satisfied.
   if (providerApp?.onboardingComplete) return base;
@@ -143,7 +144,7 @@ export async function requireOnboardingComplete(req: Request, res: Response, nex
 
     const missingFields: string[] = [];
     for (const field of requirements.requiredFields) {
-      if (!(user as any)[field]) {
+      if (isMemberFieldMissing(user as any, field)) {
         missingFields.push(field);
       }
     }

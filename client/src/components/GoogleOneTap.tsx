@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { getApiUrl } from '@/lib/apiConfig';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
+import { welcomeBackOr } from '@/lib/welcomeBack';
 import { useLocation } from 'wouter';
 
 interface GoogleOneTapProps {
@@ -196,7 +197,8 @@ export function GoogleOneTap({
             idToken: firebaseIdToken,
             body: intent ? { intent } : undefined,
           });
-          const nextUrl = data.nextUrl || data.redirectTo || '/home';
+          // Returning member → the /welcome-back greeting first (CEO 2026-09-12).
+          const nextUrl = welcomeBackOr(data, '/home');
           clearConsumedSignupIntent();
           navigate(nextUrl);
         } catch {

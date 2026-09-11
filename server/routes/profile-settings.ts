@@ -1505,9 +1505,18 @@ router.post('/settings/phone/request-change', async (req, res) => {
       return res.status(400).json({ error: 'That phone number is not valid.', code: 'INVALID_PHONE' });
     }
 
-    const [current] = await db.select({ phone: users.phone })
+    const [current] = await db.select({
+      phone: users.phone,
+      phoneVerified: users.phoneVerified,
+      mobileVerifiedAt: users.mobileVerifiedAt,
+    })
       .from(users).where(eq(users.id, uid)).limit(1);
-    if (current?.phone && normalizePhoneE164(current.phone) === newPhone) {
+    const currentVerified = current?.phoneVerified === true || !!current?.mobileVerifiedAt;
+    // Same number AND already verified → nothing to do. Same number but NEVER
+    // verified (stored by an older complete-profile without an OTP) is a
+    // legitimate VERIFY of the member's own number — /complete-profile relies
+    // on this to activate such accounts. (2026-09-12)
+    if (current?.phone && normalizePhoneE164(current.phone) === newPhone && currentVerified) {
       return res.status(400).json({
         error: 'That is already your mobile number',
         code: 'PHONE_UNCHANGED',

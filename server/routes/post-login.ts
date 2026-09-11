@@ -6,7 +6,7 @@ import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
 import { isSuperAdmin, isSuperAdminVerified, isSuperAdminAllowlisted } from "../middleware/rbac";
 import { isAdminRole } from "@shared/adminRoles";
-import { MEMBER_REQUIRED_FIELDS } from "@shared/memberRequiredFields";
+import { MEMBER_REQUIRED_FIELDS, getMissingMemberFields } from "@shared/memberRequiredFields";
 import { recordLoginEvent } from "../services/AuthEventService";
 import { getClientIP } from "../services/alerts";
 import { db } from "../db";
@@ -55,7 +55,8 @@ const REQUIRED_FIELDS_BY_ROLE: Record<string, string[]> = {
 
 function getMissingFields(user: any, role: string): string[] {
   const required = REQUIRED_FIELDS_BY_ROLE[role] || REQUIRED_FIELDS_BY_ROLE['customer'];
-  return required.filter((field: string) => !user[field]);
+  // Shared predicate: 'phone' means a VERIFIED mobile (see @shared/memberRequiredFields).
+  return getMissingMemberFields(user, required);
 }
 
 // intentToRole (deleted PR-AUTH-MULTIROLE-5): intent is no longer translated
@@ -1298,6 +1299,7 @@ export async function completeProfile(req: Request, res: Response) {
       termsAccepted,
       privacyAccepted,
       marketingConsent,
+      ageConfirmed18Plus,
     } = req.body || {};
 
     // Fall back to the name already on the user row when the client doesn't
@@ -1333,7 +1335,10 @@ export async function completeProfile(req: Request, res: Response) {
     const user = existingUserRow;
     const role = (user as any)?.role || 'customer';
 
-    if (role === 'provider' && !phone) {
+    // A provider needs a mobile on file. The client verifies it by OTP BEFORE
+    // this call (the row already carries a verified phone), so only reject when
+    // neither the request nor the row has one. (2026-09-12)
+    if (role === 'provider' && !phone && !(user as any)?.phone) {
       return res.status(400).json({
         error: "PHONE_REQUIRED",
         message: "Phone number is required for provider accounts",
@@ -1341,13 +1346,16 @@ export async function completeProfile(req: Request, res: Response) {
     }
 
     const now = new Date();
+    // Only touch address fields the client actually sent — the base member
+    // form no longer collects an address, and an omitted field must never
+    // wipe what a member already gave us. (2026-09-12)
     const updates: Record<string, any> = {
       firstName: effectiveFirstName,
       lastName: effectiveLastName,
-      address: address || null,
-      city: city || null,
-      postalCode: postalCode || null,
-      country: country || "IL",
+      ...(address !== undefined ? { address: address || null } : {}),
+      ...(city !== undefined ? { city: city || null } : {}),
+      ...(postalCode !== undefined ? { postalCode: postalCode || null } : {}),
+      ...(country !== undefined || !(user as any)?.country ? { country: country || (user as any)?.country || "IL" } : {}),
       updatedAt: now,
     };
 
@@ -1378,9 +1386,37 @@ export async function completeProfile(req: Request, res: Response) {
       updates.gender = gender;
     }
 
+    // 18+ — resolved deliberately (CEO 2026-09-12). The base member profile
+    // carries NO date of birth (that belongs to provider KYC), yet membership
+    // is over-18 by directive (2026-05-16). The manual signup form collects an
+    // explicit 18+ attestation (ageConfirmed18Plus); the social path skipped it
+    // entirely. Accepting the terms here therefore REQUIRES the same explicit
+    // attestation — no DOB, no guessing. Recorded in the audit log, not in a
+    // new column.
+    if (termsAccepted && ageConfirmed18Plus !== true) {
+      return res.status(400).json({
+        error: "AGE_CONFIRMATION_REQUIRED",
+        message: "Please confirm you are 18 or older to accept the terms.",
+      });
+    }
     if (termsAccepted) {
       updates.termsAcceptedAt = now;
       updates.termsVersion = "2026-v1";
+      try {
+        await logAuditEvent({
+          actorUserId: String(userId),
+          actorRole: (existingUserRow as any)?.role || "customer",
+          actionType: "MEMBER_AGE_ATTESTATION",
+          targetType: "user",
+          targetId: String(userId),
+          ip: getClientIP(req),
+          userAgent: req.get("user-agent") || undefined,
+          traceId: (req as any).traceId,
+          metadata: { ageConfirmed18Plus: true, termsVersion: "2026-v1", source: "complete-profile" },
+        });
+      } catch (auditErr: any) {
+        logger.warn("[CompleteProfile] age attestation audit not recorded", { userId, error: auditErr?.message });
+      }
     }
     if (privacyAccepted) {
       updates.privacyAcceptedAt = now;
