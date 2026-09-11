@@ -687,7 +687,7 @@ describe("the walk care card reports what happened, and nothing else", () => {
   it("the card is owner/walker/admin only, and 404s rather than 403s", () => {
     const at = server.indexOf("'/walks/:bookingId/care-card'");
     expect(at).toBeGreaterThan(-1);
-    const route = server.slice(at, at + 3000);
+    const route = server.slice(at, at + 8000);
     expect(route).toMatch(/requireAuth/);
     expect(route).toMatch(/isOwner && !isWalker && !isAdmin/);
     // A 403 would confirm the booking id exists to a stranger.
@@ -696,14 +696,14 @@ describe("the walk care card reports what happened, and nothing else", () => {
 
   it("a missing distance stays null — it never becomes a confident zero", () => {
     const at = server.indexOf("'/walks/:bookingId/care-card'");
-    const route = server.slice(at, at + 3000);
+    const route = server.slice(at, at + 8000);
     expect(route).toMatch(/distanceMeters: booking\.totalDistanceMeters \?\? null/);
     expect(route).not.toMatch(/totalDistanceMeters \|\| 0/);
   });
 
   it("the card renders only for a walk that actually completed", () => {
     const at = server.indexOf("'/walks/:bookingId/care-card'");
-    const route = server.slice(at, at + 3000);
+    const route = server.slice(at, at + 8000);
     expect(route).toMatch(/status !== 'completed'/);
     expect(route).toMatch(/available: false/);
   });
@@ -819,5 +819,69 @@ describe("a member is charged the discount the page promises them", () => {
     // Returning null means the priority ladder's number stands — a database
     // hiccup must never change what a customer is charged.
     expect(body).toMatch(/catch[\s\S]{0,300}return null/);
+  });
+});
+
+/**
+ * 2026-09-11 — the Care Card's photo strip reads the ONE store that exists.
+ *
+ * Checked the database before building. Four photo tables are already defined
+ * — booking_photos, field_update_photos, incident_photos — plus walk_videos,
+ * which even documents a `milestone_photo` type and references walkBookings
+ * directly. NOTHING WRITES ANY OF THEM for a walk.
+ *
+ * The photos a walker actually sends are booking_messages rows, messageType
+ * 'session_photo', imageUrl in metadata, reached through booking_conversations.
+ * So the card reads those. It does not start a second store for data that
+ * already has one: a new table, or a backfill into walk_videos, would mean two
+ * places to keep in step and two answers to "what did the walker send".
+ *
+ * These pins fail if someone later adds that second store.
+ */
+describe("walk photos are read from their existing home, not copied into a new one", () => {
+  const src = readFileSync(resolve(root, "server/routes/walk-my-pet.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
+
+  const careCard = () => {
+    const at = src.indexOf("'/walks/:bookingId/care-card'");
+    expect(at, "the care-card route moved — this pin needs rewriting").toBeGreaterThan(-1);
+    return src.slice(at, at + 6000);
+  };
+
+  it("reads booking_messages through booking_conversations", () => {
+    const route = careCard();
+    expect(route).toMatch(/bookingConversations/);
+    expect(route).toMatch(/bookingMessages/);
+    expect(route).toMatch(/messageType, 'session_photo'/);
+  });
+
+  it("does not write a photo anywhere", () => {
+    const route = careCard();
+    // A read endpoint that inserts is how a second store starts.
+    expect(route).not.toMatch(/\.insert\(/);
+    expect(route).not.toMatch(/walkVideos/);
+  });
+
+  it("skips deleted messages", () => {
+    // A photo the sender removed must not reappear on the card afterwards.
+    expect(careCard()).toMatch(/isDeleted, false/);
+  });
+
+  it("a failed photo read does not take the walk facts down with it", () => {
+    const route = careCard();
+    const at = route.indexOf("let photos");
+    const block = route.slice(at, route.indexOf("res.json(", at));
+    expect(block).toMatch(/try \{/);
+    expect(block).toMatch(/catch/);
+    // The catch must not rethrow — times, distance and route still render.
+    expect(block).not.toMatch(/catch[\s\S]{0,200}throw/);
+  });
+
+  it("the strip is absent rather than empty-framed when there are no photos", () => {
+    const ui = readFileSync(resolve(root, "client/src/components/walk/WalkCareCard.tsx"), "utf8");
+    expect(ui).toMatch(/\(data\.photos\?\.length \?\? 0\) > 0 &&/);
+    // Every photo carries the walker's own caption as alt text.
+    expect(ui).toMatch(/alt=\{p\.caption/);
   });
 });
