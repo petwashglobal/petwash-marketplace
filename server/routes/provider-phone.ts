@@ -11,6 +11,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { db, auth as firebaseAuth } from '../lib/firebase-admin';
+import { claimVerifiedPhone } from '../lib/phoneClaim';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { hashOtpCode, verifyOtpCode } from '../lib/otpHmac';
 import { logger } from '../lib/logger';
@@ -151,26 +152,11 @@ router.post('/send-otp', async (req, res) => {
  */
 type PhoneAttachOutcome = 'attached' | 'already_ours' | 'in_use_by_other' | 'unresolved';
 
+// Shared with publicAuthRoutes.ts and profile-settings.ts — lib/phoneClaim
+// also RECLAIMS a number held by a phone-only orphan account (see its header).
 async function attachVerifiedPhoneToFirebase(uid: string, phone: string): Promise<PhoneAttachOutcome> {
-  try {
-    await firebaseAuth.updateUser(uid, { phoneNumber: phone });
-    return 'attached';
-  } catch (e: any) {
-    if (e?.code !== 'auth/phone-number-already-exists') {
-      logger.warn('[ProviderPhone] phone attach updateUser failed', { uid, error: e?.message });
-      return 'unresolved';
-    }
-    let ownerUid: string | null = null;
-    try {
-      ownerUid = (await firebaseAuth.getUserByPhoneNumber(phone))?.uid ?? null;
-    } catch (probeErr: any) {
-      logger.warn('[ProviderPhone] phone ownership probe unreadable', { uid, error: probeErr?.message });
-      return 'unresolved';
-    }
-    if (ownerUid === uid) return 'already_ours';
-    if (!ownerUid) return 'unresolved';
-    return 'in_use_by_other';
-  }
+  const outcome = await claimVerifiedPhone(firebaseAuth, uid, phone, '[ProviderPhone]');
+  return outcome === 'reclaimed_from_orphan' ? 'attached' : outcome;
 }
 
 /**

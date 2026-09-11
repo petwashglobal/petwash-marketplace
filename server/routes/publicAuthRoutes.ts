@@ -29,6 +29,7 @@ import {
   TWO_FACTOR_UNAVAILABLE_CODE,
   TWO_FACTOR_UNAVAILABLE_MESSAGE,
 } from '../lib/twoStepLogin';
+import { claimVerifiedPhone } from '../lib/phoneClaim';
 
 /**
  * How a refused email proof is reported to the caller.
@@ -892,28 +893,11 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
  */
 type PhoneAttachOutcome = 'attached' | 'already_ours' | 'in_use_by_other' | 'unresolved';
 
+// Shared with provider-phone.ts and profile-settings.ts — lib/phoneClaim
+// also RECLAIMS a number held by a phone-only orphan account (see its header).
 async function attachVerifiedPhoneToFirebase(uid: string, phone: string): Promise<PhoneAttachOutcome> {
-  try {
-    await fbAdminAuth.updateUser(uid, { phoneNumber: phone });
-    return 'attached';
-  } catch (e: any) {
-    if (e?.code !== 'auth/phone-number-already-exists') {
-      logger.warn('[Signup] phone attach updateUser failed', { uid, error: e?.message });
-      return 'unresolved';
-    }
-    let ownerUid: string | null = null;
-    try {
-      ownerUid = (await fbAdminAuth.getUserByPhoneNumber(phone))?.uid ?? null;
-    } catch (probeErr: any) {
-      logger.warn('[Signup] phone ownership probe unreadable', { uid, error: probeErr?.message });
-      return 'unresolved';
-    }
-    if (ownerUid === uid) return 'already_ours';
-    // No owner named — the probe CONTRADICTS the error that triggered it.
-    // Nothing here establishes a second owner, so we do not claim one.
-    if (!ownerUid) return 'unresolved';
-    return 'in_use_by_other';
-  }
+  const outcome = await claimVerifiedPhone(fbAdminAuth, uid, phone, '[Signup]');
+  return outcome === 'reclaimed_from_orphan' ? 'attached' : outcome;
 }
 
 /**

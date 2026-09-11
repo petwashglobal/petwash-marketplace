@@ -3,6 +3,7 @@ import { db } from '../db';
 import { users } from '@shared/schema';
 import { and, eq, ne } from 'drizzle-orm';
 import admin from '../lib/firebase-admin';
+import { claimVerifiedPhone } from '../lib/phoneClaim';
 import { logger } from '../lib/logger';
 import { phoneLookupHash } from '../lib/phoneHmac';
 import { z } from 'zod';
@@ -1597,6 +1598,24 @@ router.post('/settings/phone/confirm-change', async (req, res) => {
       return res.status(400).json({ error: 'Invalid verification challenge', code: 'INVALID_VERIFICATION_ACTION' });
     }
 
+    // Firebase first: it owns the auth identity, and it is the write that can
+    // reject (bad format, taken). Doing it before the canonical row means a
+    // failure leaves both stores on the OLD number rather than disagreeing.
+    //
+    // lib/phoneClaim also RECLAIMS the number when its holder is a phone-only
+    // orphan account (no email, no other provider) — the member has just
+    // proved possession, which was that orphan's only credential. It clears
+    // the orphan's Postgres mirror row, so the uniqueness re-check below then
+    // only catches a REAL second owner.
+    const claim = await claimVerifiedPhone(admin.auth(), uid, newPhone, '[ProfileSettings]');
+    if (claim === 'in_use_by_other') {
+      return res.status(409).json({ error: 'That mobile number is already in use', code: 'PHONE_ALREADY_IN_USE' });
+    }
+    if (claim === 'unresolved') {
+      logger.error('[ProfileSettings] Firebase phone update failed', { uid });
+      return res.status(500).json({ error: 'Could not update the mobile number', code: 'PHONE_UPDATE_FAILED' });
+    }
+
     // Re-check uniqueness at apply time. The request-time check was ~5 minutes
     // ago and another account could have claimed the number since.
     const conflict = await db
@@ -1607,19 +1626,6 @@ router.post('/settings/phone/confirm-change', async (req, res) => {
     if (conflict.length > 0) {
       logger.warn('[ProfileSettings] Phone change lost a race for the number', { uid });
       return res.status(409).json({ error: 'That mobile number is already in use', code: 'PHONE_ALREADY_IN_USE' });
-    }
-
-    // Firebase first: it owns the auth identity, and it is the write that can
-    // reject (bad format, taken). Doing it before the canonical row means a
-    // failure leaves both stores on the OLD number rather than disagreeing.
-    try {
-      await admin.auth().updateUser(uid, { phoneNumber: newPhone });
-    } catch (e: any) {
-      logger.error('[ProfileSettings] Firebase phone update failed', { uid, error: e?.message });
-      if (e?.code === 'auth/phone-number-already-exists') {
-        return res.status(409).json({ error: 'That mobile number is already in use', code: 'PHONE_ALREADY_IN_USE' });
-      }
-      return res.status(500).json({ error: 'Could not update the mobile number', code: 'PHONE_UPDATE_FAILED' });
     }
 
     const affected = await db.update(users).set({
