@@ -74,24 +74,61 @@ describe('nayax audit 2026-08-20 — HMAC + Cortina inbound auth', () => {
   describe('nayax-cortina.ts inbound SecretToken enforcement', () => {
     const src = root('server/routes/nayax-cortina.ts');
 
-    it('declares an assertCortinaSecret guard that reads NAYAX_CORTINA_SECRET_TOKEN', () => {
-      expect(src).toMatch(/function\s+assertCortinaSecret\s*\(/);
+    /**
+     * RENAMED, NOT REMOVED — and the rename left a real hole (2026-09-12).
+     *
+     * This pin required `assertCortinaSecret` on all four money routes. #2396
+     * replaced it: the old guard demanded `body.SecretToken`, which genuine
+     * Nayax callbacks do not send, so it declined every real call. The
+     * replacement `assertCortinaSession` is correct — but it was wired only to
+     * the two OPENING calls, leaving /settlement, /void and /refund on
+     * `cortinaEnabled()` alone, which is an env flag and not authentication.
+     * That is the precise condition item 5 at the top of this file was written
+     * to prevent.
+     *
+     * The pin was red the whole time and nobody knew: no CI job ran this file
+     * until the fiscal gate began matching by pattern. So it is re-pinned to
+     * the PROPERTY — every money route proves the caller knows the secret —
+     * rather than to one revision's function name, which is what let a rename
+     * quietly drop three routes.
+     */
+    it('both guards exist and derive from NAYAX_CORTINA_SECRET_TOKEN', () => {
+      expect(src).toMatch(/function\s+assertCortinaSession\s*\(/);
+      expect(src).toMatch(/function\s+assertCortinaCallbackOrigin\s*\(/);
       expect(src).toMatch(/process\.env\.NAYAX_CORTINA_SECRET_TOKEN/);
       expect(src).toMatch(/timingSafeEqual/);
+      // Fail-closed: an unset secret refuses rather than waving the call through.
+      expect(src).toMatch(/if\s*\(!secret\)[\s\S]{0,300}?cortinaDecline\(6,\s*'secret_not_configured'\)/);
     });
 
-    it('every money-touching Cortina route wires the guard right after cortinaEnabled()', () => {
-      // authorize/sale, settlement/saleend, void/cancel, refund — all four heads.
-      const heads = [
-        /router\.post\(\[['"]\/authorize['"][\s\S]*?const secretReject = assertCortinaSecret/,
-        /router\.post\(\[['"]\/settlement['"][\s\S]*?const secretReject = assertCortinaSecret/,
-        /router\.post\(\[['"]\/void['"][\s\S]*?const secretReject = assertCortinaSecret/,
-        /router\.post\(\[['"]\/refund['"][\s\S]*?const secretReject = assertCortinaSecret/,
+    it('EVERY money-touching route is guarded — opening and closing alike', () => {
+      const guarded: Array<[string, RegExp]> = [
+        ['authorize',  /router\.post\(\[['"]\/authorize['"][\s\S]*?assertCortinaSession\(/],
+        ['sale',       /router\.post\(\[['"]\/sale['"][\s\S]*?assertCortinaSession\(/],
+        ['settlement', /router\.post\(\[['"]\/settlement['"][\s\S]*?assertCortinaCallbackOrigin\(/],
+        ['void',       /router\.post\(\[['"]\/void['"][\s\S]*?assertCortinaCallbackOrigin\(/],
+        ['refund',     /router\.post\(\[['"]\/refund['"][\s\S]*?assertCortinaCallbackOrigin\(/],
       ];
-      for (const re of heads) expect(src).toMatch(re);
-      // Count guard call-sites — must be at least 4 (one per money route).
-      const calls = src.match(/assertCortinaSecret\(req\.body\)/g) || [];
-      expect(calls.length).toBeGreaterThanOrEqual(4);
+      for (const [name, re] of guarded) expect(src, `${name} must be guarded`).toMatch(re);
+      expect((src.match(/assertCortinaCallbackOrigin\(/g) || []).length).toBeGreaterThanOrEqual(4);
+    });
+
+    // The debit is the one that cannot be undone, so it gets its own pin: the
+    // guard must run BEFORE the reservation is claimed, not after.
+    it('settlement authenticates BEFORE it can touch a reservation', () => {
+      const body = src.slice(src.indexOf("router.post(['/settlement'"));
+      const guard = body.indexOf('assertCortinaCallbackOrigin(');
+      const claim = body.indexOf('k9000_redemption_reservations');
+      expect(guard).toBeGreaterThan(-1);
+      expect(claim).toBeGreaterThan(-1);
+      expect(guard).toBeLessThan(claim);
+    });
+
+    // A closing callback arrives when the WASH ENDS. Reusing the 10-minute
+    // session TTL here would decline real settlements — the #2396 failure.
+    it('closing callbacks are not bound by the 10-minute session TTL', () => {
+      expect(src).toMatch(/CORTINA_CALLBACK_TXN_MAX_AGE_MS\s*=\s*24 \* 60 \* 60 \* 1000/);
+      expect(src).toMatch(/verifyStartSessionTransactionId\([\s\S]{0,160}?CORTINA_CALLBACK_TXN_MAX_AGE_MS/);
     });
   });
 });
