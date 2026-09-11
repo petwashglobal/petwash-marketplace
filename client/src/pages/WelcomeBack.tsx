@@ -110,7 +110,7 @@ export default function WelcomeBack() {
           {greeting}
         </h1>
         <p className="text-gray-500 mt-2" style={{ textAlign: 'center' }}>
-          {he ? 'כיף לראות אותך שוב ב־PetWash™' : 'Nice to see you again at PetWash™'}
+          {he ? 'כיף לראות אותך שוב ב־PetWash™‎' : 'Nice to see you again at PetWash™‎'}
         </p>
 
         <figure className="relative w-full max-w-sm mt-8 rounded-[28px] overflow-hidden shadow-[0_20px_60px_-20px_rgba(0,0,0,0.35)]">

@@ -1,5 +1,5 @@
 /**
- * Google OAuth is authentication only — it must not bypass PetWash™ onboarding.
+ * Google OAuth is authentication only — it must not bypass PetWash™‎ onboarding.
  * (CEO spec, 2026-09-12.)
  *
  * NEW USER  → /complete-profile: name + email pre-filled from Google; asks only
