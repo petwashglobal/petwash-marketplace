@@ -44,21 +44,36 @@ encrypted data. All `VITE_*` are used at build time. `NAYAX_SECRET` (not
 3. Cloud Run → plain env **`LYNX_ENABLED=true`** (optional **`LYNX_TEST_MACHINE_ID`**).
 4. Verify: `POST /api/admin/lynx/connection-test` (super-admin).
 
-### B. Cortina (needs your Nayax rep — "Cortina onboarding")
-Ask the rep to onboard PetWash as a **Cortina StaticQR payment method** and provide:
+### B. Cortina (needs your Nayax rep — "Cortina onboarding") — UPDATED 2026-09-12
+Ask the rep to onboard PetWash as a **Cortina External Prepaid** payment provider
+(EntryMode "QR" — the DOT reader scans the member's app QR) and provide:
 - **integrator / payment-method name** → GCP secret `NAYAX_CORTINA_INTEGRATOR_NAME`
-- **64-char SecretToken** → GCP secret `NAYAX_CORTINA_SECRET_TOKEN`
-- register our callback URLs: `/Cortina/StaticQR/{Sale,Settlement,Authorization,Cancel,Void,Refund}`
-  (mounted under `/api/webhooks/nayax/cortina/...`)
-- confirm the flow (Pre-authorization vs Pre-selection) and give **sandbox (qa-lynx)** access first.
+- **64-char SecretToken** → GCP secret `NAYAX_CORTINA_SECRET_TOKEN` (used ONLY as the
+  StartSession AES key — Nayax never sends it in a callback body)
+- register our **integrator base URL**: `https://petwash.co.il/api/webhooks/nayax/cortina`
+  Nayax appends the spec suffixes itself; all are mounted:
+  `/Cortina/StartSession`, `/Cortina/PrePaid/{Sale,Authorization,Settlement,Void,Cancel,Refund}`,
+  `/Cortina/SaleEndNotification`.
+- the **IP addresses** Nayax calls us from. Default allowlist = Israel production
+  `185.159.232.2, 84.110.125.194, 82.102.172.206, 212.179.76.198` + QA `31.154.55.2`;
+  override with plain env `NAYAX_CORTINA_ALLOWED_IPS=ip1,ip2,cidr/24` (fail-closed).
+- confirm **PreSelection** on the four K9000s (MDB "02 PreSelection Enabled" — already the
+  case in MoMa) — `/Sale` is then the money call and the code debits there.
+- confirm whether **StartSession** is configured for us. It is expected (default
+  `CORTINA_REQUIRE_START_SESSION=true`: every /Authorization and /Sale must carry a
+  TransactionId we minted ≤10 min earlier). If Nayax runs us WITHOUT StartSession, set
+  `CORTINA_REQUIRE_START_SESSION=false` — auth then rests on the IP allowlist + our
+  signed 45-second QR.
+- give **sandbox (QA)** access first.
 
-### C. Bay mapping (from Nayax Core → Devices / Machine Management)
-- `NAYAX_TERMINAL_ID_MAIN` = left-bay terminal id
-- `NAYAX_TERMINAL_ID_SECONDARY` = right-bay terminal id
-- note each bay's **MachineInfo.Id** (the inbound callbacks match on it).
+### C. Bay mapping (station_bays)
+Each of the four bays must carry its Nayax terminal id in `station_bays.nayaxTerminalId`
+(or `nayaxQrReaderId`) — the callback's `MachineInfo.TerminalId` / `MachineInfo.Id` is
+matched against them. Machines: Wald right 182443, Wald left 182462, Park 80 right 182403,
+Park 80 left 182374 (MoMa, 2026-09-11).
 
 ### D. Flip ON (only after a passing sandbox cycle)
-- `NAYAX_CORTINA_ENABLED=true` (plain Cloud Run env).
+- `NAYAX_CORTINA_ENABLED=true` (plain Cloud Run env). Everything above is DARK until then.
 - Sandbox default base = `qa-lynx.nayax.com`; production = set `NAYAX_CORTINA_SANDBOX=false`
   (or `LYNX_SANDBOX=false`) to use `lynx.nayax.com`.
 

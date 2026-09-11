@@ -66,3 +66,82 @@ export function generateStartSessionTransactionId(): string {
   }
   return s.slice(0, 36);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stateless StartSession TransactionId (issue + verify)
+//
+// The spec (devzone.nayax.com → Cortina → Start Session → Authentication
+// Process, re-read 2026-09-12) makes the integrator validate that the
+// TransactionId on a later /Authorization or /Sale "was created in a previous
+// Start Session request and is still valid" (≤ 10 minutes recommended). Nothing
+// else authenticates those callbacks: the Secret Token is used ONLY as the AES
+// key and is never sent in a request body.
+//
+// We do that WITHOUT a table. The 36 numeric characters are laid out as
+//
+//     [10] unix seconds  [6] random nonce  [20] HMAC-SHA256(secret, ts|nonce) as digits
+//
+// so verification is a recompute-and-compare: no DB row, no sweep, nothing to
+// leak. The HMAC keys on the full 64-char secret (the AES key uses its last 32
+// chars — a different derivation, deliberately). Two bays scanning in the same
+// second get different ids because of the nonce.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const START_SESSION_TXN_TTL_MS = 10 * 60 * 1000; // spec: "no longer than 10 minutes"
+const TXN_TS_LEN = 10;
+const TXN_NONCE_LEN = 6;
+const TXN_MAC_LEN = 20;
+
+function txnMac(secretToken: string, ts: string, nonce: string): string {
+  const mac = crypto.createHmac('sha256', Buffer.from((secretToken || '').trim(), 'utf8'))
+    .update(`${ts}|${nonce}`, 'utf8')
+    .digest();
+  // Fold the 32 MAC bytes into a 20-digit decimal string: read as a big integer
+  // and take the low 20 digits. BigInt keeps it exact — no float rounding.
+  const asDigits = BigInt('0x' + mac.toString('hex')).toString(10);
+  return asDigits.slice(-TXN_MAC_LEN).padStart(TXN_MAC_LEN, '0');
+}
+
+/**
+ * Mint a fresh 36-numeric TransactionId for a StartSession response. The
+ * caller encrypts it with encryptStartSession(); Nayax decrypts and echoes it
+ * as BasicInfo.TransactionId on the following Authorization / Sale.
+ */
+export function issueStartSessionTransactionId(secretToken: string, nowMs: number = Date.now()): string {
+  if ((secretToken || '').trim().length < 32) throw new Error('cortina_secret_token_too_short');
+  const ts = Math.floor(nowMs / 1000).toString().padStart(TXN_TS_LEN, '0').slice(-TXN_TS_LEN);
+  const nonce = crypto.randomInt(0, 1_000_000).toString().padStart(TXN_NONCE_LEN, '0');
+  const id = ts + nonce + txnMac(secretToken, ts, nonce);
+  if (id.length !== 36) throw new Error('cortina_txn_id_layout_error');
+  return id;
+}
+
+export type StartSessionTxnVerdict =
+  | { ok: true; issuedAtMs: number }
+  | { ok: false; reason: 'malformed' | 'bad_mac' | 'expired' | 'future' };
+
+/**
+ * Verify that a TransactionId presented on /Authorization or /Sale was minted
+ * by issueStartSessionTransactionId() with OUR secret, and is still inside the
+ * 10-minute window. Constant-time on the MAC compare.
+ */
+export function verifyStartSessionTransactionId(
+  secretToken: string,
+  transactionId: string,
+  nowMs: number = Date.now(),
+  ttlMs: number = START_SESSION_TXN_TTL_MS,
+): StartSessionTxnVerdict {
+  const id = String(transactionId || '').trim();
+  if (!/^\d{36}$/.test(id) || (secretToken || '').trim().length < 32) return { ok: false, reason: 'malformed' };
+  const ts = id.slice(0, TXN_TS_LEN);
+  const nonce = id.slice(TXN_TS_LEN, TXN_TS_LEN + TXN_NONCE_LEN);
+  const mac = id.slice(TXN_TS_LEN + TXN_NONCE_LEN);
+  const expected = txnMac(secretToken, ts, nonce);
+  const a = Buffer.from(mac, 'utf8');
+  const b = Buffer.from(expected, 'utf8');
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { ok: false, reason: 'bad_mac' };
+  const issuedAtMs = Number(ts) * 1000;
+  if (issuedAtMs > nowMs + 60_000) return { ok: false, reason: 'future' }; // clock skew tolerance: 60s
+  if (nowMs - issuedAtMs > ttlMs) return { ok: false, reason: 'expired' };
+  return { ok: true, issuedAtMs };
+}

@@ -97,8 +97,11 @@ describe('Nayax Cortina pre-paid redemption (reserve→commit→release)', () =>
     expect(src).not.toMatch(/Result: 'Approved'|Approved: true/);
   });
 
-  it('decline codes match the verified list (50=unknown machine, NOT 5=fraud, for bay_not_found)', () => {
-    expect(src).toMatch(/cortinaDecline\(50, 'bay_not_found'\)/);
+  it('decline codes match the verified PREPAID list (bay_not_found=6; 50 is a StaticQR-only code; never 5=fraud)', () => {
+    // devzone.nayax.com → Cortina → Prepaid Card → Authorization/Sale decline list (read 2026-09-12)
+    // has NO code 50 — that one exists only in the StaticQR product. Unknown terminal = 6.
+    expect(src).toMatch(/cortinaDecline\(6, 'bay_not_found'\)/);
+    expect(src).not.toMatch(/cortinaDecline\(50,/);
     expect(src).not.toMatch(/cortinaDecline\(5, 'bay_not_found'\)/);            // 5 = Suspected Fraud (wrong)
     expect(src).toMatch(/cortinaDecline\(999, 'internal_error'\)/);            // 999 = General exception
   });
