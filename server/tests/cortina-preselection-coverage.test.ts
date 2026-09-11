@@ -21,7 +21,7 @@ describe('Cortina StaticQR — flow coverage', () => {
   it('answers the PreSelection Sale path (approve → machine vends)', () => {
     expect(SRC).toMatch(/router\.post\(\[[^\]]*'\/sale'[^\]]*'\/Sale'[^\]]*\]/);
   });
-  it('answers the PreSelection Sale End Notification path (commit)', () => {
+  it('answers the PreSelection Sale End Notification path (ack only — the debit happened in /Sale)', () => {
     expect(SRC).toMatch(/router\.post\(\[[^\]]*'\/sale-end-notification'[^\]]*'\/SaleEndNotification'[^\]]*\]/);
   });
   it('answers PreAuthorization Authorization + Settlement + Cancel', () => {
@@ -75,9 +75,10 @@ describe('Cortina StaticQR — response contract + decline codes', () => {
     expect(SRC).toMatch(/Status:\s*\{\s*Verdict:\s*'Approved'/);
     expect(SRC).toMatch(/Status:\s*\{\s*Verdict:\s*'Declined',\s*Code:\s*code/);
   });
-  it('uses the verified StaticQR decline codes (1 funds, 50 unknown machine, 992 timeout, 999 general)', () => {
+  it('uses the verified PREPAID decline codes (1 funds, 6 system/unknown terminal, 992 timeout, 999 general — 50 is StaticQR-only)', () => {
     expect(SRC).toMatch(/cortinaDecline\(1,/);
-    expect(SRC).toMatch(/cortinaDecline\(50,/);
+    expect(SRC).toMatch(/cortinaDecline\(6, 'bay_not_found'\)/);
+    expect(SRC).not.toMatch(/cortinaDecline\(50,/);
     expect(SRC).toMatch(/cortinaDecline\(992,/);
     expect(SRC).toMatch(/cortinaDecline\(999,/);
   });
