@@ -493,7 +493,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
-              <div className="mt-5">
+              <div className="mt-5 flex flex-wrap items-center gap-x-6 gap-y-3">
                 <Link href="/admin/stations">
                   <button
                     className="text-sm font-light text-black border-b transition-opacity hover:opacity-60"
@@ -501,6 +501,23 @@ export default function AdminDashboard() {
                     data-testid="button-manage-stations"
                   >
                     {he ? 'ניהול עמדות ←' : 'Manage stations →'}
+                  </button>
+                </Link>
+                {/* STAFF SCAN (2026-09-11): /staff/scan is the counter tool —
+                    scan a customer's card, read their balances, charge for a
+                    wash. It was ROUTED and role-gated to staff, and reachable
+                    by nothing: no link anywhere in the client, and no redirect.
+                    An APPROVED staff member is sent here, to /admin/dashboard
+                    (post-login.ts), which until now offered exactly one link
+                    and it was not this one. So a staff member could never open
+                    their own till without being told the URL. */}
+                <Link href="/staff/scan">
+                  <button
+                    className="text-sm font-light text-black border-b transition-opacity hover:opacity-60"
+                    style={{ borderColor: GOLD }}
+                    data-testid="button-staff-scan"
+                  >
+                    {he ? 'סריקת לקוח ←' : 'Scan a customer →'}
                   </button>
                 </Link>
               </div>
