@@ -171,3 +171,4 @@
 /walk-my-pet/walkers
 /wash/qr
 /welcome-consent
+/welcome-back  # redirect target only: SignUpLuxury/GoogleOneTap navigate here after sign-in (welcomeBackOr), never linked (2026-09-12)
