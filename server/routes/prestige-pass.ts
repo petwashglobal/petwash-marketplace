@@ -1238,7 +1238,12 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
       qrTokenVersion:     1,
     });
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
+    // `inline`, never `attachment` — iOS Safari cannot install a DOWNLOADED
+    // pass and answers "Safari cannot download this file". See
+    // server/routes/pass-universal.ts for the production log trace that proved
+    // this, and server/tests/pkpassServedInline.regression.test.ts for the pin
+    // that found this second instance.
+    res.setHeader('Content-Disposition', `inline; filename="${serialNumber}.pkpass"`);
     return res.send(pkpassBuffer);
   } catch (err) {
     logger.error('[PrestigePass] /apple-wallet error:', err);

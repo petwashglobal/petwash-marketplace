@@ -423,7 +423,22 @@ router.get('/apple/:token', async (req: Request, res: Response) => {
     const pkpassBuffer = await generateAppleWalletPass(buildVisual(pass));
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${pass.passId}.pkpass"`);
+    // `inline`, NEVER `attachment` (2026-09-12). iOS Safari treats a .pkpass
+    // marked `attachment` as a file DOWNLOAD, and it has no flow to install a
+    // downloaded pass — so it answers "Safari cannot download this file" and the
+    // customer concludes the product is broken. With `inline` it hands the pass
+    // to Wallet and shows "Add to Wallet".
+    //
+    // server/routes/wallet.ts already gets this right in all four of its pkpass
+    // responses; this single route had drifted.
+    //
+    // Proven from production logs, not guessed. The CEO's own attempt:
+    //   08:09:03.025  GET /api/pass/<token>
+    //   08:09:03.843  GET /api/pass/apple/<token>     (redirected — certs ARE configured)
+    //   08:09:04.190  [AppleWallet] Generating pkpass {passId: PW-97A5-DEDF}
+    //   ...and NO error afterwards. The server built and returned the pass
+    //   correctly; iOS refused it at the disposition.
+    res.setHeader('Content-Disposition', `inline; filename="${pass.passId}.pkpass"`);
     res.setHeader('Last-Modified', new Date().toUTCString());
     return res.send(pkpassBuffer);
   } catch (err: any) {
