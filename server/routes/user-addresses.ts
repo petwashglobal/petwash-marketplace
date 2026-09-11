@@ -68,7 +68,12 @@ router.post("/", requireAuth, async (req, res) => {
     const userId = (req as any).user.uid;
     const schema = z.object({
       address: z.string().min(3),
-      label: z.enum(["home", "work", "other", "custom"]).default("other"),
+      // NOT defaulted. An auto-save (booking flow, "use my location") supplies no
+      // label, and that must mean "leave whatever the customer chose alone" — not
+      // "other". With .default("other") every re-save of a nearby address reset a
+      // customer's own Home/Work back to other, because the upsert below is the
+      // one field that did not preserve the stored value.
+      label: z.enum(["home", "work", "other", "custom"]).optional(),
       customLabel: z.string().max(80).optional(),
       street: z.string().optional(),
       streetNumber: z.string().optional(),
@@ -119,8 +124,15 @@ router.post("/", requireAuth, async (req, res) => {
         .set({
           usageCount: match.usageCount + 1,
           lastUsedAt: new Date(),
-          label: data.label,
+          // Preserve the customer's own labelling unless they actually re-labelled.
+          label: data.label ?? match.label,
           customLabel: data.customLabel ?? match.customLabel,
+          // Enrich the structured parts too — these were silently dropped on a
+          // match, so an address first saved from a bare "use my location" could
+          // never gain its street/number/city even when the customer re-entered it.
+          street: data.street ?? match.street,
+          streetNumber: data.streetNumber ?? match.streetNumber,
+          city: data.city ?? match.city,
           // Enrich lat/lng if incoming has them but stored doesn't
           lat: match.lat ?? (data.lat?.toString() ?? null),
           lng: match.lng ?? (data.lng?.toString() ?? null),
@@ -155,7 +167,7 @@ router.post("/", requireAuth, async (req, res) => {
       .values({
         userId,
         address: data.address,
-        label: data.label,
+        label: data.label ?? "other",
         customLabel: data.customLabel,
         street: data.street,
         streetNumber: data.streetNumber,

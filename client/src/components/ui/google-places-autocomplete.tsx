@@ -126,6 +126,7 @@ export function GooglePlacesAutocomplete({
   const [entrance, setEntrance] = useState('');
   const [accessNotes, setAccessNotes] = useState('');
   const [postalCode, setPostalCodeState] = useState('');
+  const [city, setCityState] = useState('');
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [showManualHint, setShowManualHint] = useState(false);
   // PR-B P0 fix: surface critical service errors (503 / 403) immediately
@@ -321,6 +322,7 @@ export function GooglePlacesAutocomplete({
     setEntrance('');
     setAccessNotes('');
     setPostalCodeState(details.postalCode || '');
+    setCityState(details.city || '');
     onChange(details.formattedAddress, details);
     onPlaceSelected?.(details);
     selectingRef.current = false;
@@ -362,6 +364,7 @@ export function GooglePlacesAutocomplete({
       setBuildingNumber('');
       setApartment('');
       setPostalCodeState('');
+      setCityState('');
       setPredictions([]);
       setShowDropdown(false);
     }
@@ -399,67 +402,71 @@ export function GooglePlacesAutocomplete({
     }
   }, [showDropdown, predictions, highlightIndex, selectPrediction]);
 
-  const emitUpdatedDetails = useCallback((
-    base: PlaceDetails, bldg: string, apt: string, zip: string, flr: string, ent: string, nts: string,
-  ) => {
+  /**
+   * One editable box === one stored column. The parts below are named, not
+   * positional: this used to be `emitUpdatedDetails(base, bldg, apt, zip, flr,
+   * ent, nts)` — seven same-typed string arguments where transposing two
+   * silently wrote a floor into a מיקוד, and adding a field meant touching
+   * every call site.
+   *
+   * Maps 1:1 onto user_addresses: streetNumber / apartment / floor / entrance /
+   * city / postalCode / notes.
+   */
+  interface AddressParts {
+    streetNumber: string; apartment: string; floor: string;
+    entrance: string; city: string; postalCode: string; notes: string;
+  }
+
+  const emitUpdatedDetails = useCallback((base: PlaceDetails, patch: Partial<AddressParts>) => {
+    const parts: AddressParts = {
+      streetNumber: buildingNumber, apartment, floor, entrance,
+      city, postalCode, notes: accessNotes,
+      ...patch,
+    };
     const updated: PlaceDetails = {
       ...base,
-      streetNumber: bldg || base.streetNumber,
-      apartment: apt || undefined,
-      floor: flr || undefined,
-      entrance: ent || undefined,
-      notes: nts || undefined,
-      postalCode: zip || base.postalCode,
+      streetNumber: parts.streetNumber || base.streetNumber,
+      apartment: parts.apartment || undefined,
+      floor: parts.floor || undefined,
+      entrance: parts.entrance || undefined,
+      notes: parts.notes || undefined,
+      city: parts.city || base.city,
+      postalCode: parts.postalCode || base.postalCode,
     };
-    // Rebuild the formatted address from street + number + entrance/floor/apartment
-    // (access notes stay OUT of the formatted string — they're internal for the provider).
+    // Rebuild the formatted address from street + number + city. Access notes and
+    // the unit breakdown stay structured; only the unit is appended for humans.
+    const cityForText = parts.city || base.city;
     let fullAddr = base.street
-      ? `${base.street}${bldg ? ' ' + bldg : ''}${base.city ? ', ' + base.city : ''}${base.country ? ', ' + base.country : ''}`
+      ? `${base.street}${parts.streetNumber ? ' ' + parts.streetNumber : ''}${cityForText ? ', ' + cityForText : ''}`
       : base.formattedAddress;
-    const unit = [ent && `כניסה ${ent}`, flr && `קומה ${flr}`, apt && `דירה ${apt}`].filter(Boolean).join(', ');
+    const unit = [
+      parts.entrance && `כניסה ${parts.entrance}`,
+      parts.floor && `קומה ${parts.floor}`,
+      parts.apartment && `דירה ${parts.apartment}`,
+    ].filter(Boolean).join(', ');
     if (unit) fullAddr = `${fullAddr} (${unit})`;
     updated.formattedAddress = fullAddr;
     onChange(fullAddr, updated);
     onPlaceSelected?.(updated);
-  }, [onChange, onPlaceSelected]);
+  }, [onChange, onPlaceSelected, buildingNumber, apartment, floor, entrance, city, postalCode, accessNotes]);
 
-  const handleBuildingNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setBuildingNumber(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, val, apartment, postalCode, floor, entrance, accessNotes);
-  }, [selectedPlace, apartment, postalCode, floor, entrance, accessNotes, emitUpdatedDetails]);
+  /** Every box goes through here, so a new box cannot forget to emit. */
+  const patchPart = useCallback((key: keyof AddressParts, setter: (v: string) => void) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setter(val);
+      if (selectedPlace) emitUpdatedDetails(selectedPlace, { [key]: val } as Partial<AddressParts>);
+    }, [selectedPlace, emitUpdatedDetails]);
 
-  const handleApartmentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setApartment(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, val, postalCode, floor, entrance, accessNotes);
-  }, [selectedPlace, buildingNumber, postalCode, floor, entrance, accessNotes, emitUpdatedDetails]);
+  const handleBuildingNumberChange = patchPart('streetNumber', setBuildingNumber);
+  const handleApartmentChange = patchPart('apartment', setApartment);
+  const handleFloorChange = patchPart('floor', setFloor);
+  const handleEntranceChange = patchPart('entrance', setEntrance);
+  const handleNotesChange = patchPart('notes', setAccessNotes);
+  const handleCityChange = patchPart('city', setCityState);
+  const handlePostalCodeChange = patchPart('postalCode', setPostalCodeState);
 
-  const handleFloorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setFloor(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, postalCode, val, entrance, accessNotes);
-  }, [selectedPlace, buildingNumber, apartment, postalCode, entrance, accessNotes, emitUpdatedDetails]);
-
-  const handleEntranceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setEntrance(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, postalCode, floor, val, accessNotes);
-  }, [selectedPlace, buildingNumber, apartment, postalCode, floor, accessNotes, emitUpdatedDetails]);
-
-  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const val = e.target.value;
-    setAccessNotes(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, postalCode, floor, entrance, val);
-  }, [selectedPlace, buildingNumber, apartment, postalCode, floor, entrance, emitUpdatedDetails]);
-
-  const handlePostalCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    setPostalCodeState(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, val, floor, entrance, accessNotes);
-  }, [selectedPlace, buildingNumber, apartment, floor, entrance, accessNotes, emitUpdatedDetails]);
-
-  // Dropdown rendered via portal so it escapes any overflow:hidden parent container.
+  // Dropdown rendered via portal  // Dropdown rendered via portal so it escapes any overflow:hidden parent container.
   // Three states are visible to the user — never a silent "dropdown vanished":
   //   1. Has predictions → list them
   //   2. Typed ≥3 chars but zero predictions → "No matches" empty state with
@@ -632,27 +639,6 @@ export function GooglePlacesAutocomplete({
 
       {showExtraFields && selectedPlace && (
         <div className="mt-3 rounded-xl border border-[#D4AF37] bg-[#D4AF37]/40 p-3 space-y-3">
-          {/* Confirmed address context — city / area / country */}
-          {(selectedPlace.city || selectedPlace.state || selectedPlace.country) && (
-            <div className="flex flex-wrap gap-1.5">
-              {selectedPlace.city && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-green-700 border border-green-200 shadow-sm">
-                  🏙️ {selectedPlace.city}
-                </span>
-              )}
-              {selectedPlace.state && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-[#B8932F] border border-[#D4AF37] shadow-sm">
-                  📍 {selectedPlace.state}
-                </span>
-              )}
-              {selectedPlace.country && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-700 border border-gray-200 shadow-sm">
-                  🌍 {selectedPlace.country}
-                </span>
-              )}
-            </div>
-          )}
-
           {/* Editable sub-fields: building no. + unit, then postal code */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -720,9 +706,32 @@ export function GooglePlacesAutocomplete({
               />
             </div>
           </div>
+          {/* City + מיקוד. City was a read-only chip: when the geocoder guessed the
+              wrong city the customer had no way to correct it, and the manual path
+              set city:'' with no box to fill. Both are stored columns. The district
+              and country chips that used to sit here are gone — user_addresses has
+              no column for either, and `country` was never set on this path, so
+              that chip never rendered and neither was ever saved. */}
+          <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-              {postalCodeLabel || 'מיקוד (Postal Code)'}
+              עיר
+            </Label>
+            <Input
+              type="text"
+              value={city}
+              onChange={handleCityChange}
+              placeholder="לדוג׳ כפר סבא"
+              className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
+              style={{ fontSize: '16px' }}
+              autoComplete="off"
+              dir="rtl"
+              data-testid="input-address-city"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+              {postalCodeLabel || 'מיקוד'}
             </Label>
             <Input
               type="text"
@@ -734,7 +743,9 @@ export function GooglePlacesAutocomplete({
               style={{ fontSize: '16px' }}
               autoComplete="off"
               dir="ltr"
+              data-testid="input-address-postal"
             />
+          </div>
           </div>
           {/* Access notes — what the sitter/walker/courier needs to reach you */}
           <div>

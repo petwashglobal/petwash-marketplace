@@ -101,7 +101,10 @@ export function AddressPicker({
           postalCode: place.postalCode,   // optional — never blocks
           lat: place.lat as any,
           lng: place.lng as any,
-          label: "other",
+          // No label on an auto-save. Sending "other" here reset the customer's
+          // own Home/Work every time they re-entered a nearby address, because
+          // the upsert overwrites label unconditionally. Omitting it means
+          // "leave their labelling alone".
         });
       }
     },
@@ -150,10 +153,15 @@ export function AddressPicker({
           if (autoSave && user?.uid) {
             saveMutation.mutate({
               address: formatted,
+              // /api/geocode/reverse already resolved these — dropping them meant
+              // an address saved from "use my location" could never gain a
+              // street/number, and the route did not enrich them on a later match.
+              street: data?.street,
+              streetNumber: data?.streetNumber,
               city: data?.city,
+              postalCode: data?.postalCode,
               lat: latitude as any,
               lng: longitude as any,
-              label: "other",
             });
           }
         } catch {
@@ -192,7 +200,8 @@ export function AddressPicker({
       if (user?.uid) {
         saveMutation.mutate({
           address: addr.address,
-          label: addr.label ?? "other",
+          // Usage bump only — the server preserves the stored label now, and
+          // coercing a null label to "other" here would relabel it on every tap.
           lat: addr.lat ? Number(addr.lat) : undefined,
           lng: addr.lng ? Number(addr.lng) : undefined,
         });
