@@ -192,9 +192,17 @@ describe('Israeli postcode is building-level, never street-level', () => {
   });
 
   it('prefers the building-level row when two rows read the same', () => {
+    // 2026-09-11: dedupe now MERGES the two rows rather than discarding one, so
+    // the registry's official code and OSM's coordinates can both survive (see
+    // israelRegistryIsPrimary.regression.test.ts). The contract asserted here is
+    // unchanged: one row out, and the building-level facts are the ones kept.
     const bare = { description: 'X, Y', mainText: 'X', secondaryText: 'Y', countryCode: 'IL', placeId: 'a' } as any;
     const withNumber = { ...bare, placeId: 'b', streetNumber: '12', postalCode: '1234567' };
-    expect(dedupePredictions([bare, withNumber])).toEqual([withNumber]);
-    expect(dedupePredictions([withNumber, bare])).toEqual([withNumber]);
+    for (const order of [[bare, withNumber], [withNumber, bare]]) {
+      const out = dedupePredictions(order as any);
+      expect(out).toHaveLength(1);
+      expect(out[0].streetNumber).toBe('12');
+      expect(out[0].postalCode).toBe('1234567');
+    }
   });
 });

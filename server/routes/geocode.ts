@@ -50,6 +50,11 @@ interface Prediction {
   countryCode: string;
   lat?: number;
   lng?: number;
+  /** סמל_ישוב / סמל_רחוב — the official Israel-Post key, from OUR registry. */
+  cityCode?: number | null;
+  streetCode?: number | null;
+  /** 'registry' = the official data.gov.il list; 'osm' = Photon/Nominatim. */
+  source?: 'registry' | 'osm';
 }
 
 // Small TTL cache so repeated keystrokes / popular queries don't hammer providers.
@@ -90,6 +95,7 @@ export function photonFeatureToPrediction(f: any): Prediction {
     // Building-level only — see BUILDING_LEVEL_POSTCODE note above.
     postalCode: p.housenumber && p.postcode ? String(p.postcode) : undefined,
     countryCode: p.countrycode || 'IL',
+    source: 'osm' as const,
     lat: typeof coords[1] === 'number' ? coords[1] : undefined,
     lng: typeof coords[0] === 'number' ? coords[0] : undefined,
   };
@@ -143,6 +149,7 @@ async function nominatimSuggest(q: string, lang: string): Promise<Prediction[]> 
         // Building-level only — see BUILDING_LEVEL_POSTCODE note above.
         postalCode: streetNumber && a.postcode ? String(a.postcode) : undefined,
         countryCode: 'IL',
+        source: 'osm' as const,
         lat: Number(x.lat),
         lng: Number(x.lon),
       } as Prediction;
@@ -158,13 +165,16 @@ async function nominatimSuggest(q: string, lang: string): Promise<Prediction[]> 
 // by geocode-on-save.
 function localStreetSuggest(q: string): Prediction[] {
   return searchIsraelStreets(q, 6).map((r) => ({
-    placeId: `ilstreet:${r.street}|${r.city}`,
+    placeId: `ilstreet:${r.cityCode ?? ''}-${r.streetCode ?? ''}`,
     description: `${r.street}, ${r.city}`,
     mainText: r.street,
     secondaryText: r.city,
     street: r.street,
     city: r.city,
     countryCode: 'IL',
+    cityCode: r.cityCode ?? null,
+    streetCode: r.streetCode ?? null,
+    source: 'registry' as const,
   }));
 }
 
@@ -197,15 +207,48 @@ function localCitySuggest(q: string): Prediction[] {
 export function dedupePredictions(list: Prediction[]): Prediction[] {
   const best = new Map<string, Prediction>();
   for (const p of list) {
-    const key = (p.description || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    // Key on what the address IS, not on the sentence we printed. OSM appends a
+    // district ("ויצמן, כפר סבא, מחוז המרכז") where our registry does not
+    // ("ויצמן, כפר סבא") — keying on the description alone left both on screen as
+    // two rows for one street.
+    const key = (p.street || p.city)
+      ? `${(p.street || '').trim()}|${(p.streetNumber || '').trim()}|${(p.city || '').trim()}`.toLowerCase()
+      : (p.description || '').replace(/\s+/g, ' ').trim().toLowerCase();
     if (!key) continue;
     const seen = best.get(key);
     if (!seen) { best.set(key, p); continue; }
-    // Prefer a building-level hit: it has a house number, and with it a postcode
-    // we are actually allowed to keep.
-    if (!seen.streetNumber && p.streetNumber) best.set(key, p);
+    best.set(key, mergePrediction(seen, p));
   }
   return Array.from(best.values());
+}
+
+/**
+ * Two sources describing one street, each holding something the other lacks.
+ * The registry is authoritative for the NAME and carries the official
+ * Israel-Post code; OSM is the only one with coordinates and house numbers.
+ * Losing either is a real loss, so combine rather than pick.
+ */
+function mergePrediction(a: Prediction, b: Prediction): Prediction {
+  const registry = a.source === 'registry' ? a : b.source === 'registry' ? b : null;
+  const osm = a.source === 'osm' ? a : b.source === 'osm' ? b : null;
+  const base = registry ?? a;
+  const other = registry ? (osm ?? b) : b;
+  return {
+    ...base,
+    // A building-level hit beats a bare street — it is the only one allowed to
+    // carry a postcode (see BUILDING_LEVEL_POSTCODE).
+    streetNumber: base.streetNumber || other.streetNumber,
+    postalCode: base.postalCode || other.postalCode,
+    lat: base.lat ?? other.lat,
+    lng: base.lng ?? other.lng,
+    state: base.state || other.state,
+    cityCode: base.cityCode ?? other.cityCode ?? null,
+    streetCode: base.streetCode ?? other.streetCode ?? null,
+    // Keep the registry's clean description when we have one.
+    description: registry ? registry.description : base.description,
+    mainText: registry ? registry.mainText : base.mainText,
+    secondaryText: registry ? registry.secondaryText : base.secondaryText,
+  };
 }
 
 // GET /api/geocode/suggest?q=...&lang=he — address predictions with parts + lat/lng inline.
@@ -220,24 +263,31 @@ router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
     return res.json({ predictions: hit.data });
   }
 
-  // PRIMARY: Photon — real Hebrew Israeli streets WITH house numbers AND
-  // coordinates. Coordinates matter: PetTrek fares and booker↔provider proximity
-  // matching need them, and the offline street list has none. Photon is free (no
-  // Google fee).
-  let predictions: Prediction[] = [];
-  try {
-    predictions = await photonSuggest(q);
-  } catch (err: any) {
-    logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
-  }
+  // OUR OWN official registry runs FIRST, alongside Photon — not as a
+  // never-reached fallback.
+  //
+  // It used to sit behind `if (predictions.length === 0)`, and Photon answers
+  // every plausible Israeli query with something, so those 63,571 official
+  // streets / 1,310 cities (data.gov.il, רשות האוכלוסין וההגירה) were in effect
+  // dead weight in the image: measured 2026-09-11, Photon returned 1-6 rows for
+  // 5/5 real Israeli street queries, so the local branch never ran once.
+  //
+  // The two sources are not rivals. The registry is authoritative for WHICH
+  // STREET EXISTS and carries the Israel-Post key; Photon is the only one with
+  // coordinates and house numbers. mergePrediction() combines them, so one row
+  // ends up with the official name + code AND real coordinates.
+  const [photon, registry] = await Promise.all([
+    photonSuggest(q).catch((err: any) => {
+      logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
+      return [] as Prediction[];
+    }),
+    Promise.resolve(localStreetSuggest(q)),
+  ]);
 
-  // FALLBACK: our OWN baked-in 63k Israeli streets (server/data/israel-streets.json,
-  // loaded async at startup — never blocks the request path). Fills any street
-  // Photon's OSM map is missing and is the reliability backstop when Photon is
-  // down/slow. No coords → user types the house number, coords filled on save.
-  if (predictions.length === 0) {
-    predictions = localStreetSuggest(q);
-  }
+  // Registry first: it is the authority on the name, and dedupe keeps the first
+  // row it sees as the base for the merge.
+  let predictions: Prediction[] = [...registry, ...photon];
+
   if (predictions.length === 0) {
     try {
       predictions = await nominatimSuggest(q, lang);

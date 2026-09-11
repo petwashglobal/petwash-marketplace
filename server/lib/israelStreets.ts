@@ -13,7 +13,23 @@ import path from 'path';
 import { logger } from './logger';
 
 interface StreetRow { id: number; city_name: string; street_name: string; city_code?: number | null; street_code?: number | null; }
-interface IndexedRow { city: string; street: string; nCity: string; nStreet: string }
+/**
+ * The official Israel-Post key travels WITH the row. It used to be parsed into
+ * StreetRow and then dropped here, so `city_code` / `street_code` existed in the
+ * 6.6MB dataset and in a type, and nowhere else in the product — no caller, no
+ * column, no response field. That is the CEO's "I gave codes, why not work".
+ */
+/** A hit from the official registry, carrying the Israel-Post key. */
+export interface IsraelStreetHit {
+  street: string;
+  city: string;
+  /** סמל_ישוב — official settlement code (Israel-Post key). */
+  cityCode?: number | null;
+  /** סמל_רחוב — official street code (Israel-Post key). */
+  streetCode?: number | null;
+}
+
+interface IndexedRow { city: string; street: string; nCity: string; nStreet: string; cityCode?: number | null; streetCode?: number | null }
 
 // INDEX is null until the ASYNC background load finishes. Search returns [] while
 // null so callers (geocode/suggest) transparently fall back to Photon. This is the
@@ -57,6 +73,8 @@ async function loadAsync(): Promise<void> {
         street: r.street_name,
         nCity: normalizeStreet(r.city_name),
         nStreet: normalizeStreet(r.street_name),
+        cityCode: r.city_code ?? null,
+        streetCode: r.street_code ?? null,
       }));
       logger.info('[israelStreets] loaded (async, startup)', { count: INDEX.length, path: p });
       return;
@@ -77,7 +95,7 @@ void loadAsync();
  * "דיזנגוף תל אביב") as well as street-only. Returns street+city pairs, ranked by
  * prefix/whole-match, deduped. No coordinates (geocoded later on save).
  */
-export function searchIsraelStreets(query: string, limit = 6): Array<{ street: string; city: string }> {
+export function searchIsraelStreets(query: string, limit = 6): Array<IsraelStreetHit> {
   // Not loaded yet (still parsing at startup) or empty → caller falls back to Photon.
   if (!loadStarted) void loadAsync();
   const idx = INDEX;
@@ -99,7 +117,7 @@ export function searchIsraelStreets(query: string, limit = 6): Array<{ street: s
     return 0;
   };
 
-  const scored: Array<{ street: string; city: string; score: number }> = [];
+  const scored: Array<IsraelStreetHit & { score: number }> = [];
   for (const row of idx) {
     let best = 0;
     for (let k = 0; k < tokens.length; k++) {
@@ -111,17 +129,17 @@ export function searchIsraelStreets(query: string, limit = 6): Array<{ street: s
       const total = s0 + cityHits * 5;
       if (total > best) best = total;
     }
-    if (best > 0) scored.push({ street: row.street, city: row.city, score: best });
+    if (best > 0) scored.push({ street: row.street, city: row.city, cityCode: row.cityCode ?? null, streetCode: row.streetCode ?? null, score: best });
   }
   scored.sort((a, b) => b.score - a.score || a.street.length - b.street.length);
 
   const seen = new Set<string>();
-  const out: Array<{ street: string; city: string }> = [];
+  const out: IsraelStreetHit[] = [];
   for (const r of scored) {
     const k = `${r.street}|${r.city}`;
     if (seen.has(k)) continue;
     seen.add(k);
-    out.push({ street: r.street, city: r.city });
+    out.push({ street: r.street, city: r.city, cityCode: r.cityCode ?? null, streetCode: r.streetCode ?? null });
     if (out.length >= limit) break;
   }
   return out;
