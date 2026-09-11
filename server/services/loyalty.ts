@@ -14,6 +14,7 @@ import admin from '../lib/firebase-admin';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import memoizee from 'memoizee';
+import { MEMBER_DISCOUNT_MAX_PERCENT } from '@shared/schema-member-discount';
 
 export type LoyaltyTier = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND';
 
@@ -26,7 +27,32 @@ export interface LoyaltyUser {
 }
 
 /**
- * Get loyalty tier discount percentage
+ * Get loyalty tier discount percentage.
+ *
+ * THIS TABLE IS STALE AND IS NOT THE AUTHORITY. The canonical ladder is
+ * shared/schema-loyalty.ts (7 tiers, base 5% + tierBonusPercent, capped at
+ * MAX_DISCOUNT_CAP) — that is what the customer-facing page advertises and
+ * where the CEO-locked tier names come from. The five names below
+ * (BRONZE..DIAMOND) match no surface we ship.
+ *
+ * WHY IT IS CLAMPED RATHER THAN DELETED. Nothing charges off this number
+ * today — verified end to end: `getLoyaltyStatus` puts it on
+ * `LoyaltyUser.discount`, and the only consumers are
+ * `services/memberDiscount.ts`, which reads the object purely as an EXISTENCE
+ * check (`if (loyalty) prestigePercent = PRESTIGE_BASIC_PERCENT`) and never
+ * touches `.discount`, and `middleware/loyalty.ts`, which never reads it at
+ * all. So this is a phantom field, not a live leak.
+ *
+ * But it is a loaded gun. The raw table returns 20% for DIAMOND while the real
+ * charge caps at MEMBER_DISCOUNT_MAX_PERCENT (10%), and the comment in
+ * routes.ts already says out loud that it "should be deleted before someone
+ * wires it". Deleting it means touching three import sites and a public type
+ * for no behaviour change; clamping it means that the day someone DOES wire
+ * it, it cannot breach the cap. Same defence `actions/loyaltySync.ts` already
+ * applies to its own copy of this table.
+ *
+ * Advertising a discount larger than the one charged is a false-discount
+ * promise, which is the failure this guards against.
  */
 export function getTierDiscount(tier: LoyaltyTier): number {
   const discounts: Record<LoyaltyTier, number> = {
@@ -36,7 +62,7 @@ export function getTierDiscount(tier: LoyaltyTier): number {
     PLATINUM: 15,
     DIAMOND: 20,
   };
-  return discounts[tier] || 0;
+  return Math.min(discounts[tier] || 0, MEMBER_DISCOUNT_MAX_PERCENT);
 }
 
 /**
