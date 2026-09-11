@@ -194,6 +194,39 @@ export default function FranchiseOwnerDashboard() {
           </div>
         </div>
 
+        {/* ── Console navigation (2026-09-11) ──────────────────────────────
+            The other four franchise pages — Inbox (165 lines), Reports (160),
+            Support (153), Marketing (79) — were ROUTED in App.tsx and linked
+            from NOWHERE. Verified by link shape across the whole client: zero
+            hits each. A franchise owner is redirected here by post-login.ts,
+            so the dashboard was reachable and everything behind it was not:
+            557 lines of built pages with no way in.
+
+            The MobileBottomNav entries for /franchise are an
+            ACCOUNT_HOME_PREFIXES active-state list, not navigation — they
+            highlight a tab, they do not route anywhere. Easy to mistake for a
+            menu when grepping for the path.
+
+            This row is the way in. Deliberately plain and inside the existing
+            header rhythm rather than a new chrome pattern. */}
+        <nav className="flex flex-wrap items-center gap-2" aria-label="Franchise console">
+          {[
+            { href: '/franchise/reports',   label: 'Reports' },
+            { href: '/franchise/inbox',     label: 'Inbox' },
+            { href: '/franchise/marketing', label: 'Marketing' },
+            { href: '/franchise/support',   label: 'Support' },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-testid={`link-franchise-${item.label.toLowerCase()}`}
+              className="inline-flex items-center rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white px-3 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-[#D4AF37] hover:text-[#B8932F] dark:hover:text-[#D4AF37] transition-colors"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
         {/* ── Summary tiles (4 across) ────────────────────────────────────── */}
         <FinanceSummaryPanel
           data={activeWindow}
