@@ -168,12 +168,47 @@ export interface FiscalDocumentLink {
  * missing cutover is not "issue nothing"; without this guard it is "individually
  * invoice the entire history", which is exactly what happened on 05/09/2026 when
  * a backfill ran with the cutover set to 2026-01-01.
+ *
+ * THE ERA BEFORE THE FLOOR IS CLOSED (bookkeeper ruling, Michal Mushiav,
+ * Kuperberg Ezra & Co, 2026-09-12). Everything settled at or before
+ * FISCAL_CLOSED_ERA_END has already been fiscally decided, item by item:
+ *
+ *   - #10002–#10509, 508 documents, ₪22,157 incl. VAT — the past turnover,
+ *     reported as-is in the coming filings;
+ *   - #10000 / #10001 (₪1.18 each, July test documents) — already issued, kept in
+ *     the ongoing reporting so the document sequence stays unbroken;
+ *   - the 18 settled-with-no-document transactions of 05/09 13:19 → 06/09 08:54
+ *     (₪808, all four bays) — ruled NOT sales: no income is recorded for them and
+ *     NO DOCUMENT IS EVER TO BE PRODUCED for them;
+ *   - the AUD 10.00 transaction 3467932838 (30/06, bay 182443) — no retroactive
+ *     corrective document; if a receipt did clear the bank it is a MANUAL receipt
+ *     in SUMIT for the ILS actually cleared, never one this rail issues.
+ *
+ * A cutover at or before that instant re-opens all four of those decisions at
+ * once and hands them to an hourly cron. That is not a configuration we should
+ * be able to express, so it is refused here rather than trusted to whoever next
+ * sets the variable — and refusing returns null, which (see bridgeWired) stops
+ * the bridge dead instead of letting it issue on a bad boundary.
+ *
+ * The floor is the last of the 18 observations, 06/09/2026 08:54:25 Israel time.
+ * Moving it later as new eras close is fine. Moving it EARLIER is a fiscal
+ * decision and needs the bookkeeper, not a commit.
  */
+export const FISCAL_CLOSED_ERA_END = '2026-09-06T05:54:25.000Z';
+
 export function fiscalCutoverAt(): Date | null {
   const raw = (process.env.NAYAX_SUMIT_CUTOVER_AT || '').trim();
   if (!raw) return null;
   const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (Number.isNaN(d.getTime())) return null;
+  if (d.getTime() <= new Date(FISCAL_CLOSED_ERA_END).getTime()) {
+    logger.error(
+      '[NayaxBridge] NAYAX_SUMIT_CUTOVER_AT is inside the closed fiscal era — refusing to issue',
+      { configured: d.toISOString(), closedEraEnd: FISCAL_CLOSED_ERA_END },
+    );
+    return null;
+  }
+  return d;
 }
 
 /** True only when everything needed to actually ISSUE is in place. */

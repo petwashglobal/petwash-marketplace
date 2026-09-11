@@ -55,11 +55,19 @@ describe('refund lineage — §36 credit-document linkage', () => {
     // 2026-08-27 fix: refund_transactions actually stores source_type +
     // source_id as separate columns (per shared/schema.ts line ~14394).
     // Composer parses the correlationId ('shop:X') and passes both.
-    expect(SRC).toMatch(/WHERE source_type = \$1 AND source_id = \$2/);
-    expect(SRC).toMatch(/pool\.query\([\s\S]*?,\s*\[sourceType,\s*sourceId\]/);
-    // Ban template interpolation of the parsed values.
-    expect(SRC).not.toMatch(/WHERE source_type = \$\{/);
-    expect(SRC).not.toMatch(/WHERE source_id = \$\{/);
+    // 2026-09-12: both assertions had rotted to the exact literals of an older
+    // revision — `source_id = $2` and the param array `[sourceType, sourceId]`.
+    // The lookup now batches ids (`source_id = ANY($2::text[])`, params
+    // `[clause.sourceType, clause.sourceIds]`) so the pin failed against correct
+    // code. It had never run in CI, so nobody found out.
+    //
+    // Pinned to the property that actually matters — every value reaches the
+    // query as a placeholder — instead of to one revision's spelling of it.
+    expect(SRC).toMatch(/WHERE source_type = \$1 AND source_id = (?:\$2|ANY\(\$2::text\[\]\))/);
+    expect(SRC).toMatch(/pool\.query\([\s\S]*?,\s*\[[^\]]*sourceType[\s\S]{0,40}?sourceIds?[^\]]*\]/);
+    // Ban template interpolation of the parsed values — the injection shape.
+    expect(SRC).not.toMatch(/source_type\s*=\s*'?\$\{/);
+    expect(SRC).not.toMatch(/source_id\s*=\s*'?\$\{/);
   });
 
   it('correlationKindToSourceType maps every composer branch — mirrors RefundService taxonomy', () => {

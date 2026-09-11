@@ -134,14 +134,22 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
-      - name: SUMIT fiscal document mapping + receipts + credit notes
+      # THE WHOLE FISCAL SURFACE, BY PATTERN — NOT BY HAND (2026-09-12).
+      #
+      # This step used to name seven files. There were 63 fiscal test files, so
+      # 55 of them — every guard on the rail that issues Israeli tax documents —
+      # had never run in CI even once. Two had rotted into asserting things that
+      # are no longer true, and one of those asserted the BUG: it required the
+      # old Wald-only bay list, so reverting to it (and silently ceasing to
+      # document the two Green Park bays) would have turned the pin GREEN.
+      #
+      # Enumerating files is what caused that, so the enumeration is gone. The
+      # three filters below are substring matches on the test path, which means a
+      # new fiscal test is gated the day it is written, with nothing to remember.
+      # Do not replace this with a file list again.
+      - name: Fiscal rail — every nayax / sumit / fiscal test
         env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
-        run: >
-          npx vitest run
-          server/tests/sumit-document-mapping.test.ts
-          server/tests/sumitReceiptService.test.ts
-          server/tests/sumit-customer-receipt.test.ts
-          server/tests/sumit-issues-every-sale.test.ts
-          server/tests/sumitSendService.test.ts
-          server/tests/nayax-sumit-bridge.test.ts
-          server/tests/refund-credit-note.test.ts
+        run: npx vitest run nayax sumit fiscal
+      - name: Credit notes
+        env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
+        run: npx vitest run server/tests/refund-credit-note.test.ts
