@@ -269,6 +269,76 @@ function isIlsCurrency(currency: unknown): boolean {
 }
 
 /**
+ * How old a TransactionId may be on a CLOSING callback.
+ *
+ * NOT the session TTL. START_SESSION_TXN_TTL_MS is 10 minutes because the spec
+ * caps how long a scan may sit unused before /Authorization. Settlement arrives
+ * when the WASH ENDS, and a wash routinely runs longer than ten minutes, so
+ * reusing the session TTL here would decline legitimate settlements — the exact
+ * failure #2396 fixed. The MAC is what authenticates; age is only a replay
+ * bound, and one day is far inside the reservation lifetime.
+ */
+const CORTINA_CALLBACK_TXN_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Origin check for the calls that CLOSE a transaction (/Settlement, /Void,
+ * /Refund).
+ *
+ * WHY THIS EXISTS (2026-09-12). These three were guarded by cortinaEnabled()
+ * alone — an env flag, not authentication. /Settlement resolves a bay from the
+ * terminal id (a number printed on the machine), claims the one active
+ * reservation on it, and performs a real ledger DEBIT via authorizeRedemption.
+ * So anyone who could reach the endpoint while a customer had a live
+ * reservation could spend that customer's credit and open the bay. /Void can
+ * release a live reservation; /Refund can raise unlimited critical
+ * recon-breaks.
+ *
+ * A pin written in the 2026-08-20 audit said exactly this — "anyone reaching
+ * /settlement could trigger a real ledger DEBIT against a live reservation" —
+ * and it had been red since #2396 narrowed the guard to the two opening calls.
+ * Nobody saw it, because no CI job ran that file until the fiscal gate started
+ * matching it by pattern.
+ *
+ * The TransactionId is not a bare identifier: /StartSession mints it as
+ * timestamp + nonce + HMAC under NAYAX_CORTINA_SECRET_TOKEN. Verifying the MAC
+ * proves the caller is replaying an id WE issued, which a forger cannot produce
+ * without the secret — and a genuine Nayax callback always carries it.
+ */
+function assertCortinaCallbackOrigin(
+  parsed: CortinaRequest,
+  body: any,
+): ReturnType<typeof cortinaDecline> | null {
+  const secret = cortinaSecret();
+  if (!secret) {
+    logger.error('[Cortina] NAYAX_CORTINA_SECRET_TOKEN not set while NAYAX_CORTINA_ENABLED=true — refusing (fail-closed)');
+    return cortinaDecline(6, 'secret_not_configured');
+  }
+  const echoed = strOrUndef(body?.SecretToken ?? body?.secretToken);
+  if (echoed !== undefined) {
+    const a = Buffer.from(echoed, 'utf8');
+    const b = Buffer.from(secret, 'utf8');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const crypto = require('crypto') as typeof import('crypto');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      logger.warn('[Cortina] closing callback rejected — SecretToken echoed but wrong');
+      return cortinaDecline(5, 'bad_secret');
+    }
+  }
+  if (startSessionRequired()) {
+    const v = verifyStartSessionTransactionId(
+      secret, parsed.transactionId || '', Date.now(), CORTINA_CALLBACK_TXN_MAX_AGE_MS,
+    );
+    if (!v.ok) {
+      logger.warn('[Cortina] closing callback rejected — TransactionId not one we minted', {
+        reason: v.reason, terminalId: parsed.terminalId,
+      });
+      return cortinaDecline(996, `transaction_id_${v.reason}`);
+    }
+  }
+  return null;
+}
+
+/**
  * Session authentication for the two calls that START a transaction
  * (/Authorization, /Sale). Spec: "validate that the Transaction ID ... was
  * created in a previous Start Session request and is still valid".
@@ -523,6 +593,9 @@ router.post(['/settlement', '/Settlement', '/Cortina/PrePaid/Settlement', '/stat
   const parsedSettle = parseCortinaRequest(req.body);
   const { terminalId, code, transactionId } = parsedSettle;
   if (!terminalId) return res.json(cortinaDecline(997, 'missing_terminal_id'));
+  // Before ANY reservation is touched: this call commits a ledger debit.
+  const settleReject = assertCortinaCallbackOrigin(parsedSettle, req.body);
+  if (settleReject) return res.json(settleReject);
   if (!isIlsCurrency(parsedSettle.currency)) {
     logger.warn('[Cortina] settlement refused — non-ILS currency', { terminalId, transactionId, currency: parsedSettle.currency });
     return res.json(cortinaDecline(7, 'currency_not_ils'));
@@ -680,6 +753,10 @@ router.post(['/void', '/cancel', '/Void', '/Cancel', '/Cortina/PrePaid/Void', '/
   const { terminalId, transactionId } = parsed;
   try {
     if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_void' }));
+    // Placed AFTER the no-op above: that path touches nothing, and declining it
+    // would change a harmless ack into a failure for no security gain.
+    const voidReject = assertCortinaCallbackOrigin(parsed, req.body);
+    if (voidReject) return res.json(voidReject);
 
     const found = await pool.query(
       `SELECT id, status, bay_id, station_id, session_id, reservation_ref,
@@ -766,6 +843,8 @@ router.post(['/refund', '/Refund', '/Cortina/PrePaid/Refund', '/staticqr/refund'
   }
   try {
     if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_refund' }));
+    const refundReject = assertCortinaCallbackOrigin(parsedRefund, req.body);
+    if (refundReject) return res.json(refundReject);
 
     const found = await pool.query(
       `SELECT id, status, bay_id, station_id, session_id, reservation_ref
