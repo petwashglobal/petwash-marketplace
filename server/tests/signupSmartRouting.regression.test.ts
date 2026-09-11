@@ -32,9 +32,15 @@ describe('finishAndRoute defers to the server decider', () => {
 });
 
 describe('CompleteProfile only asks for what is missing', () => {
-  it('prefills firstName, lastName, phone AND dateOfBirth from the loaded user', () => {
+  // CEO 2026-09-12: the base member profile is name + verified mobile + terms +
+  // privacy. Date of birth is NOT a member field any more (18+ is an explicit
+  // attestation; DOB belongs to provider KYC), so the page prefills name, email
+  // and phone from the loaded user and never renders a DOB control.
+  it('prefills firstName, lastName, email and phone from the loaded user — no DOB', () => {
     expect(cp).toMatch(/if \(data\.user\.firstName\) setFirstName/);
+    expect(cp).toMatch(/if \(data\.user\.lastName\) setLastName/);
+    expect(cp).toMatch(/if \(data\.user\.email\) setEmail/);
     expect(cp).toMatch(/if \(data\.user\.phone\) setPhone/);
-    expect(cp).toMatch(/if \(data\.user\.dateOfBirth\) setDateOfBirth/);
+    expect(cp).not.toContain('dateOfBirth');
   });
 });

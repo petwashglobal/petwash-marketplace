@@ -73,6 +73,9 @@ import { fieldSchemas, vmsg } from '@/lib/validation';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { VerificationFlow } from '@/components/verification/VerificationFlow';
+// Returning member → /welcome-back greeting, then the server's destination.
+// New / incomplete member → straight to the server's destination. (CEO 2026-09-12)
+import { welcomeBackOr } from '@/lib/welcomeBack';
 import type { PublicChallenge } from '@/lib/verification/useVerificationChallenge';
 import { createAuthEmailTransport } from '@/lib/verification/authEmailTransport';
 import { useSharedVerificationUi } from '@/lib/verification/rolloutSwitch';
@@ -303,7 +306,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           const fresh = await auth.currentUser.getIdToken(true).catch(() => undefined);
           if (fresh) { const r: any = await resolvePostLogin({ body: b, idToken: fresh }); if (r?.nextUrl) data = r; }
         }
-        if (!cancelled) navigate(data?.nextUrl || data?.redirectTo || dest);
+        if (!cancelled) navigate(welcomeBackOr(data, dest));
       } catch {
         if (!cancelled) navigate(dest);
       }
@@ -712,7 +715,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const fresh = await auth.currentUser.getIdToken(true).catch(() => undefined);
         if (fresh) { const r: any = await resolvePostLogin({ body: { intent }, idToken: fresh }); if (r?.nextUrl) data = r; }
       }
-      navigate(data?.nextUrl || data?.redirectTo || dest);
+      navigate(welcomeBackOr(data, dest));
     } catch {
       navigate(dest);
     }
