@@ -64,6 +64,34 @@ function getTierDiscount(tier: string): number {
 }
 
 /**
+ * The tier-upgrade push copy, in the customer's language.
+ *
+ * Pure and exported so the copy can be asserted directly — the sender itself
+ * is module-private and would otherwise need Firestore and FCM mocked just to
+ * check which language a string came out in.
+ *
+ * THE TIER NAME IS NEVER TRANSLATED. Tier names are brand names (the CEO-locked
+ * ladder), and the brand rule is that product and platform names stay English
+ * in every language.
+ */
+export function tierUpgradeMessage(
+  locale: 'he' | 'en',
+  tier: string,
+  discountPercent: number,
+): { title: string; body: string } {
+  if (locale === 'he') {
+    return {
+      title: '🎉 שדרוג דרגה!',
+      body: `מזל טוב! הגעתם לדרגת ${tier} עם ${discountPercent}% הנחה!`,
+    };
+  }
+  return {
+    title: '🎉 Tier Upgrade!',
+    body: `Congratulations! You've reached ${tier} tier with ${discountPercent}% discount!`,
+  };
+}
+
+/**
  * Update user loyalty points with real-time sync
  * 
  * @param userId - Firebase UID
@@ -334,12 +362,36 @@ async function sendTierUpgradeNotification(
       return;
     }
     
+    // LANGUAGE (2026-09-11): this push was English-only — sent to a customer
+    // base that is overwhelmingly Hebrew-speaking, by a product whose web
+    // default is RTL Hebrew. The locale is read exactly the way
+    // server/vaccineReminder.ts already reads it, from the userProfiles doc.
+    //
+    // The default is 'he', NOT 'en'. vaccineReminder defaults to 'en' and that
+    // is the wrong way round for an Israel-first product: an unknown locale is
+    // far more likely to be a Hebrew speaker than an English one. Worth making
+    // those two agree, but not by quietly changing the other one here.
+    //
+    // The TIER NAME stays untranslated in both branches. Tier names are brand
+    // names (Black Reserve and the rest of the CEO-locked ladder) and the brand
+    // rule is that product and platform names are never translated.
+    let locale: 'he' | 'en' = 'he';
+    try {
+      const profile = await firestore.doc(`userProfiles/${userId}`).get();
+      const pref = profile.data()?.preferredLanguage;
+      if (pref === 'en' || pref === 'he') locale = pref;
+    } catch (err: any) {
+      // A missing profile must not cost the customer their notification.
+      logger.warn('[LoyaltySync] locale lookup failed, defaulting to he', {
+        userId, err: err?.message,
+      });
+    }
+
     const messaging = admin.messaging();
     await messaging.send({
       token: fcmToken,
       notification: {
-        title: '🎉 Tier Upgrade!',
-        body: `Congratulations! You've reached ${newTier} tier with ${discount}% discount!`,
+        ...tierUpgradeMessage(locale, newTier, discount),
       },
       data: {
         type: 'tier_upgrade',
