@@ -6,8 +6,11 @@
  * so every live sale is documented automatically — the accounting firm and the ITA
  * just see clean, complete books. No manual step per sale, ever.
  *
- * Fleet: NAYAX_BRIDGE_MACHINE_IDS (comma-separated), default the two Kfar Saba bays
- * 182443 (ולד ימין / right) + 182462 (ולד שמאל / left).
+ * Fleet: NAYAX_BRIDGE_MACHINE_IDS (comma-separated); by default EVERY bay in the
+ * terminal registry — Wald 182443 (ימין / right) + 182462 (שמאל / left) and
+ * Green Park 80 182374 + 182403. It said "the two Kfar Saba bays" until
+ * 2026-09-12 while the code had covered all four since 09-06; a fleet list that
+ * under-reports itself is how two money-taking bays went undocumented for a month.
  *
  * SAFE TO SCHEDULE NOW: the bridge is QUADRUPLE-dark — this cron is a complete
  * NO-OP until SUMIT is wired AND Lynx is wired AND NAYAX_SUMIT_BRIDGE_ENABLED=true

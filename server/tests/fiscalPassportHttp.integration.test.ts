@@ -46,6 +46,16 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
+/**
+ * Every test here builds a REAL Express app and sends real HTTP — that is the
+ * point of the file, and it is not a 5 ms unit test. Run alone it finishes in
+ * about two seconds; run inside the full fiscal suite (2026-09-12, 55 files in
+ * one pool) the first buildApp() blew the 5 s default and the file failed on a
+ * machine that was merely busy. A gate that goes red because CI was loaded gets
+ * switched off, so the budget matches what the file actually does.
+ */
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 30_000 });
+
 // ─── Boundary state controlled per-test ─────────────────────────────
 interface Caller { uid: string; email?: string; email_verified?: boolean }
 const state = {

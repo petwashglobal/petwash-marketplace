@@ -22,7 +22,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   applyFiscalCutover, fiscalCutoverAt, bridgeWired, FISCAL_TREATMENT,
   selectDocumentableSales, buildReceiptInput, K9000_INCOME_ITEM, K9000_GENERAL_CUSTOMER,
-  FISCAL_LINK_TYPE, FISCAL_LINK_SOURCE, RECONCILIATION_OBSERVATION,
+  FISCAL_LINK_TYPE, FISCAL_LINK_SOURCE, RECONCILIATION_OBSERVATION, FISCAL_CLOSED_ERA_END,
   type DocumentableSale, type FiscalDocumentLink,
 } from '../services/nayaxSumitBridge';
 
@@ -31,6 +31,18 @@ const sale = (id: string, settledAt?: string): DocumentableSale => ({
   vatAmount: 7.32, currency: 'ILS', settledAt,
 });
 const CUTOVER = new Date('2026-09-05T13:00:00+03:00');
+
+/**
+ * A cutover a human may actually CONFIGURE. Distinct from CUTOVER above, which is
+ * a fixture for the pure boundary maths and is free to sit anywhere.
+ *
+ * 2026-09-12: fiscalCutoverAt() now refuses anything at or before the closed era
+ * (see the floor describe at the bottom), and CUTOVER — 05/09 13:00 Israel — sits
+ * among the very 18 transactions the bookkeeper ruled must never be documented.
+ * That it used to be this file's worked example of a good configured cutover is
+ * the point: the bad value looked entirely reasonable.
+ */
+const CONFIGURED_CUTOVER = '2026-09-15T00:00:00+03:00';
 
 describe('fiscal cutover — issuance eligibility', () => {
   const saved = process.env.NAYAX_SUMIT_CUTOVER_AT;
@@ -123,8 +135,8 @@ describe('fiscal cutover — issuance eligibility', () => {
   });
 
   it('exposes cutover as its own wiring condition, not folded into the others', () => {
-    process.env.NAYAX_SUMIT_CUTOVER_AT = '2026-09-05T13:00:00+03:00';
-    expect(fiscalCutoverAt()?.toISOString()).toBe(CUTOVER.toISOString());
+    process.env.NAYAX_SUMIT_CUTOVER_AT = CONFIGURED_CUTOVER;
+    expect(fiscalCutoverAt()?.toISOString()).toBe(new Date(CONFIGURED_CUTOVER).toISOString());
     expect(bridgeWired().cutover).toBe(true);
     delete process.env.NAYAX_SUMIT_CUTOVER_AT;
     expect(bridgeWired().cutover).toBe(false);
@@ -347,5 +359,82 @@ describe('withholding never assigns a fiscal treatment', () => {
     expect(withheld[0]).not.toHaveProperty('fiscalTreatment');
     expect(Object.values(FISCAL_TREATMENT)).not.toContain(
       RECONCILIATION_OBSERVATION.SETTLED_NO_DOCUMENT);
+  });
+});
+
+
+/**
+ * THE CLOSED ERA HAS A FLOOR (bookkeeper ruling, Michal Mushiav, 2026-09-12).
+ *
+ * Everything settled at or before FISCAL_CLOSED_ERA_END has been decided one by
+ * one and is finished: the 508 documents #10002–#10509 (₪22,157 incl. VAT) are the
+ * turnover to report, #10000/#10001 stay in the reporting for sequence integrity,
+ * the 18 settled-with-no-document transactions (₪808) are NOT sales and must never
+ * be documented, and the AUD transaction 3467932838 gets no corrective document.
+ *
+ * Those four rulings are protected by exactly one thing — no cutover earlier than
+ * the era's end. Before this pin that was a single env var away: the cutover
+ * accepted any parseable date, so NAYAX_SUMIT_CUTOVER_AT=2026-01-01 — the literal
+ * value used on 05/09/2026 — made all four eligible again and handed them to an
+ * hourly cron. A bookkeeper's ruling that one environment variable can reverse is
+ * not enforced, it is merely written down.
+ *
+ * Refusing returns null, which bridgeWired() turns into "issue nothing at all".
+ * That is the right failure: a boundary we cannot trust must stop the rail, not
+ * shift it.
+ */
+describe('fiscal cutover floor — the closed era cannot be re-opened', () => {
+  const saved = process.env.NAYAX_SUMIT_CUTOVER_AT;
+  afterEach(() => {
+    if (saved === undefined) delete process.env.NAYAX_SUMIT_CUTOVER_AT;
+    else process.env.NAYAX_SUMIT_CUTOVER_AT = saved;
+  });
+
+  it('rejects the exact value that caused the 05/09/2026 backfill', () => {
+    process.env.NAYAX_SUMIT_CUTOVER_AT = '2026-01-01';
+    expect(fiscalCutoverAt()).toBeNull();
+    expect(bridgeWired().cutover).toBe(false);
+    expect(bridgeWired().canIssue).toBe(false);
+  });
+
+  it('rejects a cutover ON the era boundary — the last observation is inside it', () => {
+    process.env.NAYAX_SUMIT_CUTOVER_AT = FISCAL_CLOSED_ERA_END;
+    expect(fiscalCutoverAt()).toBeNull();
+  });
+
+  it('rejects a cutover placed among the 18 undocumented transactions', () => {
+    // 05/09 13:19 and 06/09 08:54 Israel time bracket all 18.
+    for (const v of ['2026-09-05T10:19:13Z', '2026-09-06T05:54:24Z', '2026-09-05T23:00:00Z']) {
+      process.env.NAYAX_SUMIT_CUTOVER_AT = v;
+      expect(fiscalCutoverAt(), v).toBeNull();
+    }
+  });
+
+  it('accepts a cutover after the era ends', () => {
+    process.env.NAYAX_SUMIT_CUTOVER_AT = '2026-09-15T00:00:00+03:00';
+    const d = fiscalCutoverAt();
+    expect(d).toBeInstanceOf(Date);
+    expect(d!.getTime()).toBeGreaterThan(new Date(FISCAL_CLOSED_ERA_END).getTime());
+  });
+
+  // The floor is what makes the ruling true, so it is stated here as a value and
+  // not only as behaviour: moving it earlier must break this pin, loudly.
+  it('pins the floor to the last of the 18 observations', () => {
+    expect(FISCAL_CLOSED_ERA_END).toBe('2026-09-06T05:54:25.000Z');
+  });
+
+  // A floor that only rejected bad input would still be useless if the withheld
+  // path stopped withholding. Both halves, end to end, on the real 18.
+  it('keeps the 18 unissuable under every cutover the floor permits', () => {
+    const s18 = [sale('2206704842', '2026-09-05T10:19:13Z'),
+                 sale('2207959160', '2026-09-06T05:54:25Z')];
+    for (const v of ['2026-09-06T05:54:26Z', '2026-09-15T00:00:00+03:00', '2027-01-01']) {
+      process.env.NAYAX_SUMIT_CUTOVER_AT = v;
+      const cutover = fiscalCutoverAt();
+      expect(cutover, v).not.toBeNull();
+      const { eligible, withheld } = applyFiscalCutover(s18, cutover);
+      expect(eligible, v).toHaveLength(0);
+      expect(withheld, v).toHaveLength(2);
+    }
   });
 });
