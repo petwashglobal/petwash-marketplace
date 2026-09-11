@@ -231,6 +231,38 @@ async function lookupPassRecord(passId: string, userId?: string): Promise<Wallet
   return lookupFirestorePrestigePass(passId, userId);
 }
 
+/**
+ * Map a pass-link token failure to an honest HTTP answer.
+ *
+ * WHY THIS EXISTS. `lookupPassByToken` THROWS on a bad or expired token (see
+ * the comment on the line below), so the `if (!pass) return 404` branch in
+ * every caller is unreachable for a bad token — control jumps to the catch.
+ *
+ * The HTML route mapped all four token errors correctly. The two routes that
+ * actually DELIVER the pass file only handled TOKEN_EXPIRED, so a malformed
+ * link, a bad signature or a wrong-purpose token all fell through to
+ * `500 "Pass generation failed"` — a server-error message for a client-side
+ * problem, about a generation step that never ran.
+ *
+ * On an iPhone that 500 surfaces as **"Safari cannot download this file."**
+ * The customer is told the product is broken when their link is simply stale.
+ *
+ * Returns null when the error is NOT a token problem, so genuine generation
+ * failures still get a 500.
+ */
+export function tokenErrorResponse(err: any): { status: number; error: string } | null {
+  switch (err?.message) {
+    case 'TOKEN_EXPIRED':
+      return { status: 410, error: 'This wallet link has expired — open the PetWash app to get a fresh one.' };
+    case 'INVALID_SIGNATURE':
+    case 'INVALID_TOKEN_FORMAT':
+    case 'INVALID_PURPOSE':
+      return { status: 403, error: 'This wallet link is not valid — open the PetWash app to get a fresh one.' };
+    default:
+      return null;
+  }
+}
+
 async function lookupPassByToken(token: string) {
   const payload = verifyPassLinkToken(token);                     // throws on bad/expired token
   const pass = await lookupPassRecord(payload.passId, payload.userId);
@@ -395,7 +427,8 @@ router.get('/apple/:token', async (req: Request, res: Response) => {
     res.setHeader('Last-Modified', new Date().toUTCString());
     return res.send(pkpassBuffer);
   } catch (err: any) {
-    if (err?.message === 'TOKEN_EXPIRED') return res.status(410).json({ ok: false, error: 'Link expired' });
+    const tokenErr = tokenErrorResponse(err);
+    if (tokenErr) return res.status(tokenErr.status).json({ ok: false, error: tokenErr.error });
     logger.error('[PassUniversal] Apple pkpass error', { err });
     return res.status(500).json({ ok: false, error: 'Pass generation failed' });
   }
@@ -418,7 +451,8 @@ router.get('/google/:token', async (req: Request, res: Response) => {
 
     return res.redirect(307, saveUrl);
   } catch (err: any) {
-    if (err?.message === 'TOKEN_EXPIRED') return res.status(410).json({ ok: false, error: 'Link expired' });
+    const tokenErr = tokenErrorResponse(err);
+    if (tokenErr) return res.status(tokenErr.status).json({ ok: false, error: tokenErr.error });
     logger.error('[PassUniversal] Google wallet redirect error', { err });
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
