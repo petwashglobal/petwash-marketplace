@@ -14,7 +14,7 @@ import { readReturnTo } from "@/auth/returnTo";
 /**
  * /complete-profile — "עוד רגע מסיימים את ההצטרפות".
  *
- * Google / Apple / OTP are AUTHENTICATION only; this PetWash™-owned screen
+ * Google / Apple / OTP are AUTHENTICATION only; this PetWash™‎-owned screen
  * finishes the membership (CEO spec 2026-09-12):
  *   • name + email pre-filled from the account — asked only if missing
  *   • mobile + OTP (the signed-in phone flow; also reclaims a number held by
@@ -219,8 +219,8 @@ export default function CompleteProfile() {
 
   const initial = (firstName || email || "?").slice(0, 1).toUpperCase();
   const title = firstName
-    ? (isHe ? `ברוכים הבאים ל־PetWash™, ${firstName}` : `Welcome to PetWash™, ${firstName}`)
-    : (isHe ? "ברוכים הבאים ל־PetWash™" : "Welcome to PetWash™");
+    ? (isHe ? `ברוכים הבאים ל־PetWash™‎, ${firstName}` : `Welcome to PetWash™‎, ${firstName}`)
+    : (isHe ? "ברוכים הבאים ל־PetWash™‎" : "Welcome to PetWash™‎");
   const subtitle = role === "provider"
     ? (isHe ? "פרטים בסיסיים לפני תחילת ההרשמה כספק" : "Basic details before your provider application")
     : (isHe ? "עוד רגע מסיימים את ההצטרפות" : "One more moment and you're in");
@@ -325,7 +325,7 @@ export default function CompleteProfile() {
                   <Link href="/terms" className="underline underline-offset-2">{isHe ? "תנאי השימוש" : "Terms of Service"}</Link>
                   {isHe ? " ול" : " and the "}
                   <Link href="/privacy" className="underline underline-offset-2">{isHe ? "מדיניות הפרטיות" : "Privacy Policy"}</Link>
-                  {isHe ? " של PetWash™." : " of PetWash™."}
+                  {isHe ? " של PetWash™‎." : " of PetWash™‎."}
                 </span>
               </label>
               <label className="flex items-start gap-3 text-sm text-gray-600">
