@@ -105,6 +105,14 @@ const MODULE_LINKS: Record<string, { label: string; href: string; icon: typeof E
   ],
   stations: [
     { label: "Station Control", href: "/admin/stations", icon: Cpu },
+    // WASH PACKAGES (2026-09-11): /admin/wash-packages was ROUTED in App.tsx
+    // and linked from nowhere. That is why the customer-facing /packages page
+    // serves an empty array in production — GET /api/packages returns only
+    // ACTIVE packages, none had ever been created, and the screen for creating
+    // them could only be reached by typing the URL. The route's own comment
+    // says it exists so the CEO can set real packages and prices "himself — no
+    // code deploy, no guessing"; that promise needed a door.
+    { label: "Wash Packages & Prices", href: "/admin/wash-packages", icon: Package },
     { label: "Status Monitor", href: "/admin/status-monitor", icon: Activity },
   ],
   kyc: [
