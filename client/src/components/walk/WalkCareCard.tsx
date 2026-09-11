@@ -20,6 +20,7 @@ import { MapPin, Clock, Route as RouteIcon } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 
 interface CarePoint { lat: number; lng: number; at?: string | null }
+interface CarePhoto { url: string; caption?: string | null; at?: string | null }
 
 interface CareCard {
   available: boolean;
@@ -31,6 +32,7 @@ interface CareCard {
   distanceMeters?: number | null;
   route?: CarePoint[];
   notes?: string | null;
+  photos?: CarePhoto[];
 }
 
 /** HH:MM in the viewer's locale, or null when the moment was never recorded. */
@@ -171,6 +173,32 @@ export function WalkCareCard({ bookingId }: { bookingId: string }) {
         <p className="px-4 pb-3 text-xs text-gray-500">
           {he ? `משך: ${data.durationMinutes} דקות` : `Duration: ${data.durationMinutes} min`}
         </p>
+      )}
+
+      {/* The photo strip. Absent when the walker sent none — and absent, not
+          empty-framed, if the photo read itself failed server-side. An owner
+          should never be shown a row of holes where pictures would be. */}
+      {(data.photos?.length ?? 0) > 0 && (
+        <ul
+          className="flex gap-2 overflow-x-auto px-4 py-3 border-t border-gray-100"
+          aria-label={he ? 'תמונות מהטיול' : 'Photos from the walk'}
+        >
+          {data.photos!.map((p, i) => (
+            <li key={`${p.url}-${i}`} className="shrink-0">
+              <img
+                src={p.url}
+                // The caption the walker typed is the real alt text. Falling
+                // back to a generic string is better than an empty alt on a
+                // photo that carries meaning.
+                alt={p.caption?.trim() || (he ? 'תמונה מהטיול' : 'Photo from the walk')}
+                loading="lazy"
+                width={96}
+                height={96}
+                className="w-24 h-24 rounded-xl object-cover bg-gray-100"
+              />
+            </li>
+          ))}
+        </ul>
       )}
 
       {data.notes && (

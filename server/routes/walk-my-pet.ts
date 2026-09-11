@@ -1445,6 +1445,53 @@ router.get('/walks/:bookingId/care-card', requireAuth, async (req, res) => {
       .map((p) => ({ lat: Number(p.lat), lng: Number(p.lng), at: p.at }))
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
 
+    // PHOTOS COME FROM WHERE THEY ALREADY LIVE. (2026-09-11)
+    // Checked the database first: four photo tables exist (booking_photos,
+    // field_update_photos, incident_photos) plus walk_videos, which even
+    // documents a `milestone_photo` type and references walkBookings directly
+    // — and NOTHING WRITES ANY OF THEM for a walk. The photos a walker sends
+    // are chat_messages rows, messageType 'session_photo', imageUrl in
+    // metadata, reached through booking_conversations.
+    //
+    // So this READS that. It does not start a second store for data that
+    // already has one: a new table, or a backfill into walk_videos, would mean
+    // two places to keep in step and two answers to "what did the walker send".
+    // If photos ever need their own table, the migration is that decision —
+    // not a side effect of building a card.
+    let photos: Array<{ url: string; caption: string | null; at: Date | null }> = [];
+    try {
+      const { bookingConversations, bookingMessages } = await import('@shared/schema');
+      const [conv] = await db
+        .select({ conversationId: bookingConversations.conversationId })
+        .from(bookingConversations)
+        .where(eq(bookingConversations.bookingId, bookingId))
+        .limit(1);
+      if (conv?.conversationId) {
+        const rows = await db
+          .select({ metadata: bookingMessages.metadata, content: bookingMessages.content, createdAt: bookingMessages.createdAt })
+          .from(bookingMessages)
+          .where(and(
+            eq(bookingMessages.conversationId, conv.conversationId),
+            eq(bookingMessages.messageType, 'session_photo'),
+            eq(bookingMessages.isDeleted, false),
+          ))
+          .orderBy(bookingMessages.createdAt);
+        photos = rows
+          .map((r) => {
+            const meta = (r.metadata ?? {}) as any;
+            const url = typeof meta.imageUrl === 'string' ? meta.imageUrl : null;
+            return url ? { url, caption: (meta.caption || r.content || null), at: r.createdAt ?? null } : null;
+          })
+          .filter((p): p is { url: string; caption: string | null; at: Date | null } => p !== null);
+      }
+    } catch (photoErr: any) {
+      // The card is about the walk, not the pictures. A photo read that fails
+      // must not take the times, distance and route down with it — the strip
+      // is simply absent, which is what an owner sees for a walk with no
+      // photos anyway.
+      logger.warn('[Walk My Pet] care-card photo read failed', { bookingId, error: photoErr?.message });
+    }
+
     res.json({
       available: true,
       bookingId,
@@ -1459,6 +1506,7 @@ router.get('/walks/:bookingId/care-card', requireAuth, async (req, res) => {
       distanceMeters: booking.totalDistanceMeters ?? null,
       route,
       notes: booking.completionNotes ?? null,
+      photos,
     });
   } catch (error: any) {
     logger.error('[Walk My Pet] Care card error', { error: error?.message });
