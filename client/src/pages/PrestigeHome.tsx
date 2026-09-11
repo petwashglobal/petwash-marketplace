@@ -22,6 +22,7 @@ import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
+import { resolveGreetingName } from '@/lib/greetingName';
 import { apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
 import { NextBestActionCard } from '@/components/NextBestActionCard';
@@ -178,7 +179,12 @@ export default function PrestigeHome() {
   const s = normalizeSummary(me, sum);
   const lastEvent: any = Array.isArray(hist?.events) && hist.events.length > 0 ? hist.events[0] : null;
   const pets: any[] = Array.isArray(petsData?.pets) ? petsData.pets : Array.isArray(petsData) ? petsData : [];
-  const firstName = s.displayName || user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || (isHe ? 'חבר' : 'Member');
+  // Placeholder names and why the email local-part is not a candidate: see
+  // client/src/lib/greetingName.ts. Pure + unit-tested there.
+  const firstName = resolveGreetingName(
+    [s.displayName, user?.displayName?.split(' ')[0]],
+    isHe,
+  );
 
   // Personal warmth — a time-aware greeting that changes through the day, so the
   // home feels alive and addressed to *this* member, not a static banner.
