@@ -153,6 +153,7 @@ import { allFinanceGuards } from "./middleware/financeGuards";
 import legalStampsRoutes from "./routes/legal-stamps";
 import userActivityRoutes from "./routes/user-activity";
 import sitterSuiteRoutes from "./routes/sitter-suite";
+import providerRateCardRoutes from "./routes/provider-rate-card";
 import academyRoutes from "./routes/academy";
 import groomersRoutes from "./routes/groomers";
 import walkMyPetRoutes from "./routes/walk-my-pet";
@@ -13509,6 +13510,8 @@ self.addEventListener('notificationclick', (event) => {
   
   // ⁦The Sitter Suite™⁩ - Pet sitting marketplace (Nayax-only payments)
   app.use('/api/sitter-suite', apiLimiter, sitterSuiteRoutes);
+  // Provider OS rate card — the screen that makes an approved provider bookable (2026-09-12).
+  app.use('/api/provider-os', apiLimiter, providerRateCardRoutes);
   
   // 💼 CAREERS PORTAL - SEEK-inspired HR application system with fraud prevention
   app.use('/api/careers', apiLimiter, careersRoutes);

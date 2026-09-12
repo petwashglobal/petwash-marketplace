@@ -33,7 +33,7 @@ import {
   bookings,
   bookingRequests,
 } from "../../shared/schema";
-import { and, eq, or, inArray, gte, lte, ne } from "drizzle-orm";
+import { and, eq, or, inArray, gte, lte, ne, gt } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { eventBus } from "./EventBus";
 
@@ -285,6 +285,9 @@ async function fetchDogWalkers(
     .where(
       and(
         eq(walkerProfiles.verificationStatus, "verified"),
+        // Seeded at approval as unavailable until the rate card sets a price (2026-09-12).
+        eq(walkerProfiles.isAvailable, true),
+        gt(walkerProfiles.baseHourlyRate, "0"),
         // PR-H self-exclusion: caller never appears in their own results.
         callerUserId ? ne(providers.userId, callerUserId) : undefined,
       ),
@@ -401,6 +404,8 @@ async function fetchSitters(
           eq(sitterProfiles.verificationLevel, "silver"),
           eq(sitterProfiles.verificationLevel, "gold"),
         ),
+        // Seeded at approval with price 0 until the rate card sets one (2026-09-12).
+        gt(sitterProfiles.pricePerDayCents, 0),
         // PR-H self-exclusion: caller never appears in their own results.
         callerUserId ? ne(providers.userId, callerUserId) : undefined,
       ),
