@@ -194,12 +194,23 @@ export async function composeNextBestAction(
 
     // Secondary actions: the rest, in a consistent order. Urgent
     // first, then remaining resumes, then due_soon, then
-    // informational. Never duplicates the primary.
+    // informational. Never duplicates the primary — and "duplicate"
+    // means the SAME PLACE, not the same object: the attention feed
+    // mirrors an active checkpoint as a `journey_resume:<domain>`
+    // item, so identity-only dedupe showed "המשך רישום ספק" as primary
+    // AND as a secondary (CEO home, 2026-09-12). One destination, one card.
+    const seen = new Set<string>();
+    if (primaryAction) seen.add(primaryAction.destination);
     const secondary: (AttentionItem | ResumeAction)[] = [];
-    for (const it of urgent) if (it !== primaryAction) secondary.push(it);
-    for (const r of resumeActions) if (r !== primaryAction) secondary.push(r);
-    for (const it of dueSoon) if (it !== primaryAction) secondary.push(it);
-    for (const it of informational) if (it !== primaryAction) secondary.push(it);
+    const take = (a: AttentionItem | ResumeAction) => {
+      if (a === primaryAction || seen.has(a.destination)) return;
+      seen.add(a.destination);
+      secondary.push(a);
+    };
+    for (const it of urgent) take(it);
+    for (const r of resumeActions) take(r);
+    for (const it of dueSoon) take(it);
+    for (const it of informational) take(it);
 
     return {
       primaryAction,
