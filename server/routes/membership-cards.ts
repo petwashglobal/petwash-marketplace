@@ -18,6 +18,25 @@ import { db } from "../db";
 import { users } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { buildMembershipCardPdf, printBatchCsvRow, PRINT_BATCH_CSV_HEADER, type PrintableCard } from "../services/MembershipCardPrintService";
+import { membershipCards } from "@shared/schema-membership-cards";
+import { desc } from "drizzle-orm";
+
+async function printableCardForUser(userId: string): Promise<PrintableCard | null> {
+  const [card] = await db.select().from(membershipCards).where(eq(membershipCards.userId, userId)).limit(1);
+  if (!card) return null;
+  const [u] = await db.select({ firstName: users.firstName, lastName: users.lastName, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  const ownerName = [u?.firstName, u?.lastName].filter(Boolean).join(" ") || u?.email || "PetWash Member";
+  return {
+    memberId: card.memberId,
+    cardNumberDisplay: card.cardNumberDisplay,
+    ownerName,
+    tier: card.tier,
+    validUntil: card.validUntil ?? null,
+    qrUrl: `https://petwash.co.il/m/${card.qrToken}`,
+    barcodeValue: card.barcodeValue,
+  };
+}
 
 const router = Router();
 
@@ -52,6 +71,39 @@ router.get("/card", requireAuth, async (req: Request, res: Response) => {
 });
 
 /** Scan-to-verify — used by a station/app reader. Public (token is the credential). */
+/** The member's own card as the CR-80 print file (front + back). */
+router.get("/card/print.pdf", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid;
+    if (!uid) return res.status(401).json({ error: "Authentication required" });
+    await MembershipCardService.getOrCreateCard(uid);
+    const card = await printableCardForUser(uid);
+    if (!card) return res.status(404).json({ error: "CARD_NOT_FOUND" });
+    const pdf = await buildMembershipCardPdf(card);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="petwash-card-${card.memberId}.pdf"`);
+    res.setHeader("Cache-Control", "no-store, private");
+    return res.send(pdf);
+  } catch (err: any) {
+    logger.error("[Membership] print error", { error: err?.message });
+    return res.status(500).json({ error: "PRINT_FAILED" });
+  }
+});
+
+/** Lost card: the member voids their own printed codes (QR + barcode rotate, pass version bumps). */
+router.post("/card/report-lost", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user?.uid;
+    if (!uid) return res.status(401).json({ error: "Authentication required" });
+    await MembershipCardService.getOrCreateCard(uid);
+    const r = await MembershipCardService.reportLost(uid);
+    return res.json({ ok: true, status: "lost", qrUrl: `https://petwash.co.il/m/${r.qrToken}`, barcodeValue: r.barcodeValue });
+  } catch (err: any) {
+    logger.error("[Membership] report-lost error", { error: err?.message });
+    return res.status(500).json({ error: "REPORT_LOST_FAILED" });
+  }
+});
+
 router.get("/verify/:token", async (req: Request, res: Response) => {
   const scanType = (req.query.type as "qr" | "barcode" | "nfc") || "qr";
   const stationId = (req.query.stationId as string) || null;
@@ -68,6 +120,30 @@ router.get("/verify/:token", async (req: Request, res: Response) => {
 });
 
 export const membershipAdminRouter = Router();
+
+/** Print file for ONE member's physical card (CR-80 front + back). */
+membershipAdminRouter.get("/:userId/print.pdf", requireAdmin, async (req: Request, res: Response) => {
+  const card = await printableCardForUser(req.params.userId);
+  if (!card) return res.status(404).json({ ok: false, error: "CARD_NOT_FOUND" });
+  const pdf = await buildMembershipCardPdf(card);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="petwash-card-${card.memberId}.pdf"`);
+  res.setHeader("Cache-Control", "no-store, private");
+  return res.send(pdf);
+});
+/** Print-bureau batch: one CSV row per active card (newest first, max 5000). */
+membershipAdminRouter.get("/print-batch.csv", requireAdmin, async (_req: Request, res: Response) => {
+  const rows = await db.select({ userId: membershipCards.userId }).from(membershipCards).where(eq(membershipCards.cardStatus, "active")).orderBy(desc(membershipCards.id)).limit(5000);
+  const lines = [PRINT_BATCH_CSV_HEADER];
+  for (const r of rows) {
+    const card = await printableCardForUser(r.userId);
+    if (card) lines.push(printBatchCsvRow(card));
+  }
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="petwash-cards-${new Date().toISOString().slice(0, 10)}.csv"`);
+  res.setHeader("Cache-Control", "no-store, private");
+  return res.send("\ufeff" + lines.join("\n") + "\n");
+});
 
 membershipAdminRouter.post("/:userId/freeze", requireAdmin, async (req: Request, res: Response) => {
   await MembershipCardService.setStatus(req.params.userId, "frozen", req.body?.reason);

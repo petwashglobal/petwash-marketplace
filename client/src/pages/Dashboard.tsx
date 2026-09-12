@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout';
 import { FollowUsBar } from '@/components/FollowUsBar';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
+import { MemberCardBack } from '@/components/MemberCardBack';
 import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail, BadgeCheck, Search, Package, Wallet, GraduationCap, ShoppingBag, Gift } from 'lucide-react';
 import { LoyaltyWalletCard } from '@/components/loyalty/LoyaltyWalletCard';
 import { LoyaltyStreakCard } from '@/components/loyalty/LoyaltyStreakCard';
@@ -844,6 +845,17 @@ export default function Dashboard() {
               </p>
             </div>
           </motion.div>
+
+          {/* BACK of the card (CEO design): QR + real Code-128 + member id + lost-card action. */}
+          {memberCard?.qrUrl && memberCard?.barcodeValue && (
+            <MemberCardBack
+              memberId={memberIdPretty}
+              qrUrl={memberCard.qrUrl}
+              barcodeValue={memberCard.barcodeValue}
+              language={language}
+              status={memberCard.status}
+            />
+          )}
 
           {/* ── Four real stat tiles ─────────────────────────────────────────
                 DASHBOARD-TRUTH round 2 (2026-08-22): the previous four tiles
