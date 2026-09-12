@@ -39,6 +39,8 @@ export interface PassVisual {
   availableCreditIls: number;
   validUntil?: string;
   qrTokenVersion: number;
+  /** Canonical membership-card id shown as Member ID (server/lib/memberIdentity). Falls back to passId. */
+  memberId?: string;
 }
 
 type ServiceAccount = { client_email: string; private_key: string };
@@ -94,7 +96,7 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
   const textModules: { id: string; header: string; body: string }[] = [
     { id: 'tier', header: 'TIER', body: `${visual.tier} TIER` },
     { id: 'credit', header: 'STORED CREDIT', body: `₪${visual.availableCreditIls.toFixed(0)} verified` },
-    { id: 'memberId', header: 'Member ID',         body: visual.passId },
+    { id: 'memberId', header: 'Member ID',         body: visual.memberId ?? visual.passId },
     ...(visual.validUntil ? [{ id: 'validUntil', header: 'Valid Until', body: visual.validUntil }] : []),
   ];
 

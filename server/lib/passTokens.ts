@@ -183,6 +183,8 @@ export interface MemberPassRecord {
   availableCreditIls: number;
   validUntil?: string;
   qrTokenVersion: number;
+  /** Canonical membership-card id (server/lib/memberIdentity); shown as Member ID when present. */
+  memberId?: string;
 }
 
 export function buildPassLinkUrls(record: MemberPassRecord): {
@@ -211,7 +213,7 @@ export function buildSendGridMemberPassData(record: MemberPassRecord) {
     templateId: process.env.SENDGRID_TEMPLATE_ID_MEMBER_PASS || '',
     dynamicTemplateData: {
       name:               record.ownerName,
-      member_id:          record.passId,
+      member_id:          record.memberId ?? record.passId,
       credit_balance:     record.availableCreditIls.toFixed(0),
       expiry_date:        record.validUntil || 'No expiry',
       apple_wallet_link:  appleLink,
@@ -227,6 +229,6 @@ export function buildTwilioPassMessage(record: MemberPassRecord): string {
     'PetWash',
     `Hello ${record.ownerName}, your digital pass is ready.`,
     `Open here: ${universalLink}`,
-    `Member ID: ${record.passId}`,
+    `Member ID: ${record.memberId ?? record.passId}`,
   ].join(' ');
 }

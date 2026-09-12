@@ -45,6 +45,8 @@ export interface PassVisual {
   availableCreditIls: number;
   validUntil?: string;
   qrTokenVersion: number;
+  /** Canonical membership-card id shown as MEMBER ID (server/lib/memberIdentity). Falls back to passId. */
+  memberId?: string;
 }
 
 interface WalletPassLocation {
@@ -172,7 +174,7 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
   pass.auxiliaryFields.push({
     key:   'memberId',
     label: 'MEMBER ID',
-    value: visual.passId,
+    value: visual.memberId ?? visual.passId,
     textAlignment: 'PKTextAlignmentCenter',
   } as any);
 
@@ -293,7 +295,7 @@ export function buildPassJson(visual: PassVisual): Record<string, unknown> {
         { key: 'storedCredit', label: 'STORED CREDIT', value: `₪${visual.availableCreditIls.toFixed(0)} verified`, textAlignment: 'PKTextAlignmentRight' },
       ],
       auxiliaryFields: [
-        { key: 'memberId', label: 'MEMBER ID', value: visual.passId, textAlignment: 'PKTextAlignmentCenter' },
+        { key: 'memberId', label: 'MEMBER ID', value: visual.memberId ?? visual.passId, textAlignment: 'PKTextAlignmentCenter' },
       ],
       backFields: [
         ...(visual.primaryPetName ? [{ key: 'primaryPet', label: 'Primary Pet', value: visual.primaryPetName }] : []),

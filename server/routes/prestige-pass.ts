@@ -53,6 +53,7 @@ import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken, buildQrRedeemToken } from '../lib/passTokens';
 import { resolveMemberTier, tierLabel } from '../lib/memberTier';
+import { ensureMemberIdentity, findMemberIdentity } from '../lib/memberIdentity';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
@@ -583,12 +584,17 @@ router.get('/wallet', async (req: Request, res: Response) => {
     const tier    = wallet?.loyaltyTier || passData.tier || 'new';
     const variant = TIER_VARIANT[tier] || 'gold';
 
-    // Derive display card number from serialNumber (e.g. PWL-M9XK2Z-ABCD → take last 8 alphanum chars)
+    // ONE member id (2026-09-12): the membership-card id is the number this
+    // human sees everywhere (physical card, Apple/Google pass, emails, here).
+    // Before, this surface derived a `PW-<serial tail>` that matched nothing
+    // else. Fail-soft: if the card cannot be issued right now, keep the old
+    // derivation so the page still renders.
+    const memberIdentity = await ensureMemberIdentity(userId, tier);
     const rawSerial   = (passData.serialNumber as string) || '';
     const alphaOnly   = rawSerial.replace(/[^A-Z0-9]/gi, '').toUpperCase();
     const raw8        = alphaOnly.length >= 8 ? alphaOnly.slice(-8) : alphaOnly.padEnd(8, '0');
-    const cardId      = `PW-${raw8}`;
-    const cardDisplay = `PW • ${raw8.slice(0, 4)} ${raw8.slice(4, 8)}`;
+    const cardId      = memberIdentity?.memberId ?? `PW-${raw8}`;
+    const cardDisplay = memberIdentity?.cardNumberDisplay ?? `PW • ${raw8.slice(0, 4)} ${raw8.slice(4, 8)}`;
 
     const displayName = (session?.user?.displayName as string | undefined) || (passData.firstName as string | undefined) || undefined;
 
@@ -612,6 +618,13 @@ router.get('/wallet', async (req: Request, res: Response) => {
       displayName,
       cardId,
       cardDisplay,
+      // Identity-only card data for the "Scan to identify" block (no value).
+      memberCard: memberIdentity ? {
+        memberId:     memberIdentity.memberId,
+        barcodeValue: memberIdentity.barcodeValue,
+        qrUrl:        memberIdentity.qrUrl,
+        status:       memberIdentity.status,
+      } : null,
       pet,
       pass: {
         serialNumber:  passData.serialNumber,
@@ -1242,6 +1255,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
     };
 
     const serialNumber = passData.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`;
+    const legacyMemberId = (await findMemberIdentity(userId))?.memberId;
 
     if (!isAppleWalletConfigured()) {
       const preview = applePassJson({
@@ -1251,6 +1265,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
         tier:               (tier || 'new').toUpperCase(),
         availableCreditIls: balance,
         qrTokenVersion:     1,
+        memberId:           legacyMemberId,
       });
       return res.status(503).json({ ok: false, error: 'Apple Wallet certificates not yet configured', preview });
     }
@@ -1262,6 +1277,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
       tier:               (tier || 'new').toUpperCase(),
       availableCreditIls: balance,
       qrTokenVersion:     1,
+      memberId:           legacyMemberId,
     });
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
     // `inline`, never `attachment` — iOS Safari cannot install a DOWNLOADED

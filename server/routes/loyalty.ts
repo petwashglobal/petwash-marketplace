@@ -41,6 +41,7 @@ import { fulfillRedemption, cancelRedemptionWithRefund, redemptionEffectiveStatu
 import { validateGift, giftNoteLine, buildGiftEmail, type GiftRequest } from '../services/giftAMoment';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
+import { ensureMemberIdentity } from '../lib/memberIdentity';
 import { aiChatLimiter } from '../middleware/rateLimiter';
 import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from '../middleware/aiUserBudget';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
@@ -299,7 +300,8 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
 
     // ── Financial document (membership_receipt) + SMS/push (fire-and-forget) ──
     try {
-      const memberNumber = `PW-${userId.slice(-8).toUpperCase()}`;
+      // ONE member id (2026-09-12): the welcome message names the card id, not a uid tail.
+      const memberNumber = (await ensureMemberIdentity(userId, 'bronze'))?.memberId ?? `PW-${userId.slice(-8).toUpperCase()}`;
       const firstName = (displayName || '').split(' ')[0] || 'חבר יקר';
       const tier = 'bronze';
 

@@ -39,6 +39,7 @@ import {
   isGoogleWalletConfigured,
 } from '../services/GoogleWalletService';
 import { lookupLivePassBalance } from '../services/walletPassSync';
+import { findMemberIdentity } from '../lib/memberIdentity';
 
 const router = Router();
 
@@ -55,6 +56,8 @@ interface WalletPassRecord {
   status: string;
   qrTokenVersion: number;
   updatedAt?: Date | null;
+  /** ONE member id (2026-09-12): the membership-card id, shown everywhere as "Member ID". */
+  memberId?: string | null;
 }
 
 interface PrestigePassSnapshot {
@@ -152,6 +155,7 @@ async function walletRecordFromFirestoreDoc(
     validUntil:         null,
     status:             String(data.status || 'ACTIVE').toUpperCase(),
     qrTokenVersion:     Number(data.qrTokenVersion || data.tokenVersion || 1),
+    memberId:           (await findMemberIdentity(userId))?.memberId ?? null,
   };
 }
 
@@ -213,7 +217,7 @@ async function lookupPassRecord(passId: string, userId?: string): Promise<Wallet
       .from(petwashPassAccounts)
       .where(eq(petwashPassAccounts.passId, passId))
       .limit(1);
-    if (pass) return pass;
+    if (pass) return { ...pass, memberId: (await findMemberIdentity(pass.userId))?.memberId ?? null };
   } catch (err) {
     if (!isMissingPassSqlTable(err)) throw err;
     logger.warn('[PassUniversal] petwash_pass_accounts missing; using Firestore prestige pass fallback', { passId, userId });
@@ -293,6 +297,7 @@ function buildVisual(pass: WalletPassRecord) {
     availableCreditIls: Number(pass.availableCreditIls),
     validUntil:         pass.validUntil?.toISOString().split('T')[0] ?? undefined,
     qrTokenVersion:     pass.qrTokenVersion,
+    memberId:           pass.memberId ?? undefined,
   };
 }
 
@@ -379,7 +384,7 @@ router.get('/:token', async (req: Request, res: Response) => {
   ${googleConfigured
     ? `<a class="btn google" href="${googleUrl}">${isHe ? 'הוסף ל‑Google Wallet' : 'Add to Google Wallet'}</a>`
     : `<div class="btn disabled">${isHe ? 'Google Wallet — בקרוב' : 'Google Wallet — Coming Soon'}</div>`}
-  <div class="id">${escapeHtml(pass.passId)}</div>
+  <div class="id">${escapeHtml(pass.memberId ?? pass.passId)}</div>
 </div>
 </body>
 </html>`);

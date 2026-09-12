@@ -32,6 +32,7 @@ import { db } from '../db';
 import { eq, sql } from 'drizzle-orm';
 import { users } from '@shared/schema';
 import { logger } from '../lib/logger';
+import { ensureMemberIdentity } from '../lib/memberIdentity';
 import { z } from 'zod';
 import { auth as fbAdminAuth, db as firestoreDb } from '../lib/firebase-admin';
 import { authService } from '../services/AuthService';
@@ -231,7 +232,8 @@ router.post('/join', async (req: Request, res: Response) => {
     let emailSent = false;
     try {
       const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
-      const memberNumber = memberId || `PW-${userId.slice(-8).toUpperCase()}`;
+      // ONE member id (2026-09-12): the card id, never the privilege row key or a uid tail.
+      const memberNumber = (await ensureMemberIdentity(userId, tierKey))?.memberId ?? memberId ?? `PW-${userId.slice(-8).toUpperCase()}`;
       const html = `<!DOCTYPE html><html lang="he"><body style="font-family:Arial,Helvetica,sans-serif;direction:rtl;text-align:right;padding:24px;background:#fff;">
 <div style="max-width:520px;margin:auto;">
 <h2 style="color:#111;font-size:22px;margin-bottom:8px;">🐾 ברוך הבא ל-PetWash™ Prestige</h2>
