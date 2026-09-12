@@ -11,7 +11,6 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { pool } from '../db';
 import { requireAuth } from '../customAuth';
-import { requireVerifiedClubMember } from '../middleware/loyalty';
 import {
   createAndPublishPost,
   resolvePost,
@@ -20,6 +19,7 @@ import {
 import { logger } from '../lib/logger';
 import { escapeLike } from '../lib/sqlLike';
 import { requireValidFileContentDisk } from '../lib/fileMagicValidation';
+import { uploadPhotoToGcs, readPhoto, photoPublicPath, isValidPhotoName } from '../lib/pawFinderPhotoStore';
 
 const router = Router();
 
@@ -226,6 +226,24 @@ async function pushNotification(
    Auth: any authenticated user
 ----------------------------------------------------------------------- */
 
+/** Serve a photo by its multer name: GCS first, legacy local directory second. Public (posts are public). */
+router.get('/photo/:name', async (req, res) => {
+  const name = String(req.params.name || '');
+  if (!isValidPhotoName(name)) return res.status(404).end();
+  try {
+    const photo = await readPhoto(name, UPLOAD_DIR);
+    if (!photo) return res.status(404).end();
+    res.setHeader('Content-Type', photo.contentType);
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Photo-Source', photo.source);
+    return res.send(photo.buf);
+  } catch (err: any) {
+    logger.error('[PawFinder] photo serve failed', { name, error: err?.message });
+    return res.status(500).end();
+  }
+});
+
 router.post(
   '/upload',
   requireAuth,
@@ -252,7 +270,11 @@ router.post(
     await compressIfNeeded(uploadedPath);
 
     const hash     = sha256File(uploadedPath);
-    const filePath = `/uploads/paw-finder/${req.file.filename}`;
+    // Durable copy (2026-09-12): the container disk is per-instance and wiped
+    // on every deploy. On success the post carries the stable served path;
+    // on failure it keeps the legacy local path (and a loud log).
+    const inGcs = await uploadPhotoToGcs(uploadedPath, req.file.filename);
+    const filePath = inGcs ? photoPublicPath(req.file.filename) : `/uploads/paw-finder/${req.file.filename}`;
     const fileSize = fs.statSync(uploadedPath).size;
 
     // Duplicate image detection across all posts
