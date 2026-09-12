@@ -258,3 +258,26 @@ describe('composeNextBestAction · fail-CLOSED', () => {
     expect(r.secondaryActions).toEqual([]);
   });
 });
+
+describe('composeNextBestAction · one destination, one card (CEO home 2026-09-12)', () => {
+  it('a feed item mirroring the primary checkpoint (same destination) is NOT a secondary', async () => {
+    mockCheckpoints.push(makeCheckpoint('provider_apply', 5, 'dc07'));
+    // The attention feed mirrors the same checkpoint as journey_resume:<domain>.
+    mockFeedItems.push(makeFeedItem('informational', 'journey_resume:provider_apply', {
+      domain: 'kyc', entityId: 'dc07', destination: '/provider-onboarding', title: 'המשך רישום ספק',
+    }));
+    const r = await composeNextBestAction({} as any, { userUid: 'usr_a', actor: 'pet_parent', he: true });
+    expect(r.primaryAction?.destination).toBe('/provider-onboarding');
+    expect(r.secondaryActions.map((a) => a.destination)).not.toContain('/provider-onboarding');
+    expect(r.secondaryActions).toHaveLength(0);
+  });
+
+  it('two secondaries pointing at the same place collapse to one', async () => {
+    mockFeedItems.push(makeFeedItem('urgent', 'u1'));
+    mockFeedItems.push(makeFeedItem('due_soon', 'd1', { destination: '/same' }));
+    mockFeedItems.push(makeFeedItem('informational', 'i1', { destination: '/same' }));
+    const r = await composeNextBestAction({} as any, { userUid: 'usr_a', actor: 'pet_parent', he: true });
+    expect(r.primaryAction?.destination).toBe('/x/u1');
+    expect(r.secondaryActions.map((a) => a.destination)).toEqual(['/same']);
+  });
+});

@@ -10,6 +10,7 @@
 import { useLocation } from 'wouter';
 import { useLanguage } from '@/lib/languageStore';
 import { useAttentionFeed } from '@/hooks/useAttentionFeed';
+import { useNextBestAction } from '@/hooks/useNextBestAction';
 import type {
   AttentionActor,
   AttentionItem,
@@ -56,11 +57,20 @@ export function AttentionList({ actor, limit = 6 }: Props) {
   const { language } = useLanguage();
   const he = language === 'he';
   const { items, isLoading } = useAttentionFeed(actor);
+  // The "next step" card above this list already shows the loudest action;
+  // a feed item pointing at the SAME place is the same nag a third time
+  // (CEO home 2026-09-12: "המשך רישום ספק" ×3). Same react-query cache, no
+  // extra request.
+  const { primaryAction } = useNextBestAction(actor);
 
   if (isLoading) return null;
   if (!items || items.length === 0) return null;
 
-  const visible = items.slice(0, limit);
+  const primaryDestination = primaryAction?.destination;
+  const visible = items
+    .filter((it) => !primaryDestination || it.destination !== primaryDestination)
+    .slice(0, limit);
+  if (visible.length === 0) return null;
 
   return (
     <section
