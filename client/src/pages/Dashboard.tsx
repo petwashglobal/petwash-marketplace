@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout';
 import { FollowUsBar } from '@/components/FollowUsBar';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
+import { MemberCardBack } from '@/components/MemberCardBack';
 import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail, BadgeCheck, Search, Package, Wallet, GraduationCap, ShoppingBag, Gift } from 'lucide-react';
 import { LoyaltyWalletCard } from '@/components/loyalty/LoyaltyWalletCard';
 import { LoyaltyStreakCard } from '@/components/loyalty/LoyaltyStreakCard';
@@ -614,6 +615,12 @@ export default function Dashboard() {
       ? membershipNumber
       : `PW-${tierCode}-${_digitsFromSeed(_stableSeed, 6)}`);
   const validThru: string = (() => {
+    // The card's own VALID THRU (written at issue since 2026-09-12) wins; the
+    // 5-years-from-pass-issue guess below is only the fallback for old rows.
+    const fromCard = memberCard?.validUntil ? new Date(memberCard.validUntil) : null;
+    if (fromCard && !isNaN(fromCard.getTime())) {
+      return `${String(fromCard.getMonth() + 1).padStart(2, '0')}/${String(fromCard.getFullYear()).slice(-2)}`;
+    }
     const issued = (passCard as any)?.pass?.issuedAt
       ? new Date((passCard as any).pass.issuedAt)
       : new Date();
@@ -832,8 +839,23 @@ export default function Dashboard() {
                   </p>
                 </div>
               </div>
+              {/* The CEO's card design carries this line on the back; the digital card says it too. */}
+              <p className="text-[8px] tracking-[0.18em] uppercase mt-3" style={{ color: '#8A6A1B', textAlign: 'center' }} data-testid="text-card-legal">
+                {language === 'he' ? 'כרטיס חבר בלבד — לא כרטיס אשראי' : 'Membership card only — not a credit card'}
+              </p>
             </div>
           </motion.div>
+
+          {/* BACK of the card (CEO design): QR + real Code-128 + member id + lost-card action. */}
+          {memberCard?.qrUrl && memberCard?.barcodeValue && (
+            <MemberCardBack
+              memberId={memberIdPretty}
+              qrUrl={memberCard.qrUrl}
+              barcodeValue={memberCard.barcodeValue}
+              language={language}
+              status={memberCard.status}
+            />
+          )}
 
           {/* ── Four real stat tiles ─────────────────────────────────────────
                 DASHBOARD-TRUTH round 2 (2026-08-22): the previous four tiles

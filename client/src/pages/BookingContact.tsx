@@ -97,6 +97,7 @@ export default function BookingContact() {
   const [startTime, setStartTime] = useState('09:00');
   const [selectedPetIds, setSelectedPetIds] = useState<string[]>([]);
   const [message, setMessage] = useState('');
+  const [acceptedBookingTerms, setAcceptedBookingTerms] = useState(false); // booking rules + emergency vet authorisation
   const [phone, setPhone] = useState('');
 
   // Current user (for phone-on-file check)
@@ -167,6 +168,8 @@ export default function BookingContact() {
         petCount: selectedPetIds.length,
         message: message || undefined,
         specialRequirements: modeLabel,        // carries Hosting vs Sitting vs drop-in
+        acceptedBookingTerms,                  // recorded as booking_rules + emergency_vet_authorisation
+        language: isHebrew ? 'he' : 'en',
       };
       const res = await apiRequest('POST', '/api/booking-requests', payload);
       return res.json();
@@ -383,8 +386,18 @@ export default function BookingContact() {
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/10 bg-white/95 backdrop-blur"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
           <div className="mx-auto w-full max-w-lg px-5 pt-3">
+            <label className="mb-2 flex items-start gap-2 text-[12px] leading-snug text-black/70" data-testid="booking-terms-consent">
+              <input type="checkbox" className="mt-0.5 h-4 w-4" checked={acceptedBookingTerms} onChange={(e) => setAcceptedBookingTerms(e.target.checked)} data-testid="booking-terms-checkbox" />
+              <span>
+                {isHebrew ? 'קראתי ומאשר/ת את ' : 'I have read and accept the '}
+                <a href="/legal/booking-rules" target="_blank" rel="noopener" className="underline underline-offset-2">{isHebrew ? 'כללי ההזמנה' : 'booking rules'}</a>
+                {isHebrew ? ' ואת ' : ' and the '}
+                <a href="/legal/emergency-vet-authorisation" target="_blank" rel="noopener" className="underline underline-offset-2">{isHebrew ? 'אישור טיפול וטרינרי בחירום' : 'emergency vet authorisation'}</a>
+                {isHebrew ? '.' : '.'}
+              </span>
+            </label>
             <Button
-              disabled={!canSend || sendMutation.isPending}
+              disabled={!canSend || !acceptedBookingTerms || sendMutation.isPending}
               onClick={() => sendMutation.mutate()}
               className="h-12 w-full rounded-full text-base font-semibold text-black hover:opacity-90 disabled:opacity-50"
               style={{ background: GOLD }}

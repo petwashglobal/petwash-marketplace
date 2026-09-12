@@ -22,8 +22,8 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
-import { petwashPassAccounts, appleWalletDeviceRegistrations, walletAccounts } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { petwashPassAccounts, appleWalletDeviceRegistrations } from '@shared/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import {
   verifyPassLinkToken,
@@ -38,6 +38,8 @@ import {
   buildSaveUrl as googleBuildSaveUrl,
   isGoogleWalletConfigured,
 } from '../services/GoogleWalletService';
+import { lookupLivePassBalance } from '../services/walletPassSync';
+import { findMemberIdentity } from '../lib/memberIdentity';
 
 const router = Router();
 
@@ -53,6 +55,9 @@ interface WalletPassRecord {
   validUntil?: Date | null;
   status: string;
   qrTokenVersion: number;
+  updatedAt?: Date | null;
+  /** ONE member id (2026-09-12): the membership-card id, shown everywhere as "Member ID". */
+  memberId?: string | null;
 }
 
 interface PrestigePassSnapshot {
@@ -71,6 +76,7 @@ const walletPassProjection = {
   validUntil:         petwashPassAccounts.validUntil,
   status:             petwashPassAccounts.status,
   qrTokenVersion:     petwashPassAccounts.qrTokenVersion,
+  updatedAt:          petwashPassAccounts.updatedAt,
 };
 
 function isIOS(ua: string): boolean {
@@ -90,22 +96,10 @@ function isMissingPassSqlTable(err: unknown): boolean {
 
 async function lookupWalletBalance(userId: string): Promise<{ tier?: string | null; availableCreditIls: string }> {
   try {
-    const [wallet] = await db
-      .select({
-        cashWalletBalanceCents:  walletAccounts.cashWalletBalanceCents,
-        egiftBalanceCents:       walletAccounts.egiftBalanceCents,
-        promoBalanceCents:       walletAccounts.promoBalanceCents,
-        loyaltyTier:             walletAccounts.loyaltyTier,
-      })
-      .from(walletAccounts)
-      .where(eq(walletAccounts.userId, userId))
-      .limit(1);
-
-    const cents = (wallet?.cashWalletBalanceCents ?? 0) +
-      (wallet?.egiftBalanceCents ?? 0) +
-      (wallet?.promoBalanceCents ?? 0);
-
-    return { tier: wallet?.loyaltyTier, availableCreditIls: (cents / 100).toFixed(2) };
+    // One formula for the pass figure — shared with walletPassSync so the
+    // pushed balance and the served balance can never disagree.
+    const live = await lookupLivePassBalance(userId);
+    return { tier: live.loyaltyTier, availableCreditIls: live.availableCreditIls };
   } catch (err) {
     logger.warn('[PassUniversal] Wallet balance fallback unavailable', { userId, err });
     return { availableCreditIls: '0.00' };
@@ -161,6 +155,7 @@ async function walletRecordFromFirestoreDoc(
     validUntil:         null,
     status:             String(data.status || 'ACTIVE').toUpperCase(),
     qrTokenVersion:     Number(data.qrTokenVersion || data.tokenVersion || 1),
+    memberId:           (await findMemberIdentity(userId))?.memberId ?? null,
   };
 }
 
@@ -222,13 +217,45 @@ async function lookupPassRecord(passId: string, userId?: string): Promise<Wallet
       .from(petwashPassAccounts)
       .where(eq(petwashPassAccounts.passId, passId))
       .limit(1);
-    if (pass) return pass;
+    if (pass) return { ...pass, memberId: (await findMemberIdentity(pass.userId))?.memberId ?? null };
   } catch (err) {
     if (!isMissingPassSqlTable(err)) throw err;
     logger.warn('[PassUniversal] petwash_pass_accounts missing; using Firestore prestige pass fallback', { passId, userId });
   }
 
   return lookupFirestorePrestigePass(passId, userId);
+}
+
+/**
+ * Map a pass-link token failure to an honest HTTP answer.
+ *
+ * WHY THIS EXISTS. `lookupPassByToken` THROWS on a bad or expired token (see
+ * the comment on the line below), so the `if (!pass) return 404` branch in
+ * every caller is unreachable for a bad token — control jumps to the catch.
+ *
+ * The HTML route mapped all four token errors correctly. The two routes that
+ * actually DELIVER the pass file only handled TOKEN_EXPIRED, so a malformed
+ * link, a bad signature or a wrong-purpose token all fell through to
+ * `500 "Pass generation failed"` — a server-error message for a client-side
+ * problem, about a generation step that never ran.
+ *
+ * On an iPhone that 500 surfaces as **"Safari cannot download this file."**
+ * The customer is told the product is broken when their link is simply stale.
+ *
+ * Returns null when the error is NOT a token problem, so genuine generation
+ * failures still get a 500.
+ */
+export function tokenErrorResponse(err: any): { status: number; error: string } | null {
+  switch (err?.message) {
+    case 'TOKEN_EXPIRED':
+      return { status: 410, error: 'This wallet link has expired — open the PetWash app to get a fresh one.' };
+    case 'INVALID_SIGNATURE':
+    case 'INVALID_TOKEN_FORMAT':
+    case 'INVALID_PURPOSE':
+      return { status: 403, error: 'This wallet link is not valid — open the PetWash app to get a fresh one.' };
+    default:
+      return null;
+  }
 }
 
 async function lookupPassByToken(token: string) {
@@ -270,6 +297,7 @@ function buildVisual(pass: WalletPassRecord) {
     availableCreditIls: Number(pass.availableCreditIls),
     validUntil:         pass.validUntil?.toISOString().split('T')[0] ?? undefined,
     qrTokenVersion:     pass.qrTokenVersion,
+    memberId:           pass.memberId ?? undefined,
   };
 }
 
@@ -356,7 +384,7 @@ router.get('/:token', async (req: Request, res: Response) => {
   ${googleConfigured
     ? `<a class="btn google" href="${googleUrl}">${isHe ? 'הוסף ל‑Google Wallet' : 'Add to Google Wallet'}</a>`
     : `<div class="btn disabled">${isHe ? 'Google Wallet — בקרוב' : 'Google Wallet — Coming Soon'}</div>`}
-  <div class="id">${escapeHtml(pass.passId)}</div>
+  <div class="id">${escapeHtml(pass.memberId ?? pass.passId)}</div>
 </div>
 </body>
 </html>`);
@@ -391,11 +419,30 @@ router.get('/apple/:token', async (req: Request, res: Response) => {
     const pkpassBuffer = await generateAppleWalletPass(buildVisual(pass));
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${pass.passId}.pkpass"`);
+    // `inline`, NEVER `attachment` (2026-09-12). iOS Safari treats a .pkpass
+    // marked `attachment` as a file DOWNLOAD, and it has no flow to install a
+    // downloaded pass — so it answers "Safari cannot download this file" and the
+    // customer concludes the product is broken. With `inline` it hands the pass
+    // to Wallet and shows "Add to Wallet".
+    //
+    // server/routes/wallet.ts already gets this right in all four of its pkpass
+    // responses; this single route had drifted.
+    //
+    // Proven from production logs, not guessed. The CEO's own attempt:
+    //   08:09:03.025  GET /api/pass/<token>
+    //   08:09:03.843  GET /api/pass/apple/<token>     (redirected — certs ARE configured)
+    //   08:09:04.190  [AppleWallet] Generating pkpass {passId: PW-97A5-DEDF}
+    //   ...and NO error afterwards. The server built and returned the pass
+    //   correctly; iOS refused it at the disposition.
+    res.setHeader('Content-Disposition', `inline; filename="${pass.passId}.pkpass"`);
+    // A per-member pass must never be cached by the CDN in front of Cloud Run
+    // (server/routes/wallet.ts already sends no-store on its pkpass responses).
+    res.setHeader('Cache-Control', 'no-store, private');
     res.setHeader('Last-Modified', new Date().toUTCString());
     return res.send(pkpassBuffer);
   } catch (err: any) {
-    if (err?.message === 'TOKEN_EXPIRED') return res.status(410).json({ ok: false, error: 'Link expired' });
+    const tokenErr = tokenErrorResponse(err);
+    if (tokenErr) return res.status(tokenErr.status).json({ ok: false, error: tokenErr.error });
     logger.error('[PassUniversal] Apple pkpass error', { err });
     return res.status(500).json({ ok: false, error: 'Pass generation failed' });
   }
@@ -418,7 +465,8 @@ router.get('/google/:token', async (req: Request, res: Response) => {
 
     return res.redirect(307, saveUrl);
   } catch (err: any) {
-    if (err?.message === 'TOKEN_EXPIRED') return res.status(410).json({ ok: false, error: 'Link expired' });
+    const tokenErr = tokenErrorResponse(err);
+    if (tokenErr) return res.status(tokenErr.status).json({ ok: false, error: tokenErr.error });
     logger.error('[PassUniversal] Google wallet redirect error', { err });
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
@@ -513,9 +561,32 @@ router.get('/apple/v1/devices/:deviceId/registrations/:passTypeId', async (req: 
 
     if (!regs.length) return res.status(204).send();
 
+    // Honest `passesUpdatedSince` (2026-09-12): Apple sends back the
+    // `lastUpdated` tag we returned last time and expects ONLY the passes
+    // changed since. Returning every serial with `now` made every poll
+    // re-download every pass and reported an unchanged pass as changed.
+    const since = typeof req.query.passesUpdatedSince === 'string' ? Date.parse(req.query.passesUpdatedSince) : NaN;
+    const serials = regs.map(r => r.serialNumber);
+    const rows = await db
+      .select({ passId: petwashPassAccounts.passId, appleSerialNumber: petwashPassAccounts.appleSerialNumber, updatedAt: petwashPassAccounts.updatedAt })
+      .from(petwashPassAccounts)
+      .where(inArray(petwashPassAccounts.passId, serials));
+    const updatedAtBySerial = new Map<string, number>();
+    for (const row of rows) {
+      const ts = row.updatedAt ? row.updatedAt.getTime() : Date.now();
+      updatedAtBySerial.set(row.passId, ts);
+      if (row.appleSerialNumber) updatedAtBySerial.set(row.appleSerialNumber, ts);
+    }
+    const changed = serials.filter((s) => {
+      const ts = updatedAtBySerial.get(s) ?? Date.now();
+      return Number.isNaN(since) || ts > since;
+    });
+    if (!changed.length) return res.status(204).send();
+
+    const newest = Math.max(...changed.map((s) => updatedAtBySerial.get(s) ?? Date.now()));
     return res.json({
-      serialNumbers: regs.map(r => r.serialNumber),
-      lastUpdated:   new Date().toISOString(),
+      serialNumbers: changed,
+      lastUpdated:   new Date(newest).toISOString(),
     });
   } catch (err) {
     logger.error('[AppleWallet] Registration list error', { err });
@@ -534,10 +605,16 @@ router.get('/apple/v1/passes/:passTypeId/:serialNumber', async (req: Request, re
     if (!pass) return res.status(404).send();
     if (!verifyApplePassRequest(req, pass)) return res.status(401).send();
 
+    const ifModifiedSince = Date.parse(req.header('if-modified-since') || '');
+    const passUpdatedAt = pass.updatedAt ? pass.updatedAt.getTime() : Date.now();
+    if (!Number.isNaN(ifModifiedSince) && Math.floor(passUpdatedAt / 1000) <= Math.floor(ifModifiedSince / 1000)) {
+      return res.status(304).send();
+    }
+
     const pkpassBuffer = await generateAppleWalletPass(buildVisual(pass));
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Last-Modified', new Date().toUTCString());
+    res.setHeader('Last-Modified', new Date(passUpdatedAt).toUTCString());
     return res.send(pkpassBuffer);
   } catch (err) {
     const walletError = walletGenerationError(err);

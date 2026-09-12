@@ -64,7 +64,9 @@ import { isK9000MachineConfigured } from '../lib/k9000-env-guard';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
-import { verifySignedRedeemToken, consumeNonce } from '../lib/signedRedeemToken';
+import { consumeNonce } from '../lib/signedRedeemToken';
+import { verifyQrRedeemToken, type PassTokenPayload } from '../lib/passTokens';
+import { enforceRedeemTokenFreshness } from '../lib/redeemTokenGuard';
 import { redis } from '../services/redis';
 import {
   authorizeRedemption,
@@ -1120,28 +1122,57 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
       });
     }
 
-    // ── Step 1: Verify HMAC-signed user token (expiry + nonce + signature) ─
-    const verification = verifySignedRedeemToken(scannedCode);
-
-    if (!verification.valid || !verification.payload) {
+    // ── Step 1: Verify the signed user token (expiry + signature) ──────────
+    // ONE token system (2026-09-12 audit): /api/k9000/generate-qr mints the
+    // passTokens `qr-redeem` token (PRESTIGE_QR_SECRET). This route used to
+    // verify with lib/signedRedeemToken — a different secret and a different
+    // payload — so a kiosk could never have accepted a real member QR.
+    let payload: PassTokenPayload;
+    try {
+      payload = verifyQrRedeemToken(scannedCode);
+    } catch (verErr: any) {
+      const reason = String(verErr?.message || 'INVALID');
       const errorMap: Record<string, string> = {
-        EXPIRED:           'הקוד פג תוקף (45 שניות). הצג קוד חדש.',
-        REPLAYED:          'קוד זה כבר שומש. אסור לעשות שימוש חוזר.',
-        INVALID_SIGNATURE: 'חתימה לא תקינה — הקוד לא יתקבל.',
-        MISSING_SECRET:    'שגיאת הגדרות שרת — PASS_TOKEN_SECRET חסר.',
-        PARSE_ERROR:       'פורמט קוד לא תקין.',
+        TOKEN_EXPIRED:               'הקוד פג תוקף (45 שניות). הצג קוד חדש.',
+        INVALID_SIGNATURE:           'חתימה לא תקינה — הקוד לא יתקבל.',
+        INVALID_PURPOSE:             'זה קוד זיהוי, לא קוד מימוש. הצג את הקוד המתחלף מהאפליקציה.',
+        INVALID_TOKEN_FORMAT:        'פורמט קוד לא תקין.',
+        TOKEN_SECRET_NOT_CONFIGURED: 'שגיאת הגדרות שרת — PRESTIGE_QR_SECRET חסר.',
       };
-      const heMsg = errorMap[verification.error || ''] || 'קוד לא תקין.';
-      logger.warn('[K9000 Redeem] Token rejected', { error: verification.error, kioskId, correlationId });
+      const heMsg = errorMap[reason] || 'קוד לא תקין.';
+      logger.warn('[K9000 Redeem] Token rejected', { error: reason, kioskId, correlationId });
       return res.status(403).json({
         error: heMsg,
-        errorEn: verification.error,
+        errorEn: reason,
         status: 'TOKEN_REJECTED',
         correlationId,
       });
     }
 
-    const { uid: userId, ps: passSerial, nonce } = verification.payload;
+    const userId = payload.userId;
+    const passSerial = payload.passId;
+    const nonce = payload.nonce;
+
+    // ── Step 6b: shared revocation + replay guard (2026-09-13) ──────────────
+    // The same guard the Cortina bay rail runs: qr_token_version compare (a
+    // revoked pass was accepted HERE before today) and the shared
+    // petwash_pass_nonce_registry burn (one QR could be spent on each rail).
+    // Fail-CLOSED on a registry error — the burns below are a second net.
+    try {
+      await enforceRedeemTokenFreshness(payload);
+    } catch (guardErr: any) {
+      const reason = String(guardErr?.message || 'GUARD_FAILED');
+      if (reason === 'TOKEN_REVOKED') {
+        logger.warn('[K9000 Redeem] Token revoked (qr_token_version)', { userId, correlationId });
+        return res.status(403).json({ error: 'הכרטיס בוטל. הצג קוד חדש מהאפליקציה.', errorEn: 'TOKEN_REVOKED', status: 'TOKEN_REJECTED', correlationId });
+      }
+      if (reason === 'TOKEN_REPLAYED') {
+        logger.warn('[K9000 Redeem] Shared-registry replay blocked', { nonce, userId, correlationId });
+        return res.status(409).json({ error: 'קוד זה כבר שומש. הצג קוד חדש.', errorEn: 'QR code already used. Please generate a new one.', status: 'REPLAYED', correlationId });
+      }
+      logger.error('[K9000 Redeem] Freshness guard failed — refusing redemption (fail-closed)', { error: reason, correlationId });
+      return res.status(503).json({ error: 'השירות אינו זמין כעת. נסה שוב.', errorEn: 'Service temporarily unavailable. Please try again.', status: 'NONCE_STORE_UNAVAILABLE', correlationId });
+    }
 
     // ── Step 7 (pre-debit): Burn nonce before calling the service ──────────
     // In-memory burn first (fast, same-process protection)

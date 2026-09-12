@@ -83,3 +83,6 @@ playwright-report/
 
 # Verification browser-journey harness build (npm run build:verification-harness)
 dist-verification-harness/
+
+# pins gate report (scripts/ci/pins_with_baseline.mjs)
+.vitest-pins.json

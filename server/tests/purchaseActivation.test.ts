@@ -243,11 +243,11 @@ describe('activateProduct — per-type behaviour', () => {
     expect(addCredits).toHaveBeenCalledWith('user-1', 'wash_package', 5, 'sumit_purchase', 'PUR-3', expect.any(String));
   });
 
-  it('wallet_topup surface → promo_credit in CENTS, sourceId=purchase.id', async () => {
+  it('wallet_topup surface → cash_wallet in CENTS (was promo_credit — the bay could not spend it), sourceId=purchase.id', async () => {
     seed({ id: 'PUR-4', surface: 'wallet_topup', surfaceRefId: 'ext-4', productType: 'ACCOUNT_CREDIT', amountCents: 12000 });
     const r = await activateFromVerifiedPayment({ providerReference: 'txn-4', transactionId: 'txn-4', externalRef: 'ext-4' });
     expect(r.outcome).toBe('activated');
-    expect(addCredits).toHaveBeenCalledWith('user-1', 'promo_credit', 12000, 'sumit_purchase', 'PUR-4', expect.any(String));
+    expect(addCredits).toHaveBeenCalledWith('user-1', 'cash_wallet', 12000, 'sumit_purchase', 'PUR-4', expect.any(String));
   });
 
   it('EGIFT_CARD → activation_pending, NO addCredits (recipient-bound is a follow-up)', async () => {

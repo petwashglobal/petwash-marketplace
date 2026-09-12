@@ -145,6 +145,38 @@ export async function runK9000Reconciliation(reconDate?: string): Promise<ReconS
       })) bump('stale_reservation', 'critical');
     }
 
+    // 5) redemption_without_document (2026-09-12 audit G7) — stored value was
+    //    spent at a bay today and no fiscal document is linked to it. Only
+    //    meaningful once K9000_REDEMPTION_FISCAL_ENABLED is on; before that
+    //    every redemption would be a break by construction, so we count and log.
+    const { redemptionFiscalEnabled, K9000_REDEMPTION_RECEIPT_LINK_TYPE } = await import('./k9000RedemptionFiscal');
+    const undocumented = await pool.query(
+      `SELECT ct.transaction_id, ct.amount_cents, ct.credit_type, ct.metadata
+         FROM credit_transactions ct
+        WHERE ct.transaction_type = 'redeem'
+          AND ct.platform = 'k9000'
+          AND ct.credit_type IN ('egift', 'cash_wallet', 'promo_credit')
+          AND ct.created_at::date = $1
+          AND NOT EXISTS (
+            SELECT 1 FROM nayax_fiscal_document_links l
+             WHERE l.nayax_transaction_id = ct.transaction_id
+               AND l.link_type = $2)`,
+      [date, K9000_REDEMPTION_RECEIPT_LINK_TYPE],
+    );
+    if (redemptionFiscalEnabled()) {
+      for (const row of undocumented.rows) {
+        const meta = (row.metadata ?? {}) as Record<string, unknown>;
+        if (await recordBreak({
+          reconDate: date, breakType: 'redemption_without_document', severity: 'critical',
+          bayId: (meta.bayId as string) ?? null, sessionId: null, nayaxRef: row.transaction_id,
+          expected: { linkType: K9000_REDEMPTION_RECEIPT_LINK_TYPE },
+          observed: { creditType: row.credit_type, amountCents: row.amount_cents },
+        })) bump('redemption_without_document', 'critical');
+      }
+    } else if (undocumented.rows.length > 0) {
+      logger.warn('[K9000 Recon] stored-value redemptions with no fiscal document (flag off, not recorded as breaks)', { date, count: undocumented.rows.length });
+    }
+
     // TODO (Phase 2, needs Nayax Core export): settlement_without_commit —
     // Nayax reports a vend on a TerminalId with no matching committed reservation.
     // Cannot be computed without importing Nayax transaction data.

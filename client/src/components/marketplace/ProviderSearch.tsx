@@ -740,7 +740,7 @@ export function ProviderSearch({
       case 'pet-taxi':
         return '/pettrek/browse';
       case 'training':
-        return '/academy/browse';
+        return '/academy'; // /academy/browse never existed (audit 2026-09-12)
       default:
         return '/sitter-suite/browse';
     }

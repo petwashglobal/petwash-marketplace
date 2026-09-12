@@ -208,7 +208,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
             <select
               value={form.type}
               onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5 bg-white"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5 bg-white"
             >
               {HEALTH_EVENT_TYPES.map(t => (
                 <option key={t.value} value={t.value}>
@@ -221,20 +221,20 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
               placeholder={isHe ? 'כותרת (למשל: חיסון כלבת)' : 'Title (e.g. Rabies shot)'}
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5"
             />
             <input
               type="date"
               value={form.date}
               onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5"
             />
             <textarea
               placeholder={isHe ? 'הערות (רופא, מינון, תכשיר...)' : 'Notes (vet, dose, product...)'}
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
               rows={2}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5 resize-none"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5 resize-none"
             />
             <div className="flex gap-2">
               <button
@@ -398,6 +398,14 @@ export default function Pets() {
       return data.pets || [];
     },
   });
+  // The query key '/api/pets' is SHARED with PrestigeHome / MyAccount /
+  // BookingContact, which cache the raw `{ pets: [...] }` object. Arriving here
+  // from the home therefore hands this page an OBJECT, and `pets.map` threw
+  // "R.map is not a function" (live, 2026-09-12: home → "הוסיפו את החיה
+  // הראשונה שלכם" → crash screen). Accept either shape.
+  const petList: Pet[] = Array.isArray(pets)
+    ? pets
+    : (Array.isArray((pets as any)?.pets) ? ((pets as any).pets as Pet[]) : []);
 
   const createMutation = useMutation({
     mutationFn: async (data: PetFormData) => {
@@ -669,7 +677,7 @@ export default function Pets() {
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F]"></div>
               </div>
-            ) : pets.length === 0 ? (
+            ) : petList.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                 <PawPrint className="h-16 w-16 mb-4 opacity-20" />
                 <p className="text-lg font-medium mb-2">
@@ -681,7 +689,7 @@ export default function Pets() {
               </div>
             ) : (
               <div className="luxury-grid-3 luxury-gap-lg">
-                {pets.map((pet, index) => (
+                {petList.map((pet, index) => (
                   <div key={pet.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(index + 1, 10)}`} data-testid={`card-pet-${pet.id}`}>
                     <CardHeader className="bg-gradient-to-r from-[#D4AF37]/50 to-[#D4AF37]/50 dark:from-[#B8932F]/10 dark:to-[#B8932F]/10 pb-4">
                       <div className="flex items-start justify-between">

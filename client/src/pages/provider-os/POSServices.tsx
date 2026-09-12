@@ -313,7 +313,7 @@ export default function POSServices() {
                               value={addon.label}
                               onChange={e => updateAddon(serviceId, addonIdx, { label: e.target.value })}
                               placeholder="Add-on name"
-                              className="flex-1 text-xs border-0 outline-none bg-transparent font-medium text-gray-800 placeholder-gray-400"
+                              className="flex-1 text-[16px] border-0 outline-none bg-transparent font-medium text-gray-800 placeholder-gray-400"
                             />
                             <div className="flex items-center gap-1 shrink-0">
                               <span className="text-xs text-gray-400">₪</span>
@@ -321,7 +321,7 @@ export default function POSServices() {
                                 type="number" min="0" step="5"
                                 value={addon.price}
                                 onChange={e => updateAddon(serviceId, addonIdx, { price: Number(e.target.value) })}
-                                className="w-14 text-xs border border-gray-200 rounded-lg px-2 py-1 text-center font-medium focus:outline-none focus:border-amber-400 bg-white"
+                                className="w-14 text-[16px] border border-gray-200 rounded-lg px-2 py-1 text-center font-medium focus:outline-none focus:border-amber-400 bg-white"
                               />
                             </div>
                             <button onClick={() => removeAddon(serviceId, addonIdx)}

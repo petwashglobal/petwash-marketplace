@@ -391,6 +391,67 @@ export class IsraeliDigitalReceiptService {
    * Generate and save digital receipt (קבלה דיגיטלית)
    * Records in PostgreSQL for accounting compliance
    */
+  /**
+   * The SUMIT leg of a customer receipt, re-runnable (2026-09-13). Loads the
+   * local PW- row, skips when SUMIT is not wired or the row already carries a
+   * sumit_document_id, otherwise issues the per-class document and stamps the
+   * id back. THROWS on a SUMIT/network failure so the outbox drainer retries.
+   * Idempotent at SUMIT via idempotencyKey = receiptNumber.
+   */
+  static async dispatchReceiptToSumit(params: { receiptId: number; paymentClass?: PetWashPaymentClass }): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id'; sumitDocumentId?: string }> {
+    const { sumitClient } = await import('./SumitClient');
+    if (sumitClient.isWired()) {
+      return IsraeliDigitalReceiptService.dispatchReceiptToSumitWired(sumitClient, params);
+    }
+    return { status: 'not_wired' };
+  }
+
+  private static async dispatchReceiptToSumitWired(
+    sumitClient: { createCustomerReceipt: (i: any) => Promise<{ sumitDocumentId?: string; reason?: string }> },
+    params: { receiptId: number; paymentClass?: PetWashPaymentClass },
+  ): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id'; sumitDocumentId?: string }> {
+    const [row] = await db.select().from(digitalReceipts).where(eq(digitalReceipts.id, params.receiptId)).limit(1);
+    if (!row) throw new Error(`RECEIPT_NOT_FOUND:${params.receiptId}`);
+    if (row.sumitDocumentId) return { status: 'already_issued', sumitDocumentId: row.sumitDocumentId };
+    const receiptNumber = row.receiptNumber;
+
+    // Per-class SUMIT document type from the CPA mapping (#1359). Refund
+    // classes go through the credit-note path, not here, so a CreditInvoice
+    // mapping is never used for a customer receipt.
+    const classDocType = params.paymentClass
+      ? getSumitDocumentMapping(params.paymentClass).documentType
+      : undefined;
+    const sumitResult = await sumitClient.createCustomerReceipt({
+      idempotencyKey: receiptNumber,
+      documentType: classDocType && classDocType !== 'CreditInvoice' ? classDocType : undefined,
+      customer: {
+        name: row.customerName || row.customerEmail || '',
+        email: row.customerEmail || undefined,
+        phone: row.customerPhone || undefined,
+      },
+      description: row.serviceDescriptionHe || row.serviceDescription || '',
+      amountBeforeVat: Number(row.subtotalAmount),
+      vatAmount: Number(row.vatAmount),
+      totalAmount: Number(row.totalAmount),
+      currency: 'ILS',
+      context: { platform: row.platform, bookingId: row.bookingId ?? undefined, receiptNumber },
+    });
+    if (!sumitResult.sumitDocumentId) {
+      // A deliberate non-issue (SUMIT said no document) is not a transport
+      // failure — do not retry forever; reconciliation sees issuer_of_record NULL.
+      logger.warn('[Digital Receipt] SUMIT issue did not return a document id', { receiptNumber: row.receiptNumber, reason: sumitResult.reason });
+      return { status: 'no_document_id' };
+    }
+    // Persist the SUMIT document id back onto the receipt so the official
+    // document is retrievable later. SUMIT is the issuer of record (CPA
+    // 2026-07-09); the PW- row is an internal ledger reference.
+    await db.update(digitalReceipts)
+      .set({ sumitDocumentId: sumitResult.sumitDocumentId, issuerOfRecord: 'sumit' })
+      .where(eq(digitalReceipts.id, row.id));
+    logger.info('[Digital Receipt] SUMIT document issued', { receiptNumber: row.receiptNumber, sumitDocumentId: sumitResult.sumitDocumentId, platform: row.platform });
+    return { status: 'issued', sumitDocumentId: sumitResult.sumitDocumentId };
+  }
+
   static async generateReceipt(params: ReceiptGenerationParams): Promise<ReceiptResult> {
     try {
       // ── Exactly-once guard (no double receipt per booking) ──────────────────
@@ -595,58 +656,28 @@ export class IsraeliDigitalReceiptService {
       // GO-LIVE CHECK: on the first real sale after enabling, confirm SUMIT issues
       // exactly ONE document per sale (SUMIT's), so the local doc is a reference,
       // not a second official tax invoice.
+      // SUMIT leg — DURABLE (2026-09-13). Before: one try/catch that turned a
+      // SUMIT outage into a log line; the local PW- row stayed
+      // issuer_of_record=NULL and nothing ever retried, so the official ITA
+      // document was silently lost. Now: inline attempt, else a durable
+      // fiscal_document_outbox row (kind sumit_receipt_dispatch) the drainer
+      // retries; the receipt itself never fails because of SUMIT.
       try {
-        const { sumitClient } = await import('./SumitClient');
-        if (sumitClient.isWired()) {
-          // Per-class SUMIT document type from the CPA mapping (#1359). Refund
-          // classes go through the credit-note path below, not here, so a
-          // CreditInvoice mapping is never used for a customer receipt.
-          const classDocType = params.paymentClass
-            ? getSumitDocumentMapping(params.paymentClass).documentType
-            : undefined;
-          const sumitResult = await sumitClient.createCustomerReceipt({
-            idempotencyKey: receiptNumber,
-            documentType: classDocType && classDocType !== 'CreditInvoice' ? classDocType : undefined,
-            customer: {
-              name: params.customerName || params.customerEmail,
-              email: params.customerEmail,
-              phone: params.customerPhone,
-            },
-            description: params.serviceDescriptionHe || params.serviceDescription,
-            amountBeforeVat: vatBreakdown.subtotalBeforeVAT,
-            vatAmount: vatBreakdown.vatAmount,
-            totalAmount: params.totalAmount,
-            currency: 'ILS',
-            context: { platform: params.platform, bookingId: params.bookingId, receiptNumber },
+        const outcome = await runFiscalDocumentAndPersistOnFailure({
+          pool,
+          kind: 'sumit_receipt_dispatch',
+          sourceKey: `receipt:${receiptNumber}`,
+          payload: { receiptId: receipt.id, receiptNumber, paymentClass: params.paymentClass ?? null, bookingId: params.bookingId ?? null },
+          runNow: () => IsraeliDigitalReceiptService.dispatchReceiptToSumit({ receiptId: receipt.id, paymentClass: params.paymentClass }),
+        });
+        if (!outcome.ranInline) {
+          logger.error('[Digital Receipt] 🔴 SUMIT dispatch failed — enqueued for retry (receipt still valid locally)', {
+            receiptNumber, bookingId: params.bookingId, error: outcome.inlineError,
           });
-          if (sumitResult.sumitDocumentId) {
-            // Persist the SUMIT document id back onto the receipt so the official
-            // document is retrievable later (was previously only logged → lost).
-            try {
-              await db.update(digitalReceipts)
-                // SUMIT is now the issuer of record (CPA 2026-07-09): its document
-                // is the official tax invoice/receipt; this PW- row is an internal
-                // ledger reference. Best-effort — a not-yet-migrated column just
-                // leaves it null and the receipt is unaffected.
-                .set({ sumitDocumentId: sumitResult.sumitDocumentId, issuerOfRecord: 'sumit' })
-                .where(eq(digitalReceipts.id, receipt.id));
-            } catch (persistErr: any) {
-              logger.warn('[Digital Receipt] could not persist sumitDocumentId (doc still issued)', {
-                receiptNumber, sumitDocumentId: sumitResult.sumitDocumentId, error: persistErr?.message,
-              });
-            }
-            logger.info('[Digital Receipt] SUMIT document issued', {
-              receiptNumber, sumitDocumentId: sumitResult.sumitDocumentId, platform: params.platform,
-            });
-          } else {
-            logger.warn('[Digital Receipt] SUMIT issue did not return a document id', {
-              receiptNumber, reason: sumitResult.reason,
-            });
-          }
         }
       } catch (sumitError: any) {
-        // Never fail the receipt because of SUMIT. Loudly log for reconciliation.
-        logger.error('[Digital Receipt] 🔴 SUMIT dispatch failed (receipt still valid locally)', {
+        // Both inline AND outbox failed. Never fail the receipt because of SUMIT.
+        logger.error('[Digital Receipt] 🔴 SUMIT dispatch failed AND outbox unavailable (receipt still valid locally)', {
           receiptNumber, bookingId: params.bookingId, error: sumitError?.message,
         });
       }

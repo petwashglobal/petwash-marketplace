@@ -23,6 +23,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { useProviderDetails } from '@/services/marketplace';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { petsList } from '@/lib/apiShapes';
 import {
   Calendar as CalendarIcon, Clock, Check, ChevronLeft, ChevronRight,
   Dog, MapPin, Star, DollarSign, CreditCard, Shield, Lock
@@ -232,9 +233,11 @@ export default function MarketplaceBookingFlow() {
   const provider = providerData?.provider;
 
   // Fetch user's pets
+  // The default fetch returns `{ pets: [...] }`; typed as an array it silently rendered NO pets (2026-09-12 sweep).
   const { data: pets } = useQuery<any[]>({
     queryKey: ['/api/pets', user?.uid],
     enabled: !!user,
+    select: (d: unknown) => petsList(d),
   });
 
   // Countdown timer for lock expiry

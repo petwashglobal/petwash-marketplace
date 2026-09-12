@@ -11,6 +11,7 @@ import { PetWashIcon } from '@/components/PetWashIcon';
 import { useToast } from '@/hooks/use-toast';
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { petsList } from '@/lib/apiShapes';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { calculateTier, TIER_CONFIG } from '@/lib/loyalty';
 import { useSEO, pageSEO } from '@/lib/seo';
@@ -77,8 +78,10 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
   const [coatCondition, setCoatCondition] = useState<'good' | 'shedding' | 'matted'>('good');
   const [showQRCode, setShowQRCode] = useState(false);
 
+  // '/api/pets' is a SHARED cache key with several shapes — normalise (2026-09-12 sweep: this page crashed exactly like /pets).
   const { data: pets = [], isLoading: petsLoading } = useQuery<Pet[]>({
     queryKey: ['/api/pets'],
+    select: (d: unknown) => petsList<Pet>(d),
   });
 
   const { data: washSchedules = [], isLoading: schedulesLoading } = useQuery<WashSchedule[]>({

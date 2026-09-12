@@ -58,80 +58,9 @@ interface PawPost {
 
 interface PawFinderProps {
   language: Language;
+  /** Deep link /paw-finder/:id — opens that post's detail on load (2026-09-12). */
+  initialPostId?: number;
 }
-
-/* -------------------------------------------------------------------------
-   DEMO / FEATURED POSTS — always visible, seeded from the owner's images
-------------------------------------------------------------------------- */
-
-const DEMO_PETS: PawPost[] = [
-  {
-    id: -1,
-    post_key: 'demo-dog-1',
-    post_type: 'lost',
-    pet_type: 'dog',
-    pet_name: 'לוקי',
-    breed: 'Golden Retriever',
-    color_primary: 'זהוב',
-    size_category: 'large',
-    sex: 'male',
-    city: 'תל אביב',
-    area: 'הצפון הישן',
-    description: 'לוקי — גולדן רטריבר זהוב, גיל 3. נעלם מאזור הצפון הישן תל אביב. מגיב לשמו בעברית ובאנגלית. חובש קולר כחול כהה. אוהב אנשים ומגיע לקריאה. אם ראיתם אותו — אנא צרו קשר מיד. תגמול נדיב למוצא.',
-    reward_amount: '1000',
-    event_date: '2026-04-10',
-    status: 'published',
-    matched_post_count: 0,
-    latitude: '32.09',
-    longitude: '34.78',
-    primary_media: '/paw-finder/demo-dog.jpg',
-    published_at: '2026-04-10T18:00:00.000Z',
-  },
-  {
-    id: -2,
-    post_key: 'demo-cat-1',
-    post_type: 'lost',
-    pet_type: 'cat',
-    pet_name: 'מישי',
-    breed: 'British Shorthair',
-    color_primary: 'אפור',
-    size_category: 'medium',
-    sex: 'female',
-    city: 'רמת גן',
-    area: 'שכונת כצנלסון',
-    description: 'מישי — חתולה פרסית אפורה עם עיניים ענבריות זהובות. נעלמה מהבית ברמת גן. מסורסת, ללא קולר. ביישנית עם זרים אך תגיע למי שקורא לה בשמה ומחזיק מזון. אנא עזרו לנו להחזיר אותה הביתה!',
-    reward_amount: '500',
-    event_date: '2026-04-12',
-    status: 'published',
-    matched_post_count: 0,
-    latitude: '32.08',
-    longitude: '34.82',
-    primary_media: '/paw-finder/demo-cat.jpg',
-    published_at: '2026-04-12T10:00:00.000Z',
-  },
-  {
-    id: -3,
-    post_key: 'demo-bird-1',
-    post_type: 'lost',
-    pet_type: 'bird',
-    pet_name: 'ריו',
-    breed: 'African Grey',
-    color_primary: 'אפור',
-    size_category: null as unknown as string,
-    sex: 'male',
-    city: 'הרצליה',
-    area: 'הרצליה פיתוח',
-    description: 'ריו — תוכי אפור אפריקאי בגיל 7 שנים. עף מהמרפסת בהרצליה פיתוח. מדבר ומחקה קולות בעברית ובאנגלית. צבעו אפור כהה עם זנב אדום. אם שמעת ציפור מדברת בסביבתך — זה יכול להיות ריו! תגמול ₪2,000 למוצא.',
-    reward_amount: '2000',
-    event_date: '2026-04-08',
-    status: 'published',
-    matched_post_count: 0,
-    latitude: '32.16',
-    longitude: '34.84',
-    primary_media: '/paw-finder/demo-bird.jpg',
-    published_at: '2026-04-08T09:00:00.000Z',
-  },
-];
 
 /* -------------------------------------------------------------------------
    FEATURED PET CARD — large visual card for pinned/demo posts
@@ -229,6 +158,7 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
           ) : null}
           {/* Spread the alert — every share helps a lost pet get home (viral loop). */}
           <SocialShare
+            url={`${typeof window !== 'undefined' ? window.location.origin : 'https://petwash.co.il'}/paw-finder/${post.id}`}
             title={`עזרו למצוא את ${post.pet_name || 'החיה האבודה'} | PawFinder™‎`}
             description={post.description || ''}
             showLabels={false}
@@ -558,7 +488,7 @@ function ContactModal({ post, onClose }: { post: PawPost; onClose: () => void })
 ------------------------------------------------------------------------- */
 
 const EMPTY_FORM = {
-  postType: 'lost' as 'lost' | 'found',
+  postType: 'lost' as 'lost' | 'found' | 'adoption',
   petType: 'dog' as 'dog' | 'cat' | 'bird' | 'other',
   petName: '',
   breed: '',
@@ -808,6 +738,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
           <select value={form.postType} onChange={set('postType')} className={inputCls}>
             <option value="lost">🔴 אבד לי חיית מחמד</option>
             <option value="found">🟢 מצאתי חיית מחמד</option>
+            <option value="adoption">🏠 חיה לאימוץ</option>
           </select>
         </div>
         <div>
@@ -1263,7 +1194,7 @@ function ContactsTab({ user }: { user: any }) {
   );
 }
 
-export default function PawFinder({ language }: PawFinderProps) {
+export default function PawFinder({ language, initialPostId }: PawFinderProps) {
   useSEO(pageSEO.pawFinder);
   const isHe = language === 'he';
   const { user } = useFirebaseAuth();
@@ -1314,7 +1245,26 @@ export default function PawFinder({ language }: PawFinderProps) {
   const unreadCount = notifQ.data?.unreadCount ?? 0;
 
   const posts: PawPost[] = data?.rows ?? [];
-  const selectedPost = selectedId ? posts.find(p => p.id === selectedId) : null;
+
+  // Deep link (2026-09-12): /paw-finder/:id selects that post once the list
+  // is in; a post outside the current filter is fetched on its own.
+  useEffect(() => {
+    if (initialPostId && Number.isFinite(initialPostId)) setSelectedId(initialPostId);
+  }, [initialPostId]);
+  const deepLinkedMissing = !!selectedId && !isLoading && !posts.some(p => p.id === selectedId) && selectedId === initialPostId;
+  const singleQ = useQuery<{ post: PawPost }>({
+    queryKey: ['/api/paw-finder/posts', 'single', selectedId],
+    queryFn: async () => {
+      const r = await apiRequest(`/api/paw-finder/posts/${selectedId}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+    enabled: deepLinkedMissing,
+    retry: false,
+  });
+  const selectedPost = selectedId
+    ? (posts.find(p => p.id === selectedId) ?? (singleQ.data?.post?.id === selectedId ? singleQ.data.post : null))
+    : null;
 
   const handleMapSelect = useCallback((id: number) => setSelectedId(id), []);
 
@@ -1390,8 +1340,8 @@ export default function PawFinder({ language }: PawFinderProps) {
                 <div className="font-bold text-slate-900 text-lg leading-tight">{isHe ? 'פרסום מודעה — ללא עלות' : 'Post a notice — no cost'}</div>
                 <p className="text-slate-500 text-sm mt-1 leading-relaxed">
                   {isHe
-                    ? 'חברי מועדון PetWash מאומתים בלבד. התחבר, פרסם תוך דקה — וכל פוסט עובר בדיקת בטיחות לפני פרסום.'
-                    : 'Verified PetWash members only. Sign in, post in a minute — every post is safety-checked before it goes live.'}
+                    ? 'לחברי PetWash מחוברים. התחבר, פרסם תוך דקה — וכל פוסט עובר בדיקת בטיחות ואישור לפני פרסום.'
+                    : 'For signed-in PetWash members. Sign in, post in a minute — every post is safety-checked and approved before it goes live.'}
                 </p>
               </div>
               <button
@@ -1416,12 +1366,12 @@ export default function PawFinder({ language }: PawFinderProps) {
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {(isHe ? [
-                { icon: '🆓', title: 'פרסום ללא עלות', desc: 'חברי מועדון PetWash מאומתים מפרסמים חיה אבודה או שנמצאה — בחינם, תוך דקה.' },
-                { icon: '🛡️', title: 'בטוח ומאומת', desc: 'הפרסום פתוח רק לחברים מחוברים ומאומתים (כולל אימות SMS), וכל פוסט עובר סריקת בטיחות לפני שעולה לאוויר.' },
+                { icon: '🆓', title: 'פרסום ללא עלות', desc: 'חברי PetWash מחוברים מפרסמים חיה אבודה או שנמצאה — בחינם, תוך דקה.' },
+                { icon: '🛡️', title: 'בטוח ומאושר', desc: 'הפרסום פתוח לחברים מחוברים בלבד, וכל פוסט עובר סריקת בטיחות ואישור אנושי לפני שעולה לאוויר.' },
                 { icon: '🤝', title: 'התאמה קהילתית + פרס', desc: 'המערכת מתאימה אוטומטית בין "אבוד" ל"נמצא" ומחברת בין האנשים הנכונים. אפשר גם להציע פרס למוצא.' },
               ] : [
-                { icon: '🆓', title: 'Post at no cost', desc: 'Verified PetWash members post a lost or found pet — free, in under a minute.' },
-                { icon: '🛡️', title: 'Safe & verified', desc: 'Posting is for logged-in, verified members only (incl. SMS), and every post passes a safety scan before it goes live.' },
+                { icon: '🆓', title: 'Post at no cost', desc: 'Signed-in PetWash members post a lost or found pet — free, in under a minute.' },
+                { icon: '🛡️', title: 'Safe & approved', desc: 'Posting is for signed-in members only, and every post passes a safety scan and a human approval before it goes live.' },
                 { icon: '🤝', title: 'Community matching + reward', desc: 'We auto-match “lost” and “found” and connect the right people. You can also offer a reward to the finder.' },
               ]).map(({ icon, title, desc }) => (
                 <div key={title} className="flex items-start gap-3 text-white">
@@ -1520,7 +1470,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   value={filterCity}
                   onChange={e => setFilterCity(e.target.value)}
                   placeholder="סנן לפי עיר..."
-                  className="flex-1 py-2 text-sm outline-none bg-transparent"
+                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
                 />
               </div>
 
@@ -1529,7 +1479,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                 <select
                   value={filterPet}
                   onChange={e => setFilterPet(e.target.value)}
-                  className="flex-1 py-2 text-sm outline-none bg-transparent"
+                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
                 >
                   <option value="">כל החיות</option>
                   <option value="dog">🐕 כלב</option>
@@ -1545,7 +1495,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   value={filterBreed}
                   onChange={e => setFilterBreed(e.target.value)}
                   placeholder="גזע..."
-                  className="flex-1 py-2 text-sm outline-none bg-transparent"
+                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
                 />
               </div>
 
@@ -1666,7 +1616,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">פוסט חדש</div>
                   <h2 className="text-2xl font-bold">הגשת דיווח</h2>
                   <p className="text-slate-500 text-sm mt-1">
-                    זמין לחברי מועדון PetWash™‎ מאומתי SMS. כל פוסט עובר בדיקה אוטומטית לפני פרסום.
+                    זמין לחברי PetWash™‎ מחוברים. כל פוסט עובר בדיקה אוטומטית ואישור לפני פרסום.
                   </p>
                 </div>
                 <div className="bg-white rounded-3xl border border-slate-200 p-6">

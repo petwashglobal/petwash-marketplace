@@ -1479,7 +1479,15 @@ router.post('/settings/phone/request-change', async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1], true);
     const uid = decodedToken.uid;
 
-    if (!hasRecentAuth(decodedToken)) {
+    // FIRST-TIME capture vs CHANGE (onboarding audit 2026-09-12, P0-39): a new
+    // Google/Apple member who reads the Terms for six minutes and then taps
+    // "send code" was told to sign out and in again — and looped back to
+    // /complete-profile forever. Re-auth guards a CHANGE of an existing
+    // security identity; adding the first mobile to an account that has none
+    // is onboarding, not a change.
+    const [phoneRow] = await db.select({ phone: users.phone }).from(users).where(eq(users.id, uid)).limit(1);
+    const isFirstPhone = !phoneRow?.phone;
+    if (!isFirstPhone && !hasRecentAuth(decodedToken)) {
       logger.warn('[ProfileSettings] Phone change denied — session too old', { uid });
       return res.status(403).json({
         error: 'Re-authentication required',
@@ -1505,9 +1513,18 @@ router.post('/settings/phone/request-change', async (req, res) => {
       return res.status(400).json({ error: 'That phone number is not valid.', code: 'INVALID_PHONE' });
     }
 
-    const [current] = await db.select({ phone: users.phone })
+    const [current] = await db.select({
+      phone: users.phone,
+      phoneVerified: users.phoneVerified,
+      mobileVerifiedAt: users.mobileVerifiedAt,
+    })
       .from(users).where(eq(users.id, uid)).limit(1);
-    if (current?.phone && normalizePhoneE164(current.phone) === newPhone) {
+    const currentVerified = current?.phoneVerified === true || !!current?.mobileVerifiedAt;
+    // Same number AND already verified → nothing to do. Same number but NEVER
+    // verified (stored by an older complete-profile without an OTP) is a
+    // legitimate VERIFY of the member's own number — /complete-profile relies
+    // on this to activate such accounts. (2026-09-12)
+    if (current?.phone && normalizePhoneE164(current.phone) === newPhone && currentVerified) {
       return res.status(400).json({
         error: 'That is already your mobile number',
         code: 'PHONE_UNCHANGED',

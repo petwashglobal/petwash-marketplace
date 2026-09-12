@@ -354,13 +354,13 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
                 <label className="text-xs font-medium text-gray-700 mb-1 block">Bank Name</label>
                 <input type="text" value={bankName} onChange={e => setBankName(e.target.value)}
                   placeholder="e.g. Bank Hapoalim, Leumi, Discount"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
+                  className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-700 mb-1 block">Account Number</label>
                 <input type="text" value={iban} onChange={e => setIban(e.target.value)}
                   placeholder="Branch-Account number"
-                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 font-mono" />
+                  className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 font-mono" />
               </div>
             </div>
           </div>
@@ -382,7 +382,7 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
             <div className="flex gap-3 mb-3">
               <input type="number" value={payoutAmount} onChange={e => setPayoutAmount(e.target.value)}
                 placeholder="Amount ₪"
-                className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
+                className="flex-1 text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
               <button onClick={() => setPayoutAmount(String(pending ?? 0))}
                 className="px-3 py-2.5 bg-white text-gray-700 text-xs font-medium rounded-xl hover:bg-white transition-colors">
                 Max

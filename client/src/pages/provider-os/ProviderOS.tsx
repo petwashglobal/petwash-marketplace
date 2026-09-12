@@ -18,6 +18,7 @@ import POSJobs from './POSJobs';
 import POSCalendar from './POSCalendar';
 import POSWallet from './POSWallet';
 import POSProfile from './POSProfile';
+import POSRateCard from './POSRateCard';
 import POSSettings from './POSSettings';
 import POSDocuments from './POSDocuments';
 import POSNotifications from './POSNotifications';
@@ -25,7 +26,7 @@ import POSSafety from './POSSafety';
 import POSAssistant from './POSAssistant';
 import POSServices from './POSServices';
 
-type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'services' | 'settings' | 'documents' | 'notifications' | 'safety' | 'assistant';
+type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'ratecard' | 'services' | 'settings' | 'documents' | 'notifications' | 'safety' | 'assistant';
 // Providers serve exactly the SaaS service platforms — PetSitter, Walk My Pet,
 // Academy (+ PetTrek, coming soon). NO K9000 wash: the wash is PetWash Ltd
 // in-house staff, not a provider/contractor service.
@@ -52,6 +53,7 @@ const SIDEBAR_ITEMS = [
   { id: 'calendar' as Module, label: 'Calendar & Availability', labelHe: 'יומן וזמינות', icon: CalendarDays },
   { id: 'wallet' as Module, label: 'Wallet & Payouts', labelHe: 'ארנק ותשלומים', icon: Wallet },
   { id: 'profile' as Module, label: 'Provider Profile', labelHe: 'פרופיל ספק', icon: User },
+  { id: 'ratecard' as Module, label: 'Rate Card & Availability', labelHe: 'מחירון וזמינות', icon: DollarSign },
   { id: 'services' as Module, label: 'Services & Add-ons', labelHe: 'שירותים ותוספות', icon: Star },
   { id: 'settings' as Module, label: 'Settings', labelHe: 'הגדרות', icon: Settings },
   { id: 'documents' as Module, label: 'Documents', labelHe: 'מסמכים', icon: FileText },
@@ -399,6 +401,7 @@ export default function ProviderOS() {
             {activeModule === 'calendar' && <POSCalendar />}
             {activeModule === 'wallet' && <POSWallet activePlatform={activePlatform} />}
             {activeModule === 'profile' && <POSProfile />}
+            {activeModule === 'ratecard' && <POSRateCard />}
             {activeModule === 'services' && <POSServices />}
             {activeModule === 'settings' && <POSSettings />}
             {activeModule === 'documents' && <POSDocuments />}

@@ -463,7 +463,7 @@ function ScheduleStep({
               value={startDate}
               min={new Date().toISOString().split("T")[0]}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
             />
           </div>
           {isMultiDay && (
@@ -474,7 +474,7 @@ function ScheduleStep({
                 value={endDate}
                 min={startDate || new Date().toISOString().split("T")[0]}
                 onChange={e => setEndDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
               />
             </div>
           )}
@@ -485,7 +485,7 @@ function ScheduleStep({
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
               />
             </div>
           )}
@@ -498,7 +498,7 @@ function ScheduleStep({
                 type="time"
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
               />
             </div>
           </div>
@@ -508,12 +508,12 @@ function ScheduleStep({
             <div>
               <Label className="text-xs text-gray-500 mb-1 block">שעת כניסה</Label>
               <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30" />
             </div>
             <div>
               <Label className="text-xs text-gray-500 mb-1 block">שעת יציאה</Label>
               <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30" />
             </div>
           </div>
         )}
@@ -716,7 +716,7 @@ function PetCareForm({
             type="date"
             value={care.lastGroomedDate || ""}
             onChange={e => onChange({ lastGroomedDate: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
           />
         </div>
       )}
@@ -1214,7 +1214,7 @@ function ConfirmStep({
             placeholder="הזן קוד (אופציונלי)"
             value={promoCode}
             onChange={e => setPromoCode(e.target.value.toUpperCase())}
-            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-[16px] focus:outline-none focus:ring-2 focus:ring-[#D9B84C]/30"
             dir="ltr"
           />
           <Button

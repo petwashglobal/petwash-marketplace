@@ -31,6 +31,8 @@ import { sendSecurityAlert } from './services/alerts';
 import { redis } from './services/redis';
 
 export class BackgroundJobProcessor {
+  private pawFinderSlaLastAlertAt = 0;
+
   private static jobLocks = new Map<string, boolean>(); // Per-task locking
   private static retryDelays = [1000, 5000, 15000, 60000]; // 1s, 5s, 15s, 1m
 
@@ -217,6 +219,55 @@ export class BackgroundJobProcessor {
       }
     });
     logger.info('[Cortina] release sweep (1m) + K9000 bay-release sweep (1m) + K9000 reconciliation (daily 02:30 + live 15m) scheduled');
+
+    // Wallet pass live sync sweep (2026-09-12): any ACTIVE Apple/Google pass
+    // whose live wallet balance differs from the figure last pushed to the
+    // phone is re-synced. Catches every wallet writer that did not call
+    // schedulePassSync (raw SQL in disputes / policy engine, future code).
+    cron.schedule('*/2 * * * *', async () => {
+      if (await this.acquireLock('walletPassSweep')) {
+        try {
+          const { sweepStalePasses } = await import('./services/walletPassSync');
+          await sweepStalePasses();
+        } catch (err: any) {
+          logger.warn('[BackgroundJobs] wallet pass sweep failed', { error: err?.message ?? String(err) });
+        } finally {
+          this.releaseLock('walletPassSweep');
+        }
+      }
+    });
+
+    // PawFinder review SLA (2026-09-12): every post waits for a human (CEO rule
+    // 2026-06-26) and nothing told support a lost dog was sitting in the queue.
+    // Every 15 min: alert once per hour while any post is pending > 30 min.
+    cron.schedule('*/15 * * * *', async () => {
+      if (await this.acquireLock('pawFinderReviewSla')) {
+        try {
+          const { rows } = await pool.query(
+            `SELECT COUNT(*)::int AS n, MIN(created_at) AS oldest
+               FROM paw_finder_posts
+              WHERE status = 'pending_review' AND created_at < NOW() - INTERVAL '30 minutes'`,
+          );
+          const n = Number(rows?.[0]?.n || 0);
+          if (n > 0) {
+            const now = Date.now();
+            if (!this.pawFinderSlaLastAlertAt || now - this.pawFinderSlaLastAlertAt > 60 * 60 * 1000) {
+              this.pawFinderSlaLastAlertAt = now;
+              const { sendSecurityAlert } = await import('./services/alerts');
+              await sendSecurityAlert(
+                `PawFinder: ${n} post(s) waiting for approval > 30 min`,
+                `<p>${n} lost/found/adoption post(s) are in the review queue for more than 30 minutes (oldest: ${rows[0].oldest}).</p><p>Approve them at <a href="https://petwash.co.il/admin/paw-finder">/admin/paw-finder</a>. A lost pet is invisible until approved.</p>`,
+              );
+              logger.warn('[PawFinder] review SLA breached', { pending: n, oldest: rows[0].oldest });
+            }
+          }
+        } catch (e: any) {
+          logger.error('[PawFinder] review SLA check failed', { error: e?.message });
+        } finally {
+          this.releaseLock('pawFinderReviewSla');
+        }
+      }
+    });
 
     // Phase 12.10 — SLA breach detection + auto-escalation (every 5 minutes)
     import('./jobs/sla-monitor').then(({ runSlaMonitor }) => {

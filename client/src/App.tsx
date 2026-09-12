@@ -28,6 +28,8 @@ import { initViewportFix } from "@/lib/viewportFix";
 import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from "react";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
+import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
+import { getApiUrl } from "@/lib/apiConfig";
 import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
 import { LanguageProvider, useLanguage } from "@/lib/languageStore";
@@ -71,6 +73,7 @@ const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
 // LAZY LOAD: All other routes (code split for performance)
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
+const WelcomeBack = lazy(() => import("@/pages/WelcomeBack"));
 const ChoosePath = lazy(() => import("@/pages/ChoosePath"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
 // Pet Parent ↔ Provider workspace picker for any approved provider (every
@@ -143,9 +146,7 @@ const CheckoutCanon = lazy(() => import("@/pages/CheckoutCanon"));
 const GiftActivate = lazy(() => import("@/pages/GiftActivate"));
 const Vouchers = lazy(() => import("@/pages/Vouchers"));
 const Verify = lazy(() => import("@/pages/Verify"));
-const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const AccountDeletionResource = lazy(() => import("@/pages/AccountDeletionResource"));
-const Terms = lazy(() => import("@/pages/Terms"));
 const Accessibility = lazy(() => import("@/pages/Accessibility"));
 const AccessibilityStatement = lazy(() => import("@/pages/AccessibilityStatement"));
 const About = lazy(() => import("@/pages/About"));
@@ -277,9 +278,6 @@ const MobileStationHub = lazy(() => import("@/pages/MobileStationHub"));
 const MobileStationSheet = lazy(() => import("@/pages/MobileStationSheet"));
 const MobileOpsHub = lazy(() => import("@/pages/MobileOpsHub"));
 const OpsTodayPage = lazy(() => import("@/pages/OpsTodayPage"));
-const WelcomeConsent = lazy(() => import("@/pages/WelcomeConsent"));
-const ConsentOnboarding = lazy(() => import("@/pages/ConsentOnboarding"));
-const NotificationConsent = lazy(() => import("@/pages/NotificationConsent"));
 const OpsDashboard = lazy(() => import("@/pages/OpsDashboard"));
 const EnterpriseHQ = lazy(() => import("@/pages/EnterpriseHQ"));
 
@@ -430,6 +428,7 @@ const ProviderApplicationResubmit = lazy(() => import("@/pages/ProviderApplicati
 const ProviderDeclarations = lazy(() => import("@/pages/ProviderDeclarations"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminWashPackages = lazy(() => import("@/pages/AdminWashPackages"));
+const AdminMembershipCards = lazy(() => import("@/pages/AdminMembershipCards"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
@@ -636,20 +635,40 @@ const PageLoader = () => (
  * single best-effort POST — the global boundary remains the catch-all
  * for cross-app crashes. See P0 audit (PR #86) Bug 2.
  */
-class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean }> {
-  state = { hasError: false };
+// A per-route crash card: the shell (nav, header) survives, the customer gets a
+// reference id to quote, and the copy speaks their language — the same three
+// things AppErrorBoundary learned on 2026-09-12. Before, this card was
+// English-only, sent no referenceId (so support could not find the crash),
+// and was mounted on only two routes.
+function routeReferenceId(): string {
+  try {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return Math.random().toString(16).slice(2, 10);
+  }
+}
+
+class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean; referenceId: string }> {
+  state = { hasError: false, referenceId: '' };
 
   static getDerivedStateFromError() {
-    return { hasError: true };
+    return { hasError: true, referenceId: routeReferenceId() };
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
+    const referenceId = this.state.referenceId || routeReferenceId();
     try {
-      fetch('/api/errors/log', {
+      fetch(getApiUrl('/api/errors/log'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
+          referenceId,
           context: `RouteErrorBoundary:${this.props.routeName}`,
+          errorKind: 'render',
+          errorName: error?.name,
           message: error?.message,
           stack: error?.stack,
           componentStack: errorInfo?.componentStack,
@@ -665,27 +684,31 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    const copy = crashCardCopy(isHebrewCrashLocale(), false);
     return (
-      <div className="min-h-[100dvh] bg-white flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900">This section had an issue</h2>
-          <p className="text-gray-600">
-            We couldn't load this page right now. Please try again, or head back home.
-          </p>
+      <div className="min-h-[60dvh] bg-white flex items-center justify-center p-6" dir={copy.dir} data-testid="route-error-boundary">
+        <div className="max-w-md w-full space-y-4" style={{ textAlign: 'center' }}>
+          <h2 className="text-xl font-semibold text-gray-900">{copy.title}</h2>
+          <p className="text-gray-600">{copy.body}</p>
+          {this.state.referenceId && (
+            <p className="text-xs text-gray-400" data-testid="route-error-reference">
+              {copy.reference}: <span dir="ltr">{this.state.referenceId}</span>
+            </p>
+          )}
           <div className="flex gap-3 justify-center pt-2">
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="px-4 py-2 rounded-md bg-gray-900 text-white text-sm font-medium"
             >
-              Reload
+              {copy.reload}
             </button>
             <button
               type="button"
               onClick={() => { window.location.href = '/home'; }}
               className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium"
             >
-              Go Home
+              {copy.goHome}
             </button>
           </div>
         </div>
@@ -1067,6 +1090,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RequireAuth>
           )}
         </Route>
+        {/* Returning member after sign-in: greet by name, then continue (CEO flow 2026-09-12). */}
+        <Route path="/welcome-back">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <WelcomeBack />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/choose-path">
           {() => (
             <RequireAuth>
@@ -1158,9 +1191,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </Suspense>
           )}
         </Route>
-        <Route path="/welcome-consent">{() => <WelcomeConsent language={language} onLanguageChange={handleLanguageChange} />}</Route>
-        <Route path="/consent-onboarding">{() => <ConsentOnboarding language={language} />}</Route>
-        <Route path="/notification-consent">{() => <NotificationConsent language={language} />}</Route>
         <Route path="/notifications">{() => <RequireAuth><NotificationsPage /></RequireAuth>}</Route>
         
         {/* Firebase Auth Action Handler (password reset, email verification) */}
@@ -1237,7 +1267,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/pet-parent/home">
           {() => (
             <RequireAuth>
-              <PrestigeHome />
+              <RouteErrorBoundary routeName="/pet-parent/home">
+                <PrestigeHome />
+              </RouteErrorBoundary>
             </RequireAuth>
           )}
         </Route>
@@ -1667,7 +1699,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/pets">
           {() => (
             <RequireAuth>
-              <Pets />
+              <RouteErrorBoundary routeName="/pets">
+                <Pets />
+              </RouteErrorBoundary>
             </RequireAuth>
           )}
         </Route>
@@ -2082,7 +2116,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               {/* PROVIDER-app agreement gate (fail-open, native provider flavor only; web/customer pass-through). */}
               <AppTermsGate flavor="provider" language={language}>
                 <Suspense fallback={<PageLoader />}>
-                  <ProviderOS />
+                  <RouteErrorBoundary routeName="/provider-os">
+                    <ProviderOS />
+                  </RouteErrorBoundary>
                 </Suspense>
               </AppTermsGate>
             </RoleProtectedRoute>
@@ -2446,7 +2482,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/pet-care-planner">
           {() => (
             <RequireAuth>
-              <PetCarePlanner language={language} />
+              <RouteErrorBoundary routeName="/pet-care-planner">
+                <PetCarePlanner language={language} />
+              </RouteErrorBoundary>
             </RequireAuth>
           )}
         </Route>
@@ -2602,6 +2640,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminWashPackages />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Membership cards — freeze / unfreeze / regenerate / print (2026-09-12) */}
+        <Route path="/admin/membership-cards">
+          {() => (
+            <AdminRouteGuard>
+              <AdminMembershipCards />
             </AdminRouteGuard>
           )}
         </Route>
@@ -3109,8 +3156,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/showcase">{() => <Redirect to="/" />}</Route>
         <Route path="/service-status">{() => <ServiceStatus language={language} />}</Route>
         {/* PR-NAV-2: removed duplicate /status registration (was unreachable — wouter takes first match at the SystemStatus route above) */}
+        {/* Deep link to ONE post — shared from a post card / social share (2026-09-12). */}
+        <Route path="/paw-finder/:id">{(params) => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} initialPostId={Number(params.id)} /></Layout>}</Route>
         <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/adoption">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionMaison /></Layout>}</Route>
+        {/* The CEO (and marketing) type /adopt — it 404'd (2026-09-12). Alias, never a second page. */}
+        <Route path="/adopt">{() => <Redirect to="/adoption" />}</Route>
+        <Route path="/adopt-pet">{() => <Redirect to="/adoption" />}</Route>
         <Route path="/find-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/lost-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/franchise">{() => <Franchise language={language} onLanguageChange={handleLanguageChange} />}</Route>
@@ -3236,10 +3288,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/forms/booking" component={QuickBookingForm} />
         <Route path="/forms/legal" component={LegalAgreementForm} />
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
-        <Route path="/privacy">{() => <Redirect to="/privacy-policy" />}</Route>
-        <Route path="/privacy-policy" component={PrivacyPolicy} />
+        {/* Consent lines bind to the registry documents under /legal/* (legalDocumentRegistry).
+            The old /terms + /privacy-policy pages were a different, older generation of text
+            (consent audit 2026-09-12, P0-4). One document, one URL. */}
+        <Route path="/privacy">{() => <Redirect to="/legal/privacy" />}</Route>
+        <Route path="/privacy-policy">{() => <Redirect to="/legal/privacy" />}</Route>
         <Route path="/account-deletion" component={AccountDeletionResource} />
-        <Route path="/terms" component={Terms} />
+        <Route path="/terms">{() => <Redirect to="/legal/customer-terms" />}</Route>
         <Route path="/platform-legal">
           {() => (
             <Suspense fallback={<PageLoader />}>

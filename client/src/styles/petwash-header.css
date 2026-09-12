@@ -707,7 +707,11 @@
   border: 1px solid #000000;
   border-radius: 0.25rem;
   padding: 0.1rem 0.15rem;
-  font-size: 0.6rem;
+  /* iOS FORM-ZOOM FLOOR (CEO 2026-09-12): a <select> under 16px makes iOS
+     Safari zoom the page on tap. This is the drawer's language row, which has
+     a full 343px menu row to sit in — 0.6rem (9.6px) was both a zoom trigger
+     and below any legibility floor. Never lower it. */
+  font-size: 1rem;
   color: #000000;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -1635,8 +1639,19 @@
   background: transparent !important;
   box-shadow: none !important;
   border-radius: 999px !important;
-  padding: 0 0.7rem !important;
-  font-size: 0.6rem !important;
+  /* iOS FORM-ZOOM FLOOR (CEO 2026-09-12). The header pill was 0.6rem (9.6px),
+     so tapping the language picker — the most-tapped control in the header on
+     a bilingual Israeli site — zoomed the whole page in and left it there.
+     16px is the iOS threshold.
+     The pill must NOT grow: .pw-language-tap is an inline-flex wrapper and
+     .pw-language-tap-pill is absolutely inset to left:0/right:0, so the painted
+     pill takes its width from this select. Pinning the select to its current
+     painted 74px with zero padding keeps the header geometry byte-identical
+     while the text goes legible. Widest label at 16px/600 in Rubik is
+     "Русский" at 67px, so every language still fits inside 74px. */
+  width: 74px !important;
+  padding: 0 !important;
+  font-size: 16px !important;
   text-align: center !important;
   text-align-last: center;
   -webkit-appearance: none;

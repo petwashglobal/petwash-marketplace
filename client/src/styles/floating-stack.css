@@ -58,6 +58,21 @@ body[data-pw-member-dashboard="true"] .pw-float {
   pointer-events: none !important;
 }
 
+/* Generic hero suppression (CEO 2026-09-12). Measured live at 375x812 with no
+   scroll: #pw-a11y (x 76..132, y 540..596) physically covered 56px of the
+   "צור חשבון" / Create-account button (x 16..359, y 518..566) on the landing
+   hero. A thumb there opened the accessibility panel instead of signing up.
+   The FAB column is ~200px — a quarter of a phone screen — so ANY CTA landing
+   under it is untappable. Same treatment the cookie-consent, egift and member
+   dashboard rules above already apply; useSuppressFloatingStack sets the
+   attribute while the block owns the screen and clears it the moment it
+   scrolls away, so the buttons are never more than one scroll out of reach. */
+body[data-pw-suppress-floating="true"] .pw-float-stack,
+body[data-pw-suppress-floating="true"] .pw-float {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Respect prefers-reduced-motion for both suppression paths — the
    fade becomes instant rather than animated for users who request
    reduced motion. */

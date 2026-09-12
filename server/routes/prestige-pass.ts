@@ -22,6 +22,7 @@
  *   5. Card fallback (shortfall returned to client)
  */
 
+import { safeEqual } from '../lib/safeEqual';
 import { Router, Request, Response, NextFunction } from 'express';
 import { createHash, createHmac, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,8 +51,12 @@ import multer from 'multer';
 import { EmailService } from '../emailService';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
-import { buildPassLinkToken } from '../lib/passTokens';
-import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
+import { buildPassLinkToken, buildQrRedeemToken } from '../lib/passTokens';
+import { resolveMemberTier, tierLabel } from '../lib/memberTier';
+import { tierDisplay as tierDisplayFor } from '@shared/lib/tierLabels';
+import { ensureMemberIdentity, findMemberIdentity } from '../lib/memberIdentity';
+import { petwashPassAccounts, users, appleWalletDeviceRegistrations, PETWASH_COMMISSION_RATE } from '@shared/schema';
+import { runFiscalDocumentAndPersistOnFailure, FiscalOutboxUnavailableError } from '../services/fiscalDocumentOutbox';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
 import { requireStaffApproved } from '../middleware/gates';
@@ -95,6 +100,8 @@ async function ensurePassAccount(userId: string): Promise<{ passId: string; qrTo
       'PetWash Member'
     ).toString().trim() || 'PetWash Member';
     const ownerEmail = (u as any)?.email ?? null;
+    // Real tier, not the literal 'PREMIUM' every pass carried until 2026-09-12.
+    const passTier = tierLabel(await resolveMemberTier((u as any)?.loyaltyTier, ownerEmail));
     const issuer = process.env.GOOGLE_WALLET_ISSUER_ID || 'petwash';
 
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -111,7 +118,7 @@ async function ensurePassAccount(userId: string): Promise<{ passId: string; qrTo
       try {
         await db.insert(petwashPassAccounts).values({
           passId, userId, ownerName, ownerEmail,
-          tier: 'PREMIUM', appleSerialNumber, googleObjectId,
+          tier: passTier, appleSerialNumber, googleObjectId,
         }).onConflictDoNothing();
       } catch (e: any) {
         if (!/duplicate key|unique/i.test(String(e?.message))) throw e; // retry only on id collision
@@ -153,8 +160,13 @@ async function buildPrestigePassWalletUrls(
       return { appleWalletUrl: null, googleWalletUrl: null };
     }
 
-    const url = `${baseUrl}/api/pass/${token}`;
-    return { appleWalletUrl: url, googleWalletUrl: url };
+    // Apple: the universal link (UA-sniffed → /api/pass/apple/:token on iOS).
+    // Google: its OWN rail — the same universal URL sent an iPhone user who
+    // tapped "Google Wallet" into the Apple pass (2026-09-12 wallet audit).
+    return {
+      appleWalletUrl: `${baseUrl}/api/pass/${token}`,
+      googleWalletUrl: `${baseUrl}/api/pass/google/${token}`,
+    };
   } catch (err) {
     logger.error('[PrestigePass] buildPrestigePassWalletUrls error', err);
     return { appleWalletUrl: null, googleWalletUrl: null };
@@ -451,18 +463,14 @@ const TIER_VARIANT: Record<string, 'black' | 'gold' | 'platinum'> = {
   bronze: 'gold', new: 'gold',
 };
 
-// Prestige tier display names
-const TIER_DISPLAY: Record<string, { en: string; he: string }> = {
-  vip:      { en: 'Prestige Black',    he: 'Prestige שחור' },
-  elite:    { en: 'Prestige Black',    he: 'Prestige שחור' },
-  diamond:  { en: 'Prestige Black',    he: 'Prestige שחור' },
-  black:    { en: 'Prestige Black',    he: 'Prestige שחור' },
-  platinum: { en: 'Prestige Platinum', he: 'Prestige פלטינום' },
-  gold:     { en: 'Prestige Gold',     he: 'Prestige זהב' },
-  silver:   { en: 'Prestige Silver',   he: 'Prestige כסף' },
-  bronze:   { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
-  new:      { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
-};
+// Prestige tier display names — ONE ladder (2026-09-12): derived from the
+// CEO-locked names in shared/schema-loyalty.ts via shared/lib/tierLabels.ts.
+// Before, this map said "Prestige Pearl / Prestige Black" while the dashboard
+// said "Member / Diamond / Black Reserve" and the Apple pass said "DIAMOND".
+const TIER_DISPLAY: Record<string, { en: string; he: string }> = Object.fromEntries(
+  ['new', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal', 'vip', 'elite', 'black']
+    .map((t) => [t, tierDisplayFor(t)]),
+);
 
 // ─────────────────────────────────────────────────────────
 // RATE LIMITERS
@@ -507,18 +515,14 @@ interface QrPayload {
   nonce: string;
 }
 
-function signPayload(payload: QrPayload): string {
-  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig  = createHmac('sha256', getQrSecret()).update(data).digest('hex');
-  return `${data}.${sig}`;
-}
-
+// signPayload (hex HMAC, no purpose) retired 2026-09-12: it minted a QR the bay
+// could never read. /token/generate now mints the passTokens `qr-redeem` token.
 function verifyToken(token: string): QrPayload | null {
   try {
     const [data, sig] = token.split('.');
     if (!data || !sig) return null;
     const expected = createHmac('sha256', getQrSecret()).update(data).digest('hex');
-    if (expected !== sig) return null;
+    if (!safeEqual(expected, sig)) return null; // constant-time (2026-09-12)
     const payload: QrPayload = JSON.parse(Buffer.from(data, 'base64url').toString());
     if (Date.now() / 1000 > payload.exp) return null; // expired
     return payload;
@@ -578,12 +582,17 @@ router.get('/wallet', async (req: Request, res: Response) => {
     const tier    = wallet?.loyaltyTier || passData.tier || 'new';
     const variant = TIER_VARIANT[tier] || 'gold';
 
-    // Derive display card number from serialNumber (e.g. PWL-M9XK2Z-ABCD → take last 8 alphanum chars)
+    // ONE member id (2026-09-12): the membership-card id is the number this
+    // human sees everywhere (physical card, Apple/Google pass, emails, here).
+    // Before, this surface derived a `PW-<serial tail>` that matched nothing
+    // else. Fail-soft: if the card cannot be issued right now, keep the old
+    // derivation so the page still renders.
+    const memberIdentity = await ensureMemberIdentity(userId, tier);
     const rawSerial   = (passData.serialNumber as string) || '';
     const alphaOnly   = rawSerial.replace(/[^A-Z0-9]/gi, '').toUpperCase();
     const raw8        = alphaOnly.length >= 8 ? alphaOnly.slice(-8) : alphaOnly.padEnd(8, '0');
-    const cardId      = `PW-${raw8}`;
-    const cardDisplay = `PW • ${raw8.slice(0, 4)} ${raw8.slice(4, 8)}`;
+    const cardId      = memberIdentity?.memberId ?? `PW-${raw8}`;
+    const cardDisplay = memberIdentity?.cardNumberDisplay ?? `PW • ${raw8.slice(0, 4)} ${raw8.slice(4, 8)}`;
 
     const displayName = (session?.user?.displayName as string | undefined) || (passData.firstName as string | undefined) || undefined;
 
@@ -607,6 +616,13 @@ router.get('/wallet', async (req: Request, res: Response) => {
       displayName,
       cardId,
       cardDisplay,
+      // Identity-only card data for the "Scan to identify" block (no value).
+      memberCard: memberIdentity ? {
+        memberId:     memberIdentity.memberId,
+        barcodeValue: memberIdentity.barcodeValue,
+        qrUrl:        memberIdentity.qrUrl,
+        status:       memberIdentity.status,
+      } : null,
       pet,
       pass: {
         serialNumber:  passData.serialNumber,
@@ -669,7 +685,23 @@ router.post('/token/generate', generateTokenLimiter, auditLogMiddleware('PRESTIG
       nonce: randomBytes(16).toString('hex'),
     };
 
-    const token = signPayload(payload);
+    // ONE token system: the same 45-second `qr-redeem` token /wallet/redeem
+    // shows and the Cortina rail verifies (2026-09-12 audit). `payload` is
+    // kept only for the audit registry below.
+    // Same passId + qr_token_version the bay checks (Cortina rejects a version
+    // mismatch as TOKEN_REVOKED), so this QR is exactly what /wallet/redeem mints.
+    const [passAcct] = await db
+      .select({ passId: petwashPassAccounts.passId, qrTokenVersion: petwashPassAccounts.qrTokenVersion })
+      .from(petwashPassAccounts)
+      .where(eq(petwashPassAccounts.userId, userId))
+      .limit(1);
+    const token = buildQrRedeemToken(
+      passAcct?.passId ?? payload.wid,
+      userId,
+      passAcct?.qrTokenVersion ?? 1,
+      machineId,
+      undefined,
+    );
 
     // Store in Firestore with TTL (Firestore TTL via field, pruned by cleanup job)
     await firestoreDb.collection('prestige_qr_tokens').doc(jti).set({
@@ -878,7 +910,12 @@ function traceWalletRedemption(
   })();
 }
 
-router.post('/token/redeem', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
+// 410 (2026-09-12 audit): unauthenticated debit endpoint with no callers, rate
+// limit keyed on a caller-supplied stationId. Sealed; the bay rail is Cortina.
+router.post('/token/redeem', (_req: Request, res: Response) => {
+  res.status(410).json({ ok: false, error: 'GONE', message: 'Kiosk token redemption is retired; redemption happens on the bay rail.' });
+});
+router.post('/token/redeem-retired-2026-09-12', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const parsed = redeemSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
@@ -1181,7 +1218,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
           {
             key:   'tier',
             label: 'TIER',
-            value: TIER_DISPLAY[tier]?.en || 'Prestige Pearl',
+            value: tierDisplayFor(tier).en,
           },
         ],
         auxiliaryFields: [
@@ -1216,6 +1253,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
     };
 
     const serialNumber = passData.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`;
+    const legacyMemberId = (await findMemberIdentity(userId))?.memberId;
 
     if (!isAppleWalletConfigured()) {
       const preview = applePassJson({
@@ -1225,6 +1263,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
         tier:               (tier || 'new').toUpperCase(),
         availableCreditIls: balance,
         qrTokenVersion:     1,
+        memberId:           legacyMemberId,
       });
       return res.status(503).json({ ok: false, error: 'Apple Wallet certificates not yet configured', preview });
     }
@@ -1236,9 +1275,15 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
       tier:               (tier || 'new').toUpperCase(),
       availableCreditIls: balance,
       qrTokenVersion:     1,
+      memberId:           legacyMemberId,
     });
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Content-Disposition', `attachment; filename="${serialNumber}.pkpass"`);
+    // `inline`, never `attachment` — iOS Safari cannot install a DOWNLOADED
+    // pass and answers "Safari cannot download this file". See
+    // server/routes/pass-universal.ts for the production log trace that proved
+    // this, and server/tests/pkpassServedInline.regression.test.ts for the pin
+    // that found this second instance.
+    res.setHeader('Content-Disposition', `inline; filename="${serialNumber}.pkpass"`);
     return res.send(pkpassBuffer);
   } catch (err) {
     logger.error('[PrestigePass] /apple-wallet error:', err);
@@ -1263,7 +1308,7 @@ router.get('/google-wallet', async (req: Request, res: Response) => {
     const balance     = ((wallet?.cashWalletBalanceCents || 0) + (wallet?.egiftBalanceCents || 0)) / 100;
     const washes      = wallet?.washPackageCredits || 0;
     const serialNumber = passData.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`;
-    const tierDisplay  = TIER_DISPLAY[tier]?.en || 'Prestige Pearl';
+    const tierDisplay  = tierDisplayFor(tier).en;
 
     const issuerId   = process.env.GOOGLE_WALLET_ISSUER_ID;
     const classId    = process.env.GOOGLE_WALLET_CLASS_ID || `petwash.prestige`;
@@ -1620,7 +1665,7 @@ router.post('/activate', auditLogMiddleware('PRESTIGE_JOIN'), async (req: Reques
     // Derive card number if not supplied
     const passCardNumber = cardNumber || `${userId.slice(0, 4).toUpperCase()}${Date.now().toString().slice(-8)}`;
     const tierKey        = tier.toLowerCase();
-    const tierDisplay    = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
+    const tierDisplay    = tierDisplayFor(tierKey).en;
 
     // Upsert Firestore pass doc
     const passRef = firestoreDb.collection('prestige_passes').doc(userId);
@@ -1787,7 +1832,7 @@ const redeemOnlineSchema = z.object({
   amountGross: z.number().min(1).max(500_000),   // in agorot (ILS cents)
 });
 
-router.post('/redeem-online', auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
+router.post('/redeem-online', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = resolveUid(req);
@@ -1933,7 +1978,7 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
     }
 
     const tierKey    = pass.tier || 'new';
-    const tierDisplay = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
+    const tierDisplay = tierDisplayFor(tierKey).en;
     const appBaseUrl  = process.env.APP_BASE_URL || 'https://petwash.co.il';
 
     const [resendWallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
@@ -2251,7 +2296,9 @@ const claimGiftSchema = z.object({
   giftCode: z.string().min(8).max(64),
 });
 
-router.post('/claim-gift', auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
+// redeemLimiter (2026-09-12): without it this was bounded only by the mount's 1000/15min
+// apiLimiter — a clean brute-force oracle on 8-char gift codes that credit real balance.
+router.post('/claim-gift', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = resolveUid(req);
@@ -3091,10 +3138,15 @@ router.get('/admin/wallet/division-report', async (req: Request, res: Response) 
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
-    // Admin gate via Firestore custom claims
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    const isAdmin = !!(adminUser?.customClaims as any)?.admin;
-    if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const rows: any = await db.execute(sql`
       SELECT
@@ -3136,9 +3188,15 @@ router.get('/admin/wallet/booking-audit', async (req: Request, res: Response) =>
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    const isAdmin = !!(adminUser?.customClaims as any)?.admin;
-    if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const bookingId = String(req.query.bookingId || '').trim();
     if (!bookingId) return res.status(400).json({ error: 'bookingId query param required' });
@@ -3229,8 +3287,15 @@ router.get('/admin/wallet/user-audit', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const userId = String(req.query.userId || '').trim();
     if (!userId) return res.status(400).json({ error: 'userId query param required' });
@@ -3471,9 +3536,15 @@ router.post('/admin/wallet/proof-pass', async (req: Request, res: Response) => {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
 
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    const isAdmin = !!(adminUser?.customClaims as any)?.admin;
-    if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const steps: Record<string, any> = {};
     const issues: string[] = [];
@@ -3725,8 +3796,15 @@ router.get('/admin/wallet/reconciliation-history', async (req: Request, res: Res
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const limit  = Math.min(Number(req.query.limit  ?? 50), 200);
     const offset = Number(req.query.offset ?? 0);
@@ -3780,8 +3858,15 @@ router.get('/admin/wallet/adjustments', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { staffId, userId, from, to, divisionCode } = req.query as Record<string, string>;
     const limit  = Math.min(Number(req.query.limit  ?? 100), 500);
@@ -3865,8 +3950,15 @@ router.get('/admin/wallet/export.csv', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { from, to, divisionCode, eventType, sourceType, userId } = req.query as Record<string, string>;
 
@@ -3954,8 +4046,15 @@ router.get('/admin/wallet/bookings-export.csv', async (req: Request, res: Respon
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { financeState, source, from, to, userId } = req.query as Record<string, string>;
 
@@ -4078,8 +4177,15 @@ router.post('/admin/wallet/release', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { bookingId, reason } = req.body as { bookingId: string; reason: string };
     if (!bookingId) return res.status(400).json({ error: 'bookingId required' });
@@ -4179,8 +4285,15 @@ router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Re
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { bookingId, amountCents, reason } = req.body as {
       bookingId: string; amountCents?: number; reason: string;
@@ -4312,8 +4425,15 @@ router.post('/admin/wallet/adjust', auditLogMiddleware('CREDIT_WALLET_ADJUST'), 
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { userId, amountCents, reason, type } = req.body as {
       userId: string; amountCents: number; reason: string; type: 'credit' | 'debit';
@@ -4442,8 +4562,15 @@ router.post('/admin/wallet/support/release-hold', async (req: Request, res: Resp
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { bookingId, bookingType, reason } = req.body as {
       bookingId: string; bookingType: 'marketplace' | 'academy'; reason: string;
@@ -4535,8 +4662,15 @@ router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Resp
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { bookingId, bookingType, amountCents: rawAmount, reason } = req.body as {
       bookingId: string; bookingType: 'marketplace' | 'academy'; amountCents?: number; reason: string;
@@ -4719,8 +4853,15 @@ router.post('/admin/wallet/support/credit', async (req: Request, res: Response) 
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { userId, amountCents, reason } = req.body as {
       userId: string; amountCents: number; reason: string;
@@ -4790,8 +4931,15 @@ router.get('/admin/wallet/finance-today', async (req: Request, res: Response) =>
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const revenueRows: any = await db.execute(sql`
       SELECT COALESCE(division_code, 'general') AS division_code,
@@ -4902,8 +5050,15 @@ router.get('/admin/wallet/reconciliation-history/export.csv', async (req: Reques
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const rows: any = await db.execute(sql`
       SELECT run_id, run_type, status, verdict,
@@ -4965,8 +5120,15 @@ router.post('/admin/wallet/academy/:id/force-confirm', async (req: Request, res:
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const bookingId = req.params.id;
     const { reason } = req.body as { reason: string };
@@ -5006,6 +5168,62 @@ router.post('/admin/wallet/academy/:id/force-confirm', async (req: Request, res:
       walletUpdates.wallet_debited_cents = Number(booking.wallet_hold_cents);
       txnId = debitResult.txnId;
       logger.info('[AdminWallet][ForceConfirm] Wallet debited', { bookingId, txnId, adminUid: uid });
+
+      // Customer receipt (2026-09-13): the trainer-confirm path in academy.ts
+      // issues the PROVIDER_BOOKING_COMMISSION document at this same wallet
+      // debit through the durable outbox; this admin path debited the wallet
+      // and issued NOTHING. Same kind + payload shape, so the drainer can
+      // retry it with the academy handler. Never fails the override.
+      const totalAmountIls = Number(booking.wallet_hold_cents) / 100;
+      try {
+        const outcome = await runFiscalDocumentAndPersistOnFailure({
+          pool,
+          kind: 'academy_receipt',
+          sourceKey: `booking:${bookingId}`,
+          payload: {
+            platform: 'academy',
+            paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+            bookingId,
+            trainerId: booking.trainer_id,
+            trainerUserId: booking.trainer_user_id,
+            customerUserId: booking.user_id,
+            totalAmountIls,
+            actorSource: 'admin_override',
+          },
+          runNow: async () => {
+            const { IsraeliDigitalReceiptService } = await import('../services/IsraeliDigitalReceiptService');
+            const [cust] = await db.select({ email: users.email, first: users.firstName, last: users.lastName })
+              .from(users).where(eq(users.id, booking.user_id)).limit(1);
+            const [trn] = booking.trainer_user_id
+              ? await db.select({ first: users.firstName, last: users.lastName }).from(users).where(eq(users.id, booking.trainer_user_id)).limit(1)
+              : [undefined];
+            const platformFeeAmount = Math.round(totalAmountIls * PETWASH_COMMISSION_RATE * 100) / 100;
+            await IsraeliDigitalReceiptService.generateReceipt({
+              platform: 'academy',
+              paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+              bookingId,
+              customerEmail: cust?.email || '',
+              customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
+              providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainer_id}`,
+              providerId: String(booking.trainer_id),
+              providerType: 'trainer',
+              serviceDescription: 'Pet Wash Academy training session',
+              serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
+              subtotalAmount: totalAmountIls,
+              platformFeeAmount,
+              totalAmount: totalAmountIls,
+              paymentMethod: 'PetWash Wallet',
+              providerPayoutAmount: Math.round((totalAmountIls - platformFeeAmount) * 100) / 100,
+              brokerCommissionAmount: platformFeeAmount,
+            });
+          },
+        });
+        if (!outcome.ranInline) logger.warn('[AdminWallet][ForceConfirm] Receipt enqueued to outbox for retry', { bookingId, inlineError: outcome.inlineError });
+      } catch (receiptErr: any) {
+        logger.error('[AdminWallet][ForceConfirm] Receipt failed inline AND outbox — needs manual issue', {
+          bookingId, err: receiptErr instanceof FiscalOutboxUnavailableError ? receiptErr.message : String(receiptErr?.message ?? receiptErr),
+        });
+      }
     }
 
     await db.execute(sql`
@@ -5059,8 +5277,15 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const bookingId = req.params.id;
     const { reason } = req.body as { reason: string };
@@ -5281,8 +5506,15 @@ router.get('/admin/wallet/action-history', async (req: Request, res: Response) =
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { divisionCode, adminUid, bookingId, from, to } = req.query as Record<string, string | undefined>;
 
@@ -5303,8 +5535,15 @@ router.get('/admin/wallet/action-history/export', async (req: Request, res: Resp
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { divisionCode, adminUid, bookingId, from, to } = req.query as Record<string, string | undefined>;
 
@@ -5633,8 +5872,15 @@ router.get('/admin/wallet/anomalies', async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const anomalies: Array<{
       code: string;
@@ -5782,8 +6028,15 @@ router.post('/admin/wallet/reverse-action', async (req: Request, res: Response) 
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const schema = z.object({
       txnId:  z.string().min(1),
@@ -5932,8 +6185,15 @@ router.get('/admin/wallet/exception-summary', async (req: Request, res: Response
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     // Collect (userId, issueType) pairs for top-offender aggregation
     const offenderMap = new Map<string, { stale: number; refundExceedsHold: number; negBal: number; doubleDebit: number }>();
@@ -6207,8 +6467,15 @@ router.get('/admin/wallet/payout-ledger', async (req: Request, res: Response) =>
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const { userId, divisionCode, status, batchId, from, to } = req.query as Record<string, string>;
     const limit  = Math.min(Number(req.query.limit) || 200, 1000);
@@ -6298,8 +6565,15 @@ router.post('/admin/wallet/payout-entries/mark-paid', async (req: Request, res: 
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
-    const adminUser = await firebaseAuth.getUser(uid).catch(() => null);
-    if (!(adminUser?.customClaims as any)?.admin) return res.status(403).json({ error: 'Admin access required' });
+    // Canonical admin authority (2026-09-13). This handler used to call
+    // firebaseAuth.getUser(uid) and demand a boolean `admin` custom claim —
+    // a claim NOTHING has written since grantAdminClaim() was deleted on
+    // 2026-06-12 (server/lib/adminCheck.ts:95), so it answered 403 to
+    // everyone, the verified super admin included. The router's own
+    // `/admin` gate above already enforces isSuperAdminVerified, so this is
+    // that same authority, not a wider one — and one less Firebase
+    // round-trip per request.
+    if (!isSuperAdminVerified(req as any)) return res.status(403).json({ error: 'Admin access required' });
 
     const schema = z.object({
       entryIds:    z.array(z.number().int().positive()).optional(),

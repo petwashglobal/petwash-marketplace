@@ -1,16 +1,20 @@
 import crypto from "crypto";
 import { db } from "../db";
 import { userConsents } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from 'drizzle-orm';
 import { storage } from "../storage";
 
 function sha256(input: string): string {
   return crypto.createHash("sha256").update(input).digest("hex");
 }
 
+// Marketing is OPTIONAL for every role (Israeli Privacy Protection Law /
+// Spam Law §30A: promotional consent is separate and never a condition of
+// service). Before 2026-09-12 the loyalty set bundled it, so "all consents
+// given" for a loyalty member silently required a marketing opt-in.
 const ROLE_CONSENTS: Record<string, string[]> = {
   customer: ["terms", "privacy"],
-  loyalty: ["terms", "privacy", "marketing"],
+  loyalty: ["terms", "privacy"],
   provider: ["terms", "privacy", "provider_terms", "kyc"],
   staff: ["terms", "privacy", "staff_policy"],
 };
@@ -194,18 +198,22 @@ export async function verifyConsent(
   userId: string,
   consentType: string
 ): Promise<boolean> {
+  // The ledger is append-only and withdrawConsent appends accepted:false —
+  // the old `accepted = true LIMIT 1` query found the earlier acceptance and
+  // reported a withdrawn consent as live (consent audit 2026-09-12 P0-10).
+  // The LATEST row for this type is the truth.
   const [record] = await db
-    .select()
+    .select({ accepted: userConsents.accepted })
     .from(userConsents)
     .where(
       and(
         eq(userConsents.userId, userId),
         eq(userConsents.consentType, consentType),
-        eq(userConsents.accepted, true)
       )
     )
+    .orderBy(desc(userConsents.acceptedAt))
     .limit(1);
-  return !!record;
+  return record?.accepted === true;
 }
 
 export function getRequiredConsents(role: string): string[] {

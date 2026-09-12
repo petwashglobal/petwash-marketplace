@@ -8,7 +8,8 @@
  * VAT: ISRAEL_VAT_RATE from @shared/israel-compliance-config
  */
 
-import { db } from '../db';
+import { db, pool } from '../db';
+import { runFiscalDocumentAndPersistOnFailure, FiscalOutboxUnavailableError } from './fiscalDocumentOutbox';
 import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { formatUserAddress } from '@shared/formatAddress';
@@ -735,8 +736,35 @@ export class ShopService {
       }
   }
 
+  /**
+   * Durable shop receipt (2026-09-13). Before: one try/catch that swallowed
+   * every failure into a log line — a paid order whose receipt failed got no
+   * document and nothing retried it. Now: inline attempt, else a durable
+   * fiscal_document_outbox row (kind shop_receipt) the drainer retries.
+   * Still never throws at the caller (the money already landed).
+   */
   async generateTaxInvoice(orderId: number): Promise<void> {
-        try {
+    try {
+      const outcome = await runFiscalDocumentAndPersistOnFailure({
+        pool,
+        kind: 'shop_receipt',
+        sourceKey: `shop_order:${orderId}`,
+        payload: { orderId },
+        runNow: () => this.issueShopReceiptNow(orderId),
+      });
+      if (!outcome.ranInline) logger.warn('[ShopService] Receipt enqueued to outbox for retry', { orderId, inlineError: outcome.inlineError });
+    } catch (err: any) {
+      if (err instanceof FiscalOutboxUnavailableError) {
+        logger.error('[ShopService] Receipt both inline AND outbox failed — needs manual issue', { orderId, err: err.message });
+      } else {
+        logger.error('[ShopService] generateTaxInvoice failed', { orderId, err: err?.message });
+      }
+    }
+  }
+
+  /** The receipt itself — THROWS on failure so the outbox can retry it. */
+  async issueShopReceiptNow(orderId: number): Promise<void> {
+        {
                 const result = await db.execute(sql`
                         SELECT o.*, u.email, u.display_name, u.address
                                 FROM shop_orders o
@@ -804,9 +832,6 @@ export class ShopService {
               details: { Payment: order.payment_method === 'wallet' ? 'Wallet' : 'Card' },
             });
           } catch { /* alert is best-effort */ }
-        } catch (err: any) {
-                logger.error('[ShopService] generateTaxInvoice failed', { orderId, err: err.message });
-                // Non-fatal — invoice can be regenerated from admin
         }
   }
 

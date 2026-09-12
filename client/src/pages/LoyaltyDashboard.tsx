@@ -576,14 +576,14 @@ export default function LoyaltyDashboard() {
                   </p>
                   <div className="space-y-3">
                     <input
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px]"
                       placeholder={isHebrew ? 'שם המקבל/ת' : 'Recipient name'}
                       maxLength={80}
                       value={giftName}
                       onChange={(e) => setGiftName(e.target.value)}
                     />
                     <input
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px]"
                       placeholder={isHebrew ? 'אימייל המקבל/ת' : 'Recipient email'}
                       type="email"
                       dir="ltr"
@@ -591,7 +591,7 @@ export default function LoyaltyDashboard() {
                       onChange={(e) => setGiftEmail(e.target.value)}
                     />
                     <textarea
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[16px]"
                       placeholder={isHebrew ? 'הקדשה אישית (רשות)' : 'Personal note (optional)'}
                       maxLength={280}
                       rows={2}

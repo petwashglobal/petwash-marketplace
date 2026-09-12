@@ -142,7 +142,7 @@ export default function PetDocuments() {
                 <select
                   value={docType}
                   onChange={(e) => setDocType(e.target.value)}
-                  className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white focus:border-amber-300/50 focus:outline-none"
+                  className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-[16px] text-white focus:border-amber-300/50 focus:outline-none"
                 >
                   {DOC_TYPES.map((d) => (
                     <option key={d.value} value={d.value} className="bg-neutral-900">{he ? d.he : d.en}</option>
@@ -153,19 +153,19 @@ export default function PetDocuments() {
               <div>
                 <label className="block text-xs uppercase tracking-wider text-amber-300/70 mb-1.5">{tr('Title', 'כותרת')}</label>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} dir="auto" placeholder={tr('e.g. Rabies 2026', 'למשל: כלבת 2026')}
-                  className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none" />
+                  className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-[16px] text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-amber-300/70 mb-1.5">{tr('Issue date', 'תאריך הנפקה')}</label>
                   <input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)}
-                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white focus:border-amber-300/50 focus:outline-none" />
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-[16px] text-white focus:border-amber-300/50 focus:outline-none" />
                 </div>
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-amber-300/70 mb-1.5">{tr('Expiry date', 'תאריך תפוגה')}</label>
                   <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)}
-                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white focus:border-amber-300/50 focus:outline-none" />
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-[16px] text-white focus:border-amber-300/50 focus:outline-none" />
                 </div>
               </div>
 

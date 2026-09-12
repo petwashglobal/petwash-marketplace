@@ -174,7 +174,18 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, formData, loading, checkpoint.hydrating]);
 
-  const predefinedAmounts = [50, 100, 200, 500, 1000];
+  // The CEO's four physical gift-card designs (attached_assets, 2026): pink ₪100,
+  // green ₪250, black ₪500, gold ₪1000. The amounts on offer now match the
+  // cards that exist, and the chosen amount previews its card below.
+  const predefinedAmounts = [50, 100, 250, 500, 1000];
+  const giftCardArtFor = (amountRaw: string): { src: string; tier: string } => {
+    const a = Number(amountRaw) || 0;
+    if (a >= 1000) return { src: '/brand/gift-cards/gold-1000.jpg', tier: 'Gold' };
+    if (a >= 500)  return { src: '/brand/gift-cards/black-500.jpg', tier: 'Black' };
+    if (a >= 250)  return { src: '/brand/gift-cards/green-250.jpg', tier: 'Green' };
+    return { src: '/brand/gift-cards/pink-100.jpg', tier: 'Pink' };
+  };
+  const giftCardArt = giftCardArtFor(formData.amount);
 
   const handleAddressChange = (value: string, details?: PlaceDetails) => {
     setFormData(prev => ({
@@ -277,6 +288,21 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                   ? 'אנחנו בגרסת השקה — כרטיסי מתנה דיגיטליים יהיו זמינים ברגע שמערכת התשלומים תופעל. תודה על הסבלנות!'
                   : 'We\'re in soft launch mode — digital gift cards will be available as soon as our payment system goes live. Thanks for your patience!'}
               </p>
+              {/* The four card designs (CEO, 2026) — shown on the soft-launch
+                  screen too, so the product is visible before the till opens. */}
+              <div className="grid grid-cols-2 gap-3 mb-6" data-testid="gift-card-art-preview">
+                {[
+                  { src: '/brand/gift-cards/pink-100.jpg',  label: '₪100' },
+                  { src: '/brand/gift-cards/green-250.jpg', label: '₪250' },
+                  { src: '/brand/gift-cards/black-500.jpg', label: '₪500' },
+                  { src: '/brand/gift-cards/gold-1000.jpg', label: '₪1000' },
+                ].map((c) => (
+                  <figure key={c.src} className="m-0 rounded-2xl overflow-hidden bg-white shadow-sm">
+                    <img src={c.src} alt={`PetWash™‎ gift card ${c.label}`} className="w-full h-auto" loading="lazy" decoding="async" />
+                    <figcaption className="text-xs font-semibold text-slate-700 py-1.5" style={{ textAlign: 'center' }}>{c.label}</figcaption>
+                  </figure>
+                ))}
+              </div>
               <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-2xl p-4 mb-6 text-sm text-[#B8932F]">
                 {isRTL
                   ? '✅ בינתיים, הצטרף למועדון, גלה ספקים וצור קשר עם קהילת חובבי החיות שלנו!'
@@ -336,6 +362,17 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                   ))}
                 </div>
                 
+                {/* Card preview — the CEO's own card art for the chosen value (2026-09-13). */}
+                <div className="rounded-2xl overflow-hidden bg-white" data-testid="gift-card-art" data-tier={giftCardArt.tier}>
+                  <img
+                    src={giftCardArt.src}
+                    alt={language === 'he' ? `כרטיס מתנה PetWash™‎ — ${giftCardArt.tier}` : `PetWash™‎ gift card — ${giftCardArt.tier}`}
+                    className="w-full h-auto"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+
                 <div>
                   <Label>{t('giftCards.customAmount', language)}</Label>
                   <Input

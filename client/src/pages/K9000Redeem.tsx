@@ -217,7 +217,8 @@ export default function K9000Redeem() {
       };
       const res = await apiRequest('POST', '/api/k9000/generate-qr', {
         redemptionType: redemptionTypeMap[selectedOption] ?? 'wash_package',
-        kioskId: 'any',
+        // No kioskId: the literal 'any' used to be baked into the token as its
+        // machineId and guaranteed TOKEN_MACHINE_MISMATCH on the kiosk verifier.
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Failed');

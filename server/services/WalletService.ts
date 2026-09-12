@@ -16,6 +16,7 @@ import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import { creditTypeToServiceTag } from '@shared/serviceDivisions';
+import { schedulePassSync } from './walletPassSync';
 
 function getWalletSecret(): string {
   const secret = process.env.WALLET_LINK_SECRET;
@@ -301,7 +302,8 @@ class WalletService {
     // and bypass the cash-due gate (IDOR). userId is required by the route now;
     // the optional default keeps backward-compat for internal callers.
     const ownerClause = userId ? sql`AND user_id = ${userId}` : sql``;
-    return await (db as any).transaction(async (tx: typeof db) => {
+    let ownerUserId: string | undefined = userId;
+    const confirmed: boolean = await (db as any).transaction(async (tx: typeof db) => {
     const result = await tx.execute(sql`
       WITH session_check AS (
         SELECT * FROM redemption_sessions
@@ -316,6 +318,7 @@ class WalletService {
     }
 
     const session = result.rows[0] as any;
+    ownerUserId = ownerUserId || (session.user_id as string | undefined);
 
     // IDEMPOTENCY: Already completed sessions return success
     if (session.status === 'completed') {
@@ -506,6 +509,9 @@ class WalletService {
 
     return true;
     });
+    // Wallet pass live sync (2026-09-12): the phone's pass shows the new balance.
+    if (confirmed) schedulePassSync(ownerUserId, 'redemption_confirmed');
+    return confirmed;
   }
 
   async refundRedemption(
@@ -641,6 +647,7 @@ class WalletService {
       })
       .where(eq(redemptionSessions.sessionId, sessionId));
 
+    schedulePassSync(wallet.userId, 'redemption_refunded');
     logger.info('[Wallet] Redemption refunded', { 
       sessionId, 
       walletId: session.walletId, 
@@ -689,7 +696,7 @@ class WalletService {
 
   async addCredits(
     userId: string,
-    creditType: 'egift' | 'wash_package' | 'loyalty_points' | 'promo_credit' | 'referral_credit',
+    creditType: 'egift' | 'wash_package' | 'loyalty_points' | 'promo_credit' | 'referral_credit' | 'cash_wallet',
     amount: number,
     sourceType: string,
     sourceId?: string,
@@ -735,6 +742,12 @@ class WalletService {
         break;
       case 'promo_credit':
         updateExpr.promoBalanceCents = sql`COALESCE(promo_balance_cents, 0) + ${amount}`;
+        break;
+      // Paid-in money (SUMIT wallet top-up). Before 2026-09-12 there was no
+      // cash case, so a paid top-up was credited as promo_credit → the bay
+      // picker (cashWalletBalanceCents) could never spend it.
+      case 'cash_wallet':
+        updateExpr.cashWalletBalanceCents = sql`COALESCE(cash_wallet_balance_cents, 0) + ${amount}`;
         break;
       case 'referral_credit':
         updateExpr.referralBalanceCents = sql`COALESCE(referral_balance_cents, 0) + ${amount}`;
@@ -800,6 +813,7 @@ class WalletService {
       });
     });
 
+    schedulePassSync(userId, 'credit_added');
     logger.info('[Wallet] Credits added (atomic)', { 
       walletId: wallet.walletId, 
       creditType, 
@@ -987,6 +1001,7 @@ class WalletService {
         expiresAt: expiresAt,
       });
     });
+    schedulePassSync(targetUserId, 'admin_injection');
 
     // Log comprehensive audit trail
     const auditDetails = {
@@ -1407,6 +1422,7 @@ IP Address: ${ipAddress || 'unknown'}
       ipAddress:      params.ipAddress,
       metadata:       params.metadata,
     });
+    schedulePassSync(params.userId, 'booking_debit');
     return { txnId: result.txnId, idempotent: result.idempotent };
   }
 
@@ -1470,6 +1486,7 @@ IP Address: ${ipAddress || 'unknown'}
       } catch { /* best effort */ }
     }
 
+    schedulePassSync(params.userId, 'booking_refund');
     return { txnId: result.txnId, idempotent: result.idempotent };
   }
 

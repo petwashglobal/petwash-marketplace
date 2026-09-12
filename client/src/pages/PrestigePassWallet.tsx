@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { Capacitor } from '@capacitor/core';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Shield, RefreshCw, Wallet, ChevronRight, CreditCard, Zap, Gift,
@@ -18,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 // UUID-named jpeg "logos" were non-official recreations and have been removed.
 const OFFICIAL_LOGO = '/brand/petwash-logo-official.png';
 import { PremiumMemberCard } from '@/components/PremiumMemberCard';
+import { MemberCardBack } from '@/components/MemberCardBack';
 import { PetWashIcon } from '@/components/PetWashIcon';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -73,6 +75,9 @@ interface DivisionActivity {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const fmt = (cents: number) => `₪${(cents / 100).toFixed(0)}`;
+/** ONE member id (2026-09-12): the membership-card id, the same number as on the physical card and the wallet pass. */
+const canonicalMemberId = (walletData: any, pass: { serialNumber: string }): string =>
+  walletData?.memberCard?.memberId ?? walletData?.cardId ?? pass.serialNumber;
 const fmtDate = (iso: string) => {
   try {
     return new Date(iso).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
@@ -198,7 +203,7 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
             {he ? 'מספר חבר' : 'Member ID'}
           </div>
           <div style={{ fontSize:'0.85rem', fontWeight:700, color:'#1A1A1A', fontFamily:'monospace', letterSpacing:'0.08em' }}>
-            {pass.serialNumber}
+            {canonicalMemberId(walletData, pass)}
           </div>
         </div>
         <div style={{ textAlign:'right' }}>
@@ -628,7 +633,7 @@ function DigitalCardSection({
                 {he ? 'קוד חבר' : 'Member Code'}
               </p>
               <p style={{ margin:'2px 0 0', fontSize:'0.9rem', fontWeight:700, color:'#B8860B', fontFamily:'monospace', letterSpacing:'0.15em' }}>
-                {pass.serialNumber}
+                {canonicalMemberId(walletData, pass)}
               </p>
             </div>
             <button onClick={() => { generateQr(); }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none', cursor:'pointer', color:'#9E9E9E', fontSize:'0.78rem', fontWeight:600, padding:'4px 8px' }}>
@@ -667,6 +672,29 @@ function DigitalCardSection({
           </div>
         )}
       </div>
+
+      {/* Scan to IDENTIFY — the membership card (CEO design 2026-09-12): a
+          static identity code with NO stored value, separate from the 45-second
+          redeem token above. Same QR + Code-128 as the back of the physical card. */}
+      {walletData?.memberCard?.memberId && walletData?.memberCard?.qrUrl && walletData?.memberCard?.barcodeValue && (
+        <div style={{ marginBottom:'16px' }} data-testid="prestige-scan-to-identify">
+          <div style={{ marginBottom:'8px' }}>
+            <h3 style={{ fontSize:'0.9rem', fontWeight:700, color:'#1A1A1A', margin:0 }}>
+              {he ? 'סרוק לזיהוי — כרטיס חבר' : 'Scan to Identify — membership card'}
+            </h3>
+            <p style={{ fontSize:'0.72rem', color:'#9E9E9E', margin:'2px 0 0' }}>
+              {he ? 'זיהוי בלבד • ללא ערך כספי • זהה לכרטיס הפיזי' : 'Identity only • no stored value • same as your physical card'}
+            </p>
+          </div>
+          <MemberCardBack
+            memberId={walletData.memberCard.memberId}
+            qrUrl={walletData.memberCard.qrUrl}
+            barcodeValue={walletData.memberCard.barcodeValue}
+            language={he ? 'he' : 'en'}
+            status={walletData.memberCard.status}
+          />
+        </div>
+      )}
 
       {/* K9000 readiness panel */}
       <div style={{ background:'#FFFFFF', border:`1.5px solid ${canWash ? 'rgba(34,197,94,0.3)' : 'rgba(217, 184, 76,0.2)'}`, borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
@@ -1075,7 +1103,7 @@ function PrestigeKioskPass({
               {he ? 'מספר חבר' : 'Member No.'}
             </div>
             <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1A1A1A', fontFamily: 'monospace', letterSpacing: '0.1em' }}>
-              {pass.serialNumber}
+              {canonicalMemberId(walletData, pass)}
             </div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -1145,6 +1173,7 @@ export default function PrestigePassWallet() {
     cardId?: string;
     cardDisplay?: string;
     pet?: { petName: string|null; petType: string|null; petBreed: string|null; petNotes: string|null };
+    memberCard?: { memberId: string; barcodeValue: string; qrUrl: string; status: string } | null;
   }>({ queryKey: ['/api/prestige-pass/wallet'], refetchInterval: 30_000 });
 
   const wallet: WalletData | null = walletData?.ok ? { pass: walletData.pass, balances: walletData.balances } : null;
@@ -1243,6 +1272,17 @@ export default function PrestigePassWallet() {
       return url as string;
     },
     onSuccess: (url) => {
+      // A .pkpass can only be INSTALLED by real Safari. Inside the native app
+      // shell (Capacitor WKWebView) or a home-screen PWA (navigator.standalone)
+      // a same-window navigation just dies silently — the CEO's "wallet
+      // download to iPhone won't work" (audit 2026-09-12). Hand those two
+      // contexts to the system browser; plain Safari keeps the in-place hop.
+      const standalone = (navigator as any).standalone === true
+        || (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches);
+      if (Capacitor.isNativePlatform() || standalone) {
+        window.open(url, '_blank', 'noopener');
+        return;
+      }
       window.location.assign(url);
     },
     onError: (err: any) => toast({

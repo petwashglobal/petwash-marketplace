@@ -309,7 +309,13 @@ export async function requireAuth(req: Request, res: Response, next: any) {
             customer = await storage.createCustomer({
               email: userEmail,
               password: hashedPassword, // Bcrypt hash for schema compliance
-              firstName: userData?.firstName || userData?.displayName?.split(' ')[0] || 'User',
+              // NEVER invent a name (2026-09-12). `customers.firstName` is NOT NULL,
+              // and 'User' was used to satisfy that — so the product literally
+              // greeted people "ערב טוב, User". An empty string satisfies the
+              // constraint too AND is falsy, so every `name || fallback` chain
+              // downstream resolves to a real localized word instead of a
+              // placeholder that looks like a name.
+              firstName: userData?.firstName || userData?.displayName?.split(' ')[0] || '',
               lastName: userData?.lastName || userData?.displayName?.split(' ').slice(1).join(' ') || '',
               country: userData?.country || null,
             });

@@ -1,33 +1,33 @@
 /**
- * create-profile 18+ floor + rate limiter — regression pins (2026-07-08).
+ * /api/users/create-profile — retired (old-layer audit 2026-09-12).
  *
- * Launch-readiness / KYC sweep: POST /api/users/create-profile (the social /
- * profile-completion account-mint endpoint) had two gaps vs its /api/auth/*
- * siblings:
- *   1. NO rate limiter — an open door for automated account-farming.
- *   2. Its age check rejected only under-13, while PetWash is an 18+ marketplace
- *      and the phone/email rails already reject under-18 (checkSignupAge).
+ * History: 2026-07-08 pinned an 18+ floor + authLimiter on this social
+ * account-mint endpoint. Since /complete-profile (#2402) no client calls it,
+ * and it accepted a CLIENT-supplied consent text hash as legal evidence, so
+ * the whole handler is gone and the path answers 410 GONE (still behind
+ * authLimiter so a scripted caller cannot use it as a probe).
  *
- * Fixes: authLimiter added; the DOB age floor raised 13 → 18. (Social sign-in
- * still attests 18+ via checkbox rather than a verified DOB — strengthening that
- * to a required birthdate is a separate product/conversion decision, flagged not
- * forced.)
- *
- * Source-level pins (same style as credit-wallet-confirm-idor.test.ts).
+ * The 18+ floor now lives in the canonical rail: post-login refuses profile
+ * completion without the explicit attestation (AGE_CONFIRMATION_REQUIRED).
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 
 const ROUTES = fs.readFileSync(path.resolve(__dirname, '..', 'routes.ts'), 'utf8');
+const POST_LOGIN = fs.readFileSync(path.resolve(__dirname, '..', 'routes', 'post-login.ts'), 'utf8');
 
-describe('create-profile 18+ floor + rate limit (2026-07-08)', () => {
-  it('the account-mint endpoint is rate-limited (authLimiter)', () => {
-    expect(ROUTES).toMatch(/app\.post\('\/api\/users\/create-profile',\s*authLimiter,/);
+describe('create-profile is sealed (2026-09-12)', () => {
+  it('the path answers 410 behind authLimiter and no handler body remains', () => {
+    expect(ROUTES).toMatch(/app\.post\('\/api\/users\/create-profile',\s*authLimiter,\s*\(_req, res\) => \{\s*\n\s*logger\.warn\([^\n]*\n\s*return res\.status\(410\)/);
+    expect(ROUTES.match(/app\.post\('\/api\/users\/create-profile'/g)?.length).toBe(1);
+    expect(ROUTES).not.toContain('[CreateProfile] Processing');
   });
-
-  it('the age floor is 18, not 13', () => {
-    expect(ROUTES).toMatch(/if \(age < 18\) validationErrors\.push\('You must be at least 18 years old'\)/);
-    expect(ROUTES).not.toMatch(/if \(age < 13\)/);
+  it('the unauthenticated /api/consent/onboarding writer is sealed too', () => {
+    expect(ROUTES).toMatch(/app\.post\('\/api\/consent\/onboarding',\s*authLimiter,\s*\(_req, res\) => \{/);
+    expect(ROUTES).not.toContain("origin: '/api/consent/onboarding'");
+  });
+  it('the 18+ floor lives on the canonical rail', () => {
+    expect(POST_LOGIN).toContain('AGE_CONFIRMATION_REQUIRED');
   });
 });

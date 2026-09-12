@@ -12240,10 +12240,12 @@ export const privilegeMembers = pgTable("privilege_members", {
   idVerified: boolean("id_verified").default(false),
   referralSource: varchar("referral_source", { length: 100 }),
   referralCode: varchar("referral_code", { length: 100 }),
-  marketingConsent: boolean("marketing_consent").default(true),
-  smsConsent: boolean("sms_consent").default(true),
-  termsConsent: boolean("terms_consent").default(true),
-  termsConsentAt: timestamp("terms_consent_at", { withTimezone: true }).defaultNow(),
+  // Opt-IN (consent audit 2026-09-12 P0-7): these defaulted to TRUE with a
+  // fabricated NOW() consent timestamp for any row created by any path.
+  marketingConsent: boolean("marketing_consent").default(false),
+  smsConsent: boolean("sms_consent").default(false),
+  termsConsent: boolean("terms_consent").default(false),
+  termsConsentAt: timestamp("terms_consent_at", { withTimezone: true }),
   language: varchar("language", { length: 10 }).default("en"),
   tier: varchar("tier", { length: 20 }).default("bronze"),
   points: integer("points").default(0),

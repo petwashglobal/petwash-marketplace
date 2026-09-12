@@ -253,7 +253,7 @@ export default function PrestigeInterestWaitlist() {
                       <select
                         value={form.audience}
                         onChange={setText('audience')}
-                        className="h-12 w-full rounded-xl border border-white/12 bg-white px-3 text-sm text-black"
+                        className="h-12 w-full rounded-xl border border-white/12 bg-white px-3 text-[16px] text-black"
                       >
                         {audienceOptions.map((option) => (
                           <option key={option.value} value={option.value}>

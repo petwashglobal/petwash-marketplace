@@ -438,9 +438,11 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
   // tampered row pick either label to launder an arbitrary amount into spendable
   // credit; require both so neither alone is sufficient.
   if (purchase.productType === 'ACCOUNT_CREDIT' && purchase.surface === 'wallet_topup') {
+    // 'cash_wallet', not 'promo_credit' (2026-09-12 audit G10): this is the
+    // member's own money and must land where the bay can spend it.
     await walletService.addCredits(
       purchase.buyerUserId,
-      'promo_credit',
+      'cash_wallet',
       purchase.amountCents,
       'sumit_purchase',
       purchase.id,

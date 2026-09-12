@@ -6,7 +6,7 @@ import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
 import { isSuperAdmin, isSuperAdminVerified, isSuperAdminAllowlisted } from "../middleware/rbac";
 import { isAdminRole } from "@shared/adminRoles";
-import { MEMBER_REQUIRED_FIELDS } from "@shared/memberRequiredFields";
+import { MEMBER_REQUIRED_FIELDS, getMissingMemberFields } from "@shared/memberRequiredFields";
 import { recordLoginEvent } from "../services/AuthEventService";
 import { getClientIP } from "../services/alerts";
 import { db } from "../db";
@@ -55,7 +55,8 @@ const REQUIRED_FIELDS_BY_ROLE: Record<string, string[]> = {
 
 function getMissingFields(user: any, role: string): string[] {
   const required = REQUIRED_FIELDS_BY_ROLE[role] || REQUIRED_FIELDS_BY_ROLE['customer'];
-  return required.filter((field: string) => !user[field]);
+  // Shared predicate: 'phone' means a VERIFIED mobile (see @shared/memberRequiredFields).
+  return getMissingMemberFields(user, required);
 }
 
 // intentToRole (deleted PR-AUTH-MULTIROLE-5): intent is no longer translated
@@ -458,38 +459,15 @@ export async function postLoginDecider(req: Request, res: Response) {
       }
     }
 
-    // Social OAuth users (Google, Apple, Facebook) never write acceptedTerms to
-    // Firestore because they bypass the signup form. If termsAcceptedAt is still
-    // missing after the Firestore sync above, check Firebase Auth provider data
-    // and stamp it here — synchronously, before the routing decision runs.
-    if (!(user as any).termsAcceptedAt) {
-      try {
-        const fbAdminModule = await import('../lib/firebase-admin');
-        const fbAuth = fbAdminModule.auth;
-        if (fbAuth) {
-          const firebaseUser = await fbAuth.getUser(userId);
-          const socialProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
-          const isSocial = firebaseUser.providerData?.some(
-            (p) => socialProviders.includes(p.providerId)
-          );
-          if (isSocial) {
-            const consentNow = new Date();
-            await storage.updateUser(userId, {
-              termsAcceptedAt: consentNow,
-              privacyAcceptedAt: consentNow,
-            });
-            (user as any).termsAcceptedAt = consentNow;
-            (user as any).privacyAcceptedAt = consentNow;
-            logger.info('[PostLogin] ✅ termsAcceptedAt stamped for social user (synchronous)', {
-              userId,
-              providers: firebaseUser.providerData?.map((p) => p.providerId),
-            });
-          }
-        }
-      } catch (socialTermsErr) {
-        logger.warn('[PostLogin] Failed to stamp social terms (non-blocking)', { userId, error: String(socialTermsErr) });
-      }
-    }
+    // NO silent consent. Until 2026-09-12 a social (Google/Apple) sign-in
+    // stamped termsAcceptedAt + privacyAcceptedAt right here, with no version,
+    // before the user had seen a single PetWash screen — which is why the
+    // /complete-profile consent line never appeared for them (7 of 8 consents
+    // in prod were versionless auto-stamps). OAuth authenticates identity; it
+    // does not accept Terms. The ONLY writers of termsAcceptedAt are the
+    // explicit ticks: /api/auth/session (manual form), Phase-1 signup and
+    // completeProfile below (with ageConfirmed18Plus). A missing consent
+    // therefore routes to /complete-profile, exactly as the CEO flow wants.
 
     if ((user as any).blocked) {
       return res.json({
@@ -555,14 +533,14 @@ export async function postLoginDecider(req: Request, res: Response) {
               const nameParts = (firebaseUser.displayName || '').trim().split(/\s+/);
               const derivedFirst = (user as any).firstName || nameParts[0] || '';
               const derivedLast = (user as any).lastName || nameParts.slice(1).join(' ') || '';
-              const now = new Date();
+              // Seeds role + name from the provider ONLY. Consent is never
+              // seeded here (2026-09-12) — see the note above the routing
+              // decision: OAuth authenticates, it does not accept Terms.
               const updatePayload: Record<string, any> = {
                 role: 'customer',
                 signupIntent: 'customer',
                 accessLevel: 1,
                 userStatus: 'profile_incomplete',
-                termsAcceptedAt: now,
-                privacyAcceptedAt: now,
               };
               if (derivedFirst && !(user as any).firstName) updatePayload.firstName = derivedFirst;
               if (derivedLast && !(user as any).lastName)   updatePayload.lastName  = derivedLast;
@@ -989,8 +967,16 @@ export async function postLoginDecider(req: Request, res: Response) {
     // super_admin branch can honor `intent=provider|loyalty|customer|member`
     // and land the same account on the surface it asked for this session.
     // Falls back to the stored signupIntent for a returning user who set
-    // their preference at signup time.
-    const routingIntent = (typeof intent === 'string' && intent) || (u as any)?.signupIntent || null;
+    // their preference at signup time — ONLY while that intent still steers
+    // onboarding. Once the provider application is APPROVED the stored
+    // 'provider' hint must not decide the workspace any more: before
+    // 2026-09-12 it did, so an approved provider who signed up through
+    // /become-provider was sent to /provider-os on every login and never
+    // saw the /mode picker (every approved provider is also a Pet Parent —
+    // CEO role-mode model 2026-08-26). Explicit per-session intent still wins.
+    const providerApproved = providerApp?.status === 'approved';
+    const storedIntent = providerApproved ? null : ((u as any)?.signupIntent || null);
+    const routingIntent = (typeof intent === 'string' && intent) || storedIntent;
 
     // Prestige membership signal — used ONLY for tile/badge rendering
     // (CEO 2026-08-26 role-model: Prestige is a membership, not a role).
@@ -1298,6 +1284,7 @@ export async function completeProfile(req: Request, res: Response) {
       termsAccepted,
       privacyAccepted,
       marketingConsent,
+      ageConfirmed18Plus,
     } = req.body || {};
 
     // Fall back to the name already on the user row when the client doesn't
@@ -1333,7 +1320,10 @@ export async function completeProfile(req: Request, res: Response) {
     const user = existingUserRow;
     const role = (user as any)?.role || 'customer';
 
-    if (role === 'provider' && !phone) {
+    // A provider needs a mobile on file. The client verifies it by OTP BEFORE
+    // this call (the row already carries a verified phone), so only reject when
+    // neither the request nor the row has one. (2026-09-12)
+    if (role === 'provider' && !phone && !(user as any)?.phone) {
       return res.status(400).json({
         error: "PHONE_REQUIRED",
         message: "Phone number is required for provider accounts",
@@ -1341,13 +1331,16 @@ export async function completeProfile(req: Request, res: Response) {
     }
 
     const now = new Date();
+    // Only touch address fields the client actually sent — the base member
+    // form no longer collects an address, and an omitted field must never
+    // wipe what a member already gave us. (2026-09-12)
     const updates: Record<string, any> = {
       firstName: effectiveFirstName,
       lastName: effectiveLastName,
-      address: address || null,
-      city: city || null,
-      postalCode: postalCode || null,
-      country: country || "IL",
+      ...(address !== undefined ? { address: address || null } : {}),
+      ...(city !== undefined ? { city: city || null } : {}),
+      ...(postalCode !== undefined ? { postalCode: postalCode || null } : {}),
+      ...(country !== undefined || !(user as any)?.country ? { country: country || (user as any)?.country || "IL" } : {}),
       updatedAt: now,
     };
 
@@ -1378,9 +1371,37 @@ export async function completeProfile(req: Request, res: Response) {
       updates.gender = gender;
     }
 
+    // 18+ — resolved deliberately (CEO 2026-09-12). The base member profile
+    // carries NO date of birth (that belongs to provider KYC), yet membership
+    // is over-18 by directive (2026-05-16). The manual signup form collects an
+    // explicit 18+ attestation (ageConfirmed18Plus); the social path skipped it
+    // entirely. Accepting the terms here therefore REQUIRES the same explicit
+    // attestation — no DOB, no guessing. Recorded in the audit log, not in a
+    // new column.
+    if (termsAccepted && ageConfirmed18Plus !== true) {
+      return res.status(400).json({
+        error: "AGE_CONFIRMATION_REQUIRED",
+        message: "Please confirm you are 18 or older to accept the terms.",
+      });
+    }
     if (termsAccepted) {
       updates.termsAcceptedAt = now;
       updates.termsVersion = "2026-v1";
+      try {
+        await logAuditEvent({
+          actorUserId: String(userId),
+          actorRole: (existingUserRow as any)?.role || "customer",
+          actionType: "MEMBER_AGE_ATTESTATION",
+          targetType: "user",
+          targetId: String(userId),
+          ip: getClientIP(req),
+          userAgent: req.get("user-agent") || undefined,
+          traceId: (req as any).traceId,
+          metadata: { ageConfirmed18Plus: true, termsVersion: "2026-v1", source: "complete-profile" },
+        });
+      } catch (auditErr: any) {
+        logger.warn("[CompleteProfile] age attestation audit not recorded", { userId, error: auditErr?.message });
+      }
     }
     if (privacyAccepted) {
       updates.privacyAcceptedAt = now;

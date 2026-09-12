@@ -51,7 +51,7 @@ const Field = ({ label, value, onChange, placeholder, textarea }: {
         placeholder={placeholder}
         dir="auto"
         rows={3}
-        className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none resize-none"
+        className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-[16px] text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none resize-none"
       />
     ) : (
       <input
@@ -59,7 +59,7 @@ const Field = ({ label, value, onChange, placeholder, textarea }: {
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         dir="auto"
-        className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none"
+        className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-[16px] text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none"
       />
     )}
   </div>

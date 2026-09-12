@@ -17,11 +17,12 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { QRCodeSVG } from 'qrcode.react';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
+import { resolveGreetingName } from '@/lib/greetingName';
+import { redeemCardDecision } from '@/lib/redeemCardVisibility';
 import { apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
 import { NextBestActionCard } from '@/components/NextBestActionCard';
@@ -136,6 +137,17 @@ export default function PrestigeHome() {
   // normalizer reads; `sum` stays as an always-null fallback slot.
   const sum = null;
 
+  // Computed here rather than further down because the QR query below must NOT
+  // run for an account with nothing to redeem — every run mints a signed token
+  // AND writes a prestige_qr_tokens doc to Firestore, once every 110s, forever.
+  const s = normalizeSummary(me, sum);
+  const redeemCard = redeemCardDecision({
+    prestigeEnrolled,
+    washCredits: s.washCredits,
+    cashCents:   s.cashCents,
+    giftCents:   s.giftCents,
+  });
+
   const { data: petsData } = useQuery({
     queryKey: ['/api/pets'],
     queryFn: async () => {
@@ -148,19 +160,6 @@ export default function PrestigeHome() {
     staleTime: 60_000,
   });
 
-  // Live, short-lived QR token for the membership card (same rail the kiosk reads).
-  const { data: qr } = useQuery({
-    queryKey: ['/api/prestige-pass/token/generate'],
-    queryFn: async () => {
-      try {
-        const r = await apiRequest('POST', '/api/prestige-pass/token/generate', {});
-        return r.ok ? r.json() : {};
-      } catch { return {}; }
-    },
-    enabled: !!user,
-    staleTime: 90_000,
-    refetchInterval: 110_000,
-  });
 
   // Latest wallet/receipt activity — real ledger events, newest first.
   const { data: hist } = useQuery({
@@ -175,10 +174,14 @@ export default function PrestigeHome() {
     staleTime: 60_000,
   });
 
-  const s = normalizeSummary(me, sum);
   const lastEvent: any = Array.isArray(hist?.events) && hist.events.length > 0 ? hist.events[0] : null;
   const pets: any[] = Array.isArray(petsData?.pets) ? petsData.pets : Array.isArray(petsData) ? petsData : [];
-  const firstName = s.displayName || user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || (isHe ? 'חבר' : 'Member');
+  // Placeholder names and why the email local-part is not a candidate: see
+  // client/src/lib/greetingName.ts. Pure + unit-tested there.
+  const firstName = resolveGreetingName(
+    [s.displayName, user?.displayName?.split(' ')[0]],
+    isHe,
+  );
 
   // Personal warmth — a time-aware greeting that changes through the day, so the
   // home feels alive and addressed to *this* member, not a static banner.
@@ -195,7 +198,6 @@ export default function PrestigeHome() {
         ? (isHe ? `${_petNames[0]} מוכן/ה לפינוק הבא ✨` : `${_petNames[0]} is ready for the next pamper ✨`)
         : (isHe ? `${_petNames.slice(0, 2).join(' ו')} מחכים לפינוק הבא ✨` : `${_petNames.slice(0, 2).join(' & ')} are ready for the next pamper ✨`);
 
-  const qrToken: string | undefined = qr?.token || qr?.qrToken || qr?.value;
   const memberId = s.memberId || '—';
 
   const copyMemberId = async () => {
@@ -345,33 +347,64 @@ export default function PrestigeHome() {
             </button>
           )}
 
-          {/* Membership card — dark emerald + gold, live QR */}
-          <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
+          {/* Membership card — dark emerald + gold, live QR.
+              CEO 2026-09-12: gated. This card promises "show at the bay to
+              redeem"; it may only appear when there is genuinely something to
+              redeem, and it may only wear the PRESTIGE wordmark and crown when
+              the account is genuinely enrolled. Before the gate, a non-enrolled
+              Pet Parent with every balance at zero was shown a crowned PRESTIGE
+              card with a live redeem QR — sitting directly under the button
+              inviting them to JOIN Prestige. See client/src/lib/redeemCardVisibility.ts. */}
+          {redeemCard.show && (
+          <div data-testid="prestige-redeem-card" className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
             <div className="flex items-start justify-between">
               <div className="flex flex-col">
                 <PetWashLogo variant="white" size={24} className="self-start" />
-                <span className="text-[9px] tracking-[0.3em] mt-1" style={{ color: GOLD }}>PRESTIGE</span>
-              </div>
-              <Crown className="w-5 h-5" style={{ color: GOLD }} />
-            </div>
-            <div className="mt-3 flex items-end justify-between gap-3">
-              <div className="bg-white rounded-xl p-2.5">
-                {qrToken ? (
-                  <QRCodeSVG value={qrToken} size={104} level="M" includeMargin={false} />
-                ) : (
-                  <div className="w-[104px] h-[104px] flex items-center justify-center text-gray-300"><QrCode className="w-10 h-10" /></div>
+                {redeemCard.crowned && (
+                  <span className="text-[9px] tracking-[0.3em] mt-1" style={{ color: GOLD }}>PRESTIGE</span>
                 )}
               </div>
+              {redeemCard.crowned && <Crown className="w-5 h-5" style={{ color: GOLD }} />}
+            </div>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              {/* Tap to redeem — NOT a parked barcode.
+                  This tile used to paint a QR minted by
+                  POST /api/prestige-pass/token/generate. The bay cannot read
+                  that token: the Cortina money path verifies with
+                  verifyQrRedeemToken (passTokens.ts, base64url signature,
+                  purpose 'qr-redeem'), while prestige-pass signs hex with no
+                  purpose field — rejected as INVALID_SIGNATURE before anything
+                  else is even looked at. #2412 tightened this query's refresh
+                  from 110s to 40s so the code would not also be expired; that
+                  fixed the third fault but the token was still unreadable, so
+                  the whole mint goes rather than the interval.
+                  A 45-second authorization belongs on the redeem screen, minted
+                  at the moment of use: /wallet/redeem -> K9000Redeem ->
+                  POST /api/k9000/generate-qr -> buildQrRedeemToken, the one mint
+                  the bay actually accepts. */}
+              <button
+                type="button"
+                onClick={() => navigate('/wallet/redeem')}
+                data-testid="prestige-redeem-cta"
+                aria-label={isHe ? 'מימוש בעמדה' : 'Redeem at the bay'}
+                className="bg-white rounded-xl p-2.5 w-[124px] h-[124px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform"
+              >
+                <QrCode className="w-11 h-11" style={{ color: '#0c6b48' }} />
+                <span className="text-[11px] font-semibold leading-tight text-center" style={{ color: '#0c6b48' }}>
+                  {isHe ? 'מימוש בעמדה' : 'Redeem at bay'}
+                </span>
+              </button>
               <div className="text-right flex-1">
                 <p className="text-[10px] uppercase tracking-wider" style={{ color: `${GOLD}cc` }}>{isHe ? 'מספר חבר' : 'Member ID'}</p>
                 <button onClick={copyMemberId} className="inline-flex items-center gap-1.5 text-white font-mono text-sm mt-0.5">
                   {memberId}
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5 opacity-70" />}
                 </button>
-                <p className="text-[10px] text-white/50 mt-2">{isHe ? 'הצג/י בעמדה למימוש' : 'Show at the bay to redeem'}</p>
+                <p className="text-[10px] text-white/50 mt-2">{isHe ? 'הקישו למימוש — הקוד נוצר בעמדה' : 'Tap to redeem — the code is created at the bay'}</p>
               </div>
             </div>
           </div>
+          )}
         </section>
 
         {/* Stats strip */}
@@ -513,7 +546,7 @@ export default function PrestigeHome() {
               { t: isHe ? 'חבילת 5 שטיפות' : '5 Wash Package', s: isHe ? 'חיסכון משתלם' : 'Save more', cta: isHe ? 'רכישה' : 'Buy Now', to: '/packages', icon: Droplets },
               { t: isHe ? 'מתנת שטיפה' : 'Gift a Wash', s: isHe ? 'שתפו דאגה' : 'Share the care', cta: isHe ? 'שליחה' : 'Send Gift', to: '/buy-gift-card', icon: Gift },
               { t: isHe ? 'מוצרי החנות' : 'Shop Bestsellers', s: isHe ? 'הנבחרים' : 'Top picks', cta: isHe ? 'לחנות' : 'Shop Now', to: '/shop', icon: ShoppingBag },
-              { t: isHe ? 'קורסי אקדמיה' : 'Academy Courses', s: isHe ? 'למדו וטפחו' : 'Learn. Care.', cta: isHe ? 'גילוי' : 'Explore', to: '/academy', icon: GraduationCap },
+              { t: isHe ? 'אקדמיה — אילוף' : 'Academy — Training', s: isHe ? 'מאלפי כלבים וחתולים' : 'Dog & cat trainers', cta: isHe ? 'למאלפים' : 'Find a trainer', to: '/academy', icon: GraduationCap },
             ].map((c) => {
               const Icon = c.icon;
               return (

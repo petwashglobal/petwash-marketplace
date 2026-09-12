@@ -323,7 +323,7 @@ export default function POSProfile() {
             <label className="text-xs font-medium text-gray-700 mb-1.5 block">Bio <span className="text-gray-400 font-normal">({bio.length}/2000)</span></label>
             <textarea value={bio} onChange={e => setBio(e.target.value)} rows={4} maxLength={2000}
               placeholder="Tell clients about yourself, your experience, and your love for pets..."
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 resize-none" />
+              className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 resize-none" />
           </div>
 
           {/* Languages */}
@@ -379,7 +379,7 @@ export default function POSProfile() {
                 value={priceFrom}
                 onChange={e => setPriceFrom(e.target.value)}
                 placeholder="e.g. 80"
-                className="w-full text-sm border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:border-amber-400"
+                className="w-full text-[16px] border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 focus:outline-none focus:border-amber-400"
               />
             </div>
             {priceFrom && Number(priceFrom) > 0 && (
@@ -545,10 +545,10 @@ export default function POSProfile() {
                       {d.active ? (
                         <div className="flex items-center gap-1.5 flex-1">
                           <input type="time" value={d.from || '09:00'} onChange={e => updateDayHours(key, 'from', e.target.value)}
-                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#D4AF37] w-24" />
+                            className="text-[16px] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#D4AF37] w-24" />
                           <span className="text-xs text-gray-400">to</span>
                           <input type="time" value={d.to || '18:00'} onChange={e => updateDayHours(key, 'to', e.target.value)}
-                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#D4AF37] w-24" />
+                            className="text-[16px] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#D4AF37] w-24" />
                         </div>
                       ) : (
                         <span className="text-xs text-gray-400 flex-1">Off</span>

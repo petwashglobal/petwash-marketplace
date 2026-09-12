@@ -43,6 +43,9 @@ import { eq, and, desc, sql, or, inArray, ne, isNull } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
+import { getLegalDocument } from '@shared/lib/legalDocumentRegistry';
+import { consentGateEnabled } from '../middleware/requireConsent';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
 import { createHash, randomBytes, randomUUID } from 'crypto';
@@ -177,6 +180,34 @@ router.post('/', async (req, res) => {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    // BOOKING ACCEPTANCE (consent audit 2026-09-12 P0-12): the registry declares
+    // booking_rules + emergency_vet_authorisation as required for a booking and
+    // NO flow ever recorded them. The client sends one explicit tick; it is
+    // recorded as two ledger rows (scoped by service + provider). Required when
+    // LEGAL_CONSENT_GATE_ENABLED=true; always recorded when given.
+    const acceptedBookingTerms = req.body?.acceptedBookingTerms === true;
+    if (consentGateEnabled() && !acceptedBookingTerms) {
+      return res.status(400).json({ error: 'BOOKING_TERMS_REQUIRED', message: 'Please accept the booking rules and emergency vet authorisation.' });
+    }
+    if (acceptedBookingTerms) {
+      const lang = (typeof req.body?.language === 'string' && ['he', 'en'].includes(req.body.language)) ? req.body.language : 'he';
+      for (const key of ['booking_rules', 'emergency_vet_authorisation'] as const) {
+        const doc = getLegalDocument(key);
+        if (!doc) continue;
+        void recordLegalAcceptance({
+          userId,
+          documentKey: key,
+          docVersion: doc.currentVersion,
+          language: lang,
+          ipAddress: req.ip || null,
+          userAgent: req.get('user-agent') || null,
+          source: 'client',
+          actorRole: 'self',
+          metadata: { origin: 'POST /api/booking-requests', serviceType: req.body?.serviceType ?? null, providerId: req.body?.providerId ?? null },
+        }).catch((e: any) => logger.warn('[BookingRequests] booking acceptance ledger write failed', { userId, key, error: e?.message }));
+      }
     }
 
     // LEGAL BLOCK: PetTrek is not licensed in Israel — reject at booking-request creation layer
@@ -3305,7 +3336,13 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     // should only reach provider_marked_complete AFTER payment (paymentHeldAt is
     // set by the Nayax confirm webhook). If it's missing, refuse to pay out —
     // otherwise a provider could be paid from escrow that never existed.
-    if (!booking.paymentHeldAt) {
+    // Wallet-funded bookings (2026-09-13): paymentHeldAt is written ONLY by
+    // the card rail's /sumit-return, so a booking paid entirely from wallet
+    // credit (debited at provider accept, walletDebitedCents > 0) could never
+    // be confirmed — 409 forever, and the completion receipt below was dead
+    // code for it. A committed wallet debit IS the held payment.
+    const walletPaid = Number((booking as any).walletDebitedCents) > 0;
+    if (!booking.paymentHeldAt && !walletPaid) {
       logger.error('[BookingRequests] Confirm-completion blocked — no payment was held for this booking', {
         requestId, providerId: booking.providerId, status: booking.status,
       });
@@ -3948,7 +3985,11 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           subtotalAmount: (booking.subtotalCents || 0) / 100,
           platformFeeAmount: commissionIls,
           totalAmount: (booking.totalCents || booking.subtotalCents || 0) / 100,
-          paymentMethod: 'Escrow (card)',
+          // Real tender on the legal document (2026-09-13): was hard-coded
+          // "Escrow (card)" even when the wallet paid.
+          paymentMethod: Number((booking as any).walletDebitedCents) > 0
+            ? (booking.paymentHeldAt ? 'PetWash Wallet + card' : 'PetWash Wallet')
+            : 'Escrow (card)',
           providerPayoutAmount:
             (booking.providerPayoutCents ?? ((booking.subtotalCents || 0) - (booking.serviceFeeCents || 0))) / 100,
           brokerCommissionAmount: commissionIls,

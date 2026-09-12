@@ -86,6 +86,9 @@ export default function PrestigeEnroll() {
         phone,
         tier: 'pearl',
         language: w.language === 'en' ? 'en' : 'he',
+        // The server now REQUIRES the explicit tick (it used to be decoration).
+        consent,
+        marketingConsent: false,
       };
       const res = await apiRequest('POST', '/api/prestige/join', body);
       const data = await res.json();

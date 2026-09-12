@@ -1,0 +1,31 @@
+# iOS form-zoom debt ledger (CEO 2026-09-12).
+#
+# Raw <input>/<select>/<textarea> still styled below the 16px iOS threshold with
+# a Tailwind class. iOS Safari zooms the page in on focus and never zooms back.
+#
+# Every CUSTOMER- and PROVIDER-facing control (72 across 25 files) was fixed
+# outright. What remains is ADMIN / INTERNAL desktop tooling, which is why it is
+# tolerated for now — AdminWalletDashboard alone accounts for 305 of them.
+#
+# The guard is a RATCHET: a count may go DOWN, never up, and a file that is not
+# on this list may not have any at all.
+#
+# NOTE: an earlier version of this ledger said 72 admin controls in 6 files. That
+# was an undercount from a buggy scanner regex whose two alternatives overlapped
+# ([^<>] could also match '{'), which CodeQL then flagged as js/redos. The
+# numbers below come from the fixed, unambiguous regex.
+#
+# format: <count> <path>
+6 client/src/pages/AdminShopProducts.tsx
+2 client/src/pages/AdminStaff.tsx
+305 client/src/pages/AdminWalletDashboard.tsx
+5 client/src/pages/AdminWashPackages.tsx
+2 client/src/pages/CaseQueue.tsx
+2 client/src/pages/OpsTodayPage.tsx
+1 client/src/pages/Optimizer.tsx
+1 client/src/pages/Treasury.tsx
+3 client/src/pages/admin/AdminNayaxEvents.tsx
+2 client/src/pages/admin/AdminProviderControl.tsx
+3 client/src/pages/admin/AdminProviderVerification.tsx
+1 client/src/pages/admin/GeminiFinancialMonitor.tsx
+2 client/src/pages/admin/PawFinderAdmin.tsx

@@ -129,6 +129,7 @@ export default function MyWallet() {
   const [showTopUp, setShowTopUp] = useState(false);
   const [nayaxTxId, setNayaxTxId] = useState('');
   const [topUpAmountIls, setTopUpAmountIls] = useState('');
+  const [acceptedWalletTerms, setAcceptedWalletTerms] = useState(false);
   const [payByCardLoading, setPayByCardLoading] = useState(false);
   const [saveCardLoading, setSaveCardLoading] = useState(false);
   // Card-on-file (vault) is behind a switch — show the "Save a card" button ONLY when it's on.
@@ -163,7 +164,7 @@ export default function MyWallet() {
   });
 
   const topUpMutation = useMutation({
-    mutationFn: async (body: { amountCents: number; nayaxTxId?: string }) =>
+    mutationFn: async (body: { amountCents: number; nayaxTxId?: string; acceptedWalletTerms: boolean }) =>
       apiRequest('POST', '/api/credit-wallet/topup', body),
     onSuccess: () => {
       toast({
@@ -210,7 +211,7 @@ export default function MyWallet() {
       });
       return;
     }
-    topUpMutation.mutate({ amountCents, nayaxTxId: nayaxTxId || undefined });
+    topUpMutation.mutate({ amountCents, nayaxTxId: nayaxTxId || undefined, acceptedWalletTerms });
   };
 
   // Pay-by-card path: charge the customer FIRST via the SUMIT hosted page. The
@@ -744,9 +745,19 @@ export default function MyWallet() {
                   className="h-11"
                 />
               </div>
+              {/* Wallet & eGift terms — an explicit tick, recorded as the acceptance
+                  (2026-09-12). Nothing is implied from the top-up itself any more. */}
+              <label className="mt-3 flex items-start gap-2 text-[12px] leading-snug text-black/70" data-testid="wallet-terms-consent">
+                <input type="checkbox" className="mt-0.5 h-4 w-4" checked={acceptedWalletTerms} onChange={(e) => setAcceptedWalletTerms(e.target.checked)} data-testid="wallet-terms-checkbox" />
+                <span>
+                  {isHebrew ? 'קראתי ומאשר/ת את ' : 'I have read and accept the '}
+                  <a href="/legal/wallet-egift-terms" target="_blank" rel="noopener" className="underline underline-offset-2">{isHebrew ? 'תנאי הארנק וה-eGift' : 'wallet & eGift terms'}</a>
+                  {'.'}
+                </span>
+              </label>
               <Button
                 onClick={handleTopUpSubmit}
-                disabled={topUpMutation.isPending || !nayaxTxId}
+                disabled={topUpMutation.isPending || !nayaxTxId || !acceptedWalletTerms}
                 variant="outline"
                 className="w-full h-11 mt-3 font-semibold rounded-xl gap-2"
               >

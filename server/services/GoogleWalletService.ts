@@ -20,7 +20,7 @@
 
 import jwt from 'jsonwebtoken';
 import { google } from 'googleapis';
-import { buildQrRedeemToken } from '../lib/passTokens';
+import { buildWalletBarcodeToken } from '../lib/passTokens';
 import { logger } from '../lib/logger';
 import { resolveGoogleServiceAccountJson } from '../lib/googleServiceAccount';
 
@@ -39,6 +39,8 @@ export interface PassVisual {
   availableCreditIls: number;
   validUntil?: string;
   qrTokenVersion: number;
+  /** Canonical membership-card id shown as Member ID (server/lib/memberIdentity). Falls back to passId. */
+  memberId?: string;
 }
 
 type ServiceAccount = { client_email: string; private_key: string };
@@ -82,7 +84,11 @@ async function getWalletClient() {
 }
 
 function buildObjectBody(visual: PassVisual): Record<string, unknown> {
-  const qrToken  = buildQrRedeemToken(visual.passId, visual.userId, visual.qrTokenVersion);
+  // Identity barcode (365-day wallet-barcode), NOT a 45-second redeem token:
+  // a pass is minted once and lives on the phone for months — the old token
+  // was dead 45 s after issue and every scan read TOKEN_EXPIRED (2026-09-12
+  // audit). Redemption is the linked /wallet/redeem page, which mints live.
+  const qrToken  = buildWalletBarcodeToken(visual.passId, visual.userId, visual.qrTokenVersion);
   const header   = visual.primaryPetName
     ? `${visual.ownerName} • ${visual.primaryPetName}`
     : visual.ownerName;
@@ -90,7 +96,7 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
   const textModules: { id: string; header: string; body: string }[] = [
     { id: 'tier', header: 'TIER', body: `${visual.tier} TIER` },
     { id: 'credit', header: 'STORED CREDIT', body: `₪${visual.availableCreditIls.toFixed(0)} verified` },
-    { id: 'memberId', header: 'Member ID',         body: visual.passId },
+    { id: 'memberId', header: 'Member ID',         body: visual.memberId ?? visual.passId },
     ...(visual.validUntil ? [{ id: 'validUntil', header: 'Valid Until', body: visual.validUntil }] : []),
   ];
 
@@ -102,25 +108,17 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
     subheader:  { defaultValue: { language: 'en-US', value: `${visual.tier} Tier` } },
     header:     { defaultValue: { language: 'en-US', value: header } },
     logo: {
-      sourceUri: { uri: 'https://petwash.co.il/logo.png' },
+      sourceUri: { uri: 'https://petwash.co.il/brand/petwash-logo-official.png' },
       contentDescription: { defaultValue: { language: 'en-US', value: 'PetWash logo' } },
     },
     hexBackgroundColor: '#FFFFFF',
-    // Primary barcode: 45-second signed QR redeem token
+    // Primary barcode: durable identity token (parity with the Apple pass)
     barcode: {
       type:          'QR_CODE',
       value:         qrToken,
       alternateText: visual.passId,
     },
-    // Rotating barcode support (refreshes automatically every 45s on device)
-    rotatingBarcode: {
-      type:                        'QR_CODE',
-      initialRotatingBarcodeValues: {
-        startDateTime: new Date().toISOString(),
-        values:        [qrToken],
-        periodMillis:  '45000',
-      },
-    },
+    // (rotatingBarcode removed 2026-09-12: it supplied ONE value with no totpDetails, so it never rotated.)
     textModulesData: textModules,
     linksModuleData: {
       uris: [
@@ -197,7 +195,7 @@ export function buildSaveUrl(visual: PassVisual): string | null {
     return null;
   }
   try {
-    const qrToken = buildQrRedeemToken(visual.passId, visual.userId, visual.qrTokenVersion);
+    const qrToken = buildWalletBarcodeToken(visual.passId, visual.userId, visual.qrTokenVersion);
     const objBody = buildObjectBody({ ...visual });
 
     const payload = {

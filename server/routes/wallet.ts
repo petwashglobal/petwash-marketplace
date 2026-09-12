@@ -8,6 +8,8 @@
  * - Email delivery
  */
 
+import { safeEqual } from '../lib/safeEqual';
+import { paymentLimiter } from '../middleware/rateLimiter';
 import express from 'express';
 import { AppleWalletService } from '../appleWallet';
 import { logger } from '../lib/logger';
@@ -794,7 +796,7 @@ router.get('/pass/:linkId', async (req, res) => {
       .update(payload)
       .digest('base64url');
     
-    if (token !== expectedToken) {
+    if (!safeEqual(token, expectedToken)) {
       logger.warn('[Wallet API] Invalid token for link', { linkId });
       return res.status(403).json({ error: 'Invalid token' });
     }
@@ -1379,7 +1381,7 @@ router.post('/v1/devices/:deviceID/registrations/:passTypeID/:serialNumber', asy
     const passData = passSnapshot.docs[0].data();
     
     // Verify authentication token
-    if (passData.authenticationToken !== authToken) {
+    if (!safeEqual(passData.authenticationToken, authToken)) {
       return res.status(401).json({ error: 'Invalid authentication token' });
     }
 
@@ -1448,7 +1450,7 @@ router.get('/v1/passes/:passTypeID/:serialNumber', async (req, res) => {
     const passData = passSnapshot.docs[0].data();
 
     // Verify authentication token
-    if (passData.authenticationToken !== authToken) {
+    if (!safeEqual(passData.authenticationToken, authToken)) {
       logger.warn('[Wallet Web Service] Invalid auth token', { serialNumber });
       return res.status(401).send();
     }
@@ -1514,7 +1516,7 @@ router.delete('/v1/devices/:deviceID/registrations/:passTypeID/:serialNumber', a
     }
 
     const passData = passSnapshot.docs[0].data();
-    if (passData.authenticationToken !== authToken) {
+    if (!safeEqual(passData.authenticationToken, authToken)) {
       return res.status(401).send();
     }
 
@@ -1542,7 +1544,7 @@ router.delete('/v1/devices/:deviceID/registrations/:passTypeID/:serialNumber', a
  * Nayax terminal endpoint to scan and validate loyalty QR codes
  * 🔓 Public endpoint - authenticated by terminal secret
  */
-router.post('/nayax/redeem-loyalty', auditLogMiddleware('WALLET_BURN'), async (req, res) => {
+router.post('/nayax/redeem-loyalty', paymentLimiter, auditLogMiddleware('WALLET_BURN'), async (req, res) => {
   try {
     const { qrData, terminalId, stationId } = req.body;
 
@@ -1555,7 +1557,7 @@ router.post('/nayax/redeem-loyalty', auditLogMiddleware('WALLET_BURN'), async (r
       return res.status(503).json({ error: 'Terminal service not configured' });
     }
     const terminalSecret = req.headers['x-terminal-secret'];
-    if (!terminalSecret || terminalSecret !== NAYAX_TERMINAL_SECRET) {
+    if (!terminalSecret || !safeEqual(terminalSecret, NAYAX_TERMINAL_SECRET)) {
       return res.status(401).json({ error: 'Invalid terminal authentication' });
     }
 
@@ -1687,7 +1689,7 @@ router.get('/nayax/verify-loyalty/:userId', async (req, res) => {
       return res.status(503).json({ error: 'Terminal service not configured' });
     }
     const terminalSecret = req.headers['x-terminal-secret'];
-    if (!terminalSecret || terminalSecret !== NAYAX_TERMINAL_SECRET) {
+    if (!terminalSecret || !safeEqual(terminalSecret, NAYAX_TERMINAL_SECRET)) {
       return res.status(401).json({ error: 'Invalid terminal authentication' });
     }
 
@@ -1742,7 +1744,7 @@ router.post('/notify-pass-update', async (req, res) => {
     logger.error('[Wallet Notify] INTERNAL_SERVICE_SECRET not configured — refusing to accept pass update');
     return res.status(503).json({ error: 'Internal service not configured' });
   }
-  if (providedSecret !== expectedSecret) {
+  if (!safeEqual(providedSecret, expectedSecret)) {
     logger.warn('[Wallet Notify] Rejected — missing/invalid x-internal-secret');
     return res.status(401).json({ error: 'Unauthorized' });
   }
