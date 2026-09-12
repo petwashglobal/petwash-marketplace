@@ -81,3 +81,27 @@ describe('presence is not configuration', () => {
     expect(R('.github/workflows/petwash-ci.yml')).toContain('nayax-placeholder-not-active');
   });
 });
+
+describe('the gate must match the rail', () => {
+  it('gateway-status reports the SUMIT rail and the eGift feature flag, not just Nayax', () => {
+    const src = R('server/routes.ts');
+    expect(src).toContain('const sumitWired = sumitClient.isWired();');
+    expect(src).toContain('egiftPurchase: {');
+    expect(src).toContain('enabled: sumitWired && egiftPurchaseEnabled,');
+    // creditCard.enabled was a hard-coded true — it must reflect the rail now
+    expect(src).not.toMatch(/creditCard: \{\s*\n\s*enabled: true,/);
+  });
+  it('the gift-card page asks about the rail it actually submits to', () => {
+    const page = R('client/src/pages/BuyGiftCard.tsx');
+    expect(page).toContain('const { egiftPurchaseEnabled, isLoading: paymentStatusLoading } = usePaymentStatus();');
+    expect(page).toContain('if (!paymentStatusLoading && !egiftPurchaseEnabled) {');
+    // and that submit really is the SUMIT-backed guest rail
+    expect(page).toContain("/api/egift/guest/start");
+    expect(R('server/routes/egift-guest.ts')).toContain('sumitClient.beginRedirect(');
+  });
+  it('so flipping PETWASH_EGIFT_PURCHASE_ENABLED opens the page with no code change', () => {
+    const guest = R('server/routes/egift-guest.ts');
+    expect(guest).toContain('PETWASH_EGIFT_PURCHASE_ENABLED');
+    expect(R('server/routes.ts')).toContain('PETWASH_EGIFT_PURCHASE_ENABLED');
+  });
+});

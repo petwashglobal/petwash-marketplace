@@ -61,7 +61,11 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [loading, setLoading] = useState(false);
-  const { paymentsEnabled, isLoading: paymentStatusLoading } = usePaymentStatus();
+  // Ask about the rail this page actually uses (2026-09-13): the submit below
+  // goes to /api/egift/guest/start, which rides SUMIT and is gated by
+  // PETWASH_EGIFT_PURCHASE_ENABLED. It used to ask `nayax.enabled` — a gateway
+  // this page never touches — so it showed "Coming Soon" no matter what.
+  const { egiftPurchaseEnabled, isLoading: paymentStatusLoading } = usePaymentStatus();
   const { user } = useFirebaseAuth();
   const isRTL = language === 'he' || language === 'ar';
 
@@ -266,7 +270,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
     }
   };
 
-  if (!paymentStatusLoading && !paymentsEnabled) {
+  if (!paymentStatusLoading && !egiftPurchaseEnabled) {
     return (
       <Layout language={language} onLanguageChange={onLanguageChange}>
         <div className="min-h-screen flex flex-col luxury-bg-mesh" dir={isRTL ? 'rtl' : 'ltr'}>

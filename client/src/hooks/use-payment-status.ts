@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 interface PaymentStatus {
   nayax: { enabled: boolean; status: string; message: string; messageHe: string };
   creditCard: { enabled: boolean; status: string; message: string; messageHe: string };
+  /** The rail eGift actually rides (SUMIT) + the PETWASH_EGIFT_PURCHASE_ENABLED flag. */
+  egiftPurchase?: { enabled: boolean; railWired: boolean; featureEnabled: boolean };
 }
 
 export function usePaymentStatus() {
@@ -18,6 +20,15 @@ export function usePaymentStatus() {
   });
 
   const paymentsEnabled = data?.nayax?.enabled ?? false;
+  /**
+   * THE GATE MUST MATCH THE RAIL (2026-09-13). Screens that sell through the
+   * SUMIT hosted page must ask about SUMIT, not about Nayax. /buy-gift-card
+   * hid itself behind `nayax.enabled` while its own submit goes to
+   * /api/egift/guest/start, which rides SUMIT — so it would have stayed shut
+   * even with a perfectly working till.
+   */
+  const cardPaymentsEnabled = data?.creditCard?.enabled ?? false;
+  const egiftPurchaseEnabled = data?.egiftPurchase?.enabled ?? false;
 
-  return { paymentsEnabled, status: data, isLoading };
+  return { paymentsEnabled, cardPaymentsEnabled, egiftPurchaseEnabled, status: data, isLoading };
 }
