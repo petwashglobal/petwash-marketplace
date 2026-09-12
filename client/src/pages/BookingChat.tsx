@@ -1654,7 +1654,7 @@ export default function BookingChat() {
                 value={photoCaption}
                 onChange={e => setPhotoCaption(e.target.value)}
                 rows={3}
-                className="w-full text-sm text-gray-700 border border-gray-100 rounded-xl p-2.5 resize-none focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
+                className="w-full text-[16px] text-gray-700 border border-gray-100 rounded-xl p-2.5 resize-none focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
                 placeholder="Add a caption…"
               />
             </div>

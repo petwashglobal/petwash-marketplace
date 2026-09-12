@@ -142,3 +142,152 @@ describe('no native form control may be styled below the iOS zoom threshold', ()
     expect(meta![0]).not.toMatch(/user-scalable\s*=\s*(no|0)/i);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QA follow-up (CEO 2026-09-12): the CSS scan above missed an entire vector.
+//
+// Verifying the first fix on production turned up two things. One, the
+// `.pw-input-luxury` rule it "fixed" is dead — the class has zero usages, and
+// MyAccount was never affected. Two, and worse: a raw <input> can carry its
+// font size as a Tailwind class instead of CSS, and the scan above only reads
+// .css files. Six customer- and provider-facing controls were still under the
+// threshold, styled `text-sm` (14px) inline.
+//
+// Those six are fixed. The 72 remaining live in admin/internal desktop tools
+// and are carried as a RATCHET baseline: a count may fall, never rise, and a
+// file not on the list may not have any at all.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TSX_BASELINE = 'scripts/guards/ios_form_zoom_tsx_baseline.txt';
+
+/** Base font-size utility only — NOT a variant like `file:text-sm`. */
+const SMALL_CLASS = /(?<![\w:-])text-(?:xs|sm|\[(?:1[0-5])(?:\.\d+)?px\]|\[[0-9](?:\.\d+)?px\])(?![\w-])/;
+// The two alternatives MUST stay disjoint. `[^<>]` would also match `{`, which
+// overlaps with the brace branch and gives CodeQL js/redos (exponential
+// backtracking on repeated `{{}}`) — it flagged exactly that on the first
+// version of this line. `[^<>{]` cannot start a brace group, so each character
+// has one and only one way to be consumed. The nested brace branch is needed
+// for real JSX attributes like style={{ fontSize: '16px' }}.
+const RAW_CONTROL = /<(input|select|textarea)\b((?:[^<>{]|\{(?:[^{}]|\{[^{}]*\})*\})*?)\/?>/gs;
+/** iOS only zooms into controls you can type in. */
+const NON_TEXT_INPUT = new Set(['hidden', 'checkbox', 'radio', 'file', 'range', 'color', 'submit', 'button', 'image']);
+
+function tsxFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, entry.name);
+    if (entry.isDirectory()) tsxFiles(p, out);
+    else if (entry.name.endsWith('.tsx')) out.push(p);
+  }
+  return out;
+}
+
+function scanTsx(): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const file of tsxFiles(CLIENT).sort()) {
+    const src = fs.readFileSync(file, 'utf8');
+    let n = 0;
+    for (const m of src.matchAll(RAW_CONTROL)) {
+      const attrs = m[2];
+      const type = /type=["']([a-z]+)["']/.exec(attrs);
+      if (type && NON_TEXT_INPUT.has(type[1])) continue;
+      const cls = /className=(?:"([^"]*)"|\{`([^`]*)`\}|\{cn\(([^)]*)\))/.exec(attrs);
+      const clstext = cls ? cls.slice(1).filter(Boolean).join(' ') : '';
+      if (!SMALL_CLASS.test(clstext)) continue;
+      // An explicit inline fontSize >= 16 rescues it.
+      if (/fontSize:\s*['"]?(1[6-9]|[2-9]\d)/.test(attrs)) continue;
+      n++;
+    }
+    if (n) counts[path.relative(process.cwd(), file)] = n;
+  }
+  return counts;
+}
+
+function readBaseline(): Record<string, number> {
+  const raw = fs.readFileSync(path.join(process.cwd(), TSX_BASELINE), 'utf8');
+  const out: Record<string, number> = {};
+  for (const line of raw.split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const m = /^(\d+)\s+(.+)$/.exec(t);
+    if (m) out[m[2]] = parseInt(m[1], 10);
+  }
+  return out;
+}
+
+describe('raw JSX controls may not be styled below the iOS zoom threshold either', () => {
+  it('the scanner is not vacuous, and ignores variant prefixes', () => {
+    // `file:text-sm` on the shared Input styles the file-picker BUTTON, not the
+    // field, and must not be flagged — that false positive is what made the
+    // first pass of this scan report the shared Input as broken.
+    expect(SMALL_CLASS.test('px-3 py-2 text-sm')).toBe(true);
+    expect(SMALL_CLASS.test('text-xs')).toBe(true);
+    expect(SMALL_CLASS.test('text-[13px]')).toBe(true);
+    expect(SMALL_CLASS.test('file:text-sm placeholder:text-xs')).toBe(false);
+    expect(SMALL_CLASS.test('text-[16px]')).toBe(false);
+    expect(SMALL_CLASS.test('text-sm-custom')).toBe(false);
+  });
+
+  it('the shared Input and Textarea are at 16px — they are the reason most screens are safe', () => {
+    for (const f of ['components/ui/input.tsx', 'components/ui/textarea.tsx']) {
+      expect(fs.readFileSync(path.join(CLIENT, f), 'utf8'), `${f} dropped below 16px`)
+        .toContain('text-[16px]');
+    }
+  });
+
+  it('NO customer- or provider-facing screen has one — the ledger is admin-only', () => {
+    // The first pass of this scan reported 6 offenders. That was an undercount
+    // from a regex whose alternatives overlapped (see RAW_CONTROL above); the
+    // real number was 72 across 25 files, every one of them fixed. What is left
+    // is admin tooling. This asserts the split holds, so a customer-facing
+    // regression can never be absorbed by the ledger.
+    const ADMIN = /admin|Admin|Treasury|CaseQueue|Staff|Ops|Optimizer/;
+    const customerFacing = Object.keys(scanTsx()).filter(f => !ADMIN.test(f));
+    expect(customerFacing, `customer/provider screens with sub-16px controls:\n  ${customerFacing.join('\n  ')}`)
+      .toEqual([]);
+    // and the journeys the CEO actually walks, named so a rename cannot hide them
+    for (const f of [
+      'client/src/pages/booking/MultiPetBookingWizard.tsx',
+      'client/src/pages/ShopStore.tsx',
+      'client/src/pages/ProviderOnboarding.tsx',
+      'client/src/pages/Pets.tsx',
+      'client/src/pages/AddPetPassport.tsx',
+      'client/src/pages/GroomingFeedback.tsx',
+      'client/src/pages/LoyaltyDashboard.tsx',
+      'client/src/pages/PrestigeInterestWaitlist.tsx',
+      'client/src/pages/ProviderCompliance.tsx',
+    ]) {
+      expect(fs.existsSync(path.join(process.cwd(), f)), `${f} moved — re-point this pin`).toBe(true);
+      expect(scanTsx()[f], `${f} has a control back under 16px`).toBeUndefined();
+    }
+  });
+
+  it('the ledger contains ONLY admin/internal files', () => {
+    const ADMIN = /admin|Admin|Treasury|CaseQueue|Staff|Ops|Optimizer/;
+    const strays = Object.keys(readBaseline()).filter(f => !ADMIN.test(f));
+    expect(strays, `customer-facing files must be FIXED, not added to the ledger:\n  ${strays.join('\n  ')}`)
+      .toEqual([]);
+  });
+
+  it('no file outside the admin debt ledger has any', () => {
+    const counts = scanTsx();
+    const baseline = readBaseline();
+    const strangers = Object.keys(counts).filter(f => !(f in baseline));
+    expect(strangers, `new file(s) with sub-16px native controls:\n  ${strangers.join('\n  ')}`)
+      .toEqual([]);
+  });
+
+  it('the ledger only ratchets down', () => {
+    const counts = scanTsx();
+    const baseline = readBaseline();
+    const grew = Object.entries(counts)
+      .filter(([f, n]) => n > (baseline[f] ?? 0))
+      .map(([f, n]) => `${f}: ${baseline[f] ?? 0} -> ${n}`);
+    expect(grew, `debt grew:\n  ${grew.join('\n  ')}`).toEqual([]);
+  });
+
+  it('the baseline itself is honest — every listed file still exists', () => {
+    for (const f of Object.keys(readBaseline())) {
+      expect(fs.existsSync(path.join(process.cwd(), f)), `${f} is in the ledger but gone`).toBe(true);
+    }
+  });
+});

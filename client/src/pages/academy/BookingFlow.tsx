@@ -375,7 +375,7 @@ export default function AcademyBookingFlow() {
                 <select
                   value={sessionDuration}
                   onChange={e => setSessionDuration(Number(e.target.value))}
-                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[16px]"
                   data-testid="select-duration"
                 >
                   <option value={60}>60 דקות</option>

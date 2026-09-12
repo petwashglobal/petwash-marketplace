@@ -262,13 +262,13 @@ export default function ProviderJobDetail() {
                     value={photoUrl}
                     onChange={(e) => setPhotoUrl(e.target.value)}
                     placeholder={isHe ? 'קישור לתמונה (הועלתה מהמצלמה)' : 'Photo URL (from camera upload)'}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 mb-2"
+                    className="w-full text-[16px] border border-gray-200 rounded-lg px-3 py-2 mb-2"
                   />
                   <input
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
                     placeholder={isHe ? 'כמה מילים על איך הולך…' : 'A few words on how it’s going…'}
-                    className="w-full text-xs border border-gray-200 rounded-lg px-3 py-2"
+                    className="w-full text-[16px] border border-gray-200 rounded-lg px-3 py-2"
                   />
                   <button
                     disabled={!photoUrl || photoMut.isPending}

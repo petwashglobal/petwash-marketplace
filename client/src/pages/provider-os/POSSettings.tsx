@@ -231,7 +231,7 @@ export default function POSSettings() {
               <Clock className="w-4 h-4 text-[#D4AF37]" /> Minimum advance notice
             </p>
             <select value={minNotice} onChange={e => setMinNotice(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
+              className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
               {[['1', '1 hour'], ['2', '2 hours'], ['4', '4 hours'], ['8', '8 hours'], ['24', '24 hours'], ['48', '48 hours']].map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}
@@ -302,7 +302,7 @@ export default function POSSettings() {
               <Dog className="w-4 h-4 text-amber-500" /> Maximum pets per booking
             </p>
             <select value={maxPets} onChange={e => setMaxPets(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
+              className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
               {['1', '2', '3', '4', '5', '6+'].map(v => <option key={v} value={v}>{v} {v === '1' ? 'pet' : 'pets'}</option>)}
             </select>
           </div>

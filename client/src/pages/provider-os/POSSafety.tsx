@@ -172,7 +172,7 @@ export default function POSSafety() {
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">Incident Type *</label>
               <select value={reportIncidentType} onChange={e => setReportIncidentType(e.target.value)}
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
+                className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
                 <option value="">Select incident type...</option>
                 {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
@@ -181,13 +181,13 @@ export default function POSSafety() {
               <label className="text-xs font-medium text-gray-700 mb-1 block">Booking Reference (optional)</label>
               <input value={reportBookingRef} onChange={e => setReportBookingRef(e.target.value)}
                 placeholder="e.g. #PW-2847"
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 font-mono" />
+                className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 font-mono" />
             </div>
             <div>
               <label className="text-xs font-medium text-gray-700 mb-1 block">Description *</label>
               <textarea value={reportDescription} onChange={e => setReportDescription(e.target.value)} rows={4}
                 placeholder="Describe what happened in detail..."
-                className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 resize-none" />
+                className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400 resize-none" />
             </div>
             <button onClick={handleReport} disabled={reportSubmitting}
               className="w-full py-3 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors flex items-center justify-center gap-2">
@@ -207,10 +207,10 @@ export default function POSSafety() {
             </h3>
             <input value={blockSearch} onChange={e => setBlockSearch(e.target.value)}
               placeholder="Client name or booking reference"
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
+              className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
             <input value={blockReason} onChange={e => setBlockReason(e.target.value)}
               placeholder="Reason (optional)"
-              className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
+              className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
             <button onClick={handleBlockClient}
               disabled={blockSubmitting}
               className="w-full py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60">
@@ -250,7 +250,7 @@ export default function POSSafety() {
             <div className="flex gap-2">
               <input value={blockAddress} onChange={e => setBlockAddress(e.target.value)}
                 placeholder="Enter address to block"
-                className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
+                className="flex-1 text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
               <button onClick={handleBlockAddress} className="px-4 py-2.5 bg-[#D4AF37] text-white rounded-xl text-sm font-medium hover:bg-[#B8932F] transition-colors">
                 Block
               </button>
@@ -299,11 +299,11 @@ export default function POSSafety() {
                   <div className="flex gap-2">
                     <input value={contact.name} onChange={e => updateContact(i, 'name', e.target.value)}
                       placeholder="Name"
-                      className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
+                      className="flex-1 text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
                     <input value={contact.phone} onChange={e => updateContact(i, 'phone', e.target.value)}
                       placeholder="Phone"
                       type="tel"
-                      className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
+                      className="flex-1 text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
                   </div>
                 </div>
               ))}
@@ -325,7 +325,7 @@ export default function POSSafety() {
               <div>
                 <label className="text-xs font-medium text-gray-700 mb-1 block">Alert after</label>
                 <select value={checkInDuration} onChange={e => setCheckInDuration(e.target.value)}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
+                  className="w-full text-[16px] border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
                   {[['30', '30 minutes'], ['60', '1 hour'], ['120', '2 hours'], ['180', '3 hours']].map(([v, l]) => (
                     <option key={v} value={v}>{l} of no check-in</option>
                   ))}

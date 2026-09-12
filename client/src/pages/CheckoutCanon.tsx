@@ -317,7 +317,7 @@ export default function CheckoutCanon() {
                 onChange={(e) => setCouponInput(e.target.value)}
                 placeholder="יש לכם קופון? הזינו כאן"
                 data-testid="checkout-coupon-input"
-                className="min-w-0 flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm outline-none focus:border-[#D4AF37]"
+                className="min-w-0 flex-1 rounded-xl border border-neutral-200 px-4 py-2.5 text-[16px] outline-none focus:border-[#D4AF37]"
               />
               <button
                 type="button"

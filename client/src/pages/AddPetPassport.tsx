@@ -166,21 +166,21 @@ export default function AddPetPassport() {
                 <input
                   value={name} onChange={(e) => setName(e.target.value)}
                   placeholder={tr('לדוגמה: באדי', 'e.g. Buddy')}
-                  className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#D6B56D]"
+                  className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                 />
               </Field>
               <Field label={tr('גזע', 'Breed')}>
                 <input
                   value={breed} onChange={(e) => setBreed(e.target.value)}
                   placeholder={tr('לדוגמה: גולדן רטריבר', 'e.g. Golden Retriever')}
-                  className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#D6B56D]"
+                  className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                 />
               </Field>
               <Field label={tr('תאריך לידה', 'Birthday')}>
                 <input
                   type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)}
                   max={new Date().toISOString().slice(0, 10)}
-                  className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[15px] outline-none focus:border-[#D6B56D]"
+                  className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                 />
               </Field>
               <Field label={tr('מין', 'Gender')}>

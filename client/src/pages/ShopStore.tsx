@@ -728,18 +728,18 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                       <input type="text" dir="auto" maxLength={120} value={addr.fullName} autoComplete="name"
                         onChange={e => setAddr(v => ({ ...v, fullName: e.target.value }))}
                         placeholder={tr('Full name', 'שם מלא')} aria-label={tr('Full name', 'שם מלא')}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-[16px] focus:border-black outline-none" />
                       <input type="tel" inputMode="tel" dir="ltr" maxLength={20} value={addr.phone} autoComplete="tel"
                         onChange={e => setAddr(v => ({ ...v, phone: e.target.value }))}
                         placeholder="+972 50 000 0000" aria-label={tr('Phone', 'טלפון')}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-[16px] focus:border-black outline-none" />
                       <div className="relative">
                         <input type="text" dir="auto" maxLength={200} value={addr.street} autoComplete="off"
                           onChange={e => onStreetChange(e.target.value)}
                           onFocus={() => { if (streetPreds.length > 0) setShowStreetPreds(true); }}
                           onBlur={() => setTimeout(() => setShowStreetPreds(false), 150)}
                           placeholder={tr('Street & number', 'רחוב ומספר')} aria-label={tr('Street & number', 'רחוב ומספר')}
-                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-[16px] focus:border-black outline-none" />
                         {showStreetPreds && streetPreds.length > 0 && (
                           <ul className="absolute z-30 left-0 right-0 mt-1 max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm">
                             {streetPreds.map((p, i) => (
@@ -773,7 +773,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                         <input type="text" inputMode="numeric" dir="ltr" maxLength={12} value={addr.zipCode} autoComplete="postal-code"
                           onChange={e => setAddr(v => ({ ...v, zipCode: e.target.value }))}
                           placeholder={tr('Zip (optional)', 'מיקוד (רשות)')} aria-label={tr('Zip code', 'מיקוד')}
-                          className="w-28 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
+                          className="w-28 rounded-lg border border-gray-200 px-3 py-2 text-[16px] focus:border-black outline-none" />
                       </div>
                       <button onClick={saveAddress} disabled={busy}
                         className="w-full rounded-lg px-3 py-2 border border-black text-sm font-medium disabled:opacity-40">
@@ -940,7 +940,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                     value={e.petName || ''}
                     onChange={ev => setEng(p.id, 'petName', ev.target.value.slice(0, 40))}
                     placeholder={tr("Pet's name · שם החיה", "שם החיה · Pet's name")}
-                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-sm focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-[16px] focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
                     aria-label={tr('Pet name to engrave', 'שם החיה לחריטה')}
                   />
                   <input
@@ -948,7 +948,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                     value={e.ownerName || ''}
                     onChange={ev => setEng(p.id, 'ownerName', ev.target.value.slice(0, 60))}
                     placeholder={tr('Owner name (optional)', 'שם הבעלים (רשות)')}
-                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-sm focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-[16px] focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
                     aria-label={tr('Owner name', 'שם הבעלים')}
                   />
                   <input
@@ -957,7 +957,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                     onFocus={() => { if (!e.ownerMobile) setEng(p.id, 'ownerMobile', '+972 '); }}
                     onChange={ev => setEng(p.id, 'ownerMobile', ev.target.value.slice(0, 20))}
                     placeholder="+972 50 000 0000  ·  +61 4xx xxx"
-                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-sm focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
+                    className="w-full rounded-xl bg-white/[0.04] border border-amber-300/40 text-amber-50 placeholder-amber-200/30 px-4 py-3 text-[16px] focus:border-amber-300 focus:ring-1 focus:ring-amber-300/40 outline-none transition"
                     aria-label={tr('Owner mobile (international)', 'נייד הבעלים (בינלאומי)')}
                   />
 

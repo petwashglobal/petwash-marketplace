@@ -479,7 +479,7 @@ function StreetCombo({ city, isHebrew, onPick }: StreetComboProps) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={isHebrew ? "חיפוש רחוב…" : "Filter streets…"}
-            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-amber-400"
+            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-[16px] outline-none focus:border-amber-400"
             dir={isHebrew ? "rtl" : "ltr"}
           />
           <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">

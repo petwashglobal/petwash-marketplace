@@ -208,7 +208,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
             <select
               value={form.type}
               onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5 bg-white"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5 bg-white"
             >
               {HEALTH_EVENT_TYPES.map(t => (
                 <option key={t.value} value={t.value}>
@@ -221,20 +221,20 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
               placeholder={isHe ? 'כותרת (למשל: חיסון כלבת)' : 'Title (e.g. Rabies shot)'}
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5"
             />
             <input
               type="date"
               value={form.date}
               onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5"
             />
             <textarea
               placeholder={isHe ? 'הערות (רופא, מינון, תכשיר...)' : 'Notes (vet, dose, product...)'}
               value={form.notes}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
               rows={2}
-              className="w-full text-sm rounded-lg border border-slate-200 p-1.5 resize-none"
+              className="w-full text-[16px] rounded-lg border border-slate-200 p-1.5 resize-none"
             />
             <div className="flex gap-2">
               <button

@@ -669,7 +669,7 @@ export default function WalkBookingFlow() {
                 <select
                   value={duration}
                   onChange={e => setDuration(Number(e.target.value))}
-                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+                  className="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[16px]"
                   data-testid="select-duration"
                 >
                   <option value={30}>30 דקות</option>
