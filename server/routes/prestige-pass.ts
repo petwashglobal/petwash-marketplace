@@ -51,7 +51,7 @@ import multer from 'multer';
 import { EmailService } from '../emailService';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
-import { buildPassLinkToken } from '../lib/passTokens';
+import { buildPassLinkToken, buildQrRedeemToken } from '../lib/passTokens';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
@@ -513,12 +513,8 @@ interface QrPayload {
   nonce: string;
 }
 
-function signPayload(payload: QrPayload): string {
-  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig  = createHmac('sha256', getQrSecret()).update(data).digest('hex');
-  return `${data}.${sig}`;
-}
-
+// signPayload (hex HMAC, no purpose) retired 2026-09-12: it minted a QR the bay
+// could never read. /token/generate now mints the passTokens `qr-redeem` token.
 function verifyToken(token: string): QrPayload | null {
   try {
     const [data, sig] = token.split('.');
@@ -675,7 +671,23 @@ router.post('/token/generate', generateTokenLimiter, auditLogMiddleware('PRESTIG
       nonce: randomBytes(16).toString('hex'),
     };
 
-    const token = signPayload(payload);
+    // ONE token system: the same 45-second `qr-redeem` token /wallet/redeem
+    // shows and the Cortina rail verifies (2026-09-12 audit). `payload` is
+    // kept only for the audit registry below.
+    // Same passId + qr_token_version the bay checks (Cortina rejects a version
+    // mismatch as TOKEN_REVOKED), so this QR is exactly what /wallet/redeem mints.
+    const [passAcct] = await db
+      .select({ passId: petwashPassAccounts.passId, qrTokenVersion: petwashPassAccounts.qrTokenVersion })
+      .from(petwashPassAccounts)
+      .where(eq(petwashPassAccounts.userId, userId))
+      .limit(1);
+    const token = buildQrRedeemToken(
+      passAcct?.passId ?? payload.wid,
+      userId,
+      passAcct?.qrTokenVersion ?? 1,
+      machineId,
+      undefined,
+    );
 
     // Store in Firestore with TTL (Firestore TTL via field, pruned by cleanup job)
     await firestoreDb.collection('prestige_qr_tokens').doc(jti).set({
@@ -884,7 +896,12 @@ function traceWalletRedemption(
   })();
 }
 
-router.post('/token/redeem', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
+// 410 (2026-09-12 audit): unauthenticated debit endpoint with no callers, rate
+// limit keyed on a caller-supplied stationId. Sealed; the bay rail is Cortina.
+router.post('/token/redeem', (_req: Request, res: Response) => {
+  res.status(410).json({ ok: false, error: 'GONE', message: 'Kiosk token redemption is retired; redemption happens on the bay rail.' });
+});
+router.post('/token/redeem-retired-2026-09-12', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const parsed = redeemSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });

@@ -71,14 +71,10 @@ function signLikePrestigePass(payload: unknown, secret: string): string {
 }
 
 describe('the token formats really are incompatible', () => {
-  it('the replica above still matches the real signPayload (guards this test from rotting)', () => {
+  it('the hex signer is RETIRED from prestige-pass (2026-09-12) and the bay signer is base64url', () => {
     const src = R('server/routes/prestige-pass.ts');
-    const at = src.indexOf('function signPayload(');
-    expect(at, 'signPayload was renamed or removed').toBeGreaterThan(-1);
-    const body = src.slice(at, src.indexOf('\n}', at));
-    expect(body).toContain("toString('base64url')");
-    expect(body, 'prestige-pass no longer signs with hex — re-derive this test')
-      .toContain("digest('hex')");
+    expect(src, 'signPayload came back — the bay cannot read what it mints').not.toContain('function signPayload(');
+    expect(src).toContain('const token = buildQrRedeemToken(');
 
     const pass = R('server/lib/passTokens.ts');
     const signAt = pass.indexOf('function sign(');

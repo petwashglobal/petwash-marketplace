@@ -28,6 +28,9 @@ import crypto from 'crypto';
 /** The encryption key is the LAST 32 chars of the 64-char Secret Token (256-bit). */
 export function startSessionKey(secretToken: string): Buffer {
   const t = (secretToken || '').trim();
+  // Nayax's own worked example is 65 chars and the key is its LAST 32, so the
+  // only hard rule is "at least 32". (An exact-64 check was tried 2026-09-12 and
+  // broke the proven worked-example test — do not reintroduce it.)
   if (t.length < 32) throw new Error('cortina_secret_token_too_short');
   return Buffer.from(t.slice(-32), 'utf8'); // 32 bytes = AES-256 key
 }

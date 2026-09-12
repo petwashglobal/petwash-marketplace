@@ -190,7 +190,14 @@ async function atomicLedgerEntry(opts: {
 // Authentication: Token self-authenticates via HMAC — no session required.
 //                 Kiosks should additionally set K9000_MACHINE_SECRET in headers.
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
+// 410 (2026-09-12 audit): this endpoint debited pass balance with NO
+// authentication (the header comment claimed HMAC auth that does not exist),
+// the caller picked amountIls from a menu, and nothing in the repo calls it.
+// Sealed first so the handler below can never be reached.
+router.post('/redeem', (_req: Request, res: Response) => {
+  res.status(410).json({ ok: false, error: 'GONE', message: 'Pass redemption moved to the bay rail (/wallet/redeem → Nayax). This endpoint is retired.' });
+});
+router.post('/redeem-retired-2026-09-12', redeemLimiter, async (req: Request, res: Response) => {
   try {
     const parsed = redeemSchema.safeParse(req.body);
     if (!parsed.success) {
