@@ -52,8 +52,8 @@
  */
 import express, { Router, type Request, type Response } from 'express';
 import { db, pool } from '../db';
-import { stationBays, walletAccounts } from '@shared/schema';
-import { eq, or } from 'drizzle-orm';
+import { stationBays, walletAccounts, petwashPassAccounts } from '@shared/schema';
+import { eq, or, sql, isNotNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { verifyQrRedeemToken } from '../lib/passTokens';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
@@ -89,8 +89,32 @@ import {
  * A rotating 45s QR can't be replayed. Identity-only lookups (staff) keep using
  * the durable barcode via server/routes/pass-redeem.ts; that flow moves no money.
  */
-function resolveUserIdFromDynamicQr(code: string): string {
-  return verifyQrRedeemToken(code).userId; // throws on any non-dynamic / expired QR
+async function resolveUserIdFromDynamicQr(code: string): Promise<string> {
+  const p = verifyQrRedeemToken(code); // throws on any non-dynamic / expired QR
+  // Revocation (2026-09-12 audit): a revoked pass bumps qr_token_version; a
+  // token minted before the bump must not spend. Accounts without a pass row
+  // (wallet-only members) carry no version — nothing to compare.
+  if (typeof p.tokenVersion === 'number') {
+    const [acct] = await db
+      .select({ v: petwashPassAccounts.qrTokenVersion })
+      .from(petwashPassAccounts)
+      .where(eq(petwashPassAccounts.userId, p.userId))
+      .limit(1);
+    if (acct && Number(acct.v) !== p.tokenVersion) throw new Error('TOKEN_REVOKED');
+  }
+  // Replay (2026-09-12 audit): the bay burned no nonce, so one 45-second QR
+  // could be presented at two stations for two debits. Same atomic registry
+  // pass-redeem.ts uses — first scan wins, every later scan is a replay.
+  if (p.nonce) {
+    const r = await db.execute(sql`
+      INSERT INTO petwash_pass_nonce_registry (nonce, pass_id, expires_at, used_at)
+      VALUES (${p.nonce}, ${p.passId || p.userId}, ${new Date((p.expiresAt || 0) * 1000)}, NOW())
+      ON CONFLICT (nonce) DO NOTHING
+      RETURNING id
+    `);
+    if (((r as any).rows?.length ?? (r as any).rowCount ?? 0) === 0) throw new Error('TOKEN_REPLAYED');
+  }
+  return p.userId;
 }
 
 const router = Router();
@@ -423,7 +447,7 @@ router.post(['/authorize', '/Authorization', '/Cortina/PrePaid/Authorization', '
     if (bay.status !== 'ready') return res.json(cortinaDecline(6, `bay_${bay.status}`));
 
     let userId: string;
-    try { userId = resolveUserIdFromDynamicQr(code); }
+    try { userId = await resolveUserIdFromDynamicQr(code); }
     catch { return res.json(cortinaDecline(2, 'invalid_or_expired_qr')); } // 2 = Transaction ID unknown
 
     const type = await pickRedemptionType(userId);
@@ -504,7 +528,7 @@ router.post(['/sale', '/Sale', '/Cortina/PrePaid/Sale', '/staticqr/sale'], async
     if (bay.status !== 'ready') { await markInboxDone(); return res.json(cortinaDecline(6, `bay_${bay.status}`)); }
 
     let userId: string;
-    try { userId = resolveUserIdFromDynamicQr(code); }
+    try { userId = await resolveUserIdFromDynamicQr(code); }
     catch { await markInboxDone(); return res.json(cortinaDecline(2, 'invalid_or_expired_qr')); }
 
     const type = await pickRedemptionType(userId);
@@ -902,5 +926,31 @@ export async function releaseStaleCortinaReservations(): Promise<{ expired: numb
   }
   return { expired, released };
 }
+
+/**
+ * Boot check (2026-09-12 audit): the four real terminals live only in
+ * server/services/nayaxTerminals.ts — nothing seeds station_bays.nayax_terminal_id,
+ * so with the rail switched on every callback would decline `bay_not_found`.
+ * Shout at boot instead of at the bay. Read-only; never blocks startup.
+ */
+export async function warnIfCortinaHasNoBayMappings(): Promise<boolean> {
+  if (!cortinaEnabled()) return true;
+  try {
+    const rows = await db
+      .select({ id: stationBays.id })
+      .from(stationBays)
+      .where(or(isNotNull(stationBays.nayaxTerminalId), isNotNull(stationBays.nayaxQrReaderId)))
+      .limit(1);
+    if (rows.length === 0) {
+      logger.error('[Cortina] NAYAX_CORTINA_ENABLED=true but NO station_bays row has nayax_terminal_id / nayax_qr_reader_id — every Nayax callback will decline bay_not_found. Map the bays (PATCH /api/admin/bay-control/:bayId/nayax) before go-live.');
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    logger.warn('[Cortina] bay-mapping boot check skipped', { err: err?.message });
+    return true;
+  }
+}
+void warnIfCortinaHasNoBayMappings();
 
 export default router;
