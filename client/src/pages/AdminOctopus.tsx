@@ -71,11 +71,11 @@ export default function AdminOctopus() {
     { label: 'אישור ספקים', to: '/admin/applications', icon: UserCheck },
     { label: 'צוות ו־HR', to: '/admin/staff', icon: Users },
     { label: 'אירועי Nayax', to: '/admin/nayax-events', icon: Radio },
-    { label: 'תשלומים SUMIT', to: '/admin/sumit-control', icon: CreditCard },
+    { label: 'תשלומים SUMIT', to: '/admin/sumit', icon: CreditCard },
     { label: 'קופונים', to: '/admin/coupons', icon: Ticket },
     { label: 'התראות', to: '/admin/alerts', icon: Bell },
     { label: 'כספים', to: '/admin/finance', icon: Landmark },
-    { label: 'ארנקים', to: '/admin/wallet-dashboard', icon: Wallet },
+    { label: 'ארנקים', to: '/admin/wallet-finance', icon: Wallet },
     { label: 'עמדות — בריאות', to: '/admin/stations', icon: Activity },
     { label: 'לוח קלאסי', to: '/admin/dashboard', icon: ClipboardList },
   ];

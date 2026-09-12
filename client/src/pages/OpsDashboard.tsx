@@ -278,7 +278,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  <a href="/metrics" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
+                  <a href="/api/metrics" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     📊 Prometheus Metrics
                   </a>
                   <a href="/api/auth/signing-health" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
@@ -287,7 +287,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
                   <a href="/api/synthetic/synthetic/e2e-login" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     🧪 E2E Login Test
                   </a>
-                  <a href="/healthz" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
+                  <a href="/api/health" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     ❤️ Health Check
                   </a>
                   <a href="/api/health/strict" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">

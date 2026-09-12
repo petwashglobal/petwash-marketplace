@@ -5,6 +5,7 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import { getApiUrl } from "@/lib/apiConfig";
 import { trackBoundaryCrash } from "@/lib/sentry";
 import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
+import { isChunkLoadError, tryChunkReload } from "@/lib/chunkRecovery";
 
 interface Props {
   children: ReactNode;
@@ -33,40 +34,11 @@ function generateReferenceId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/**
- * Detect whether an error originated from a failed dynamic chunk load
- * (typical Vite/Webpack code-split failure after a deploy).
- */
-function isChunkLoadError(error: Error): boolean {
-  if (!error) return false;
-  const name = error.name || "";
-  const msg = error.message || "";
-  if (name === "ChunkLoadError") return true;
-  if (/Loading chunk [\d]+ failed/i.test(msg)) return true;
-  if (/Failed to fetch dynamically imported module/i.test(msg)) return true;
-  if (/Importing a module script failed/i.test(msg)) return true;
-  if (/error loading dynamically imported module/i.test(msg)) return true;
-  return false;
-}
-
-/**
- * Lightweight in-memory retry queue: track recent chunk-load failures
- * so we can show a stronger hint when the same issue keeps recurring.
- * Window: 60s, threshold: 2 prior failures (so the 3rd showing escalates).
- */
-const CHUNK_RETRY_WINDOW_MS = 60_000;
-const CHUNK_RETRY_THRESHOLD = 2;
-const chunkErrorTimestamps: number[] = [];
-
-function recordChunkFailure(): boolean {
-  const now = Date.now();
-  // Drop expired entries
-  while (chunkErrorTimestamps.length && now - chunkErrorTimestamps[0] > CHUNK_RETRY_WINDOW_MS) {
-    chunkErrorTimestamps.shift();
-  }
-  chunkErrorTimestamps.push(now);
-  return chunkErrorTimestamps.length > CHUNK_RETRY_THRESHOLD;
-}
+// Chunk-failure detection and the bounded reload live in ONE place, shared with
+// main.tsx. The old local detector here did not know "reading 'default'" (the
+// React.lazy symptom), and its retry counter was in-memory — reset by the very
+// reload it triggered, so a permanently missing chunk reloaded forever.
+// (2026-09-13, see client/src/lib/chunkRecovery.ts)
 
 /** Collect lightweight session context without blocking the error boundary. */
 function collectSessionContext() {
@@ -114,31 +86,33 @@ export class AppErrorBoundary extends Component<Props, State> {
       error,
       referenceId: generateReferenceId(),
       isChunkError: isChunk,
-      repeatedChunkFailure: isChunk ? recordChunkFailure() : false,
+      // For a chunk failure this stays undefined until componentDidCatch decides
+      // reload-vs-card, and render() shows nothing meanwhile (no card flash).
+      repeatedChunkFailure: isChunk ? undefined : false,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
-    this.setState({ errorInfo });
-
     const context = collectSessionContext();
     const referenceId = this.state.referenceId ?? generateReferenceId();
     const isChunk = this.state.isChunkError ?? isChunkLoadError(error);
     const errorKind = isChunk ? "chunk-load" : "render";
 
-    // Auto-recover from a stale-chunk crash (CEO 2026-08-04): a first-time chunk-load
-    // error is almost always a tab holding the OLD index.html after a deploy — the
-    // requested chunk 404s and Hosting returns index.html (text/html), so the import
-    // throws. Reload ONCE to pull the fresh chunks so the user never sees an error
-    // card. `repeatedChunkFailure` (persisted across reloads) breaks any loop → we
-    // then fall through to render the manual "new version available" card.
-    if (isChunk && !(this.state.repeatedChunkFailure ?? false)) {
+    // Auto-recover from a failed chunk (CEO 2026-08-04, fixed 2026-09-13): almost
+    // always a tab holding an OLD index.html after a deploy, or a dropped mobile
+    // request. Reload to pull fresh chunks — bounded in sessionStorage, so a chunk
+    // that is really gone shows the manual "reload to get the latest version" card
+    // instead of looping. A reload is not an incident: Sentry breadcrumb only.
+    const reloading = isChunk && tryChunkReload();
+    if (reloading) {
       try {
         trackBoundaryCrash(error, { referenceId, errorKind, componentStack: errorInfo.componentStack, url: context.url, userId: context.userId, userRole: context.userRole });
       } catch { /* never throw in the boundary */ }
-      window.location.reload();
+      this.setState({ errorInfo });
       return;
     }
+    const repeatedChunkFailure = isChunk;
+    this.setState({ errorInfo, repeatedChunkFailure });
 
     // Tag the crash in Sentry with the user-facing referenceId so a quoted
     // "Reference: abc123" is directly findable (no-op without a DSN).
@@ -163,7 +137,7 @@ export class AppErrorBoundary extends Component<Props, State> {
         context: "AppErrorBoundary",
         referenceId,
         errorKind,
-        repeatedChunkFailure: this.state.repeatedChunkFailure ?? false,
+        repeatedChunkFailure,
         message: error.message,
         errorName: error.name,
         stack: error.stack,
@@ -188,6 +162,12 @@ export class AppErrorBoundary extends Component<Props, State> {
     }
 
     const { error, referenceId, isChunkError, repeatedChunkFailure } = this.state;
+
+    // Chunk failure with a reload in flight (or not yet decided): blank, not a
+    // "something went wrong" card for the half-second before the page reloads.
+    if (isChunkError && repeatedChunkFailure === undefined) {
+      return null;
+    }
 
     // CEO 2026-09-12: the crash card used to be English-only on a Hebrew RTL
     // app. Read the language defensively — a boundary must not throw while
