@@ -5,7 +5,9 @@ import { useLanguage } from '@/lib/languageStore';
 import { getApiUrl } from '@/lib/apiConfig';
 import { readReturnTo } from '@/auth/returnTo';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
-import stationHero from '@assets/petwash-station-real.png';
+// The founder's own brand photo (client/public/brand/hero-dog-lux.jpg): the
+// PetWash bandana dog. Served from /brand like the logo, no bundling needed.
+const WELCOME_HERO = '/brand/hero-dog-lux.jpg';
 
 /**
  * /welcome-back — the moment between "signed in" and "home" for a RETURNING
@@ -114,7 +116,7 @@ export default function WelcomeBack() {
         </p>
 
         <figure className="relative w-full max-w-sm mt-8 rounded-[28px] overflow-hidden shadow-[0_20px_60px_-20px_rgba(0,0,0,0.35)]">
-          <img src={stationHero} alt="" className="w-full h-[260px] object-cover" loading="eager" />
+          <img src={WELCOME_HERO} alt="" className="w-full h-[300px] object-cover object-top" loading="eager" decoding="async" draggable={false} />
           <figcaption className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/70 to-transparent text-white">
             <div className="text-2xl font-semibold leading-tight" style={{ textAlign: he ? 'right' : 'left' }}>
               {he ? 'חיות נקיות' : 'Clean pets'}<br />{he ? 'חיים שמחים' : 'happier lives'}

@@ -76,6 +76,20 @@ import { VerificationFlow } from '@/components/verification/VerificationFlow';
 // Returning member → /welcome-back greeting, then the server's destination.
 // New / incomplete member → straight to the server's destination. (CEO 2026-09-12)
 import { welcomeBackOr } from '@/lib/welcomeBack';
+import { SigningInMoment } from '@/components/auth/SigningInMoment';
+
+/**
+ * Was this Firebase account created in THIS sign-in? Firebase stamps both
+ * times on creation, so a brand-new account has them within seconds of each
+ * other; a returning member's last sign-in is well after creation. Lets the
+ * "Signing you in…" moment greet correctly BEFORE the server answers.
+ */
+function isReturningFirebaseUser(u: { metadata?: { creationTime?: string; lastSignInTime?: string } } | null | undefined): boolean {
+  const created = Date.parse(u?.metadata?.creationTime || '');
+  const last = Date.parse(u?.metadata?.lastSignInTime || '');
+  if (!Number.isFinite(created) || !Number.isFinite(last)) return false;
+  return last - created > 60_000;
+}
 import type { PublicChallenge } from '@/lib/verification/useVerificationChallenge';
 import { createAuthEmailTransport } from '@/lib/verification/authEmailTransport';
 import { useSharedVerificationUi } from '@/lib/verification/rolloutSwitch';
@@ -294,6 +308,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     if (mfaLoginInFlight.current || sent || emailStep || mobileStep || showFaceIDOffer || mfaChallenge) return;
     if (safeRedirect) { navigate(safeRedirect); return; }
     let cancelled = false;
+    // Screen 3 of the CEO flow: "Nice to see you again! Signing you in…" while
+    // the server decides. Cleared on unmount by navigation.
+    setSigningIn({ returning: isReturningFirebaseUser(auth.currentUser || user) });
     (async () => {
       try {
         const { resolvePostLogin } = await import('@/lib/postLoginCoordinator');
@@ -438,6 +455,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     [authMode, he],
   );
   const [busy, setBusy] = useState(false);
+  // Full-screen "Signing you in…" moment (CEO flow screen 3) while post-login resolves.
+  const [signingIn, setSigningIn] = useState<{ returning: boolean } | null>(null);
   const [inlineError, setInlineError] = useState<string | null>(null);
   // SIGNUP-EMAIL-IN-USE MSG (2026-08-23, CEO audit CRIT #5):
   // When signup is refused because the email OR phone already has an
@@ -681,6 +700,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // The actual routing (server post-login decider → nextUrl). Called directly, or
   // deferred by finishAndRoute until the Face ID offer is answered.
   async function routeNow() {
+    // Screen 3 of the CEO flow while the server decides the destination.
+    setSigningIn({ returning: isReturningFirebaseUser(auth.currentUser) });
     try { await fetch(getApiUrl('/api/session/whoami'), { credentials: 'include' }); }
     catch (e) { logger.error('[signup] whoami', e); }
     // SMART ROUTING (2026-07-24): ask the server's post-login decider where to
@@ -1820,6 +1841,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
 
   };
+
+  if (signingIn) {
+    return <SigningInMoment he={he} returning={signingIn.returning} />;
+  }
 
   return (
     <div id="petwash-signup-page" className="sl-shell" dir={he ? 'rtl' : 'ltr'}>
