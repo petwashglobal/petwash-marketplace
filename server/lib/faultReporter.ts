@@ -42,6 +42,8 @@ export interface FaultContext {
   url?: string;
   traceId?: string;
   statusCode?: number;
+  /** First app frame of the React componentStack (client faults) — the alert was anonymous without it. */
+  component?: string;
 }
 
 // Per-signature throttle so a fault storm doesn't flood email/Slack (the GCP
@@ -55,7 +57,7 @@ export async function reportFault(err: unknown, ctx: FaultContext): Promise<void
       ? err
       : new Error(typeof err === 'string' ? err : (() => { try { return JSON.stringify(err); } catch { return String(err); } })());
   const faultLine = firstAppFrame(e.stack);
-  const dedupeKey = `fault:${ctx.source}:${e.name}:${faultLine}`.slice(0, 200);
+  const dedupeKey = `fault:${ctx.source}:${e.name}:${ctx.component || faultLine}`.slice(0, 200);
 
   // 1. GCP Error Reporting (Cloud Run auto-captures this structured ERROR log).
   try {
@@ -69,6 +71,7 @@ export async function reportFault(err: unknown, ctx: FaultContext): Promise<void
           httpRequest: ctx.url ? { method: ctx.method, url: ctx.url } : undefined,
           traceId: ctx.traceId,
           faultLine,
+          component: ctx.component,
         },
       }),
     );
@@ -83,10 +86,11 @@ export async function reportFault(err: unknown, ctx: FaultContext): Promise<void
       category: 'system',
       severity: 'critical',
       title: `${e.name}: ${(e.message || 'fault').slice(0, 120)}`,
-      message: `${ctx.source}${ctx.url ? ` · ${ctx.method} ${ctx.url}` : ''}\nLine of fault: ${faultLine}`,
+      message: `${ctx.source}${ctx.url ? ` · ${ctx.method} ${ctx.url}` : ''}${ctx.component ? `\nComponent: ${ctx.component}` : ''}\nLine of fault: ${faultLine}`,
       source: 'fault_reporter',
       metadata: {
         faultLine,
+        component: ctx.component,
         traceId: ctx.traceId,
         statusCode: ctx.statusCode,
         stack: (e.stack || '').slice(0, 2000),
@@ -105,7 +109,7 @@ export async function reportFault(err: unknown, ctx: FaultContext): Promise<void
         type: 'system_error',
         severity: 'critical',
         message: `Fault in ${ctx.source}: ${e.name}: ${(e.message || '').slice(0, 160)}`,
-        details: `Line of fault: ${faultLine}\n${ctx.url ? `${ctx.method} ${ctx.url}\n` : ''}traceId: ${ctx.traceId || '-'}\n\n${(e.stack || '').slice(0, 1500)}`,
+        details: `${ctx.component ? `Component: ${ctx.component}\n` : ''}Line of fault: ${faultLine}\n${ctx.url ? `${ctx.method} ${ctx.url}\n` : ''}traceId: ${ctx.traceId || '-'}\n\n${(e.stack || '').slice(0, 1500)}`,
       });
     }
   } catch (alErr) {

@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Gift, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useMutation } from '@tanstack/react-query';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import { trackVoucherClaimed } from '@/lib/analytics';
 import { getApiUrl } from '@/lib/apiConfig';
 
@@ -28,15 +28,14 @@ export default function ClaimVoucher() {
       if (!user) {
         throw new Error('Please sign in to claim vouchers');
       }
-      const response = await fetch(getApiUrl('/api/vouchers/claim'), {
-        method: 'POST',
-        body: JSON.stringify({ code }),
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include'
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Claim failed');
+      // apiRequest attaches the Bearer token; a bare cookie-only fetch was
+      // refused by the CSRF gate (403) before it ever reached requireAuth
+      // (2026-09-12 sweep — the client never sends X-CSRF-Token).
+      let response: Response;
+      try {
+        response = await apiRequest('POST', '/api/vouchers/claim', { code });
+      } catch (err: any) {
+        throw new Error(err?.body?.error || err?.body?.message || 'Claim failed');
       }
       return await response.json();
     },

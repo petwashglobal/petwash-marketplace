@@ -15,6 +15,7 @@ import { PetWashIcon } from '@/components/PetWashIcon';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
+import { petsList } from '@/lib/apiShapes';
 import { format, addDays } from 'date-fns';
 
 const SERVICES = [
@@ -74,6 +75,8 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
   const { data: pets = [] } = useQuery<any[]>({
     queryKey: ['/api/pets'],
     queryFn: async () => { const r = await apiRequest('GET', '/api/pets'); const d = await r.json(); return d?.pets ?? d ?? []; },
+    // Shared key: another page may have cached the raw object — normalise on read too.
+    select: (d: unknown) => petsList(d),
   });
 
   const bookMutation = useMutation({
