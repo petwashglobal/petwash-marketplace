@@ -87,6 +87,28 @@ class ServerLogger {
           errorCode: error.code,
           errorStack: process.env.APP_ENV !== 'production' ? error.stack : undefined
         };
+        // CEO 2026-09-12 — found in QA of #2409. The condition above accepts a
+        // plain DIAGNOSTIC BAG as an "error" the moment it carries a `message`
+        // key, and the four fields above were then the ONLY thing that survived:
+        // every sibling field was silently dropped on the floor. 32 call sites
+        // were losing context this way, among them
+        //   routes.ts  '[Client Error]'  — 15 fields, including the referenceId
+        //                                  we print on the crash card and ask
+        //                                  customers to quote to support
+        //   firebase-auth.ts 'Firebase token validation failed' — path, method,
+        //                                  hasBearer, hasSessionCookie, code
+        //   nayax-webhooks.ts / k9000.ts — money-adjacent failure detail
+        // Keep the extracted error fields AND carry the rest of the bag through.
+        // Purely additive: nothing that reached the log before stops reaching it.
+        // redactLogContext still runs over the merged object below, so the
+        // privacy lane (AGENT-14) is unchanged.
+        if (!(error instanceof Error)) {
+          for (const key of Object.keys(error)) {
+            // Already represented as errorName / errorMessage / errorCode / errorStack.
+            if (key === 'name' || key === 'message' || key === 'code' || key === 'stack') continue;
+            if (!(key in errorFields)) errorFields[key] = (error as Record<string, unknown>)[key];
+          }
+        }
       } else if (error !== undefined && error !== null) {
         errorFields = { error: typeof error === 'string' ? error : JSON.stringify(error) };
       }
