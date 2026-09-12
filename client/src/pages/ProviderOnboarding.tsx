@@ -2060,7 +2060,7 @@ export default function ProviderOnboarding() {
                             value={drivingLicenseNumber}
                             onChange={(e) => setDrivingLicenseNumber(e.target.value)}
                             onBlur={scheduleDraftSave}
-                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                             data-testid="input-driving-license-number"
                           />
                         </label>
@@ -2074,7 +2074,7 @@ export default function ProviderOnboarding() {
                             onChange={(e) => setDrivingLicenseClass(e.target.value)}
                             onBlur={scheduleDraftSave}
                             placeholder={isHebrew ? 'לדוגמה: B' : 'e.g. B'}
-                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                             data-testid="input-driving-license-class"
                           />
                         </label>
@@ -2087,7 +2087,7 @@ export default function ProviderOnboarding() {
                             value={drivingLicenseExpiry}
                             onChange={(e) => setDrivingLicenseExpiry(e.target.value)}
                             onBlur={scheduleDraftSave}
-                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                            className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                             data-testid="input-driving-license-expiry"
                           />
                         </label>
@@ -2383,7 +2383,7 @@ export default function ProviderOnboarding() {
                         onChange={(e) => setBankName(e.target.value)}
                         onBlur={scheduleDraftSave}
                         placeholder={isHebrew ? 'בנק הפועלים' : 'e.g. Bank Hapoalim'}
-                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                         data-testid="input-bank-name"
                       />
                     </label>
@@ -2397,7 +2397,7 @@ export default function ProviderOnboarding() {
                         onChange={(e) => setBankBranchCode(e.target.value)}
                         onBlur={scheduleDraftSave}
                         placeholder={isHebrew ? 'למשל 604' : 'e.g. 604'}
-                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                         data-testid="input-bank-branch"
                       />
                     </label>
@@ -2410,7 +2410,7 @@ export default function ProviderOnboarding() {
                         onChange={(e) => setBankIban(e.target.value)}
                         onBlur={scheduleDraftSave}
                         placeholder="IL62 0080 4000 0000 1234 567"
-                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm font-mono outline-none focus:border-[#D6B56D]"
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] font-mono outline-none focus:border-[#D6B56D]"
                         data-testid="input-bank-iban"
                       />
                     </label>
@@ -2424,7 +2424,7 @@ export default function ProviderOnboarding() {
                         onChange={(e) => setBankAccountHolder(e.target.value)}
                         onBlur={scheduleDraftSave}
                         placeholder={isHebrew ? 'כפי שמופיע במסמכי הבנק' : 'Exactly as on the bank record'}
-                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-[16px] outline-none focus:border-[#D6B56D]"
                         data-testid="input-bank-holder"
                       />
                     </label>

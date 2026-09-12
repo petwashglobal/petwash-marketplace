@@ -162,7 +162,13 @@ const TSX_BASELINE = 'scripts/guards/ios_form_zoom_tsx_baseline.txt';
 
 /** Base font-size utility only — NOT a variant like `file:text-sm`. */
 const SMALL_CLASS = /(?<![\w:-])text-(?:xs|sm|\[(?:1[0-5])(?:\.\d+)?px\]|\[[0-9](?:\.\d+)?px\])(?![\w-])/;
-const RAW_CONTROL = /<(input|select|textarea)\b((?:[^<>]|\{[^{}]*\})*?)\/?>/gs;
+// The two alternatives MUST stay disjoint. `[^<>]` would also match `{`, which
+// overlaps with the brace branch and gives CodeQL js/redos (exponential
+// backtracking on repeated `{{}}`) — it flagged exactly that on the first
+// version of this line. `[^<>{]` cannot start a brace group, so each character
+// has one and only one way to be consumed. The nested brace branch is needed
+// for real JSX attributes like style={{ fontSize: '16px' }}.
+const RAW_CONTROL = /<(input|select|textarea)\b((?:[^<>{]|\{(?:[^{}]|\{[^{}]*\})*\})*?)\/?>/gs;
 /** iOS only zooms into controls you can type in. */
 const NON_TEXT_INPUT = new Set(['hidden', 'checkbox', 'radio', 'file', 'range', 'color', 'submit', 'button', 'image']);
 
@@ -228,16 +234,38 @@ describe('raw JSX controls may not be styled below the iOS zoom threshold either
     }
   });
 
-  it('the six customer- and provider-facing controls are fixed', () => {
-    const counts = scanTsx();
+  it('NO customer- or provider-facing screen has one — the ledger is admin-only', () => {
+    // The first pass of this scan reported 6 offenders. That was an undercount
+    // from a regex whose alternatives overlapped (see RAW_CONTROL above); the
+    // real number was 72 across 25 files, every one of them fixed. What is left
+    // is admin tooling. This asserts the split holds, so a customer-facing
+    // regression can never be absorbed by the ledger.
+    const ADMIN = /admin|Admin|Treasury|CaseQueue|Staff|Ops|Optimizer/;
+    const customerFacing = Object.keys(scanTsx()).filter(f => !ADMIN.test(f));
+    expect(customerFacing, `customer/provider screens with sub-16px controls:\n  ${customerFacing.join('\n  ')}`)
+      .toEqual([]);
+    // and the journeys the CEO actually walks, named so a rename cannot hide them
     for (const f of [
+      'client/src/pages/booking/MultiPetBookingWizard.tsx',
+      'client/src/pages/ShopStore.tsx',
+      'client/src/pages/ProviderOnboarding.tsx',
+      'client/src/pages/Pets.tsx',
+      'client/src/pages/AddPetPassport.tsx',
       'client/src/pages/GroomingFeedback.tsx',
       'client/src/pages/LoyaltyDashboard.tsx',
       'client/src/pages/PrestigeInterestWaitlist.tsx',
       'client/src/pages/ProviderCompliance.tsx',
     ]) {
-      expect(counts[f], `${f} has a control back under 16px`).toBeUndefined();
+      expect(fs.existsSync(path.join(process.cwd(), f)), `${f} moved — re-point this pin`).toBe(true);
+      expect(scanTsx()[f], `${f} has a control back under 16px`).toBeUndefined();
     }
+  });
+
+  it('the ledger contains ONLY admin/internal files', () => {
+    const ADMIN = /admin|Admin|Treasury|CaseQueue|Staff|Ops|Optimizer/;
+    const strays = Object.keys(readBaseline()).filter(f => !ADMIN.test(f));
+    expect(strays, `customer-facing files must be FIXED, not added to the ledger:\n  ${strays.join('\n  ')}`)
+      .toEqual([]);
   });
 
   it('no file outside the admin debt ledger has any', () => {

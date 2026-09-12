@@ -193,13 +193,13 @@ export default function DaycareCalculator() {
                   <input
                     value={pet.name}
                     onChange={e => updatePet(pet.id, 'name', e.target.value)}
-                    className="text-[12px] text-gray-800 bg-transparent border-b border-gray-200 focus:outline-none focus:border-gray-400 pb-0.5"
+                    className="text-[16px] text-gray-800 bg-transparent border-b border-gray-200 focus:outline-none focus:border-gray-400 pb-0.5"
                     placeholder="Name"
                   />
                   <select
                     value={pet.size}
                     onChange={e => updatePet(pet.id, 'size', e.target.value as PetSize)}
-                    className="text-[11px] text-gray-600 bg-transparent border-b border-gray-200 focus:outline-none focus:border-gray-400 pb-0.5"
+                    className="text-[16px] text-gray-600 bg-transparent border-b border-gray-200 focus:outline-none focus:border-gray-400 pb-0.5"
                   >
                     {(Object.entries(SIZE_LABELS) as [PetSize, string][]).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>

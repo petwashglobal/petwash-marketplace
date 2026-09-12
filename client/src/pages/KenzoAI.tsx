@@ -301,7 +301,7 @@ export default function KenzoAI() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={labels.placeholder}
             disabled={loading}
-            className="flex-1 px-4 py-3 rounded-2xl text-sm outline-none transition-all placeholder:opacity-40"
+            className="flex-1 px-4 py-3 rounded-2xl text-[16px] outline-none transition-all placeholder:opacity-40"
             style={{
               background: '#FFFFFF',
               border: '1px solid #E8E3D9',

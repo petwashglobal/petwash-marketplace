@@ -337,7 +337,7 @@ export default function POSCalendar() {
               label: 'Minimum advance notice', icon: Clock,
               content: (
                 <select value={minNoticeHours} onChange={e => setMinNoticeHours(Number(e.target.value))}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400">
+                  className="w-full text-[16px] border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400">
                   {[1, 2, 4, 8, 24, 48].map(h => <option key={h} value={h}>{h}h advance notice</option>)}
                 </select>
               )

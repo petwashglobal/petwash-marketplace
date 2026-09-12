@@ -117,7 +117,7 @@ export default function MobileStationHub() {
               placeholder="Search serial, city, or name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="luxury-glass-minimal w-full pl-11 pr-4 py-3 rounded-xl text-sm"
+              className="luxury-glass-minimal w-full pl-11 pr-4 py-3 rounded-xl text-[16px]"
               data-testid="input-search-stations"
             />
           </div>

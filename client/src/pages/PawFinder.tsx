@@ -1520,7 +1520,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   value={filterCity}
                   onChange={e => setFilterCity(e.target.value)}
                   placeholder="סנן לפי עיר..."
-                  className="flex-1 py-2 text-sm outline-none bg-transparent"
+                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
                 />
               </div>
 
@@ -1529,7 +1529,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                 <select
                   value={filterPet}
                   onChange={e => setFilterPet(e.target.value)}
-                  className="flex-1 py-2 text-sm outline-none bg-transparent"
+                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
                 >
                   <option value="">כל החיות</option>
                   <option value="dog">🐕 כלב</option>
@@ -1545,7 +1545,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   value={filterBreed}
                   onChange={e => setFilterBreed(e.target.value)}
                   placeholder="גזע..."
-                  className="flex-1 py-2 text-sm outline-none bg-transparent"
+                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
                 />
               </div>
 
