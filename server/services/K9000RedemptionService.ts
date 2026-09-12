@@ -42,6 +42,7 @@
  */
 
 import { db } from '../db';
+import { issueRedemptionFiscalDocument } from './k9000RedemptionFiscal';
 import {
   walletAccounts,
   creditTransactions,
@@ -1247,6 +1248,25 @@ async function debitAndLog(input: DebitInput): Promise<DebitResult> {
        <li>type: ${redemptionType}</li><li>side: ${bay.side}</li>
        <li>error: ${auditErr?.message}</li></ul>`
     )).catch(() => {});
+  }
+
+  // FISCAL (2026-09-12 audit G1): a wash paid from stored value gets its
+  // EGIFT_REDEMPTION document per the CPA table. Dark until
+  // K9000_REDEMPTION_FISCAL_ENABLED=true; never throws into the money path.
+  try {
+    await issueRedemptionFiscalDocument({
+      redemptionType,
+      userId,
+      txnId,
+      amountCents: redemptionType === 'wash_package' || redemptionType === 'loyalty_benefit' ? 0 : WASH_PRICE_ILS_CENTS,
+      washId,
+      kioskId,
+      bayId: bay.id,
+      side: String(bay.side),
+      correlationId,
+    });
+  } catch (fiscalErr: any) {
+    logger.error('[K9000Redemption] fiscal hook threw (wash unaffected)', { error: fiscalErr?.message, correlationId });
   }
 
   return {
