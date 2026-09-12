@@ -69,7 +69,13 @@ export async function freeGeocode(query: string, lang: string = 'he'): Promise<F
       city: a.city || a.town || a.village || a.municipality,
       country: a.country || 'Israel',
       countryCode: (a.country_code || 'il').toUpperCase(),
-      postalCode: a.postcode,
+      // An Israeli מיקוד is per-BUILDING (7 digits), not per-street. Nominatim
+      // answers a house-numbered query with the STREET when OSM has no such
+      // building (verified 2026-09-11: "ויצמן 185 כפר סבא" -> road ויצמן,
+      // house_number null, postcode 4445810 — the code of a DIFFERENT segment).
+      // Writing that to the address record is not an approximation, it is the
+      // wrong postcode on a real delivery. Only take it from a building-level hit.
+      postalCode: a.house_number ? a.postcode : undefined,
     };
     if (cache.size >= CACHE_MAX) cache.clear();
     cache.set(key, { at: Date.now(), data: out });
