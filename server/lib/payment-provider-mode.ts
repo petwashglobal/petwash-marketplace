@@ -122,19 +122,27 @@ export function validateProductionPaymentSecrets(
     return { errors, deprecationWarnings, mode };
   }
 
+  // PRESENCE IS NOT CONFIGURATION (2026-09-13). The deploy auto-creates a
+  // missing Nayax secret with the literal 'nayax-placeholder-not-active', so
+  // `!env.NAYAX_API_KEY` was false everywhere: this file's fail-closed check
+  // passed, and the "set BOOKING_CARD_RAIL=sumit" hint below never printed —
+  // while every booking payment hit api.nayax.com with a placeholder token.
+  const credentialSet = (v: string | undefined): boolean =>
+    !!v && v.trim() !== '' && !/placeholder/i.test(v);
+
   // Step 2: production fail-closed when an enabled provider lacks secrets.
   const nodeEnv = (env.NODE_ENV || '').toLowerCase().trim();
   const isProd = nodeEnv === 'production';
 
   if (isProd && isNayaxEnabled(env)) {
-    if (!env.NAYAX_API_KEY) {
+    if (!credentialSet(env.NAYAX_API_KEY)) {
       errors.push(
-        'NAYAX_ENABLED=true but NAYAX_API_KEY is missing — refusing to operate live',
+        'NAYAX_ENABLED=true but NAYAX_API_KEY is missing or a placeholder — refusing to operate live',
       );
     }
-    if (!env.NAYAX_WEBHOOK_SECRET) {
+    if (!credentialSet(env.NAYAX_WEBHOOK_SECRET)) {
       errors.push(
-        'NAYAX_ENABLED=true but NAYAX_WEBHOOK_SECRET is missing — refusing to operate live',
+        'NAYAX_ENABLED=true but NAYAX_WEBHOOK_SECRET is missing or a placeholder — refusing to operate live',
       );
     }
   }
@@ -166,12 +174,12 @@ export function validateProductionPaymentSecrets(
   //   invariant "flag-gated — no silent switch"); this warning tells ops
   //   exactly which env var to flip to activate real payments.
   if (isProd && !env.BOOKING_CARD_RAIL) {
-    const nayaxDark = !env.NAYAX_API_KEY || !env.NAYAX_MERCHANT_ID;
+    const nayaxDark = !credentialSet(env.NAYAX_API_KEY) || !credentialSet(env.NAYAX_MERCHANT_ID);
     const sumitWired = env.SUMIT_ENABLED === 'true' && !!env.SUMIT_API_KEY;
     if (nayaxDark && sumitWired) {
       deprecationWarnings.push(
         'BOOKING_CARD_RAIL is unset — defaults to `nayax`, which is DARK ' +
-        '(NAYAX_API_KEY / NAYAX_MERCHANT_ID missing). Every booking /pay ' +
+        '(NAYAX_API_KEY / NAYAX_MERCHANT_ID missing or placeholder). Every booking /pay ' +
         'call returns ONLINE_CARD_NOT_LIVE. SUMIT is wired and verified — ' +
         'set BOOKING_CARD_RAIL=sumit in Cloud Run to activate real payments.',
       );

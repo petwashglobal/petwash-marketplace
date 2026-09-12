@@ -36,7 +36,17 @@ const NAYAX_MERCHANT_ID = process.env.NAYAX_MERCHANT_ID;
 const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET;
 const APP_URL = process.env.APP_URL || 'https://petwash.co.il';
 
-const DEMO_MODE = !NAYAX_API_KEY || !NAYAX_MERCHANT_ID;
+// PRESENCE IS NOT CONFIGURATION (2026-09-13). The deploy auto-creates a
+// missing Nayax secret with the literal 'nayax-placeholder-not-active', so
+// `!NAYAX_API_KEY` was false and DEMO_MODE was OFF: instead of the honest
+// ONLINE_CARD_NOT_LIVE 503 this file intends, every booking payment fired a
+// real request to api.nayax.com carrying `Bearer nayax-placeholder-not-active`
+// and the customer got a generic 502 "Payment gateway unavailable". It also
+// silenced the ops hint in server/lib/payment-provider-mode.ts, which decides
+// "nayax is dark" from the same presence check.
+const nayaxCredentialConfigured = (v: string | undefined): boolean =>
+  !!v && v.trim() !== '' && !/placeholder/i.test(v);
+const DEMO_MODE = !nayaxCredentialConfigured(NAYAX_API_KEY) || !nayaxCredentialConfigured(NAYAX_MERCHANT_ID);
 
 if (DEMO_MODE) {
   logger.warn(

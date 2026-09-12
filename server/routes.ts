@@ -989,12 +989,29 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // Payment Gateway Status Endpoint - PUBLIC (no auth required)
   // Check if Nayax is configured - used by frontend to show "Coming Soon" badges
-  app.get('/payment-status', (req, res) => {
-    const isNayaxConfigured = !!(
-      process.env.NAYAX_API_KEY &&
-      process.env.NAYAX_MERCHANT_ID &&
-      process.env.NAYAX_SECRET &&
-      process.env.NAYAX_WEBHOOK_SECRET
+  //
+  // TWO PATHS ON PURPOSE (2026-09-13). Firebase Hosting forwards only
+  // `/api/**`, `/auth/**` and `/uploads/**` to Cloud Run; every other path
+  // falls through to the SPA. So the bare `/payment-status` below NEVER
+  // reached this handler in production — the browser got index.html, the
+  // client's `res.json()` threw, `paymentsEnabled` fell back to false, and
+  // the gift-card till showed "Coming Soon" forever even though all four
+  // Nayax secrets are live. The canonical path is the `/api/` one; the bare
+  // path stays registered so nothing that still calls it breaks.
+  const paymentGatewayStatus: import('express').RequestHandler = (req, res) => {
+    // PRESENCE IS NOT CONFIGURATION (2026-09-13). The deploy auto-creates any
+    // missing Nayax secret with the literal 'nayax-placeholder-not-active'
+    // (.github/workflows/petwash-ci.yml — "Online Nayax payments will be
+    // DISABLED until real credential is set"). A bare `!!process.env.X` then
+    // reports the gateway as OPERATIONAL while every call to Nayax carries a
+    // placeholder bearer token and fails. Treat a placeholder as unset.
+    const configured = (v: string | undefined): boolean =>
+      !!v && v.trim() !== '' && !/placeholder/i.test(v);
+    const isNayaxConfigured = (
+      configured(process.env.NAYAX_API_KEY) &&
+      configured(process.env.NAYAX_MERCHANT_ID) &&
+      configured(process.env.NAYAX_SECRET) &&
+      configured(process.env.NAYAX_WEBHOOK_SECRET)
     );
     
     res.set('Cache-Control', 'no-store').json({
@@ -1015,7 +1032,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         messageHe: 'תשלומי כרטיס אשראי פעילים'
       }
     });
-  });
+  };
+  app.get('/api/payments/gateway-status', paymentGatewayStatus);
+  app.get('/payment-status', paymentGatewayStatus);
 
   // GET /api/payment-status?ref=<externalId> — itemised status of ONE purchase for
   // the post-payment success page (client/src/pages/PaymentSuccess.tsx). Distinct
