@@ -66,6 +66,7 @@ import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { consumeNonce } from '../lib/signedRedeemToken';
 import { verifyQrRedeemToken, type PassTokenPayload } from '../lib/passTokens';
+import { enforceRedeemTokenFreshness } from '../lib/redeemTokenGuard';
 import { redis } from '../services/redis';
 import {
   authorizeRedemption,
@@ -1151,6 +1152,27 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
     const userId = payload.userId;
     const passSerial = payload.passId;
     const nonce = payload.nonce;
+
+    // ── Step 6b: shared revocation + replay guard (2026-09-13) ──────────────
+    // The same guard the Cortina bay rail runs: qr_token_version compare (a
+    // revoked pass was accepted HERE before today) and the shared
+    // petwash_pass_nonce_registry burn (one QR could be spent on each rail).
+    // Fail-CLOSED on a registry error — the burns below are a second net.
+    try {
+      await enforceRedeemTokenFreshness(payload);
+    } catch (guardErr: any) {
+      const reason = String(guardErr?.message || 'GUARD_FAILED');
+      if (reason === 'TOKEN_REVOKED') {
+        logger.warn('[K9000 Redeem] Token revoked (qr_token_version)', { userId, correlationId });
+        return res.status(403).json({ error: 'הכרטיס בוטל. הצג קוד חדש מהאפליקציה.', errorEn: 'TOKEN_REVOKED', status: 'TOKEN_REJECTED', correlationId });
+      }
+      if (reason === 'TOKEN_REPLAYED') {
+        logger.warn('[K9000 Redeem] Shared-registry replay blocked', { nonce, userId, correlationId });
+        return res.status(409).json({ error: 'קוד זה כבר שומש. הצג קוד חדש.', errorEn: 'QR code already used. Please generate a new one.', status: 'REPLAYED', correlationId });
+      }
+      logger.error('[K9000 Redeem] Freshness guard failed — refusing redemption (fail-closed)', { error: reason, correlationId });
+      return res.status(503).json({ error: 'השירות אינו זמין כעת. נסה שוב.', errorEn: 'Service temporarily unavailable. Please try again.', status: 'NONCE_STORE_UNAVAILABLE', correlationId });
+    }
 
     // ── Step 7 (pre-debit): Burn nonce before calling the service ──────────
     // In-memory burn first (fast, same-process protection)

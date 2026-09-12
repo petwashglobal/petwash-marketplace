@@ -1782,6 +1782,18 @@ if (isProduction) {
           digital_receipt: async (p: any) => {
             await IsraeliDigitalReceiptService.generateReceipt(p);
           },
+          // 2026-09-13: retry the SUMIT leg of a customer receipt whose local
+          // PW- row exists but whose SUMIT document was never issued.
+          // Idempotent: skips when sumit_document_id is already stamped.
+          sumit_receipt_dispatch: async (p: any) => {
+            await IsraeliDigitalReceiptService.dispatchReceiptToSumit({ receiptId: Number(p.receiptId), paymentClass: (p.paymentClass ?? undefined) as any });
+          },
+          // 2026-09-13: shop order receipt retry (generateReceipt is
+          // idempotent by bookingId = shop:<order_number>).
+          shop_receipt: async (p: any) => {
+            const { ShopService } = await import('./services/ShopService');
+            await new ShopService().issueShopReceiptNow(Number(p.orderId));
+          },
           // Post-release 2026-09-03 (backlog P1): SUMIT credit-note stamp
           // retry. Handler re-runs the local UPDATE that writes
           // sumitDocumentId back onto the digital_receipt row. Idempotent:

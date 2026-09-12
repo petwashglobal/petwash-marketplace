@@ -48,7 +48,11 @@ export type FiscalOutboxKind =
   // orphaned and inviting ops to re-issue in SUMIT (the double-credit
   // scenario the source comment already warns about). Now durable +
   // retryable via the same outbox drainer.
-  | 'sumit_credit_stamp';
+  | 'sumit_credit_stamp'
+  // 2026-09-13: the SUMIT leg of a customer receipt (was log-and-forget) and
+  // the shop order receipt (was swallow-and-forget).
+  | 'sumit_receipt_dispatch'
+  | 'shop_receipt';
 
 export class FiscalOutboxUnavailableError extends Error {
   readonly kind: FiscalOutboxKind;

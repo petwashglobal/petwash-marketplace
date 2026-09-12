@@ -56,6 +56,7 @@ import { stationBays, walletAccounts, petwashPassAccounts } from '@shared/schema
 import { eq, or, sql, isNotNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { verifyQrRedeemToken } from '../lib/passTokens';
+import { enforceRedeemTokenFreshness } from '../lib/redeemTokenGuard';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import {
   encryptStartSession,
@@ -91,29 +92,12 @@ import {
  */
 async function resolveUserIdFromDynamicQr(code: string): Promise<string> {
   const p = verifyQrRedeemToken(code); // throws on any non-dynamic / expired QR
-  // Revocation (2026-09-12 audit): a revoked pass bumps qr_token_version; a
-  // token minted before the bump must not spend. Accounts without a pass row
-  // (wallet-only members) carry no version — nothing to compare.
-  if (typeof p.tokenVersion === 'number') {
-    const [acct] = await db
-      .select({ v: petwashPassAccounts.qrTokenVersion })
-      .from(petwashPassAccounts)
-      .where(eq(petwashPassAccounts.userId, p.userId))
-      .limit(1);
-    if (acct && Number(acct.v) !== p.tokenVersion) throw new Error('TOKEN_REVOKED');
-  }
-  // Replay (2026-09-12 audit): the bay burned no nonce, so one 45-second QR
-  // could be presented at two stations for two debits. Same atomic registry
-  // pass-redeem.ts uses — first scan wins, every later scan is a replay.
-  if (p.nonce) {
-    const r = await db.execute(sql`
-      INSERT INTO petwash_pass_nonce_registry (nonce, pass_id, expires_at, used_at)
-      VALUES (${p.nonce}, ${p.passId || p.userId}, ${new Date((p.expiresAt || 0) * 1000)}, NOW())
-      ON CONFLICT (nonce) DO NOTHING
-      RETURNING id
-    `);
-    if (((r as any).rows?.length ?? (r as any).rowCount ?? 0) === 0) throw new Error('TOKEN_REPLAYED');
-  }
+  // Revocation + replay (2026-09-12 audit, unified 2026-09-13): ONE guard for
+  // both acceptors — qr_token_version compare and the shared
+  // petwash_pass_nonce_registry burn (server/lib/redeemTokenGuard.ts). Before
+  // the kiosk rail burned into its own table, so one 45-second QR could be
+  // spent once here and once at the kiosk.
+  await enforceRedeemTokenFreshness(p); // throws TOKEN_REVOKED | TOKEN_REPLAYED
   return p.userId;
 }
 
