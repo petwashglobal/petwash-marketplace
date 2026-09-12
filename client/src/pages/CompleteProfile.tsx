@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { Link } from "wouter";
 import { Loader2, Check, ShieldCheck } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 import { OtpCodeInput } from "@/components/OtpCodeInput";
 import { PetWashLogo } from "@/components/brand/PetWashLogo";
 import { getApiUrl } from "@/lib/apiConfig";
 import { apiRequest } from "@/lib/queryClient";
-import { resolvePostLogin } from "@/lib/postLoginCoordinator";
+import { resolvePostLogin, invalidatePostLoginCache } from "@/lib/postLoginCoordinator";
 import { useToast } from "@/hooks/use-toast";
 import { readReturnTo } from "@/auth/returnTo";
 
@@ -200,6 +199,9 @@ export default function CompleteProfile() {
       }
       // Where next: the interrupted page if any, else the server's decision.
       if (fromParam) { navigate(fromParam); return; }
+      // A 30-second cached pre-completion answer would bounce the member straight
+      // back into this form (onboarding audit 2026-09-12, P1-41).
+      invalidatePostLoginCache();
       const postLogin: any = await resolvePostLogin({});
       navigate(postLogin?.nextUrl || postLogin?.redirectTo || "/pet-parent/home");
     } catch {
@@ -324,9 +326,9 @@ export default function CompleteProfile() {
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4" data-testid="complete-profile-consent-checkbox" />
                 <span>
                   {isHe ? "אני בן/בת 18 ומעלה ומסכים/ה ל" : "I am 18 or older and I agree to the "}
-                  <Link href="/terms" className="underline underline-offset-2">{isHe ? "תנאי השימוש" : "Terms of Service"}</Link>
+                  <a href="/legal/customer-terms" target="_blank" rel="noopener" className="underline underline-offset-2">{isHe ? "תנאי השימוש" : "Terms of Service"}</a>
                   {isHe ? " ול" : " and the "}
-                  <Link href="/privacy" className="underline underline-offset-2">{isHe ? "מדיניות הפרטיות" : "Privacy Policy"}</Link>
+                  <a href="/legal/privacy" target="_blank" rel="noopener" className="underline underline-offset-2">{isHe ? "מדיניות הפרטיות" : "Privacy Policy"}</a>
                   {isHe ? " של PetWash™‎." : " of PetWash™‎."}
                 </span>
               </label>
