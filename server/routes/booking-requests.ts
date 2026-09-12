@@ -431,7 +431,15 @@ router.post('/', async (req, res) => {
       } else if (data.providerType === 'walker') {
         const [walker] = await db.select().from(walkerProfiles)
           .where(eq(walkerProfiles.userId, data.providerId)).limit(1);
-        if (walker) hourlyRateCents = parseInt(walker.hourlyRate || '0');
+        // baseHourlyRate, not hourlyRate (2026-09-13). walker_profiles has no
+        // `hourly_rate` column — the rate lives in `base_hourly_rate`
+        // (shared/schema.ts, decimal ILS) and that is what the rate-card route
+        // reads and writes. `parseInt(undefined || '0')` was always 0, so every
+        // walker booking without a quoteEngine quote fell through to
+        // 422 PROVIDER_RATE_MISSING. The unit was wrong too: parseInt on an ILS
+        // decimal reads "80.00" as 80 AGOROT. The trainer branch below has
+        // always done it correctly — this line now matches it.
+        if (walker) hourlyRateCents = Math.round(parseFloat(walker.baseHourlyRate || '0') * 100);
         if (data.providerProfileId && walker && walker.id !== data.providerProfileId) {
           return res.status(400).json({ error: 'Provider profile mismatch.', code: 'PROVIDER_PROFILE_MISMATCH' });
         }

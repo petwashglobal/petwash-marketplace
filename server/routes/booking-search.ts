@@ -258,7 +258,11 @@ async function getBusyProviderIds(startDate: string, endDate: string, platformId
       .from(bookingRequests)
       .where(
         and(
-          sql`${bookingRequests.status} IN ('pending', 'accepted', 'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending', 'confirmed', 'in_progress')`,
+          // 'meet_greet_requested' added 2026-09-13: it is written by
+          // booking-requests.ts and is a live state in the state machine, but
+          // it was missing here — so a provider with an open meet-and-greet
+          // request showed as FREE and could be booked again for the same slot.
+          sql`${bookingRequests.status} IN ('pending', 'accepted', 'meet_greet_requested', 'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending', 'confirmed', 'in_progress')`,
           sql`${bookingRequests.startDate} < ${end.toISOString()}`,
           sql`${bookingRequests.endDate} > ${start.toISOString()}`,
         )

@@ -40,13 +40,22 @@ export function rateCardUpdates(input: RateCardInput) {
     out.walker = { baseHourlyRate: input.walkerHourlyIls.toFixed(2), isAvailable: live, updatedAt: new Date() };
   }
   if (input.sitterDayIls !== undefined || input.sitterHourIls !== undefined) {
-    const day = input.sitterDayIls ?? 0;
     // Sitter search requires price_per_day_cents > 0; "unavailable" is expressed as 0.
-    out.sitter = {
-      pricePerDayCents: input.available ? day * 100 : 0,
-      pricePerHourCents: input.sitterHourIls !== undefined ? input.sitterHourIls * 100 : undefined,
-      updatedAt: new Date(),
-    };
+    // Only TOUCH the day rate when the caller actually sent one (2026-09-13).
+    // Before, a PUT carrying only sitterHourIls entered this branch, `day`
+    // fell back to 0, and price_per_day_cents was overwritten with 0 — which
+    // silently deleted the sitter's published day rate AND removed them from
+    // the marketplace, with nothing to show it had ever been set.
+    out.sitter = { updatedAt: new Date() };
+    if (input.sitterDayIls !== undefined) {
+      out.sitter.pricePerDayCents = input.available ? input.sitterDayIls * 100 : 0;
+    } else if (!input.available) {
+      // An explicit "I am unavailable" still delists, even without a day rate.
+      out.sitter.pricePerDayCents = 0;
+    }
+    if (input.sitterHourIls !== undefined) {
+      out.sitter.pricePerHourCents = input.sitterHourIls * 100;
+    }
   }
   if (input.trainerHourlyIls !== undefined) {
     const live = input.available && input.trainerHourlyIls > 0;
