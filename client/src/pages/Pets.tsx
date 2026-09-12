@@ -398,6 +398,14 @@ export default function Pets() {
       return data.pets || [];
     },
   });
+  // The query key '/api/pets' is SHARED with PrestigeHome / MyAccount /
+  // BookingContact, which cache the raw `{ pets: [...] }` object. Arriving here
+  // from the home therefore hands this page an OBJECT, and `pets.map` threw
+  // "R.map is not a function" (live, 2026-09-12: home → "הוסיפו את החיה
+  // הראשונה שלכם" → crash screen). Accept either shape.
+  const petList: Pet[] = Array.isArray(pets)
+    ? pets
+    : (Array.isArray((pets as any)?.pets) ? ((pets as any).pets as Pet[]) : []);
 
   const createMutation = useMutation({
     mutationFn: async (data: PetFormData) => {
@@ -669,7 +677,7 @@ export default function Pets() {
               <div className="flex items-center justify-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F]"></div>
               </div>
-            ) : pets.length === 0 ? (
+            ) : petList.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                 <PawPrint className="h-16 w-16 mb-4 opacity-20" />
                 <p className="text-lg font-medium mb-2">
@@ -681,7 +689,7 @@ export default function Pets() {
               </div>
             ) : (
               <div className="luxury-grid-3 luxury-gap-lg">
-                {pets.map((pet, index) => (
+                {petList.map((pet, index) => (
                   <div key={pet.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(index + 1, 10)}`} data-testid={`card-pet-${pet.id}`}>
                     <CardHeader className="bg-gradient-to-r from-[#D4AF37]/50 to-[#D4AF37]/50 dark:from-[#B8932F]/10 dark:to-[#B8932F]/10 pb-4">
                       <div className="flex items-start justify-between">
