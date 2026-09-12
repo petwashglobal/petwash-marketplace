@@ -989,7 +989,16 @@ export async function registerRoutes(app: Express): Promise<void> {
 
   // Payment Gateway Status Endpoint - PUBLIC (no auth required)
   // Check if Nayax is configured - used by frontend to show "Coming Soon" badges
-  app.get('/payment-status', (req, res) => {
+  //
+  // TWO PATHS ON PURPOSE (2026-09-13). Firebase Hosting forwards only
+  // `/api/**`, `/auth/**` and `/uploads/**` to Cloud Run; every other path
+  // falls through to the SPA. So the bare `/payment-status` below NEVER
+  // reached this handler in production — the browser got index.html, the
+  // client's `res.json()` threw, `paymentsEnabled` fell back to false, and
+  // the gift-card till showed "Coming Soon" forever even though all four
+  // Nayax secrets are live. The canonical path is the `/api/` one; the bare
+  // path stays registered so nothing that still calls it breaks.
+  const paymentGatewayStatus: import('express').RequestHandler = (req, res) => {
     const isNayaxConfigured = !!(
       process.env.NAYAX_API_KEY &&
       process.env.NAYAX_MERCHANT_ID &&
@@ -1015,7 +1024,9 @@ export async function registerRoutes(app: Express): Promise<void> {
         messageHe: 'תשלומי כרטיס אשראי פעילים'
       }
     });
-  });
+  };
+  app.get('/api/payments/gateway-status', paymentGatewayStatus);
+  app.get('/payment-status', paymentGatewayStatus);
 
   // GET /api/payment-status?ref=<externalId> — itemised status of ONE purchase for
   // the post-payment success page (client/src/pages/PaymentSuccess.tsx). Distinct

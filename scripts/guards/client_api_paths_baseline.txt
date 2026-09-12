@@ -1,0 +1,6 @@
+# Client paths Firebase Hosting does NOT forward to Cloud Run, frozen 2026-09-13.
+# Each one receives index.html (200, text/html) instead of JSON, silently.
+# Remove a line once the call is fixed. NEVER add a line to get a PR through.
+#
+/status/uptime  # StatusDashboard fetches its OWN route: /status/uptime is a client Route (App.tsx) AND this queryKey. No server endpoint exists. The page has never had data.
+/status/stations  # same page, same story — no server endpoint exists for it.

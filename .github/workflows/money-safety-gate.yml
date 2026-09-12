@@ -41,6 +41,11 @@ jobs:
         run: python3 scripts/guards/trademark_bidi_anchored.py --fail
       - name: No new unreachable route
         run: python3 scripts/guards/no_new_unreachable_route.py
+      # 2026-09-13: a client path Hosting does not forward gets index.html, not
+      # JSON — silently. That is how /buy-gift-card said "Coming Soon" for
+      # months while Nayax was live. See the guard's header.
+      - name: Every client API path reaches the server
+        run: python3 scripts/guards/client_api_paths_reach_server.py --fail
 
   # ── Every pin runs ─────────────────────────────────────────────────────────
   # 2026-09-13: server/tests held 782 test files and the gates named ~115 of
