@@ -26,6 +26,7 @@ import {
 // CRITICAL FIX: Import existing Firebase app instance instead of creating new one
 // This prevents "Firebase App named '[DEFAULT]' already exists" error
 import { app, auth as existingAuth } from "@/lib/firebase";
+import { googleAuthCustomParameters } from '@/lib/googleAuthParams';
 
 // ---- Use existing auth instance from firebase.ts (singleton pattern) ----
 export const auth = existingAuth;
@@ -33,7 +34,7 @@ export const auth = existingAuth;
 // ---- 3) Google provider with clean UX ----
 export const googleProvider = new GoogleAuthProvider();
 // Always force account chooser and avoid sticky sessions
-googleProvider.setCustomParameters({ prompt: "select_account" });
+googleProvider.setCustomParameters(googleAuthCustomParameters());
 
 // ---- 4) Helpers: detect iOS Safari (popups unreliable) ----
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);

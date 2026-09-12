@@ -20,6 +20,7 @@ import {
   type AuthProvider
 } from 'firebase/auth';
 import { Capacitor } from '@capacitor/core';
+import { googleAuthCustomParameters } from './googleAuthParams';
 
 /**
  * Detects if the current browser is iOS Safari or iPad Safari
@@ -151,9 +152,7 @@ export function createGoogleProvider(): GoogleAuthProvider {
   provider.addScope('email');
   
   // Force account selection (best UX for multiple accounts)
-  provider.setCustomParameters({
-    prompt: 'select_account'
-  });
+  provider.setCustomParameters(googleAuthCustomParameters());
   
   return provider;
 }
@@ -313,6 +312,10 @@ export function createFacebookProvider(): FacebookAuthProvider {
   provider.addScope('email');
   provider.addScope('public_profile');
 
+  // Facebook, NOT Google — deliberately does NOT take googleAuthCustomParameters().
+  // `max_age` is an OIDC parameter Facebook does not implement and
+  // `prompt=select_account` is not a Facebook parameter either; a scripted
+  // edit put them here once (2026-09-13) and it was wrong.
   provider.setCustomParameters({
     display: 'popup',
   });
