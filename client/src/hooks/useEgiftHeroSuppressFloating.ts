@@ -1,4 +1,5 @@
-import { useEffect, type RefObject } from 'react';
+import { type RefObject } from 'react';
+import { useSuppressFloatingStack } from './useSuppressFloatingStack';
 
 /**
  * Phase E — quiet the FloatingStack while the egift hero is in view.
@@ -25,33 +26,16 @@ import { useEffect, type RefObject } from 'react';
  * /egift), the attribute is removed so the floating stack returns to
  * its normal visibility on the next page.
  */
+// 2026-09-12: the body of this hook moved to useSuppressFloatingStack so the
+// home hero could use the same behaviour without a second copy. /egift keeps
+// its own data attribute (`data-pw-egift-hero-visible`) and its own CSS rule,
+// so nothing about that page changes.
 export function useEgiftHeroSuppressFloating(
   heroRef: RefObject<HTMLElement | null>,
   options: { threshold?: number } = {},
 ): void {
-  const threshold = options.threshold ?? 0.5;
-
-  useEffect(() => {
-    const target = heroRef.current;
-    if (!target) return;
-    if (typeof IntersectionObserver === 'undefined') return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && entry.intersectionRatio >= threshold) {
-          document.body.dataset.pwEgiftHeroVisible = 'true';
-        } else {
-          delete document.body.dataset.pwEgiftHeroVisible;
-        }
-      },
-      { threshold: [0, threshold, 1] },
-    );
-
-    observer.observe(target);
-
-    return () => {
-      observer.disconnect();
-      delete document.body.dataset.pwEgiftHeroVisible;
-    };
-  }, [heroRef, threshold]);
+  useSuppressFloatingStack(heroRef, {
+    threshold: options.threshold ?? 0.5,
+    attribute: 'pwEgiftHeroVisible',
+  });
 }

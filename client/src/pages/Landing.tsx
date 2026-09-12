@@ -1,5 +1,6 @@
 import { useLocation, Link } from 'wouter';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSuppressFloatingStack } from '@/hooks/useSuppressFloatingStack';
 import { Button } from '@/components/ui/button';
 import { WashPackages } from '@/components/WashPackages';
 import { GiftCards } from '@/components/GiftCards';
@@ -35,6 +36,11 @@ interface LandingProps {
 }
 
 export default function Landing({ language, onLanguageChange }: LandingProps) {
+  // The accessibility / WhatsApp / AI stack physically covers the hero CTAs on
+  // a phone (measured: #pw-a11y over 56px of "צור חשבון"). Fade it while the
+  // CTA block owns the screen; it returns as soon as the user scrolls past.
+  const heroCtaRef = useRef<HTMLDivElement | null>(null);
+  useSuppressFloatingStack(heroCtaRef);
   const { user } = useFirebaseAuth();
   const { getAccountRoute } = useAccountNavigation();
   const [, setLocation] = useLocation();
@@ -169,6 +175,8 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               
               {/* Animated CTA Buttons */}
               <div 
+                ref={heroCtaRef}
+                data-testid="landing-hero-cta-block"
                 className={`transition-all duration-700 ${
                   heroAnimated ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                 }`}
