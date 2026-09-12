@@ -15,6 +15,7 @@
 import { pool } from '../db';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
+import { resolveLegalSnapshot } from '../lib/legalSnapshot';
 
 export interface RecordLegalAcceptanceInput {
   userId: string;                    // Firebase UID
@@ -95,9 +96,18 @@ export async function recordLegalAcceptance(
     return { ok: false, errorCode: 'MISSING_FIELDS', message: 'Missing required input fields' };
   }
 
+  // Evidence (2026-09-12): a row must say WHAT was accepted. Exact text from
+  // the caller wins; otherwise the registry supplies the hash of the
+  // declaration body / the pinned page-source hash, plus the public URL.
+  const resolved = input.snapshotText ? null : resolveLegalSnapshot(input.documentKey, input.language);
   const snapshotHash = input.snapshotText
     ? crypto.createHash('sha256').update(input.snapshotText).digest('hex')
-    : null;
+    : (resolved?.snapshotHash ?? null);
+  const snapshotUrl = input.snapshotUrl ?? resolved?.snapshotUrl ?? null;
+  const metadata = {
+    ...(input.metadata ?? {}),
+    hashSource: input.snapshotText ? 'caller_text' : (resolved?.hashSource ?? 'none'),
+  };
 
   try {
     const result = await pool.query(
@@ -123,10 +133,10 @@ export async function recordLegalAcceptance(
         input.userAgent ?? null,
         input.deviceFingerprint ?? null,
         snapshotHash,
-        input.snapshotUrl ?? null,
+        snapshotUrl,
         input.source ?? 'client',
         input.actorRole ?? 'self',
-        JSON.stringify(input.metadata ?? {}),
+        JSON.stringify(metadata),
       ],
     );
 

@@ -20,6 +20,7 @@ import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { CreditType } from '../../shared/petwash-operating-system';
 
 import { isPrestigeEnrolled } from '../lib/memberTier';
+import { consentGateEnabled } from '../middleware/requireConsent';
 
 const router = Router();
 
@@ -98,6 +99,9 @@ const topupSchema = z.object({
   amountCents: z.number().int().min(100).max(100000),
   nayaxTxId: z.string().optional(),
   description: z.string().optional(),
+  // Explicit tick on the top-up screen (wallet & eGift terms). Only a true
+  // value is ever recorded as an acceptance — nothing is implied any more.
+  acceptedWalletTerms: z.boolean().optional(),
 });
 
 router.post('/topup', topupRateLimiter, auditLogMiddleware('WALLET_TOPUP'), async (req, res) => {
@@ -112,7 +116,21 @@ router.post('/topup', topupRateLimiter, auditLogMiddleware('WALLET_TOPUP'), asyn
       return res.status(400).json({ success: false, error: parsed.error.message });
     }
 
-    const { amountCents, nayaxTxId, description } = parsed.data;
+    const { amountCents, nayaxTxId, description, acceptedWalletTerms } = parsed.data;
+
+    // Consent gate (2026-09-12): the registry marks wallet_egift_terms as
+    // required for a top-up. Enforced only when LEGAL_CONSENT_GATE_ENABLED
+    // is on (roll-out safety, same as bookings); the tick is recorded
+    // whenever it is actually given.
+    if (consentGateEnabled() && acceptedWalletTerms !== true) {
+      return res.status(400).json({
+        success: false,
+        error: 'WALLET_TERMS_REQUIRED',
+        message: 'Please accept the wallet & eGift terms to top up.',
+        messageHe: 'יש לאשר את תנאי הארנק וה-eGift כדי לטעון.',
+        legalUrl: '/legal/wallet-egift-terms',
+      });
+    }
 
     // #240 migration: allowlist + email_verified. The x-admin-id header
     // path is dead; admin status derives from the Firebase-verified email.
@@ -261,16 +279,15 @@ router.post('/topup', topupRateLimiter, auditLogMiddleware('WALLET_TOPUP'), asyn
 
     logger.info('[Credit Wallet] Top-up processed', { userId, amountCents, nayaxTxId });
 
-    // SHADOW dual-write to canonical `legal_acceptances` (Lane D §D9).
-    // A successful wallet top-up implies the customer just re-agreed to
-    // the wallet/eGift terms on the top-up screen; today the acceptance
-    // is only implicit. This shadow write records the acceptance in the
-    // canonical ledger so wallet_egift_terms migrates from LEGACY-ONLY
-    // → DUAL-WRITE-SHADOW without a cutover. Best-effort: MUST NOT
-    // fail the customer-facing top-up (the money already landed). The
-    // recordLegalAcceptance service traps its own DB errors and emits
-    // the LEGAL_ACCEPTANCE_SHADOW_MISSING signal + AlertEngine card.
-    void (async () => {
+    // Canonical `legal_acceptances` write for wallet_egift_terms — ONLY when
+    // the customer actually ticked the box on the top-up screen. Before
+    // 2026-09-12 this block recorded an acceptance on EVERY successful
+    // top-up ("implied"), i.e. it fabricated legal evidence. Best-effort:
+    // must not fail the top-up (the money already landed).
+    if (acceptedWalletTerms !== true) {
+      logger.info('[Credit Wallet] wallet_egift_terms not ticked on this top-up — no acceptance recorded', { userId });
+    }
+    if (acceptedWalletTerms === true) void (async () => {
       try {
         const { recordLegalAcceptance } = await import('../services/LegalAcceptanceService');
         const { getLegalDocument } = await import('@shared/lib/legalDocumentRegistry');

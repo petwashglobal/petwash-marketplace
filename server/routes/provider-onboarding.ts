@@ -816,6 +816,20 @@ router.post('/apply', wrapUpload(upload.fields([
       });
     }
 
+    // Background-check consent is MANDATORY too (2026-09-12). The form
+    // already refuses to submit without it, but the server accepted the
+    // application with criminalCheckConsent=false and let review proceed.
+    if (!backgroundCheckConsent) {
+      logger.warn('[Provider Onboarding] Background-check consent not ticked — rejecting', {
+        traceId,
+        userId: authenticatedUser.uid,
+      });
+      return res.status(400).json({
+        error: 'You must consent to the background check before submitting your application.',
+        errorCode: 'BACKGROUND_CHECK_CONSENT_REQUIRED',
+      });
+    }
+
     // ──────────────────────────────────────────────────────────────────────
     // IDENTITY HARDENING (2026-06-20 — Israeli Privacy Protection Law)
     // ──────────────────────────────────────────────────────────────────────
