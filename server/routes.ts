@@ -489,6 +489,7 @@ import { verifyAppCheckToken, verifyAppCheckTokenOptional } from './middleware/a
 import { logger } from './lib/logger';
 import { applySecurityAndOneTap } from './security/productionHardeningAndOneTap';
 import { requireOnboardingComplete } from './middleware/onboardingGate';
+import { requireConsentIfEnabled } from "./middleware/requireConsent";
 import { logSecurityEvent } from './services/securityEvents';
 import { checkFailedBurst, alertPasskeyRevoked, alertNewDeviceIfUnusual, getClientIP, getCityFromIP } from './services/alerts';
 import { timingSafeAdminSecretMatch } from './middleware/adminAuth';
@@ -12302,7 +12303,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // ⁦Paw Finder™⁩ routes (FREE Community Service - Lost & Found Pets)
   const pawFinderRoutes = await import('./routes/paw-finder');
-  app.use('/api/paw-finder', apiLimiter, pawFinderRoutes.default);
+  app.use('/api/paw-finder', apiLimiter, requireConsentIfEnabled('terms', 'privacy'), pawFinderRoutes.default);
 
   // Phase 12.9 — Case Queue Action Orchestration (assign, notes, bulk)
   // Phase 12.11 — Team Workflow & Resolution Discipline (team assign, closure flow, codes)
@@ -13240,7 +13241,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Credit Wallet & E-Gift Redemption (Unified credits across all platforms)
   const creditWalletRoutes = await import('./routes/credit-wallet');
-  app.use('/api/credit-wallet', optionalFirebaseToken, apiLimiter, creditWalletRoutes.default);
+  app.use('/api/credit-wallet', optionalFirebaseToken, apiLimiter, requireConsentIfEnabled('terms', 'privacy'), creditWalletRoutes.default);
   logger.info('[Routes] ✅ Credit Wallet routes registered (e-gift, wash packages, loyalty points)');
   
   // Spotify Integration (Profile, Now Playing)
@@ -13558,7 +13559,7 @@ self.addEventListener('notificationclick', (event) => {
     res.status(result.ok ? 200 : result.status === 'expired' ? 410 : 403).json(result);
   });
   app.use('/api/promo', apiLimiter, birthdayPromoRoutes);
-  app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
+  app.use('/api/gift-cards', requireOnboardingComplete, requireConsentIfEnabled('terms', 'privacy'), giftCardsRoutes);
   
   // Unified Voucher System 2026 - WASH_PACKAGE + PLATFORM_CREDIT with full ledger
   app.use('/api/booking-chat', apiLimiter, bookingChatRouter);
@@ -13675,7 +13676,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/escrow', apiLimiter, requireOnboardingComplete, escrowRoutes);
   
   // Unified Booking System (Sitter Suite, Walk My Pet, PetTrek)
-  app.use('/api/bookings', apiLimiter, requireOnboardingComplete, bookingsRoutes);
+  app.use('/api/bookings', apiLimiter, requireOnboardingComplete, requireConsentIfEnabled('terms', 'privacy'), bookingsRoutes);
   
   // UNIFIED BOOKING ENGINE 2025 - Reference implementation
   // Immutable transactions, event logging, admin audit trail
@@ -13720,7 +13721,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // PetWash™ Booking Requests (complete flow: request → meet & greet → payment → service)
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
-  app.use('/api/booking-requests', optionalFirebaseToken, apiLimiter, bookingRequestsRoutes);
+  app.use('/api/booking-requests', optionalFirebaseToken, apiLimiter, requireConsentIfEnabled('terms', 'privacy'), bookingRequestsRoutes);
 
   // Quote Engine — deterministic backend pricing (never trust frontend arithmetic)
   const quotesRoutes = (await import('./routes/quotes')).default;
