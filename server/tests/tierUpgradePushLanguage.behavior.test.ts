@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
 
 /**
  * THE TIER-UPGRADE PUSH SPEAKS THE CUSTOMER'S LANGUAGE (2026-09-11)
@@ -17,7 +17,16 @@ vi.mock('../db', () => ({ db: { execute: async () => ({ rows: [] }) } }));
 vi.mock('../lib/firebase-admin', () => ({ default: { firestore: () => ({}), messaging: () => ({}) } }));
 vi.mock('../lib/logger', () => ({ logger: { info: () => {}, warn: () => {}, error: () => {} } }));
 
-const load = async () => await import('../actions/loyaltySync');
+// CI STABILITY (2026-09-12): this used to `await import('../actions/loyaltySync')`
+// inside each test. The FIRST test therefore paid for the whole transitive
+// import graph, and under a full parallel `test:money` run that regularly
+// exceeded vitest's 5s per-test timeout — the file failed intermittently on
+// "is Hebrew for a Hebrew customer" at ~7.4s while passing in isolation, twice
+// reddening the money gate for reasons unrelated to the code under test.
+// Load once, with room to breathe; the assertions themselves are microseconds.
+let mod: typeof import('../actions/loyaltySync');
+beforeAll(async () => { mod = await import('../actions/loyaltySync'); }, 60_000);
+const load = async () => mod;
 
 describe('tier upgrade push copy', () => {
   it('is Hebrew for a Hebrew customer', async () => {

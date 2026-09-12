@@ -155,7 +155,7 @@ export default function ProviderCompliance() {
               <Label htmlFor="providerType">Provider Type</Label>
               <select
                 id="providerType"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px]"
                 value={providerType}
                 onChange={(e) => setProviderType(e.target.value as any)}
                 data-testid="select-provider-type"

@@ -1,0 +1,14 @@
+# iOS form-zoom debt ledger (CEO 2026-09-12).
+# Raw <input>/<select>/<textarea> still styled below the 16px iOS threshold
+# with a Tailwind class. iOS Safari zooms the page on focus and never zooms back.
+# These are all ADMIN / INTERNAL desktop tools, which is why they are tolerated
+# for now. The guard is a RATCHET: a count may go DOWN, never up, and a file not
+# on this list may not have any at all. Customer- and provider-facing screens
+# were fixed outright.
+# format: <count> <path>
+6 client/src/pages/AdminShopProducts.tsx
+2 client/src/pages/AdminStaff.tsx
+58 client/src/pages/AdminWalletDashboard.tsx
+2 client/src/pages/CaseQueue.tsx
+1 client/src/pages/Treasury.tsx
+3 client/src/pages/admin/AdminNayaxEvents.tsx
