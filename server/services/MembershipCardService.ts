@@ -42,15 +42,48 @@ function checkChars(seed: string): string {
   return A[sum % 36] + A[(sum * 7) % 36];
 }
 
+/** A physical card is valid for 5 years from issue (CEO card design: VALID THRU). */
+export const CARD_VALIDITY_YEARS = 5;
+
+/**
+ * Map the canonical member tier (server/lib/memberTier.ts: new/bronze/silver/
+ * gold/platinum/diamond/black) onto the card tiers this table stores.
+ * Two ladders existed and never agreed (audit 2026-09-12); this is the ONE
+ * bridge, so a card never says "standard" for a Platinum member again.
+ */
+export function cardTierFromMemberTier(memberTier: string | null | undefined): Tier {
+  const t = (memberTier || '').toLowerCase();
+  if (t === 'platinum') return 'platinum';
+  if (t === 'gold') return 'gold';
+  if (t === 'diamond' || t === 'black') return 'vip';
+  return 'standard';
+}
+
 export class MembershipCardService {
-  /** Get the user's card, creating it on first access. */
+  /**
+   * Get the user's card, creating it on first access. The member id and card
+   * number are for life; the TIER follows the member (kept in sync here so
+   * the printed/passed tier is never stale — before 2026-09-12 it was written
+   * once as "standard" and never touched again).
+   */
   static async getOrCreateCard(userId: string, tier: Tier = "standard"): Promise<MembershipCard> {
     const [existing] = await db
       .select()
       .from(membershipCards)
       .where(eq(membershipCards.userId, userId))
       .limit(1);
-    if (existing) return existing;
+    if (existing) {
+      if (existing.tier !== tier) {
+        const [synced] = await db
+          .update(membershipCards)
+          .set({ tier })
+          .where(eq(membershipCards.id, existing.id))
+          .returning();
+        logger.info("[MembershipCard] tier synced", { userId, from: existing.tier, to: tier });
+        return synced ?? { ...existing, tier };
+      }
+      return existing;
+    }
 
     // Year-based, NOT tier-based: a member id must be stable for life. A
     // tier-based id (PW-PLT-…) would change when the member upgrades
@@ -64,10 +97,14 @@ export class MembershipCardService {
       const cardNumberDisplay = randomDigits(16).replace(/(\d{4})(?=\d)/g, "$1 ");
       const qrToken = crypto.randomBytes(24).toString("base64url");
       const barcodeValue = `PW${year}${memberDigits}${checkChars(`${year}${memberDigits}`)}`;
+      // VALID THRU is written at issue — the column had NO writer before
+      // 2026-09-12, so the dashboard invented an expiry client-side.
+      const validFrom = new Date();
+      const validUntil = new Date(validFrom.getFullYear() + CARD_VALIDITY_YEARS, validFrom.getMonth() + 1, 0, 23, 59, 59);
       try {
         const [card] = await db
           .insert(membershipCards)
-          .values({ userId, memberId, cardNumberDisplay, qrToken, barcodeValue, tier, cardStatus: "active" })
+          .values({ userId, memberId, cardNumberDisplay, qrToken, barcodeValue, tier, cardStatus: "active", validFrom, validUntil })
           .returning();
         logger.info("[MembershipCard] issued", { userId, memberId, tier });
         return card;

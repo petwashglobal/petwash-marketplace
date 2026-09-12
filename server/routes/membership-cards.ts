@@ -12,7 +12,11 @@ import { Router } from "express";
 import type { Request, Response } from "express";
 import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
-import { MembershipCardService } from "../services/MembershipCardService";
+import { MembershipCardService, cardTierFromMemberTier } from "../services/MembershipCardService";
+import { resolveMemberTier } from "../lib/memberTier";
+import { db } from "../db";
+import { users } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -22,8 +26,13 @@ router.get("/card", requireAuth, async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid;
     if (!uid) return res.status(401).json({ error: "Authentication required" });
-    const tier = ((req as any).user?.loyaltyTier as string | undefined) || "standard";
-    const card = await MembershipCardService.getOrCreateCard(uid, tier as any);
+    // requireAuth sets req.user = { uid, email } only — `loyaltyTier` was never
+    // there, so every card was issued "standard" (audit 2026-09-12). Resolve the
+    // canonical member tier from the user row + Prestige enrolment instead.
+    const [u] = await db.select({ loyaltyTier: users.loyaltyTier, email: users.email }).from(users).where(eq(users.id, uid)).limit(1);
+    const memberTier = await resolveMemberTier((u as any)?.loyaltyTier, (u as any)?.email ?? (req as any).user?.email);
+    const tier = cardTierFromMemberTier(memberTier);
+    const card = await MembershipCardService.getOrCreateCard(uid, tier);
     res.json({
       ok: true,
       memberId: card.memberId,
