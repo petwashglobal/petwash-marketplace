@@ -17,6 +17,7 @@
  */
 import { sumitClient } from './SumitClient';
 import { logger } from '../lib/logger';
+import { readSumitExternalRef } from '../lib/sumitExternalRef';
 
 export interface SumitBookingSessionInput {
   requestId: string;
@@ -85,7 +86,19 @@ export async function createSumitBookingSession(
  * items still to be pinned by the first real ₪20 payment; the caller passes whichever
  * id it found and getTransaction sends both PaymentID + TransactionID defensively.
  */
-export async function verifySumitBookingPayment(transactionId: string): Promise<{
+export async function verifySumitBookingPayment(
+  transactionId: string,
+  /**
+   * The booking this transaction MUST belong to (2026-09-13). We open the
+   * hosted page with externalId `bkg_<requestId>_<t36>` (see :49) and SUMIT
+   * echoes it back, so the binding is one comparison. Without it, "valid +
+   * right amount" was enough to replay ONE paid transaction against ANY other
+   * payment_pending booking of the same total — flipping it to confirmed and
+   * stamping escrow 'held' for money never collected. Optional so existing
+   * callers keep compiling; every caller in this repo passes it.
+   */
+  expectedRequestId?: string,
+): Promise<{
   valid: boolean;
   amountCents?: number;
   reason?: string;
@@ -93,5 +106,12 @@ export async function verifySumitBookingPayment(transactionId: string): Promise<
   if (!transactionId) return { valid: false, reason: 'no_transaction_id' };
   const v = await sumitClient.getTransaction(transactionId);
   if (!v.wired) return { valid: false, reason: v.reason || 'sumit_not_wired' };
+  if (v.valid === true && expectedRequestId) {
+    const ref = readSumitExternalRef((v as any).raw);
+    // `bkg_<requestId>_<t36>` — compare the booking segment, not the timestamp.
+    if (ref !== null && !ref.startsWith(`bkg_${expectedRequestId}_`)) {
+      return { valid: false, reason: 'external_ref_mismatch' };
+    }
+  }
   return { valid: v.valid === true, amountCents: v.amountCents, reason: v.valid ? undefined : (v.reason || 'not_valid') };
 }

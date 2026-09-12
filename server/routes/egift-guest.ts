@@ -26,6 +26,7 @@ import { logger } from '../lib/logger';
 // Modernity SEV-1 #1 (2026-08-20 audit): audit-log wrapper on the public
 // eGift purchase POST — pay-then-issue mutates money and issues a voucher.
 import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
+import { sumitExternalRefMismatch, readSumitExternalRef } from '../lib/sumitExternalRef';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -121,6 +122,16 @@ router.get('/guest/return', async (req: Request, res: Response) => {
   }
   if (verify.amountCents != null && verify.amountCents !== order.amountIlsCents) {
     logger.error('[GuestEgift] amount mismatch — NOT issuing', { ext, paid: verify.amountCents, expected: order.amountIlsCents });
+    return res.redirect(`${base}/egift?status=failed&ref=${encodeURIComponent(ext)}`);
+  }
+  // BIND THE TRANSACTION TO THE ORDER (2026-09-13). Verified + right amount
+  // still does not mean the payment was made for THIS order: one paid ₪250
+  // transaction replayed with `&ext=<a second unpaid ₪250 order>` would issue
+  // a second real voucher. See server/lib/sumitExternalRef.ts.
+  if (sumitExternalRefMismatch(verify.raw, ext)) {
+    logger.error('[GuestEgift] 🔴 external-ref mismatch — transaction belongs to another order; NOT issuing', {
+      ext, txnId, sumitRef: readSumitExternalRef(verify.raw),
+    });
     return res.redirect(`${base}/egift?status=failed&ref=${encodeURIComponent(ext)}`);
   }
 

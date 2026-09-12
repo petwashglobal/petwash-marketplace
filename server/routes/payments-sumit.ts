@@ -22,6 +22,7 @@ import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { resolveWashDiscount, applyWashDiscountCents, type WashDiscount } from '../services/memberDiscount';
 import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
+import { sumitExternalRefMismatch, readSumitExternalRef } from '../lib/sumitExternalRef';
 
 const router = Router();
 
@@ -319,6 +320,19 @@ router.get('/return', async (req: Request, res: Response) => {
   if (!verify.wired || !verify.valid) {
     logger.warn('[SumitPay] return not verified', { txnId, ext, reason: verify.reason });
     return res.redirect(`${base}/payment-failed?ref=${encodeURIComponent(ext || txnId)}`);
+  }
+
+  // BIND THE TRANSACTION TO THE ORDER (2026-09-13). "Verified" only says the
+  // payment is real — not that it was made for THIS purchase. Without this,
+  // one paid ₪500 transaction could be replayed against a second, unpaid
+  // ₪500 purchase (`?ID=<paid>&ext=<unpaid>`): re-verify passes, the amount
+  // matches, and the wallet is credited twice for one payment. save-card.ts
+  // has always done this; the money-in handlers did not.
+  if (ext && sumitExternalRefMismatch(verify.raw, ext)) {
+    logger.error('[SumitPay] 🔴 external-ref mismatch — transaction belongs to another order; refusing', {
+      txnId, ext, sumitRef: readSumitExternalRef(verify.raw),
+    });
+    return res.redirect(`${base}/payment-failed?ref=${encodeURIComponent(ext)}`);
   }
   logger.info('[SumitPay] payment verified', { txnId, ext });
 

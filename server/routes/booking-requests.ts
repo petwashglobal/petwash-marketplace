@@ -2684,7 +2684,7 @@ router.get('/:requestId/sumit-return', async (req, res) => {
 
     // Authoritative server-side re-verify with SUMIT.
     const { verifySumitBookingPayment } = await import('../services/SumitBookingPayment');
-    const verify = await verifySumitBookingPayment(String(txnId));
+    const verify = await verifySumitBookingPayment(String(txnId), String(requestId));
     if (!verify.valid) return fail(verify.reason || 'sumit_not_valid');
 
     // Amount match (1-agora tolerance) — defence against price tampering (§4).

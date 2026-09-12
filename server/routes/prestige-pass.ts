@@ -2224,6 +2224,26 @@ router.post('/issue-gift', auditLogMiddleware('EGIFT_ISSUE'), async (req: Reques
     const senderId = resolveUid(req);
     if (!senderId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
+    // SEALED 2026-09-13 — this route MINTED GIFT VALUE FOR FREE.
+    // The header above says "Debits sender". It never did: no wallet debit, no
+    // payment, no admin check. Any signed-in account could POST
+    // {recipientEmail, amountCents: 1000000} and receive a real gift code for
+    // ₪10,000, plus an email to any address with caller-supplied text in the
+    // body. Nothing in client/ or server/ calls it, and the matching
+    // /claim-gift is itself dead (it gates on `session.user.email`, which
+    // nothing in this repo ever writes), so sealing costs no working journey.
+    // The paid rails — /api/payments/sumit/begin (EGIFT_*) and the guest
+    // eGift order — take money first and are unaffected.
+    // TO REOPEN: debit the sender atomically (WalletService, idempotency key)
+    // or require isSuperAdminVerified, then delete this block.
+    logger.warn('[PrestigePass] /issue-gift is sealed — it minted gift value with no debit', { senderId });
+    return res.status(410).json({
+      ok: false,
+      error: 'ENDPOINT_SEALED',
+      message: 'Gift issuance moved to the paid eGift rail.',
+      messageHe: 'הנפקת מתנות עברה למסלול ה-eGift בתשלום.',
+    });
+
     const parsed = issueGiftSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
     const { recipientEmail, amountCents, message } = parsed.data;
