@@ -1,3 +1,4 @@
+import { safeEqual } from '../lib/safeEqual';
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db';
@@ -640,7 +641,7 @@ router.post('/start', requireAuth, async (req: any, res: Response) => {
     if (session.userId !== userId) {
       return res.status(403).json({ success: false, errorCode: 'SESSION_USER_MISMATCH', message: 'Session does not belong to you.' });
     }
-    if (session.activationToken !== activationToken) {
+    if (!safeEqual(session.activationToken, activationToken)) {
       return res.status(403).json({ success: false, errorCode: 'INVALID_ACTIVATION_TOKEN', message: 'Activation token invalid.' });
     }
     if (session.status !== 'authorized') {

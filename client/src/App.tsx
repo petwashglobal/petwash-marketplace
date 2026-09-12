@@ -28,6 +28,8 @@ import { initViewportFix } from "@/lib/viewportFix";
 import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from "react";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
+import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
+import { getApiUrl } from "@/lib/apiConfig";
 import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
 import { LanguageProvider, useLanguage } from "@/lib/languageStore";
@@ -637,20 +639,40 @@ const PageLoader = () => (
  * single best-effort POST — the global boundary remains the catch-all
  * for cross-app crashes. See P0 audit (PR #86) Bug 2.
  */
-class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean }> {
-  state = { hasError: false };
+// A per-route crash card: the shell (nav, header) survives, the customer gets a
+// reference id to quote, and the copy speaks their language — the same three
+// things AppErrorBoundary learned on 2026-09-12. Before, this card was
+// English-only, sent no referenceId (so support could not find the crash),
+// and was mounted on only two routes.
+function routeReferenceId(): string {
+  try {
+    const bytes = new Uint8Array(4);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return Math.random().toString(16).slice(2, 10);
+  }
+}
+
+class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean; referenceId: string }> {
+  state = { hasError: false, referenceId: '' };
 
   static getDerivedStateFromError() {
-    return { hasError: true };
+    return { hasError: true, referenceId: routeReferenceId() };
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
+    const referenceId = this.state.referenceId || routeReferenceId();
     try {
-      fetch('/api/errors/log', {
+      fetch(getApiUrl('/api/errors/log'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
+          referenceId,
           context: `RouteErrorBoundary:${this.props.routeName}`,
+          errorKind: 'render',
+          errorName: error?.name,
           message: error?.message,
           stack: error?.stack,
           componentStack: errorInfo?.componentStack,
@@ -666,27 +688,31 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    const copy = crashCardCopy(isHebrewCrashLocale(), false);
     return (
-      <div className="min-h-[100dvh] bg-white flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center space-y-4">
-          <h2 className="text-xl font-semibold text-gray-900">This section had an issue</h2>
-          <p className="text-gray-600">
-            We couldn't load this page right now. Please try again, or head back home.
-          </p>
+      <div className="min-h-[60dvh] bg-white flex items-center justify-center p-6" dir={copy.dir} data-testid="route-error-boundary">
+        <div className="max-w-md w-full space-y-4" style={{ textAlign: 'center' }}>
+          <h2 className="text-xl font-semibold text-gray-900">{copy.title}</h2>
+          <p className="text-gray-600">{copy.body}</p>
+          {this.state.referenceId && (
+            <p className="text-xs text-gray-400" data-testid="route-error-reference">
+              {copy.reference}: <span dir="ltr">{this.state.referenceId}</span>
+            </p>
+          )}
           <div className="flex gap-3 justify-center pt-2">
             <button
               type="button"
               onClick={() => window.location.reload()}
               className="px-4 py-2 rounded-md bg-gray-900 text-white text-sm font-medium"
             >
-              Reload
+              {copy.reload}
             </button>
             <button
               type="button"
               onClick={() => { window.location.href = '/home'; }}
               className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 text-sm font-medium"
             >
-              Go Home
+              {copy.goHome}
             </button>
           </div>
         </div>
@@ -1248,7 +1274,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/pet-parent/home">
           {() => (
             <RequireAuth>
-              <PrestigeHome />
+              <RouteErrorBoundary routeName="/pet-parent/home">
+                <PrestigeHome />
+              </RouteErrorBoundary>
             </RequireAuth>
           )}
         </Route>
@@ -1678,7 +1706,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/pets">
           {() => (
             <RequireAuth>
-              <Pets />
+              <RouteErrorBoundary routeName="/pets">
+                <Pets />
+              </RouteErrorBoundary>
             </RequireAuth>
           )}
         </Route>
@@ -2093,7 +2123,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               {/* PROVIDER-app agreement gate (fail-open, native provider flavor only; web/customer pass-through). */}
               <AppTermsGate flavor="provider" language={language}>
                 <Suspense fallback={<PageLoader />}>
-                  <ProviderOS />
+                  <RouteErrorBoundary routeName="/provider-os">
+                    <ProviderOS />
+                  </RouteErrorBoundary>
                 </Suspense>
               </AppTermsGate>
             </RoleProtectedRoute>
@@ -2457,7 +2489,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/pet-care-planner">
           {() => (
             <RequireAuth>
-              <PetCarePlanner language={language} />
+              <RouteErrorBoundary routeName="/pet-care-planner">
+                <PetCarePlanner language={language} />
+              </RouteErrorBoundary>
             </RequireAuth>
           )}
         </Route>

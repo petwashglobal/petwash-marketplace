@@ -971,6 +971,12 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // value is created until SUMIT verifies the charge). Without this the guest
     // buy 403s EBADCSRFTOKEN — the [[csrf-public-post-regression-class]] failure.
     if (req.path === '/api/egift/guest/start') return true;
+    // Anonymous public POSTs with their own proof (2026-09-12 sweep): the
+    // client never sends X-CSRF-Token, so these died 403 before their handler.
+    //   /api/privilege/register  — Prestige join form: Turnstile + Zod + idempotent claim
+    //   /api/marketing/unsubscribe — one-click unsubscribe: the HMAC token in the body IS the auth
+    if (req.path === '/api/privilege/register') return true;
+    if (req.path === '/api/marketing/unsubscribe') return true;
     return false;
   },
 });

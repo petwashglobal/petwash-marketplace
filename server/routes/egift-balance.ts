@@ -12,6 +12,7 @@
  * only somebody who already has the id can query it. Follow-up will
  * add per-egift ACL when the wallet-scoped owner check lands.
  */
+import { paymentLimiter } from '../middleware/rateLimiter';
 import { Router, type Request, type Response } from 'express';
 import { logger } from '../lib/logger';
 import { projectEgiftBalance } from '../services/egift/egiftBalanceProjection';
@@ -101,7 +102,7 @@ router.get('/:egiftId/balance', async (req: Request, res: Response) => {
  * gated. Standalone endpoint so the eGift infrastructure can be
  * exercised end-to-end before activation.
  */
-router.post('/:egiftId/reservations', async (req: Request, res: Response) => {
+router.post('/:egiftId/reservations', paymentLimiter, async (req: Request, res: Response) => {
   const uid = (req as any).firebaseUser?.uid;
   const email = (req as any).firebaseUser?.email as string | undefined;
   if (!uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
@@ -124,7 +125,7 @@ router.post('/:egiftId/reservations', async (req: Request, res: Response) => {
   return res.json({ ok: true, reservation: result.reservation });
 });
 
-router.post('/:egiftId/reservations/:reservationId/commit', async (req: Request, res: Response) => {
+router.post('/:egiftId/reservations/:reservationId/commit', paymentLimiter, async (req: Request, res: Response) => {
   const uid = (req as any).firebaseUser?.uid;
   const email = (req as any).firebaseUser?.email as string | undefined;
   if (!uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
@@ -146,7 +147,7 @@ router.post('/:egiftId/reservations/:reservationId/commit', async (req: Request,
   return res.json({ ok: true, reservation: result.reservation });
 });
 
-router.post('/:egiftId/reservations/:reservationId/release', async (req: Request, res: Response) => {
+router.post('/:egiftId/reservations/:reservationId/release', paymentLimiter, async (req: Request, res: Response) => {
   const uid = (req as any).firebaseUser?.uid;
   const email = (req as any).firebaseUser?.email as string | undefined;
   if (!uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });

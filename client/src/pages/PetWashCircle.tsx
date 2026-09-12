@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Heart, MessageCircle, Send, Shield, CheckCircle2 } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { feedPosts } from '@/lib/apiShapes';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 
@@ -37,8 +38,10 @@ export default function PetWashCircle() {
   const [newPostContent, setNewPostContent] = useState('');
 
   // Fetch feed
-  const { data: feed = [], isLoading } = useQuery<{ data: Post[] }>({
+  // Server returns `{ posts, page, hasMore }` (server/routes/social.ts) — the page read `.data` and always showed nothing (2026-09-12 sweep).
+  const { data: posts = [], isLoading } = useQuery<Post[]>({
     queryKey: ['/api/social/feed'],
+    select: (d: unknown) => feedPosts<Post>(d),
   });
 
   // Create post mutation
@@ -154,7 +157,7 @@ export default function PetWashCircle() {
             <div className="luxury-spinner mx-auto mb-4"></div>
             <p className="luxury-text-small text-gray-600">טוען פיד...</p>
           </div>
-        ) : feed.data?.length === 0 ? (
+        ) : posts.length === 0 ? (
           <Card className="luxury-glass-card luxury-shadow-md p-12 text-center">
             <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <p className="luxury-text-body text-gray-600">
@@ -166,7 +169,7 @@ export default function PetWashCircle() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {feed.data?.map((post, index) => (
+            {posts.map((post, index) => (
               <Card
                 key={post.id}
                 className="luxury-glass-minimal luxury-hover-lift p-6"

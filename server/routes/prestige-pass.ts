@@ -22,6 +22,7 @@
  *   5. Card fallback (shortfall returned to client)
  */
 
+import { safeEqual } from '../lib/safeEqual';
 import { Router, Request, Response, NextFunction } from 'express';
 import { createHash, createHmac, randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
@@ -523,7 +524,7 @@ function verifyToken(token: string): QrPayload | null {
     const [data, sig] = token.split('.');
     if (!data || !sig) return null;
     const expected = createHmac('sha256', getQrSecret()).update(data).digest('hex');
-    if (expected !== sig) return null;
+    if (!safeEqual(expected, sig)) return null; // constant-time (2026-09-12)
     const payload: QrPayload = JSON.parse(Buffer.from(data, 'base64url').toString());
     if (Date.now() / 1000 > payload.exp) return null; // expired
     return payload;
@@ -1797,7 +1798,7 @@ const redeemOnlineSchema = z.object({
   amountGross: z.number().min(1).max(500_000),   // in agorot (ILS cents)
 });
 
-router.post('/redeem-online', auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
+router.post('/redeem-online', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = resolveUid(req);
@@ -2261,7 +2262,9 @@ const claimGiftSchema = z.object({
   giftCode: z.string().min(8).max(64),
 });
 
-router.post('/claim-gift', auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
+// redeemLimiter (2026-09-12): without it this was bounded only by the mount's 1000/15min
+// apiLimiter — a clean brute-force oracle on 8-char gift codes that credit real balance.
+router.post('/claim-gift', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = resolveUid(req);

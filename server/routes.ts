@@ -17542,6 +17542,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
           .then((m) => m.reportFault(clientErr, {
             source: isBootFailure ? 'client-boot:white-screen' : `client:${errorReport?.context || 'app'}`,
             url: errorReport?.url,
+            // First React component frame — without it every minified client
+            // crash alerted as an anonymous `index-<hash>.js:1:NNNN` (2026-09-12).
+            component: String(errorReport?.componentStack || '').split('\n').map((l: string) => l.trim()).filter(Boolean)[0]?.slice(0, 120) || undefined,
             // The customer-quoted reference is the searchable handle; fall back
             // to the uid when a report arrives without one (e.g. client-boot).
             traceId: errorReport?.referenceId || errorReport?.userId,
