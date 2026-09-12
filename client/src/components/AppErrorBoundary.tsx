@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { getApiUrl } from "@/lib/apiConfig";
 import { trackBoundaryCrash } from "@/lib/sentry";
+import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
 
 interface Props {
   children: ReactNode;
@@ -188,36 +189,48 @@ export class AppErrorBoundary extends Component<Props, State> {
 
     const { error, referenceId, isChunkError, repeatedChunkFailure } = this.state;
 
+    // CEO 2026-09-12: the crash card used to be English-only on a Hebrew RTL
+    // app. Read the language defensively — a boundary must not throw while
+    // deciding what to say. See client/src/lib/crashCardCopy.ts.
+    let isHe = false;
+    try {
+      isHe = isHebrewCrashLocale(
+        typeof document !== "undefined" ? document.documentElement.lang : null,
+        (() => { try { return localStorage.getItem("pw_lang"); } catch { return null; } })(),
+        typeof navigator !== "undefined" ? navigator.language : null,
+      );
+    } catch {
+      /* keep the English default */
+    }
+    const t = crashCardCopy(isHe, Boolean(isChunkError));
+
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+      <div
+        className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4"
+        dir={t.dir}
+      >
         <Card className="max-w-lg w-full" role="alert">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <AlertCircle className="h-8 w-8 text-red-500" />
+              <AlertCircle className="h-8 w-8 text-red-500 shrink-0" />
               <CardTitle className="text-2xl">
-                {isChunkError ? "A new version is available" : "Something went wrong"}
+                {t.title}
               </CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {isChunkError ? (
-              <p className="text-gray-600">
-                Part of the app failed to load. This usually means a newer version
-                was just deployed. Reload to get the latest version.
-              </p>
-            ) : (
-              <p className="text-gray-600">
-                We've encountered an unexpected error. Our team has been notified
-                and is working on fixing it.
-              </p>
-            )}
+            <p className="text-gray-600">{t.body}</p>
 
             {referenceId && (
               <p
                 className="text-xs text-gray-500 font-mono"
                 data-testid="error-reference-id"
               >
-                Reference: {referenceId}
+                {/* The reference is a Latin hex id inside a possibly-RTL
+                    paragraph. Without the isolate the bidi algorithm resolves
+                    the trailing neutral against the paragraph direction and
+                    the id lands on the wrong side of its own label. */}
+                {t.reference}: <bdi dir="ltr">{referenceId}</bdi>
               </p>
             )}
 
@@ -226,12 +239,12 @@ export class AppErrorBoundary extends Component<Props, State> {
                 className="bg-amber-50 border border-amber-200 text-amber-900 text-sm rounded-lg p-3"
                 role="status"
               >
-                This keeps happening. Try a hard reload to clear the cache:
-                <span className="font-mono ml-1">Ctrl+Shift+R</span>
-                <span className="text-gray-500"> (Windows/Linux) </span>
-                or
-                <span className="font-mono ml-1">Cmd+Shift+R</span>
-                <span className="text-gray-500"> (Mac)</span>.
+                {t.keepsHappening}
+                <bdi dir="ltr" className="font-mono ms-1">Ctrl+Shift+R</bdi>
+                <span className="text-gray-500">{t.windowsLinux}</span>
+                {t.isHe ? 'או' : 'or'}
+                <bdi dir="ltr" className="font-mono ms-1">Cmd+Shift+R</bdi>
+                <span className="text-gray-500">{t.mac}</span>.
               </div>
             )}
 
@@ -255,8 +268,8 @@ export class AppErrorBoundary extends Component<Props, State> {
                   className="flex-1"
                   data-testid="reload-latest"
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Reload to get the latest version
+                  <RefreshCw className="h-4 w-4 me-2" />
+                  {t.reloadLatest}
                 </Button>
               </div>
             ) : (
@@ -265,14 +278,14 @@ export class AppErrorBoundary extends Component<Props, State> {
                   onClick={() => window.location.reload()}
                   className="flex-1"
                 >
-                  Reload Page
+                  {t.reload}
                 </Button>
                 <Button
                   onClick={() => (window.location.href = "/")}
                   variant="outline"
                   className="flex-1"
                 >
-                  Go Home
+                  {t.goHome}
                 </Button>
               </div>
             )}
