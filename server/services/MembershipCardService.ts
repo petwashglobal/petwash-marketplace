@@ -7,7 +7,8 @@
  * QR/barcode, and link a Nayax customer/card id.
  */
 import crypto from "crypto";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { luhnCheckDigit } from "@shared/lib/code128";
 import { db } from "../db";
 import {
   membershipCards,
@@ -94,7 +95,10 @@ export class MembershipCardService {
     for (let attempt = 0; attempt < 6; attempt++) {
       const memberDigits = randomDigits(6);
       const memberId = `PW-${year}-${memberDigits}`;
-      const cardNumberDisplay = randomDigits(16).replace(/(\d{4})(?=\d)/g, "$1 ");
+      // 15 random digits + a Luhn check digit (2026-09-12): the printed number now
+      // validates on any card-printer QA rig. Display only — never a payment card.
+      const payload = randomDigits(15);
+      const cardNumberDisplay = (payload + luhnCheckDigit(payload)).replace(/(\d{4})(?=\d)/g, "$1 ");
       const qrToken = crypto.randomBytes(24).toString("base64url");
       const barcodeValue = `PW${year}${memberDigits}${checkChars(`${year}${memberDigits}`)}`;
       // VALID THRU is written at issue — the column had NO writer before
@@ -213,6 +217,29 @@ export class MembershipCardService {
       throw new Error("MEMBERSHIP_CARD_NOT_FOUND");
     }
     logger.info("[MembershipCard] status changed", { userId, status, reason });
+  }
+
+  /**
+   * Lost card (CEO card design, back face): the member voids their own codes.
+   * Marks the card lost, rotates QR + barcode so the printed ones stop scanning,
+   * and bumps the wallet pass token version so an old pass is refused at the bay.
+   * The on-screen card immediately shows the new codes; a new physical card is
+   * printed from the same row.
+   */
+  static async reportLost(userId: string): Promise<{ qrToken: string; barcodeValue: string }> {
+    await this.setStatus(userId, "lost", "reported_by_member");
+    const qrToken = await this.regenerateQr(userId);
+    const barcodeValue = await this.regenerateBarcode(userId);
+    try {
+      const { petwashPassAccounts } = await import("@shared/schema");
+      await db.update(petwashPassAccounts)
+        .set({ qrTokenVersion: sql`${petwashPassAccounts.qrTokenVersion} + 1` } as any)
+        .where(eq(petwashPassAccounts.userId, userId));
+    } catch (e: any) {
+      logger.warn("[MembershipCard] pass version bump skipped", { userId, error: e?.message });
+    }
+    logger.info("[MembershipCard] reported lost — codes rotated", { userId });
+    return { qrToken, barcodeValue };
   }
 
   static async regenerateQr(userId: string): Promise<string> {
