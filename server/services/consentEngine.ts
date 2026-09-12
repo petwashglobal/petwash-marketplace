@@ -8,9 +8,13 @@ function sha256(input: string): string {
   return crypto.createHash("sha256").update(input).digest("hex");
 }
 
+// Marketing is OPTIONAL for every role (Israeli Privacy Protection Law /
+// Spam Law §30A: promotional consent is separate and never a condition of
+// service). Before 2026-09-12 the loyalty set bundled it, so "all consents
+// given" for a loyalty member silently required a marketing opt-in.
 const ROLE_CONSENTS: Record<string, string[]> = {
   customer: ["terms", "privacy"],
-  loyalty: ["terms", "privacy", "marketing"],
+  loyalty: ["terms", "privacy"],
   provider: ["terms", "privacy", "provider_terms", "kyc"],
   staff: ["terms", "privacy", "staff_policy"],
 };
