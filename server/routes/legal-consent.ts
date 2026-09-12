@@ -44,13 +44,17 @@ router.post('/accept-terms', validateFirebaseToken, async (req: Request, res: Re
   try {
     const [u] = await db.select({ acceptedTermsAt: users.acceptedTermsAt }).from(users).where(eq(users.id, uid)).limit(1);
     if (!u) return res.status(404).json({ error: 'user_not_found' });
-    if (u.acceptedTermsAt) {
-      // Idempotent — never overwrite the original acceptance moment.
-      return res.json({ acceptedAt: u.acceptedTermsAt, alreadyAccepted: true });
+    // The legacy timestamp is idempotent (never overwrite the original moment),
+    // but the canonical ledger write below must NOT be skipped because of it:
+    // until 2026-09-12 an email-verification click stamped acceptedTermsAt, and
+    // this early return then made it impossible for that user to ever produce
+    // a real legal_acceptances row (consent audit P0-3).
+    const alreadyAccepted = !!u.acceptedTermsAt;
+    const now = alreadyAccepted ? new Date(u.acceptedTermsAt as any) : new Date();
+    if (!alreadyAccepted) {
+      await db.update(users).set({ acceptedTermsAt: now }).where(eq(users.id, uid));
+      logger.info('[LegalConsent] terms accepted', { uid });
     }
-    const now = new Date();
-    await db.update(users).set({ acceptedTermsAt: now }).where(eq(users.id, uid));
-    logger.info('[LegalConsent] terms accepted', { uid });
 
     // Canonical-ledger DUAL-WRITE-SHADOW (CEO 2026-08-26 §6):
     // legacy users.acceptedTermsAt stays authoritative for the gate;
@@ -94,7 +98,7 @@ router.post('/accept-terms', validateFirebaseToken, async (req: Request, res: Re
       });
     }
 
-    return res.json({ acceptedAt: now.toISOString(), alreadyAccepted: false });
+    return res.json({ acceptedAt: now.toISOString(), alreadyAccepted });
   } catch (err: any) {
     logger.error('[LegalConsent] accept failed', { uid, err: err?.message });
     return res.status(500).json({ error: 'accept_failed' });

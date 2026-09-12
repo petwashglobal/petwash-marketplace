@@ -40,7 +40,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
     termsOfService: false,
     privacyPolicy: false,
     corporateGuidelines: false,
-    emailCommunication: true,
+    emailCommunication: false, // never pre-ticked (consent audit 2026-09-12)
   });
   const [showCorporateGuidelines, setShowCorporateGuidelines] = useState(false);
 

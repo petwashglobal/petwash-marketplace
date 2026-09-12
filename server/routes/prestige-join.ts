@@ -52,6 +52,10 @@ const joinSchema = z.object({
   phone:     z.string().min(7).max(20),
   tier:      z.enum(['pearl', 'black', 'platinum']).default('pearl'),
   language:  z.enum(['he', 'en']).default('he'),
+  // Explicit, server-required (consent audit 2026-09-12 P0-5/6): the checkbox
+  // was client-only and the INSERT hard-coded terms_consent = TRUE.
+  consent:   z.boolean(),
+  marketingConsent: z.boolean().optional().default(false),
 });
 
 const TIER_DISPLAY: Record<string, { he: string; en: string }> = {
@@ -71,7 +75,10 @@ router.post('/join', async (req: Request, res: Response) => {
     if (!parsed.success) {
       return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
     }
-    const { firstName, lastName, email, phone, tier, language } = parsed.data;
+    const { firstName, lastName, email, phone, tier, language, consent, marketingConsent } = parsed.data;
+    if (consent !== true) {
+      return res.status(400).json({ ok: false, error: 'CONSENT_REQUIRED', message: 'Please accept the Prestige terms to join.' });
+    }
     const tierKey = tier.toLowerCase();
     const tierDisplay = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
 
@@ -178,11 +185,11 @@ router.post('/join', async (req: Request, res: Response) => {
         await db.execute({
           text: `
             INSERT INTO privilege_members
-              (member_id, first_name, last_name, email, phone, language, terms_consent, status)
-            VALUES ($1, $2, $3, $4, $5, $6, TRUE, 'pending_verification')
+              (member_id, first_name, last_name, email, phone, language, terms_consent, terms_consent_at, marketing_consent, sms_consent, status)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $8, 'pending_verification')
             ON CONFLICT (email) DO NOTHING
           `,
-          values: [memberId, firstName.trim(), lastName.trim(), email.trim().toLowerCase(), phone.trim(), language],
+          values: [memberId, firstName.trim(), lastName.trim(), email.trim().toLowerCase(), phone.trim(), language, consent === true, marketingConsent === true],
         } as any);
       }
     } catch (privilegeErr: any) {

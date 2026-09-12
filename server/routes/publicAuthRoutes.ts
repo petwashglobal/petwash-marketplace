@@ -842,7 +842,7 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     // done, so wallet/booking silently failed with no retry surface.
     try {
       const { markEmailVerified } = await import('../services/ActivationService');
-      await markEmailVerified(uid, { acceptTerms: true });
+      await markEmailVerified(uid); // email proof only — never a Terms acceptance (consent audit 2026-09-12)
     } catch (vErr: any) {
       logger.error('[Signup] verify-signup-email activation advance FAILED', {
         uid, error: vErr?.message,
@@ -1551,7 +1551,7 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
           // couldn't clear the Postgres flag → infinite 'sent back to signup'.
           try {
             const { markEmailVerified } = await import('../services/ActivationService');
-            await markEmailVerified(user.uid, { acceptTerms: true });
+            await markEmailVerified(user.uid); // email proof only — never a Terms acceptance
           } catch (vErr: any) {
             logger.warn('[EmailAuth] mark-email-verified failed (non-blocking)', { error: vErr?.message });
           }
@@ -1685,7 +1685,7 @@ publicAuthRouter.post('/api/auth/email/mark-verified', apiLimiter, async (req, r
       return res.status(409).json({ ok: false, error: 'Email not verified yet' });
     }
     const { markEmailVerified } = await import('../services/ActivationService');
-    await markEmailVerified(decoded.uid, { acceptTerms: true });
+    await markEmailVerified(decoded.uid); // email proof only — never a Terms acceptance
     logger.info('[EmailAuth] Postgres email-verified persisted via /verify-email', { uid: decoded.uid });
     return res.json({ ok: true });
   } catch (e: any) {
