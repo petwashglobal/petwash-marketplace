@@ -689,7 +689,7 @@ class WalletService {
 
   async addCredits(
     userId: string,
-    creditType: 'egift' | 'wash_package' | 'loyalty_points' | 'promo_credit' | 'referral_credit',
+    creditType: 'egift' | 'wash_package' | 'loyalty_points' | 'promo_credit' | 'referral_credit' | 'cash_wallet',
     amount: number,
     sourceType: string,
     sourceId?: string,
@@ -735,6 +735,12 @@ class WalletService {
         break;
       case 'promo_credit':
         updateExpr.promoBalanceCents = sql`COALESCE(promo_balance_cents, 0) + ${amount}`;
+        break;
+      // Paid-in money (SUMIT wallet top-up). Before 2026-09-12 there was no
+      // cash case, so a paid top-up was credited as promo_credit → the bay
+      // picker (cashWalletBalanceCents) could never spend it.
+      case 'cash_wallet':
+        updateExpr.cashWalletBalanceCents = sql`COALESCE(cash_wallet_balance_cents, 0) + ${amount}`;
         break;
       case 'referral_credit':
         updateExpr.referralBalanceCents = sql`COALESCE(referral_balance_cents, 0) + ${amount}`;
