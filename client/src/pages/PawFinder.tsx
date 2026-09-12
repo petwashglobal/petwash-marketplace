@@ -1391,8 +1391,8 @@ export default function PawFinder({ language }: PawFinderProps) {
                 <div className="font-bold text-slate-900 text-lg leading-tight">{isHe ? 'פרסום מודעה — ללא עלות' : 'Post a notice — no cost'}</div>
                 <p className="text-slate-500 text-sm mt-1 leading-relaxed">
                   {isHe
-                    ? 'חברי מועדון PetWash מאומתים בלבד. התחבר, פרסם תוך דקה — וכל פוסט עובר בדיקת בטיחות לפני פרסום.'
-                    : 'Verified PetWash members only. Sign in, post in a minute — every post is safety-checked before it goes live.'}
+                    ? 'לחברי PetWash מחוברים. התחבר, פרסם תוך דקה — וכל פוסט עובר בדיקת בטיחות ואישור לפני פרסום.'
+                    : 'For signed-in PetWash members. Sign in, post in a minute — every post is safety-checked and approved before it goes live.'}
                 </p>
               </div>
               <button
@@ -1417,12 +1417,12 @@ export default function PawFinder({ language }: PawFinderProps) {
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {(isHe ? [
-                { icon: '🆓', title: 'פרסום ללא עלות', desc: 'חברי מועדון PetWash מאומתים מפרסמים חיה אבודה או שנמצאה — בחינם, תוך דקה.' },
-                { icon: '🛡️', title: 'בטוח ומאומת', desc: 'הפרסום פתוח רק לחברים מחוברים ומאומתים (כולל אימות SMS), וכל פוסט עובר סריקת בטיחות לפני שעולה לאוויר.' },
+                { icon: '🆓', title: 'פרסום ללא עלות', desc: 'חברי PetWash מחוברים מפרסמים חיה אבודה או שנמצאה — בחינם, תוך דקה.' },
+                { icon: '🛡️', title: 'בטוח ומאושר', desc: 'הפרסום פתוח לחברים מחוברים בלבד, וכל פוסט עובר סריקת בטיחות ואישור אנושי לפני שעולה לאוויר.' },
                 { icon: '🤝', title: 'התאמה קהילתית + פרס', desc: 'המערכת מתאימה אוטומטית בין "אבוד" ל"נמצא" ומחברת בין האנשים הנכונים. אפשר גם להציע פרס למוצא.' },
               ] : [
-                { icon: '🆓', title: 'Post at no cost', desc: 'Verified PetWash members post a lost or found pet — free, in under a minute.' },
-                { icon: '🛡️', title: 'Safe & verified', desc: 'Posting is for logged-in, verified members only (incl. SMS), and every post passes a safety scan before it goes live.' },
+                { icon: '🆓', title: 'Post at no cost', desc: 'Signed-in PetWash members post a lost or found pet — free, in under a minute.' },
+                { icon: '🛡️', title: 'Safe & approved', desc: 'Posting is for signed-in members only, and every post passes a safety scan and a human approval before it goes live.' },
                 { icon: '🤝', title: 'Community matching + reward', desc: 'We auto-match “lost” and “found” and connect the right people. You can also offer a reward to the finder.' },
               ]).map(({ icon, title, desc }) => (
                 <div key={title} className="flex items-start gap-3 text-white">
@@ -1667,7 +1667,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">פוסט חדש</div>
                   <h2 className="text-2xl font-bold">הגשת דיווח</h2>
                   <p className="text-slate-500 text-sm mt-1">
-                    זמין לחברי מועדון PetWash™‎ מאומתי SMS. כל פוסט עובר בדיקה אוטומטית לפני פרסום.
+                    זמין לחברי PetWash™‎ מחוברים. כל פוסט עובר בדיקה אוטומטית ואישור לפני פרסום.
                   </p>
                 </div>
                 <div className="bg-white rounded-3xl border border-slate-200 p-6">
