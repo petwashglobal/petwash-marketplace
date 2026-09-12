@@ -171,8 +171,13 @@ export default function PrestigeHome() {
       } catch { return {}; }
     },
     enabled: !!user && redeemCard.show,
-    staleTime: 90_000,
-    refetchInterval: 110_000,
+    // The token lives 45 seconds (QR_TTL_SECONDS in prestige-pass.ts). The old
+    // 110-second refresh left an EXPIRED code on screen ~60% of the time — the
+    // "QR is not ok" the CEO saw at the bay (2026-09-12). Refresh well inside
+    // the TTL; the generate route allows 30/min, this uses 1.5/min.
+    staleTime: 0,
+    refetchInterval: 40_000,
+    refetchIntervalInBackground: false,
   });
 
   // Latest wallet/receipt activity — real ledger events, newest first.
