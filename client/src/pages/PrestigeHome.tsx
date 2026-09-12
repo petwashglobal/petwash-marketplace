@@ -23,6 +23,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { resolveGreetingName } from '@/lib/greetingName';
+import { redeemCardDecision } from '@/lib/redeemCardVisibility';
 import { apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
 import { NextBestActionCard } from '@/components/NextBestActionCard';
@@ -137,6 +138,17 @@ export default function PrestigeHome() {
   // normalizer reads; `sum` stays as an always-null fallback slot.
   const sum = null;
 
+  // Computed here rather than further down because the QR query below must NOT
+  // run for an account with nothing to redeem — every run mints a signed token
+  // AND writes a prestige_qr_tokens doc to Firestore, once every 110s, forever.
+  const s = normalizeSummary(me, sum);
+  const redeemCard = redeemCardDecision({
+    prestigeEnrolled,
+    washCredits: s.washCredits,
+    cashCents:   s.cashCents,
+    giftCents:   s.giftCents,
+  });
+
   const { data: petsData } = useQuery({
     queryKey: ['/api/pets'],
     queryFn: async () => {
@@ -158,7 +170,7 @@ export default function PrestigeHome() {
         return r.ok ? r.json() : {};
       } catch { return {}; }
     },
-    enabled: !!user,
+    enabled: !!user && redeemCard.show,
     staleTime: 90_000,
     refetchInterval: 110_000,
   });
@@ -176,7 +188,6 @@ export default function PrestigeHome() {
     staleTime: 60_000,
   });
 
-  const s = normalizeSummary(me, sum);
   const lastEvent: any = Array.isArray(hist?.events) && hist.events.length > 0 ? hist.events[0] : null;
   const pets: any[] = Array.isArray(petsData?.pets) ? petsData.pets : Array.isArray(petsData) ? petsData : [];
   // Placeholder names and why the email local-part is not a candidate: see
@@ -351,14 +362,24 @@ export default function PrestigeHome() {
             </button>
           )}
 
-          {/* Membership card — dark emerald + gold, live QR */}
-          <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
+          {/* Membership card — dark emerald + gold, live QR.
+              CEO 2026-09-12: gated. This card promises "show at the bay to
+              redeem"; it may only appear when there is genuinely something to
+              redeem, and it may only wear the PRESTIGE wordmark and crown when
+              the account is genuinely enrolled. Before the gate, a non-enrolled
+              Pet Parent with every balance at zero was shown a crowned PRESTIGE
+              card with a live redeem QR — sitting directly under the button
+              inviting them to JOIN Prestige. See client/src/lib/redeemCardVisibility.ts. */}
+          {redeemCard.show && (
+          <div data-testid="prestige-redeem-card" className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
             <div className="flex items-start justify-between">
               <div className="flex flex-col">
                 <PetWashLogo variant="white" size={24} className="self-start" />
-                <span className="text-[9px] tracking-[0.3em] mt-1" style={{ color: GOLD }}>PRESTIGE</span>
+                {redeemCard.crowned && (
+                  <span className="text-[9px] tracking-[0.3em] mt-1" style={{ color: GOLD }}>PRESTIGE</span>
+                )}
               </div>
-              <Crown className="w-5 h-5" style={{ color: GOLD }} />
+              {redeemCard.crowned && <Crown className="w-5 h-5" style={{ color: GOLD }} />}
             </div>
             <div className="mt-3 flex items-end justify-between gap-3">
               <div className="bg-white rounded-xl p-2.5">
@@ -378,6 +399,7 @@ export default function PrestigeHome() {
               </div>
             </div>
           </div>
+          )}
         </section>
 
         {/* Stats strip */}
