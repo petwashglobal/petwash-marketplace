@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 
 /**
@@ -65,7 +65,9 @@ describe('the latest consent row decides', () => {
 });
 
 describe('marketing is never pre-ticked', () => {
-  it('WelcomeConsent starts with emailCommunication false', () => {
-    expect(R('client/src/pages/WelcomeConsent.tsx')).toContain('emailCommunication: false,');
+  it('the orphan consent pages that pre-ticked marketing are gone (old-layer audit 2026-09-12)', () => {
+    for (const f of ['client/src/pages/WelcomeConsent.tsx', 'client/src/pages/ConsentOnboarding.tsx', 'client/src/pages/NotificationConsent.tsx']) {
+      expect(existsSync(resolve(__dirname, '..', '..', f)), f).toBe(false);
+    }
   });
 });
