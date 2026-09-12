@@ -146,9 +146,7 @@ const CheckoutCanon = lazy(() => import("@/pages/CheckoutCanon"));
 const GiftActivate = lazy(() => import("@/pages/GiftActivate"));
 const Vouchers = lazy(() => import("@/pages/Vouchers"));
 const Verify = lazy(() => import("@/pages/Verify"));
-const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const AccountDeletionResource = lazy(() => import("@/pages/AccountDeletionResource"));
-const Terms = lazy(() => import("@/pages/Terms"));
 const Accessibility = lazy(() => import("@/pages/Accessibility"));
 const AccessibilityStatement = lazy(() => import("@/pages/AccessibilityStatement"));
 const About = lazy(() => import("@/pages/About"));
@@ -3284,10 +3282,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/forms/booking" component={QuickBookingForm} />
         <Route path="/forms/legal" component={LegalAgreementForm} />
         <Route path="/gallery">{() => <Gallery language={language} onLanguageChange={handleLanguageChange} />}</Route>
-        <Route path="/privacy">{() => <Redirect to="/privacy-policy" />}</Route>
-        <Route path="/privacy-policy" component={PrivacyPolicy} />
+        {/* Consent lines bind to the registry documents under /legal/* (legalDocumentRegistry).
+            The old /terms + /privacy-policy pages were a different, older generation of text
+            (consent audit 2026-09-12, P0-4). One document, one URL. */}
+        <Route path="/privacy">{() => <Redirect to="/legal/privacy" />}</Route>
+        <Route path="/privacy-policy">{() => <Redirect to="/legal/privacy" />}</Route>
         <Route path="/account-deletion" component={AccountDeletionResource} />
-        <Route path="/terms" component={Terms} />
+        <Route path="/terms">{() => <Redirect to="/legal/customer-terms" />}</Route>
         <Route path="/platform-legal">
           {() => (
             <Suspense fallback={<PageLoader />}>
