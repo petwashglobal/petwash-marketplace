@@ -106,7 +106,7 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
     subheader:  { defaultValue: { language: 'en-US', value: `${visual.tier} Tier` } },
     header:     { defaultValue: { language: 'en-US', value: header } },
     logo: {
-      sourceUri: { uri: 'https://petwash.co.il/logo.png' },
+      sourceUri: { uri: 'https://petwash.co.il/brand/petwash-logo-official.png' },
       contentDescription: { defaultValue: { language: 'en-US', value: 'PetWash logo' } },
     },
     hexBackgroundColor: '#FFFFFF',

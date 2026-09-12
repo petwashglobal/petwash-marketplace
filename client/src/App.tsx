@@ -3156,6 +3156,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* PR-NAV-2: removed duplicate /status registration (was unreachable — wouter takes first match at the SystemStatus route above) */}
         <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/adoption">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionMaison /></Layout>}</Route>
+        {/* The CEO (and marketing) type /adopt — it 404'd (2026-09-12). Alias, never a second page. */}
+        <Route path="/adopt">{() => <Redirect to="/adoption" />}</Route>
+        <Route path="/adopt-pet">{() => <Redirect to="/adoption" />}</Route>
         <Route path="/find-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/lost-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/franchise">{() => <Franchise language={language} onLanguageChange={handleLanguageChange} />}</Route>

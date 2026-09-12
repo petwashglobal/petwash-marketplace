@@ -52,6 +52,7 @@ import { EmailService } from '../emailService';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken, buildQrRedeemToken } from '../lib/passTokens';
+import { resolveMemberTier, tierLabel } from '../lib/memberTier';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
@@ -96,6 +97,8 @@ async function ensurePassAccount(userId: string): Promise<{ passId: string; qrTo
       'PetWash Member'
     ).toString().trim() || 'PetWash Member';
     const ownerEmail = (u as any)?.email ?? null;
+    // Real tier, not the literal 'PREMIUM' every pass carried until 2026-09-12.
+    const passTier = tierLabel(await resolveMemberTier((u as any)?.loyaltyTier, ownerEmail));
     const issuer = process.env.GOOGLE_WALLET_ISSUER_ID || 'petwash';
 
     for (let attempt = 0; attempt < 5; attempt++) {
@@ -112,7 +115,7 @@ async function ensurePassAccount(userId: string): Promise<{ passId: string; qrTo
       try {
         await db.insert(petwashPassAccounts).values({
           passId, userId, ownerName, ownerEmail,
-          tier: 'PREMIUM', appleSerialNumber, googleObjectId,
+          tier: passTier, appleSerialNumber, googleObjectId,
         }).onConflictDoNothing();
       } catch (e: any) {
         if (!/duplicate key|unique/i.test(String(e?.message))) throw e; // retry only on id collision
