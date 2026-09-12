@@ -106,8 +106,8 @@ describe('PR-CI-PAYMENT-MODE — mock mode short-circuits all secret requirement
     });
     expect(r.mode).toBe('live'); // mock override refused in prod
     expect(r.errors).toEqual([
-      'NAYAX_ENABLED=true but NAYAX_API_KEY is missing — refusing to operate live',
-      'NAYAX_ENABLED=true but NAYAX_WEBHOOK_SECRET is missing — refusing to operate live',
+      'NAYAX_ENABLED=true but NAYAX_API_KEY is missing or a placeholder — refusing to operate live',
+      'NAYAX_ENABLED=true but NAYAX_WEBHOOK_SECRET is missing or a placeholder — refusing to operate live',
       'SUMIT_ENABLED=true but SUMIT_API_KEY is missing — refusing to operate live',
       'SUMIT_ENABLED=true but SUMIT_WEBHOOK_SECRET is missing — refusing to operate live',
     ]);

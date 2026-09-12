@@ -999,11 +999,19 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Nayax secrets are live. The canonical path is the `/api/` one; the bare
   // path stays registered so nothing that still calls it breaks.
   const paymentGatewayStatus: import('express').RequestHandler = (req, res) => {
-    const isNayaxConfigured = !!(
-      process.env.NAYAX_API_KEY &&
-      process.env.NAYAX_MERCHANT_ID &&
-      process.env.NAYAX_SECRET &&
-      process.env.NAYAX_WEBHOOK_SECRET
+    // PRESENCE IS NOT CONFIGURATION (2026-09-13). The deploy auto-creates any
+    // missing Nayax secret with the literal 'nayax-placeholder-not-active'
+    // (.github/workflows/petwash-ci.yml — "Online Nayax payments will be
+    // DISABLED until real credential is set"). A bare `!!process.env.X` then
+    // reports the gateway as OPERATIONAL while every call to Nayax carries a
+    // placeholder bearer token and fails. Treat a placeholder as unset.
+    const configured = (v: string | undefined): boolean =>
+      !!v && v.trim() !== '' && !/placeholder/i.test(v);
+    const isNayaxConfigured = (
+      configured(process.env.NAYAX_API_KEY) &&
+      configured(process.env.NAYAX_MERCHANT_ID) &&
+      configured(process.env.NAYAX_SECRET) &&
+      configured(process.env.NAYAX_WEBHOOK_SECRET)
     );
     
     res.set('Cache-Control', 'no-store').json({

@@ -60,3 +60,24 @@ describe('payment gateway status reaches the server', () => {
     expect(baseline).not.toContain('/payment-status');
   });
 });
+
+describe('presence is not configuration', () => {
+  it('the gateway-status handler rejects a placeholder credential', () => {
+    const src = R('server/routes.ts');
+    expect(src).toContain("!/placeholder/i.test(v)");
+    expect(src).not.toMatch(/const isNayaxConfigured = !!\(\s*\n\s*process\.env\.NAYAX_API_KEY/);
+  });
+  it('NayaxOnlinePaymentService DEMO_MODE treats a placeholder as unset', () => {
+    const src = R('server/services/NayaxOnlinePaymentService.ts');
+    expect(src).toContain('nayaxCredentialConfigured');
+    expect(src).not.toContain('const DEMO_MODE = !NAYAX_API_KEY || !NAYAX_MERCHANT_ID;');
+  });
+  it('payment-provider-mode fails closed and still prints the BOOKING_CARD_RAIL hint', () => {
+    const src = R('server/lib/payment-provider-mode.ts');
+    expect(src).toContain('const credentialSet = (v: string | undefined): boolean =>');
+    expect(src).toContain('const nayaxDark = !credentialSet(env.NAYAX_API_KEY) || !credentialSet(env.NAYAX_MERCHANT_ID);');
+  });
+  it('the deploy really does write that placeholder (why this matters)', () => {
+    expect(R('.github/workflows/petwash-ci.yml')).toContain('nayax-placeholder-not-active');
+  });
+});
