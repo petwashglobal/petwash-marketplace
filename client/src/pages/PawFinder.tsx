@@ -558,7 +558,7 @@ function ContactModal({ post, onClose }: { post: PawPost; onClose: () => void })
 ------------------------------------------------------------------------- */
 
 const EMPTY_FORM = {
-  postType: 'lost' as 'lost' | 'found',
+  postType: 'lost' as 'lost' | 'found' | 'adoption',
   petType: 'dog' as 'dog' | 'cat' | 'bird' | 'other',
   petName: '',
   breed: '',
@@ -808,6 +808,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
           <select value={form.postType} onChange={set('postType')} className={inputCls}>
             <option value="lost">🔴 אבד לי חיית מחמד</option>
             <option value="found">🟢 מצאתי חיית מחמד</option>
+            <option value="adoption">🏠 חיה לאימוץ</option>
           </select>
         </div>
         <div>

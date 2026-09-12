@@ -42,7 +42,9 @@ export default function AdoptionMaison() {
       return r.json();
     },
   });
-  const posts: AdoptionPost[] = Array.isArray(data) ? data : (data?.posts ?? []);
+  // /api/paw-finder/posts returns { rows, count } — the page read `.posts` and was
+  // hardwired to "no pets awaiting adoption" (audit 2026-09-12).
+  const posts: AdoptionPost[] = Array.isArray(data) ? data : ((data as any)?.rows ?? (data as any)?.posts ?? []);
 
   return (
     <div dir="rtl" className="min-h-screen bg-white text-black">
