@@ -84,7 +84,15 @@ async function findReplacementSitter(city: string, excludeUids: string[]): Promi
     .from(sitterProfiles)
     .where(and(
       eq(sitterProfiles.isActive, true),
-      eq(sitterProfiles.verificationStatus, 'verified'),
+      // 'active', not 'verified' (2026-09-13). Approval writes a DIFFERENT
+      // word per table — AdminProviderReviewService: walker 'verified',
+      // sitter 'active', trainer 'approved'. This query asked for 'verified',
+      // which nothing writes to sitter_profiles, so it matched zero rows and
+      // findReplacementSitter returned null for EVERY expired sitter booking:
+      // instead of being reassigned, the customer was cancelled and refunded.
+      // Silent — a query that finds nobody is not an error.
+      // booking-search.ts:517 already reads 'active'; this is the outlier.
+      eq(sitterProfiles.verificationStatus, 'active'),
       eq(sitterProfiles.city, city),
       excludeUids.length > 0 ? notInArray(sitterProfiles.userId, excludeUids) : sql`TRUE`
     ))

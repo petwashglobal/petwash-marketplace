@@ -95,7 +95,9 @@ async function isSuppressed(
     .where(
       and(
         eq(bookingRequests.ownerId, userId),
-        inArray(bookingRequests.status, ['pending', 'accepted', 'confirmed', 'meet_greet_scheduled', 'in_progress'] as any[]),
+        // 'meet_greet_requested' added 2026-09-13 — without it a customer with
+        // a live meet-and-greet request was nudged to "book again".
+        inArray(bookingRequests.status, ['pending', 'accepted', 'confirmed', 'meet_greet_requested', 'meet_greet_scheduled', 'in_progress'] as any[]),
         gte(bookingRequests.startDate, now),
       ),
     )
