@@ -26,7 +26,10 @@ describe('OTP now persists verification', () => {
 
   it('email-session marks email verified — stopping the /verify-email bounce loop', () => {
     expect(s).toMatch(/infinite 'sent back to signup'/);
-    expect(s).toMatch(/await markEmailVerified\(user\.uid, \{ acceptTerms: true \}\);/);
+    // Email proof only — the acceptTerms flag was removed 2026-09-12 (consent audit
+    // P0-2): verifying an inbox is not accepting the Terms.
+    expect(s).toMatch(/await markEmailVerified\(user\.uid\);/);
+    expect(s).not.toContain('acceptTerms: true');
   });
 
   it('verify-signup-email advances activation (timestamp, not just the boolean)', () => {
