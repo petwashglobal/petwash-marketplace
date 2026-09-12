@@ -26,4 +26,9 @@ describe('gift-card art', () => {
     expect(src).toContain("'/brand/gift-cards/gold-1000.jpg'");
     expect(src).toContain("'/brand/gift-cards/pink-100.jpg'");
   });
+  it('the soft-launch (coming soon) screen shows the four designs too', () => {
+    const src = R('client/src/pages/BuyGiftCard.tsx');
+    expect(src).toContain('data-testid="gift-card-art-preview"');
+    expect(src.indexOf('data-testid="gift-card-art-preview"')).toBeLessThan(src.indexOf('Back to Home'));
+  });
 });
