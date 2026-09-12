@@ -2359,150 +2359,6 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // POST /api/consent/onboarding - Save onboarding consent with SHA-256 audit trail
-  app.post('/api/consent/onboarding', async (req, res) => {
-    try {
-      const { termsOfService, privacyPolicy, corporateGuidelines, emailCommunication, gmailIntegration, timestamp, source } = req.body;
-
-      if (!termsOfService || !privacyPolicy || !corporateGuidelines) {
-        return res.status(400).json({
-          ok: false,
-          error: 'Required consents missing: termsOfService, privacyPolicy, and corporateGuidelines are mandatory',
-        });
-      }
-
-      const ip = getClientIP(req);
-      const userAgent = req.headers['user-agent'] || 'unknown';
-      const firebaseUser = (req as any).firebaseUser;
-      const userId = firebaseUser?.uid || 'anonymous';
-
-      const evidencePayload = JSON.stringify({
-        userId,
-        termsOfService,
-        privacyPolicy,
-        corporateGuidelines,
-        emailCommunication,
-        gmailIntegration,
-        timestamp,
-        ip,
-        userAgent,
-      });
-      const evidenceHash = crypto.createHash('sha256').update(evidencePayload).digest('hex');
-
-      const consentRecord = {
-        userId,
-        email: firebaseUser?.email || null,
-        consentType: 'onboarding',
-        termsOfService: !!termsOfService,
-        privacyPolicy: !!privacyPolicy,
-        corporateGuidelines: !!corporateGuidelines,
-        emailCommunication: !!emailCommunication,
-        gmailIntegration: !!gmailIntegration,
-        timestamp: timestamp || new Date().toISOString(),
-        ip,
-        userAgent,
-        source: source || 'onboarding',
-        evidenceHash,
-      };
-
-      let stored = false;
-      try {
-        await firestoreDb.collection('onboarding_consent').add(consentRecord);
-        stored = true;
-      } catch (firestoreError) {
-        logger.warn('[Consent] Firestore unavailable, falling back to PostgreSQL', firestoreError);
-      }
-
-      if (!stored) {
-        try {
-          const { consentSnapshots } = await import('@shared/schema');
-          await db.insert(consentSnapshots).values({
-            consentType: 'onboarding',
-            version: '1.0',
-            locale: 'he',
-            content: JSON.stringify(consentRecord),
-            contentHash: evidenceHash,
-          });
-          stored = true;
-        } catch (pgError) {
-          logger.error('[Consent] PostgreSQL fallback also failed', pgError);
-        }
-      }
-
-      logger.info('[Consent] Saved onboarding consent with SHA-256 hash', {
-        userId,
-        evidenceHash,
-        termsOfService,
-        privacyPolicy,
-        corporateGuidelines,
-        storageBackend: stored ? 'success' : 'failed',
-      });
-
-      // SHADOW policy (CEO 2026-08-26 correction pass §1): the Firestore
-      // /  PG consent_snapshots writes above are authoritative for this
-      // path. Structured result — branch on r.ok because the service
-      // catches its own DB errors and returns { ok:false } (a
-      // `.catch()`-only pattern would NEVER fire for a normal DB
-      // failure). emitShadowFailure inside the service is the observable
-      // signal; this log is an additional breadcrumb pairing origin +
-      // errorCode. Version resolved from the registry, not hardcoded.
-      if (firebaseUser?.uid) {
-        const { recordLegalAcceptance } = await import('./services/LegalAcceptanceService');
-        const { getLegalDocument } = await import('@shared/lib/legalDocumentRegistry');
-        const language = 'he' as const;
-        const commonArgs = {
-          userId: firebaseUser.uid,
-          language,
-          ipAddress: ip || null,
-          userAgent: userAgent || null,
-          source: 'client' as const,
-          actorRole: 'self' as const,
-          metadata: { origin: '/api/consent/onboarding', evidenceHash, source: source || 'onboarding' },
-        };
-        const shadowHandle = (docKey: string, docVersion: string, extras: Record<string, unknown> = {}) => (r: any) => {
-          if (!r?.ok) {
-            logger.warn('[Consent] canonical shadow write failed — legacy authority stands', {
-              uid: firebaseUser.uid, docKey, docVersion, errorCode: r?.errorCode, ...extras,
-            });
-          }
-        };
-        // Explicit .catch() on every shadow write (Lane D §D5). The service
-        // is designed to trap its own DB errors and return a structured
-        // { ok:false } result, so this should only ever fire on a truly
-        // unexpected throw (module-load failure, oom, etc.). Without it
-        // such a throw becomes an unhandled rejection and vanishes from
-        // the ops trail while legacy authority still stands.
-        const shadowCatch = (docKey: string, docVersion: string) => (err: any) => {
-          logger.warn('[Consent] canonical shadow write threw — legacy authority stands', {
-            uid: firebaseUser.uid, docKey, docVersion, errorMessage: err?.message ?? String(err),
-          });
-        };
-        if (termsOfService) {
-          const d = getLegalDocument('customer_tos');
-          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'customer_tos', docVersion: d.currentVersion })
-            .then(shadowHandle('customer_tos', d.currentVersion))
-            .catch(shadowCatch('customer_tos', d.currentVersion));
-        }
-        if (privacyPolicy) {
-          const d = getLegalDocument('privacy_policy');
-          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'privacy_policy', docVersion: d.currentVersion })
-            .then(shadowHandle('privacy_policy', d.currentVersion))
-            .catch(shadowCatch('privacy_policy', d.currentVersion));
-        }
-        if (emailCommunication) {
-          const d = getLegalDocument('marketing_consent');
-          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'marketing_consent', docVersion: `${d.currentVersion}-email` })
-            .then(shadowHandle('marketing_consent', `${d.currentVersion}-email`, { channel: 'email' }))
-            .catch(shadowCatch('marketing_consent', `${d.currentVersion}-email`));
-        }
-      }
-
-      res.json({ ok: true, evidenceHash });
-    } catch (error) {
-      logger.error('[Consent] Failed to save onboarding consent:', error);
-      res.status(500).json({ ok: false, error: 'Failed to save onboarding consent' });
-    }
-  });
 
   // POST /api/consent/biometric - Save biometric authentication consent (REQUIRED by Apple/Google)
   // SECURITY: requireAuth enforces that only authenticated users can record biometric consent.
@@ -2709,13 +2565,37 @@ self.addEventListener('notificationclick', (event) => {
   //   GET  /api/simple-auth/me       → served by publicAuthRouter (LIVE, unchanged)
   //
   // Canonical registration: Firebase Auth → POST /api/auth/session
-  //                       → POST /api/users/create-profile
+  //                       → POST /api/auth/post-login → /complete-profile
+
+  // ── Retired 2026-09-12 (old-layer audit) ─────────────────────────────────
+  // POST /api/users/create-profile — the pre-2026 social account-mint. No
+  // client has called it since /complete-profile (#2402); it accepted a
+  // CLIENT-supplied consent text hash as the legal evidence (P0). The
+  // canonical flow is Firebase Auth → /api/auth/session → /api/auth/post-login
+  // → /complete-profile (server-side OTP + server-stamped consent).
+  // POST /api/consent/onboarding — unauthenticated consent writer used only by
+  // the removed /welcome-consent and /consent-onboarding pages.
+  const OLD_LAYER_GONE_BODY = {
+    ok: false,
+    success: false,
+    error: 'ENDPOINT_REMOVED',
+    message: 'This endpoint has been permanently removed. Sign in and complete your profile at /complete-profile.',
+    messageHe: 'נקודת קצה זו הוסרה לצמיתות. התחברו והשלימו את הפרופיל ב-/complete-profile.',
+  } as const;
+  app.post('/api/users/create-profile', authLimiter, (_req, res) => {
+    logger.warn('[OldLayer] Retired /api/users/create-profile called — 410 GONE');
+    return res.status(410).json(OLD_LAYER_GONE_BODY);
+  });
+  app.post('/api/consent/onboarding', authLimiter, (_req, res) => {
+    logger.warn('[OldLayer] Retired /api/consent/onboarding called — 410 GONE');
+    return res.status(410).json(OLD_LAYER_GONE_BODY);
+  });
 
   const SIMPLE_AUTH_GONE_BODY = {
     ok: false,
     error: 'ENDPOINT_REMOVED',
-    message: 'This endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
-    messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+    message: 'This endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/auth/post-login → /complete-profile.',
+    messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמי: Firebase Auth → /api/auth/session → /api/auth/post-login → /complete-profile.',
   } as const;
 
   app.post('/api/simple-auth/signup', (_req, res) => {
@@ -12180,7 +12060,7 @@ self.addEventListener('notificationclick', (event) => {
     logger.warn('[CustomerRegister] Deprecated endpoint called — returning 410 GONE');
     res.status(410).json({
       error: 'ENDPOINT_REMOVED',
-      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/users/create-profile.',
+      message: 'This registration endpoint has been permanently removed. Use the canonical flow: Firebase Auth → /api/auth/session → /api/auth/post-login → /complete-profile.',
       messageHe: 'נקודת קצה זו הוסרה לצמיתות. השתמש בנתיב הרשמה הרשמי: Firebase Auth → /api/auth/session → /api/users/create-profile.',
     });
   });
@@ -14492,286 +14372,6 @@ self.addEventListener('notificationclick', (event) => {
   // authLimiter (2026-07-08): this endpoint MINTS accounts and was previously
   // unthrottled, unlike every sibling /api/auth/* signup route — an open door
   // for automated account-farming. Rate-limited to match.
-  app.post('/api/users/create-profile', authLimiter, async (req, res) => {
-    try {
-      const authHeader = req.headers.authorization;
-      if (!authHeader?.startsWith('Bearer ')) {
-        return res.status(401).json({ success: false, error: 'Authorization required', errorCode: 'AUTH_REQUIRED' });
-      }
-      
-      const token = authHeader.split('Bearer ')[1];
-      const fbAuth = firebaseAdminModule.auth || firebaseAdminModule.adminAuth;
-      
-      let decoded;
-      try {
-        decoded = await fbAuth.verifyIdToken(token, true);
-      } catch (authErr: any) {
-        logger.error('[CreateProfile] Token verification failed', authErr, { code: authErr?.code, traceId: req.body?.traceId });
-        return res.status(401).json({ success: false, error: 'Invalid or expired token', errorCode: 'INVALID_TOKEN' });
-      }
-      const uid = decoded.uid;
-      
-      const {
-        firstName,
-        lastName,
-        email,
-        phone,
-        dob,
-        country,
-        language,
-        loyaltyProgram,
-        reminders,
-        marketing,
-        pushNotifications,
-        acceptedTerms,
-        consentTimestamp,
-        consentVersion,
-        consentTextHash,
-        captchaToken,
-        turnstileToken: createProfileTurnstileToken,
-        traceId
-      } = req.body;
-
-      logger.info('[CreateProfile] Processing', { traceId, uid, email });
-
-      if (!acceptedTerms || !consentVersion || !consentTextHash) {
-        logger.warn('[CreateProfile] Consent gate: missing consent data', { traceId, uid, acceptedTerms, consentVersion: !!consentVersion, consentTextHash: !!consentTextHash });
-        return res.status(400).json({
-          success: false,
-          error: 'Terms and privacy consent are required to create an account.',
-          errorCode: 'CONSENT_REQUIRED'
-        });
-      }
-
-      const callerIpForCaptcha = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
-      if (!captchaToken) {
-        // reCAPTCHA failed to load on client (ad blocker / restrictive mobile browser).
-        // Accept the request if Turnstile passed; block if neither token is available.
-        if (createProfileTurnstileToken) {
-          const tsResult = await verifyTurnstileToken(createProfileTurnstileToken, callerIpForCaptcha);
-          if (!tsResult.valid) {
-            logger.warn('[CreateProfile] No captchaToken and Turnstile rejected', { reason: tsResult.reason });
-            return res.status(400).json({ success: false, error: 'Security verification failed. Please try again.', errorCode: 'CAPTCHA_REQUIRED' });
-          }
-          logger.info('[CreateProfile] Accepted with Turnstile only (reCAPTCHA unavailable on client)', { traceId });
-        } else {
-          // Both tokens missing — common for Google/Apple OAuth on strict mobile browsers
-          // where reCAPTCHA scripts are blocked. The Firebase ID token above has already
-          // verified this is a real authenticated user, so allow with a logged warning.
-          logger.warn('[CreateProfile] Missing both captchaToken and turnstileToken — allowing authenticated Firebase user', { traceId, uid });
-        }
-      } else {
-        const captchaResult = await verifyCaptchaToken(captchaToken, 'signup');
-        if (!captchaResult.valid) {
-          logger.warn('[CreateProfile] reCAPTCHA rejected token', { reason: captchaResult.reason, source: captchaResult.source });
-          return res.status(400).json({ success: false, error: 'Security check failed. Please refresh and try again.', reason: captchaResult.reason });
-        }
-        if (captchaResult.suspicious) {
-          if (createProfileTurnstileToken) {
-            const tsResult = await verifyTurnstileToken(createProfileTurnstileToken, callerIpForCaptcha);
-            if (!tsResult.valid) {
-              logger.warn('[CreateProfile] Turnstile fallback rejected', { reason: tsResult.reason, score: captchaResult.score });
-              return res.status(400).json({ success: false, error: 'Additional verification required.', errorCode: 'STEP_UP_REQUIRED', score: captchaResult.score });
-            }
-            logger.info('[CreateProfile] Turnstile fallback accepted — suspicious reCAPTCHA score bypassed', { score: captchaResult.score });
-          } else {
-            // Soft-fail: suspicious score but no Turnstile. Firebase auth is already verified.
-            // Blocking here prevents real mobile/VPN users from creating accounts.
-            // Log for fraud monitoring; allow the request to proceed.
-            logger.warn('[CreateProfile] Suspicious reCAPTCHA score — allowing (Firebase auth is proof of human)', { score: captchaResult.score });
-          }
-        }
-      }
-      
-      const validationErrors: string[] = [];
-      if (!firstName || typeof firstName !== 'string' || firstName.trim().length < 1) validationErrors.push('firstName is required');
-      if (!lastName || typeof lastName !== 'string' || lastName.trim().length < 1) validationErrors.push('lastName is required');
-      if (!email || typeof email !== 'string' || !/^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/.test(email.trim())) validationErrors.push('Valid email is required');
-      if (phone) {
-        const cleanPhone = phone.replace(/[\s\-()]/g, '');
-        if (!/^\+?[1-9]\d{1,14}$/.test(cleanPhone)) validationErrors.push('Phone must be international format (e.g. +972501234567)');
-      }
-      if (dob) {
-        const dobDate = new Date(dob);
-        if (isNaN(dobDate.getTime())) validationErrors.push('Date of birth is invalid');
-        else {
-          const age = Math.floor((Date.now() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-          // 18+ (2026-07-08): PetWash is an 18+ marketplace. The phone/email
-          // signup rails already reject under-18 (checkSignupAge, fail-closed);
-          // this path previously allowed 13+, an inconsistency. Match the floor.
-          // (Social sign-in currently attests 18+ via checkbox rather than a
-          // verified DOB — strengthening that to a required birthdate is a
-          // separate product/conversion decision.)
-          if (age < 18) validationErrors.push('You must be at least 18 years old');
-        }
-      }
-
-      if (validationErrors.length > 0) {
-        logger.warn('[CreateProfile] Validation failed', { traceId, errors: validationErrors });
-        return res.status(400).json({ success: false, error: validationErrors.join('; '), errorCode: 'VALIDATION_FAILED', fields: validationErrors });
-      }
-      
-      const now = new Date().toISOString();
-      
-      const { authService } = await import('./services/AuthService');
-      let userId: string;
-      try {
-        await authService.createUser({
-          id: uid,
-          email: email.trim(),
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          phone: phone?.trim() || undefined,
-          country: country || 'IL',
-          language: language || 'he',
-          dateOfBirth: dob || undefined,
-          marketingConsent: marketing ?? false,
-        });
-        userId = uid;
-        logger.info(`[Phase1] PostgreSQL user created`, { traceId, userId });
-
-        // Immediately stamp termsAcceptedAt and privacyAcceptedAt so post-login
-        // getMissingFields() does not send this user to /complete-profile.
-        // acceptedTerms is validated and required above (line ~10405).
-        if (acceptedTerms) {
-          const consentNow = new Date();
-          try {
-            await storage.updateUser(userId, {
-              termsAcceptedAt: consentNow,
-              privacyAcceptedAt: consentNow,
-            });
-            logger.info('[Phase1] termsAcceptedAt/privacyAcceptedAt stamped', { traceId, userId });
-          } catch (consentStampErr) {
-            logger.warn('[Phase1] Failed to stamp termsAcceptedAt (non-blocking)', { traceId, err: String(consentStampErr) });
-          }
-        }
-      } catch (dbErr: any) {
-        if (dbErr?.code === '23505' || dbErr?.message?.includes('unique') || dbErr?.message?.includes('duplicate')) {
-          logger.info('[Phase1] User already exists in PostgreSQL, continuing', { traceId, uid });
-          userId = uid;
-        } else {
-          logger.error('[Phase1] PostgreSQL user creation failed', dbErr, { traceId, uid });
-          return res.status(500).json({ success: false, error: 'Registration failed - database error. Please try again.', errorCode: 'DB_WRITE_FAILED' });
-        }
-      }
-
-      // ===== CONSENT RECORDING (audit trail - enforced above) =====
-      try {
-        const consentIp = req.ip || req.headers['x-forwarded-for'] as string || 'unknown';
-        const consentUA = req.headers['user-agent'] || null;
-        const consentLocale = req.headers['accept-language'] || null;
-        
-        const { pool: dbPool } = await import('./db');
-        
-        await dbPool.query(
-          `INSERT INTO user_consents (user_id, consent_type, consent_version, consent_text_hash, accepted, ip, user_agent, locale, source, trace_id)
-           VALUES ($1, 'terms', $2, $3, true, $4, $5, $6, 'web', $7)`,
-          [userId, consentVersion, consentTextHash, consentIp, consentUA, consentLocale, traceId]
-        );
-        await dbPool.query(
-          `INSERT INTO user_consents (user_id, consent_type, consent_version, consent_text_hash, accepted, ip, user_agent, locale, source, trace_id)
-           VALUES ($1, 'privacy', $2, $3, true, $4, $5, $6, 'web', $7)`,
-          [userId, consentVersion, consentTextHash, consentIp, consentUA, consentLocale, traceId]
-        );
-        
-        await dbPool.query(
-          `INSERT INTO auth_events (user_id, event_type, success, ip, user_agent, trace_id)
-           VALUES ($1, 'REGISTRATION', true, $2, $3, $4)`,
-          [userId, consentIp, consentUA, traceId]
-        );
-        
-        logger.info('[CreateProfile] Consent recorded', { traceId, userId, consentVersion });
-      } catch (consentErr) {
-        logger.warn('[CreateProfile] Consent recording failed (non-blocking)', consentErr);
-      }
-
-      // ===== PHASE 2: Best-effort side effects (failures do NOT block registration) =====
-
-      // ── Wallet + loyalty bootstrap (idempotent ON CONFLICT guards) ───────────────────
-      // authService.createUser() calls these for brand-new users; this block covers
-      // the returning-user path where createUser() returns early without calling them.
-      try {
-        await authService.ensureWalletAccount(userId);
-        await authService.ensureLoyaltyProfile(userId);
-        logger.info(`[Phase2] ✅ Wallet + loyalty ensured uid=${userId}`, { traceId });
-      } catch (bootstrapErr: any) {
-        logger.warn(`[Phase2] Wallet/loyalty bootstrap failed (non-blocking)`, { traceId, error: bootstrapErr.message });
-      }
-      
-      // Firestore profile (best-effort - user can still log in without it)
-      try {
-        await firestoreDb.collection('users').doc(uid).collection('profile').doc('data').set({
-          uid,
-          accountType: 'customer',
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          name: `${firstName.trim()} ${lastName.trim()}`,
-          email: email.trim(),
-          phone: phone?.trim() || '',
-          dob: dob || '',
-          country: country || 'Israel',
-          lang: language || 'he',
-          loyaltyProgram: loyaltyProgram ?? false,
-          reminders: reminders ?? false,
-          marketing: marketing ?? false,
-          pushNotifications: pushNotifications ?? false,
-          acceptedTerms: acceptedTerms ?? true,
-          consentTimestamp: consentTimestamp || now,
-          loyaltyTier: "New Member",
-          washes: 0,
-          giftCardCredits: 0,
-          totalSpent: 0,
-          seniorDiscount: false,
-          disabilityDiscount: false,
-          discounts: {
-            senior: false,
-            disability: false,
-            loyalty: 0,
-            custom: []
-          },
-          verified: false,
-          createdAt: now,
-          updatedAt: now
-        });
-        logger.info(`[Phase2] ✅ Firestore profile created for ${uid}`, { traceId });
-      } catch (firestoreErr: any) {
-        logger.error(`[Phase2] Firestore profile write failed for ${uid} (non-blocking)`, firestoreErr, { traceId });
-      }
-      
-      // Welcome email (best-effort)
-      try {
-        const { sendLuxuryEmail } = await import('./email/luxury-email-service');
-        const { generateCustomerWelcomeEmail } = await import('./email/templates/welcome-customer-signup-2026');
-        const welcomeEmail = generateCustomerWelcomeEmail({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim(),
-          language: (language === 'he' || country === 'Israel' || country === 'IL') ? 'he' : 'en',
-          loyaltyTier: 'new',
-        });
-        sendLuxuryEmail({
-          to: email.trim(),
-          subject: welcomeEmail.subject,
-          html: welcomeEmail.html,
-        }).catch(err => logger.error('[Phase2] Welcome email send failed', { traceId, error: err.message }));
-      } catch (emailErr: any) {
-        logger.error('[Phase2] Email generation error (non-blocking)', { traceId, error: emailErr.message });
-      }
-
-      // Security monitor — record new customer registration for spike detection
-      try {
-        const { geminiPlatformMonitor } = await import('./services/GeminiPlatformSecurityMonitor');
-        geminiPlatformMonitor.recordRegistration('prestige');
-      } catch { /* non-fatal — never block registration */ }
-
-      res.json({ success: true, uid, userId: uid, profileId: uid });
-      
-    } catch (error: any) {
-      logger.error('Create profile error', error, { traceId: req.body?.traceId });
-      const errorCode = error.code === '23505' ? 'USER_EXISTS' : 'REGISTRATION_FAILED';
-      sendSanitizedError(res, error, 'ROUTES_HANDLER_FAILED_19', { logContext: { site: 'routes.ts:migrated-19' } });
-    }
-  });
 
   // =================== INTERNAL INVITATION SYSTEM ===================
   // Separate sign-up flow for staff, contractors, and franchisees

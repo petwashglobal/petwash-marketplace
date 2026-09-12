@@ -967,8 +967,16 @@ export async function postLoginDecider(req: Request, res: Response) {
     // super_admin branch can honor `intent=provider|loyalty|customer|member`
     // and land the same account on the surface it asked for this session.
     // Falls back to the stored signupIntent for a returning user who set
-    // their preference at signup time.
-    const routingIntent = (typeof intent === 'string' && intent) || (u as any)?.signupIntent || null;
+    // their preference at signup time — ONLY while that intent still steers
+    // onboarding. Once the provider application is APPROVED the stored
+    // 'provider' hint must not decide the workspace any more: before
+    // 2026-09-12 it did, so an approved provider who signed up through
+    // /become-provider was sent to /provider-os on every login and never
+    // saw the /mode picker (every approved provider is also a Pet Parent —
+    // CEO role-mode model 2026-08-26). Explicit per-session intent still wins.
+    const providerApproved = providerApp?.status === 'approved';
+    const storedIntent = providerApproved ? null : ((u as any)?.signupIntent || null);
+    const routingIntent = (typeof intent === 'string' && intent) || storedIntent;
 
     // Prestige membership signal — used ONLY for tile/badge rendering
     // (CEO 2026-08-26 role-model: Prestige is a membership, not a role).

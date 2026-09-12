@@ -97,7 +97,6 @@ describe('isImmersiveRoute behaviour', () => {
     expect(isImmersiveRoute('/join/sitter')).toBe(true);
     expect(isImmersiveRoute('/join/trainer')).toBe(true);
     expect(isImmersiveRoute('/activate-account')).toBe(true);
-    expect(isImmersiveRoute('/consent-onboarding')).toBe(true);
     expect(isImmersiveRoute('/admin/kyc')).toBe(true);
     expect(isImmersiveRoute('/pet-wash-ltd/executive/kyc')).toBe(true);
     expect(isImmersiveRoute('/access-pending')).toBe(true);

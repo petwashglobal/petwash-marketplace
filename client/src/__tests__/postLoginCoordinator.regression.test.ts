@@ -10,7 +10,7 @@
  *
  *   Affected raw-fetch sites:
  *     SignIn.tsx, SignUp.tsx (3x), GoogleOneTap.tsx (with setTimeout(500)),
- *     useAccountNavigation.ts, NotificationConsent.tsx, CompleteProfile.tsx
+ *     useAccountNavigation.ts, CompleteProfile.tsx
  *
  * After PR-FRES-B:
  *   ONE canonical pipeline: client/src/lib/postLoginCoordinator.ts
@@ -201,15 +201,10 @@ describe('PR-FRES-B caller-integration source pins', () => {
     expect(src).not.toMatch(/fetch\([^)]*['"]\/api\/auth\/post-login['"]/);
   });
 
-  it('17. NotificationConsent routes through coordinator', () => {
-    const src = read('client/src/pages/NotificationConsent.tsx');
-    expect(src).toMatch(/import\s*\{\s*resolvePostLogin\s*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
-    expect(src).not.toMatch(/fetch\([^)]*['"]\/api\/auth\/post-login['"]/);
-  });
-
   it('18. CompleteProfile routes through coordinator', () => {
     const src = read('client/src/pages/CompleteProfile.tsx');
-    expect(src).toMatch(/import\s*\{\s*resolvePostLogin\s*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
+    // #2421 also imports invalidatePostLoginCache from the coordinator.
+    expect(src).toMatch(/import\s*\{[^}]*\bresolvePostLogin\b[^}]*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
     expect(src).not.toMatch(/fetch\([^)]*['"]\/api\/auth\/post-login['"]/);
   });
 
