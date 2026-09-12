@@ -356,36 +356,12 @@ export default function Subscriptions() {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="deliveryCity"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>City *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Tel Aviv" {...field} data-testid="input-city" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="deliveryPostalCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Postal Code *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="12345" {...field} data-testid="input-postal-code" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
+                    {/* City + מיקוד live inside GooglePlacesAutocomplete above and are
+                        mirrored into deliveryCity / deliveryPostalCode by its onChange.
+                        This page used to render its OWN pair as well, so the customer
+                        saw TWO postal-code boxes on one screen with different labels and
+                        contradictory placeholders — the component's Israeli "לדוג׳ 6291302"
+                        and this one's US-style "12345" — and only this one was submitted. */}
                     <FormField
                       control={form.control}
                       name="frequency"
