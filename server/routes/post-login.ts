@@ -459,38 +459,15 @@ export async function postLoginDecider(req: Request, res: Response) {
       }
     }
 
-    // Social OAuth users (Google, Apple, Facebook) never write acceptedTerms to
-    // Firestore because they bypass the signup form. If termsAcceptedAt is still
-    // missing after the Firestore sync above, check Firebase Auth provider data
-    // and stamp it here — synchronously, before the routing decision runs.
-    if (!(user as any).termsAcceptedAt) {
-      try {
-        const fbAdminModule = await import('../lib/firebase-admin');
-        const fbAuth = fbAdminModule.auth;
-        if (fbAuth) {
-          const firebaseUser = await fbAuth.getUser(userId);
-          const socialProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
-          const isSocial = firebaseUser.providerData?.some(
-            (p) => socialProviders.includes(p.providerId)
-          );
-          if (isSocial) {
-            const consentNow = new Date();
-            await storage.updateUser(userId, {
-              termsAcceptedAt: consentNow,
-              privacyAcceptedAt: consentNow,
-            });
-            (user as any).termsAcceptedAt = consentNow;
-            (user as any).privacyAcceptedAt = consentNow;
-            logger.info('[PostLogin] ✅ termsAcceptedAt stamped for social user (synchronous)', {
-              userId,
-              providers: firebaseUser.providerData?.map((p) => p.providerId),
-            });
-          }
-        }
-      } catch (socialTermsErr) {
-        logger.warn('[PostLogin] Failed to stamp social terms (non-blocking)', { userId, error: String(socialTermsErr) });
-      }
-    }
+    // NO silent consent. Until 2026-09-12 a social (Google/Apple) sign-in
+    // stamped termsAcceptedAt + privacyAcceptedAt right here, with no version,
+    // before the user had seen a single PetWash screen — which is why the
+    // /complete-profile consent line never appeared for them (7 of 8 consents
+    // in prod were versionless auto-stamps). OAuth authenticates identity; it
+    // does not accept Terms. The ONLY writers of termsAcceptedAt are the
+    // explicit ticks: /api/auth/session (manual form), Phase-1 signup and
+    // completeProfile below (with ageConfirmed18Plus). A missing consent
+    // therefore routes to /complete-profile, exactly as the CEO flow wants.
 
     if ((user as any).blocked) {
       return res.json({
@@ -556,14 +533,14 @@ export async function postLoginDecider(req: Request, res: Response) {
               const nameParts = (firebaseUser.displayName || '').trim().split(/\s+/);
               const derivedFirst = (user as any).firstName || nameParts[0] || '';
               const derivedLast = (user as any).lastName || nameParts.slice(1).join(' ') || '';
-              const now = new Date();
+              // Seeds role + name from the provider ONLY. Consent is never
+              // seeded here (2026-09-12) — see the note above the routing
+              // decision: OAuth authenticates, it does not accept Terms.
               const updatePayload: Record<string, any> = {
                 role: 'customer',
                 signupIntent: 'customer',
                 accessLevel: 1,
                 userStatus: 'profile_incomplete',
-                termsAcceptedAt: now,
-                privacyAcceptedAt: now,
               };
               if (derivedFirst && !(user as any).firstName) updatePayload.firstName = derivedFirst;
               if (derivedLast && !(user as any).lastName)   updatePayload.lastName  = derivedLast;

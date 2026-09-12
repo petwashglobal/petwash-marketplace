@@ -57,3 +57,23 @@ describe('member profile gate', () => {
     expect(postLogin).toMatch(/ageConfirmed18Plus/);
   });
 });
+
+describe('no silent consent on social login (CEO 2026-09-12)', () => {
+  const pl = read('server/routes/post-login.ts');
+  it('post-login never stamps termsAcceptedAt/privacyAcceptedAt on its own', () => {
+    // The two auto-stamps that made /complete-profile skip the consent line:
+    expect(pl).not.toContain('stamped for social user');
+    expect(pl).not.toMatch(/termsAcceptedAt:\s*consentNow/);
+    expect(pl).not.toMatch(/termsAcceptedAt:\s*now,/);
+    expect(pl).not.toMatch(/privacyAcceptedAt:\s*now,/);
+    // The only remaining consent writes in this file are completeProfile's explicit ones.
+    expect((pl.match(/updates\.termsAcceptedAt = now/g) || []).length).toBe(1);
+    expect((pl.match(/updates\.privacyAcceptedAt = now/g) || []).length).toBe(1);
+    // …and they stay gated on the explicit 18+ attestation.
+    expect(pl).toContain('AGE_CONFIRMATION_REQUIRED');
+  });
+  it('a real prior acceptance recorded in Firestore is still honoured (backfill, not invention)', () => {
+    expect(pl).toContain('Backfilled termsAcceptedAt from Firestore acceptedTerms');
+    expect(pl).toMatch(/fsData\?\.acceptedTerms === true && fsData\?\.consentTimestamp/);
+  });
+});

@@ -121,7 +121,7 @@ export default function WelcomeBack() {
             <div className="text-2xl font-semibold leading-tight" style={{ textAlign: he ? 'right' : 'left' }}>
               {he ? 'חיות נקיות' : 'Clean pets'}<br />{he ? 'חיים שמחים' : 'happier lives'}
             </div>
-            <div className="text-[10px] tracking-[0.2em] mt-2 opacity-80">CLEAN PETS. HAPPIER LIVES.</div>
+            <div className="text-[10px] tracking-[0.2em] mt-2 opacity-80" dir="ltr" style={{ textAlign: he ? 'right' : 'left' }}>CLEAN PETS. HAPPIER LIVES.</div>
           </figcaption>
         </figure>
 
