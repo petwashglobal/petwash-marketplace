@@ -71,8 +71,24 @@ console.log(`pins gate: ${report.numTotalTestSuites} files, ${report.numTotalTes
 if (healed.length) console.log(`pins gate: ${healed.length} baselined file(s) are GREEN now — remove them from ${rel(BASELINE)}:\n  ` + healed.join('\n  '));
 if (missing.length) console.log(`pins gate: ${missing.length} baselined file(s) no longer exist — remove them:\n  ` + missing.join('\n  '));
 if (newRed.length) {
-  console.error(`\npins gate: ${newRed.length} test file(s) are RED and not in the baseline:\n  ` + newRed.join('\n  ') +
-    '\n\nFix the code or the pin. Do not add to the baseline.');
+  console.error(`\npins gate: ${newRed.length} test file(s) are RED and not in the baseline:\n  ` + newRed.join('\n  '));
+  // Print WHY. The suite runs --silent (a full-suite log is unreadable), so
+  // without this the operator sees a filename and nothing else and has to
+  // reproduce locally — where an environment-dependent failure will not
+  // reproduce at all. The JSON reporter already carries the messages.
+  for (const file of newRed) {
+    const suite = report.testResults.find((t) => rel(t.name) === file);
+    console.error(`\n──── ${file}`);
+    if (suite?.message) console.error(String(suite.message).split('\n').slice(0, 12).join('\n'));
+    for (const a of suite?.assertionResults ?? []) {
+      if (a.status !== 'failed') continue;
+      console.error(`  ✗ ${a.fullName || a.title}`);
+      for (const m of (a.failureMessages ?? []).slice(0, 1)) {
+        console.error('    ' + String(m).split('\n').slice(0, 10).join('\n    '));
+      }
+    }
+  }
+  console.error('\nFix the code or the pin. Do not add to the baseline.');
   process.exit(1);
 }
 console.log('pins gate: OK — no new red test file.');
