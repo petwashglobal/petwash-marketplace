@@ -509,7 +509,9 @@ async function searchGroomers(filters: MarketplaceSearchFilters): Promise<{
     }
 
     if (filters.verifiedOnly) {
-      conditions.push(eq(trainers.verificationStatus, 'verified'));
+      // 'approved' is what the trainer approval writes (academy.ts) and what every
+      // other list reads; 'verified' was a value no code path ever wrote (audit 2026-09-12).
+      conditions.push(eq(trainers.verificationStatus, 'approved'));
     }
 
     const results = await db.select().from(trainers)
