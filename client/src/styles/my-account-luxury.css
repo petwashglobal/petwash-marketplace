@@ -560,7 +560,10 @@
   border: 1.5px solid #e8e3d9;
   border-radius: 14px;
   padding: 12px 16px;
-  font-size: 15px;
+  /* iOS FORM-ZOOM FLOOR (CEO 2026-09-12) — every My Account field. Below 16px
+     iPhone zooms the page on focus and never restores it, which is what
+     "not easy to put info in and save" looks like. Was 15px. Never lower it. */
+  font-size: 16px;
   color: #111118;
   transition: all 0.25s ease;
   width: 100%;

@@ -4569,7 +4569,13 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
 .intl-phone-wrapper .PhoneInputCountrySelect {
   border: none;
   background: transparent;
-  font-size: 14px;
+  /* iOS FORM-ZOOM FLOOR (CEO 2026-09-12): iOS Safari zooms the whole page in
+     when a form control smaller than 16px receives focus, and it does NOT zoom
+     back out. Our viewport meta has no maximum-scale (correct — pinch-zoom is
+     an accessibility right), so 16px is the only thing standing between a
+     customer and a page stuck at 1.3x while they type their phone number.
+     Was 14px. Never lower it. */
+  font-size: 16px;
   cursor: pointer;
   padding: 0;
   outline: none;
@@ -4583,7 +4589,11 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
   min-width: 0;
   border: none;
   outline: none;
-  font-size: 15px;
+  /* iOS FORM-ZOOM FLOOR — see .PhoneInputCountrySelect above. This is THE
+     phone field on signup and OTP login: the first thing an Israeli customer
+     ever types into PetWash. At 15px iPhone zoomed the page on the first tap.
+     Was 15px. Never lower it. */
+  font-size: 16px;
   background: transparent;
   color: #1a1a1a;
   padding: 4px 0;
