@@ -113,25 +113,23 @@ describe('PrestigeHome actually applies the rule', () => {
     expect(card).toMatch(/\{redeemCard\.crowned && <Crown/);
   });
 
-  it('no QR token is minted for an account that cannot redeem', () => {
+  it('no QR token is minted from this page at all', () => {
+    // Superseded the earlier `enabled: !!user && redeemCard.show` gate: the
+    // prestige-pass mint was removed outright, because the bay cannot read its
+    // tokens. See homeRedeemQrIsBayValid.behavior.test.ts. Each run of that
+    // query also wrote a prestige_qr_tokens doc to Firestore every 110s.
     const src = page();
-    const at = src.indexOf("'/api/prestige-pass/token/generate'");
-    expect(at).toBeGreaterThan(-1);
-    // The FIRST `enabled:` after the token/generate marker is that query's own
-    // (slicing to the next '});' catches the `{}` in the apiRequest call).
-    const enabledAt = src.indexOf('enabled:', at);
-    expect(enabledAt).toBeGreaterThan(-1);
-    const line = src.slice(enabledAt, src.indexOf('\n', enabledAt));
-    expect(line, 'the QR query still runs for everyone — it writes a Firestore doc every 110s')
-      .toMatch(/enabled:\s*!!user\s*&&\s*redeemCard\.show/);
+    expect(src).not.toMatch(/apiRequest\(\s*'POST'\s*,\s*'\/api\/prestige-pass\/token\/generate'/);
+    expect(src).not.toContain("queryKey: ['/api/prestige-pass/token/generate']");
   });
 
-  it('the decision is computed before the QR query, not after it', () => {
+  it('the decision is still computed before it is used', () => {
     const src = page();
     const decidedAt = src.indexOf('const redeemCard = redeemCardDecision(');
-    const queryAt = src.indexOf("'/api/prestige-pass/token/generate'");
+    const usedAt = src.indexOf('{redeemCard.show && (');
     expect(decidedAt).toBeGreaterThan(-1);
-    expect(decidedAt, 'redeemCard must be in scope where the query is declared').toBeLessThan(queryAt);
+    expect(usedAt).toBeGreaterThan(-1);
+    expect(decidedAt).toBeLessThan(usedAt);
   });
 
   it('normalizeSummary is still called exactly once', () => {

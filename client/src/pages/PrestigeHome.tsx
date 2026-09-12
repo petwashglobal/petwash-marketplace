@@ -17,7 +17,6 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { QRCodeSVG } from 'qrcode.react';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
@@ -161,24 +160,6 @@ export default function PrestigeHome() {
     staleTime: 60_000,
   });
 
-  // Live, short-lived QR token for the membership card (same rail the kiosk reads).
-  const { data: qr } = useQuery({
-    queryKey: ['/api/prestige-pass/token/generate'],
-    queryFn: async () => {
-      try {
-        const r = await apiRequest('POST', '/api/prestige-pass/token/generate', {});
-        return r.ok ? r.json() : {};
-      } catch { return {}; }
-    },
-    enabled: !!user && redeemCard.show,
-    // The token lives 45 seconds (QR_TTL_SECONDS in prestige-pass.ts). The old
-    // 110-second refresh left an EXPIRED code on screen ~60% of the time — the
-    // "QR is not ok" the CEO saw at the bay (2026-09-12). Refresh well inside
-    // the TTL; the generate route allows 30/min, this uses 1.5/min.
-    staleTime: 0,
-    refetchInterval: 40_000,
-    refetchIntervalInBackground: false,
-  });
 
   // Latest wallet/receipt activity — real ledger events, newest first.
   const { data: hist } = useQuery({
@@ -217,7 +198,6 @@ export default function PrestigeHome() {
         ? (isHe ? `${_petNames[0]} מוכן/ה לפינוק הבא ✨` : `${_petNames[0]} is ready for the next pamper ✨`)
         : (isHe ? `${_petNames.slice(0, 2).join(' ו')} מחכים לפינוק הבא ✨` : `${_petNames.slice(0, 2).join(' & ')} are ready for the next pamper ✨`);
 
-  const qrToken: string | undefined = qr?.token || qr?.qrToken || qr?.value;
   const memberId = s.memberId || '—';
 
   const copyMemberId = async () => {
@@ -387,20 +367,40 @@ export default function PrestigeHome() {
               {redeemCard.crowned && <Crown className="w-5 h-5" style={{ color: GOLD }} />}
             </div>
             <div className="mt-3 flex items-end justify-between gap-3">
-              <div className="bg-white rounded-xl p-2.5">
-                {qrToken ? (
-                  <QRCodeSVG value={qrToken} size={104} level="M" includeMargin={false} />
-                ) : (
-                  <div className="w-[104px] h-[104px] flex items-center justify-center text-gray-300"><QrCode className="w-10 h-10" /></div>
-                )}
-              </div>
+              {/* Tap to redeem — NOT a parked barcode.
+                  This tile used to paint a QR minted by
+                  POST /api/prestige-pass/token/generate. The bay cannot read
+                  that token: the Cortina money path verifies with
+                  verifyQrRedeemToken (passTokens.ts, base64url signature,
+                  purpose 'qr-redeem'), while prestige-pass signs hex with no
+                  purpose field — rejected as INVALID_SIGNATURE before anything
+                  else is even looked at. #2412 tightened this query's refresh
+                  from 110s to 40s so the code would not also be expired; that
+                  fixed the third fault but the token was still unreadable, so
+                  the whole mint goes rather than the interval.
+                  A 45-second authorization belongs on the redeem screen, minted
+                  at the moment of use: /wallet/redeem -> K9000Redeem ->
+                  POST /api/k9000/generate-qr -> buildQrRedeemToken, the one mint
+                  the bay actually accepts. */}
+              <button
+                type="button"
+                onClick={() => navigate('/wallet/redeem')}
+                data-testid="prestige-redeem-cta"
+                aria-label={isHe ? 'מימוש בעמדה' : 'Redeem at the bay'}
+                className="bg-white rounded-xl p-2.5 w-[124px] h-[124px] flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-transform"
+              >
+                <QrCode className="w-11 h-11" style={{ color: '#0c6b48' }} />
+                <span className="text-[11px] font-semibold leading-tight text-center" style={{ color: '#0c6b48' }}>
+                  {isHe ? 'מימוש בעמדה' : 'Redeem at bay'}
+                </span>
+              </button>
               <div className="text-right flex-1">
                 <p className="text-[10px] uppercase tracking-wider" style={{ color: `${GOLD}cc` }}>{isHe ? 'מספר חבר' : 'Member ID'}</p>
                 <button onClick={copyMemberId} className="inline-flex items-center gap-1.5 text-white font-mono text-sm mt-0.5">
                   {memberId}
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5 opacity-70" />}
                 </button>
-                <p className="text-[10px] text-white/50 mt-2">{isHe ? 'הצג/י בעמדה למימוש' : 'Show at the bay to redeem'}</p>
+                <p className="text-[10px] text-white/50 mt-2">{isHe ? 'הקישו למימוש — הקוד נוצר בעמדה' : 'Tap to redeem — the code is created at the bay'}</p>
               </div>
             </div>
           </div>
