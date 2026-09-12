@@ -42,6 +42,28 @@ jobs:
       - name: No new unreachable route
         run: python3 scripts/guards/no_new_unreachable_route.py
 
+  # ── Every pin runs ─────────────────────────────────────────────────────────
+  # 2026-09-13: server/tests held 782 test files and the gates named ~115 of
+  # them; the other ~670 (incl. ~50 regression pins from the week of 09-12)
+  # ran once on a laptop and never again. This job runs the WHOLE vitest
+  # suite and fails only on a test FILE that is red and not in the frozen
+  # baseline (scripts/ci/pins_red_baseline.txt). Baseline entries that heal
+  # are reported for removal. See scripts/ci/pins_with_baseline.mjs.
+  regression-pins:
+    name: regression-pins
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - name: Whole suite vs frozen red baseline
+        env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
+        run: node scripts/ci/pins_with_baseline.mjs
+
   money-tests:
     name: money-tests
     runs-on: ubuntu-latest

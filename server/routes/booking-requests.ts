@@ -3336,7 +3336,13 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     // should only reach provider_marked_complete AFTER payment (paymentHeldAt is
     // set by the Nayax confirm webhook). If it's missing, refuse to pay out —
     // otherwise a provider could be paid from escrow that never existed.
-    if (!booking.paymentHeldAt) {
+    // Wallet-funded bookings (2026-09-13): paymentHeldAt is written ONLY by
+    // the card rail's /sumit-return, so a booking paid entirely from wallet
+    // credit (debited at provider accept, walletDebitedCents > 0) could never
+    // be confirmed — 409 forever, and the completion receipt below was dead
+    // code for it. A committed wallet debit IS the held payment.
+    const walletPaid = Number((booking as any).walletDebitedCents) > 0;
+    if (!booking.paymentHeldAt && !walletPaid) {
       logger.error('[BookingRequests] Confirm-completion blocked — no payment was held for this booking', {
         requestId, providerId: booking.providerId, status: booking.status,
       });
@@ -3979,7 +3985,11 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           subtotalAmount: (booking.subtotalCents || 0) / 100,
           platformFeeAmount: commissionIls,
           totalAmount: (booking.totalCents || booking.subtotalCents || 0) / 100,
-          paymentMethod: 'Escrow (card)',
+          // Real tender on the legal document (2026-09-13): was hard-coded
+          // "Escrow (card)" even when the wallet paid.
+          paymentMethod: Number((booking as any).walletDebitedCents) > 0
+            ? (booking.paymentHeldAt ? 'PetWash Wallet + card' : 'PetWash Wallet')
+            : 'Escrow (card)',
           providerPayoutAmount:
             (booking.providerPayoutCents ?? ((booking.subtotalCents || 0) - (booking.serviceFeeCents || 0))) / 100,
           brokerCommissionAmount: commissionIls,

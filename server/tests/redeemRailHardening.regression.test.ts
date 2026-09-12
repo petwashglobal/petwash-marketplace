@@ -22,11 +22,15 @@ const PP = R('server/routes/prestige-pass.ts');
 const PR = R('server/routes/pass-redeem.ts');
 
 describe('1. Cortina: one scan, one debit, and revoked passes stay revoked', () => {
-  it('burns the nonce in the shared registry and compares qr_token_version', () => {
+  it('burns the nonce in the shared registry and compares qr_token_version — ONE guard for BOTH rails (2026-09-13)', () => {
+    const GUARD = R('server/lib/redeemTokenGuard.ts');
+    expect(GUARD).toContain('INSERT INTO petwash_pass_nonce_registry (nonce, pass_id, expires_at, used_at)');
+    expect(GUARD).toContain("throw new Error('TOKEN_REPLAYED')");
+    expect(GUARD).toContain("throw new Error('TOKEN_REVOKED')");
     expect(CORTINA).toMatch(/async function resolveUserIdFromDynamicQr\(code: string\): Promise<string>/);
-    expect(CORTINA).toContain('INSERT INTO petwash_pass_nonce_registry (nonce, pass_id, expires_at, used_at)');
-    expect(CORTINA).toContain("throw new Error('TOKEN_REPLAYED')");
-    expect(CORTINA).toContain("throw new Error('TOKEN_REVOKED')");
+    expect(CORTINA).toContain('await enforceRedeemTokenFreshness(p);');
+    expect(K9000).toContain('await enforceRedeemTokenFreshness(payload);');
+    expect(K9000).toContain("if (reason === 'TOKEN_REVOKED')");
     expect((CORTINA.match(/userId = await resolveUserIdFromDynamicQr\(code\)/g) || []).length).toBe(2);
   });
 });

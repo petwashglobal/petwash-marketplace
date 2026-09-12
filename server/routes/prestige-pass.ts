@@ -55,7 +55,8 @@ import { buildPassLinkToken, buildQrRedeemToken } from '../lib/passTokens';
 import { resolveMemberTier, tierLabel } from '../lib/memberTier';
 import { tierDisplay as tierDisplayFor } from '@shared/lib/tierLabels';
 import { ensureMemberIdentity, findMemberIdentity } from '../lib/memberIdentity';
-import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
+import { petwashPassAccounts, users, appleWalletDeviceRegistrations, PETWASH_COMMISSION_RATE } from '@shared/schema';
+import { runFiscalDocumentAndPersistOnFailure, FiscalOutboxUnavailableError } from '../services/fiscalDocumentOutbox';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
 import { requireStaffApproved } from '../middleware/gates';
@@ -5052,6 +5053,62 @@ router.post('/admin/wallet/academy/:id/force-confirm', async (req: Request, res:
       walletUpdates.wallet_debited_cents = Number(booking.wallet_hold_cents);
       txnId = debitResult.txnId;
       logger.info('[AdminWallet][ForceConfirm] Wallet debited', { bookingId, txnId, adminUid: uid });
+
+      // Customer receipt (2026-09-13): the trainer-confirm path in academy.ts
+      // issues the PROVIDER_BOOKING_COMMISSION document at this same wallet
+      // debit through the durable outbox; this admin path debited the wallet
+      // and issued NOTHING. Same kind + payload shape, so the drainer can
+      // retry it with the academy handler. Never fails the override.
+      const totalAmountIls = Number(booking.wallet_hold_cents) / 100;
+      try {
+        const outcome = await runFiscalDocumentAndPersistOnFailure({
+          pool,
+          kind: 'academy_receipt',
+          sourceKey: `booking:${bookingId}`,
+          payload: {
+            platform: 'academy',
+            paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+            bookingId,
+            trainerId: booking.trainer_id,
+            trainerUserId: booking.trainer_user_id,
+            customerUserId: booking.user_id,
+            totalAmountIls,
+            actorSource: 'admin_override',
+          },
+          runNow: async () => {
+            const { IsraeliDigitalReceiptService } = await import('../services/IsraeliDigitalReceiptService');
+            const [cust] = await db.select({ email: users.email, first: users.firstName, last: users.lastName })
+              .from(users).where(eq(users.id, booking.user_id)).limit(1);
+            const [trn] = booking.trainer_user_id
+              ? await db.select({ first: users.firstName, last: users.lastName }).from(users).where(eq(users.id, booking.trainer_user_id)).limit(1)
+              : [undefined];
+            const platformFeeAmount = Math.round(totalAmountIls * PETWASH_COMMISSION_RATE * 100) / 100;
+            await IsraeliDigitalReceiptService.generateReceipt({
+              platform: 'academy',
+              paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+              bookingId,
+              customerEmail: cust?.email || '',
+              customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
+              providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainer_id}`,
+              providerId: String(booking.trainer_id),
+              providerType: 'trainer',
+              serviceDescription: 'Pet Wash Academy training session',
+              serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
+              subtotalAmount: totalAmountIls,
+              platformFeeAmount,
+              totalAmount: totalAmountIls,
+              paymentMethod: 'PetWash Wallet',
+              providerPayoutAmount: Math.round((totalAmountIls - platformFeeAmount) * 100) / 100,
+              brokerCommissionAmount: platformFeeAmount,
+            });
+          },
+        });
+        if (!outcome.ranInline) logger.warn('[AdminWallet][ForceConfirm] Receipt enqueued to outbox for retry', { bookingId, inlineError: outcome.inlineError });
+      } catch (receiptErr: any) {
+        logger.error('[AdminWallet][ForceConfirm] Receipt failed inline AND outbox — needs manual issue', {
+          bookingId, err: receiptErr instanceof FiscalOutboxUnavailableError ? receiptErr.message : String(receiptErr?.message ?? receiptErr),
+        });
+      }
     }
 
     await db.execute(sql`
