@@ -58,80 +58,9 @@ interface PawPost {
 
 interface PawFinderProps {
   language: Language;
+  /** Deep link /paw-finder/:id — opens that post's detail on load (2026-09-12). */
+  initialPostId?: number;
 }
-
-/* -------------------------------------------------------------------------
-   DEMO / FEATURED POSTS — always visible, seeded from the owner's images
-------------------------------------------------------------------------- */
-
-const DEMO_PETS: PawPost[] = [
-  {
-    id: -1,
-    post_key: 'demo-dog-1',
-    post_type: 'lost',
-    pet_type: 'dog',
-    pet_name: 'לוקי',
-    breed: 'Golden Retriever',
-    color_primary: 'זהוב',
-    size_category: 'large',
-    sex: 'male',
-    city: 'תל אביב',
-    area: 'הצפון הישן',
-    description: 'לוקי — גולדן רטריבר זהוב, גיל 3. נעלם מאזור הצפון הישן תל אביב. מגיב לשמו בעברית ובאנגלית. חובש קולר כחול כהה. אוהב אנשים ומגיע לקריאה. אם ראיתם אותו — אנא צרו קשר מיד. תגמול נדיב למוצא.',
-    reward_amount: '1000',
-    event_date: '2026-04-10',
-    status: 'published',
-    matched_post_count: 0,
-    latitude: '32.09',
-    longitude: '34.78',
-    primary_media: '/paw-finder/demo-dog.jpg',
-    published_at: '2026-04-10T18:00:00.000Z',
-  },
-  {
-    id: -2,
-    post_key: 'demo-cat-1',
-    post_type: 'lost',
-    pet_type: 'cat',
-    pet_name: 'מישי',
-    breed: 'British Shorthair',
-    color_primary: 'אפור',
-    size_category: 'medium',
-    sex: 'female',
-    city: 'רמת גן',
-    area: 'שכונת כצנלסון',
-    description: 'מישי — חתולה פרסית אפורה עם עיניים ענבריות זהובות. נעלמה מהבית ברמת גן. מסורסת, ללא קולר. ביישנית עם זרים אך תגיע למי שקורא לה בשמה ומחזיק מזון. אנא עזרו לנו להחזיר אותה הביתה!',
-    reward_amount: '500',
-    event_date: '2026-04-12',
-    status: 'published',
-    matched_post_count: 0,
-    latitude: '32.08',
-    longitude: '34.82',
-    primary_media: '/paw-finder/demo-cat.jpg',
-    published_at: '2026-04-12T10:00:00.000Z',
-  },
-  {
-    id: -3,
-    post_key: 'demo-bird-1',
-    post_type: 'lost',
-    pet_type: 'bird',
-    pet_name: 'ריו',
-    breed: 'African Grey',
-    color_primary: 'אפור',
-    size_category: null as unknown as string,
-    sex: 'male',
-    city: 'הרצליה',
-    area: 'הרצליה פיתוח',
-    description: 'ריו — תוכי אפור אפריקאי בגיל 7 שנים. עף מהמרפסת בהרצליה פיתוח. מדבר ומחקה קולות בעברית ובאנגלית. צבעו אפור כהה עם זנב אדום. אם שמעת ציפור מדברת בסביבתך — זה יכול להיות ריו! תגמול ₪2,000 למוצא.',
-    reward_amount: '2000',
-    event_date: '2026-04-08',
-    status: 'published',
-    matched_post_count: 0,
-    latitude: '32.16',
-    longitude: '34.84',
-    primary_media: '/paw-finder/demo-bird.jpg',
-    published_at: '2026-04-08T09:00:00.000Z',
-  },
-];
 
 /* -------------------------------------------------------------------------
    FEATURED PET CARD — large visual card for pinned/demo posts
@@ -229,6 +158,7 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
           ) : null}
           {/* Spread the alert — every share helps a lost pet get home (viral loop). */}
           <SocialShare
+            url={`${typeof window !== 'undefined' ? window.location.origin : 'https://petwash.co.il'}/paw-finder/${post.id}`}
             title={`עזרו למצוא את ${post.pet_name || 'החיה האבודה'} | PawFinder™‎`}
             description={post.description || ''}
             showLabels={false}
@@ -1264,7 +1194,7 @@ function ContactsTab({ user }: { user: any }) {
   );
 }
 
-export default function PawFinder({ language }: PawFinderProps) {
+export default function PawFinder({ language, initialPostId }: PawFinderProps) {
   useSEO(pageSEO.pawFinder);
   const isHe = language === 'he';
   const { user } = useFirebaseAuth();
@@ -1315,7 +1245,26 @@ export default function PawFinder({ language }: PawFinderProps) {
   const unreadCount = notifQ.data?.unreadCount ?? 0;
 
   const posts: PawPost[] = data?.rows ?? [];
-  const selectedPost = selectedId ? posts.find(p => p.id === selectedId) : null;
+
+  // Deep link (2026-09-12): /paw-finder/:id selects that post once the list
+  // is in; a post outside the current filter is fetched on its own.
+  useEffect(() => {
+    if (initialPostId && Number.isFinite(initialPostId)) setSelectedId(initialPostId);
+  }, [initialPostId]);
+  const deepLinkedMissing = !!selectedId && !isLoading && !posts.some(p => p.id === selectedId) && selectedId === initialPostId;
+  const singleQ = useQuery<{ post: PawPost }>({
+    queryKey: ['/api/paw-finder/posts', 'single', selectedId],
+    queryFn: async () => {
+      const r = await apiRequest(`/api/paw-finder/posts/${selectedId}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.json();
+    },
+    enabled: deepLinkedMissing,
+    retry: false,
+  });
+  const selectedPost = selectedId
+    ? (posts.find(p => p.id === selectedId) ?? (singleQ.data?.post?.id === selectedId ? singleQ.data.post : null))
+    : null;
 
   const handleMapSelect = useCallback((id: number) => setSelectedId(id), []);
 

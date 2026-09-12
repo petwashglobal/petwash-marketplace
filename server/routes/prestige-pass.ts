@@ -53,6 +53,7 @@ import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken, buildQrRedeemToken } from '../lib/passTokens';
 import { resolveMemberTier, tierLabel } from '../lib/memberTier';
+import { tierDisplay as tierDisplayFor } from '@shared/lib/tierLabels';
 import { ensureMemberIdentity, findMemberIdentity } from '../lib/memberIdentity';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
@@ -461,18 +462,14 @@ const TIER_VARIANT: Record<string, 'black' | 'gold' | 'platinum'> = {
   bronze: 'gold', new: 'gold',
 };
 
-// Prestige tier display names
-const TIER_DISPLAY: Record<string, { en: string; he: string }> = {
-  vip:      { en: 'Prestige Black',    he: 'Prestige שחור' },
-  elite:    { en: 'Prestige Black',    he: 'Prestige שחור' },
-  diamond:  { en: 'Prestige Black',    he: 'Prestige שחור' },
-  black:    { en: 'Prestige Black',    he: 'Prestige שחור' },
-  platinum: { en: 'Prestige Platinum', he: 'Prestige פלטינום' },
-  gold:     { en: 'Prestige Gold',     he: 'Prestige זהב' },
-  silver:   { en: 'Prestige Silver',   he: 'Prestige כסף' },
-  bronze:   { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
-  new:      { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
-};
+// Prestige tier display names — ONE ladder (2026-09-12): derived from the
+// CEO-locked names in shared/schema-loyalty.ts via shared/lib/tierLabels.ts.
+// Before, this map said "Prestige Pearl / Prestige Black" while the dashboard
+// said "Member / Diamond / Black Reserve" and the Apple pass said "DIAMOND".
+const TIER_DISPLAY: Record<string, { en: string; he: string }> = Object.fromEntries(
+  ['new', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal', 'vip', 'elite', 'black']
+    .map((t) => [t, tierDisplayFor(t)]),
+);
 
 // ─────────────────────────────────────────────────────────
 // RATE LIMITERS
@@ -1220,7 +1217,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
           {
             key:   'tier',
             label: 'TIER',
-            value: TIER_DISPLAY[tier]?.en || 'Prestige Pearl',
+            value: tierDisplayFor(tier).en,
           },
         ],
         auxiliaryFields: [
@@ -1310,7 +1307,7 @@ router.get('/google-wallet', async (req: Request, res: Response) => {
     const balance     = ((wallet?.cashWalletBalanceCents || 0) + (wallet?.egiftBalanceCents || 0)) / 100;
     const washes      = wallet?.washPackageCredits || 0;
     const serialNumber = passData.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`;
-    const tierDisplay  = TIER_DISPLAY[tier]?.en || 'Prestige Pearl';
+    const tierDisplay  = tierDisplayFor(tier).en;
 
     const issuerId   = process.env.GOOGLE_WALLET_ISSUER_ID;
     const classId    = process.env.GOOGLE_WALLET_CLASS_ID || `petwash.prestige`;
@@ -1667,7 +1664,7 @@ router.post('/activate', auditLogMiddleware('PRESTIGE_JOIN'), async (req: Reques
     // Derive card number if not supplied
     const passCardNumber = cardNumber || `${userId.slice(0, 4).toUpperCase()}${Date.now().toString().slice(-8)}`;
     const tierKey        = tier.toLowerCase();
-    const tierDisplay    = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
+    const tierDisplay    = tierDisplayFor(tierKey).en;
 
     // Upsert Firestore pass doc
     const passRef = firestoreDb.collection('prestige_passes').doc(userId);
@@ -1980,7 +1977,7 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
     }
 
     const tierKey    = pass.tier || 'new';
-    const tierDisplay = TIER_DISPLAY[tierKey]?.en || 'Prestige Pearl';
+    const tierDisplay = tierDisplayFor(tierKey).en;
     const appBaseUrl  = process.env.APP_BASE_URL || 'https://petwash.co.il';
 
     const [resendWallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);

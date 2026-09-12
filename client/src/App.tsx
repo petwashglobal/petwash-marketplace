@@ -428,6 +428,7 @@ const ProviderApplicationResubmit = lazy(() => import("@/pages/ProviderApplicati
 const ProviderDeclarations = lazy(() => import("@/pages/ProviderDeclarations"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
 const AdminWashPackages = lazy(() => import("@/pages/AdminWashPackages"));
+const AdminMembershipCards = lazy(() => import("@/pages/AdminMembershipCards"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
@@ -2643,6 +2644,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
+        {/* Membership cards — freeze / unfreeze / regenerate / print (2026-09-12) */}
+        <Route path="/admin/membership-cards">
+          {() => (
+            <AdminRouteGuard>
+              <AdminMembershipCards />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
         {/* Control Tower - Payments ledger view (SUMIT/uPay/Nayax/wallet) */}
         <Route path="/admin/payments">
           {() => (
@@ -3146,6 +3156,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/showcase">{() => <Redirect to="/" />}</Route>
         <Route path="/service-status">{() => <ServiceStatus language={language} />}</Route>
         {/* PR-NAV-2: removed duplicate /status registration (was unreachable — wouter takes first match at the SystemStatus route above) */}
+        {/* Deep link to ONE post — shared from a post card / social share (2026-09-12). */}
+        <Route path="/paw-finder/:id">{(params) => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} initialPostId={Number(params.id)} /></Layout>}</Route>
         <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/adoption">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionMaison /></Layout>}</Route>
         {/* The CEO (and marketing) type /adopt — it 404'd (2026-09-12). Alias, never a second page. */}

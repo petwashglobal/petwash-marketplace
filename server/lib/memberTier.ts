@@ -2,6 +2,7 @@ import { db } from '../db';
 import { eq } from 'drizzle-orm';
 import { privilegeMembers } from '@shared/schema';
 import { logger } from './logger';
+import { tierPassLabel } from '@shared/lib/tierLabels';
 
 /**
  * Member tier — ONE truth for every surface that shows or reports it.
@@ -38,11 +39,7 @@ export async function resolveMemberTier(loyaltyTier: string | undefined | null, 
 }
 
 /** What a pass or screen prints for a tier — never the raw 'new'. */
+/** ONE tier ladder (2026-09-12): the CEO-locked names in shared/schema-loyalty.ts, upper-cased for passes. */
 export function tierLabel(tier: string | undefined | null): string {
-  const t = (tier || 'new').toLowerCase();
-  const labels: Record<string, string> = {
-    new: 'MEMBER', bronze: 'BRONZE', silver: 'SILVER', gold: 'GOLD',
-    platinum: 'PLATINUM', diamond: 'DIAMOND', black: 'BLACK RESERVE',
-  };
-  return labels[t] ?? t.toUpperCase();
+  return tierPassLabel(tier);
 }
