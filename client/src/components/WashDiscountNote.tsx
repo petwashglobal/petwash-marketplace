@@ -4,7 +4,7 @@
  * server (GET /api/member/wash-discount — server-authoritative; the client never
  * computes the discount) and renders e.g.:
  *
- *   "Prestige 5% applied"            / "הנחת פרסטיז' 5% הוחלה"
+ *   "Prestige 5% applied"            / "הנחת Prestige 5% הוחלה"
  *   "Approved discount 10% applied"  / "הנחה מאושרת 10% הוחלה"
  *
  * Renders nothing when the member has no wash discount. White / black / gold,
@@ -51,7 +51,7 @@ export function WashDiscountNote({ className = '' }: { className?: string }) {
   // disability = the admin-approved postal-review discount.
   let label: string;
   if (data.source === 'prestige_basic') {
-    label = isHe ? `הנחת פרסטיז' ${pct}% הוחלה` : `Prestige ${pct}% applied`;
+    label = isHe ? `הנחת Prestige ${pct}% הוחלה` : `Prestige ${pct}% applied`;
   } else {
     label = isHe ? `הנחה מאושרת ${pct}% הוחלה` : `Approved discount ${pct}% applied`;
   }

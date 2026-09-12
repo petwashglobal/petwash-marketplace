@@ -99,7 +99,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     {
       id: 1,
       name: '⁦PetWash™⁩ Smart Hub',
-      nameHe: '⁦PetWash™⁩ סמארט האב',
+      nameHe: '⁦PetWash™⁩ Smart Hub',
       tagline: t('divisions.smartHub.tagline', language),
       description: t('divisions.smartHub.description', language),
       icon: Sparkles,
@@ -148,7 +148,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     {
       id: 6,
       name: '⁦Pet Wash Academy™⁩',
-      nameHe: 'אקדמיית ⁦Pet Wash™⁩',
+      nameHe: '⁦Pet Wash Academy™⁩',
       tagline: t('divisions.academy.tagline', language),
       description: t('divisions.academy.description', language),
       icon: GraduationCap,

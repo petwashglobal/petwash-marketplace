@@ -81,7 +81,7 @@ export const PLATFORM_CARDS: readonly PlatformCardContent[] = [
     href: '/paw-finder',
     status: 'live',
     title: {
-      he: 'פטפיינדר',
+      he: 'PetFinder',
       en: 'PetFinder',
     },
     headline: {
@@ -102,7 +102,7 @@ export const PLATFORM_CARDS: readonly PlatformCardContent[] = [
     href: '/pettrek',
     status: 'coming-soon',
     title: {
-      he: 'פטטרק',
+      he: 'PetTrek',
       en: 'PetTrek',
     },
     headline: {

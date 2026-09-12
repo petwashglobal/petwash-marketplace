@@ -349,7 +349,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                     data-testid={`button-express-checkout-${pkg.id}`}
                   >
                     {buyText}
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 rtl:rotate-180 ltr:group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
                   </button>
                 </div>
               </div>
