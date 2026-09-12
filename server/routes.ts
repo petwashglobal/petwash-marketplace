@@ -17493,16 +17493,31 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     try {
       const errorReport = req.body;
       
-      // Log error with full context
+      // Log error with full context.
+      // CEO 2026-09-12: `referenceId` MUST be logged. AppErrorBoundary shows the
+      // customer "Reference: <id>" and tells them to quote it to support — but
+      // this handler used to drop the field, so the one identifier a customer
+      // hands us was unfindable in Cloud Logging. (Proven with the real crash
+      // ref 0350c6f9: the crash was logged, the reference was not.) Same for
+      // errorKind / errorName / componentStack — without them a render crash
+      // and a stale-chunk reload look identical in the logs.
       logger.error('[Client Error]', {
+        referenceId: errorReport.referenceId,
+        errorKind: errorReport.errorKind,
+        errorName: errorReport.errorName,
+        repeatedChunkFailure: errorReport.repeatedChunkFailure,
         message: errorReport.message,
         context: errorReport.context,
         userId: errorReport.userId,
+        userRole: errorReport.userRole,
+        language: errorReport.language,
+        connectionType: errorReport.connectionType,
         action: errorReport.action,
         url: errorReport.url,
         userAgent: errorReport.userAgent,
         timestamp: errorReport.timestamp,
         stack: errorReport.stack,
+        componentStack: errorReport.componentStack,
         metadata: errorReport.metadata,
       });
 
@@ -17527,7 +17542,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
           .then((m) => m.reportFault(clientErr, {
             source: isBootFailure ? 'client-boot:white-screen' : `client:${errorReport?.context || 'app'}`,
             url: errorReport?.url,
-            traceId: errorReport?.userId,
+            // The customer-quoted reference is the searchable handle; fall back
+            // to the uid when a report arrives without one (e.g. client-boot).
+            traceId: errorReport?.referenceId || errorReport?.userId,
           }))
           .catch(() => { /* reporter must never break the log endpoint */ });
       }
