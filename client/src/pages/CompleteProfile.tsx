@@ -241,10 +241,12 @@ export default function CompleteProfile() {
         <p className="text-gray-500 mt-1" style={{ textAlign: isHe ? "right" : "left" }}>{subtitle}</p>
 
         {/* Identity from the sign-in provider — shown, not asked again */}
-        {(firstName || email) && !needs("firstName") && !needs("lastName") && (
+        {(firstName || email) && (
           <div className="mt-5 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm" data-testid="complete-profile-identity">
-            <div className="font-medium text-gray-900">{[firstName, lastName].filter(Boolean).join(" ")}</div>
-            {email && <div className="text-gray-500">{email}</div>}
+            {!needs("firstName") && !needs("lastName") && (
+              <div className="font-medium text-gray-900">{[firstName, lastName].filter(Boolean).join(" ")}</div>
+            )}
+            {email && <div className="text-gray-500" dir="ltr" style={{ textAlign: isHe ? "right" : "left" }}>{email}</div>}
           </div>
         )}
 
