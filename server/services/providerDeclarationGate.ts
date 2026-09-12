@@ -105,7 +105,16 @@ export interface ProviderDeclarationStatus {
   missing: string[];
   /** true only if every required doc has a counsel-approved version. */
   counselApprovedAll: boolean;
-  /** whether the DocuSeal API key is configured (signing actually possible). */
+  /**
+   * Whether the provider can sign RIGHT NOW. Since #1187's follow-up the
+   * in-app path (POST /api/provider-declarations/:key/accept — typed name +
+   * explicit acceptance, hashed text, signing_sessions + legal_acceptances
+   * rows) needs NO DocuSeal. Before 2026-09-13 this flag was
+   * `!!DOCUSEAL_API_KEY`, which is unset in production, so the client showed
+   * every declaration as "unavailable" and disabled the Sign button for every
+   * provider — the whole declaration flow was dead live while the server
+   * path worked. DocuSeal is only relevant to the optional /start path.
+   */
   signingConfigured: boolean;
 }
 
@@ -168,7 +177,8 @@ export async function getProviderDeclarationStatus(providerUid: string): Promise
     allSigned: required.length > 0 && missing.length === 0,
     missing,
     counselApprovedAll: requiredDocs.every((d) => d.reviewedByCounsel),
-    signingConfigured: !!process.env.DOCUSEAL_API_KEY,
+    // In-app accept path is always available (see the field doc above).
+    signingConfigured: true,
   };
 }
 
