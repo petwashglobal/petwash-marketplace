@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { Capacitor } from '@capacitor/core';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Shield, RefreshCw, Wallet, ChevronRight, CreditCard, Zap, Gift,
@@ -1243,6 +1244,17 @@ export default function PrestigePassWallet() {
       return url as string;
     },
     onSuccess: (url) => {
+      // A .pkpass can only be INSTALLED by real Safari. Inside the native app
+      // shell (Capacitor WKWebView) or a home-screen PWA (navigator.standalone)
+      // a same-window navigation just dies silently — the CEO's "wallet
+      // download to iPhone won't work" (audit 2026-09-12). Hand those two
+      // contexts to the system browser; plain Safari keeps the in-place hop.
+      const standalone = (navigator as any).standalone === true
+        || (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches);
+      if (Capacitor.isNativePlatform() || standalone) {
+        window.open(url, '_blank', 'noopener');
+        return;
+      }
       window.location.assign(url);
     },
     onError: (err: any) => toast({

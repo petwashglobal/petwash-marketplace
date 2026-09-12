@@ -439,6 +439,9 @@ router.get('/apple/:token', async (req: Request, res: Response) => {
     //   ...and NO error afterwards. The server built and returned the pass
     //   correctly; iOS refused it at the disposition.
     res.setHeader('Content-Disposition', `inline; filename="${pass.passId}.pkpass"`);
+    // A per-member pass must never be cached by the CDN in front of Cloud Run
+    // (server/routes/wallet.ts already sends no-store on its pkpass responses).
+    res.setHeader('Cache-Control', 'no-store, private');
     res.setHeader('Last-Modified', new Date().toUTCString());
     return res.send(pkpassBuffer);
   } catch (err: any) {

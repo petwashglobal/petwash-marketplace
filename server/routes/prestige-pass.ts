@@ -153,8 +153,13 @@ async function buildPrestigePassWalletUrls(
       return { appleWalletUrl: null, googleWalletUrl: null };
     }
 
-    const url = `${baseUrl}/api/pass/${token}`;
-    return { appleWalletUrl: url, googleWalletUrl: url };
+    // Apple: the universal link (UA-sniffed → /api/pass/apple/:token on iOS).
+    // Google: its OWN rail — the same universal URL sent an iPhone user who
+    // tapped "Google Wallet" into the Apple pass (2026-09-12 wallet audit).
+    return {
+      appleWalletUrl: `${baseUrl}/api/pass/${token}`,
+      googleWalletUrl: `${baseUrl}/api/pass/google/${token}`,
+    };
   } catch (err) {
     logger.error('[PrestigePass] buildPrestigePassWalletUrls error', err);
     return { appleWalletUrl: null, googleWalletUrl: null };
