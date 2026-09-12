@@ -16,7 +16,7 @@ import { MembershipCardService, cardTierFromMemberTier } from "../services/Membe
 import { resolveMemberTier } from "../lib/memberTier";
 import { db } from "../db";
 import { users } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { buildMembershipCardPdf, printBatchCsvRow, PRINT_BATCH_CSV_HEADER, type PrintableCard } from "../services/MembershipCardPrintService";
 import { membershipCards } from "@shared/schema-membership-cards";
@@ -120,6 +120,55 @@ router.get("/verify/:token", async (req: Request, res: Response) => {
 });
 
 export const membershipAdminRouter = Router();
+
+/**
+ * Support lookup (2026-09-12): e-mail, member id (PW-2026-000123) or uid →
+ * the card + who holds it. Read-only; the admin screen at
+ * /admin/membership-cards drives freeze / unfreeze / regenerate / print
+ * from here.
+ */
+membershipAdminRouter.get("/lookup", requireAdmin, async (req: Request, res: Response) => {
+  const q = String(req.query.q ?? "").trim();
+  if (q.length < 3) return res.status(400).json({ ok: false, error: "QUERY_TOO_SHORT" });
+  try {
+    let userId: string | null = null;
+    if (/^PW-\d{4}-\d{6}$/i.test(q)) {
+      const [c] = await db.select({ userId: membershipCards.userId }).from(membershipCards).where(eq(membershipCards.memberId, q.toUpperCase())).limit(1);
+      userId = c?.userId ?? null;
+    } else if (q.includes("@")) {
+      const [u] = await db.select({ id: users.id }).from(users).where(eq(users.email, q.toLowerCase())).limit(1);
+      userId = u?.id ?? null;
+    } else {
+      const [u] = await db.select({ id: users.id }).from(users).where(or(eq(users.id, q), eq(users.email, q.toLowerCase()))).limit(1);
+      userId = u?.id ?? null;
+    }
+    if (!userId) return res.status(404).json({ ok: false, error: "MEMBER_NOT_FOUND" });
+    const [card] = await db.select().from(membershipCards).where(eq(membershipCards.userId, userId)).limit(1);
+    if (!card) return res.status(404).json({ ok: false, error: "CARD_NOT_ISSUED", userId });
+    const [u] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+    return res.json({
+      ok: true,
+      userId,
+      email: u?.email ?? null,
+      memberId: card.memberId,
+      cardNumberDisplay: card.cardNumberDisplay,
+      barcodeValue: card.barcodeValue,
+      qrUrl: `https://petwash.co.il/m/${card.qrToken}`,
+      tier: card.tier,
+      status: card.cardStatus,
+      validFrom: card.validFrom,
+      validUntil: card.validUntil,
+      frozenReason: card.frozenReason,
+      lastScanAt: card.lastScanAt,
+      lastUsedStationId: card.lastUsedStationId,
+      linkedNayaxCustomerId: card.linkedNayaxCustomerId,
+      linkedNayaxCardId: card.linkedNayaxCardId,
+    });
+  } catch (err: any) {
+    logger.error("[Membership] admin lookup error", { error: err?.message });
+    return res.status(500).json({ ok: false, error: "LOOKUP_FAILED" });
+  }
+});
 
 /** Print file for ONE member's physical card (CR-80 front + back). */
 membershipAdminRouter.get("/:userId/print.pdf", requireAdmin, async (req: Request, res: Response) => {

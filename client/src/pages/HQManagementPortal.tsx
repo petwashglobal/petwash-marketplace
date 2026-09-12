@@ -113,6 +113,7 @@ const MODULE_LINKS: Record<string, { label: string; href: string; icon: typeof E
     // says it exists so the CEO can set real packages and prices "himself — no
     // code deploy, no guessing"; that promise needed a door.
     { label: "Wash Packages & Prices", href: "/admin/wash-packages", icon: Package },
+    { label: "Membership Cards", href: "/admin/membership-cards", icon: CreditCard },
     { label: "Status Monitor", href: "/admin/status-monitor", icon: Activity },
   ],
   kyc: [

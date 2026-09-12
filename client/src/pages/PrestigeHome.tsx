@@ -546,7 +546,7 @@ export default function PrestigeHome() {
               { t: isHe ? 'חבילת 5 שטיפות' : '5 Wash Package', s: isHe ? 'חיסכון משתלם' : 'Save more', cta: isHe ? 'רכישה' : 'Buy Now', to: '/packages', icon: Droplets },
               { t: isHe ? 'מתנת שטיפה' : 'Gift a Wash', s: isHe ? 'שתפו דאגה' : 'Share the care', cta: isHe ? 'שליחה' : 'Send Gift', to: '/buy-gift-card', icon: Gift },
               { t: isHe ? 'מוצרי החנות' : 'Shop Bestsellers', s: isHe ? 'הנבחרים' : 'Top picks', cta: isHe ? 'לחנות' : 'Shop Now', to: '/shop', icon: ShoppingBag },
-              { t: isHe ? 'קורסי אקדמיה' : 'Academy Courses', s: isHe ? 'למדו וטפחו' : 'Learn. Care.', cta: isHe ? 'גילוי' : 'Explore', to: '/academy', icon: GraduationCap },
+              { t: isHe ? 'אקדמיה — אילוף' : 'Academy — Training', s: isHe ? 'מאלפי כלבים וחתולים' : 'Dog & cat trainers', cta: isHe ? 'למאלפים' : 'Find a trainer', to: '/academy', icon: GraduationCap },
             ].map((c) => {
               const Icon = c.icon;
               return (

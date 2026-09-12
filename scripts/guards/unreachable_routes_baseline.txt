@@ -49,6 +49,7 @@
 /admin/money-flow
 /admin/no-lost-money
 /admin/paw-finder
+/paw-finder/:id  # deep link: shared from a post's social-share button (2026-09-12)
 /admin/performance-reviews
 /admin/policy
 /admin/recruitment
