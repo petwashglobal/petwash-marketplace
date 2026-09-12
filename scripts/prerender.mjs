@@ -150,6 +150,27 @@ for (const route of ROUTES) {
           }
         }
         if (el.getAttribute('style') === '') el.removeAttribute('style');
+
+        // Same lesson, second shape (CEO 2026-09-12). The block above strips
+        // runtime STYLE off <body>. Runtime ATTRIBUTES were never stripped —
+        // and they carry exactly the same hazard, because the CSS that reads
+        // them ships in the bundle. `data-pw-suppress-floating="true"` (set by
+        // useSuppressFloatingStack while the landing hero is on screen) was
+        // captured in the snapshot and written into the static HTML of EVERY
+        // route, so every visitor received the accessibility / WhatsApp / AI
+        // buttons at opacity:0 + pointer-events:none before a line of JS ran,
+        // on every page. An accessibility control hidden site-wide is worse
+        // than the overlap it was fixing.
+        //
+        // Every one of these is a live-UI flag owned by a component; none of
+        // them has any business in a cached document. The app re-applies
+        // whatever it needs on hydration.
+        for (const attr of Array.from(el.attributes)) {
+          if (attr.name.startsWith('data-pw-') || attr.name === 'data-cookie-consent-active') {
+            sanitized.push(`${el.tagName.toLowerCase()}[${attr.name}]`);
+            el.removeAttribute(attr.name);
+          }
+        }
       }
 
       // Transient overlays (promo popup, drawers, modal backdrops) must not be
@@ -191,6 +212,12 @@ for (const route of ROUTES) {
     const bodyTag = html.match(/<body[^>]*>/i)?.[0] ?? '';
     if (/overflow\s*:\s*hidden|touch-action\s*:\s*none|position\s*:\s*fixed/i.test(bodyTag)) {
       throw new Error(`refusing to write scroll-locked HTML for ${route}: ${bodyTag}`);
+    }
+    // The belt-and-braces above only knew about scroll locks, so a runtime
+    // data-attribute walked straight past it and shipped. Refuse ANY live-UI
+    // flag on <body>, whatever it turns out to be next time.
+    if (/\sdata-pw-[a-z-]+=|\sdata-cookie-consent-active=/i.test(bodyTag)) {
+      throw new Error(`refusing to write runtime UI state into static HTML for ${route}: ${bodyTag}`);
     }
     if (sanitized.length) {
       console.log(`[prerender]   sanitized ${route}: ${sanitized.join(', ')}`);
