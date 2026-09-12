@@ -146,7 +146,7 @@ export function GiftCards({ language }: GiftCardsProps) {
                       style={{ borderRadius: '2px' }}
                     >
                       {language === 'he' ? 'שלח מתנה' : 'Send Gift'}
-                      <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                      <ArrowRight className="w-3.5 h-3.5 transition-transform duration-300 rtl:rotate-180 ltr:group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
                     </div>
                   </div>
                 </div>
@@ -183,7 +183,7 @@ export function GiftCards({ language }: GiftCardsProps) {
               data-testid="button-shop-gift-cards"
             >
               {language === 'he' ? 'כל כרטיסי המתנה' : 'View All Gift Cards'}
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
             </Link>
           </div>
         </div>
