@@ -174,7 +174,18 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, formData, loading, checkpoint.hydrating]);
 
-  const predefinedAmounts = [50, 100, 200, 500, 1000];
+  // The CEO's four physical gift-card designs (attached_assets, 2026): pink ₪100,
+  // green ₪250, black ₪500, gold ₪1000. The amounts on offer now match the
+  // cards that exist, and the chosen amount previews its card below.
+  const predefinedAmounts = [50, 100, 250, 500, 1000];
+  const giftCardArtFor = (amountRaw: string): { src: string; tier: string } => {
+    const a = Number(amountRaw) || 0;
+    if (a >= 1000) return { src: '/brand/gift-cards/gold-1000.jpg', tier: 'Gold' };
+    if (a >= 500)  return { src: '/brand/gift-cards/black-500.jpg', tier: 'Black' };
+    if (a >= 250)  return { src: '/brand/gift-cards/green-250.jpg', tier: 'Green' };
+    return { src: '/brand/gift-cards/pink-100.jpg', tier: 'Pink' };
+  };
+  const giftCardArt = giftCardArtFor(formData.amount);
 
   const handleAddressChange = (value: string, details?: PlaceDetails) => {
     setFormData(prev => ({
@@ -336,6 +347,17 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                   ))}
                 </div>
                 
+                {/* Card preview — the CEO's own card art for the chosen value (2026-09-13). */}
+                <div className="rounded-2xl overflow-hidden bg-white" data-testid="gift-card-art" data-tier={giftCardArt.tier}>
+                  <img
+                    src={giftCardArt.src}
+                    alt={language === 'he' ? `כרטיס מתנה PetWash™‎ — ${giftCardArt.tier}` : `PetWash™‎ gift card — ${giftCardArt.tier}`}
+                    className="w-full h-auto"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+
                 <div>
                   <Label>{t('giftCards.customAmount', language)}</Label>
                   <Input
