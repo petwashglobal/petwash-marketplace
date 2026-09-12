@@ -13,6 +13,7 @@ import { eq, and, sql, gte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { schedulePassSync } from './walletPassSync';
 
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const MAX_REDEEM_PER_EGIFT = 10;
@@ -219,6 +220,7 @@ class EgiftFinancialService {
           allocationNumber: input.egiftId,
         });
       });
+      schedulePassSync(input.userId, 'egift_purchase');
 
       logger.info('[EgiftFinancial] Purchase completed', {
         egiftId: input.egiftId,
@@ -504,6 +506,7 @@ class EgiftFinancialService {
           idempotent: false,
         };
       });
+      schedulePassSync(input.userId, 'egift_redeem');
 
       await db.execute(sql`
         UPDATE egift_redeem_attempts 
