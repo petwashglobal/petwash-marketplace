@@ -43,6 +43,7 @@
 
 import { db } from '../db';
 import { issueRedemptionFiscalDocument } from './k9000RedemptionFiscal';
+import { schedulePassSync } from './walletPassSync';
 import {
   walletAccounts,
   creditTransactions,
@@ -1208,6 +1209,8 @@ async function debitAndLog(input: DebitInput): Promise<DebitResult> {
       );
     }
   });
+  // Wallet pass live sync (2026-09-12): the phone's pass shows the balance after the wash.
+  schedulePassSync(userId, 'k9000_debit');
 
   // ── Audit ledger (append-only hash-chain, outside main tx) ──────────────
   // FIX 2026-08-24: previous version passed id=string into serial column and
@@ -1473,6 +1476,7 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
     // AND the timed_out status flip. Money was silently lost on every retry.
     // Session is already claimed as timed_out inside the tx above.
   });
+  schedulePassSync(session.userId, 'k9000_compensation');
 
   // ── Write compensation audit entry AFTER the money-tx commits ──────────
   // If this fails, the compensation still happened; we log loudly and never

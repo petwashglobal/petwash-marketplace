@@ -22,8 +22,8 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { db as firestoreDb, auth as firebaseAuth } from '../lib/firebase-admin';
-import { petwashPassAccounts, appleWalletDeviceRegistrations, walletAccounts } from '@shared/schema';
-import { eq, and } from 'drizzle-orm';
+import { petwashPassAccounts, appleWalletDeviceRegistrations } from '@shared/schema';
+import { eq, and, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import {
   verifyPassLinkToken,
@@ -38,6 +38,7 @@ import {
   buildSaveUrl as googleBuildSaveUrl,
   isGoogleWalletConfigured,
 } from '../services/GoogleWalletService';
+import { lookupLivePassBalance } from '../services/walletPassSync';
 
 const router = Router();
 
@@ -53,6 +54,7 @@ interface WalletPassRecord {
   validUntil?: Date | null;
   status: string;
   qrTokenVersion: number;
+  updatedAt?: Date | null;
 }
 
 interface PrestigePassSnapshot {
@@ -71,6 +73,7 @@ const walletPassProjection = {
   validUntil:         petwashPassAccounts.validUntil,
   status:             petwashPassAccounts.status,
   qrTokenVersion:     petwashPassAccounts.qrTokenVersion,
+  updatedAt:          petwashPassAccounts.updatedAt,
 };
 
 function isIOS(ua: string): boolean {
@@ -90,22 +93,10 @@ function isMissingPassSqlTable(err: unknown): boolean {
 
 async function lookupWalletBalance(userId: string): Promise<{ tier?: string | null; availableCreditIls: string }> {
   try {
-    const [wallet] = await db
-      .select({
-        cashWalletBalanceCents:  walletAccounts.cashWalletBalanceCents,
-        egiftBalanceCents:       walletAccounts.egiftBalanceCents,
-        promoBalanceCents:       walletAccounts.promoBalanceCents,
-        loyaltyTier:             walletAccounts.loyaltyTier,
-      })
-      .from(walletAccounts)
-      .where(eq(walletAccounts.userId, userId))
-      .limit(1);
-
-    const cents = (wallet?.cashWalletBalanceCents ?? 0) +
-      (wallet?.egiftBalanceCents ?? 0) +
-      (wallet?.promoBalanceCents ?? 0);
-
-    return { tier: wallet?.loyaltyTier, availableCreditIls: (cents / 100).toFixed(2) };
+    // One formula for the pass figure — shared with walletPassSync so the
+    // pushed balance and the served balance can never disagree.
+    const live = await lookupLivePassBalance(userId);
+    return { tier: live.loyaltyTier, availableCreditIls: live.availableCreditIls };
   } catch (err) {
     logger.warn('[PassUniversal] Wallet balance fallback unavailable', { userId, err });
     return { availableCreditIls: '0.00' };
@@ -565,9 +556,32 @@ router.get('/apple/v1/devices/:deviceId/registrations/:passTypeId', async (req: 
 
     if (!regs.length) return res.status(204).send();
 
+    // Honest `passesUpdatedSince` (2026-09-12): Apple sends back the
+    // `lastUpdated` tag we returned last time and expects ONLY the passes
+    // changed since. Returning every serial with `now` made every poll
+    // re-download every pass and reported an unchanged pass as changed.
+    const since = typeof req.query.passesUpdatedSince === 'string' ? Date.parse(req.query.passesUpdatedSince) : NaN;
+    const serials = regs.map(r => r.serialNumber);
+    const rows = await db
+      .select({ passId: petwashPassAccounts.passId, appleSerialNumber: petwashPassAccounts.appleSerialNumber, updatedAt: petwashPassAccounts.updatedAt })
+      .from(petwashPassAccounts)
+      .where(inArray(petwashPassAccounts.passId, serials));
+    const updatedAtBySerial = new Map<string, number>();
+    for (const row of rows) {
+      const ts = row.updatedAt ? row.updatedAt.getTime() : Date.now();
+      updatedAtBySerial.set(row.passId, ts);
+      if (row.appleSerialNumber) updatedAtBySerial.set(row.appleSerialNumber, ts);
+    }
+    const changed = serials.filter((s) => {
+      const ts = updatedAtBySerial.get(s) ?? Date.now();
+      return Number.isNaN(since) || ts > since;
+    });
+    if (!changed.length) return res.status(204).send();
+
+    const newest = Math.max(...changed.map((s) => updatedAtBySerial.get(s) ?? Date.now()));
     return res.json({
-      serialNumbers: regs.map(r => r.serialNumber),
-      lastUpdated:   new Date().toISOString(),
+      serialNumbers: changed,
+      lastUpdated:   new Date(newest).toISOString(),
     });
   } catch (err) {
     logger.error('[AppleWallet] Registration list error', { err });
@@ -586,10 +600,16 @@ router.get('/apple/v1/passes/:passTypeId/:serialNumber', async (req: Request, re
     if (!pass) return res.status(404).send();
     if (!verifyApplePassRequest(req, pass)) return res.status(401).send();
 
+    const ifModifiedSince = Date.parse(req.header('if-modified-since') || '');
+    const passUpdatedAt = pass.updatedAt ? pass.updatedAt.getTime() : Date.now();
+    if (!Number.isNaN(ifModifiedSince) && Math.floor(passUpdatedAt / 1000) <= Math.floor(ifModifiedSince / 1000)) {
+      return res.status(304).send();
+    }
+
     const pkpassBuffer = await generateAppleWalletPass(buildVisual(pass));
 
     res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
-    res.setHeader('Last-Modified', new Date().toUTCString());
+    res.setHeader('Last-Modified', new Date(passUpdatedAt).toUTCString());
     return res.send(pkpassBuffer);
   } catch (err) {
     const walletError = walletGenerationError(err);

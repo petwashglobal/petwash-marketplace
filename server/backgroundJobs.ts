@@ -220,6 +220,23 @@ export class BackgroundJobProcessor {
     });
     logger.info('[Cortina] release sweep (1m) + K9000 bay-release sweep (1m) + K9000 reconciliation (daily 02:30 + live 15m) scheduled');
 
+    // Wallet pass live sync sweep (2026-09-12): any ACTIVE Apple/Google pass
+    // whose live wallet balance differs from the figure last pushed to the
+    // phone is re-synced. Catches every wallet writer that did not call
+    // schedulePassSync (raw SQL in disputes / policy engine, future code).
+    cron.schedule('*/2 * * * *', async () => {
+      if (await this.acquireLock('walletPassSweep')) {
+        try {
+          const { sweepStalePasses } = await import('./services/walletPassSync');
+          await sweepStalePasses();
+        } catch (err: any) {
+          logger.warn('[BackgroundJobs] wallet pass sweep failed', { error: err?.message ?? String(err) });
+        } finally {
+          this.releaseLock('walletPassSweep');
+        }
+      }
+    });
+
     // PawFinder review SLA (2026-09-12): every post waits for a human (CEO rule
     // 2026-06-26) and nothing told support a lost dog was sitting in the queue.
     // Every 15 min: alert once per hour while any post is pending > 30 min.
