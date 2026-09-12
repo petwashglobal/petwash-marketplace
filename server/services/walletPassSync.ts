@@ -38,6 +38,7 @@ import { db } from '../db';
 import { appleWalletDeviceRegistrations, petwashPassAccounts, walletAccounts } from '@shared/schema';
 import { logger } from '../lib/logger';
 import { isGoogleWalletConfigured, pushUpdate } from './GoogleWalletService';
+import { findMemberIdentity } from '../lib/memberIdentity';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -66,6 +67,8 @@ export interface PassRow {
   status: string;
   qrTokenVersion: number;
   appleSerialNumber: string | null;
+  /** ONE member id: the membership-card id shown as "Member ID" on the pass. */
+  memberId?: string | null;
 }
 
 export interface LiveBalance {
@@ -262,7 +265,9 @@ export const defaultPassSyncDeps: PassSyncDeps = {
     try {
       const [row] = await db.select(passRowProjection).from(petwashPassAccounts)
         .where(eq(petwashPassAccounts.userId, userId)).limit(1);
-      return row ? { ...row, availableCreditIls: String(row.availableCreditIls) } : null;
+      if (!row) return null;
+      const identity = await findMemberIdentity(userId);
+      return { ...row, availableCreditIls: String(row.availableCreditIls), memberId: identity?.memberId ?? null };
     } catch (err) {
       if (isMissingPassTable(err)) return null;
       throw err;
@@ -285,6 +290,7 @@ export const defaultPassSyncDeps: PassSyncDeps = {
       availableCreditIls: Number(availableCreditIls),
       validUntil:         pass.validUntil?.toISOString().split('T')[0],
       qrTokenVersion:     pass.qrTokenVersion,
+      memberId:           pass.memberId ?? undefined,
     });
   },
   pushApple: pushApplePassUpdate,
