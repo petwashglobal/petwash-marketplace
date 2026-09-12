@@ -22,6 +22,7 @@ import { sendProviderEnrollmentConfirmation, sendLuxuryEmail } from '../email/lu
 import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { sendSmsTemplate } from '../services/smsTemplates';
 import { assignProviderMembership } from '../services/MembershipService';
+import { seedProviderProfiles } from '../services/providerProfileSeed';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import {
@@ -1598,6 +1599,13 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
               updatedAt: new Date(),
             } as any)
             .onConflictDoNothing({ target: [providers.userId, providers.platformId] as any });
+        }
+        // LAST MILE (platforms audit 2026-09-12): the search joins the platform
+        // profile tables, which this path never wrote — every approved provider
+        // was invisible. Seed them (₪0 / unavailable until the rate card).
+        const seeded = await seedProviderProfiles(application as any, Array.from(platformIds));
+        if (seeded.skipped.length) {
+          logger.warn('[ProviderApplication] profile seed skipped for some platforms', { userId: application.userId, skipped: seeded.skipped });
         }
         // Multi-role fix (CEO 2026-08-24): do NOT destructively overwrite
         // users.role='provider' — that pinned scalar 'provider' on users who
