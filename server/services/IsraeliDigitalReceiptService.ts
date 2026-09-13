@@ -398,7 +398,7 @@ export class IsraeliDigitalReceiptService {
    * id back. THROWS on a SUMIT/network failure so the outbox drainer retries.
    * Idempotent at SUMIT via idempotencyKey = receiptNumber.
    */
-  static async dispatchReceiptToSumit(params: { receiptId: number; paymentClass?: PetWashPaymentClass }): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id'; sumitDocumentId?: string }> {
+  static async dispatchReceiptToSumit(params: { receiptId: number; paymentClass?: PetWashPaymentClass }): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id' | 'withheld'; sumitDocumentId?: string }> {
     const { sumitClient } = await import('./SumitClient');
     if (sumitClient.isWired()) {
       return IsraeliDigitalReceiptService.dispatchReceiptToSumitWired(sumitClient, params);
@@ -409,7 +409,7 @@ export class IsraeliDigitalReceiptService {
   private static async dispatchReceiptToSumitWired(
     sumitClient: { createCustomerReceipt: (i: any) => Promise<{ sumitDocumentId?: string; reason?: string }> },
     params: { receiptId: number; paymentClass?: PetWashPaymentClass },
-  ): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id'; sumitDocumentId?: string }> {
+  ): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id' | 'withheld'; sumitDocumentId?: string }> {
     const [row] = await db.select().from(digitalReceipts).where(eq(digitalReceipts.id, params.receiptId)).limit(1);
     if (!row) throw new Error(`RECEIPT_NOT_FOUND:${params.receiptId}`);
     if (row.sumitDocumentId) return { status: 'already_issued', sumitDocumentId: row.sumitDocumentId };
@@ -421,6 +421,24 @@ export class IsraeliDigitalReceiptService {
     const classDocType = params.paymentClass
       ? getSumitDocumentMapping(params.paymentClass).documentType
       : undefined;
+
+    // WITHHELD 2026-09-13 — a disclosed-agent commission document would be WRONG
+    // in SUMIT. createCustomerReceipt sends ONE line with UnitPrice =
+    // subtotalAmount and VATIncluded:false, and for VAT_ON_COMMISSION_ONLY the
+    // subtotal is (booking total − VAT on the commission). SUMIT then adds 18%
+    // to the WHOLE line: a ₪100 booking with a ₪15 commission becomes a
+    // ₪115.30 tax invoice declaring ₪17.59 VAT, instead of the ₪2.29 the local
+    // receipt records. A tax invoice cannot be withdrawn, only credited. Until
+    // the line structure for this class is confirmed (who is invoiced for what),
+    // the local PW- receipt stands and nothing is sent; reconciliation sees
+    // issuer_of_record NULL.
+    if (params.paymentClass && getSumitDocumentMapping(params.paymentClass).vatMode === 'VAT_ON_COMMISSION_ONLY') {
+      logger.warn('[Digital Receipt] SUMIT send WITHHELD — commission-only VAT document structure not confirmed', {
+        receiptNumber, paymentClass: params.paymentClass,
+      });
+      return { status: 'withheld' };
+    }
+
     const sumitResult = await sumitClient.createCustomerReceipt({
       idempotencyKey: receiptNumber,
       documentType: classDocType && classDocType !== 'CreditInvoice' ? classDocType : undefined,

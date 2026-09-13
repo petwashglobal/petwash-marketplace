@@ -308,7 +308,7 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
     saved = await SumitCardVault.saveCard({
       userId: uid,
       sumitCustomerId,
-      singlePaymentToken: String(token ?? sumitCustomerId), // fall back to customer ref if the method id isn't surfaced
+      expectedPaymentMethodId: token != null ? String(token) : undefined,
       cardBrand: raw?.CardBrand ?? raw?.Data?.CardBrand,
       cardLast4: raw?.CardLast4 ?? raw?.Last4 ?? raw?.Data?.CardLast4,
       consentVersion: 'save-card-v1',

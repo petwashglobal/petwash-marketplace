@@ -479,6 +479,8 @@ export class NayaxPaymentService {
             customerEmail: pending.customerEmail || undefined,
             totalAmountIls: Number(pending.amount),
             description: receiptDescription,
+            // Stored value: CPA mapping = payment-only Receipt, no VAT at purchase.
+            ...(pending.isGiftCard ? { paymentClass: 'EGIFT_PURCHASE' as const } : {}),
           });
           if (r.ok && r.sumitDocumentId) {
             await db.update(eVouchers)
