@@ -395,7 +395,18 @@ router.post("/admin/:escrowId/approve-release", requireAdmin, async (req, res) =
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === "PAYOUT_HELD_GATE") {
-      return res.status(409).json({ error: "PAYOUT_HELD_GATE", reason: error.gateReason, message: error.message });
+      // Never echo error.message here: the gate error is thrown from more than
+      // one place and the other shapes embed internal detail (payoutLedger
+      // appends the gate text and the earning id). `gateReason` is the stable
+      // machine code the admin UI switches on, so the response stays structured
+      // while the full error stays server-side. Pinned by
+      // server/tests/customerErrorLeakSweep.regression.test.ts.
+      logger.warn("[Escrow] admin release blocked by payout gate", {
+        escrowId: req.params.escrowId,
+        gateReason: error.gateReason,
+        error: error?.message,
+      });
+      return res.status(409).json({ error: "PAYOUT_HELD_GATE", reason: error.gateReason });
     }
     sendSanitizedError(res, error, "ESCROW_ADMIN_APPROVE_FAILED", { logContext: { op: "admin-approve-release" } });
   }
