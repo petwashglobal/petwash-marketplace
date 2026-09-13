@@ -4,6 +4,9 @@ import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { pathToFileURL } from 'url';
 import { build, buildSync } from 'esbuild';
+
+/** Escape every RegExp metacharacter (incl. backslash) in a literal. */
+const escapeRegExp = (v: string) => v.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 import {
   TIER_CONFIGS,
   calculateTotalDiscount,
@@ -258,7 +261,7 @@ describe('7. legal menu pages call useSEO with their own copy and a route-derive
     const base = file.split('/').pop()!;
     const lazyName = app.match(new RegExp(`const (\\w+) = lazy\\(\\(\\) => import\\("@/pages/legal/${base}"\\)\\)`))?.[1];
     expect(lazyName).toBeTruthy();
-    expect(app).toMatch(new RegExp(`<Route path="${route.replace(/\//g, '\\/')}">\\s*\\{\\(\\) => (<Layout>)?<${lazyName} />`));
+    expect(app).toMatch(new RegExp(`<Route path="${escapeRegExp(route)}">\\s*\\{\\(\\) => (<Layout>)?<${lazyName} />`));
 
     const calls = renderPage(file, route);
     expect(calls.length).toBe(1);
