@@ -2372,7 +2372,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           toast({
                             title: he ? 'איפוס סיסמה נשלח' : 'Password reset sent',
                             description: he
-                              ? 'אם קיים חשבון לכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדוק את תיבת הדואר.'
+                              ? 'אם קיים חשבון עבור הכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדקו את תיבת הדואר.'
                               : 'If an account exists for that address, a password reset email has been sent. Please check your inbox.',
                           });
                         }}
