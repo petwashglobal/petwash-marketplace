@@ -136,7 +136,6 @@ router.get('/sitemap.xml', async (req, res) => {
     { url: '/sitter-suite/browse', changefreq: 'daily', priority: '0.8' },
     { url: '/walk-my-pet', changefreq: 'weekly', priority: '0.8' },
     { url: '/pettrek', changefreq: 'weekly', priority: '0.7' },
-    { url: '/plush-lab', changefreq: 'weekly', priority: '0.7' },
     { url: '/k9000', changefreq: 'weekly', priority: '0.8' },
     { url: '/groomers', changefreq: 'weekly', priority: '0.7' },
     { url: '/booking', changefreq: 'weekly', priority: '0.8' },

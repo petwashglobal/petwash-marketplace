@@ -86,6 +86,17 @@ function installMocks() {
       getTransaction: vi.fn(async () => ({ wired: true, valid: txnValid, raw: txnRaw })),
     },
   }));
+  vi.doMock('../lib/sumitPaymentReturn', async (importOriginal: any) => ({
+    ...(await importOriginal()),
+  // One payment → one order: a durable DB claim in production. These tests pin
+    // the Redis handoff, so the claim is an in-memory stand-in with the same rule.
+    claimSumitPayment: async (paymentId: string, orderRef: string, surface: string) => {
+      const prev = (globalThis as any).__sumitClaims?.get(paymentId);
+      (globalThis as any).__sumitClaims ??= new Map();
+      if (!prev) { (globalThis as any).__sumitClaims.set(paymentId, `${surface}:${orderRef}`); return 'claimed'; }
+      return prev === `${surface}:${orderRef}` ? 'same_order' : 'other_order';
+    },
+  }));
   vi.doMock('../services/SumitCardVault', () => ({
     isCardVaultEnabled: () => true,
     SumitCardVault: { saveCard: (i: any) => saveCardMock(i) },
@@ -103,6 +114,7 @@ async function bootInstance() {
 }
 
 beforeEach(() => {
+  (globalThis as any).__sumitClaims = new Map();
   redisStore.clear();
   redisAvailable = true;
   injectUid = 'owner_uid';
@@ -124,7 +136,7 @@ describe('save-card ownership handoff — durable across instances', () => {
 
     // Brand-new registry: instance A's process memory is gone.
     const instanceB = await bootInstance();
-    await request(instanceB).get(`/api/payments/save-card/return?ID=txn_1&ext=${ext}`).expect(302);
+    await request(instanceB).get(`/api/payments/save-card/return?OG-PaymentID=101&ext=${ext}`).expect(302);
 
     expect(saveCardMock).toHaveBeenCalledTimes(1);
     expect(saveCardMock.mock.calls[0][0].userId).toBe('owner_uid');
@@ -144,7 +156,7 @@ describe('save-card ownership handoff — durable across instances', () => {
     await request(app).post('/api/payments/save-card/start').expect(200);
     const ext = capturedExternalId!;
     await request(app)
-      .get(`/api/payments/save-card/return?ID=txn_1&ext=${ext}&uid=victim_uid`)
+      .get(`/api/payments/save-card/return?OG-PaymentID=101&ext=${ext}&uid=victim_uid`)
       .expect(302);
     expect(saveCardMock.mock.calls[0][0].userId).toBe('owner_uid');
   });
@@ -166,7 +178,7 @@ describe('save-card ownership handoff — durable across instances', () => {
   it('missing pending record fails closed', async () => {
     const app = await bootInstance();
     await request(app)
-      .get('/api/payments/save-card/return?ID=txn_1&ext=savecard_deadbeef')
+      .get('/api/payments/save-card/return?OG-PaymentID=101&ext=savecard_deadbeef')
       .expect(302)
       .expect('Location', /card=failed/);
     expect(saveCardMock).not.toHaveBeenCalled();
@@ -179,7 +191,7 @@ describe('save-card ownership handoff — durable across instances', () => {
     const key = `savecard:pending:${ext}`;
     redisStore.set(key, { value: redisStore.get(key)!.value, expiresAt: Date.now() - 1 });
     await request(app)
-      .get(`/api/payments/save-card/return?ID=txn_1&ext=${ext}`)
+      .get(`/api/payments/save-card/return?OG-PaymentID=101&ext=${ext}`)
       .expect(302)
       .expect('Location', /card=failed/);
     expect(saveCardMock).not.toHaveBeenCalled();
@@ -189,9 +201,9 @@ describe('save-card ownership handoff — durable across instances', () => {
     const app = await bootInstance();
     await request(app).post('/api/payments/save-card/start').expect(200);
     const ext = capturedExternalId!;
-    await request(app).get(`/api/payments/save-card/return?ID=txn_1&ext=${ext}`).expect(302);
+    await request(app).get(`/api/payments/save-card/return?OG-PaymentID=101&ext=${ext}`).expect(302);
     await request(app)
-      .get(`/api/payments/save-card/return?ID=txn_1&ext=${ext}`)
+      .get(`/api/payments/save-card/return?OG-PaymentID=101&ext=${ext}`)
       .expect(302)
       .expect('Location', /card=failed/);
     expect(saveCardMock).toHaveBeenCalledTimes(1);
@@ -203,7 +215,7 @@ describe('save-card ownership handoff — durable across instances', () => {
     const ext = capturedExternalId!;
     txnRaw = { CustomerID: 'sumit_cust_1', PaymentMethodID: 'pm_1', ExternalIdentifier: 'savecard_someone_else' };
     await request(app)
-      .get(`/api/payments/save-card/return?ID=txn_1&ext=${ext}`)
+      .get(`/api/payments/save-card/return?OG-PaymentID=101&ext=${ext}`)
       .expect(302)
       .expect('Location', /card=failed/);
     expect(saveCardMock).not.toHaveBeenCalled();
@@ -216,7 +228,7 @@ describe('save-card ownership handoff — durable across instances', () => {
     await request(app).post('/api/payments/save-card/start').expect(200);
     const ext = capturedExternalId!;
     txnValid = false;
-    await request(app).get(`/api/payments/save-card/return?ID=txn_1&ext=${ext}`).expect(302);
+    await request(app).get(`/api/payments/save-card/return?OG-PaymentID=101&ext=${ext}`).expect(302);
     expect(saveCardMock).not.toHaveBeenCalled();
     expect(redisStore.has(`savecard:pending:${ext}`)).toBe(true);
   });

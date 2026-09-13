@@ -647,8 +647,8 @@ async function petParentJourneyResumeItems(
       walk_book:        { destination: '/walk-my-pet',       attentionDomain: 'walk',        he: 'הזמנת הליכה',           en: 'walk booking' },
       sitter_book:      { destination: '/sitter-suite',      attentionDomain: 'sitting',     he: 'הזמנת פט-סיטר',         en: 'sitter booking' },
       marketplace_book: { destination: '/marketplace',       attentionDomain: 'booking',     he: 'הזמנה מהמרקטפלייס',     en: 'marketplace booking' },
-      shop_checkout:    { destination: '/shop/checkout',     attentionDomain: 'shop',        he: 'רכישה בחנות',           en: 'shop purchase' },
-      egift:            { destination: '/wallet/egift/buy',  attentionDomain: 'egift',       he: 'רכישת eGift',           en: 'eGift purchase' },
+      shop_checkout:    { destination: '/checkout',          attentionDomain: 'shop',        he: 'רכישה בחנות',           en: 'shop purchase' },
+      egift:            { destination: '/buy-gift-card',     attentionDomain: 'egift',       he: 'רכישת eGift',           en: 'eGift purchase' },
       provider_apply:   { destination: '/provider-onboarding', attentionDomain: 'kyc',       he: 'רישום ספק',             en: 'provider application' },
     });
 

@@ -26,6 +26,7 @@ import { assertServiceApproved } from './providerServiceApproval';
 import { isReconfirmationOverdue } from './reconfirmationService';
 import { checkProviderDeclarationsSigned } from './providerDeclarationGate';
 import { logger } from '../lib/logger';
+import { enforceSwitch } from '../lib/envSwitch';
 
 export const REFUND_WINDOW_HOURS = Number(process.env.PAYOUT_REFUND_WINDOW_HOURS || 48);
 
@@ -233,7 +234,7 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
     {
       const overdue = await isReconfirmationOverdue(providerUid);
       if (overdue) {
-        const enforce = (process.env.RECONFIRMATION_ENFORCE || 'off').toLowerCase() === 'on';
+        const enforce = enforceSwitch(process.env.RECONFIRMATION_ENFORCE, false);
         logger.warn(
           `[PayoutGate] reconfirmation ${enforce ? 'HOLD' : 'WOULD HOLD (shadow)'} for ${providerUid}`,
         );
@@ -265,7 +266,7 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
       if (!decl.ok) {
         // ENFORCE by default (CEO 2026-07-31 "make it live"): no payout until the
         // provider has signed the declarations. Set the env var to 'off' to revert to shadow.
-        const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'on').toLowerCase() === 'on';
+        const enforce = enforceSwitch(process.env.PROVIDER_DECLARATIONS_ENFORCE, true);
         logger.warn(
           `[PayoutGate] declarations ${enforce ? 'HOLD' : 'WOULD HOLD (shadow)'} for ${providerUid} — ${decl.reason}${decl.missing.length ? ` (missing: ${decl.missing.join(',')})` : ''}`,
         );

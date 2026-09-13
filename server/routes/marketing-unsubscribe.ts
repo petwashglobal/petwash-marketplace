@@ -19,7 +19,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { users } from '@shared/schema';
 import { verifyUnsubToken } from '../lib/unsubToken';
@@ -27,11 +27,40 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 
+/** Email from a valid legacy EmailService unsubscribe token (HMAC-checked there), else null. */
+async function legacyUnsubscribeEmail(token: unknown): Promise<string | null> {
+  if (typeof token !== 'string' || !token || token.length > 4096) return null;
+  try {
+    const { EmailService } = await import('../emailService');
+    const r = EmailService.validateUnsubscribeToken(token);
+    const email = r?.isValid ? String(r.data?.email || '').trim().toLowerCase() : '';
+    return email && email.includes('@') ? email : null;
+  } catch {
+    return null;
+  }
+}
+
 router.post('/unsubscribe', async (req: Request, res: Response) => {
   try {
     const { token } = (req.body ?? {}) as { token?: string };
     const uid = verifyUnsubToken(token);
     if (!uid) {
+      // LEGACY TOKENS (2026-09-13): EmailService still signs its own
+      // email-based token (sendWelcomeEmail, sendBirthdayDiscount,
+      // sendAppointmentReminder, sendVaccineReminder) and links it to this same
+      // /unsubscribe page. Only the uid token was accepted here, so every
+      // unsubscribe from those emails failed as "expired" — the customer kept
+      // getting marketing after asking to stop. Accept the legacy HMAC token too.
+      const legacyEmail = await legacyUnsubscribeEmail(token);
+      if (legacyEmail) {
+        const result = await db
+          .update(users)
+          .set({ marketingConsent: false })
+          .where(sql`lower(${users.email}) = ${legacyEmail}`)
+          .returning({ id: users.id });
+        logger.info('[Marketing] Unsubscribe recorded (legacy token)', { matched: result.length });
+        return res.json({ ok: true, ...(result.length === 0 ? { alreadyOff: true } : {}) });
+      }
       // Also don't log the raw token — it is a bearer-ish credential.
       logger.warn('[Marketing] Unsubscribe rejected — invalid or expired token');
       return res.status(401).json({ error: 'invalid_token' });

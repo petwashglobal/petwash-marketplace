@@ -289,7 +289,7 @@ router.post('/send-wallet-email', async (req, res) => {
               <li>✅ QR code for quick check-in</li>
             </ul>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${baseUrl}/wallet-download" class="button">
+              <a href="${baseUrl}/prestige-pass" class="button">
                 Add to Apple Wallet
               </a>
             </div>

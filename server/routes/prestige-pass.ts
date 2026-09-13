@@ -1955,7 +1955,7 @@ router.post('/send-wallet-sms', walletEmailLimiter, async (req: Request, res: Re
     }
 
     const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
-    const link = `${appBaseUrl}/wallet-download`;
+    const link = `${appBaseUrl}/prestige-pass`;
     const body = `PetWash™ — הכרטיס שלך ל-Apple/Google Wallet: ${link}`;
 
     // AUDIT-SMS-5 (#221): prestige wallet-download link is a booking-confirm-shape send.
