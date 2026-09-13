@@ -97,14 +97,9 @@ describe('links we send land on real pages', () => {
     ] as const) expect(R(file), `${file} still has ${dead}`).not.toContain(dead);
   });
 
-  it('win-back /w tracking links reach Cloud Run (Hosting forwarded only /api, /auth, /uploads)', () => {
-    const cfg = JSON.parse(R('firebase.json'));
-    const hosting = Array.isArray(cfg.hosting) ? cfg.hosting[0] : cfg.hosting;
-    const rw = hosting.rewrites as Array<{ source: string; run?: { serviceId: string } }>;
-    const w = rw.findIndex((r) => r.source === '/w' && r.run?.serviceId === 'petwash-api');
-    const spa = rw.findIndex((r) => r.source === '**');
-    expect(w).toBeGreaterThan(-1);
-    expect(w).toBeLessThan(spa);
+  it('win-back tracking links are built under /api/w (Hosting forwards only /api/**)', () => {
+    expect(R('server/services/winbackChannel.ts')).toContain('${TRACKING_BASE}/api/w?');
+    expect(R('server/routes.ts')).toContain("app.use('/api/w', winbackTrackingRouter);");
   });
 });
 

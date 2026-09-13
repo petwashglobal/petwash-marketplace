@@ -45,13 +45,6 @@
           }
         },
         {
-          "source": "/w",
-          "run": {
-            "serviceId": "petwash-api",
-            "region": "me-west1"
-          }
-        },
-        {
           "source": "/robots.txt",
           "run": {
             "serviceId": "petwash-api",

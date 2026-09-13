@@ -12299,6 +12299,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Phase 6.12 — winback click-tracking (no auth; JWT-gated internally)
   app.use('/w', winbackTrackingRouter);
+  // Hosting forwards only /api/**, so /w links never reached this router (NotFound,
+  // zero click data). Links are now built under /api/w (2026-09-13).
+  app.use('/api/w', winbackTrackingRouter);
   
   // Control Panel Registry - RBAC (Role-Based Access Control)
   app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);
