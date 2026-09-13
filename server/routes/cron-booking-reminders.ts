@@ -230,7 +230,7 @@ export async function runBookingRemindersCron(): Promise<{ scanned: number; emai
                 // Provider is travelling to the door → include access notes.
                 locationAddress: formatUserAddress(bookingSnapshotToAddress(b), { lang: prov.lang, includeNotes: true }) || undefined,
                 priceFormatted: `₪${(Number(b.totalCents || 0) / 100).toFixed(2)}`,
-                dashboardUrl: `https://petwash.co.il/provider/bookings/${b.requestId}`,
+                dashboardUrl: `https://petwash.co.il/provider/jobs/${b.requestId}`,
               });
               if (await guardedEmail(prov.email,
                 prov.lang === 'he' ? `תזכורת: עבודה מחר בשעה ${pf.time} — PetWash™` : `Reminder: job tomorrow at ${pf.time} — PetWash™`,

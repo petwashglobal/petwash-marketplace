@@ -245,7 +245,7 @@ router.post('/join', async (req: Request, res: Response) => {
   <tr><td style="padding:12px 16px;color:#777;font-size:14px;">מספר חבר</td><td style="padding:12px 16px;font-weight:600;">${memberNumber}</td></tr>
 </table>
 <div style="margin-top:24px;text-align:center;">
-  <a href="${appBaseUrl}/prestige-pass/wallet" style="display:inline-block;background:#111;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:600;">פתח ארנק Prestige</a>
+  <a href="${appBaseUrl}/prestige-pass" style="display:inline-block;background:#111;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:600;">פתח ארנק Prestige</a>
 </div>
 <p style="margin-top:32px;font-size:12px;color:#aaa;text-align:center;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | ${appBaseUrl}</p>
 </div></body></html>`;

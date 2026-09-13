@@ -93,7 +93,7 @@ const MODULE_LINKS: Record<string, { label: string; href: string; icon: typeof E
   hr: [
     { label: "HR Dashboard", href: "/admin/hr", icon: Users },
     { label: "Team Management", href: "/admin/users", icon: Users },
-    { label: "Team Invitations", href: "/admin/team-invitations", icon: HeartHandshake },
+    { label: "Team Invitations", href: "/admin/team", icon: HeartHandshake },
   ],
   finance: [
     { label: "Financial Reports", href: "/admin/financial", icon: DollarSign },

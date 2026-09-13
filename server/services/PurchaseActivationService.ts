@@ -123,6 +123,21 @@ export interface ActivationResult {
   reason?: string;
 }
 
+/**
+ * True when getTransaction could not get an answer from SUMIT (network error,
+ * thrown call, HTTP 5xx) — as opposed to SUMIT answering "not valid".
+ * Shapes come from SumitClient.getTransaction: network → wired:false +
+ * "Network error: …"; non-2xx → "SUMIT returned <status>"; our catch → 'verify_threw'.
+ */
+export function isSumitUnreachable(verify: { wired: boolean; valid: boolean; reason?: string }): boolean {
+  if (verify.valid) return false;
+  const r = verify.reason || '';
+  if (r === 'verify_threw') return true;
+  if (/^Network error/i.test(r)) return true;
+  if (/^SUMIT returned 5\d\d$/.test(r)) return true;
+  return false;
+}
+
 /** Postgres unique-violation SQLSTATE — drizzle surfaces it on err.code. */
 function isUniqueViolation(err: unknown): boolean {
   const code = (err as { code?: string })?.code;
@@ -281,6 +296,17 @@ export async function activateFromVerifiedPayment(
     } catch (err) {
       logger.error('[PurchaseActivation] getTransaction threw', { transactionId, err: (err as Error)?.message });
       verify = { wired: true, valid: false, reason: 'verify_threw' };
+    }
+    if (!verify.valid && isSumitUnreachable(verify)) {
+      // 2026-09-13: "we could not ASK SUMIT" is not "SUMIT said no". A timeout,
+      // network error or 5xx used to mark a PAID purchase failed with
+      // 'sumit_unverified' — reads as fraud, not an outage. Leave it
+      // payment_pending (re-runnable: the claim accepts payment_pending) and let
+      // the caller alert/retry. Nothing is activated on an unverified payment.
+      logger.warn('[PurchaseActivation] SUMIT unreachable during verify — leaving payment_pending', {
+        purchaseId: purchase.id, transactionId, reason: verify.reason,
+      });
+      return { outcome: 'pending', purchaseId: purchase.id, reason: 'verify_unavailable' };
     }
     if (!verify.valid) {
       await markFailed(purchase, 'sumit_unverified', verify.reason);

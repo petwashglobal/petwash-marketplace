@@ -7961,59 +7961,19 @@ self.addEventListener('notificationclick', (event) => {
   // MODERN E-VOUCHER SYSTEM (2025-2026 Standard with UUID, Hashing, Anti-Fraud)
   // ============================================================================
 
-  // Purchase voucher (guest or authenticated)
-  app.post('/api/vouchers/purchase', async (req, res) => {
-    const correlationId = crypto.randomUUID();
-    try {
-      const schema = z.object({
-        type: z.enum(['FIXED', 'STORED_VALUE']),
-        amount: z.number().positive().max(2000).multipleOf(0.01),
-        currency: z.enum(['ILS', 'USD', 'EUR']).default('ILS'),
-        purchaserEmail: z.string().email({ message: "Please enter a valid email address" }),
-        recipientEmail: z.string().email({ message: "Please enter a valid email address" }).optional(),
-        expiresAt: z.string().datetime().optional(),
-        returnPlainForTest: z.boolean().optional()
-      });
-      
-      const data = schema.parse(req.body);
-      const userId = (req as any).user?.claims?.sub;
-      
-      const result = await storage.createVoucher({
-        type: data.type,
-        currency: data.currency,
-        amount: data.amount.toFixed(2),
-        purchaserEmail: data.purchaserEmail,
-        recipientEmail: data.recipientEmail || null,
-        purchaserUid: userId || null,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-        nayaxTxId: null
-      });
-      
-      const emailRecipient = data.recipientEmail || data.purchaserEmail;
-      await EmailService.sendVoucherPurchaseEmail(
-        emailRecipient,
-        result.codePlain,
-        result.codeLast4,
-        data.amount.toFixed(2),
-        data.currency,
-        data.expiresAt ? new Date(data.expiresAt) : null,
-        'he'
-      );
-      
-      logger.info('Voucher purchased', { correlationId, voucherId: result.voucherId });
-      
-      res.status(201).json({
-        voucherId: result.voucherId,
-        codeLast4: result.codeLast4,
-        ...(data.returnPlainForTest && process.env.NODE_ENV !== 'production' ? { code: result.codePlain } : {})
-      });
-    } catch (error) {
-      logger.error('Voucher purchase failed', error, { correlationId });
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid request', details: error.errors });
-      }
-      res.status(500).json({ error: 'Purchase failed' });
-    }
+  // SEALED 2026-09-13 (P0). POST /api/vouchers/purchase took NO payment and NO
+  // login: it created a real e-voucher for any amount up to ₪2,000, emailed the
+  // plain code to any address (a free SendGrid relay), and /api/vouchers/claim
+  // → /api/gift-cards/activate-wallet then turned that code into spendable
+  // eGift wallet credit. No client page calls it. Paid gifts are issued only by
+  // verified-payment flows (SUMIT /begin → PurchaseActivationService,
+  // /api/egift/guest/*). Never re-open this without a verified payment binding.
+  // Pinned by server/tests/voucherPurchaseSealed.regression.test.ts.
+  app.post('/api/vouchers/purchase', (_req, res) => {
+    res.status(410).json({
+      error: 'This endpoint is retired. Gift cards are sold at /egift.',
+      errorCode: 'VOUCHER_PURCHASE_RETIRED',
+    });
   });
 
   // Claim voucher (requires authentication)
@@ -12339,6 +12299,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Phase 6.12 — winback click-tracking (no auth; JWT-gated internally)
   app.use('/w', winbackTrackingRouter);
+  // Hosting forwards only /api/**, so /w links never reached this router (NotFound,
+  // zero click data). Links are now built under /api/w (2026-09-13).
+  app.use('/api/w', winbackTrackingRouter);
   
   // Control Panel Registry - RBAC (Role-Based Access Control)
   app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);

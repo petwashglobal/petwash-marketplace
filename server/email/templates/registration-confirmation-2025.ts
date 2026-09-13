@@ -362,7 +362,7 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
       }</p>
       
       <center>
-        <a href="https://petwash.co.il/my-applications" class="cta-button" style="background: linear-gradient(135deg, #10B981, #059669);">
+        <a href="https://petwash.co.il/provider-application/status" class="cta-button" style="background: linear-gradient(135deg, #10B981, #059669);">
           ${isHebrew ? '📊 עקוב אחר הבקשה' : '📊 Track Your Application'}
         </a>
       </center>
