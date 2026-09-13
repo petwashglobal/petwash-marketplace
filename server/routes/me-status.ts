@@ -71,14 +71,11 @@ router.get('/status', validateFirebaseToken, async (req: Request, res: Response)
     member_id: null as string | null,
   };
   try {
-    const r = await pool.query(
-      `SELECT member_id, tier, status
-         FROM privilege_members
-        WHERE firebase_uid = $1
-        LIMIT 1`,
-      [uid],
-    );
-    const row = r.rows[0];
+    // 2026-09-13: was `WHERE firebase_uid = $1`, a column no join route
+    // wrote — every enrolled member read NOT_JOINED. See privilegeMemberLookup.
+    const { findPrivilegeMemberForUser } = await import('../lib/privilegeMemberLookup');
+    const member = await findPrivilegeMemberForUser(uid);
+    const row = member ? { status: member.status, tier: member.tier, member_id: member.memberId } : null;
     if (row) {
       const st = (row.status || '').toString().toLowerCase();
       // 'active' → ACTIVE. Anything else (suspended, cancelled, pending, …)

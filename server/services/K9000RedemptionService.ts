@@ -86,11 +86,18 @@ const LOYALTY_BENEFIT_MIN_TIER = 'gold'; // minimum tier for a free wash benefit
 // does. It had its own inline 200 and no tier check, so members with 200–499
 // points (or below gold) got a QR the bay then refused (402/403). 2026-09-13.
 export const LOYALTY_WASH_COST_POINTS  = 500;  // loyalty points per wash
-export const LOYALTY_QUALIFYING_TIERS: readonly string[] = ['gold', 'platinum', 'diamond', 'elite', 'vip'];
+// 'emerald' and 'royal' are above gold on the canonical ladder (TIER_CONFIGS)
+// and were missing, so the two highest tiers could not redeem at all.
+export const LOYALTY_QUALIFYING_TIERS: readonly string[] = ['gold', 'platinum', 'diamond', 'emerald', 'royal', 'elite', 'vip'];
+
+/** Tier ids are stored lower-case; older rows were written upper-case ('GOLD'). */
+function normalizedTier(tier: string | null | undefined): string {
+  return String(tier ?? '').trim().toLowerCase();
+}
 
 /** The one loyalty-wash eligibility rule, shared by the QR mint and the bay. */
 export function loyaltyWashEligible(wallet: { loyaltyTier?: string | null; loyaltyPointsBalance?: number | null }): boolean {
-  return LOYALTY_QUALIFYING_TIERS.includes(wallet.loyaltyTier ?? '') &&
+  return LOYALTY_QUALIFYING_TIERS.includes(normalizedTier(wallet.loyaltyTier)) &&
     (wallet.loyaltyPointsBalance ?? 0) >= LOYALTY_WASH_COST_POINTS;
 }
 
@@ -985,7 +992,7 @@ function validateBalance(
         throw rejectWith('INSUFFICIENT_GIFT_BALANCE', 'יתרת כרטיס מתנה לא מספיקה.', 402);
       break;
     case 'loyalty_benefit': {
-      if (!LOYALTY_QUALIFYING_TIERS.includes(wallet.loyaltyTier ?? ''))
+      if (!LOYALTY_QUALIFYING_TIERS.includes(normalizedTier(wallet.loyaltyTier)))
         throw rejectWith(
           'LOYALTY_TIER_INELIGIBLE',
           `רמת הנאמנות הנוכחית אינה מזכה בשטיפה חינמית. נדרשת רמת ${LOYALTY_BENEFIT_MIN_TIER} לפחות.`,

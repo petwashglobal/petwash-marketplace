@@ -95,8 +95,12 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
     // must only nudge to the loyalty dashboard where the redemption
     // engine speaks. Ownership: firebase_uid must equal userId. Status
     // filter: only active members surface.
-    expect(SRC).toMatch(/eq\(privilegeMembers\.firebaseUid, userId\)/);
-    expect(SRC).toMatch(/eq\(privilegeMembers\.status, 'active'\)/);
+    // 2026-09-13: the direct eq(privilegeMembers.firebaseUid, userId) lookup
+    // matched nobody — no join route wrote firebase_uid. Ownership now goes
+    // through findPrivilegeMemberForUser (uid binding, else the account's own
+    // users.email on an unbound row). Status active is still required.
+    expect(SRC).toContain('findPrivilegeMemberForUser(userId)');
+    expect(SRC).toContain("member.status !== 'active'");
     // Skip signal: bronze + zero points → no home spam.
     expect(SRC).toMatch(/const hasSignal = \(tierRaw !== 'bronze'\) \|\| \(Number\.isFinite\(points\) && points > 0\);/);
     expect(SRC).toMatch(/if \(!hasSignal\) return \[\];/);

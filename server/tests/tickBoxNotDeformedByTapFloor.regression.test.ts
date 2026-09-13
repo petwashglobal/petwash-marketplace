@@ -795,7 +795,10 @@ describe("a member is charged the discount the page promises them", () => {
   it("tier truth is privilege_members, never users.loyaltyTier", () => {
     const fn = src.slice(src.indexOf("async function resolveMemberTierDiscount"));
     const body = fn.slice(0, fn.indexOf("\n}\n"));
-    expect(body).toMatch(/privilegeMembers\.firebaseUid/);
+    // 2026-09-13: was /privilegeMembers\.firebaseUid/ — a column no join route
+    // ever wrote, so this pin guarded a lookup that matched nobody. Tier truth
+    // is still privilege_members, reached through the shared lookup.
+    expect(body).toMatch(/findPrivilegeMemberForUser\(userId\)/);
     expect(body).not.toMatch(/loyaltyTier/);
     // An inactive or absent membership is not a tier.
     expect(body).toMatch(/status !== 'active'/);

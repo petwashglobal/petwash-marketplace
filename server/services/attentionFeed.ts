@@ -433,21 +433,12 @@ async function petParentKyaStaleItems(userId: string, he: boolean): Promise<Atte
  */
 async function petParentPrestigeItems(userId: string, he: boolean): Promise<AttentionItem[]> {
   try {
-    const rows = await db
-      .select({
-        memberId: privilegeMembers.memberId,
-        tier: privilegeMembers.tier,
-        points: privilegeMembers.points,
-        status: privilegeMembers.status,
-      })
-      .from(privilegeMembers)
-      .where(and(
-        eq(privilegeMembers.firebaseUid, userId),
-        eq(privilegeMembers.status, 'active'),
-      ))
-      .limit(1);
-    if (!rows.length) return [];
-    const r = rows[0];
+    // 2026-09-13: filtered on privilege_members.firebase_uid, which no join
+    // route wrote, so no member ever got this item. See privilegeMemberLookup.
+    const { findPrivilegeMemberForUser } = await import('../lib/privilegeMemberLookup');
+    const member = await findPrivilegeMemberForUser(userId);
+    if (!member || member.status !== 'active') return [];
+    const r = { memberId: member.memberId, tier: member.tier, points: member.points };
     const tierRaw = String(r.tier ?? 'bronze').toLowerCase();
     const points = Number(r.points ?? 0);
     // Signal threshold: any member above bronze OR any member with
