@@ -24,8 +24,8 @@ describe('StationMap has no dead controls (2026-07-09)', () => {
     expect(SRC).not.toMatch(/data-testid="button-filters"/);
   });
 
-  it('the working "View Station List" next-step remains', () => {
-    expect(SRC).toMatch(/data-testid="button-view-list"/);
-    expect(SRC).toMatch(/setLocation\("\/locations"\)/);
+  it('the page goes straight to the real station list (2026-09-13: placeholder replaced by redirect)', () => {
+    expect(SRC).toMatch(/<Redirect to="\/locations"/);
+    expect(SRC).not.toMatch(/Interactive Map Coming Soon/);
   });
 });

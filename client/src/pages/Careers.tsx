@@ -3,7 +3,7 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { useTranslation } from 'react-i18next';
+import { useLanguage } from '@/lib/languageStore';
 import { 
   Briefcase, 
   MapPin, 
@@ -86,10 +86,13 @@ const WORLD_COUNTRIES = [
 
 export default function Careers() {
   useSEO(pageSEO.careers);
-  const { t, i18n } = useTranslation();
+  // 2026-09-13: read the APP language store like sibling pages. react-i18next's
+  // i18n.language is fixed to 'en' in this app, so every Hebrew branch below
+  // was dead and Hebrew visitors got an English careers page.
+  const { language } = useLanguage();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const isRTL = i18n.language === 'he' || i18n.language === 'ar';
+  const isRTL = language === 'he' || language === 'ar';
   
   const [selectedPosition, setSelectedPosition] = useState<CareerPosition | null>(null);
   const [showApplicationForm, setShowApplicationForm] = useState(false);
@@ -1205,7 +1208,7 @@ export default function Careers() {
                 {isRTL ? 'מה הלאה?' : 'What\'s Next?'}
               </h4>
               <ul className="text-sm text-emerald-700 space-y-1">
-                <li>• {isRTL ? 'בדוק את האימייל שלך לאישור' : 'Check your email for confirmation'}</li>
+                <li>• {isRTL ? 'ניצור קשר בטלפון או במייל שמסרתם' : 'We will contact you by the phone or email you provided'}</li>
                 <li>• {isRTL ? 'העלה קורות חיים (מומלץ)' : 'Upload your resume (recommended)'}</li>
                 <li>• {isRTL ? 'השלם אימות זהות אם נדרש' : 'Complete identity verification if required'}</li>
               </ul>
