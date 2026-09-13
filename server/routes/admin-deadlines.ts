@@ -51,7 +51,12 @@ import { eq, and, isNotNull, ne, sql } from 'drizzle-orm';
 const router = Router();
 
 // ---- Auth: token first, then super-admin email check -----------------------
-router.use(validateFirebaseToken);
+// Scoped to this router's own paths (2026-09-13). The router is mounted at
+// '/api/admin', so a bare router.use() ran for EVERY /api/admin/* request that
+// reached it and refused every admin router mounted after it to anyone but a
+// super admin. Same bug class as admin-notifications.ts.
+export const ADMIN_DEADLINES_PATHS = ['/deadlines', '/insurance-status'];
+router.use(ADMIN_DEADLINES_PATHS, validateFirebaseToken);
 function requireAdmin(req: any, res: Response, next: any) {
   // #240 migration: paired shape — allowlist + email_verified.
   if (!isSuperAdminVerified(req)) {
@@ -59,7 +64,7 @@ function requireAdmin(req: any, res: Response, next: any) {
   }
   next();
 }
-router.use(requireAdmin);
+router.use(ADMIN_DEADLINES_PATHS, requireAdmin);
 
 // ---- Severity buckets per the spec's 60/30/14/7 schedule -------------------
 // ≤7 critical, ≤14 high, ≤30 medium, ≤60 low. Past-due is "critical".

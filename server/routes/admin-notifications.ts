@@ -26,37 +26,26 @@ import { db } from '../db';
 import { notificationLogs, financialDocuments } from '@shared/schema';
 import { and, eq, desc, sql, or, ilike, gte, lt } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { auth as firebaseAuth } from '../lib/firebase-admin';
+import { requireAdmin } from '../adminAuth';
 import { NotificationRetryService } from '../services/NotificationRetryService';
 import { EVENT_MATRIX, DOCUMENT_PREFIXES, EVENT_MATRIX_LOCKED_AT, EVENT_MATRIX_COMMIT, TOTAL_EVENTS, TOTAL_DOCUMENT_TYPES } from '../lib/eventMatrix';
 import { logAuditEvent } from '../middleware/auditLog';
 
 const router = Router();
 
-// ─── Admin auth middleware ────────────────────────────────────────────────────
-async function requireAdmin(req: any, res: any, next: any) {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization required' });
-    }
-    const token = authHeader.slice(7);
-    const decoded = await firebaseAuth.verifyIdToken(token);
-    const claims = decoded as any;
-    if (claims.role !== 'admin' && !claims.isAdmin) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-    req.adminUid = decoded.uid;
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Invalid token' });
-  }
-}
-
-// Issue #148 P5 — every handler below requires admin role. Replaces the
-// per-handler `requireAdmin` arg that was repeated 8× — this is one
-// blanket guard, identical behaviour, fewer per-request token verifies.
-router.use(requireAdmin);
+// ─── Admin auth ───────────────────────────────────────────────────────────────
+// 2026-09-13: this file used to define its own requireAdmin that accepted only
+// a Bearer token whose claims said role === 'admin'. Two defects:
+//   1. A super admin (allowlist + verified email, no role claim) and any admin
+//      signed in with the session cookie were refused.
+//   2. It ran as a BLANKET router.use on a router mounted at '/api/admin', so it
+//      executed for EVERY /api/admin/* request that reached this router — the
+//      21 admin routers mounted after it in routes.ts (octopus dashboard,
+//      paw-finder, adoption, …) all answered "Admin access required" to the CEO.
+// Now: the canonical requireAdmin (session cookie or Bearer, super admin or
+// admin role, 4h admin session), scoped to this router's own paths only.
+export const ADMIN_NOTIFICATION_PATHS = ['/notifications', '/financial-documents', '/event-matrix'];
+router.use(ADMIN_NOTIFICATION_PATHS, requireAdmin);
 
 // ─── Stats ────────────────────────────────────────────────────────────────────
 
@@ -253,7 +242,7 @@ router.post('/notifications/retry-sweep', async (req: any, res) => {
     // Issue #148 P5: canonical audit_events for every admin mutation.
     setImmediate(() => {
       logAuditEvent({
-        actorUserId: req.adminUid || undefined,
+        actorUserId: req.session?.adminId || req.user?.uid || undefined,
         actorRole: 'admin',
         actionType: 'NOTIFICATION_RETRY_SWEEP',
         targetType: 'notification_retry_queue',
