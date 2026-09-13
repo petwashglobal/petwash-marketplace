@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { execSync } from "node:child_process";
+import { i18nLanguagePacks } from "./scripts/vite/i18nLanguagePacks";
 
 // Visible build stamp — injected into the bundle so the footer can show
 // exactly which build is live. Turns "why is my Mac on the old version?"
@@ -32,6 +33,8 @@ export default defineConfig({
     __APP_BUILD_ID__: JSON.stringify(BUILD_ID),
   },
   plugins: [
+    // Splits ar/ru/fr/es out of client/src/lib/i18n.ts into lazy chunks (build only).
+    i18nLanguagePacks(),
     react(),
   ],
   resolve: {
