@@ -2675,9 +2675,9 @@ router.get('/:requestId/sumit-return', async (req, res) => {
     return res.redirect(302, `${appUrl}/booking/confirmation/${requestId}?payment=failed`);
   };
   try {
-    // SUMIT return field name is not yet pinned — accept the plausible shapes.
-    const q = req.query as Record<string, string | undefined>;
-    const txnId = q.ID || q.TransactionID || q.PaymentID || q.OGToken || q.Result || q.paymentId || '';
+    // SUMIT appends OG-PaymentID (official schema) — see server/lib/sumitPaymentReturn.ts.
+    const { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } = await import('../lib/sumitPaymentReturn');
+    const txnId = readSumitPaymentIdFromReturn(req.query as Record<string, unknown>);
 
     const [booking] = await db.select().from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId)).limit(1);
@@ -2702,6 +2702,10 @@ router.get('/:requestId/sumit-return', async (req, res) => {
       });
       return fail('amount_mismatch');
     }
+
+    // ONE PAYMENT, ONE ORDER — the durable binding SUMIT's payload cannot give us.
+    const paymentClaim = await claimSumitPayment(String(txnId), `booking:${requestId}`, 'booking');
+    if (!claimAllowsFulfil(paymentClaim)) return fail(`payment_claim_${paymentClaim}`);
 
     // Deal Gate: never fake a confirmation. If accept-side evidence is missing, hold the
     // (already-escrowed) money and raise an alert for a human — do NOT flip to confirmed.

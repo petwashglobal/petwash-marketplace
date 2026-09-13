@@ -19,6 +19,7 @@ import { sumitClient } from '../services/SumitClient';
 import { SumitCardVault, isCardVaultEnabled } from '../services/SumitCardVault';
 import { logger } from '../lib/logger';
 import { sendAlert } from '../monitoring';
+import { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } from '../lib/sumitPaymentReturn';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -225,7 +226,8 @@ async function failAfterConfirmedCharge(
 
 // GET /api/payments/save-card/return — SUMIT redirects the customer back here.
 router.get('/save-card/return', async (req: Request, res: Response) => {
-  const txnId = String(req.query.ID || req.query.id || '');
+  // SUMIT appends OG-PaymentID (official schema) — see server/lib/sumitPaymentReturn.ts.
+  const txnId = readSumitPaymentIdFromReturn(req.query as Record<string, unknown>);
   const ext = String(req.query.ext || '');
   const base = baseUrl();
   if (!txnId || !ext) return failCallbackAnomaly(res, base, 'missing_txn_or_ext', { ext, txnId });
@@ -253,6 +255,13 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
     return failAfterConfirmedCharge(res, base, 'external_ref_mismatch', { ext, txnId, uid: pending.uid }, 'failed');
   }
 
+  // ONE PAYMENT, ONE ORDER — a ₪1 save-card payment must not also save a card
+  // for a different handoff (or pay for anything else).
+  const paymentClaim = await claimSumitPayment(txnId, ext, 'save_card');
+  if (!claimAllowsFulfil(paymentClaim)) {
+    return failCallbackAnomaly(res, base, `payment_claim_${paymentClaim}`, { ext, txnId });
+  }
+
   // ATOMIC one-shot claim. Concurrent duplicate callbacks race on this single
   // Redis command: exactly one gets the record, every replay gets null.
   const claimedRaw = await redis.getDel(pendingKey(ext));
@@ -277,9 +286,9 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
   // (defensive field shapes — confirmed on the first real save). Fail-closed if absent.
   const raw: any = verify.raw || {};
   const sumitCustomerId =
-    raw?.CustomerID ?? raw?.Customer?.ID ?? raw?.Data?.CustomerID ?? raw?.Payment?.CustomerID ?? raw?.Data?.Customer?.ID;
+    verify.customerId ?? raw?.Data?.Payment?.CustomerID ?? raw?.CustomerID ?? raw?.Customer?.ID ?? raw?.Data?.CustomerID ?? raw?.Payment?.CustomerID ?? raw?.Data?.Customer?.ID;
   const token =
-    raw?.PaymentMethodID ?? raw?.SinglePaymentToken ?? raw?.Data?.PaymentMethodID ?? raw?.PaymentMethod?.ID;
+    verify.paymentMethodId ?? raw?.Data?.Payment?.PaymentMethod?.ID ?? raw?.PaymentMethodID ?? raw?.SinglePaymentToken ?? raw?.Data?.PaymentMethodID ?? raw?.PaymentMethod?.ID;
   if (!sumitCustomerId) {
     logger.warn('[SaveCard] no SUMIT customer id in verified txn — not saving (fail-closed)', { txnId, uid });
     return failAfterConfirmedCharge(res, base, 'no_sumit_customer_id', { ext, txnId, uid });
