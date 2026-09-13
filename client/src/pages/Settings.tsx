@@ -29,7 +29,8 @@ import {
   Wallet,
   Lock,
 } from "lucide-react";
-import { registerPasskey, getBiometricMethodName, isPasskeySupported } from "@/auth/passkey";
+import { getBiometricMethodName, isPasskeySupported } from "@/auth/passkey";
+import { PasskeyCreateFlow } from "@/components/PasskeyCreateFlow";
 import { useLocation } from "wouter";
 import { logger } from "@/lib/logger";
 import { revokeDeviceTrust } from "@/lib/deviceTrust";
@@ -767,44 +768,26 @@ export default function Settings() {
     }
   };
 
-  // Handle adding a new passkey
-  const handleAddPasskey = async () => {
+  // Adding a passkey goes through the consent screen first (PasskeyCreateFlow:
+  // explain → member presses confirm → Face ID sheet → success). 2026-09-14.
+  const [passkeyFlowOpen, setPasskeyFlowOpen] = useState(false);
+  const handleAddPasskey = () => {
     if (!firebaseUser) return;
-
+    setPasskeyFlowOpen(true);
+  };
+  const refreshDevicesAfterPasskey = async () => {
+    if (!firebaseUser) return;
     try {
-      setAddingPasskey(true);
-      const token = await firebaseUser.getIdToken();
-      const deviceName = `${getBiometricMethodName()} - ${format(new Date(), 'MMM dd, yyyy')}`;
-      
-      const result = await registerPasskey(token, deviceName);
-
-      if (result.success) {
-        toast({
-          title: t('settings.passkeyAddedSuccess', language),
-        });
-
-        // Refresh devices list
-        const response = await fetch(getApiUrl('/api/auth/webauthn/devices'), {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setDevices(data.devices || []);
-        }
-      } else {
-        toast({
-          variant: "destructive",
-          title: t('settings.error', language),
-          description: result.error || t('settings.failedAddPasskey', language),
-        });
+      const response = await fetch(getApiUrl('/api/auth/webauthn/devices'), {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDevices(data.devices || []);
       }
     } catch (error) {
-      logger.error('Error adding passkey:', error);
-    } finally {
-      setAddingPasskey(false);
+      logger.error('Error refreshing devices after passkey:', error);
     }
   };
 
@@ -949,6 +932,13 @@ export default function Settings() {
   }
 
   return (
+    <>
+      <PasskeyCreateFlow
+        open={passkeyFlowOpen}
+        onOpenChange={setPasskeyFlowOpen}
+        language={language}
+        onCreated={refreshDevicesAfterPasskey}
+      />
     <Layout language={language} onLanguageChange={setLanguage}>
       <div className="luxury-dark-mesh min-h-screen">
         <div className="pt-20 pb-16">
@@ -1579,5 +1569,6 @@ export default function Settings() {
       </AlertDialog>
       </div>
     </Layout>
+    </>
   );
 }

@@ -23,7 +23,8 @@ import {
   Plus,
   Info,
 } from "lucide-react";
-import { registerPasskey, getBiometricMethodName, isPasskeySupported } from "@/auth/passkey";
+import { getBiometricMethodName, isPasskeySupported } from "@/auth/passkey";
+import { PasskeyCreateFlow } from "@/components/PasskeyCreateFlow";
 import { useLocation } from "wouter";
 import { logger } from "@/lib/logger";
 import {
@@ -187,43 +188,26 @@ export default function DeviceManagement() {
     }
   };
 
-  // Handle adding a new passkey
-  const handleAddPasskey = async () => {
+  // Adding a passkey goes through the consent screen first (PasskeyCreateFlow:
+  // explain → member presses confirm → Face ID sheet → success). 2026-09-14.
+  const [passkeyFlowOpen, setPasskeyFlowOpen] = useState(false);
+  const handleAddPasskey = () => {
     if (!firebaseUser) return;
-
+    setPasskeyFlowOpen(true);
+  };
+  const refreshDevicesAfterPasskey = async () => {
+    if (!firebaseUser) return;
     try {
-      setAddingPasskey(true);
-      const token = await firebaseUser.getIdToken();
-      const deviceName = `${getBiometricMethodName()} - ${new Date().toLocaleDateString()}`;
-      
-      const result = await registerPasskey(token, deviceName);
-
-      if (result.success) {
-        toast({
-          title: isHebrew ? 'Passkey נוסף בהצלחה' : 'Passkey added successfully',
-        });
-
-        // Refresh devices list
-        const response = await fetch(getApiUrl('/api/webauthn/credentials'), {
-          credentials: 'include',
-          headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setDevices((data.credentials || []).filter((d: Device) => !d.isRevoked));
-        }
-      } else {
-        toast({
-          variant: "destructive",
-          title: t('common.error', language),
-          description: result.error || (isHebrew ? 'נכשל להוסיף Passkey' : 'Failed to add passkey'),
-        });
+      const response = await fetch(getApiUrl('/api/webauthn/credentials'), {
+        credentials: 'include',
+        headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDevices((data.credentials || []).filter((d: Device) => !d.isRevoked));
       }
     } catch (error) {
-      logger.error('Error adding passkey:', error);
-    } finally {
-      setAddingPasskey(false);
+      logger.error('Error refreshing devices after passkey:', error);
     }
   };
 
@@ -278,6 +262,13 @@ export default function DeviceManagement() {
   }
 
   return (
+    <>
+      <PasskeyCreateFlow
+        open={passkeyFlowOpen}
+        onOpenChange={setPasskeyFlowOpen}
+        language={language}
+        onCreated={refreshDevicesAfterPasskey}
+      />
     <Layout language={language} onLanguageChange={setLanguage}>
       <div className="min-h-screen luxury-bg-mesh" dir={rtl ? 'rtl' : 'ltr'}>
         <div className="pt-20 pb-16">
@@ -543,5 +534,6 @@ export default function DeviceManagement() {
       </AlertDialog>
       </div>
     </Layout>
+    </>
   );
 }

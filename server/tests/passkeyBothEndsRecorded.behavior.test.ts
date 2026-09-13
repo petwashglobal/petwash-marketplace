@@ -18,6 +18,7 @@
  * logSecurityEvent writer. Only Firestore, Firebase Auth token verification,
  * e-mail alerts and geo lookup are faked.
  */
+import { PASSKEY_CONSENT_VERSION, PASSKEY_CONSENT_TEXT } from '../../shared/lib/passkeyConsent';
 import crypto from 'node:crypto';
 import express from 'express';
 import request from 'supertest';
@@ -285,11 +286,12 @@ const post = (path: string, token?: string) => {
 };
 
 async function enrol(token: string, authn: Authn) {
-  const opts = await post('/api/webauthn/register/options', token).send({});
+  const opts = await post('/api/webauthn/register/options', token).send({ consent: PASSKEY_CONSENT_VERSION });
   expect(opts.status).toBe(200);
   const verify = await post('/api/webauthn/register/verify', token).send({
     challengeId: opts.body.challengeId,
     response: authn.attest(opts.body.options.challenge),
+    consent: PASSKEY_CONSENT_VERSION,
   });
   return { opts, verify };
 }
@@ -350,8 +352,11 @@ describe('enrolment works for a Firebase-ID-token user (no session cookie)', () 
     expect(stored?.credId).toBe(member.id);
     expect(h.docs.get('users/cust1')?.hasPasskey).toBe(true);
 
-    expect(created).toHaveLength(1);
-    expectAuditShape(created[0], { uid: 'cust1', type: 'PASSKEY_ENROLL_SUCCESS', result: 'success', reason: null, credentialId: member.id });
+    // consent accepted (options) + enrolment success (verify)
+    expect(created.map((e) => e.type)).toEqual(['PASSKEY_CONSENT_ACCEPTED', 'PASSKEY_ENROLL_SUCCESS']);
+    expect(created[0].meta?.consentVersion).toBe(PASSKEY_CONSENT_VERSION);
+    expectAuditShape(created[1], { uid: 'cust1', type: 'PASSKEY_ENROLL_SUCCESS', result: 'success', reason: null, credentialId: member.id });
+    expect(created[1].meta?.consentVersion).toBe(PASSKEY_CONSENT_VERSION);
     expect(h.log.info).toHaveBeenCalledWith('[Security Event]', expect.objectContaining({ uid: 'cust1', type: 'PASSKEY_ENROLL_SUCCESS' }));
   });
 
@@ -360,12 +365,12 @@ describe('enrolment works for a Firebase-ID-token user (no session cookie)', () 
     const { result, created } = await recorded(() => enrol('token-phone', phoneKey));
     expect(result.opts.body.options.user.name).toBe('+972500000001');
     expect(result.verify.status).toBe(200);
-    expect(created.map((e) => [e.uid, e.type])).toEqual([['phone1', 'PASSKEY_ENROLL_SUCCESS']]);
+    expect(created.map((e) => [e.uid, e.type])).toEqual([['phone1', 'PASSKEY_CONSENT_ACCEPTED'], ['phone1', 'PASSKEY_ENROLL_SUCCESS']]);
   });
 
   it('replaying the same registration challenge fails closed and writes ONE failure record with the reason', async () => {
     const again = makeAuthenticator();
-    const opts = await post('/api/webauthn/register/options', 'token-customer').send({});
+    const opts = await post('/api/webauthn/register/options', 'token-customer').send({ consent: PASSKEY_CONSENT_VERSION });
     const body = { challengeId: opts.body.challengeId, response: again.attest(opts.body.options.challenge) };
     expect((await post('/api/webauthn/register/verify', 'token-customer').send(body)).status).toBe(200);
 
@@ -377,7 +382,7 @@ describe('enrolment works for a Firebase-ID-token user (no session cookie)', () 
   });
 
   it('a challenge issued to one account cannot enrol a passkey on another', async () => {
-    const opts = await post('/api/webauthn/register/options', 'token-customer').send({});
+    const opts = await post('/api/webauthn/register/options', 'token-customer').send({ consent: PASSKEY_CONSENT_VERSION });
     const k = makeAuthenticator();
     const { result, created } = await recorded(() =>
       post('/api/webauthn/register/verify', 'token-other').send({ challengeId: opts.body.challengeId, response: k.attest(opts.body.options.challenge) }),
@@ -388,11 +393,71 @@ describe('enrolment works for a Firebase-ID-token user (no session cookie)', () 
   });
 
   it('no token -> 401; an expired session cookie -> 401 (it used to throw into a 500)', async () => {
-    expect((await post('/api/webauthn/register/options').send({})).status).toBe(401);
+    expect((await post('/api/webauthn/register/options').send({ consent: PASSKEY_CONSENT_VERSION })).status).toBe(401);
     const expired = await request(app).get('/api/webauthn/credentials').set('Cookie', '__session=expired-cookie');
     expect(expired.status).toBe(401);
     const cookie = await request(app).get('/api/webauthn/credentials').set('Cookie', '__session=cookie-customer');
     expect(cookie.status).toBe(200);
+  });
+});
+
+describe('explicit consent before any passkey is created (2026-09-14)', () => {
+  it('no consent -> 428 PASSKEY_CONSENT_REQUIRED, no challenge issued, ONE failure record', async () => {
+    const { result, created } = await recorded(() => post('/api/webauthn/register/options', 'token-customer').send({}));
+    expect(result.status).toBe(428);
+    expect(result.body.error).toBe('PASSKEY_CONSENT_REQUIRED');
+    expect(result.body.consentVersion).toBe(PASSKEY_CONSENT_VERSION);
+    expect(result.body.options).toBeUndefined();
+    expect(result.body.challengeId).toBeUndefined();
+    expect(created.map((e) => [e.uid, e.type, e.reason])).toEqual([['cust1', 'PASSKEY_ENROLL_FAILED', 'consent_missing']]);
+  });
+
+  it('a stale or made-up consent version is refused the same way', async () => {
+    const r = await post('/api/webauthn/register/options', 'token-customer').send({ consent: 'passkey-consent-2020-01-01' });
+    expect(r.status).toBe(428);
+    const t = await post('/api/webauthn/register/options', 'token-customer').send({ consent: true });
+    expect(t.status).toBe(428);
+  });
+
+  it('with the current consent version -> 200 and the acceptance is recorded with the version', async () => {
+    const { result, created } = await recorded(() => post('/api/webauthn/register/options', 'token-customer').send({ consent: PASSKEY_CONSENT_VERSION }));
+    expect(result.status).toBe(200);
+    expect(result.body.challengeId).toBeTruthy();
+    expect(created.map((e) => [e.uid, e.type, e.result])).toEqual([['cust1', 'PASSKEY_CONSENT_ACCEPTED', 'success']]);
+    expect(created[0].meta?.consentVersion).toBe(PASSKEY_CONSENT_VERSION);
+  });
+
+  it('every client entry point creates passkeys only through the consent flow', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const R = (f: string) => fs.readFileSync(path.resolve(__dirname, '..', '..', f), 'utf8');
+    const flow = R('client/src/components/PasskeyCreateFlow.tsx');
+    expect(flow).toContain('registerPasskey(token, name, PASSKEY_CONSENT_VERSION)');
+    expect(flow).toContain('data-testid="passkey-consent-confirm"');
+    expect(flow).toContain('data-testid="passkey-consent-cancel"');
+    expect(flow).toContain('data-testid="passkey-consent-disclosure"');
+    expect(R('client/src/auth/passkey.ts')).toContain('body: JSON.stringify({ consent: consentVersion })');
+    for (const f of ['client/src/pages/MyAccount.tsx', 'client/src/pages/SecuritySettings.tsx', 'client/src/pages/DeviceManagement.tsx', 'client/src/pages/Settings.tsx', 'client/src/components/EnableFaceIDCard.tsx']) {
+      const src = R(f);
+      expect(src, f).toContain('<PasskeyCreateFlow');
+      expect(src, f).not.toMatch(/register\/options/);
+      expect(src, f).not.toMatch(/\bregisterPasskey\(/);
+    }
+    // removing a passkey in My Account asks to confirm first
+    expect(R('client/src/pages/MyAccount.tsx')).toContain('onClick={() => setPasskeyToRemove(pk.id)}');
+  });
+
+  it('the consent text discloses device-unlock access and biometrics never leave the device, in both languages', () => {
+    for (const lang of ['he', 'en'] as const) {
+      const T = PASSKEY_CONSENT_TEXT[lang];
+      expect(T.confirm.length).toBeGreaterThan(0);
+      expect(T.cancel.length).toBeGreaterThan(0);
+      expect(T.points.length).toBe(3);
+      expect(T.successTitle.length).toBeGreaterThan(0);
+    }
+    expect(PASSKEY_CONSENT_TEXT.en.disclosure).toMatch(/anyone who can unlock this device/i);
+    expect(PASSKEY_CONSENT_TEXT.he.disclosure).toContain('כל מי שיכול לפתוח את נעילת המכשיר');
+    expect(PASSKEY_CONSENT_TEXT.en.points.join(' ')).toMatch(/never leaves your device/);
   });
 });
 
