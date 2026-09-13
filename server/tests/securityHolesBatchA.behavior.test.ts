@@ -105,7 +105,11 @@ describe('A1 — any Google account could read every invoice', () => {
       ['/api/gemini-watchdog', 'geminiWatchdogRoutes.default'],
       ['/api/campaigns', 'campaignsRoutes'],
     ]) {
-      const re = new RegExp(`app\\.use\\('${mount.replace(/\//g, '\\/')}',[^;]*requireAdmin[^;]*${router.replace('.', '\\.')}\\);`);
+      // Escape EVERY regex metacharacter, not just '/' and the first '.' — the
+      // previous version was flagged by CodeQL (js/incomplete-sanitization) and
+      // `router.replace('.', ...)` really did only escape the first dot.
+      const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+      const re = new RegExp(`app\\.use\\('${esc(mount)}',[^;]*requireAdmin[^;]*${esc(router)}\\);`);
       expect(re.test(src), `${mount} is mounted without requireAdmin`).toBe(true);
     }
   });
