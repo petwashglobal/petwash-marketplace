@@ -25,7 +25,11 @@ describe('credit-wallet summary tier truth', () => {
     expect(SRC).not.toMatch(/async function isPrestigeEnrolled\(email/);
   });
   it("overrides loyaltyTier to 'new' unless enrolled, after spreading the service summary", () => {
-    expect(handler).toContain("const prestigeEnrolled = await isPrestigeEnrolled(req.user?.email || req.firebaseUser?.email);");
+    expect(handler).toContain("let enrollEmail: string | undefined = req.user?.email || req.firebaseUser?.email;");
+    expect(handler).toContain("const prestigeEnrolled = await isPrestigeEnrolled(enrollEmail);");
     expect(handler).toMatch(/\.\.\.summary,\s*loyaltyTier: prestigeEnrolled \? summary\.loyaltyTier : 'new',/);
+  });
+  it('phone-only sign-ins (no token email) fall back to their own users row, never another account', () => {
+    expect(handler).toMatch(/if \(!enrollEmail\) \{[\s\S]*?SELECT email FROM users WHERE id = \$1 LIMIT 1', \[userId\]\)/);
   });
 });
