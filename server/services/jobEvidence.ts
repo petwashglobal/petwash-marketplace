@@ -49,6 +49,13 @@ export interface JobEvidence {
   customerConfirmedAt?: Date | null;
   autoApproved?: boolean;
   openDispute?: boolean;
+  /**
+   * Gross model (2026-09-14): the provider's own invoice/receipt number to the
+   * customer. When `providerInvoiceRequired` is true and this is empty, the
+   * payout is blocked (docs/finance/00-platform-role-model.md §0.6.2.b).
+   */
+  providerInvoiceNumber?: string | null;
+  providerInvoiceRequired?: boolean;
 }
 
 export interface EvidenceReport {
@@ -191,6 +198,11 @@ export function evaluateJobEvidence(ev: JobEvidence): EvidenceReport {
     if (outside.length > 0) {
       warn('PHOTO_OUTSIDE_JOB_WINDOW', `${outside.length} photo(s) timestamped outside the job window`);
     }
+  }
+
+  // ── The provider's own invoice (gross model) ───────────────────────────────
+  if (ev.providerInvoiceRequired && !String(ev.providerInvoiceNumber ?? '').trim()) {
+    block('PROVIDER_INVOICE_MISSING', 'the provider has not recorded their own tax invoice / receipt to the customer for this job');
   }
 
   // ── Customer confirmation ──────────────────────────────────────────────────

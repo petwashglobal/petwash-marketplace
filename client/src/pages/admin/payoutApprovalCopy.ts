@@ -16,6 +16,7 @@ export const FINDING_HE: Record<string, string> = {
   IMPOSSIBLE_WALKING_SPEED: "מהירות של רכב בזמן ״הליכה״",
   PHOTO_OUTSIDE_JOB_WINDOW: "תמונות צולמו מחוץ לזמן העבודה",
   NO_CUSTOMER_CONFIRMATION: "הלקוח לא אישר את השירות",
+  PROVIDER_INVOICE_MISSING: "הספק לא רשם חשבונית/קבלה משלו ללקוח",
 };
 
 

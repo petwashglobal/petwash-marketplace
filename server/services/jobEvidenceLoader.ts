@@ -59,7 +59,8 @@ export async function loadWalkEvidence(bookingId: string): Promise<JobEvidence |
     `SELECT wb.*, w.user_id AS walker_uid,
             wb.actual_start_time AT TIME ZONE 'UTC' AS actual_start_utc,
             wb.actual_end_time   AT TIME ZONE 'UTC' AS actual_end_utc,
-            to_char(wb.scheduled_date, 'YYYY-MM-DD') AS scheduled_ymd
+            to_char(wb.scheduled_date, 'YYYY-MM-DD') AS scheduled_ymd,
+            to_jsonb(wb)->>'provider_invoice_number' AS provider_invoice_no
        FROM walk_bookings wb LEFT JOIN walker_profiles w ON w.walker_id = wb.walker_id
       WHERE wb.booking_id = $1 LIMIT 1`, [bookingId]);
   const b = rows[0];
@@ -94,6 +95,8 @@ export async function loadWalkEvidence(bookingId: string): Promise<JobEvidence |
     claimedDistanceMeters: num(b.total_distance_meters),
     claimedDurationMinutes: num(b.actual_duration_minutes),
     photoTimes: Array.isArray(vital.photos) ? vital.photos.map((ph) => date(ph?.timestamp)) : [],
+    providerInvoiceNumber: b.provider_invoice_no ?? null,
+    providerInvoiceRequired: true,
     // Walks have no customer confirm step today — reported as such, not assumed.
     customerConfirmedAt: null,
     autoApproved: false,
@@ -111,8 +114,9 @@ export async function loadBookingRequestEvidence(requestId: string): Promise<Job
             customer_latitude, customer_longitude, photo_updates,
             owner_confirmed_at AT TIME ZONE 'UTC' AS owner_confirmed_at,
             customer_approved_at AT TIME ZONE 'UTC' AS customer_approved_at,
-            auto_approved_at AT TIME ZONE 'UTC' AS auto_approved_at, status_history
-       FROM booking_requests WHERE request_id = $1 LIMIT 1`, [requestId]);
+            auto_approved_at AT TIME ZONE 'UTC' AS auto_approved_at, status_history,
+            to_jsonb(br)->>'provider_invoice_number' AS provider_invoice_no
+       FROM booking_requests br WHERE request_id = $1 LIMIT 1`, [requestId]);
   const b = rows[0];
   if (!b) return null;
   const phones = await phoneKeys([b.provider_id ?? null, b.owner_id ?? null]);
@@ -140,6 +144,8 @@ export async function loadBookingRequestEvidence(requestId: string): Promise<Job
     // A 24h auto-complete stamps ownerConfirmedAt too — only an explicit customer approval counts.
     customerConfirmedAt: autoApproved ? null : date(b.customer_approved_at) ?? date(b.owner_confirmed_at),
     autoApproved,
+    providerInvoiceNumber: b.provider_invoice_no ?? null,
+    providerInvoiceRequired: true,
     openDispute: await hasOpenDispute(requestId),
   };
 }

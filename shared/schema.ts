@@ -5271,6 +5271,9 @@ export const walkBookings = pgTable("walk_bookings", {
   // Cancellation
   cancelledBy: varchar("cancelled_by"), // owner | walker | system
   cancellationReason: text("cancellation_reason"),
+  // Gross model (migration 0159): the walker's OWN invoice/receipt to the customer.
+  providerInvoiceNumber: varchar("provider_invoice_number", { length: 64 }),
+  providerInvoiceSubmittedAt: timestamp("provider_invoice_submitted_at"),
   cancelledAt: timestamp("cancelled_at"),
   refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }),
   
@@ -11346,6 +11349,9 @@ export const bookingRequests = pgTable("booking_requests", {
 
   // Dual-approval completion (blueprint §13: both parties must confirm)
   providerCompletedAt: timestamp("provider_completed_at"),     // when provider marked complete
+  // Gross model (migration 0159): the provider's OWN invoice/receipt to the customer.
+  providerInvoiceNumber: varchar("provider_invoice_number", { length: 64 }),
+  providerInvoiceSubmittedAt: timestamp("provider_invoice_submitted_at"),
   customerApprovedAt: timestamp("customer_approved_at"),       // when customer explicitly approved
   autoApprovedAt: timestamp("auto_approved_at"),               // when system auto-approved after 24h silence
 

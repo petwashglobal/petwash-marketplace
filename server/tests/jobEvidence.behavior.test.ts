@@ -136,3 +136,17 @@ describe('geometry', () => {
     expect(d).toBeLessThan(22_000);
   });
 });
+
+describe('gross model: the provider must record their own invoice', () => {
+  it('required and missing → blocked', () => {
+    const r = evaluateJobEvidence(walk({ providerInvoiceRequired: true, providerInvoiceNumber: null }));
+    expect(r.verdict).toBe('blocked');
+    expect(r.findings.map((f) => f.code)).toEqual(['PROVIDER_INVOICE_MISSING']);
+  });
+  it('required and recorded → clear', () => {
+    expect(evaluateJobEvidence(walk({ providerInvoiceRequired: true, providerInvoiceNumber: 'INV-2026-0042' })).verdict).toBe('clear');
+  });
+  it('whitespace is not an invoice number', () => {
+    expect(evaluateJobEvidence(walk({ providerInvoiceRequired: true, providerInvoiceNumber: '   ' })).verdict).toBe('blocked');
+  });
+});

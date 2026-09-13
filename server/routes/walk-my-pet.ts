@@ -1884,6 +1884,30 @@ router.get('/walks/:bookingId/gps/live', requireAuth, async (req, res) => {
 // =================== WALK COMPLETION ===================
 
 // Complete walk
+/** The walker records THEIR OWN invoice / receipt number for the walk (gross model, 2026-09-14). */
+router.post('/walks/:bookingId/provider-invoice', requireAuth, async (req, res) => {
+  try {
+    const callerId = (req as any).user?.uid;
+    const invoiceNumber = String(req.body?.invoiceNumber ?? '').trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9\-\/ ]{0,63}$/.test(invoiceNumber)) {
+      return res.status(400).json({ error: 'INVALID_INVOICE_NUMBER' });
+    }
+    const [booking] = await db.select().from(walkBookings).where(eq(walkBookings.bookingId, req.params.bookingId)).limit(1);
+    if (!booking) return res.status(404).json({ error: 'Walk not found' });
+    const [walkerRow] = await db.select({ userId: walkerProfiles.userId }).from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, booking.walkerId)).limit(1);
+    if (!walkerRow || walkerRow.userId !== callerId) return res.status(403).json({ error: 'Forbidden: you are not the walker for this booking' });
+    if (booking.status !== 'completed') return res.status(409).json({ error: 'JOB_NOT_COMPLETED' });
+    await db.update(walkBookings)
+      .set({ providerInvoiceNumber: invoiceNumber, providerInvoiceSubmittedAt: new Date() } as any)
+      .where(eq(walkBookings.bookingId, req.params.bookingId));
+    return res.json({ ok: true });
+  } catch (error: any) {
+    logger.error('[Walk My Pet] provider-invoice record failed', { error: error?.message });
+    return res.status(500).json({ error: 'PROVIDER_INVOICE_SAVE_FAILED' });
+  }
+});
+
 router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
   try {
     const callerId = (req as any).user?.uid;

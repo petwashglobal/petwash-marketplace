@@ -271,14 +271,10 @@ describe('stored-value eGift sold through the Nayax till follows the CPA mapping
   });
 });
 
-describe('commission-only VAT documents are withheld from SUMIT', () => {
-  it('the dispatcher returns before createCustomerReceipt for VAT_ON_COMMISSION_ONLY', () => {
+describe('marketplace bookings: Pet Wash documents ONLY its platform fee (gross model, 2026-09-14)', () => {
+  it('the dispatcher sends the fee amount, never the whole booking (covered by marketplaceGrossModel.behavior.test.ts)', () => {
     const src = readFileSync(join(__dirname, '../services/IsraeliDigitalReceiptService.ts'), 'utf8');
-    const guard = src.indexOf("vatMode === 'VAT_ON_COMMISSION_ONLY') {");
-    const withheld = src.indexOf("return { status: 'withheld' };", guard);
-    const send = src.indexOf('const sumitResult = await sumitClient.createCustomerReceipt({');
-    expect(guard).toBeGreaterThan(0);
-    expect(withheld).toBeGreaterThan(guard);
-    expect(send).toBeGreaterThan(withheld);
+    expect(src).not.toContain("return { status: 'withheld' };");
+    expect(src).toContain('const feeIls = Number(row.brokerCommissionAmount ?? row.platformFeeAmount ?? 0);');
   });
 });
