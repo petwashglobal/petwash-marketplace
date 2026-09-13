@@ -71,8 +71,15 @@ jobs:
           set -e
           NEW=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin "${{ github.base_ref }}" --depth=1 --quiet || true
-            NEW=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'migrations/*.sql' | sort || true)
+            # No --depth=1: fetching the base shallow into this full clone cut the
+            # history, the three-dot diff found no merge base, the error was
+            # swallowed and the gate PASSED WITHOUT TESTING anything (2026-09-13, #2489).
+            git fetch origin "${{ github.base_ref }}" --quiet
+            if ! DIFF=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'migrations/*.sql'); then
+              echo "::error::Could not diff this PR against origin/${{ github.base_ref }} — refusing to pass without testing."
+              exit 1
+            fi
+            NEW=$(echo "$DIFF" | sed '/^$/d' | sort)
           fi
           {
             echo "new<<EOF"
