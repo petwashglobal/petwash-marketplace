@@ -525,10 +525,19 @@ export class BackgroundJobProcessor {
       timezone: 'Asia/Jerusalem'
     });
 
-    // Monthly VAT declaration (מע״מ) - ENABLED
-    // Automatically calculates Output VAT - Input VAT and determines refund eligibility
-    // Runs on 1st of each month at 10:30 AM Israel time
+    // Monthly VAT declaration (מע״מ) — OFF unless VAT_DECLARATION_AUTOGEN_ENABLED=true
+    // (2026-09-13). It computed an Output−Input VAT position from Firestore (not
+    // from the SUMIT documents that ARE the reporting file), stored a "declaration"
+    // and emailed "payment due to the tax authority ₪X / refund eligible". On
+    // 2026-09-01 it computed August as ₪0 "balanced" (Firestore index missing →
+    // revenue 0) and only failed at the INSERT. VAT position and period are the
+    // bookkeeper's determination, never the system's (role boundary, 2026-09-06).
+    // It never submits to the Tax Authority (submitToTaxAuthority has no caller).
     cron.schedule('30 10 1 * *', async () => {
+      if (process.env.VAT_DECLARATION_AUTOGEN_ENABLED !== 'true') {
+        logger.info('[VAT Reclaim] monthly auto-declaration skipped — VAT_DECLARATION_AUTOGEN_ENABLED is not true (bookkeeper owns VAT)');
+        return;
+      }
       if (await this.acquireLock('monthlyVATDeclaration')) {
         try {
           await this.generateMonthlyVATDeclaration();

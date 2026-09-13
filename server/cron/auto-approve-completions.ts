@@ -27,7 +27,7 @@ import { db } from '../db';
 import { bookingRequests, superAppNotifications, contractorEarnings, bookingDisputes, users } from '@shared/schema';
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
-import { and, eq, lt, sql, inArray } from 'drizzle-orm';
+import { and, eq, lt, sql, inArray, isNull } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { createEarningRecord } from '../services/payoutLedger';
 import { dispatchNotification } from '../lib/notificationDispatcher';
@@ -49,6 +49,8 @@ async function autoApproveExpiredCompletions(): Promise<void> {
     .where(
       and(
         eq(bookingRequests.status, 'provider_marked_complete'),
+        // A customer /confirm in flight holds this marker — never pick that booking.
+        isNull(bookingRequests.ownerConfirmedAt),
         // providerCompletedAt is nullable; use the COALESCE with updatedAt as fallback
         sql`COALESCE(${bookingRequests.providerCompletedAt}, ${bookingRequests.updatedAt}) < ${cutoff.toISOString()}`,
       ),
@@ -63,6 +65,7 @@ async function autoApproveExpiredCompletions(): Promise<void> {
   logger.info('[AutoApprove] Found stale completions to auto-approve', { count: stale.length });
 
   for (const booking of stale) {
+    let claimed = false;
     try {
       const now = new Date();
 
@@ -86,6 +89,31 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         });
         continue;
       }
+
+      // ── ATOMIC CLAIM (2026-09-13) — the SAME marker /confirm uses ─────────────
+      // This cron used to run every money side effect (earning, escrow release,
+      // ledger rows, the PROVIDER_BOOKING_COMMISSION tax document) and only THEN
+      // run a status-guarded UPDATE whose result it never checked. A customer
+      // tapping Confirm in the same seconds passed /confirm's claim while this loop
+      // was already past its SELECT → both paths released escrow and both called
+      // generateReceipt, whose duplicate guard is SELECT-then-INSERT (not race-proof)
+      // → a second tax invoice, which cannot be withdrawn. Claim first; whoever
+      // loses the claim does nothing.
+      const claim = await db.update(bookingRequests)
+        .set({ ownerConfirmedAt: now, updatedAt: now })
+        .where(and(
+          eq(bookingRequests.requestId, booking.requestId),
+          isNull(bookingRequests.ownerConfirmedAt),
+          eq(bookingRequests.status, 'provider_marked_complete'),
+        ))
+        .returning({ id: bookingRequests.id });
+      if (claim.length === 0) {
+        logger.info('[AutoApprove] claim lost — booking is being confirmed elsewhere; skipping', {
+          requestId: booking.requestId,
+        });
+        continue;
+      }
+      claimed = true;
 
       // Idempotency guard: if an earning record already exists for this booking, skip.
       const existing = await db
@@ -292,6 +320,20 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         requestId: booking.requestId,
         error: err.message,
       });
+      // Release our claim so the next run (or the customer) can retry — only while
+      // the booking has not moved on (mirrors /confirm's rollbackConfirmClaim).
+      if (claimed) {
+        try {
+          await db.update(bookingRequests)
+            .set({ ownerConfirmedAt: null, updatedAt: new Date() })
+            .where(and(
+              eq(bookingRequests.requestId, booking.requestId),
+              eq(bookingRequests.status, 'provider_marked_complete'),
+            ));
+        } catch (rollbackErr: any) {
+          logger.error('[AutoApprove] claim rollback failed', { requestId: booking.requestId, error: rollbackErr?.message });
+        }
+      }
     }
   }
 }
