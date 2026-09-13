@@ -13,6 +13,7 @@ import {
 import { users, nayaxTransactions, eVouchers, eVoucherRedemptions, customers } from '@shared/schema';
 import { count, sql, gte, eq, and, inArray, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { israelPeriodStarts } from '../lib/israelPeriods';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
@@ -653,14 +654,16 @@ router.get('/dashboard/stats', validateFirebaseToken, requireAdminOrViewer, asyn
       db.select({ total: count() }).from(customers),
       db.select({ total: count() }).from(eVouchers),
       db.select({ total: count() }).from(nayaxTransactions),
-      db.select({ total: count(), revenue: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, thirtyDaysAgo)),
+      // 2026-09-13: sales only (not 'initiated' / 'failed'), timed by settled_at when known.
+      db.select({ total: count(), revenue: sql<string>`COALESCE(SUM(${nayaxTransactions.amount}),0)` }).from(nayaxTransactions).where(and(inArray(nayaxTransactions.status, ['settled', 'vend_success']), sql`COALESCE(${nayaxTransactions.settledAt}, ${nayaxTransactions.createdAt}) >= ${thirtyDaysAgo}`)),
     ]);
 
     const stats = {
       totalUsers: (userRow?.total ?? 0) + (customerRow?.total ?? 0),
       activeSubscriptions: voucherRow?.total ?? 0,
       totalTransactions: txRow?.total ?? 0,
-      monthlyRevenue: Math.round(Number(monthlyTxRow?.revenue ?? 0) / 100),
+      // nayax_transactions.amount is decimal(10,2) SHEKELS — the old `/ 100` turned ₪48 into ₪0.
+      monthlyRevenue: Math.round(Number(monthlyTxRow?.revenue ?? 0)),
       lowStockItems: 0,
       pendingDocuments: 0,
       recentActivity: [
@@ -687,51 +690,76 @@ router.get('/dashboard/stats', validateFirebaseToken, requireAdminOrViewer, asyn
  * Accessible by: Admins + Viewers
  */
 router.get('/analytics/overview', validateFirebaseToken, requireAdminOrViewer, async (req, res) => {
+  // 2026-09-13 — rebuilt from real data. The previous version:
+  //   • divided the SUM of nayax_transactions.amount by 100, but that column is
+  //     decimal(10,2) SHEKELS — a ₪48 wash showed as ₪0 (Math.round(0.48));
+  //   • counted every row as revenue, including 'initiated' (never paid) and
+  //     'failed' / 'voided';
+  //   • hard-coded successRate 98.5, reported completed = total, pending = failed = 0,
+  //     and active customers = all customers;
+  //   • built "today" / "this month" as midnight in the SERVER timezone (UTC on
+  //     Cloud Run), so sales between Israeli midnight and 02:00/03:00 landed on the
+  //     previous day.
   try {
     const now = new Date();
-    const todayStart  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart   = new Date(now.getTime() - 7  * 24 * 60 * 60 * 1000);
-    const monthStart  = new Date(now.getFullYear(), now.getMonth(), 1);
-    const yearStart   = new Date(now.getFullYear(), 0, 1);
+    const { todayStart, weekStart, monthStart, yearStart } = israelPeriodStarts(now);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // A sale is money actually taken. Nothing else is revenue.
+    const SALE_STATUSES = ['settled', 'vend_success'];
+    const FAILED_STATUSES = ['failed', 'voided'];
+    const isSale = inArray(nayaxTransactions.status, SALE_STATUSES);
+    // When the sale happened: settled_at if we have it, otherwise when it was recorded.
+    const saleTime = sql`COALESCE(${nayaxTransactions.settledAt}, ${nayaxTransactions.createdAt})`;
+    const revenueSince = (since: Date) =>
+      db.select({ rev: sql<string>`COALESCE(SUM(${nayaxTransactions.amount}),0)` })
+        .from(nayaxTransactions)
+        .where(and(isSale, sql`${saleTime} >= ${since}`));
 
     const [
-      [txAll],
-      [txToday],
-      [txWeek],
-      [txMonth],
-      [txYear],
-      [custAll],
-      [custMonth],
+      [txAll], [txSales], [txFailed],
+      [revToday], [revWeek], [revMonth], [revYear],
+      [custAll], [custMonth], [custActive],
     ] = await Promise.all([
-      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions),
-      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, todayStart)),
-      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, weekStart)),
-      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, monthStart)),
-      db.select({ total: count(), rev: sql<number>`COALESCE(SUM(amount),0)` }).from(nayaxTransactions).where(gte(nayaxTransactions.createdAt, yearStart)),
+      db.select({ total: count() }).from(nayaxTransactions),
+      db.select({ total: count() }).from(nayaxTransactions).where(isSale),
+      db.select({ total: count() }).from(nayaxTransactions).where(inArray(nayaxTransactions.status, FAILED_STATUSES)),
+      revenueSince(todayStart), revenueSince(weekStart), revenueSince(monthStart), revenueSince(yearStart),
       db.select({ total: count() }).from(customers),
       db.select({ total: count() }).from(customers).where(gte(customers.createdAt, monthStart)),
+      // "Active" = customers who actually bought something in the last 30 days.
+      db.select({ total: sql<number>`COUNT(DISTINCT ${nayaxTransactions.customerUid})` })
+        .from(nayaxTransactions)
+        .where(and(isSale, sql`${saleTime} >= ${thirtyDaysAgo}`)),
     ]);
+
+    const shekels = (v: unknown) => Math.round(Number(v ?? 0));   // amount is already ₪
+    const total = Number(txAll?.total ?? 0);
+    const completed = Number(txSales?.total ?? 0);
+    const failed = Number(txFailed?.total ?? 0);
+    const decided = completed + failed;
 
     const data = {
       revenue: {
-        today:     Math.round(Number(txToday?.rev  ?? 0) / 100),
-        thisWeek:  Math.round(Number(txWeek?.rev   ?? 0) / 100),
-        thisMonth: Math.round(Number(txMonth?.rev  ?? 0) / 100),
-        thisYear:  Math.round(Number(txYear?.rev   ?? 0) / 100),
+        today:     shekels(revToday?.rev),
+        thisWeek:  shekels(revWeek?.rev),
+        thisMonth: shekels(revMonth?.rev),
+        thisYear:  shekels(revYear?.rev),
         growthRate: 0,
       },
       customers: {
-        total:      custAll?.total   ?? 0,
-        new:        custMonth?.total ?? 0,
-        active:     custAll?.total   ?? 0,
+        total:      Number(custAll?.total ?? 0),
+        new:        Number(custMonth?.total ?? 0),
+        active:     Number(custActive?.total ?? 0),
         growthRate: 0,
       },
       transactions: {
-        total:       txAll?.total   ?? 0,
-        completed:   txAll?.total   ?? 0,
-        pending:     0,
-        failed:      0,
-        successRate: txAll?.total ? 98.5 : 0,
+        total,
+        completed,
+        pending:     Math.max(0, total - completed - failed),
+        failed,
+        // Of the transactions that reached an outcome, the share that were paid.
+        successRate: decided > 0 ? Math.round((completed / decided) * 1000) / 10 : 0,
       },
     };
 
@@ -795,25 +823,30 @@ router.get('/analytics/revenue', validateFirebaseToken, requireAdminOrViewer, as
  * Accessible by: Admins + Viewers
  */
 router.get('/analytics/stations', validateFirebaseToken, requireAdminOrViewer, async (req, res) => {
+  // 2026-09-13 — this returned two INVENTED stations, "Tel Aviv Center" ₪45,000 and
+  // "Jerusalem Hub" ₪38,000, to the CEO's admin dashboard. PetWash's only real bays
+  // are in Kfar Saba. It now aggregates real sales per station and names each by its
+  // station id — no invented names, and no utilizationRate, which nothing measures.
   try {
-    const data = [
-      {
-        stationId: 'K9001',
-        stationName: 'Tel Aviv Center',
-        totalRevenue: 45000,
-        totalTransactions: 1200,
-        averageTransaction: 37.5,
-        utilizationRate: 92.3
-      },
-      {
-        stationId: 'K9002',
-        stationName: 'Jerusalem Hub',
-        totalRevenue: 38000,
-        totalTransactions: 980,
-        averageTransaction: 38.8,
-        utilizationRate: 85.1
-      }
-    ];
+    const revenue = sql<string>`COALESCE(SUM(${nayaxTransactions.amount}),0)`;
+    const rows = await db
+      .select({ stationId: nayaxTransactions.stationId, total: count(), rev: revenue })
+      .from(nayaxTransactions)
+      .where(inArray(nayaxTransactions.status, ['settled', 'vend_success']))
+      .groupBy(nayaxTransactions.stationId)
+      .orderBy(desc(revenue));
+
+    const data = rows.map((r) => {
+      const totalTransactions = Number(r.total ?? 0);
+      const totalRevenue = Number(r.rev ?? 0);                    // already ₪
+      return {
+        stationId: r.stationId ?? 'unassigned',
+        stationName: r.stationId ?? 'Unassigned',
+        totalRevenue: Math.round(totalRevenue),
+        totalTransactions,
+        averageTransaction: totalTransactions > 0 ? totalRevenue / totalTransactions : 0,
+      };
+    });
 
     res.json({ success: true, data, count: data.length });
   } catch (error) {

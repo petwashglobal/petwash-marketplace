@@ -22,6 +22,30 @@ import { logger } from '../lib/logger';
 import { Storage } from '@google-cloud/storage';
 import crypto from 'crypto';
 
+/**
+ * The nayax_transactions row for one K9000 bay sale. Exported and pure so a test
+ * can check it against the real Drizzle table: every key a real column, every
+ * NOT NULL column without a default present. See the comment at the call site.
+ */
+export function buildBayTransactionRow(
+  request: { nayaxTransactionId?: string; terminalId?: string; stationId: string; paymentStatus: string },
+  transactionId: string,
+  finalAmount: number,
+) {
+  const settled = request.paymentStatus === 'completed';
+  return {
+    id: transactionId,
+    externalTransactionId: transactionId,
+    nayaxTransactionId: request.nayaxTransactionId || null,
+    terminalId: request.terminalId || null,
+    stationId: request.stationId || null,
+    amount: finalAmount.toString(),
+    currency: 'ILS',
+    status: settled ? 'settled' : 'initiated',
+    settledAt: settled ? new Date() : null,
+  };
+}
+
 // Initialize Google Cloud Storage
 let storage: Storage | null = null;
 let bucketName: string | null = null;
@@ -332,20 +356,15 @@ export class K9000TransactionService {
       
       // 6. STORE IN POSTGRESQL DATABASE
       try {
-        await db.insert(nayaxTransactions).values({
-          transactionId: request.nayaxTransactionId || transactionId,
-          terminalId: request.terminalId || request.stationId,
-          amount: finalAmount.toString(),
-          currency: 'ILS',
-          status: request.paymentStatus === 'completed' ? 'settled' : 'initiated',
-          metadata: {
-            k9000TransactionId: transactionId,
-            discountApplied,
-            discountReason,
-            originalAmount: request.amount,
-            transactionType: request.transactionType,
-          },
-        });
+        // 2026-09-13: this insert failed on EVERY bay sale and was swallowed below as
+        // "backup safe". `id` is a varchar primary key with no default and was never
+        // set (NOT NULL violation), `transactionId` is not a column (it is
+        // nayaxTransactionId / externalTransactionId), and there is no `metadata`
+        // column at all. So /admin/dashboard and the CEO report — which read this
+        // table — could never show a single K9000 sale. The discount detail that was
+        // going into `metadata` is kept in the GCS backup record above, which already
+        // carries the full transactionData.
+        await db.insert(nayaxTransactions).values(buildBayTransactionRow(request, transactionId, finalAmount));
       } catch (error: any) {
         // Database insert failed - but backup succeeded (safe!)
         logger.error('[K9000] Database insert failed (backup safe)', { 
