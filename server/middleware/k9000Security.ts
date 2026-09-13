@@ -97,12 +97,19 @@ declare module 'express-serve-static-core' {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function extractClientIP(req: Request): string {
-  return (
-    (req.headers['x-forwarded-for'] as string) ||
-    (req.headers['x-real-ip'] as string) ||
-    req.socket.remoteAddress ||
-    'unknown'
-  ).split(',')[0].trim();
+  // Do NOT read the raw X-Forwarded-For (2026-09-13). Taking its FIRST hop
+  // means the caller chooses their own IP: `X-Forwarded-For: <allowed-kiosk>`
+  // from anywhere satisfied validateK9000MachineIP. Express already parses
+  // the header into req.ip *according to the app's trust-proxy setting*, and
+  // only trusts as many hops as that setting allows — which is what
+  // server/middleware/ipAllowlist.ts has always done. The HMAC layer still
+  // stands behind this either way; this restores the allowlist as a real
+  // first layer instead of a decorative one.
+  const trustProxy = req.app?.get?.('trust proxy');
+  if (trustProxy && trustProxy !== false && req.ip) {
+    return String(req.ip).trim();
+  }
+  return String(req.socket.remoteAddress || 'unknown').trim();
 }
 
 function timingSafeHexEqual(a: string, b: string): boolean {
