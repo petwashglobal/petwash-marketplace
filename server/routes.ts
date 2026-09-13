@@ -455,27 +455,10 @@ import {
  * privilege_members row is not enrolled and gets no tier bonus.
  */
 async function resolveMemberTierDiscount(userId: string): Promise<{ percent: number; tier: string } | null> {
-  try {
-    const { calculateTotalDiscount } = await import('@shared/schema-loyalty');
-    const { findPrivilegeMemberForUser } = await import('./lib/privilegeMemberLookup');
-    const { canonicalTierId } = await import('@shared/lib/tierLabels');
-    // 2026-09-13: this looked up privilege_members.firebase_uid, which no join
-    // route wrote — so no member ever got the tier discount. See the helper.
-    const member = await findPrivilegeMemberForUser(userId);
-    if (!member || member.status !== 'active') return null;
-    // Lower-case, alias-resolved: TIER_CONFIGS ids are lower-case and the
-    // lookup below is exact, so 'GOLD' used to resolve to a 0% bonus.
-    const tier = canonicalTierId(member.tier);
-    const percent = calculateTotalDiscount(tier as any, 'none', false);
-    return Number.isFinite(percent) ? { percent, tier } : null;
-  } catch (err: any) {
-    // A lookup failure must never change the price. Fall through to whatever
-    // the priority ladder decided — the member keeps today's discount.
-    logger.warn('[Loyalty] tier discount lookup failed — leaving discount unchanged', {
-      userId, error: err?.message,
-    });
-    return null;
-  }
+  // Moved to server/lib/memberTierDiscount.ts (2026-09-13) so the K9000 bay
+  // (qr-activation.ts) prices with the SAME verified-membership rule.
+  const { resolveMemberTierDiscount: resolve } = await import('./lib/memberTierDiscount');
+  return resolve(userId);
 }
 
 import { z } from "zod";

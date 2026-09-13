@@ -784,16 +784,23 @@ describe("a member is charged the discount the page promises them", () => {
   const src = readFileSync(resolve(root, "server/routes.ts"), "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  // 2026-09-13: the resolver moved to server/lib/memberTierDiscount.ts so the
+  // K9000 bay prices with the same verified-membership rule. routes.ts keeps a
+  // thin delegate and the call site (max() + cap) below.
+  const lib = readFileSync(resolve(root, "server/lib/memberTierDiscount.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/(^|[^:])\/\/.*$/gm, "$1");
 
   it("the canonical discount function is actually called", () => {
     const shared = readFileSync(resolve(root, "shared/schema-loyalty.ts"), "utf8");
     expect(shared, "calculateTotalDiscount is gone — this pin needs rewriting")
       .toMatch(/export function calculateTotalDiscount/);
-    expect(src).toMatch(/calculateTotalDiscount/);
+    expect(lib).toMatch(/calculateTotalDiscount/);
+    expect(src).toMatch(/import\('\.\/lib\/memberTierDiscount'\)/);
   });
 
   it("tier truth is privilege_members, never users.loyaltyTier", () => {
-    const fn = src.slice(src.indexOf("async function resolveMemberTierDiscount"));
+    const fn = lib.slice(lib.indexOf("async function resolveMemberTierDiscount"));
     const body = fn.slice(0, fn.indexOf("\n}\n"));
     // 2026-09-13: was /privilegeMembers\.firebaseUid/ — a column no join route
     // ever wrote, so this pin guarded a lookup that matched nobody. Tier truth
@@ -817,7 +824,7 @@ describe("a member is charged the discount the page promises them", () => {
   });
 
   it("a lookup failure leaves the price alone", () => {
-    const fn = src.slice(src.indexOf("async function resolveMemberTierDiscount"));
+    const fn = lib.slice(lib.indexOf("async function resolveMemberTierDiscount"));
     const body = fn.slice(0, fn.indexOf("\n}\n"));
     // Returning null means the priority ladder's number stands — a database
     // hiccup must never change what a customer is charged.

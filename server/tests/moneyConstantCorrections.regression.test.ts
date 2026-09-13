@@ -31,7 +31,9 @@ describe('qr-activation clamps the wash discount to the 10% cap', () => {
   const src = R('server/routes/qr-activation.ts');
   it('imports the canonical cap and clamps to it', () => {
     expect(src).toMatch(/MEMBER_DISCOUNT_MAX_PERCENT/);
-    expect(src).toMatch(/Math\.min\(raw,\s*MEMBER_DISCOUNT_MAX_PERCENT\s*\/\s*100\)/);
+    // 2026-09-13: the input is now a verified membership percent, not a raw
+    // tier ladder; the clamp to the canonical cap is unchanged in effect.
+    expect(src).toMatch(/Math\.min\(pct,\s*MEMBER_DISCOUNT_MAX_PERCENT\)\s*\/\s*100/);
   });
 });
 

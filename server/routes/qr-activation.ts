@@ -179,9 +179,16 @@ async function setIdempotencyResult(key: string, result: any): Promise<void> {
 // and enforced on every other path (e.g. loyaltySync). This ladder previously gave
 // platinum 15% — 5 points over the cap — undercharging the bay. Clamp to the
 // canonical cap so no tier can exceed it. (2026-08-11)
-function calculatePriceCents(machine: { priceCents: number }, loyaltyTier?: string): number {
-  const raw = loyaltyTier === 'gold' ? 0.10 : loyaltyTier === 'platinum' ? 0.15 : 0;
-  const discount = Math.min(raw, MEMBER_DISCOUNT_MAX_PERCENT / 100);
+//
+// 2026-09-13: the discount came from `req.firebaseUser.loyaltyTier`, a field
+// the auth middleware never sets (token claims live under `.claims`). It was
+// always undefined, so no member was ever discounted at the bay. The percent
+// now comes from a VERIFIED, ACTIVE Prestige membership through the same
+// resolver the online package purchase uses (lib/memberTierDiscount.ts), then
+// this surface's cap. No verified active membership → full price.
+export function calculatePriceCents(machine: { priceCents: number }, memberDiscountPercent: number | null | undefined): number {
+  const pct = Number.isFinite(memberDiscountPercent as number) ? Math.max(0, memberDiscountPercent as number) : 0;
+  const discount = Math.min(pct, MEMBER_DISCOUNT_MAX_PERCENT) / 100;
   return Math.round(machine.priceCents * (1 - discount));
 }
 
@@ -190,7 +197,6 @@ async function resolveAndAuthorize(params: {
   machineId: string;
   locationId: string;
   userId: string;
-  userLoyaltyTier: string | undefined;
   ip: string;
   userAgent: string | null;
   sourceType: 'static_sticker' | 'dynamic_qr' | 'admin_generated';
@@ -199,7 +205,7 @@ async function resolveAndAuthorize(params: {
   req: any;
   res: Response;
 }): Promise<void> {
-  const { machineId, locationId, userId, userLoyaltyTier, ip, userAgent, sourceType, qrNonce, idempotencyKey, req, res } = params;
+  const { machineId, locationId, userId, ip, userAgent, sourceType, qrNonce, idempotencyKey, req, res } = params;
 
   if (idempotencyKey) {
     const cached = await getIdempotencyResult(idempotencyKey);
@@ -250,7 +256,9 @@ async function resolveAndAuthorize(params: {
     return;
   }
 
-  const priceCents = calculatePriceCents(machine, userLoyaltyTier);
+  const { resolveMemberTierDiscount } = await import('../lib/memberTierDiscount');
+  const memberDiscount = await resolveMemberTierDiscount(userId);
+  const priceCents = calculatePriceCents(machine, memberDiscount?.percent ?? 0);
   const sessionId = crypto.randomUUID();
   const activationToken = createActivationToken(sessionId, userId, machine.machineId);
 
@@ -490,7 +498,6 @@ async function sendVendCommand(params: {
 router.post('/scan-sticker', requireAuth, async (req: any, res: Response) => {
   const ip = getIp(req);
   const userId: string = req.userId || req.user?.uid;
-  const userLoyaltyTier: string | undefined = req.firebaseUser?.loyaltyTier;
 
   try {
     const rl = await checkRateLimit(ip, userId);
@@ -520,7 +527,6 @@ router.post('/scan-sticker', requireAuth, async (req: any, res: Response) => {
       machineId,
       locationId,
       userId,
-      userLoyaltyTier,
       ip,
       userAgent: req.headers['user-agent'] || null,
       sourceType: 'static_sticker',
@@ -541,7 +547,6 @@ router.post('/scan-sticker', requireAuth, async (req: any, res: Response) => {
 router.post('/activate', requireAuth, async (req: any, res: Response) => {
   const ip = getIp(req);
   const userId: string = req.userId || req.user?.uid;
-  const userLoyaltyTier: string | undefined = req.firebaseUser?.loyaltyTier;
 
   try {
     const rl = await checkRateLimit(ip, userId);
@@ -597,7 +602,6 @@ router.post('/activate', requireAuth, async (req: any, res: Response) => {
       machineId: payload.machineId,
       locationId: payload.locationId,
       userId,
-      userLoyaltyTier,
       ip,
       userAgent: req.headers['user-agent'] || null,
       sourceType: 'dynamic_qr',
