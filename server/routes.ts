@@ -12635,6 +12635,7 @@ self.addEventListener('notificationclick', (event) => {
           cashWalletBalanceCents: walletAccountsTable.cashWalletBalanceCents,
           promoBalanceCents:     walletAccountsTable.promoBalanceCents,
           loyaltyPointsBalance:  walletAccountsTable.loyaltyPointsBalance,
+          loyaltyTier:           walletAccountsTable.loyaltyTier,
         })
         .from(walletAccountsTable)
         .where(eq(walletAccountsTable.userId, userId))
@@ -12645,8 +12646,9 @@ self.addEventListener('notificationclick', (event) => {
       // request, so a user with zero package credit could scan a QR at the bay, see
       // "package will be used", and then either double-spend or hit INSUFFICIENT_CREDITS
       // on the actual redeem call (audit lie).
-      const WASH_PRICE_CENTS = 5500;
-      const LOYALTY_WASH_COST_POINTS = 200;
+      // Same constants + loyalty rule the bay enforces (K9000RedemptionService) —
+      // never mint a QR the bay will refuse.
+      const { WASH_PRICE_ILS_CENTS: WASH_PRICE_CENTS, loyaltyWashEligible } = await import('./services/K9000RedemptionService');
       const balanceOk = (() => {
         if (!wallet) return false;
         switch (redemptionType) {
@@ -12654,7 +12656,7 @@ self.addEventListener('notificationclick', (event) => {
           case 'gift_credit':     return (wallet.egiftBalanceCents ?? 0) >= WASH_PRICE_CENTS;
           case 'wallet_balance':  return (wallet.cashWalletBalanceCents ?? 0) >= WASH_PRICE_CENTS;
           case 'promo_coupon':    return (wallet.promoBalanceCents ?? 0) >= WASH_PRICE_CENTS;
-          case 'loyalty_benefit': return (wallet.loyaltyPointsBalance ?? 0) >= LOYALTY_WASH_COST_POINTS;
+          case 'loyalty_benefit': return loyaltyWashEligible(wallet);
           default: return false;
         }
       })();

@@ -10,6 +10,7 @@ import { db } from '../db';
 import { passportVerifications } from '../../shared/schema';
 import { passportOCRService } from '../services/PassportOCRService';
 import { logger } from '../lib/logger';
+import { encryptPII } from '../lib/piiFieldCrypto';
 import { eq } from 'drizzle-orm';
 
 const router = Router();
@@ -156,7 +157,8 @@ router.post('/verify', runPassportUpload(upload.single('passport')), async (req:
       .values({
         userId: user.uid,
         documentType: passportData.documentType,
-        passportNumber: passportData.passportNumber,
+        // PII AT REST (2026-09-13): schema said "ENCRYPT IN PRODUCTION"; it never was.
+        passportNumber: passportData.passportNumber ? encryptPII(String(passportData.passportNumber)) : passportData.passportNumber,
         countryCode: passportData.countryCode,
         nationality: passportData.nationality,
         surname: passportData.surname,

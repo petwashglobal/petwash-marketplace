@@ -3,6 +3,7 @@ import { db } from '../db';
 import { mfaEnrollments } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { encryptPII, decryptPII } from '../lib/piiFieldCrypto';
 
 const TOTP_PERIOD = 30;
 const TOTP_DIGITS = 6;
@@ -162,12 +163,13 @@ export class TOTPService {
 
       if (existing.length > 0) {
         if (method === 'totp' && !existing[0].totpVerified) {
+          const pendingSecret = existing[0].totpSecret ? decryptPII(existing[0].totpSecret) : '';
           return {
             ok: true,
             enrollmentId: existing[0].id,
-            totpSecret: existing[0].totpSecret || undefined,
-            totpUri: existing[0].totpSecret
-              ? this.generateQRUri(userEmail, existing[0].totpSecret)
+            totpSecret: pendingSecret || undefined,
+            totpUri: pendingSecret
+              ? this.generateQRUri(userEmail, pendingSecret)
               : undefined,
           };
         }
@@ -189,7 +191,9 @@ export class TOTPService {
           userId,
           userEmail: userEmail.toLowerCase(),
           method,
-          totpSecret: totpSecret || null,
+          // SECRET AT REST (2026-09-13): a DB read of a plaintext TOTP seed is a
+          // permanent second factor for that account. Encrypted; legacy rows decrypt as-is.
+          totpSecret: totpSecret ? encryptPII(totpSecret) : null,
           totpVerified: method !== 'totp',
           smsPhone: args.phone || null,
           emailAddress: method === 'email' ? userEmail : null,
@@ -230,7 +234,7 @@ export class TOTPService {
         return { ok: false, error: 'no_pending_enrollment' };
       }
 
-      const result = this.verifyCode(enrollment.totpSecret, code, enrollment.lastUsedAt);
+      const result = this.verifyCode(decryptPII(enrollment.totpSecret), code, enrollment.lastUsedAt);
       if (!result.valid) {
         return { ok: false, error: 'invalid_code' };
       }
@@ -270,7 +274,7 @@ export class TOTPService {
         if (method && enrollment.method !== method) continue;
 
         if (enrollment.method === 'totp' && enrollment.totpSecret && enrollment.totpVerified) {
-          const result = this.verifyCode(enrollment.totpSecret, code, enrollment.lastUsedAt);
+          const result = this.verifyCode(decryptPII(enrollment.totpSecret), code, enrollment.lastUsedAt);
           if (result.valid) {
             const now = new Date();
             await db

@@ -23,6 +23,7 @@ import { biometricVerification } from '../services/BiometricVerificationService'
 import { kycMemoryProcessor, kycAnomalyDetector } from '../services/KYC2026';
 import sgMail, { isSendGridConfigured } from '../lib/sendgrid';
 import { logger } from '../lib/logger';
+import { encryptPII, decryptPII } from '../lib/piiFieldCrypto';
 import { isSuperAdmin } from '../middleware/rbac';
 import { resubmitLimiter } from '../middleware/rateLimiter';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
@@ -1339,8 +1340,10 @@ router.post('/apply', wrapUpload(upload.fields([
           .update(providerApplications)
           .set({
             bankName,
-            bankBranchCode,
-            bankIban,
+            // PII AT REST (2026-09-13): account number + branch encrypted
+            // (piiFieldCrypto). Readers decrypt; legacy plaintext rows pass through.
+            bankBranchCode: bankBranchCode ? encryptPII(bankBranchCode) : bankBranchCode,
+            bankIban: bankIban ? encryptPII(bankIban) : bankIban,
             bankAccountHolder,
             bankDetailsAt,
           })
@@ -2342,7 +2345,7 @@ router.get('/admin/applications/:applicationId', reserveLiteralSegments('applica
       : '';
     let bankProjected: Record<string, unknown> = {};
     if (bankHas) {
-      const ibanFull = (app as any).bankIban as string | null;
+      const ibanFull = (app as any).bankIban ? decryptPII((app as any).bankIban as string) : null;
       const ibanLast4 = typeof ibanFull === 'string' ? ibanFull.slice(-4) : null;
       if (bankAccessReason) {
         // Reason present — full read + audit. This branch keeps the
@@ -2362,6 +2365,11 @@ router.get('/admin/applications/:applicationId', reserveLiteralSegments('applica
             actorEmail: (req.body?.adminEmail as string) || null,
           },
         }).catch((err) => logger.warn('[Provider Onboarding] bank_details_viewed audit failed', { applicationId, err: err?.message }));
+        // The stored row holds ciphertext now — the audited full read returns plaintext.
+        bankProjected = {
+          bankIban:       ibanFull,
+          bankBranchCode: (app as any).bankBranchCode ? decryptPII((app as any).bankBranchCode as string) : null,
+        };
       } else {
         // No reason — REDACT before we ship the row. Presence + last4
         // is enough for eyeballing the case; the plaintext stays in

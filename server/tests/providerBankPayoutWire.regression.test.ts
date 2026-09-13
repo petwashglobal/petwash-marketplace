@@ -85,7 +85,8 @@ describe('provider bank / payout wire (CEO §73 #12)', () => {
     it('writes bank fields via a best-effort UPDATE (kept out of the primary INSERT)', () => {
       expect(src).toMatch(/Persist bank \/ payout target \(best-effort, AFTER insert\)/);
       expect(src).toMatch(/db\s*\n?\s*\.update\(providerApplications\)/);
-      expect(src).toMatch(/bankName,\s*\n\s*bankBranchCode,\s*\n\s*bankIban,\s*\n\s*bankAccountHolder,\s*\n\s*bankDetailsAt,/);
+      // 2026-09-13: IBAN + branch are encrypted at rest (piiFieldCrypto) — see piiAtRestEncryption.behavior.test.ts.
+      expect(src).toMatch(/bankName,\s*\n[\s\S]{0,300}?bankBranchCode: bankBranchCode \? encryptPII\(bankBranchCode\) : bankBranchCode,\s*\n\s*bankIban: bankIban \? encryptPII\(bankIban\) : bankIban,\s*\n\s*bankAccountHolder,\s*\n\s*bankDetailsAt,/);
     });
     it('42703 (undefined_column) is a warn — an older deploy without the migration never crashes /apply', () => {
       expect(src).toMatch(/bankPersistErr\?\.code === '42703'/);

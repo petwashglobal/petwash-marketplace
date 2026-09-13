@@ -160,8 +160,12 @@ export class SitterAdvancedBookingEngine {
     // still prices. FIX 2026-07-31: this used to read `sitter.hourlyRateIls`, a field that
     // does NOT exist on sitterProfiles → baseRate was `undefined` → every sitter quote was
     // NaN and the sitter's real rate never reached the price.
+    // 2026-09-13: 'pet_sitting' — the ONLY serviceType POST /api/sitter-suite/bookings
+    // sends — was missing here and in calculateDuration, so every Sitter Suite stay was
+    // billed hourly: ₪450/day + ₪60/h over 48h charged ₪2,880 instead of ₪900.
     const isOvernight =
-      serviceType === 'Boarding' || serviceType === 'boarding' || serviceType === 'House Sitting';
+      serviceType === 'Boarding' || serviceType === 'boarding' || serviceType === 'House Sitting' ||
+      serviceType === 'pet_sitting';
     const dayRateIls = (sitter.pricePerDayCents ?? 0) / 100;
     const hourRateIls = (sitter.pricePerHourCents ?? 0) / 100;
     const baseRate = isOvernight
@@ -384,8 +388,11 @@ export class SitterAdvancedBookingEngine {
    * concern (out of scope for PR-I).
    */
   private calculateDuration(startDate: Date, endDate: Date, serviceType: string): number {
-    if (serviceType === 'Boarding' || serviceType === 'boarding' || serviceType === 'House Sitting') {
-      return countCalendarDays(startDate, endDate, 'Asia/Jerusalem');
+    if (serviceType === 'Boarding' || serviceType === 'boarding' || serviceType === 'House Sitting' ||
+        serviceType === 'pet_sitting') {
+      // A same-day stay spans 0 calendar boundaries — bill it as one day, never ₪0.
+      const days = countCalendarDays(startDate, endDate, 'Asia/Jerusalem');
+      return endDate.getTime() > startDate.getTime() ? Math.max(1, days) : days;
     }
 
     // Hourly services (drop-in, walking) — wall-clock hours.
