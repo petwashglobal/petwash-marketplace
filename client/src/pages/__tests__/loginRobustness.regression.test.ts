@@ -53,6 +53,14 @@ describe('Passkey button — shown on every capable device, the Apple way; serve
     // Hebrew server text must not bypass the matcher — the English reason is matched too
     expect(signup).toContain('`${r.error || \'\'} ${r.errorEn || \'\'}`');
     expect(passkey).toContain('errorEn: error.error_en');
+    // The result renders directly under the passkey button (the shared inline
+    // error was ~1000px above it on a phone — a failed tap looked like nothing).
+    const btnIdx = signup.indexOf('data-testid="button-auth-passkey"');
+    const errIdx = signup.indexOf('data-testid="passkey-error"');
+    expect(errIdx).toBeGreaterThan(btnIdx);
+    expect(errIdx - btnIdx).toBeLessThan(800);
+    const handler = signup.slice(signup.indexOf('async function handlePasskeyLogin()'), signup.indexOf('async function handlePasskeyLogin()') + 2500);
+    expect(handler).not.toMatch(/\bfail\(/);
   });
   it('uses Apple\'s word: "passkey", unlocked with Face ID / Touch ID', () => {
     expect(signup).toContain('Sign in with a passkey (${bioName})');

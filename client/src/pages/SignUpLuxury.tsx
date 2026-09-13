@@ -522,6 +522,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [mobileStep, setMobileStep] = useState(false);
   // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
   const [bioAvailable, setBioAvailable] = useState(false);
+  // Passkey result shown UNDER the passkey button: the shared inline error sits
+  // ~1000px higher on a phone, so a failed tap looked like nothing happened (live 2026-09-13).
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
   const [bioName, setBioName] = useState('Face ID');
   // Post-signup Face ID offer: device can do Face ID (raw capability), plus the
   // one-time offer overlay state. Kept separate from bioAvailable (which is gated
@@ -629,6 +632,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   async function handlePasskeyLogin() {
     setBusy(true);
     setInlineError(null);
+    setPasskeyError(null);
     try {
       const r = await signInWithPasskey();
       if (!r.success) {
@@ -642,15 +646,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // Cancelled, timed out, or no PetWash passkey on this device. Keep the
           // button: a cancel is not "no passkey", and hiding it is what made it
           // vanish for good. Point to where a passkey is added.
-          fail(he
+          setPasskeyError(he
             ? 'לא הושלמה התחברות עם Passkey. אין עדיין Passkey במכשיר? התחברו בדרך אחרת והוסיפו אחד בחשבון ← אבטחה.'
             : 'Passkey sign-in did not complete. No passkey on this device yet? Sign in another way, then add one in Account → Security.');
         } else {
-          fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+          setPasskeyError(r.error || (he ? 'התחברות עם Passkey נכשלה. נסו שוב או התחברו בדרך אחרת.' : 'Passkey sign-in failed. Try again or sign in another way.'));
         }
       }
     } catch (e: any) {
-      fail(e?.message || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+      setPasskeyError(e?.message || (he ? 'התחברות עם Passkey נכשלה. נסו שוב או התחברו בדרך אחרת.' : 'Passkey sign-in failed. Try again or sign in another way.'));
     } finally {
       setBusy(false);
     }
@@ -2715,6 +2719,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     {/* Apple's term is "passkey"; Face ID / Touch ID is how it is unlocked. */}
                     <FaFingerprint aria-hidden /> {he ? `התחברות עם Passkey (${bioName})` : `Sign in with a passkey (${bioName})`}
                   </button>
+                  {passkeyError && (
+                    <p className="sl-inlineError" role="alert" aria-live="polite" data-testid="passkey-error" style={{ margin: '8px 0 0', textAlign: 'center' }}>{passkeyError}</p>
+                  )}
                 </>
               )}
 
