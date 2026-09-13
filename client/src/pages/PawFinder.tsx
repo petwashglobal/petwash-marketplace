@@ -488,7 +488,8 @@ function ContactModal({ post, onClose }: { post: PawPost; onClose: () => void })
 ------------------------------------------------------------------------- */
 
 const EMPTY_FORM = {
-  postType: 'lost' as 'lost' | 'found' | 'adoption',
+  // PawFinder™‎ is LOST ↔ FOUND only. Adoption has its own flow at /adoption/new.
+  postType: 'lost' as 'lost' | 'found',
   petType: 'dog' as 'dog' | 'cat' | 'bird' | 'other',
   petName: '',
   breed: '',
@@ -738,8 +739,11 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
           <select value={form.postType} onChange={set('postType')} className={inputCls}>
             <option value="lost">🔴 אבד לי חיית מחמד</option>
             <option value="found">🟢 מצאתי חיית מחמד</option>
-            <option value="adoption">🏠 חיה לאימוץ</option>
           </select>
+          {/* Rehoming is not a lost/found notice — it has its own service. */}
+          <a href="/adoption/new" className="mt-1.5 inline-block text-xs text-slate-500 underline" data-testid="link-adoption-instead">
+            מחפשים בית חדש לחיה? לשירות האימוץ ←
+          </a>
         </div>
         <div>
           <label className={labelCls}>סוג חיה</label>

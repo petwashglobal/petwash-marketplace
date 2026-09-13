@@ -1,9 +1,12 @@
 /**
  * Adoption maison — LVMH-luxury listings for pets looking for a forever home.
  *
- * Reuses the PawFinder engine end-to-end (post_type='adoption' on paw_finder_posts):
- * same intake, photo upload, 3-stage safety scan, public viewing and contact. This
- * page is the boutique storefront for those listings.
+ * Adopt a Pet is its OWN free PetWash™‎ member service (2026-09-13): its own
+ * listings (/api/adoption), statuses (available / pending / adopted), pet page
+ * (/adoption/:id), listing flow (/adoption/new) and member dashboard
+ * (/adoption/my). It is NOT PawFinder™‎ — PawFinder is lost ↔ found. #920 had
+ * stored these listings as PawFinder posts; that shortcut is undone. Only
+ * invisible plumbing (login, photo storage, safety scan, push) is shared.
  *
  * RTL DISCIPLINE (PetWash is Hebrew-first): the whole surface is dir="rtl",
  * everything anchors from the RIGHT (never the left), the ™‎ wordmark sits
@@ -16,35 +19,24 @@ import { Heart } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { useSEO, pageSEO } from '@/lib/seo';
-
-const GOLD = '#D4AF37';
-
-interface AdoptionPost {
-  id: number;
-  pet_name?: string;
-  breed?: string;
-  city: string;
-  description: string;
-  primary_media?: string | null;
-  reward_amount?: string | null;
-}
+import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { GOLD, StatusChip, ageLabel, type AdoptionListing } from '@/pages/adoption/adoptionUi';
 
 export default function AdoptionMaison() {
   useSEO(pageSEO.adoption);
   const { language } = useLanguage();
   const isHe = language === 'he';
+  const { user } = useFirebaseAuth();
 
-  const { data, isLoading, isError } = useQuery<{ posts?: AdoptionPost[] } | AdoptionPost[]>({
-    queryKey: ['/api/paw-finder/posts?postType=adoption'],
+  const { data, isLoading, isError } = useQuery<{ rows: AdoptionListing[] }>({
+    queryKey: ['/api/adoption/listings'],
     queryFn: async () => {
-      const r = await fetch('/api/paw-finder/posts?postType=adoption', { credentials: 'include' });
+      const r = await fetch('/api/adoption/listings', { credentials: 'include' });
       if (!r.ok) throw new Error('failed');
       return r.json();
     },
   });
-  // /api/paw-finder/posts returns { rows, count } — the page read `.posts` and was
-  // hardwired to "no pets awaiting adoption" (audit 2026-09-12).
-  const posts: AdoptionPost[] = Array.isArray(data) ? data : ((data as any)?.rows ?? (data as any)?.posts ?? []);
+  const posts: AdoptionListing[] = data?.rows ?? [];
 
   return (
     <div dir="rtl" className="min-h-screen bg-white text-black">
@@ -62,8 +54,8 @@ export default function AdoptionMaison() {
             ? 'פלטפורמה ללא עלות לחיבור בין חיות הממתינות לאימוץ למשפחות אוהבות. כל פוסט נבדק.'
             : 'A free portal connecting pets waiting for adoption with loving families. Every listing is checked.'}
         </p>
-        <div className="mt-7">
-          <Link href="/paw-finder">
+        <div className="mt-7 flex items-center justify-center gap-6">
+          <Link href="/adoption/new">
             <button
               className="text-sm font-medium text-black pb-1 transition-opacity hover:opacity-60"
               style={{ borderBottom: `1px solid ${GOLD}` }}
@@ -72,6 +64,13 @@ export default function AdoptionMaison() {
               {isHe ? 'פרסמו חיה לאימוץ ←' : 'List a pet for adoption ←'}
             </button>
           </Link>
+          {user && (
+            <Link href="/adoption/my">
+              <span className="text-sm text-black/60 pb-1 cursor-pointer transition-opacity hover:opacity-60" data-testid="link-my-adoption">
+                {isHe ? 'האזור שלי' : 'My adoption'}
+              </span>
+            </Link>
+          )}
         </div>
       </header>
 
@@ -98,12 +97,13 @@ export default function AdoptionMaison() {
                 <div className="p-4">
                   <div className="font-serif text-lg leading-tight">{p.pet_name || (isHe ? 'חיה לאימוץ' : 'For adoption')}</div>
                   <div className="mt-1 text-xs text-black/55">
-                    {[p.breed, p.city].filter(Boolean).join(' · ')}
+                    {[p.breed, p.age_group && p.age_group !== 'unknown' ? ageLabel(isHe, p.age_group) : null, p.city].filter(Boolean).join(' · ')}
                   </div>
+                  <div className="mt-2"><StatusChip isHe={isHe} status={p.status} /></div>
                   <p className="mt-2 text-xs leading-relaxed text-black/65 line-clamp-2">{p.description}</p>
                   <div className="mt-3 flex items-center justify-between">
-                    {/* The pet's own page (deep link since #2434) — was the whole board. */}
-                    <Link href={`/paw-finder/${p.id}`}>
+                    {/* The pet's own adoption page — never a PawFinder notice. */}
+                    <Link href={`/adoption/${p.id}`}>
                       <span className="text-xs text-black pb-0.5" style={{ borderBottom: `1px solid ${GOLD}` }}>
                         {isHe ? 'להכרות ←' : 'Meet ←'}
                       </span>

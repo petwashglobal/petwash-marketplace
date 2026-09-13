@@ -12064,6 +12064,11 @@ self.addEventListener('notificationclick', (event) => {
   const pawFinderRoutes = await import('./routes/paw-finder');
   app.use('/api/paw-finder', apiLimiter, requireConsentIfEnabled('terms', 'privacy'), pawFinderRoutes.default);
 
+  // Adopt a Pet (FREE member service — a permanent new family). Its own service,
+  // NOT a PawFinder post type: PawFinder is lost ↔ found only (2026-09-13).
+  const adoptionRoutes = await import('./routes/adoption');
+  app.use('/api/adoption', apiLimiter, requireConsentIfEnabled('terms', 'privacy'), adoptionRoutes.default);
+
   // Phase 12.9 — Case Queue Action Orchestration (assign, notes, bulk)
   // Phase 12.11 — Team Workflow & Resolution Discipline (team assign, closure flow, codes)
   const caseActionsRoutes = await import('./routes/case-actions');
@@ -12279,6 +12284,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/coworker', validateFirebaseToken, adminLimiter, coworkerRoutes);
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', validateFirebaseToken, adminLimiter, adminPawFinderRoutes);
+  app.use('/api/admin/adoption', validateFirebaseToken, adminLimiter, (await import('./routes/admin-adoption')).default);
   app.use('/api/admin', adminLimiter, adminDeadlinesRouter); // READ-ONLY deadlines + insurance-status (auth inside router)
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
   app.use('/api/admin/spam-guard', validateFirebaseToken, adminLimiter, spamGuardRoutes);

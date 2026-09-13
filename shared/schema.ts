@@ -16318,6 +16318,98 @@ export const pawFinderEvents = pgTable("paw_finder_events", {
 
 export type PawFinderEvent = typeof pawFinderEvents.$inferSelect;
 
+// =========================================================
+// ADOPT A PET — its own service (migrations/0155_adoption_own_service.sql)
+// Not a PawFinder post type: PawFinder is LOST <-> FOUND only.
+// =========================================================
+
+export const adoptionListings = pgTable("adoption_listings", {
+  id: serial("id").primaryKey(),
+  listingKey: varchar("listing_key", { length: 48 }).notNull().unique(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  listerType: varchar("lister_type", { length: 16 }).notNull().default("private"),
+  petType: varchar("pet_type", { length: 16 }).notNull(),
+  petName: varchar("pet_name", { length: 100 }),
+  breed: varchar("breed", { length: 100 }),
+  sex: varchar("sex", { length: 16 }).notNull().default("unknown"),
+  ageGroup: varchar("age_group", { length: 16 }).notNull().default("unknown"),
+  sizeCategory: varchar("size_category", { length: 16 }).notNull().default("unknown"),
+  color: varchar("color", { length: 60 }),
+  description: text("description").notNull(),
+  temperament: text("temperament"),
+  healthNotes: text("health_notes"),
+  specialNeeds: text("special_needs"),
+  vaccinated: varchar("vaccinated", { length: 8 }).notNull().default("unknown"),
+  neutered: varchar("neutered", { length: 8 }).notNull().default("unknown"),
+  microchipped: varchar("microchipped", { length: 8 }).notNull().default("unknown"),
+  goodWithChildren: varchar("good_with_children", { length: 8 }).notNull().default("unknown"),
+  goodWithDogs: varchar("good_with_dogs", { length: 8 }).notNull().default("unknown"),
+  goodWithCats: varchar("good_with_cats", { length: 8 }).notNull().default("unknown"),
+  city: varchar("city", { length: 100 }).notNull(),
+  area: varchar("area", { length: 100 }),
+  contactPhone: varchar("contact_phone", { length: 32 }),
+  status: varchar("status", { length: 20 }).notNull().default("pending_review"),
+  moderationStatus: varchar("moderation_status", { length: 20 }).notNull().default("pending"),
+  moderationReason: text("moderation_reason"),
+  moderationConfidence: integer("moderation_confidence"),
+  imageHash: varchar("image_hash", { length: 64 }),
+  legacyPawFinderPostId: integer("legacy_paw_finder_post_id").unique(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  adoptedAt: timestamp("adopted_at", { withTimezone: true }),
+  archivedAt: timestamp("archived_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AdoptionListing = typeof adoptionListings.$inferSelect;
+
+export const adoptionListingMedia = pgTable("adoption_listing_media", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id").notNull().references(() => adoptionListings.id, { onDelete: "cascade" }),
+  mediaRole: varchar("media_role", { length: 16 }).notNull().default("primary"),
+  filePath: text("file_path").notNull(),
+  mimeType: varchar("mime_type", { length: 64 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const adoptionEnquiries = pgTable("adoption_enquiries", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id").notNull().references(() => adoptionListings.id, { onDelete: "cascade" }),
+  applicantUserId: varchar("applicant_user_id", { length: 128 }).notNull(),
+  ownerUserId: varchar("owner_user_id", { length: 128 }).notNull(),
+  messageText: text("message_text").notNull(),
+  applicantPhone: varchar("applicant_phone", { length: 32 }),
+  homeType: varchar("home_type", { length: 24 }).notNull().default("unspecified"),
+  hasChildren: varchar("has_children", { length: 8 }).notNull().default("unknown"),
+  hasOtherPets: varchar("has_other_pets", { length: 8 }).notNull().default("unknown"),
+  status: varchar("status", { length: 16 }).notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AdoptionEnquiry = typeof adoptionEnquiries.$inferSelect;
+
+export const adoptionNotifications = pgTable("adoption_notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  listingId: integer("listing_id").references(() => adoptionListings.id, { onDelete: "cascade" }),
+  eventType: varchar("event_type", { length: 40 }).notNull(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  read: boolean("read").notNull().default(false),
+  payload: jsonb("payload").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const adoptionEvents = pgTable("adoption_events", {
+  id: serial("id").primaryKey(),
+  listingId: integer("listing_id").notNull().references(() => adoptionListings.id, { onDelete: "cascade" }),
+  eventName: varchar("event_name", { length: 64 }).notNull(),
+  actorUserId: varchar("actor_user_id", { length: 128 }),
+  payload: jsonb("payload").notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ============================================================================
 // WITHHOLDING REMITTANCE LEDGER (ניכוי מס במקור — מעקב העברה לרשות המסים)
 // ============================================================================

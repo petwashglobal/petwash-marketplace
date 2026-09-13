@@ -201,7 +201,7 @@ export async function createContactRequest(
   if (!messageText?.trim()) throw new Error('MESSAGE_REQUIRED');
 
   const { rows } = await pool.query(
-    `SELECT user_id, status FROM paw_finder_posts WHERE id = $1 LIMIT 1`,
+    `SELECT user_id, status FROM paw_finder_posts WHERE id = $1 AND post_type IN ('lost','found') LIMIT 1`,
     [postId],
   );
   const post = rows[0];

@@ -82,8 +82,9 @@ router.get('/queue', async (_req, res) => {
               (SELECT json_agg(row_to_json(me.*) ORDER BY me.created_at DESC)
                FROM paw_finder_moderation_events me WHERE me.post_id = p.id) AS moderation_history
        FROM paw_finder_posts p
-       WHERE p.status IN ('pending_review','draft')
-          OR p.moderation_status IN ('flagged','blocked')
+       WHERE p.post_type IN ('lost','found')
+         AND (p.status IN ('pending_review','draft')
+          OR p.moderation_status IN ('flagged','blocked'))
        ORDER BY p.updated_at DESC
        LIMIT 200`,
     );
@@ -106,7 +107,8 @@ router.get('/posts', async (req, res) => {
       `SELECT p.*,
               (SELECT m.file_path FROM paw_finder_media m WHERE m.post_id = p.id ORDER BY id LIMIT 1) AS primary_media
        FROM paw_finder_posts p
-       WHERE ($1::text IS NULL OR p.status = $1)
+       WHERE p.post_type IN ('lost','found')
+         AND ($1::text IS NULL OR p.status = $1)
          AND ($2::text IS NULL OR LOWER(p.city) = LOWER($2))
          AND ($3::text IS NULL OR p.post_type = $3)
        ORDER BY p.created_at DESC
@@ -135,7 +137,7 @@ router.post('/posts/:id/approve', async (req: any, res) => {
            moderation_reason = COALESCE(p.moderation_reason, 'approved_by_support'),
            published_at = COALESCE(p.published_at, NOW()),
            updated_at = NOW()
-       FROM (SELECT id, status AS prev_status FROM paw_finder_posts WHERE id = $1) prev
+       FROM (SELECT id, status AS prev_status FROM paw_finder_posts WHERE id = $1 AND post_type IN ('lost','found')) prev
        WHERE p.id = prev.id
        RETURNING p.user_id, p.post_type, p.pet_name, prev.prev_status IN ('published','matched') AS was_published`,
       [id],
@@ -260,7 +262,7 @@ router.get('/analytics', async (_req, res) => {
           COUNT(*) FILTER (WHERE post_type = 'found')::int         AS found_posts,
           COUNT(*) FILTER (WHERE moderation_status = 'flagged')::int AS flagged,
           COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS posts_last_7d
-        FROM paw_finder_posts
+        FROM paw_finder_posts WHERE post_type IN ('lost','found')
       `),
       pool.query(`
         SELECT
@@ -272,7 +274,7 @@ router.get('/analytics', async (_req, res) => {
       `),
       pool.query(`
         SELECT city, COUNT(*)::int AS post_count
-        FROM paw_finder_posts WHERE status NOT IN ('rejected','archived')
+        FROM paw_finder_posts WHERE status NOT IN ('rejected','archived') AND post_type IN ('lost','found')
         GROUP BY city ORDER BY post_count DESC LIMIT 10
       `),
       pool.query(`

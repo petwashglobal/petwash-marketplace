@@ -21,6 +21,9 @@ import { escapeLike } from '../lib/sqlLike';
 import { requireValidFileContentDisk } from '../lib/fileMagicValidation';
 import { uploadPhotoToGcs, readPhoto, photoPublicPath, isValidPhotoName, PAW_FINDER_MEDIA_PATH_RE } from '../lib/pawFinderPhotoStore';
 
+/** The only two things a PawFinder notice can be. Legacy adoption rows are excluded from every read. */
+export const PAW_FINDER_POST_TYPES = ['lost', 'found'] as const;
+
 const router = Router();
 
 /* -----------------------------------------------------------------------
@@ -155,7 +158,9 @@ async function compressIfNeeded(filePath: string): Promise<void> {
 ----------------------------------------------------------------------- */
 
 const createPostSchema = z.object({
-  postType: z.enum(['lost', 'found', 'adoption']),
+  // PawFinder™‎ is LOST ↔ FOUND only. Adoption is its own service (/api/adoption);
+  // 'adoption' was accepted here from #920 until 2026-09-13.
+  postType: z.enum(PAW_FINDER_POST_TYPES),
   petType: z.enum(['dog', 'cat', 'bird', 'other']),
   petName: z.string().max(100).optional(),
   breed: z.string().max(100).optional(),
@@ -358,6 +363,7 @@ router.get('/posts', async (req, res) => {
           LIMIT 1) AS primary_media
        FROM paw_finder_posts p
        WHERE p.status IN ('published','matched')
+         AND p.post_type IN ('lost','found')
          AND ($1::text IS NULL OR p.post_type    = $1)
          AND ($2::text IS NULL OR LOWER(p.city)  = LOWER($2))
          AND ($3::text IS NULL OR p.pet_type     = $3)
@@ -404,7 +410,7 @@ router.get('/posts/:id', async (req, res) => {
          p.latitude, p.longitude, p.event_date,
          p.status, p.created_at, p.published_at, p.resolved_at
        FROM paw_finder_posts p
-       WHERE p.id = $1 AND p.status NOT IN ('rejected','archived')
+       WHERE p.id = $1 AND p.status NOT IN ('rejected','archived') AND p.post_type IN ('lost','found')
        LIMIT 1`,
       [id],
     );
@@ -636,7 +642,7 @@ router.get('/my/posts', requireAuth, async (req, res) => {
               COALESCE((SELECT COUNT(*)::int FROM paw_finder_contact_requests cr
                         WHERE cr.post_id = p.id AND cr.status = 'pending'), 0) AS pending_contacts
        FROM paw_finder_posts p
-       WHERE p.user_id = $1 AND p.status <> 'archived'
+       WHERE p.user_id = $1 AND p.status <> 'archived' AND p.post_type IN ('lost','found')
        ORDER BY p.created_at DESC`,
       [userId],
     );

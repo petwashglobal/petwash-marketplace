@@ -8,7 +8,8 @@ import { resolve } from 'path';
  *  - marketplace filtered trainers on verificationStatus 'verified', a value
  *    no code path writes (approval writes 'approved') → always empty
  *  - AdoptionMaison read `.posts`; the server returns `{ rows }` → always empty
- *  - the PawFinder post form could not express an adoption listing
+ *  - (2026-09-13) adoption is no longer a PawFinder post type at all — it is
+ *    its own service; see adoptionOwnService.regression.test.ts
  *  - the marketplace "Training" chip linked to /academy/browse, which never existed
  */
 const R = (p: string) => readFileSync(resolve(__dirname, '..', '..', p), 'utf8');
@@ -22,15 +23,14 @@ describe('trainer visibility uses the status the approval writes', () => {
 });
 
 describe('adoption board can render and be posted to', () => {
-  it('reads rows from the paw-finder API', () => {
+  it('reads rows from its own adoption API', () => {
     const s = R('client/src/pages/AdoptionMaison.tsx');
-    expect(s).toContain("(data as any)?.rows ?? (data as any)?.posts ?? []");
+    expect(s).toContain("queryKey: ['/api/adoption/listings']");
+    expect(s).toContain('const posts: AdoptionListing[] = data?.rows ?? [];');
   });
-  it('the post form offers the adoption type the API already accepts', () => {
-    const s = R('client/src/pages/PawFinder.tsx');
-    expect(s).toContain("postType: 'lost' as 'lost' | 'found' | 'adoption',");
-    expect(s).toContain('<option value="adoption">');
-    expect(R('server/routes/paw-finder.ts')).toMatch(/'adoption'/);
+  it('is posted to through its own flow, not the PawFinder form', () => {
+    expect(R('client/src/pages/AdoptionMaison.tsx')).toContain('<Link href="/adoption/new">');
+    expect(R('client/src/pages/PawFinder.tsx')).not.toContain('<option value="adoption">');
   });
 });
 
