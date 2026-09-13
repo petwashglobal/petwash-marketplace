@@ -18,6 +18,7 @@
 import { Router } from 'express';
 import { pool } from '../db';
 import { refreshMatchesForPost } from '../services/PawFinderMatchService';
+import { notifyPawFinderOwner } from '../lib/pawFinderNotify';
 import { logger } from '../lib/logger';
 import { requireAdmin } from '../adminAuth';
 import { logAuditEvent } from '../middleware/auditLog';
@@ -125,16 +126,21 @@ router.post('/posts/:id/approve', async (req: any, res) => {
     const id = Number(req.params.id);
     const actorId = uid(req);
 
-    await pool.query(
-      `UPDATE paw_finder_posts
+    // RETURNING the owner so they are told (2026-09-13: approval was silent).
+    // `wasPublished` stops a repeat click from re-notifying.
+    const { rows: approved } = await pool.query(
+      `UPDATE paw_finder_posts p
        SET status = 'published',
            moderation_status = 'approved',
-           moderation_reason = COALESCE(moderation_reason, 'approved_by_support'),
-           published_at = COALESCE(published_at, NOW()),
+           moderation_reason = COALESCE(p.moderation_reason, 'approved_by_support'),
+           published_at = COALESCE(p.published_at, NOW()),
            updated_at = NOW()
-       WHERE id = $1`,
+       FROM (SELECT id, status AS prev_status FROM paw_finder_posts WHERE id = $1) prev
+       WHERE p.id = prev.id
+       RETURNING p.user_id, p.post_type, p.pet_name, prev.prev_status IN ('published','matched') AS was_published`,
       [id],
     );
+    if (!approved.length) return res.status(404).json({ error: 'not_found' });
 
     await pool.query(
       `INSERT INTO paw_finder_moderation_events
@@ -151,6 +157,9 @@ router.post('/posts/:id/approve', async (req: any, res) => {
       ip: req.ip,
       userAgent: req.headers['user-agent'] as string | undefined,
     });
+    if (!approved[0].was_published) {
+      await notifyPawFinderOwner(pool, { userId: approved[0].user_id, postId: id, event: 'post_approved', post: approved[0] });
+    }
     setImmediate(() => refreshMatchesForPost(pool, id));
 
     res.json({ ok: true });
@@ -167,15 +176,18 @@ router.post('/posts/:id/reject', async (req: any, res) => {
     const actorId = uid(req);
     const reason = String(req.body?.reason || 'rejected_by_support').slice(0, 500);
 
-    await pool.query(
-      `UPDATE paw_finder_posts
+    const { rows: rejected } = await pool.query(
+      `UPDATE paw_finder_posts p
        SET status = 'rejected',
            moderation_status = 'blocked',
            moderation_reason = $2,
            updated_at = NOW()
-       WHERE id = $1`,
+       FROM (SELECT id, status AS prev_status FROM paw_finder_posts WHERE id = $1) prev
+       WHERE p.id = prev.id
+       RETURNING p.user_id, p.post_type, p.pet_name, prev.prev_status = 'rejected' AS was_rejected`,
       [id, reason],
     );
+    if (!rejected.length) return res.status(404).json({ error: 'not_found' });
 
     await pool.query(
       `INSERT INTO paw_finder_moderation_events
@@ -193,6 +205,10 @@ router.post('/posts/:id/reject', async (req: any, res) => {
       userAgent: req.headers['user-agent'] as string | undefined,
       metadata: { reasonLength: reason.length },
     });
+    // The support reason is internal; the owner gets a neutral message.
+    if (!rejected[0].was_rejected) {
+      await notifyPawFinderOwner(pool, { userId: rejected[0].user_id, postId: id, event: 'post_rejected', post: rejected[0] });
+    }
     res.json({ ok: true });
   } catch (err: any) {
     logger.error('[AdminPawFinder] reject failed', { error: err.message });

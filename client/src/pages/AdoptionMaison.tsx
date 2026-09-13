@@ -102,7 +102,8 @@ export default function AdoptionMaison() {
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-black/65 line-clamp-2">{p.description}</p>
                   <div className="mt-3 flex items-center justify-between">
-                    <Link href={`/paw-finder`}>
+                    {/* The pet's own page (deep link since #2434) — was the whole board. */}
+                    <Link href={`/paw-finder/${p.id}`}>
                       <span className="text-xs text-black pb-0.5" style={{ borderBottom: `1px solid ${GOLD}` }}>
                         {isHe ? 'להכרות ←' : 'Meet ←'}
                       </span>
