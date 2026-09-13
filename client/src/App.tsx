@@ -1580,7 +1580,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <LegalCancellationRefund />}
         </Route>
         <Route path="/legal/wallet-egift-terms">
-          {() => <LegalWalletEGiftTerms />}
+          {() => <Layout><LegalWalletEGiftTerms /></Layout>}
         </Route>
         <Route path="/legal/station-use-terms">
           {() => <LegalStationUseTerms />}

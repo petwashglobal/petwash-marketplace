@@ -180,7 +180,8 @@ describe('5. the eGift terms menu item opens the registry document', () => {
     expect(header).toMatch(/\{ id: "egift-policy", labelKey: "egift-policy\.label", href: "\/legal\/wallet-egift-terms" \}/);
     expect(header).not.toMatch(/en: "eGift and refund policy"/);
     const app = R('client/src/App.tsx');
-    expect(app).toMatch(/<Route path="\/legal\/wallet-egift-terms">\s*\{\(\) => <LegalWalletEGiftTerms \/>\}/);
+    // Wrapped in Layout so the menu destination keeps the site header.
+    expect(app).toMatch(/<Route path="\/legal\/wallet-egift-terms">\s*\{\(\) => <Layout><LegalWalletEGiftTerms \/><\/Layout>\}/);
     expect(R('shared/lib/legalDocumentRegistry.ts')).toContain("clientPath: 'client/src/pages/legal/WalletEGiftTerms.tsx'");
   });
 });
