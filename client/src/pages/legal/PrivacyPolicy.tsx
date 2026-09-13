@@ -2,8 +2,14 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { ArrowLeft, Shield, Lock, FileText } from "lucide-react";
 import { Link } from "wouter";
+import { useSEO, pageSEO } from "@/lib/seo";
+
+// Existing pageSEO.privacyPolicy copy. Its hard-coded canonical is /privacy-policy,
+// a Redirect alias — dropped so useSEO derives the canonical from the real route.
+export const PRIVACY_POLICY_SEO = { ...pageSEO.privacyPolicy, canonical: undefined };
 
 export default function PrivacyPolicy() {
+  useSEO(PRIVACY_POLICY_SEO);
   const { language } = useLanguage();
   const isHebrew = language === 'he';
 

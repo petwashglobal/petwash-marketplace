@@ -1,6 +1,15 @@
 import { Award, Star, Gift, Users, Calendar, TrendingUp, Shield, Mail, Check, Sparkles } from "lucide-react";
 
 import { TIER_CONFIGS, calculateTotalDiscount, type LoyaltyTier } from "@shared/schema-loyalty";
+import { useSEO } from "@/lib/seo";
+
+// Title = the page H1; description = the page's own intro paragraph. Canonical is
+// useSEO's route-derived default.
+export const LOYALTY_TERMS_SEO = {
+  title: "7-Star Loyalty Program Terms - ⁦PetWash™⁩",
+  description:
+    "Welcome to ⁦Pet Wash™⁩ Loyalty & VIP Club — your gateway to exclusive rewards, premium benefits, and unforgettable experiences across all our platforms.",
+};
 
 // "Last updated" is a FIXED date, never `new Date()` (that re-dated the terms
 // every day). Source: the date the tier table below was switched to render
@@ -36,6 +45,7 @@ export function loyaltyTermsTiers() {
 }
 
 export default function LoyaltyTerms() {
+  useSEO(LOYALTY_TERMS_SEO);
   const tiers = loyaltyTermsTiers();
   const tierDiscounts = tiers.map((t) => t.discount);
   const minDiscount = Math.min(...tierDiscounts);

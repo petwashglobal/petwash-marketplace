@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { ArrowLeft, AlertTriangle, ShieldCheck, Loader2 } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { apiRequest } from "@/lib/queryClient";
+import { useSEO } from "@/lib/seo";
 
 /**
  * Shared layout for PetWash legal pages (Israel 2026 set).
@@ -54,7 +55,31 @@ interface LegalPageProps {
   /** Render the "I Accept" gate at the end (Terms page). Signed-in users
    *  stamp users.accepted_terms_at once; guests are routed to /signup. */
   acceptGate?: boolean;
+  /** Set by a page that already calls useSEO itself (LegalIndex), so the two
+   *  do not fight over the title/canonical. */
+  skipSeo?: boolean;
   children: ReactNode;
+}
+
+/**
+ * Title / description / canonical for a legal page, built ONLY from the copy the
+ * page already renders (its H1 and subtitle). The canonical is useSEO's
+ * route-derived default — since the SPA shell stopped shipping the homepage
+ * canonical (#2459), a page that never called useSEO had no canonical at all.
+ */
+export function legalPageSeoConfig(titleHe: string, titleEn: string, subtitleHe?: string, subtitleEn?: string) {
+  const title = `${titleEn} - ⁦PetWash™⁩ | ${titleHe}`;
+  const description = [subtitleEn, subtitleHe].filter(Boolean).join(" ") || `${titleEn} | ${titleHe}`;
+  return { title, description };
+}
+
+function LegalPageSEO({ titleHe, titleEn, subtitleHe, subtitleEn }: Pick<LegalPageProps, "titleHe" | "titleEn" | "subtitleHe" | "subtitleEn">) {
+  const config = useMemo(
+    () => legalPageSeoConfig(titleHe, titleEn, subtitleHe, subtitleEn),
+    [titleHe, titleEn, subtitleHe, subtitleEn],
+  );
+  useSEO(config);
+  return null;
 }
 
 /** The Terms "I Accept" control — real, recorded server-side, idempotent. */
@@ -129,13 +154,14 @@ function AcceptTermsGate() {
   );
 }
 
-export function LegalPage({ titleHe, titleEn, subtitleHe, subtitleEn, toc, acceptGate, children }: LegalPageProps) {
+export function LegalPage({ titleHe, titleEn, subtitleHe, subtitleEn, toc, acceptGate, skipSeo, children }: LegalPageProps) {
   const { language } = useLanguage();
   const isHebrew = language === "he";
   const isRtl = language === "he" || language === "ar";
 
   return (
     <div className={`min-h-[100dvh] bg-white ${isRtl ? "rtl" : "ltr"}`} dir={isRtl ? "rtl" : "ltr"}>
+      {!skipSeo && <LegalPageSEO titleHe={titleHe} titleEn={titleEn} subtitleHe={subtitleHe} subtitleEn={subtitleEn} />}
       <div className={`${toc ? "max-w-5xl" : "max-w-3xl"} mx-auto px-4 py-10 md:py-14`}>
         <Link href="/">
           <Button variant="ghost" className="mb-6 flex items-center gap-2">

@@ -3,7 +3,7 @@ import { readFileSync, mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
 import { pathToFileURL } from 'url';
-import { buildSync } from 'esbuild';
+import { build, buildSync } from 'esbuild';
 import {
   TIER_CONFIGS,
   calculateTotalDiscount,
@@ -22,6 +22,9 @@ import {
  *  4. Three legal pages printed today's date as "Last updated".
  *  5. The "eGift and refund policy" menu item opened a page outside the legal registry.
  *  6. Signed-in eGift buyers could type a custom amount that then answered "coming soon".
+ *  7. /legal/terms, /legal/privacy, /legal/egift-policy, /legal/loyalty-terms,
+ *     /legal/cookies had NO canonical after hydration: they never called useSEO,
+ *     and #2459 removed the homepage canonical from the SPA shell.
  */
 const ROOT = resolve(__dirname, '..', '..');
 const R = (p: string) => readFileSync(join(ROOT, p), 'utf8');
@@ -192,5 +195,89 @@ describe('6. signed-in eGift buyers are not offered a custom amount they cannot 
     // nothing closes the guard between the gate and the input
     const between = src.slice(gate, src.indexOf('data-testid="input-custom-amount"'));
     expect(between).not.toMatch(/\n {10}\)\}\n/);
+  });
+});
+
+describe('7. legal menu pages call useSEO with their own copy and a route-derived canonical', () => {
+  // Render each REAL page (as App.tsx routes it) with useSEO swapped for a recorder,
+  // so the test sees exactly what the page hands to useSEO on render.
+  type Recorded = { title: string; description: string; canonical?: string };
+  const PAGES: Array<[route: string, file: string]> = [
+    ['/legal/terms', 'client/src/pages/legal/CustomerTerms'],
+    ['/legal/privacy', 'client/src/pages/legal/PrivacyPolicy'],
+    ['/legal/egift-policy', 'client/src/pages/legal/EGiftPolicy'],
+    ['/legal/loyalty-terms', 'client/src/pages/legal/LoyaltyTerms'],
+    ['/legal/cookies', 'client/src/pages/legal/Cookies'],
+    ['/legal/wallet-egift-terms', 'client/src/pages/legal/WalletEGiftTerms'],
+  ];
+  let renderPage: (file: string, route: string) => Recorded[];
+
+  beforeAll(async () => {
+    const out = join(mkdtempSync(join(tmpdir(), 'menu-truth-seo-')), 'pages.mjs');
+    const stubs: Record<string, string> = {
+      '@/lib/seo': `export { pageSEO, defaultSEO } from ${JSON.stringify(join(ROOT, 'client/src/lib/seo.ts'))};
+        export function useSEO(config) { (globalThis.__seoCalls ||= []).push(config); }`,
+      '@/lib/languageStore': `export function useLanguage() { return { language: 'en', setLanguage() {}, t: (k) => k, dir: 'ltr' }; }`,
+      '@/auth/AuthProvider': `export function useFirebaseAuth() { return { user: null, loading: false }; }`,
+      '@/lib/queryClient': `export async function apiRequest() { throw new Error('no network in test'); }`,
+    };
+    await build({
+      stdin: {
+        contents: [
+          "import { createElement } from 'react';",
+          "import { renderToStaticMarkup } from 'react-dom/server';",
+          ...PAGES.map(([, f], i) => `import P${i} from './${f}';`),
+          `const MAP = { ${PAGES.map(([, f], i) => `${JSON.stringify(f)}: P${i}`).join(', ')} };`,
+          'export function renderPage(file, route) { globalThis.location ||= { pathname: route, search: \'\', hash: \'\' }; globalThis.location.pathname = route; globalThis.__seoCalls = []; renderToStaticMarkup(createElement(MAP[file])); return globalThis.__seoCalls; }',
+        ].join('\n'),
+        resolveDir: ROOT,
+        loader: 'tsx',
+      },
+      bundle: true,
+      format: 'esm',
+      platform: 'node',
+      jsx: 'automatic',
+      alias: { '@shared': join(ROOT, 'shared'), '@': join(ROOT, 'client/src') },
+      plugins: [{
+        name: 'seo-recorder',
+        setup(build) {
+          build.onResolve({ filter: /^@\/(lib\/seo|lib\/languageStore|auth\/AuthProvider|lib\/queryClient)$/ }, (args) => ({ path: args.path, namespace: 'stub' }));
+          build.onLoad({ filter: /.*/, namespace: 'stub' }, (args) => ({ contents: stubs[args.path], loader: 'js', resolveDir: ROOT }));
+        },
+      }],
+      outfile: out,
+      logLevel: 'silent',
+    });
+    ({ renderPage } = (await import(pathToFileURL(out).href)) as { renderPage: typeof renderPage });
+  }, 60_000);
+
+  it.each(PAGES)('%s', (route, file) => {
+    // App.tsx really routes this path to this page
+    const app = R('client/src/App.tsx');
+    const base = file.split('/').pop()!;
+    const lazyName = app.match(new RegExp(`const (\\w+) = lazy\\(\\(\\) => import\\("@/pages/legal/${base}"\\)\\)`))?.[1];
+    expect(lazyName).toBeTruthy();
+    expect(app).toMatch(new RegExp(`<Route path="${route.replace(/\//g, '\\/')}">\\s*\\{\\(\\) => (<Layout>)?<${lazyName} />`));
+
+    const calls = renderPage(file, route);
+    expect(calls.length).toBe(1);
+    const [cfg] = calls;
+    expect(cfg.title.length).toBeGreaterThan(0);
+    expect(cfg.description.length).toBeGreaterThan(0);
+    expect(cfg.title).toMatch(/PetWash/);
+    // no hard-coded canonical → useSEO derives it from the route itself
+    expect(cfg.canonical).toBeUndefined();
+  });
+
+  it('useSEO still derives the canonical from the pathname when none is passed', () => {
+    const seo = R('client/src/lib/seo.ts');
+    expect(seo).toContain("seoConfig.canonical ?? `https://petwash.co.il${path === '/' ? '/' : path.replace(/\\/+$/, '')}`");
+    expect(seo).toMatch(/canonical\.setAttribute\('href', canonicalHref\)/);
+  });
+
+  it('LegalIndex keeps its own useSEO and does not get a second one from LegalPage', () => {
+    const idx = CODE('client/src/pages/legal/LegalIndex.tsx');
+    expect(idx).toContain('useSEO(pageSEO.legalIndex)');
+    expect(idx).toMatch(/<LegalPage\s+skipSeo/);
   });
 });

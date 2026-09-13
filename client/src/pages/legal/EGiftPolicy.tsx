@@ -12,6 +12,14 @@ import {
   Smartphone,
   HelpCircle
 } from "lucide-react";
+import { useSEO } from "@/lib/seo";
+
+// Title and description = the page H1 (the page has no intro paragraph). Canonical
+// is useSEO's route-derived default.
+export const EGIFT_POLICY_SEO = {
+  title: "E-Gift Card Policy - ⁦PetWash™⁩",
+  description: "E-Gift Card Policy",
+};
 
 // "Last updated" is a FIXED date, never `new Date()` (that re-dated the policy
 // every day). This document has no entry in shared/lib/legalDocumentRegistry.ts,
@@ -21,6 +29,7 @@ import {
 export const EGIFT_POLICY_LAST_UPDATED = "2026-06-28";
 
 export default function EGiftPolicy() {
+  useSEO(EGIFT_POLICY_SEO);
   return (
     <div className="min-h-screen luxury-bg-mesh">
       <div className="luxury-container max-w-4xl mx-auto py-12">
