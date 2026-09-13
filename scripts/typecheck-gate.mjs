@@ -42,7 +42,7 @@ if (count > baseline) {
     `   The esbuild build won't catch these — they hide runtime bugs (HTTP 500s).\n` +
     `   Fix them, or if intentional, justify and bump .typecheck-baseline.\n\n` +
     `New/changed errors (top 40):\n` +
-    (out.match(/.*error TS\d+.*/g) ?? []).slice(0, 40).join('\n'),
+    (out.match(/.*error TS\d+.*/g) ?? []).filter((l) => /^(server\/routes\.ts|server\/routes\/(pets|k9000-supplier|stations|enterprise|google-services|operations|provider-onboarding|events|prestige-pass)\.ts|server\/lib\/(redaction|reserveLiteralSegments)\.ts|server\/tests\/(reachableOldEndpoints|piiLogRedaction|platformPolishCardAdmin))/.test(l)).join('\n'),
   );
   process.exit(1);
 }
