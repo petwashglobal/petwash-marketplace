@@ -132,6 +132,12 @@ export default function Shop() {
   const [submittedCategory, setSubmittedCategory] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [interest, setInterest] = useState<string[]>([]);
+  // 2026-09-13: consent is a real, unticked checkbox. The form used to send
+  // consentToContact:true with no checkbox at all — consent nobody gave.
+  // POST /api/waitlist rejects consentToContact:false (CONSENT_REQUIRED), so
+  // submit is blocked until the visitor ticks it.
+  const [consentToContact, setConsentToContact] = useState(false);
+  const [consentMissing, setConsentMissing] = useState(false);
 
   const toggleInterest = (id: string) => {
     setInterest((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -140,6 +146,10 @@ export default function Shop() {
   const submitWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
+    if (!consentToContact) {
+      setConsentMissing(true);
+      return;
+    }
     // Real demand capture — posts to the universal waitlist engine (platform
     // SHOP). No more mailto dead-end; every interest becomes a DB record.
     try {
@@ -150,7 +160,7 @@ export default function Shop() {
         interestType: interest.join(', ') || undefined,
         message: interest.length ? `Interested in: ${interest.join(', ')}` : undefined,
         sourcePage: typeof window !== 'undefined' ? window.location.pathname : '/shop',
-        consentToContact: true,
+        consentToContact,
         marketingConsent: false,
       });
       setSubmittedCategory('done');
@@ -292,6 +302,27 @@ export default function Shop() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
+              <label className="sh-consent" data-testid="label-shop-consent">
+                <input
+                  type="checkbox"
+                  checked={consentToContact}
+                  onChange={(e) => {
+                    setConsentToContact(e.target.checked);
+                    if (e.target.checked) setConsentMissing(false);
+                  }}
+                  data-testid="checkbox-shop-consent"
+                />
+                <span>
+                  {he
+                    ? 'אני מסכים/ה ש־PetWash תיצור איתי קשר במייל לגבי פתיחת החנות.'
+                    : 'I agree that PetWash may email me about the shop opening.'}
+                </span>
+              </label>
+              {consentMissing && (
+                <p className="sh-consentError" role="alert">
+                  {he ? 'כדי להצטרף לרשימה יש לסמן את תיבת ההסכמה.' : 'Please tick the consent box to join the list.'}
+                </p>
+              )}
               <button type="submit" className="sh-submit">
                 {he ? 'הצטרפות' : 'Join'} {interest.length > 0 && <span className="sh-count">({interest.length} {he ? 'נבחרו' : 'selected'})</span>}
                 <ArrowRight size={16} />
@@ -363,6 +394,9 @@ function styles() {
     .sh-waitInner{ max-width:640px; margin:0 auto; text-align:center }
     .sh-h2{ font-family:"Playfair Display",Georgia,serif; font-size:clamp(26px,3vw,38px); margin:0 0 12px; color:#0b1220; font-weight:600 }
     .sh-form{ display:flex; gap:10px; margin-top:18px; flex-wrap:wrap; justify-content:center }
+    .sh-consent{ flex-basis:100%; display:flex; align-items:flex-start; gap:10px; font-size:16px; line-height:1.4; color:#334155; cursor:pointer; text-align:start }
+    .sh-consent input{ width:20px; height:20px; margin-top:2px; flex-shrink:0; accent-color:#9d6f23 }
+    .sh-consentError{ flex-basis:100%; margin:0; font-size:15px; color:#b91c1c; text-align:start }
     .sh-input{ flex:1; min-width:240px; padding:14px 16px; font-size:16px; border:1px solid #e2e8f0; border-radius:12px; background:#fafaf9; outline:none }
     .sh-input:focus{ border-color:#9d6f23; box-shadow:0 0 0 3px rgba(216,173,85,.18) }
     .sh-submit{ display:inline-flex; align-items:center; gap:8px; padding:14px 20px; background:#0b1220; color:#fff; border:0; border-radius:12px; font-weight:800; font-size:14.5px; cursor:pointer; min-height:50px }

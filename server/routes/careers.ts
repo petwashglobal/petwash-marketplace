@@ -616,7 +616,9 @@ router.post('/apply', async (req: Request, res: Response) => {
       applicationId: application.id,
       message: 'Your application has been submitted successfully. We will review it and contact you within 3-5 business days.',
       nextSteps: [
-        'Check your email for confirmation',
+        // 2026-09-13: no confirmation email is sent by this handler — do not
+        // promise one.
+        'We will contact you by the phone or email you provided',
         'Upload your resume/CV',
         'Complete identity verification',
       ],

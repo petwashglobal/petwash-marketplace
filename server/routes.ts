@@ -12345,39 +12345,38 @@ self.addEventListener('notificationclick', (event) => {
   // Handler mirrors server/routes/franchise.ts:26 but is mounted at the
   // public layer so it actually receives the request.
   app.post('/api/franchise/inquiry', apiLimiter, async (req, res) => {
+    // 2026-09-13: a failed store used to be swallowed and answered
+    // {success:true}. Logic lives in server/lib/franchiseInquiry.ts (behaviour-
+    // tested): store failure → 503; stored → notify support via EmailService
+    // (fail-soft), every user field HTML-escaped.
     try {
-      const { fullName, email, phone, country, city, message } = req.body ?? {};
-      if (!fullName || !email || !phone) {
-        return res.status(400).json({ error: 'Name, email, and phone are required' });
-      }
-      const inquiryData = {
-        fullName,
-        email,
-        phone,
-        country: country || '',
-        city: city || '',
-        message: message || '',
-        submittedAt: new Date().toISOString(),
-        status: 'new' as const,
-      };
-      try {
-        const { db: firestore } = await import('./lib/firebase-admin');
-        const inquiriesRef = firestore.collection('franchise_inquiries');
-        await inquiriesRef.add(inquiryData);
-      } catch (firestoreErr) {
-        logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
-      }
-      logger.info('[Franchise/inquiry] received', {
-        emailMasked: email && typeof email === 'string' && email.includes('@')
-          ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
-          : '(invalid)',
-        country,
-        city,
-        hasFullName: !!fullName,
+      const { handleFranchiseInquiry } = await import('./lib/franchiseInquiry');
+      const result = await handleFranchiseInquiry(req.body, {
+        store: async (record) => {
+          const { db: firestore } = await import('./lib/firebase-admin');
+          const ref = await firestore.collection('franchise_inquiries').add(record);
+          return ref.id;
+        },
+        sendEmail: async (params) => {
+          const { EmailService } = await import('./emailService');
+          return EmailService.send(params);
+        },
+        log: logger,
       });
-      return res.json({ success: true, message: 'Inquiry submitted successfully' });
+      if (result.status === 200) {
+        const email = typeof req.body?.email === 'string' ? req.body.email : '';
+        logger.info('[Franchise/inquiry] received', {
+          emailMasked: email.includes('@')
+            ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
+            : '(invalid)',
+          country: req.body?.country,
+          city: req.body?.city,
+          hasFullName: !!req.body?.fullName,
+        });
+      }
+      return res.status(result.status).json(result.body);
     } catch (error) {
-      logger.error('[Franchise/inquiry] handler error', error);
+      logger.error('[Franchise/inquiry] handler error', { error: (error as Error)?.message });
       return res.status(500).json({ error: 'Failed to process inquiry' });
     }
   });
