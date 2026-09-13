@@ -25,9 +25,9 @@ import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
-import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from "react";
+import { useState, useEffect, lazy, Suspense, Component, useSyncExternalStore, type ReactNode } from "react";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
-import { isRTL } from "@/lib/i18n";
+import { isRTL, subscribeLanguagePacks, getLanguagePackVersion } from "@/lib/i18n";
 import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
 import { isChunkLoadError, tryChunkReload } from "@/lib/chunkRecovery";
 import { ReferralSignupLinker } from "@/components/ReferralSignupLinker";
@@ -4345,6 +4345,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 }
 
 function App() {
+  // Re-render the tree when a lazily loaded language pack (ar/ru/fr/es) lands,
+  // so strings shown in the English fallback switch to the chosen language.
+  useSyncExternalStore(subscribeLanguagePacks, getLanguagePackVersion, getLanguagePackVersion);
   const [location] = useLocation();
   // Default to Hebrew ('he') for Israeli market - PRIMARY language
   const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
