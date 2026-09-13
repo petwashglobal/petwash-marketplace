@@ -1519,6 +1519,9 @@ router.get('/feedback', async (req: Request, res: Response) => {
   }
 });
 
+/** Payout-request statuses that release their amount back to the available balance. */
+export const PAYOUT_REQUEST_RELEASED_STATUSES: ReadonlySet<string> = new Set(['rejected', 'cancelled', 'canceled', 'declined', 'failed']);
+
 // ── POST /api/provider-dashboard/v2/payout-request ───────────────────────────
 // Providers submit a bank payout request. Stored in Firestore for admin review.
 router.post('/payout-request', async (req: Request, res: Response) => {
@@ -1543,25 +1546,53 @@ router.post('/payout-request', async (req: Request, res: Response) => {
          FROM booking_requests WHERE provider_id = $1`,
       [user.uid],
     );
-    const availableCents = Number(balRes.rows[0]?.available_cents ?? 0);
+    const earnedCents = Number(balRes.rows[0]?.available_cents ?? 0);
     const requestedCents = Math.round(amount * 100);
-    if (requestedCents > availableCents) {
-      return res.status(400).json({
-        error: 'Requested amount exceeds your available payout balance.',
-        availableIls: Number((availableCents / 100).toFixed(2)),
-      });
-    }
+
+    // RE-REQUEST GUARD (2026-09-13). The balance above never shrank: nothing sets
+    // booking_requests.payout_status = 'paid_out', and requests already filed in
+    // Firestore were never subtracted — so ₪850 earned could be requested five
+    // times (₪4,250), concurrently or one after another, and again after payment.
+    // Now: every request that is not rejected/cancelled counts against the
+    // balance, and a per-provider lock document serialises concurrent requests
+    // inside one Firestore transaction (a second request re-reads the first).
     const { getFirestore } = await import('firebase-admin/firestore');
     const firestore = getFirestore();
-    const docRef = await firestore.collection('payout_requests').add({
-      providerId: user.uid,
-      amountIls: amount,
-      availableAtRequestIls: Number((availableCents / 100).toFixed(2)),
-      iban: iban.trim(),
-      bankName: bankName?.trim() || null,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
+    const outcome = await firestore.runTransaction(async (tx) => {
+      const lockRef = firestore.collection('payout_request_locks').doc(user.uid);
+      await tx.get(lockRef);
+      const prior = await tx.get(firestore.collection('payout_requests').where('providerId', '==', user.uid));
+      let outstandingCents = 0;
+      prior.forEach((d) => {
+        const r = d.data() as { status?: string; amountIls?: number };
+        if (!PAYOUT_REQUEST_RELEASED_STATUSES.has(String(r.status ?? ''))) {
+          outstandingCents += Math.round(Number(r.amountIls ?? 0) * 100);
+        }
+      });
+      const availableCents = Math.max(0, earnedCents - outstandingCents);
+      if (requestedCents > availableCents) {
+        return { ok: false as const, availableCents };
+      }
+      const docRef = firestore.collection('payout_requests').doc();
+      tx.set(docRef, {
+        providerId: user.uid,
+        amountIls: amount,
+        availableAtRequestIls: Number((availableCents / 100).toFixed(2)),
+        iban: iban.trim(),
+        bankName: bankName?.trim() || null,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+      });
+      tx.set(lockRef, { lastRequestAt: new Date().toISOString() }, { merge: true });
+      return { ok: true as const, docRef };
     });
+    if (!outcome.ok) {
+      return res.status(400).json({
+        error: 'Requested amount exceeds your available payout balance.',
+        availableIls: Number((outcome.availableCents / 100).toFixed(2)),
+      });
+    }
+    const docRef = outcome.docRef;
     logger.info('[ProviderDashboardV2] Payout request created', { uid: user.uid, amountIls: amount, requestId: docRef.id });
     res.json({ success: true, requestId: docRef.id, status: 'pending' });
   } catch (error) {

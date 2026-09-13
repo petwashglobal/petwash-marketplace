@@ -18,6 +18,7 @@ import { eq, desc, and, sql, inArray } from 'drizzle-orm';
 import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
+import { encryptPII, maskPII } from '../lib/piiFieldCrypto';
 import { sendProviderEnrollmentConfirmation, sendLuxuryEmail } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { sendSmsTemplate } from '../services/smsTemplates';
@@ -324,7 +325,10 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     }
     
     // Create content hash for integrity
-    const contentHash = sha256(JSON.stringify(formData));
+    // The national ID is excluded: an unsalted sha256 over a form that contains a
+    // 9-digit ID is a brute-forceable copy of that ID sitting next to the row.
+    const { nationalId: _nationalIdNotHashed, ...hashableForm } = formData as Record<string, unknown>;
+    const contentHash = sha256(JSON.stringify(hashableForm));
     
     // Get client IP for privacy compliance (reuse clientIp from rate limit check above)
     
@@ -336,7 +340,9 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
       lastName: formData.lastName,
       phoneNumber: formData.phoneNumber,
       dateOfBirth: formData.dateOfBirth,
-      nationalId: formData.nationalId || null,
+      // PII AT REST (2026-09-13): encrypted (AES-256-GCM, piiFieldCrypto). Legacy
+      // plaintext rows still read back through decryptPII/maskPII.
+      nationalId: formData.nationalId ? encryptPII(String(formData.nationalId)) : null,
       gender: formData.gender || null,
       streetAddress: formData.streetAddress,
       city: formData.city,
@@ -1336,7 +1342,8 @@ router.get('/admin/:id', async (req: Request, res: Response) => {
       submittedAt: application.submittedAt,
       lastUpdatedAt: application.lastUpdatedAt,
       dateOfBirth: application.dateOfBirth,
-      nationalId: application.nationalId,
+      // Last 4 only — the full ID never leaves the server in this admin view.
+      nationalId: maskPII(application.nationalId),
       streetAddress: application.streetAddress,
       postalCode: application.postalCode,
       preferredPetTypes: application.petTypesAccepted || [],

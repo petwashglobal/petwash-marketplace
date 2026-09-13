@@ -82,7 +82,17 @@ export type K9000RedemptionType =
 // the per-wash shekel price.
 export const WASH_PRICE_ILS_CENTS = 5500;
 const LOYALTY_BENEFIT_MIN_TIER = 'gold'; // minimum tier for a free wash benefit
-const LOYALTY_WASH_COST_POINTS  = 500;  // loyalty points per wash
+// Exported so the QR mint (/api/k9000/generate-qr) applies the SAME rule the bay
+// does. It had its own inline 200 and no tier check, so members with 200–499
+// points (or below gold) got a QR the bay then refused (402/403). 2026-09-13.
+export const LOYALTY_WASH_COST_POINTS  = 500;  // loyalty points per wash
+export const LOYALTY_QUALIFYING_TIERS: readonly string[] = ['gold', 'platinum', 'diamond', 'elite', 'vip'];
+
+/** The one loyalty-wash eligibility rule, shared by the QR mint and the bay. */
+export function loyaltyWashEligible(wallet: { loyaltyTier?: string | null; loyaltyPointsBalance?: number | null }): boolean {
+  return LOYALTY_QUALIFYING_TIERS.includes(wallet.loyaltyTier ?? '') &&
+    (wallet.loyaltyPointsBalance ?? 0) >= LOYALTY_WASH_COST_POINTS;
+}
 
 const VELOCITY_WINDOW_SECONDS   = 3600; // 1-hour sliding window
 const VELOCITY_MAX_REDEMPTIONS  = 3;    // max redemptions per user per hour
@@ -975,8 +985,7 @@ function validateBalance(
         throw rejectWith('INSUFFICIENT_GIFT_BALANCE', 'יתרת כרטיס מתנה לא מספיקה.', 402);
       break;
     case 'loyalty_benefit': {
-      const qualifyingTiers = ['gold', 'platinum', 'diamond', 'elite', 'vip'];
-      if (!qualifyingTiers.includes(wallet.loyaltyTier ?? ''))
+      if (!LOYALTY_QUALIFYING_TIERS.includes(wallet.loyaltyTier ?? ''))
         throw rejectWith(
           'LOYALTY_TIER_INELIGIBLE',
           `רמת הנאמנות הנוכחית אינה מזכה בשטיפה חינמית. נדרשת רמת ${LOYALTY_BENEFIT_MIN_TIER} לפחות.`,
