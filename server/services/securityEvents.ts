@@ -17,6 +17,7 @@ import { logger } from '../lib/logger';
 import { hashIp, maskIp } from '../lib/ipHash';
 
 export type SecurityEventType =
+  | 'PASSKEY_CONSENT_ACCEPTED'
   | 'PASSKEY_ENROLL_SUCCESS'
   | 'PASSKEY_ENROLL_FAILED'
   | 'PASSKEY_AUTH_SUCCESS'
@@ -31,6 +32,7 @@ export type SecurityEventType =
 
 /** Event types that describe a passkey ceremony / credential lifecycle outcome. */
 export const PASSKEY_EVENT_TYPES: readonly SecurityEventType[] = [
+  'PASSKEY_CONSENT_ACCEPTED',
   'PASSKEY_ENROLL_SUCCESS',
   'PASSKEY_ENROLL_FAILED',
   'PASSKEY_AUTH_SUCCESS',

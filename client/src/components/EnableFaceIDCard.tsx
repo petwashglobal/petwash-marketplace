@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { registerPasskey } from '@/auth/passkey';
-import { auth } from '@/lib/firebase';
+import { PasskeyCreateFlow } from '@/components/PasskeyCreateFlow';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Fingerprint, Check, Loader2 } from 'lucide-react';
@@ -22,48 +21,16 @@ export default function EnableFaceIDCard({
   const [done, setDone] = useState(false);
   const { toast } = useToast();
 
-  const handleEnableFaceID = async () => {
-    setBusy(true);
-    
-    try {
-      // Get fresh Firebase ID token
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error('Not authenticated');
-      }
-      
-      const idToken = await user.getIdToken(/* forceRefresh */ true);
-      
-      // Register passkey with Firebase ID token
-      const result = await registerPasskey(idToken, userEmail);
-      
-      if (result.success) {
-        setDone(true);
-        
-        toast({
-          title: t('faceID.successTitle', language),
-          description: t('faceID.successDescription', language),
-        });
-        
-        if (onEnabled) {
-          onEnabled();
-        }
-      } else {
-        toast({
-          variant: 'destructive',
-          title: t('faceID.error', language),
-          description: result.error || t('faceID.failedToEnable', language),
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: t('faceID.error', language),
-        description: t('faceID.failedToEnable', language),
-      });
-    } finally {
-      setBusy(false);
-    }
+  // Consent screen first, then the Face ID sheet (PasskeyCreateFlow, 2026-09-14).
+  const [flowOpen, setFlowOpen] = useState(false);
+  const handleEnableFaceID = () => setFlowOpen(true);
+  const handleCreated = () => {
+    setDone(true);
+    toast({
+      title: t('faceID.successTitle', language),
+      description: t('faceID.successDescription', language),
+    });
+    onEnabled?.();
   };
 
   return (
@@ -77,6 +44,8 @@ export default function EnableFaceIDCard({
     // reads as "disabled". Fixed to an opaque near-black background
     // with a strong gold border, guaranteed high-contrast text/button
     // regardless of the parent's page color.
+    <>
+    <PasskeyCreateFlow open={flowOpen} onOpenChange={setFlowOpen} language={language} onCreated={handleCreated} />
     <Card
       className="border-2 rounded-2xl overflow-hidden"
       style={{
@@ -132,5 +101,6 @@ export default function EnableFaceIDCard({
         </Button>
       </CardContent>
     </Card>
+    </>
   );
 }
