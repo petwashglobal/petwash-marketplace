@@ -126,7 +126,7 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
         // pass barcode is identity-only; a paid wash needs the rotating QR (anti-replay).
         { uri: `${PUBLIC_SITE_URL}/wallet/redeem`, description: 'Redeem a wash', id: 'redeem_link' },
         { uri: PUBLIC_SITE_URL, description: 'Open PetWash', id: 'site_link' },
-        { uri: `${PUBLIC_SITE_URL}/book`, description: 'Book services', id: 'book_link' },
+        { uri: `${PUBLIC_SITE_URL}/booking`, description: 'Book services', id: 'book_link' },
         { uri: `${PUBLIC_SITE_URL}/prestige-pass`, description: 'Prestige member portal', id: 'prestige_link' },
       ],
     },

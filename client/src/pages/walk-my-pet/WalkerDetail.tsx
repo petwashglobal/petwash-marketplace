@@ -53,7 +53,7 @@ export default function WalkerDetail() {
   const walker = walkerData?.walker;
   const reviews = walkerData?.reviews || [];
 
-  const handleBook = (serviceMode: 'providerLocation' | 'clientLocation', serviceId: string) => {
+  const handleBook = (_serviceMode: 'providerLocation' | 'clientLocation', _serviceId: string) => {
     if (!user) {
       toast({
         title: isHebrew ? 'נדרש התחברות' : 'Login Required',
@@ -63,7 +63,12 @@ export default function WalkerDetail() {
       navigate(`/signin?from=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
-    navigate(`/walk-my-pet/book/${id}?mode=${serviceMode}&service=${serviceId}`);
+    // 2026-09-13: the main Book buttons went to the LEGACY /walk-my-pet/book
+    // flow, whose accept confirms the walk with NO payment (walk-my-pet.ts
+    // `paymentRail: 'MISSING'`). Book through the canonical booking engine —
+    // the same wizard this page's "multiple dogs" card already uses.
+    if (!walker?.userId) return;
+    navigate(`/booking/new/dog_walking/${walker.userId}`);
   };
 
   const handleMessage = () => {

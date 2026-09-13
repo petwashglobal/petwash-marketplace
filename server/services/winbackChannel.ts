@@ -80,7 +80,7 @@ export function buildTrackingLink(opts: {
     c: opts.channel,
     t: token,
   });
-  return `${TRACKING_BASE}/w?${params.toString()}`;
+  return `${TRACKING_BASE}/api/w?${params.toString()}`; // /w was never forwarded by Hosting (2026-09-13)
 }
 
 export function verifyTrackingToken(token: string): {

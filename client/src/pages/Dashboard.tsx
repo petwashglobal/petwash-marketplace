@@ -654,7 +654,8 @@ export default function Dashboard() {
     return set[2];
   };
   const greeting = getTimeGreeting(language);
-  const formatCurrency = (cents: number) => `${(cents / 100).toFixed(0)}`;
+  // Whole shekels show clean; agorot are never rounded away (₪12.50 displayed as "13" — 2026-09-13).
+  const formatCurrency = (cents: number) => (cents % 100 === 0 ? `${cents / 100}` : (cents / 100).toFixed(2));
   const tierKey = (wallet?.loyaltyTier || 'bronze').toLowerCase();
   const tierLabel = tierLabels[tierKey]?.[language] || tierLabels[tierKey]?.en || 'Member';
   const loyaltyPoints = wallet?.loyaltyPointsBalance || 0;
@@ -1333,7 +1334,7 @@ export default function Dashboard() {
                     </div>
                     {booking.amountCents > 0 && (
                       <p className="text-sm font-light" style={{ color: '#D4AF37' }}>
-                        ₪{(booking.amountCents / 100).toFixed(0)}
+                        ₪{booking.amountCents % 100 === 0 ? booking.amountCents / 100 : (booking.amountCents / 100).toFixed(2)}
                       </p>
                     )}
                     <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={goldText} />

@@ -90,6 +90,7 @@ import { recomputeCustomerProfile, advanceJourneyState } from '../services/Custo
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { providerTypeToFiscalPlatform } from '@shared/serviceDivisions';
+import { enforceSwitch } from '../lib/envSwitch';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -996,7 +997,7 @@ router.post('/', async (req, res) => {
         phone: providerUser?.phone ?? undefined,
         type: 'booking_request',
         title: '📅 New Booking Request',
-        bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}">review and respond</a> within 24 hours.</p>`,
+        bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_URL || 'https://petwash.co.il'}/provider/jobs/${requestId}">review and respond</a> within 24 hours.</p>`,
         bodyText: notifBody,
         ctaText: 'View Booking',
         // Deep-link straight to the provider job-detail screen (accept/decline lives there).
@@ -1577,7 +1578,7 @@ router.post('/:requestId/respond', async (req, res) => {
       try {
         const overdue = await isReconfirmationOverdue(userId!);
         if (overdue) {
-          const enforce = (process.env.RECONFIRMATION_ENFORCE || 'off').toLowerCase() === 'on';
+          const enforce = enforceSwitch(process.env.RECONFIRMATION_ENFORCE, false);
           logger.warn(`[BookingRequests] reconfirmation ${enforce ? 'BLOCK' : 'WOULD BLOCK (shadow)'} accept`, { providerId: userId });
           if (enforce) {
             return res.status(403).json({
@@ -1587,7 +1588,7 @@ router.post('/:requestId/respond', async (req, res) => {
           }
         }
       } catch (reconfirmErr: any) {
-        const enforce = (process.env.RECONFIRMATION_ENFORCE || 'off').toLowerCase() === 'on';
+        const enforce = enforceSwitch(process.env.RECONFIRMATION_ENFORCE, false);
         logger.error('[BookingRequests] reconfirmation gate infra error', {
           providerId: userId, err: reconfirmErr?.message, enforce,
         });
@@ -1616,7 +1617,7 @@ router.post('/:requestId/respond', async (req, res) => {
       try {
         const decl = await checkProviderDeclarationsSigned(userId!);
         if (!decl.ok) {
-          const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'on').toLowerCase() === 'on';
+          const enforce = enforceSwitch(process.env.PROVIDER_DECLARATIONS_ENFORCE, true);
           logger.warn(`[BookingRequests] declarations ${enforce ? 'BLOCK' : 'WOULD BLOCK (shadow)'} accept`, {
             providerId: userId, reason: decl.reason, missing: decl.missing,
           });
@@ -1629,7 +1630,7 @@ router.post('/:requestId/respond', async (req, res) => {
           }
         }
       } catch (declErr: any) {
-        const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'on').toLowerCase() === 'on';
+        const enforce = enforceSwitch(process.env.PROVIDER_DECLARATIONS_ENFORCE, true);
         logger.error('[BookingRequests] declarations gate infra error', {
           providerId: userId, err: declErr?.message, enforce,
         });

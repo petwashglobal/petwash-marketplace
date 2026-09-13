@@ -42,7 +42,7 @@ const SERVICES: ServiceOption[] = [
   { id: 'dog-walking', name: 'Dog Walking', nameHe: 'טיולי כלבים', icon: Footprints, route: '/walk-my-pet' },
   { id: 'pet-taxi', name: 'Pet Taxi', nameHe: 'הסעות', icon: Car, route: '/pettrek', comingSoon: true },
   { id: 'training', name: 'Dog Training', nameHe: 'אילוף', icon: GraduationCap, route: '/academy' },
-  { id: 'grooming', name: 'Grooming', nameHe: 'טיפוח', icon: Sparkles, route: '/grooming' },
+  { id: 'grooming', name: 'Grooming', nameHe: 'טיפוח', icon: Sparkles, route: '/groomers' },
   { id: 'k9000-wash', name: 'K9000 Smart Hub', nameHe: 'K9000 עמדה חכמה', icon: Droplets, route: '/k9000' },
 ];
 

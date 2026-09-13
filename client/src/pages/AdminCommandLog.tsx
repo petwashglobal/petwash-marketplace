@@ -52,7 +52,7 @@ export default function AdminCommandLog() {
 
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Link href={`/admin/stations/${stationId}/bay-map`}>
+            <Link href={`/admin/stations/${stationId}/bays`}>
               <Button variant="ghost" size="sm" className="gap-1.5 text-xs">
                 <ChevronLeft className="h-3.5 w-3.5" />
                 מפת עמדות

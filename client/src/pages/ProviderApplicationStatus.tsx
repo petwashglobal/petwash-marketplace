@@ -195,7 +195,7 @@ export default function ProviderApplicationStatus() {
   const withdrawMutation = useMutation({
     mutationFn: async () => {
       const token = await getBearerToken();
-      const res = await apiRequest('POST', '/api/provider-applications/withdraw', {});
+      const res = await apiRequest('POST', '/api/provider-onboarding/withdraw', {}) /* was /api/provider-applications/withdraw — reads the legacy draft table, 404 for every real applicant (2026-09-13) */;
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Failed' }));
         throw new Error(err.error || 'Withdraw failed');
