@@ -22,10 +22,11 @@ const R = (p: string) => readFileSync(join(ROOT, p), 'utf8');
 const KB = (p: string) => statSync(join(ROOT, p)).size / 1024;
 
 describe('1. the Hosting fallback is a pristine shell, never the homepage snapshot', () => {
-  const pristine = `<head>\n    <link rel="canonical" href="https://petwash.co.il/">\n    <meta property="og:url" content="https://petwash.co.il">\n</head><body><div id="root"></div></body>`;
+  const pristine = `<head>\n    <link rel="preload" as="image" href="/IMG_7114_1751624638881.jpeg" fetchpriority="high">\n    <link rel="canonical" href="https://petwash.co.il/">\n    <meta property="og:url" content="https://petwash.co.il">\n</head><body><div id="root"></div></body>`;
 
   it('toAppShell strips the homepage-only canonical and og:url and keeps the empty root', () => {
     const out = toAppShell(pristine);
+    expect(out).not.toContain('IMG_7114_1751624638881.jpeg');
     expect(out).not.toMatch(/rel="canonical"/);
     expect(out).not.toMatch(/og:url/);
     expect(out).toContain('<div id="root"></div>');
@@ -36,8 +37,16 @@ describe('1. the Hosting fallback is a pristine shell, never the homepage snapsh
     expect(() => toAppShell('<div id="root"><main>How to Use a PetWash™ Station</main></div>')).toThrow(/pristine/);
   });
 
-  it('the pristine source index.html is a valid shell input', () => {
-    expect(() => toAppShell(R('client/index.html'))).not.toThrow();
+  it('the pristine source index.html is a valid shell input, and its hero preload is stripped', () => {
+    const src = R('client/index.html');
+    expect(src).toContain('<link rel="preload" as="image" href="/IMG_7114_1751624638881.jpeg"');
+    expect(toAppShell(src)).not.toContain('rel="preload" as="image" href="/IMG_7114');
+  });
+
+  it('gtag.js is never loaded twice (Firebase Analytics already injects it)', () => {
+    const src = R('client/index.html');
+    const fn = src.slice(src.indexOf('function loadGA4()'), src.indexOf("s.src = 'https://www.googletagmanager.com/gtag/js"));
+    expect(fn).toContain(`if (document.querySelector('script[src*="googletagmanager.com/gtag/js"]')) return;`);
   });
 
   it('firebase.json falls back to /app-shell.html (never cached), not /index.html', () => {

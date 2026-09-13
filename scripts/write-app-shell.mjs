@@ -10,7 +10,7 @@
  * tells Google those pages are duplicates of the homepage.
  *
  * The shell is the pristine Vite index.html (empty #root) with the homepage-only
- * canonical + og:url removed; useSEO sets the correct canonical per route at
+ * canonical, og:url and hero-image preload removed; useSEO sets the correct canonical per route at
  * runtime (client/src/lib/seo.ts).
  *
  * Runs as `postbuild` (so the file exists even if the prerender step is skipped)
@@ -30,7 +30,11 @@ export function toAppShell(html) {
   }
   return html
     .replace(/[ \t]*<link rel="canonical"[^>]*>\s*\n?/gi, '')
-    .replace(/[ \t]*<meta property="og:url"[^>]*>\s*\n?/gi, '');
+    .replace(/[ \t]*<meta property="og:url"[^>]*>\s*\n?/gi, '')
+    // The homepage hero photo, preloaded at high priority. Only '/' shows it;
+    // on every other route it was a wasted early download competing with the
+    // page's real content (2026-09-13).
+    .replace(/[ \t]*<link rel="preload" as="image" href="\/IMG_7114_1751624638881\.jpeg"[^>]*>\s*\n?/gi, '');
 }
 
 export async function writeAppShell(dist) {

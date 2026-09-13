@@ -310,6 +310,10 @@
       function loadGA4() {
         if (!ga4Loaded) {
           ga4Loaded = true;
+          // The Firebase Analytics SDK (client/src/lib/analytics.ts) injects
+          // gtag.js itself, usually before this timer fires. Loading it a second
+          // time cost ~110 KB on every page (seen live 2026-09-13).
+          if (document.querySelector('script[src*="googletagmanager.com/gtag/js"]')) return;
           var s = document.createElement('script');
           s.src = 'https://www.googletagmanager.com/gtag/js?id=G-B30RXHEX6R';
           s.async = true;
