@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 
@@ -20,11 +21,7 @@ describe('sealed: unauthenticated endpoints that created value or identity', () 
   const routes = read('server/routes.ts');
 
   const SEALED: Array<{ path: string; anchor: string; why: string }> = [
-    {
-      path: '/api/vouchers/purchase',
-      anchor: "app.post('/api/vouchers/purchase', async (req, res) => {",
-      why: 'minted stored value up to 2000 with nayaxTxId: null and no payment step',
-    },
+    // /api/vouchers/purchase is sealed by PR #2455 (same fix, landed separately).
     {
       path: '/api/qr-validate',
       anchor: "app.post('/api/qr-validate', async (req, res) => {",
@@ -76,13 +73,15 @@ describe('sealed: unauthenticated endpoints that created value or identity', () 
   it('no client code calls a sealed path', () => {
     const clientDir = path.join(root, 'client/src');
     const files: string[] = [];
-    const walk = (d: string) => {
+    // Declared as a function, not a const arrow: a recursive const arrow has no
+    // inferable return type and trips noImplicitAny.
+    function walk(d: string): void {
       for (const e of fs.readdirSync(d, { withFileTypes: true })) {
         const full = path.join(d, e.name);
         if (e.isDirectory()) walk(full);
         else if (/\.(ts|tsx)$/.test(e.name)) files.push(full);
       }
-    };
+    }
     walk(clientDir);
     const hay = files.map((f) => fs.readFileSync(f, 'utf8')).join('\n');
     for (const { path: p } of SEALED) {
@@ -143,10 +142,10 @@ describe('literal routes are not swallowed by an earlier /:param route', () => {
   it('the guard actually hands the literal route its turn', async () => {
     const app = express();
     const router = express.Router();
-    router.get('/:id', reserveLiteralSegments('id', 'low-stock'), (_req, res) => {
+    router.get('/:id', reserveLiteralSegments('id', 'low-stock'), (_req: Request, res: Response) => {
       res.status(200).json({ handler: 'byId' });
     });
-    router.get('/low-stock', (_req, res) => {
+    router.get('/low-stock', (_req: Request, res: Response) => {
       res.status(200).json({ handler: 'lowStock' });
     });
     app.use('/t', router);
@@ -169,13 +168,13 @@ describe('literal routes are not swallowed by an earlier /:param route', () => {
     router.get(
       '/:id',
       reserveLiteralSegments('id', 'stats'),
-      (_req, _res, next) => {
+      (_req: Request, _res: Response, next: NextFunction) => {
         authRan = true;
         next();
       },
-      (_req, res) => res.json({ handler: 'byId' }),
+      (_req: Request, res: Response) => res.json({ handler: 'byId' }),
     );
-    router.get('/stats', (_req, res) => res.json({ handler: 'stats' }));
+    router.get('/stats', (_req: Request, res: Response) => res.json({ handler: 'stats' }));
     app.use('/t', router);
 
     await request(app).get('/t/stats');

@@ -8007,28 +8007,6 @@ self.addEventListener('notificationclick', (event) => {
 
   // Purchase voucher (guest or authenticated)
   app.post('/api/vouchers/purchase', async (req, res) => {
-    // SEALED 2026-09-13 — free-money endpoint reachable from the public internet.
-    // No requireAuth, no rate limiter, and NO PAYMENT STEP: it called
-    // storage.createVoucher({ nayaxTxId: null }) for any amount up to 2000 and
-    // emailed the PLAINTEXT redemption code to a caller-supplied address.
-    // The minted voucher is real stored value: POST /api/vouchers/claim binds it
-    // to a signed-in account and POST /api/vouchers/redeem spends it at a bay.
-    // So `curl -d '{"type":"STORED_VALUE","amount":2000,...}'` produced 2000 of
-    // spendable credit, unlimited times, with no charge and no audit trail.
-    // Nothing in client/src calls this path (grep: 0 hits). The live gift rails
-    // are POST /api/payments/sumit/begin (EGIFT_*) and the guest eGift order,
-    // both of which take money before they issue anything.
-    // TO REOPEN: require a settled payment reference before createVoucher, then
-    // delete this block.
-    logger.warn('[Vouchers] /api/vouchers/purchase is sealed — it minted stored value with no payment', {
-      correlationId,
-    });
-    return res.status(410).json({
-      error: 'ENDPOINT_SEALED',
-      message: 'Voucher purchase moved to the paid eGift rail.',
-      messageHe: 'רכישת שובר עברה למסלול ה-eGift בתשלום.',
-    });
-
     const correlationId = crypto.randomUUID();
     try {
       const schema = z.object({
