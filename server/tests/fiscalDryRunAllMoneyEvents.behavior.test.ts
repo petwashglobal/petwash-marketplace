@@ -195,3 +195,45 @@ describe('Israel Tax Authority rules the code applies', () => {
     expect(process.env.SUMIT_API_BASE_URL).toBe('https://dry-run.invalid');
   });
 });
+
+describe('one official document per SUMIT payment page (live settings seen 2026-09-13)', () => {
+  // SUMIT → סליקת אשראי → הגדרות: "סליקת אשראי פעילה באמצעות Upay",
+  // "הפקת מסמכים כטיוטות אחרי חיוב" OFF, default "חשבונית מס/קבלה".
+  // Without DraftDocument every charge would auto-issue a final full-VAT tax
+  // invoice AND our receipt path would issue a second document.
+  const begin = (extra: Record<string, unknown> = {}) => sumitClient.beginRedirect({
+    externalId: 'DRY-PAGE', amountIls: 250, description: 'eGift', redirectUrl: 'https://petwash.co.il/r', ...extra,
+  } as any);
+
+  it('the payment page asks SUMIT for a DRAFT document by default', async () => {
+    await begin();
+    expect(sent[0].DraftDocument).toBe(true);
+    expect(sent[0].VATIncluded).toBe(true);
+  });
+
+  it('SUMIT_PAYMENT_PAGE_DRAFT_DOCUMENT=false restores SUMIT’s own final document', async () => {
+    process.env.SUMIT_PAYMENT_PAGE_DRAFT_DOCUMENT = 'false';
+    await begin();
+    expect(sent[0].DraftDocument).toBe(false);
+  });
+
+  it('the ₪1 save-card charge (no receipt of ours) keeps SUMIT’s final document', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const src = readFileSync(join(__dirname, '../routes/save-card.ts'), 'utf8');
+    expect(src).toMatch(/amountIls: 1,\s*\n\s*\/\/[^\n]*\n\s*draftDocument: false,/);
+  });
+
+  it('every page flow that relies on the draft issues its own official document', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const read = (p: string) => readFileSync(join(__dirname, '..', p), 'utf8');
+    // wallet top-up / wash packages / logged-in eGift
+    expect(read('services/PurchaseActivationService.ts')).toContain("paymentClass: item.module === 'gift' ? 'EGIFT_PURCHASE'");
+    // shop card orders
+    expect(read('services/ShopService.ts')).toContain("paymentClass: 'SHOP_ITEM'");
+    // guest eGift — previously issued NOTHING of its own
+    const guest = read('routes/egift-guest.ts');
+    expect(guest.indexOf("paymentClass: 'EGIFT_PURCHASE'")).toBeGreaterThan(guest.indexOf('await issueVoucher({'));
+  });
+});

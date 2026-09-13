@@ -1248,6 +1248,11 @@ export class SumitClient {
     redirectUrl: string;       // where SUMIT returns the customer
     customerName?: string;
     customerEmail?: string;
+    /**
+     * false = let SUMIT issue its own final document at charge. Only for a flow
+     * that issues no receipt of its own (the ₪1 save-card verification).
+     */
+    draftDocument?: boolean;
   }): Promise<{ wired: boolean; redirectUrl?: string; reason?: string; rawResponse?: unknown }> {
     const env = readEnv();
     if (!isWired()) return { wired: false, reason: 'SUMIT not enabled' };
@@ -1262,6 +1267,18 @@ export class SumitClient {
       },
       Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountIls }],
       VATIncluded: true, // gross amount already includes VAT
+      // ONE OFFICIAL DOCUMENT PER PAYMENT (2026-09-13). Seen in the live SUMIT
+      // account: clearing is active through Upay, and "הפקת מסמכים כטיוטות אחרי
+      // חיוב" is OFF with default document "חשבונית מס/קבלה" — so every charge on
+      // this hosted page would auto-issue a FINAL full-VAT tax invoice, and our
+      // own receipt path then issues a second one. For stored value (eGift /
+      // wallet top-up) that auto-document is also the wrong type (CPA: Receipt,
+      // no VAT). DraftDocument keeps SUMIT's page document a draft (not a tax
+      // document, not reported); IsraeliDigitalReceiptService issues the single
+      // official document with the CPA mapping's type — the builders verified
+      // live (#10000 InvoiceAndReceipt, #30000 Receipt).
+      // SUMIT_PAYMENT_PAGE_DRAFT_DOCUMENT=false restores SUMIT's own document.
+      DraftDocument: input.draftDocument ?? (process.env.SUMIT_PAYMENT_PAGE_DRAFT_DOCUMENT !== 'false'),
       // Enum NAME, not ISO code (same Accounting_Typed_Language enum as documents).
       Language: 'Hebrew',
     };

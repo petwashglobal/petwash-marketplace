@@ -119,6 +119,8 @@ router.post('/save-card/start', validateFirebaseToken, async (req: Request, res:
     // refunded", not "is refunded". Business rule left unchanged; this note
     // exists so nobody re-reads it as auto-reversed.
     amountIls: 1,
+    // No receipt of our own is issued for this ₪1 — SUMIT's page document stays final.
+    draftDocument: false,
     description: 'שמירת אמצעי תשלום · PetWash',
     // No uid in the URL — it travels through the customer's browser and is not
     // needed: `ext` is an opaque handle and ownership lives in Redis.

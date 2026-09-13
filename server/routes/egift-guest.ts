@@ -160,6 +160,28 @@ router.get('/guest/return', async (req: Request, res: Response) => {
       .set({ status: 'issued', voucherId: String(voucher.id), sumitTransactionId: txnId, issuedAt: new Date() })
       .where(eq(egiftGuestOrders.externalId, ext));
     logger.info('[GuestEgift] voucher issued to recipient', { ext, voucherId: voucher.id });
+    // THE OFFICIAL DOCUMENT (2026-09-13). The SUMIT payment page now leaves its
+    // own document as a draft (SumitClient.beginRedirect), so this purchase needs
+    // ours: stored value → CPA mapping EGIFT_PURCHASE = Receipt, no VAT at
+    // purchase. Idempotent by bookingId; never blocks the voucher.
+    try {
+      const { IsraeliDigitalReceiptService } = await import('../services/IsraeliDigitalReceiptService');
+      await IsraeliDigitalReceiptService.generateReceipt({
+        platform: 'gift',
+        paymentClass: 'EGIFT_PURCHASE',
+        bookingId: `egift_guest:${ext}`,
+        customerEmail: order.senderEmail,
+        customerName: order.senderName || '',
+        serviceDescription: 'PetWash e-Gift card',
+        serviceDescriptionHe: 'כרטיס מתנה דיגיטלי PetWash',
+        subtotalAmount: order.amountIlsCents / 100,
+        platformFeeAmount: 0,
+        totalAmount: order.amountIlsCents / 100,
+        paymentMethod: 'Credit Card (SUMIT)',
+      });
+    } catch (receiptErr: any) {
+      logger.error('[GuestEgift] receipt generation failed after issue (voucher stands; needs reconcile)', { ext, err: receiptErr?.message });
+    }
     return res.redirect(`${base}/egift?status=success`);
   } catch (e: any) {
     // Paid but not issued — record for manual reconcile; NEVER silently drop a paid order.
