@@ -220,6 +220,28 @@ function resolveUid(req: Request): string | undefined {
   return (req as any).user?.uid || (req as any).session?.user?.uid;
 }
 
+// 2026-09-13: the send-pass handlers read email/phone ONLY from the legacy cookie
+// session, which Firebase Hosting strips (only __session survives). Every
+// Bearer-authenticated member got "Auth required: 401" on "send by email/SMS".
+// Resolve contact from the verified token first, then session, then the users row.
+async function resolveContact(req: Request, userId: string): Promise<{ email?: string; phone?: string; displayName?: string }> {
+  const session = (req as any).session;
+  const claims = (req as any).firebaseUser?.claims || {};
+  let email: string | undefined = (req as any).firebaseUser?.email || session?.user?.email;
+  let phone: string | undefined = claims.phone_number || session?.user?.phone;
+  let displayName: string | undefined = claims.name || session?.user?.displayName;
+  if (!email || !phone || !displayName) {
+    try {
+      const r = await pool.query('SELECT email, phone, first_name FROM users WHERE id = $1 LIMIT 1', [userId]);
+      const row = r.rows?.[0];
+      email = email || row?.email || undefined;
+      phone = phone || row?.phone || undefined;
+      displayName = displayName || row?.first_name || undefined;
+    } catch { /* fall through with what we have */ }
+  }
+  return { email, phone, displayName };
+}
+
 const LEGACY_PRESTIGE_MONEY_ROUTE_GATES: Array<{
   pattern: RegExp;
   actionType: OperatingActionType;
@@ -480,7 +502,7 @@ const generateTokenLimiter = rateLimit({
   windowMs: 60_000,
   max: 30,
   message: { ok: false, error: 'Too many token requests' },
-  keyGenerator: (req) => (req as any).session?.user?.uid || 'anon',
+  keyGenerator: (req) => resolveUid(req) || req.ip || 'anon',
   validate: { xForwardedForHeader: false, ip: false, default: false },
 });
 
@@ -496,7 +518,7 @@ const walletEmailLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
   max: 5,
   message: { ok: false, error: 'Maximum 5 wallet email resends per day reached. Try again tomorrow.' },
-  keyGenerator: (req) => (req as any).session?.user?.uid || req.ip || 'anon',
+  keyGenerator: (req) => resolveUid(req) || req.ip || 'anon',
   validate: { xForwardedForHeader: false, ip: false, default: false },
   standardHeaders: false,
   legacyHeaders: false,
@@ -1845,10 +1867,11 @@ const WALLET_EMAIL_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between successiv
 
 router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res: Response) => {
   try {
-    const session = (req as any).session;
     const userId  = resolveUid(req);
-    const email   = session?.user?.email;
-    if (!userId || !email) return res.status(401).json({ ok: false, error: 'Auth required' });
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+    const contact = await resolveContact(req, userId);
+    const email   = contact.email;
+    if (!email) return res.status(400).json({ ok: false, error: 'No email address on file. Add one in your profile first.' });
 
     const passRef = firestoreDb.collection('prestige_passes').doc(userId);
     const passDoc = await passRef.get();
@@ -1880,7 +1903,7 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
     const egiftCents      = resendWallet?.egiftBalanceCents || 0;
     const washes          = resendWallet?.washPackageCredits || 0;
     const cardNum         = pass.cardNumber || userId.slice(-8).toUpperCase();
-    const displayName     = session?.user?.displayName || '';
+    const displayName     = contact.displayName || pass.firstName || '';
 
     // Pre-generate Google Wallet save URL when secrets are configured
     const googleWalletSaveUrl = await buildGoogleWalletSaveUrl({
@@ -1926,18 +1949,10 @@ const WALLET_SMS_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between SMS sends p
 
 router.post('/send-wallet-sms', walletEmailLimiter, async (req: Request, res: Response) => {
   try {
-    const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
-    // Resolve phone: session first, then the users table.
-    let phone: string | undefined = session?.user?.phone;
-    if (!phone) {
-      try {
-        const r = await pool.query('SELECT phone FROM users WHERE id = $1 LIMIT 1', [userId]);
-        phone = r.rows?.[0]?.phone || undefined;
-      } catch { /* fall through */ }
-    }
+    const { phone } = await resolveContact(req, userId);
     if (!phone) return res.status(400).json({ ok: false, error: 'No phone number on file. Add one in your profile first.' });
 
     const passRef = firestoreDb.collection('prestige_passes').doc(userId);

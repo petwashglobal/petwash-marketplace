@@ -643,6 +643,17 @@ export default function MyAccount() {
   });
 
   // Send the pass by email or SMS (server endpoints are rate-limited).
+  // apiRequest throws "<status>: <server text>" — never show that raw English to a member.
+  const sendErrorText = (err: any, channel: 'email' | 'sms'): string => {
+    const status = Number(err?.status ?? String(err?.message || '').match(/^(\d{3})/)?.[1]);
+    if (status === 401) return isHebrew ? 'פג תוקף ההתחברות. התחבר מחדש ונסה שוב.' : 'Your sign-in expired. Please sign in again.';
+    if (status === 429) return isHebrew ? 'כבר שלחנו לאחרונה. נסה שוב בעוד כמה דקות.' : 'Already sent recently. Try again in a few minutes.';
+    if (status === 404) return isHebrew ? 'הכרטיס שלך עדיין לא מוכן.' : "Your pass isn't ready yet.";
+    if (status === 400) return channel === 'sms'
+      ? (isHebrew ? 'אין מספר טלפון בפרופיל. הוסף אותו ונסה שוב.' : 'No phone number on file. Add one in your profile.')
+      : (isHebrew ? 'אין כתובת מייל בפרופיל. הוסף אותה ונסה שוב.' : 'No email on file. Add one in your profile.');
+    return isHebrew ? 'לא הצלחנו לשלוח כרגע. נסה שוב מאוחר יותר.' : "We couldn't send right now. Please try again later.";
+  };
   const emailPassMutation = useMutation({
     mutationFn: async () => {
       const resp = await apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {});
@@ -651,7 +662,7 @@ export default function MyAccount() {
       return data;
     },
     onSuccess: () => toast({ title: isHebrew ? 'נשלח למייל ✓' : 'Sent to email ✓', description: isHebrew ? 'הפאס נשלח עם כפתורי Apple/Google Wallet.' : 'Pass sent with Apple & Google Wallet buttons.' }),
-    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: sendErrorText(err, 'email'), variant: 'destructive' }),
   });
   const smsPassMutation = useMutation({
     mutationFn: async () => {
@@ -661,7 +672,7 @@ export default function MyAccount() {
       return data;
     },
     onSuccess: () => toast({ title: isHebrew ? 'נשלח ב-SMS ✓' : 'Sent by SMS ✓', description: isHebrew ? 'בדוק את ההודעות שלך.' : 'Check your messages.' }),
-    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: sendErrorText(err, 'sms'), variant: 'destructive' }),
   });
 
   const [activeTab, setActiveTab] = useState('profile');
