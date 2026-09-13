@@ -632,7 +632,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     try {
       const r = await signInWithPasskey();
       if (!r.success) {
-        const noPasskey = /not.?allowed|no matching|no credential|cancel|timed out/i.test(r.error || '');
+        // Server says "Biometric credential not found" when this device holds a
+        // passkey PetWash never saved (verified live 2026-09-13) — same guidance.
+        const noPasskey = /not.?allowed|no matching|no credential|credential not found|cancel|timed out/i.test(r.error || '');
         if (noPasskey) {
           // Cancelled, timed out, or no PetWash passkey on this device. Keep the
           // button: a cancel is not "no passkey", and hiding it is what made it
