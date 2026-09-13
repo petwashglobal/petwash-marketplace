@@ -599,12 +599,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // hint being absent does not mean the account has no passkey; the
         // conditional-mediation autofill below still surfaces synced passkeys
         // silently — the true one-tap return path.
-        const passkeyHintOnDevice = (() => {
-          try { return !!localStorage.getItem('petwash_passkey_email'); } catch { return false; }
-        })();
+        // 2026-09-13 (CEO: "Face ID not there at all — Safari and Chrome"):
+        // the button used to require a device-local hint that was only written
+        // after a successful passkey sign-in on THIS browser — which had never
+        // worked in production until #2469 — and was DELETED the first time the
+        // Face ID sheet was cancelled. Safari and Chrome on one iPhone also keep
+        // separate storage. So the button was invisible for everyone. Apple's
+        // guidance: offer passkey sign-in whenever the device can do it, and let
+        // the system sheet show which passkeys exist. The button now shows on
+        // every capable device and uses the discoverable flow (no email sent).
         setPlatformAuthCapable(avail);
-        setBioAvailable(avail && passkeyHintOnDevice);
-        if (avail && passkeyHintOnDevice) setBioName(getBiometricMethodName());
+        setBioAvailable(avail);
+        if (avail) setBioName(getBiometricMethodName());
         signInWithPasskeyConditional().catch(() => {});
       } catch { /* passkeys unsupported — silent, normal flow continues */ }
     })();
@@ -628,11 +634,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!r.success) {
         const noPasskey = /not.?allowed|no matching|no credential|cancel|timed out/i.test(r.error || '');
         if (noPasskey) {
-          try { localStorage.removeItem('petwash_passkey_email'); } catch { /* storage disabled */ }
-          setBioAvailable(false);
+          // Cancelled, timed out, or no PetWash passkey on this device. Keep the
+          // button: a cancel is not "no passkey", and hiding it is what made it
+          // vanish for good. Point to where a passkey is added.
           fail(he
-            ? 'לא נמצא Passkey במכשיר זה — התחברו עם Google, אימייל או מספר נייד.'
-            : 'No passkey found on this device — sign in with Google, email or mobile instead.');
+            ? 'לא הושלמה התחברות עם Passkey. אין עדיין Passkey במכשיר? התחברו בדרך אחרת והוסיפו אחד בחשבון ← אבטחה.'
+            : 'Passkey sign-in did not complete. No passkey on this device yet? Sign in another way, then add one in Account → Security.');
         } else {
           fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
         }
@@ -2700,7 +2707,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     data-action-id="AUTH_PASSKEY"
                     data-testid="button-auth-passkey"
                   >
-                    <FaFingerprint aria-hidden /> {he ? `התחברות עם ${bioName}` : `Sign in with ${bioName}`}
+                    {/* Apple's term is "passkey"; Face ID / Touch ID is how it is unlocked. */}
+                    <FaFingerprint aria-hidden /> {he ? `התחברות עם Passkey (${bioName})` : `Sign in with a passkey (${bioName})`}
                   </button>
                 </>
               )}
