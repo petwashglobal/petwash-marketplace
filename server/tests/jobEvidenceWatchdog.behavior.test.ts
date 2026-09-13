@@ -25,38 +25,39 @@ beforeAll(async () => {
       booking_id text PRIMARY KEY, owner_id text, walker_id text, status text, scheduled_date date, scheduled_start_time text,
       duration_minutes int, pickup_latitude numeric(10,7), pickup_longitude numeric(10,7),
       actual_start_time timestamp, actual_end_time timestamp, actual_duration_minutes int,
-      total_distance_meters int, vital_data_summary jsonb);
+      total_distance_meters int, vital_data_summary jsonb, provider_invoice_number text);
     CREATE TABLE walk_gps_tracking (id serial PRIMARY KEY, booking_id text, latitude numeric(10,7), longitude numeric(10,7), recorded_at timestamp);
     CREATE TABLE booking_disputes (id serial PRIMARY KEY, booking_id text, status text);
     CREATE TABLE booking_requests (
       request_id text PRIMARY KEY, owner_id text, provider_id text, status text, updated_at timestamp,
       start_date timestamp, end_date timestamp, service_started_at timestamp, service_completed_at timestamp,
       provider_completed_at timestamp, customer_latitude numeric(10,7), customer_longitude numeric(10,7), photo_updates jsonb,
-      owner_confirmed_at timestamp, customer_approved_at timestamp, auto_approved_at timestamp, status_history jsonb);
+      owner_confirmed_at timestamp, customer_approved_at timestamp, auto_approved_at timestamp, status_history jsonb,
+      provider_invoice_number text);
 
     INSERT INTO users VALUES ('walker-uid', null, 'H-W', null), ('owner-uid', null, 'H-O', null);
     INSERT INTO walker_profiles VALUES ('WALKER-1', 'walker-uid');
 
     -- honest walk (today)
     INSERT INTO walk_bookings VALUES ('WALK-OK', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
-      32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '1 hour', 60, 2000, null);
+      32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '1 hour', 60, 2000, null, 'INV-1');
     INSERT INTO walk_gps_tracking (booking_id, latitude, longitude, recorded_at)
       SELECT 'WALK-OK', 32.1782 + LEAST(g, 60 - g) * 0.00035, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours' + g * interval '1 minute'
         FROM generate_series(0, 60, 5) g;
 
     -- 10-minute "walk" of a 60-minute booking, no GPS
     INSERT INTO walk_bookings VALUES ('WALK-LIE', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
-      32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '110 minutes', 60, 3000, null);
+      32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '110 minutes', 60, 3000, null, null);
 
     -- sitter stay the customer confirmed
     INSERT INTO booking_requests VALUES ('BR-OK', 'owner-uid', 'walker-uid', 'completed', now() AT TIME ZONE 'UTC',
       now() AT TIME ZONE 'UTC' - interval '3 days', now() AT TIME ZONE 'UTC' - interval '1 day', now() AT TIME ZONE 'UTC' - interval '3 days',
       now() AT TIME ZONE 'UTC' - interval '1 day', now() AT TIME ZONE 'UTC' - interval '1 day', null, null, '[]',
-      now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC', null, '[]');
+      now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC', null, '[]', 'INV-2');
 
     -- old job outside the 7-day window is ignored
     INSERT INTO booking_requests VALUES ('BR-OLD', 'walker-uid', 'walker-uid', 'completed', now() AT TIME ZONE 'UTC' - interval '30 days',
-      null, null, null, null, null, null, null, '[]', null, null, null, '[]');
+      null, null, null, null, null, null, null, '[]', null, null, null, '[]', null);
   `);
 });
 

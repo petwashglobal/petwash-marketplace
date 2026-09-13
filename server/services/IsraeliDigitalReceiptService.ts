@@ -422,21 +422,47 @@ export class IsraeliDigitalReceiptService {
       ? getSumitDocumentMapping(params.paymentClass).documentType
       : undefined;
 
-    // WITHHELD 2026-09-13 — a disclosed-agent commission document would be WRONG
-    // in SUMIT. createCustomerReceipt sends ONE line with UnitPrice =
-    // subtotalAmount and VATIncluded:false, and for VAT_ON_COMMISSION_ONLY the
-    // subtotal is (booking total − VAT on the commission). SUMIT then adds 18%
-    // to the WHOLE line: a ₪100 booking with a ₪15 commission becomes a
-    // ₪115.30 tax invoice declaring ₪17.59 VAT, instead of the ₪2.29 the local
-    // receipt records. A tax invoice cannot be withdrawn, only credited. Until
-    // the line structure for this class is confirmed (who is invoiced for what),
-    // the local PW- receipt stands and nothing is sent; reconciliation sees
-    // issuer_of_record NULL.
+    // MARKETPLACE GROSS MODEL (CEO 2026-09-14 — Rover / Mad Paws; the design in
+    // docs/finance/00-platform-role-model.md §0.6–0.7):
+    //   • the provider is the legal seller of the service and invoices the
+    //     customer for their own price (gross), from their own books;
+    //   • Pet Wash's revenue is ONLY its platform fee, charged to the customer on
+    //     top of the provider's price (quoteEngine: total = subtotal + 15%).
+    // So Pet Wash's document for a marketplace booking covers the FEE AMOUNT ONLY,
+    // VAT-inclusive, as the canonical already-paid document
+    // (sumitDocTypeForPaidSale → חשבונית מס/קבלה). It never covers the
+    // provider's service. (Replaces the 2026-09-13 withhold: the old call sent
+    // the whole booking as a pre-VAT line — ₪100 → ₪115.30 with ₪17.59 VAT.)
     if (params.paymentClass && getSumitDocumentMapping(params.paymentClass).vatMode === 'VAT_ON_COMMISSION_ONLY') {
-      logger.warn('[Digital Receipt] SUMIT send WITHHELD — commission-only VAT document structure not confirmed', {
-        receiptNumber, paymentClass: params.paymentClass,
+      const feeIls = Number(row.brokerCommissionAmount ?? row.platformFeeAmount ?? 0);
+      if (!(feeIls > 0)) {
+        logger.warn('[Digital Receipt] marketplace booking with no platform fee — nothing of Pet Wash\'s to document', { receiptNumber });
+        return { status: 'no_document_id' };
+      }
+      const feeVat = Math.round((feeIls - feeIls / (1 + ISRAELI_VAT_RATE)) * 100) / 100;
+      const feeResult = await sumitClient.createCustomerReceipt({
+        idempotencyKey: receiptNumber,
+        documentType: 'InvoiceAndReceipt',
+        customer: {
+          name: row.customerName || row.customerEmail || '',
+          email: row.customerEmail || undefined,
+          phone: row.customerPhone || undefined,
+        },
+        description: `דמי שירות פלטפורמת Pet Wash™ — ${row.bookingId ?? receiptNumber}. השירות עצמו ניתן ומחויב על ידי נותן השירות.`,
+        amountBeforeVat: Math.round((feeIls - feeVat) * 100) / 100,
+        vatAmount: feeVat,
+        totalAmount: feeIls,
+        currency: 'ILS',
+        context: { platform: row.platform, bookingId: row.bookingId ?? undefined, receiptNumber, kind: 'platform_fee' },
       });
-      return { status: 'withheld' };
+      if (!feeResult.sumitDocumentId) {
+        logger.warn('[Digital Receipt] SUMIT platform-fee document returned no id', { receiptNumber, reason: feeResult.reason });
+        return { status: 'no_document_id' };
+      }
+      await db.update(digitalReceipts)
+        .set({ sumitDocumentId: feeResult.sumitDocumentId, issuerOfRecord: 'sumit' })
+        .where(eq(digitalReceipts.id, row.id));
+      return { status: 'issued', sumitDocumentId: feeResult.sumitDocumentId };
     }
 
     const sumitResult = await sumitClient.createCustomerReceipt({

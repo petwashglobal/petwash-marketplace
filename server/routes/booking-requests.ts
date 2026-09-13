@@ -675,6 +675,10 @@ router.post('/', async (req, res) => {
           serviceFeePercent: serviceFeePercent.toString(),
           serviceFeeCents,
           totalCents,
+          // GROSS MODEL (2026-09-14): the 15% fee is charged to the customer ON
+          // TOP; the provider is owed their full price. Written at creation so the
+          // provider dashboard and payout balance are never ₪0.
+          providerPayoutCents: subtotalCents,
           // Quote engine columns (stored when finalQuote is provided)
           ...(fq && fq.success ? {
             quoteSubtotalCents: fq.totals.subtotalCents,
@@ -2558,7 +2562,12 @@ router.post('/:requestId/pay', async (req, res) => {
           // redirect. Suppress the premature "Payment Secured 🔒" push; the webhook
           // fires the real confirmation when the customer actually pays. (CEO 2026-08-04)
           moneyCaptured: false,
-        }
+        },
+        undefined,
+        // GROSS MODEL (2026-09-14): commission = the fee charged on top, so the escrow's
+        // provider share equals the provider's full price (was 15% of the fee-inclusive
+        // total: ₪115 → ₪97.75).
+        booking.totalCents > 0 ? ((booking.totalCents - booking.subtotalCents) / booking.totalCents) * 100 : 0,
       );
       logger.info('[BookingRequests] Escrow record created (pending payment confirmation)', {
         requestId, escrowId: escrow.id, amount: booking.totalCents / 100,
@@ -2995,6 +3004,36 @@ router.post('/:requestId/start', async (req, res) => {
  *
  * Auto-approval: if customer does nothing for 24 h, the cron job auto-approves.
  */
+/**
+ * The provider records THEIR OWN tax invoice / receipt number for the service
+ * (gross model, 2026-09-14). Pet Wash does not issue it; the payout stays blocked
+ * in the evidence check until it is recorded.
+ */
+router.post('/:requestId/provider-invoice', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    const invoiceNumber = String(req.body?.invoiceNumber ?? '').trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9\-\/ ]{0,63}$/.test(invoiceNumber)) {
+      return res.status(400).json({ error: 'INVALID_INVOICE_NUMBER' });
+    }
+    const [booking] = await db.select({ providerId: bookingRequests.providerId, status: bookingRequests.status })
+      .from(bookingRequests).where(eq(bookingRequests.requestId, req.params.requestId)).limit(1);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.providerId !== userId) return res.status(403).json({ error: 'Only the provider can record their invoice' });
+    if (!['provider_marked_complete', 'completed', 'reviewed'].includes(String(booking.status))) {
+      return res.status(409).json({ error: 'JOB_NOT_COMPLETED' });
+    }
+    await db.update(bookingRequests)
+      .set({ providerInvoiceNumber: invoiceNumber, providerInvoiceSubmittedAt: new Date(), updatedAt: new Date() } as any)
+      .where(eq(bookingRequests.requestId, req.params.requestId));
+    return res.json({ ok: true });
+  } catch (error: any) {
+    logger.error('[BookingRequests] provider-invoice record failed', { error: error?.message });
+    return res.status(500).json({ error: 'PROVIDER_INVOICE_SAVE_FAILED' });
+  }
+});
+
 router.post('/:requestId/complete', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
@@ -3438,7 +3477,10 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         bookingType,
         bookingId: requestId,
         baseAmount: booking.subtotalCents / 100,
-        platformFeePercent,
+        // GROSS MODEL (2026-09-14): the fee was charged to the CUSTOMER on top
+        // (total = subtotal + fee). Taking 15% from the provider's price again
+        // recorded ₪85 for a ₪100 service — a double take.
+        platformFeePercent: 0,
         dayCount: booking.totalDays || undefined,
         hourCount: booking.totalHours ? parseFloat(booking.totalHours) : undefined,
       });
@@ -4003,8 +4045,8 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           paymentMethod: Number((booking as any).walletDebitedCents) > 0
             ? (booking.paymentHeldAt ? 'PetWash Wallet + card' : 'PetWash Wallet')
             : 'Escrow (card)',
-          providerPayoutAmount:
-            (booking.providerPayoutCents ?? ((booking.subtotalCents || 0) - (booking.serviceFeeCents || 0))) / 100,
+          // GROSS MODEL: the provider is owed their full price (fee was on top).
+          providerPayoutAmount: (booking.providerPayoutCents ?? (booking.subtotalCents || 0)) / 100,
           brokerCommissionAmount: commissionIls,
         });
       } catch (receiptErr) {

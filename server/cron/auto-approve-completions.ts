@@ -133,7 +133,8 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           bookingType: providerRole,
           bookingId: booking.requestId,
           baseAmount: (booking.subtotalCents ?? booking.totalCents) / 100,
-          platformFeePercent: 15,
+          // GROSS MODEL (2026-09-14): fee charged to the customer on top — never again from the provider.
+          platformFeePercent: 0,
           dayCount: booking.totalDays ?? undefined,
           hourCount: booking.totalHours ? parseFloat(booking.totalHours) : undefined,
         });
@@ -215,8 +216,7 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           platformFeeAmount: commissionIls,
           totalAmount: (booking.totalCents || booking.subtotalCents || 0) / 100,
           paymentMethod: 'Escrow (card)',
-          providerPayoutAmount:
-            ((booking.subtotalCents || 0) - (booking.serviceFeeCents || 0)) / 100,
+          providerPayoutAmount: (booking.subtotalCents || 0) / 100, // GROSS MODEL: full provider price
           brokerCommissionAmount: commissionIls,
         });
       } catch (receiptErr: any) {
