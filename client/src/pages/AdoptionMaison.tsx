@@ -13,6 +13,7 @@
  * top-CENTER, and "forward/more" arrows point LEFT (←) because forward = leftward
  * in RTL. Brand palette: pure white, black text, one metallic-gold (#D4AF37) hairline.
  */
+import { sanitizeUrl } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Heart } from 'lucide-react';
@@ -91,7 +92,7 @@ export default function AdoptionMaison() {
               <article key={p.id} className="rounded-2xl overflow-hidden border" style={{ borderColor: '#E6E2D8' }} data-testid={`adoption-card-${p.id}`}>
                 <div className="h-44 bg-[#F4F1EA] flex items-center justify-center overflow-hidden">
                   {p.primary_media
-                    ? <img src={p.primary_media} alt={p.pet_name || ''} className="w-full h-full object-cover" />
+                    ? <img src={sanitizeUrl(p.primary_media)} alt={p.pet_name || ''} className="w-full h-full object-cover" />
                     : <PetWashIcon name="brand_paw" size={40} label={p.pet_name || 'Pet'} />}
                 </div>
                 <div className="p-4">

@@ -3,6 +3,7 @@
  * The lister's phone is never shown here; it is shared only with an applicant
  * the lister accepts (see /adoption/my).
  */
+import { sanitizeUrl } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -158,7 +159,7 @@ export default function AdoptionListingPage({ listingId }: { listingId: number }
         <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${HAIRLINE}` }}>
           <div className="aspect-[4/3] flex items-center justify-center overflow-hidden" style={{ background: PAPER }}>
             {current
-              ? <img src={current.file_path} alt={l.pet_name || ''} className="w-full h-full object-cover" />
+              ? <img src={sanitizeUrl(current.file_path)} alt={l.pet_name || ''} className="w-full h-full object-cover" />
               : <PetWashIcon name="brand_paw" size={48} label={l.pet_name || 'Pet'} />}
           </div>
           {photos.length > 1 && (
@@ -166,7 +167,7 @@ export default function AdoptionListingPage({ listingId }: { listingId: number }
               {photos.map((m, i) => (
                 <button key={m.id} type="button" onClick={() => setActivePhoto(i)} className="h-14 w-14 shrink-0 overflow-hidden rounded-lg"
                   style={{ border: `1px solid ${i === activePhoto ? GOLD : HAIRLINE}` }} aria-label={`${i + 1}`}>
-                  <img src={m.file_path} alt="" className="h-full w-full object-cover" />
+                  <img src={sanitizeUrl(m.file_path)} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

@@ -2,6 +2,7 @@
  * Adopt a Pet — support review queue (/admin/adoption).
  * Separate from /admin/paw-finder: adoption listings are not lost/found notices.
  */
+import { sanitizeUrl } from '@/lib/utils';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -70,7 +71,7 @@ export default function AdoptionAdmin() {
               <Card key={l.id} data-testid={`admin-adoption-${l.id}`}>
                 <CardContent className="p-4 flex flex-col sm:flex-row gap-4">
                   <div className="h-40 w-full sm:w-40 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                    {l.primary_media && <img src={l.primary_media} alt="" className="h-full w-full object-cover" />}
+                    {l.primary_media && <img src={sanitizeUrl(l.primary_media)} alt="" className="h-full w-full object-cover" />}
                   </div>
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">

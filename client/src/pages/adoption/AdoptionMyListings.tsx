@@ -2,6 +2,7 @@
  * /adoption/my — the member's Adopt a Pet dashboard: my listings and their
  * status, enquiries received, enquiries sent, and adoption alerts.
  */
+import { sanitizeUrl } from '@/lib/utils';
 import { useState } from 'react';
 import { Link } from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -123,7 +124,7 @@ export default function AdoptionMyListings() {
             listings.data.rows.map((l) => (
               <article key={l.id} className="flex gap-4 rounded-2xl p-3" style={{ border: `1px solid ${HAIRLINE}` }} data-testid={`my-listing-${l.id}`}>
                 <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl flex items-center justify-center" style={{ background: PAPER }}>
-                  {l.primary_media ? <img src={l.primary_media} alt="" className="h-full w-full object-cover" /> : <PetWashIcon name="brand_paw" size={28} label="" />}
+                  {l.primary_media ? <img src={sanitizeUrl(l.primary_media)} alt="" className="h-full w-full object-cover" /> : <PetWashIcon name="brand_paw" size={28} label="" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">

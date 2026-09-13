@@ -3,6 +3,7 @@
  * Not a lost/found notice: no last-seen place, no date, no reward.
  * Every listing is reviewed by support before it is public.
  */
+import { sanitizeUrl } from '@/lib/utils';
 import { useRef, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -168,7 +169,7 @@ export default function AdoptionCreate() {
         <div className="grid grid-cols-3 gap-3">
           {photos.map((p, i) => (
             <div key={p.filePath} className="relative aspect-square overflow-hidden rounded-xl" style={{ border: `1px solid ${HAIRLINE}` }}>
-              <img src={p.preview} alt="" className="h-full w-full object-cover" />
+              <img src={sanitizeUrl(p.preview)} alt="" className="h-full w-full object-cover" />
               <button type="button" onClick={() => setPhotos((all) => all.filter((_, j) => j !== i))}
                 className="absolute top-1.5 end-1.5 rounded-full bg-white/90 px-2 text-xs text-black" aria-label={isHe ? 'הסרה' : 'Remove'}>×</button>
             </div>
