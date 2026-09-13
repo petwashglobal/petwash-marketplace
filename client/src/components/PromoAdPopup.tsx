@@ -38,11 +38,13 @@ function isPublicSafePromoImage(src: string): boolean {
 const DEFAULT_PROMO: PromoAdConfig = {
   id: 'petwash-platform-2026-poster-v2',
   template: 'poster',
-  // CEO-approved full-screen brand poster (client/public/petwash-popup.png).
+  // CEO-approved full-screen brand poster (client/public/petwash-popup.jpg).
   // PosterTemplate renders it object-contain on pure white so the WHOLE poster
   // shows and fills the viewport on iPhone (portrait) and laptop (wide) with
   // clean white pillar/letterbox — never cropped, never black.
-  imageUrl: '/petwash-popup.png',
+  // JPEG of the same poster (2026-09-13): the PNG was 601 KB for a photo with no
+  // transparency; mozjpeg q82 is 290 KB and visually identical.
+  imageUrl: '/petwash-popup.jpg',
   title: 'PetWash™‎',
   titleHe: 'PetWash™‎',
   subtitle: 'ONE WORLD. EVERY PET.',

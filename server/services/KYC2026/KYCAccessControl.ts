@@ -269,6 +269,30 @@ export function requireKYCMFA() {
 
     const validation = KYCAccessControl.validateMFASession(mfaToken, currentIP);
 
+    // BIND THE SESSION TO THE CALLER (2026-09-13). validateMFASession returns
+    // the userId the token was minted for, and this gate computed `userId` —
+    // and then never compared them. A token issued for one KYC operator was
+    // accepted for ANY other, the only binding being source IP, so two people
+    // behind one office NAT or VPN were interchangeable on the national-ID
+    // review surface (approve/reject, audit trail, role assign, erasure).
+    // Same class as a proof that names a contact instead of an account.
+    if (validation.valid && validation.userId && userId && validation.userId !== userId) {
+      kycAuditTrail.record({
+        action: 'kyc_mfa_failed',
+        actorId: userId,
+        actorRole: 'admin',
+        ipAddress: currentIP,
+        userAgent: req.headers['user-agent'] || 'unknown',
+        metadata: { reason: 'mfa_session_belongs_to_another_user', sessionUserId: validation.userId },
+      });
+      res.status(403).json({
+        error: 'MFA validation failed',
+        message: 'This MFA session belongs to a different user.',
+        mfaRequired: true,
+      });
+      return;
+    }
+
     if (!validation.valid) {
       kycAuditTrail.record({
         action: 'kyc_mfa_failed',

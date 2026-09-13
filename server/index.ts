@@ -1401,6 +1401,7 @@ app.get('/api/health/bot-check', (_req, res) => {
     protectedSurfaces: [
       'signup_sms_start',
       'signup_email_start',
+      'contact_form',
     ],
     note: surfacesDown
       ? `OUTAGE: ${reasons.join('; AND ')}. No customer can receive a signup or passwordless-login code `

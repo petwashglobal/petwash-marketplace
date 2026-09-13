@@ -9,6 +9,7 @@
 
 import { logger } from '../lib/logger';
 import { haversineKm as sharedHaversineKm } from '../lib/geo';
+import { notifyPawFinderOwner } from '../lib/pawFinderNotify';
 
 export interface MatchResult {
   similarityScore: number;
@@ -71,6 +72,10 @@ export async function refreshMatchesForPost(pool: any, postId: number): Promise<
     const post = postRes.rows[0];
     if (!post) return;
     if (!['published', 'matched'].includes(post.status)) return;
+    // Only lost ↔ found pair up. An adoption listing used to fall into the
+    // "not lost → look for lost" branch and be matched against lost pets
+    // (2026-09-13).
+    if (post.post_type !== 'lost' && post.post_type !== 'found') return;
 
     const targetType = post.post_type === 'lost' ? 'found' : 'lost';
     const others = await pool.query(
@@ -85,7 +90,7 @@ export async function refreshMatchesForPost(pool: any, postId: number): Promise<
       const match = computeMatch(lostPost, foundPost);
 
       if (match.similarityScore >= 45) {
-        await pool.query(
+        const upsert = await pool.query(
           `INSERT INTO paw_finder_matches
            (lost_post_id, found_post_id, distance_km, date_gap_days, similarity_score, similarity_reasons, status, updated_at)
            VALUES ($1,$2,$3,$4,$5,$6,'suggested',NOW())
@@ -94,10 +99,24 @@ export async function refreshMatchesForPost(pool: any, postId: number): Promise<
              date_gap_days     = EXCLUDED.date_gap_days,
              similarity_score  = EXCLUDED.similarity_score,
              similarity_reasons= EXCLUDED.similarity_reasons,
-             updated_at        = NOW()`,
+             updated_at        = NOW()
+           RETURNING (xmax = 0) AS inserted`,
           [lostPost.id, foundPost.id, match.distanceKm ?? null, match.dateGapDays ?? null,
            match.similarityScore, JSON.stringify(match.similarityReasons)],
         );
+        // A NEW pair tells both owners (2026-09-13: matches were silent). A
+        // re-score of an existing pair does not re-notify.
+        if (upsert?.rows?.[0]?.inserted) {
+          for (const side of [lostPost, foundPost]) {
+            await notifyPawFinderOwner(pool, {
+              userId: side.user_id,
+              postId: Number(side.id),
+              event: 'match_found',
+              post: side,
+              payload: { lostPostId: Number(lostPost.id), foundPostId: Number(foundPost.id) },
+            });
+          }
+        }
       }
     }
 

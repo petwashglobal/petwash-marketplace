@@ -246,7 +246,14 @@ export async function requireAuth(req: Request, res: Response, next: any) {
     let decodedClaims: any;
     if (sessionCookie) {
       try {
-        decodedClaims = await verifySessionCookie(sessionCookie, false);
+        // checkRevoked MUST be true (2026-09-13). This lane passed `false`,
+        // so a session cookie that had been REVOKED still authenticated:
+        // "sign out everywhere" and an admin force-revoke did nothing to any
+        // route behind customAuth.requireAuth (/api/account-deletion,
+        // /api/access-requests, /api/unified/*). The other two verifiers —
+        // adminAuth.ts and middleware/firebase-auth.ts — have always passed
+        // true; this was the odd one out.
+        decodedClaims = await verifySessionCookie(sessionCookie, true);
       } catch {
         // Session cookie invalid — fall back to Bearer token if present
         if (!bearerToken) {

@@ -275,11 +275,13 @@ export default function BrowseSitters() {
     setActiveFilters(count);
   };
 
-  const { data, isLoading, refetch } = useQuery<SearchResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<SearchResponse>({
     queryKey: ["/api/providers/search", 'sitter_suite', searchParams?.location, searchParams?.lat, searchParams?.lng, searchParams?.service, sortBy, maxPrice, minRating],
+    // 2026-09-13: the try/catch that used to wrap this returned an empty
+    // provider list on ANY failure, which the page rendered exactly like "no
+    // sitters matched". Let the error reach react-query so the UI can say so.
     queryFn: async () => {
-      try {
-        return await fetchProviderBrowseResults({
+      return await fetchProviderBrowseResults({
           serviceType: 'pet_sitting',
           location: searchParams?.location,
           lat: searchParams?.lat,
@@ -290,10 +292,7 @@ export default function BrowseSitters() {
           startDate: searchParams?.startDate ? format(searchParams.startDate, 'yyyy-MM-dd') : undefined,
           endDate: searchParams?.endDate ? format(searchParams.endDate, 'yyyy-MM-dd') : undefined,
           petType: searchParams?.petType,
-        });
-      } catch {
-        return { success: false, providers: [], pagination: { page: 1, limit: 20, total: 0, hasMore: false } };
-      }
+      });
     },
     enabled: true,
   });
@@ -527,6 +526,37 @@ export default function BrowseSitters() {
               <p className="text-gray-600">
                 {isHebrew ? 'מחפשים שמרטפים מדהימים...' : 'Finding amazing sitters...'}
               </p>
+            </div>
+          ) : isError ? (
+            /*
+             * 2026-09-13: this branch did not exist. The queryFn caught every
+             * failure and returned an empty provider list, so a 500, an expired
+             * session or a dropped connection rendered byte-identically to
+             * "nobody matched your search". A customer searching Tel Aviv saw
+             * an empty grid and concluded the marketplace has no sitters.
+             * A failure must say it failed, and must be retryable.
+             */
+            <div className="bg-white rounded-3xl shadow-sm border border-red-100 p-8" data-testid="browse-search-error">
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-red-50 flex items-center justify-center">
+                  <span className="text-3xl" aria-hidden="true">!</span>
+                </div>
+                <h3 className="text-2xl font-semibold text-gray-900 mb-3">
+                  {isHebrew ? 'החיפוש נכשל' : 'The search failed'}
+                </h3>
+                <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                  {isHebrew
+                    ? 'לא הצלחנו לטעון את התוצאות. זו תקלה אצלנו, לא היעדר שמרטפים. נסו שוב.'
+                    : 'We could not load the results. This is a fault on our side, not an absence of sitters. Please try again.'}
+                </p>
+                <Button
+                  onClick={() => refetch()}
+                  className="rounded-full px-8"
+                  data-testid="browse-search-retry"
+                >
+                  {isHebrew ? 'נסו שוב' : 'Try again'}
+                </Button>
+              </div>
             </div>
           ) : providers.length === 0 ? (
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">

@@ -2897,6 +2897,17 @@ jobs:
           TURNSTILE_SKIP_SERVER_HALF: client-half-only
         run: node scripts/guards/turnstile-release-invariant.mjs --dist dist/public
 
+      - name: Hosting fallback is a pristine app shell (never the homepage)
+        # firebase.json rewrites every non-prerendered route to /app-shell.html.
+        # Missing file = every such URL 404s; a homepage snapshot there = 26
+        # menu pages served as the homepage with canonical "/" (2026-09-13).
+        run: |
+          F=dist/public/app-shell.html
+          test -s "$F" || { echo "::error::$F missing — every non-prerendered route would 404"; exit 1; }
+          grep -q '<div id="root"></div>' "$F" || { echo "::error::$F is not a pristine SPA shell"; exit 1; }
+          if grep -q 'rel="canonical"' "$F"; then echo "::error::$F carries a static canonical"; exit 1; fi
+          echo "app-shell.html OK ($(wc -c < "$F") bytes)"
+
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
 

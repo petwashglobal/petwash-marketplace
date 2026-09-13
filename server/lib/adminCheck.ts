@@ -45,18 +45,27 @@ export async function checkUserIsAdmin(uid: string): Promise<boolean> {
       return true;
     }
 
-    // Fallback: Firestore doc role field (migration window only — remove after all users migrated)
-    try {
-      const { db: firestoreDb } = await import('./firebase-admin');
-      const userDoc = await firestoreDb.collection('users').doc(uid).get();
-      const userData = userDoc.data();
-      if (userData?.role === 'admin' || userData?.role === 'super_admin') {
-        logger.warn('[AdminCheck] Admin access granted via Firestore doc (legacy) — migrate to custom claims', { uid });
-        return true;
-      }
-    } catch {
-      // Firestore unavailable — claims-only check is sufficient
-    }
+    // REMOVED 2026-09-13 — THIS WAS A SELF-SERVICE ADMIN DOOR.
+    //
+    // The block here read `role` from Firestore `users/{uid}` and returned
+    // true for 'admin' / 'super_admin'. firestore.rules:69 says
+    //
+    //     match /users/{userId} { allow write: if isAuthenticated() && isOwner(userId); }
+    //
+    // — the signed-in user may write ANY field on their own document, and the
+    // browser ships the Firestore SDK. So one call from the console:
+    //
+    //     setDoc(doc(db, 'users', uid), { role: 'admin' }, { merge: true })
+    //
+    // made that user an admin to every consumer of this function: platform
+    // revenue by channel, AI insights, the event-bus history, marketing
+    // campaign create AND launch (real ad spend), wallet-telemetry purge,
+    // and the Sheets export URL.
+    //
+    // The block was labelled "migration window only — remove after all users
+    // migrated". Firebase custom claims (checked above) are the authority and
+    // are writable only by the server. This now fails closed.
+    // Do NOT reinstate a check against any store the subject can write.
 
     return false;
   } catch (error) {
