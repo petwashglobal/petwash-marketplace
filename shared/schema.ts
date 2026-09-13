@@ -16240,6 +16240,8 @@ export const pawFinderPosts = pgTable("paw_finder_posts", {
   moderationStatus: varchar("moderation_status", { length: 20 }).default("pending"),
   moderationReason: text("moderation_reason"),
   moderationConfidence: integer("moderation_confidence"),
+  // Duplicate-photo detection (/api/paw-finder/upload + /posts). Missing from prod until 0157.
+  imageHash: varchar("image_hash", { length: 64 }),
   matchedPostCount: integer("matched_post_count").default(0),
   finalPublishCheckedAt: timestamp("final_publish_checked_at"),
   publishedAt: timestamp("published_at"),

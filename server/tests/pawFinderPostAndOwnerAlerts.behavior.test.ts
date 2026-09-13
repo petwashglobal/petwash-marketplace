@@ -160,3 +160,12 @@ describe('5. adoption "Meet" opens the pet', () => {
     expect(R('client/src/App.tsx')).toContain('<Route path="/adoption/:id">');
   });
 });
+
+describe('6. the duplicate-photo column exists wherever the code reads it', () => {
+  it('upload + posts use image_hash, and both schema.ts and a migration declare it on paw_finder_posts', () => {
+    // Live 2026-09-13: every upload 500'd — column "image_hash" does not exist.
+    expect(R('server/routes/paw-finder.ts')).toContain('WHERE image_hash = $1 LIMIT 1');
+    expect(R('shared/schema.ts')).toContain('imageHash: varchar("image_hash", { length: 64 }),');
+    expect(R('migrations/0157_paw_finder_posts_image_hash.sql')).toContain('ALTER TABLE paw_finder_posts ADD COLUMN IF NOT EXISTS image_hash VARCHAR(64);');
+  });
+});
