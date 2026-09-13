@@ -208,7 +208,7 @@ describe('7. legal menu pages call useSEO with their own copy and a route-derive
   type Recorded = { title: string; description: string; canonical?: string };
   const PAGES: Array<[route: string, file: string]> = [
     ['/legal/terms', 'client/src/pages/legal/CustomerTerms'],
-    ['/legal/privacy', 'client/src/pages/legal/PrivacyPolicy'],
+    ['/legal/privacy', 'client/src/pages/legal/PrivacyPolicyPage'], // wrapper: PrivacyPolicy.tsx bytes are pinned consent evidence
     ['/legal/egift-policy', 'client/src/pages/legal/EGiftPolicy'],
     ['/legal/loyalty-terms', 'client/src/pages/legal/LoyaltyTerms'],
     ['/legal/cookies', 'client/src/pages/legal/Cookies'],

@@ -504,7 +504,7 @@ const SuppliersPartners = lazy(() => import("@/pages/partners/Suppliers"));
 const MunicipalPartners = lazy(() => import("@/pages/partners/Municipal"));
 
 // Legal Routes
-const LegalPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
+const LegalPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicyPage"));
 const EGiftPolicy = lazy(() => import("@/pages/legal/EGiftPolicy"));
 const LoyaltyTermsPage = lazy(() => import("@/pages/legal/LoyaltyTerms"));
 const CookiesPolicy = lazy(() => import("@/pages/legal/Cookies"));
