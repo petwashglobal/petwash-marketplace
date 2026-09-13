@@ -58,17 +58,18 @@ export default function About({ language }: AboutProps) {
             {/* Subtitle */}
             <p className="luxury-services-subtitle">
               {currentLanguage === 'en' 
-                ? 'Leading the global revolution in premium pet care with world-class technology, sustainability, and a flawless safety record'
-                : 'מובילים את המהפכה העולמית בטיפול מתקדם בחיות מחמד עם טכנולוגיה מהשורה הראשונה, קיימות ורישום בטיחות מושלם'
+                ? 'Premium self-service pet care in Israel, built on K9000 wash technology and reasonable safety, maintenance and review processes'
+                : 'טיפוח פרימיום בשירות עצמי לחיות מחמד בישראל, על בסיס טכנולוגיית השטיפה ⁦K9000⁩ ותהליכי בטיחות, תחזוקה ובקרה סבירים'
               }
             </p>
 
             {/* Stats - Minimal & Premium */}
             <div className="grid grid-cols-3 gap-8 mt-16 max-w-3xl mx-auto">
               <div className="text-center">
-                <div className="text-4xl font-bold text-black mb-2">100%</div>
+                {/* 2026-09-13: was "100% Safety Record" — unprovable (marketing-legal BLOCK). */}
+                <div className="text-4xl font-bold text-black mb-2">2</div>
                 <div className="text-sm text-gray-500 uppercase tracking-wider">
-                  {currentLanguage === 'en' ? 'Safety Record' : 'בטיחות מושלמת'}
+                  {currentLanguage === 'en' ? 'Stations in Kfar Saba' : 'תחנות בכפר סבא'}
                 </div>
               </div>
               <div className="text-center border-x border-gray-100">
@@ -168,8 +169,8 @@ export default function About({ language }: AboutProps) {
               </div>
               <p className="luxury-text-body">
                 {currentLanguage === 'en' 
-                  ? '100% global safety record, international certification, 24/7 monitoring, complete logistics infrastructure with remote support and spare parts'
-                  : 'רישום בטיחות מושלם 100%, אישורים בינלאומיים, ניטור 24/7, מערך לוגיסטי מלא עם תמיכה מרחוק וחלקי חילוף'
+                  ? 'Reasonable safety, maintenance and review processes, with remote support and spare parts for the stations'
+                  : 'תהליכי בטיחות, תחזוקה ובקרה סבירים, עם תמיכה מרחוק וחלקי חילוף לעמדות'
                 }
               </p>
             </div>
@@ -280,8 +281,8 @@ export default function About({ language }: AboutProps) {
               </h2>
               <p className="luxury-text-body">
                 {currentLanguage === 'en' 
-                  ? 'We blend technology, sustainability, and compassion to create a new global standard in pet care — serving millions worldwide and leading the revolution in Israel'
-                  : 'אנו משלבים טכנולוגיה, קיימות וחמלה כדי ליצור סטנדרט עולמי חדש בטיפול בחיות מחמד — משרתים מיליונים ברחבי העולם ומובילים את המהפכה בישראל'
+                  ? 'We blend technology, care and convenience to raise the standard of pet care in Israel — starting with our stations in Kfar Saba'
+                  : 'אנו משלבים טכנולוגיה, אכפתיות ונוחות כדי להעלות את רמת הטיפול בחיות מחמד בישראל — החל מהתחנות שלנו בכפר סבא'
                 }
               </p>
             </div>

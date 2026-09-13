@@ -1,3 +1,5 @@
+import { escapeHtml, toHeaderText } from './lib/htmlEscape';
+import { turnstileGuard } from './lib/turnstileGuard';
 import { getVertexAIConfig } from './lib/gemini-client';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { sendSanitizedError } from './lib/sanitizeErrorResponse';
@@ -885,7 +887,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
       }
 
-      if (role === 'public' || role === 'pet_parent') {
+      // 2026-09-13: 'customer' added. POST /api/mobile-auth/google stamps role
+      // 'customer' for ANY Google account, and this list used to block only
+      // 'public' / 'pet_parent' — so the mobile customer role, which is the same
+      // person as a web pet parent, walked straight into internal routes.
+      if (role === 'public' || role === 'pet_parent' || role === 'customer') {
         logger.warn(`[RBAC Guard] Public user blocked from internal route: ${userEmail} -> ${path}`);
         return res.status(403).json({
           error: 'Access denied',
@@ -893,7 +899,16 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
     } catch (err) {
-      logger.warn('[RBAC Guard] Could not verify role claims, falling through', { err });
+      // 2026-09-13: FAIL CLOSED. This used to log and fall through to next(), so
+      // any error resolving the caller's role (a Firebase Admin outage, a revoked
+      // user, a network blip) granted access to every internal route. Super admins
+      // are resolved by verified email ABOVE this try block, so the CEO keeps access
+      // during an outage; everyone else waits for the role lookup to work again.
+      logger.error('[RBAC Guard] Could not verify role claims — denying internal route', { err, path });
+      return res.status(503).json({
+        error: 'Authorization temporarily unavailable',
+        message: 'Could not verify access for this area. Please try again shortly.',
+      });
     }
 
     next();
@@ -12423,39 +12438,38 @@ self.addEventListener('notificationclick', (event) => {
   // Handler mirrors server/routes/franchise.ts:26 but is mounted at the
   // public layer so it actually receives the request.
   app.post('/api/franchise/inquiry', apiLimiter, async (req, res) => {
+    // 2026-09-13: a failed store used to be swallowed and answered
+    // {success:true}. Logic lives in server/lib/franchiseInquiry.ts (behaviour-
+    // tested): store failure → 503; stored → notify support via EmailService
+    // (fail-soft), every user field HTML-escaped.
     try {
-      const { fullName, email, phone, country, city, message } = req.body ?? {};
-      if (!fullName || !email || !phone) {
-        return res.status(400).json({ error: 'Name, email, and phone are required' });
-      }
-      const inquiryData = {
-        fullName,
-        email,
-        phone,
-        country: country || '',
-        city: city || '',
-        message: message || '',
-        submittedAt: new Date().toISOString(),
-        status: 'new' as const,
-      };
-      try {
-        const { db: firestore } = await import('./lib/firebase-admin');
-        const inquiriesRef = firestore.collection('franchise_inquiries');
-        await inquiriesRef.add(inquiryData);
-      } catch (firestoreErr) {
-        logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
-      }
-      logger.info('[Franchise/inquiry] received', {
-        emailMasked: email && typeof email === 'string' && email.includes('@')
-          ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
-          : '(invalid)',
-        country,
-        city,
-        hasFullName: !!fullName,
+      const { handleFranchiseInquiry } = await import('./lib/franchiseInquiry');
+      const result = await handleFranchiseInquiry(req.body, {
+        store: async (record) => {
+          const { db: firestore } = await import('./lib/firebase-admin');
+          const ref = await firestore.collection('franchise_inquiries').add(record);
+          return ref.id;
+        },
+        sendEmail: async (params) => {
+          const { EmailService } = await import('./emailService');
+          return EmailService.send(params);
+        },
+        log: logger,
       });
-      return res.json({ success: true, message: 'Inquiry submitted successfully' });
+      if (result.status === 200) {
+        const email = typeof req.body?.email === 'string' ? req.body.email : '';
+        logger.info('[Franchise/inquiry] received', {
+          emailMasked: email.includes('@')
+            ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
+            : '(invalid)',
+          country: req.body?.country,
+          city: req.body?.city,
+          hasFullName: !!req.body?.fullName,
+        });
+      }
+      return res.status(result.status).json(result.body);
     } catch (error) {
-      logger.error('[Franchise/inquiry] handler error', error);
+      logger.error('[Franchise/inquiry] handler error', { error: (error as Error)?.message });
       return res.status(500).json({ error: 'Failed to process inquiry' });
     }
   });
@@ -13329,7 +13343,14 @@ self.addEventListener('notificationclick', (event) => {
   
   // Gemini AI Watchdog - Real-time monitoring, user struggle detection, auto-fix engine
   const geminiWatchdogRoutes = await import('./routes/gemini-watchdog');
-  app.use('/api/gemini-watchdog', adminLimiter, geminiWatchdogRoutes.default);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/gemini-watchdog', adminLimiter, requireAdmin, geminiWatchdogRoutes.default);
 
   // /api/octopus-brain — DELETED 2026-05-17. Router was mounted with rate-limit
   // only (no validateFirebaseToken, no requireBrainAccess), exposing platform
@@ -13582,7 +13603,14 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)
-  app.use('/api/campaigns', adminLimiter, campaignsRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/campaigns', adminLimiter, requireAdmin, campaignsRoutes);
   
   // Meetings with Attendee Notifications (WhatsApp + Email)
   app.use('/api/meetings', adminLimiter, meetingsRoutes);
@@ -13601,7 +13629,14 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/management', adminLimiter, managementDashboardRoutes);
   
   // Israeli Tax Authority API (Direct OAuth2 Integration - Electronic Invoicing)
-  app.use('/api/ita', adminLimiter, itaApiRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/ita', adminLimiter, requireAdmin, itaApiRoutes);
   
   // Luxury Documents (Invoices, Receipts, Statements)
   // Issue #153 PR-TAX-1 (Israeli tax/invoice/receipt/payout audit): the
@@ -13849,7 +13884,14 @@ self.addEventListener('notificationclick', (event) => {
   
   // Accounting & Finance
   app.use('/api/accounting', adminLimiter, accountingRoutes);
-  app.use('/api/accounting-exports', adminLimiter, accountingExportRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/accounting-exports', adminLimiter, requireAdmin, accountingExportRoutes);
   app.use('/api/bank', adminLimiter, bankRoutes);
   app.use('/api/multi-currency', apiLimiter, multiCurrencyRoutes);
   app.use('/api/pricing', apiLimiter, pricingRoutes);
@@ -14937,7 +14979,13 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Contact Form Submission Endpoint
-  app.post('/api/contact', apiLimiter, async (req, res) => { // SECURITY 2026-06-25: was unthrottled + CSRF-exempt → spam/DoS amplifier
+  // SECURITY 2026-06-25: was unthrottled + CSRF-exempt → spam/DoS amplifier.
+  // SECURITY 2026-09-13: every visitor field was pasted raw into HTML mail from
+  // Support@PetWash, including an auto-reply to WHATEVER address was typed — a
+  // free phishing relay on our domain. Fields are now escaped, the auto-reply
+  // echoes nothing the visitor wrote, and Turnstile guards the endpoint (the
+  // guard skips when TURNSTILE_SECRET_KEY is unset, see lib/turnstileGuard.ts).
+  app.post('/api/contact', apiLimiter, turnstileGuard({ action: 'contact_form' }), async (req, res) => {
     try {
       const { name, email, phone, subject, message, language } = req.body;
       
@@ -14978,7 +15026,7 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       
-      logger.info('Contact form submission received', { name, email, subject });
+      logger.info('Contact form submission received', { hasSubject: !!subject, emailDomain: String(email).split('@')[1] });
       
       // Generate a unique contact ID without Firestore
       const contactId = `contact-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').substring(0, 9)}`;
@@ -14987,15 +15035,15 @@ self.addEventListener('notificationclick', (event) => {
       const { EmailService } = await import('./emailService');
       const supportEmailSent = await EmailService.send({
         to: 'Support@PetWash.co.il',
-        subject: language === 'he' ? `הודעה חדשה מ-${name}` : `New message from ${name}`,
+        subject: language === 'he' ? `הודעה חדשה מ-${toHeaderText(name, 80)}` : `New message from ${toHeaderText(name, 80)}`,
         html: `
           <h2>${language === 'he' ? 'הודעת צור קשר חדשה' : 'New Contact Form Submission'}</h2>
-          <p><strong>${language === 'he' ? 'שם' : 'Name'}:</strong> ${name}</p>
-          <p><strong>${language === 'he' ? 'אימייל' : 'Email'}:</strong> ${email}</p>
-          ${phone ? `<p><strong>${language === 'he' ? 'טלפון' : 'Phone'}:</strong> ${phone}</p>` : ''}
-          ${subject ? `<p><strong>${language === 'he' ? 'נושא' : 'Subject'}:</strong> ${subject}</p>` : ''}
+          <p><strong>${language === 'he' ? 'שם' : 'Name'}:</strong> ${escapeHtml(name)}</p>
+          <p><strong>${language === 'he' ? 'אימייל' : 'Email'}:</strong> ${escapeHtml(email)}</p>
+          ${phone ? `<p><strong>${language === 'he' ? 'טלפון' : 'Phone'}:</strong> ${escapeHtml(phone)}</p>` : ''}
+          ${subject ? `<p><strong>${language === 'he' ? 'נושא' : 'Subject'}:</strong> ${escapeHtml(subject)}</p>` : ''}
           <p><strong>${language === 'he' ? 'הודעה' : 'Message'}:</strong></p>
-          <p>${message}</p>
+          <p style="white-space:pre-wrap">${escapeHtml(message)}</p>
           <hr>
           <p><small>ID: ${contactId}</small></p>
           <p><small>Submitted: ${new Date().toISOString()}</small></p>
@@ -15024,19 +15072,19 @@ self.addEventListener('notificationclick', (event) => {
         to: email,
         subject: language === 'he' ? 'קיבלנו את ההודעה שלך' : 'We received your message',
         html: language === 'he' 
+          // Fixed text only — no name, no message. This goes to an address the
+          // visitor typed, so nothing they wrote may ride along.
           ? `
-            <h2>שלום ${name},</h2>
+            <h2>שלום,</h2>
             <p>תודה שפנית אלינו! קיבלנו את הודעתך ונחזור אליך בהקדם האפשרי.</p>
-            <p><strong>ההודעה שלך:</strong></p>
-            <p>${message}</p>
+            <p>לא שלחת את ההודעה? אפשר להתעלם ממייל זה.</p>
             <hr>
             <p>בברכה,<br>צוות ⁦PetWash™⁩</p>
           `
           : `
-            <h2>Hello ${name},</h2>
+            <h2>Hello,</h2>
             <p>Thank you for contacting us! We've received your message and will get back to you as soon as possible.</p>
-            <p><strong>Your message:</strong></p>
-            <p>${message}</p>
+            <p>Didn't send a message? You can ignore this email.</p>
             <hr>
             <p>Best regards,<br>⁦PetWash™⁩ Team</p>
           `
@@ -17095,6 +17143,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // /api/consent-center + /api/notification-preferences going forward.
   app.get('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const { readNotificationPrefs } = await import('./lib/notificationPrefsCompat');
       res.json(await readNotificationPrefs(req.params.userId));
     } catch (error: any) {
@@ -17105,6 +17157,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.put('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const { writeNotificationPrefs } = await import('./lib/notificationPrefsCompat');
       await writeNotificationPrefs(req.params.userId, req.body, { ip: req.ip, actor: (req as any).user?.uid });
       res.json({ success: true });
@@ -17116,6 +17172,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.post('/api/monitoring/notifications/revoke/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       await notificationConsentManager.revokeAllConsents(req.params.userId);
       res.json({ success: true });
     } catch (error: any) {
@@ -17126,6 +17186,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/notifications/audit/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const audit = await notificationConsentManager.getConsentAuditLog(req.params.userId);
       res.json(audit);
     } catch (error: any) {

@@ -156,7 +156,7 @@ export default function Academy() {
               </h1>
               
               <p className="luxury-text-body mb-8 max-w-3xl mx-auto luxury-animate-slide-up luxury-delay-3">
-                {t('Book certified trainers for obedience, agility, behavioral training, and more. All trainers verified and background-checked.')}
+                {t('Book professional trainers for obedience, agility, behavioral training, and more.')}
               </p>
 
               {/* Trainer portal shortcut */}
@@ -233,12 +233,15 @@ export default function Academy() {
                   <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg">
                     <Target className="h-5 w-5 text-white" />
                   </div>
+                  {/* 2026-09-13: was a hard-coded "100% Certified & Verified".
+                      Now the count of listed trainers whose own record carries
+                      isCertified — computed, not claimed. */}
                   <span className="luxury-heading-lg">
-                    100%
+                    {filteredTrainers.filter((tr) => tr.isCertified).length}
                   </span>
                 </div>
                 <p className="luxury-text-small">
-                  {t('Certified & Verified')}
+                  {t('Certified')}
                 </p>
               </div>
             </div>
@@ -253,7 +256,7 @@ export default function Academy() {
                 {t('Available Trainers')} ({filteredTrainers.length})
               </h2>
               <p className="luxury-text-small">
-                {t('All trainers background-checked and certified')}
+                {t('Professional trainers, reviewed and approved')}
               </p>
             </div>
 

@@ -2551,7 +2551,7 @@ export const translations: TranslationStrings = {
   // Pet Wash Academy — trainer marketplace landing
   '⁦Pet Wash Academy™⁩': { en: '⁦Pet Wash Academy™⁩', he: 'אקדמיית ⁦Pet Wash™⁩' },
   'Professional Pet Trainers': { en: 'Professional Pet Trainers', he: 'מאמני חיות מקצועיים' },
-  'Book certified trainers for obedience, agility, behavioral training, and more. All trainers verified and background-checked.': { en: 'Book professional trainers for obedience, agility, behavioral training, and more.', he: 'הזמינו מאמנים מקצועיים לאילוף ציות, אג׳יליטי, אימון התנהגותי ועוד.' },
+  'Book professional trainers for obedience, agility, behavioral training, and more.': { en: 'Book professional trainers for obedience, agility, behavioral training, and more.', he: 'הזמינו מאמנים מקצועיים לאילוף ציות, אג׳יליטי, אימון התנהגותי ועוד.' },
   'Are you a trainer? Manage your session requests': { en: 'Are you a trainer? Manage your session requests', he: 'אתם מאמנים? נהלו את בקשות האימון שלכם' },
   'Search trainers by name or specialty...': { en: 'Search trainers by name or specialty...', he: 'חיפוש מאמנים לפי שם או התמחות...' },
   'Filters': { en: 'Filters', he: 'סינונים' },
@@ -2568,7 +2568,7 @@ export const translations: TranslationStrings = {
   'Sessions Completed': { en: 'Sessions Completed', he: 'מפגשי אימון שהושלמו' },
   'Average Rating': { en: 'Average Rating', he: 'דירוג ממוצע' },
   'Certified & Verified': { en: 'Certified & Verified', he: 'מוסמכים ומאומתים' },
-  'All trainers background-checked and certified': { en: 'Professional trainers, reviewed and approved', he: 'מאמנים מקצועיים, נבדקים ומאושרים' },
+  'Professional trainers, reviewed and approved': { en: 'Professional trainers, reviewed and approved', he: 'מאמנים מקצועיים, נבדקים ומאושרים' },
   'View Profile': { en: 'View Profile', he: 'צפו בפרופיל' },
   'Verified': { en: 'Verified', he: 'מאומת' },
   'Certified': { en: 'Certified', he: 'מוסמך' },

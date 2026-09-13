@@ -16,6 +16,8 @@ import { WalletCheckoutPreview } from "@/components/wallet/WalletCheckoutPreview
 import { BookingFinancialSummary } from "@/components/wallet/BookingFinancialSummary";
 import { useJourneyCheckpoint } from "@/hooks/useJourneyCheckpoint";
 import { emitCtaEvent } from "@/lib/ctaActions";
+import { ToastAction } from "@/components/ui/toast";
+import { buildReturnToParam } from "@/auth/returnTo";
 
 type BookingStep = "details" | "summary" | "confirmation";
 
@@ -213,10 +215,23 @@ export default function AcademyBookingFlow() {
         });
         setTimeout(() => setLocation("/signin"), 2000);
       } else if (errorMsg.includes("loyalty") || errorMsg.includes("403")) {
+        // 2026-09-13 menu dead-end audit: this toast told the customer to join
+        // but gave no way to do it. Offer the join page, carrying the booking
+        // URL as ?returnTo so the path back is preserved.
+        const joinHref = `/loyalty${buildReturnToParam(window.location.pathname + window.location.search)}`;
         toast({
           title: "נדרשת חברות במועדון",
           description: "שירות זה זמין לחברי מועדון ⁦PetWash™⁩. הצטרפו עכשיו!",
           variant: "destructive",
+          action: (
+            <ToastAction
+              altText="הצטרפות למועדון · Join the club"
+              onClick={() => setLocation(joinHref)}
+              data-testid="toast-action-join-loyalty"
+            >
+              הצטרפות למועדון
+            </ToastAction>
+          ),
         });
       } else {
         toast({

@@ -73,7 +73,17 @@ router.get('/overview', requireSuperAdmin, async (_req: Request, res: Response) 
             AND ol.created_at >= NOW() - ${interval}::interval
             AND COALESCE(ob.status, '') <> 'CANCELLED'
         `)).rows as any[];
+        // Guest eGifts (2026-09-13). /api/egift/guest writes to egift_guest_orders,
+        // which this overview never read — every gift card bought without an
+        // account was invisible here. Counted once issued (the voucher exists and
+        // SUMIT was verified), timed by issued_at.
+        const [guestGift] = (await db.execute(sql`
+          SELECT COALESCE(SUM(amount_ils_cents),0)::bigint AS c FROM egift_guest_orders
+          WHERE status = 'issued'
+            AND COALESCE(issued_at, created_at) >= NOW() - ${interval}::interval
+        `)).rows as any[];
         return {
+          egiftGuestCents: Number(guestGift?.c ?? 0),
           sumitCents: Number(sumit?.c ?? 0),
           kioskCents: Math.round(Number(kiosk?.ils ?? 0) * 100),
           kioskCount: Number(kiosk?.n ?? 0),

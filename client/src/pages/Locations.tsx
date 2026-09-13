@@ -49,8 +49,8 @@ const STATION_FAQ: { qHe: string; qEn: string; aHe: string; aEn: string }[] = [
   {
     qHe: 'אילו אמצעי תשלום מתקבלים?',
     qEn: 'What payment methods are accepted?',
-    aHe: 'תשלום בכרטיס אשראי בעמדה, ולחברי מועדון גם דרך אפליקציית ⁦PetWash™⁩.',
-    aEn: 'Credit card at the station, and members can also pay via the PetWash™‎ app.',
+    aHe: 'תשלום בכרטיס אשראי בעמדה.',
+    aEn: 'Credit card at the station.',
   },
 ];
 
@@ -102,8 +102,8 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     area: 'Isaac Wald Park',
     lat: 32.179964, lng: 34.925016,
     open: true,
-    etaHe: 'פעילה עכשיו — תחנת השטיפה החכמה הראשונה שלנו',
-    etaEn: 'Open now — our first smart wash hub',
+    etaHe: 'פעילה — תחנת השטיפה החכמה הראשונה שלנו',
+    etaEn: 'Operating — our first smart wash hub',
     hoursHe: 'פתוחה כל יום 05:30–23:00 (למעט חגים)',
     hoursEn: 'Open daily 05:30–23:00 (except holidays)',
     opens: '05:30', closes: '23:00',
@@ -145,6 +145,33 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     photoAltEn: 'PetWash station at Green Kfar Saba (Park 80) — dual K9000 self-service wash bay, open 24/7',
   },
 ];
+
+/**
+ * Is the station open right now, by its stated hours, in Israel time?
+ * (2026-09-13 menu dead-end audit: "OPEN NOW" used to render unconditionally,
+ * including at 02:00 for a station that closes at 23:00.) Computed from the
+ * stated opens/closes only — public holidays are not modelled, which is why the
+ * hours line keeps its "except holidays" caveat.
+ */
+export function isOpenNowInIsrael(opens?: string, closes?: string, now: Date = new Date()): boolean | null {
+  if (!opens || !closes) return null;
+  const toMin = (hhmm: string) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : NaN;
+  };
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value);
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value);
+  const nowMin = hour * 60 + minute;
+  const o = toMin(opens);
+  const c = toMin(closes);
+  if (![nowMin, o, c].every(Number.isFinite)) return null;
+  // '00:00'–'23:59' means round the clock.
+  if (o === 0 && c >= 23 * 60 + 59) return true;
+  return o <= c ? nowMin >= o && nowMin < c : nowMin >= o || nowMin < c;
+}
 
 export default function Locations() {
   useSEO({
@@ -236,17 +263,33 @@ export default function Locations() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude }),
-        () => { /* location denied — show unsorted list */ }
-      );
-    }
+    // Geolocation is NOT requested on load any more (2026-09-13): a permission
+    // prompt nobody asked for is a trust hit and is auto-denied by many
+    // browsers. It runs only when the visitor taps "sort by distance".
     fetch(getApiUrl('/api/public/stations'))
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(d => setStations((d.stations || []) as PublicStation[]))
       .catch(e => { logger.error('[Locations] load stations', e); setLoadFailed(true); });
   }, []);
+
+  const [locating, setLocating] = useState(false);
+  const [locateFailed, setLocateFailed] = useState(false);
+  const requestUserLocation = () => {
+    if (!navigator.geolocation || locating) return;
+    setLocating(true);
+    setLocateFailed(false);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({ lat: position.coords.latitude, lng: position.coords.longitude });
+        setLocating(false);
+      },
+      () => {
+        // location denied / unavailable — keep the unsorted list, say so
+        setLocating(false);
+        setLocateFailed(true);
+      },
+    );
+  };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371;
@@ -291,6 +334,25 @@ export default function Locations() {
           </p>
         </div>
 
+        {!userLocation && typeof navigator !== 'undefined' && !!navigator.geolocation && (
+          <div className="max-w-4xl mx-auto mb-8 flex flex-col items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={requestUserLocation}
+              disabled={locating}
+              data-testid="button-sort-by-distance"
+            >
+              {locating ? <Loader2 className="w-4 h-4 me-2 animate-spin" /> : <Navigation className="w-4 h-4 me-2" />}
+              מיון לפי מרחק ממני · Sort by distance from me
+            </Button>
+            {locateFailed && (
+              <p className="text-sm text-gray-600" style={{ textAlign: 'center' }}>
+                לא הצלחנו לקבל את המיקום שלך · We couldn't get your location
+              </p>
+            )}
+          </div>
+        )}
+
         {userLocation && (sorted.length > 0 || announced.length > 0) && (
           <div className="max-w-4xl mx-auto mb-8 luxury-glass-card luxury-bg-success p-6 text-center luxury-scale-in">
             <p className="text-white flex items-center justify-center gap-3 text-lg font-semibold">
@@ -333,7 +395,13 @@ export default function Locations() {
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                       {a.open ? (
-                        <span className="text-xs font-semibold tracking-wide text-emerald-600">● OPEN NOW · פעילה עכשיו</span>
+                        isOpenNowInIsrael(a.opens, a.closes) === false ? (
+                          <span className="text-xs font-semibold tracking-wide text-gray-500">● CLOSED NOW · סגורה כעת</span>
+                        ) : isOpenNowInIsrael(a.opens, a.closes) === true ? (
+                          <span className="text-xs font-semibold tracking-wide text-emerald-600">● OPEN NOW · פעילה עכשיו</span>
+                        ) : (
+                          <span className="text-xs font-semibold tracking-wide text-emerald-600">● OPERATING · פעילה</span>
+                        )
                       ) : (
                         <span className="text-xs font-semibold tracking-wide text-[#D4AF37]">✦ OPENING SOON · נפתחת בקרוב</span>
                       )}

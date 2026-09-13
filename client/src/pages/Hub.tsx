@@ -413,7 +413,7 @@ export default function Hub() {
       icon: RouteIcon,
       nameKey: "petTrek",
       descKey: "petTrekDesc",
-      href: "#",
+      href: "/pettrek/book", // waitlist page — was "#" with no handler (2026-09-13)
       comingSoon: true,
       gradient: "from-[#D4AF37] to-[#D4AF37]",
     },
@@ -495,10 +495,10 @@ export default function Hub() {
                   key={platform.nameKey}
                   className={`luxury-glass-card luxury-hover-glow luxury-shadow-xl p-6 luxury-animate-scale-in luxury-delay-${Math.min(index + 1, 5)} ${
                     platform.comingSoon
-                      ? "opacity-70 cursor-default"
+                      ? "opacity-70 cursor-pointer"
                       : "cursor-pointer"
                   } relative`}
-                  onClick={platform.comingSoon ? undefined : () => setLocation(platform.href)}
+                  onClick={platform.href && platform.href !== "#" ? () => setLocation(platform.href) : undefined}
                 >
                   {platform.comingSoon && (
                     <div className="absolute top-3 right-3 z-10">

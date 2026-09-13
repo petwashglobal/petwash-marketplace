@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Camera, Video, FileText, Download, Play } from "lucide-react";
+import { Camera, Video, FileText, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSEO, pageSEO } from '@/lib/seo';
 import { useLanguage } from '@/lib/languageStore';
@@ -21,8 +21,8 @@ const COPY: Record<Lang, Record<string, string>> = {
     videoResDesc: 'מדריכים, הדגמות עמדה וסיפורי מותג',
     videoResBtn: 'לצפייה במדריך',
     pressTitle: 'ערכת עיתונות',
-    pressDesc: 'לוגואים, הנחיות מותג והודעות לעיתונות',
-    pressBtn: 'הורדת ערכה',
+    pressDesc: 'אין כרגע ערכה להורדה. תמונות העמדות זמינות בגלריה, ולחומרים נוספים פנו לצוות המדיה.',
+    pressBtn: 'צפו בגלריה',
     inqTitle: 'פניות מדיה',
     inqDesc: 'לפניות עיתונות, ראיונות או שיתופי פעולה עם המותג',
     inqBtn: 'צרו קשר עם צוות המדיה',
@@ -40,8 +40,8 @@ const COPY: Record<Lang, Record<string, string>> = {
     videoResDesc: 'Tutorials, station demos, and brand stories',
     videoResBtn: 'Watch the Guide',
     pressTitle: 'Press Kit',
-    pressDesc: 'Logos, brand guidelines, and press releases',
-    pressBtn: 'Download Kit',
+    pressDesc: 'No downloadable kit yet. Station photos are in the gallery; for other materials, contact the media team.',
+    pressBtn: 'View gallery',
     inqTitle: 'Media Inquiries',
     inqDesc: 'For press inquiries, interviews, or media partnerships',
     inqBtn: 'Contact Media Team',
@@ -59,8 +59,8 @@ const COPY: Record<Lang, Record<string, string>> = {
     videoResDesc: 'دروس تعليمية وعروض للمحطة وقصص العلامة التجارية',
     videoResBtn: 'شاهد الدليل',
     pressTitle: 'المواد الصحفية',
-    pressDesc: 'الشعارات وإرشادات العلامة التجارية والبيانات الصحفية',
-    pressBtn: 'تنزيل المجموعة',
+    pressDesc: 'لا تتوفر مجموعة للتنزيل حاليًا. صور المحطات متاحة في المعرض، ولمواد أخرى تواصلوا مع فريق الإعلام.',
+    pressBtn: 'عرض المعرض',
     inqTitle: 'استفسارات الإعلام',
     inqDesc: 'للاستفسارات الصحفية أو المقابلات أو الشراكات الإعلامية',
     inqBtn: 'اتصل بفريق الإعلام',
@@ -78,8 +78,8 @@ const COPY: Record<Lang, Record<string, string>> = {
     videoResDesc: 'Руководства, демонстрации станций и истории бренда',
     videoResBtn: 'Смотреть руководство',
     pressTitle: 'Пресс-кит',
-    pressDesc: 'Логотипы, гайдлайны бренда и пресс-релизы',
-    pressBtn: 'Скачать пресс-кит',
+    pressDesc: 'Пресс-кита для скачивания пока нет. Фото станций — в галерее; за другими материалами обращайтесь к медиакоманде.',
+    pressBtn: 'Открыть галерею',
     inqTitle: 'Запросы для прессы',
     inqDesc: 'По вопросам прессы, интервью или медиапартнёрства',
     inqBtn: 'Связаться с медиакомандой',
@@ -97,8 +97,8 @@ const COPY: Record<Lang, Record<string, string>> = {
     videoResDesc: 'Tutoriels, démos de bornes et histoires de marque',
     videoResBtn: 'Voir le guide',
     pressTitle: 'Kit de presse',
-    pressDesc: 'Logos, chartes de marque et communiqués de presse',
-    pressBtn: 'Télécharger le kit',
+    pressDesc: 'Pas encore de kit à télécharger. Les photos des stations sont dans la galerie ; pour d’autres documents, contactez l’équipe média.',
+    pressBtn: 'Voir la galerie',
     inqTitle: 'Demandes presse',
     inqDesc: 'Pour la presse, les interviews ou les partenariats médias',
     inqBtn: 'Contacter l’équipe médias',
@@ -116,8 +116,8 @@ const COPY: Record<Lang, Record<string, string>> = {
     videoResDesc: 'Tutoriales, demostraciones de estaciones e historias de marca',
     videoResBtn: 'Ver la guía',
     pressTitle: 'Kit de prensa',
-    pressDesc: 'Logotipos, guías de marca y comunicados de prensa',
-    pressBtn: 'Descargar kit',
+    pressDesc: 'Aún no hay un kit descargable. Las fotos de las estaciones están en la galería; para otros materiales, contacte al equipo de medios.',
+    pressBtn: 'Ver galería',
     inqTitle: 'Consultas de prensa',
     inqDesc: 'Para prensa, entrevistas o colaboraciones con medios',
     inqBtn: 'Contactar al equipo de medios',
@@ -204,7 +204,7 @@ export default function Media() {
             <h3 className="text-xl font-bold mb-3 luxury-gradient-text">{c.pressTitle}</h3>
             <p className="luxury-text-body mb-6">{c.pressDesc}</p>
             <Button className="luxury-btn-outline w-full" onClick={(e) => { e.stopPropagation(); setLocation("/gallery"); }} data-testid="button-press-kit">
-              <Download className="w-4 h-4 mr-2" />
+              <Camera className="w-4 h-4 mr-2" />
               {c.pressBtn}
             </Button>
           </div>

@@ -1452,6 +1452,8 @@ jobs:
             -e UNIFIED_VERIFICATION_ENABLED=true \
             -e UNIFIED_VERIFICATION_SIGNUP_ENABLED=true \
             -e UNIFIED_VERIFICATION_LOGIN_ENABLED=true \
+            -e UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED=true \
+            -e UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED=true \
             -e PRESTIGE_QR_SECRET=smoke-dummy-prestige-do-not-use-this-value-anywhere \
             -e DOCUMENT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
             -e TREASURY_FIELD_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
@@ -1955,6 +1957,15 @@ jobs:
           # (120/hr·400/day ≈ a few ₪/day worst case) — RAISE at real launch by editing
           # these env values, no code change. Pairs with the Maps-key + Cloud Run caps
           # after the 2026-06 spike. See memory: google-cost-incident-2026-06.
+          #
+          # ⚠ ENV FLAGS SET IN THE CLOUD RUN CONSOLE DO NOT SURVIVE A DEPLOY (2026-09-13).
+          # --set-env-vars below REPLACES the service's plain env on every deploy. That is
+          # deliberate — production's flags live in git and a dangerous flag cannot be
+          # switched on by hand and quietly persist — but it means NAYAX_ALLOWED_IPS,
+          # NAYAX_CORTINA_ENABLED, PETWASH_EGIFT_PURCHASE_ENABLED, BOOKING_CARD_RAIL, etc.
+          # must be ADDED TO THIS LINE (and to the `docker run ... petwash-smoke` -e list
+          # above, which scripts/guards/deploy_env_mirrors_smoke.py enforces on every PR).
+          # Setting them in the console works until the next deploy, then silently vanishes.
           #
           # NOTE: do NOT put explanatory comments inside the `flags: |` block below —
           # they're passed to gcloud as positional args and break parsing on
@@ -2885,6 +2896,17 @@ jobs:
         env:
           TURNSTILE_SKIP_SERVER_HALF: client-half-only
         run: node scripts/guards/turnstile-release-invariant.mjs --dist dist/public
+
+      - name: Hosting fallback is a pristine app shell (never the homepage)
+        # firebase.json rewrites every non-prerendered route to /app-shell.html.
+        # Missing file = every such URL 404s; a homepage snapshot there = 26
+        # menu pages served as the homepage with canonical "/" (2026-09-13).
+        run: |
+          F=dist/public/app-shell.html
+          test -s "$F" || { echo "::error::$F missing — every non-prerendered route would 404"; exit 1; }
+          grep -q '<div id="root"></div>' "$F" || { echo "::error::$F is not a pristine SPA shell"; exit 1; }
+          if grep -q 'rel="canonical"' "$F"; then echo "::error::$F carries a static canonical"; exit 1; fi
+          echo "app-shell.html OK ($(wc -c < "$F") bytes)"
 
       - name: Install Firebase CLI
         run: npm install -g firebase-tools
