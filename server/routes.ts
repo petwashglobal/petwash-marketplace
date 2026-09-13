@@ -1,3 +1,5 @@
+import { escapeHtml, toHeaderText } from './lib/htmlEscape';
+import { turnstileGuard } from './lib/turnstileGuard';
 import { getVertexAIConfig } from './lib/gemini-client';
 import express, { type Express, type NextFunction, type Request, type Response } from "express";
 import { sendSanitizedError } from './lib/sanitizeErrorResponse';
@@ -14898,7 +14900,13 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Contact Form Submission Endpoint
-  app.post('/api/contact', apiLimiter, async (req, res) => { // SECURITY 2026-06-25: was unthrottled + CSRF-exempt → spam/DoS amplifier
+  // SECURITY 2026-06-25: was unthrottled + CSRF-exempt → spam/DoS amplifier.
+  // SECURITY 2026-09-13: every visitor field was pasted raw into HTML mail from
+  // Support@PetWash, including an auto-reply to WHATEVER address was typed — a
+  // free phishing relay on our domain. Fields are now escaped, the auto-reply
+  // echoes nothing the visitor wrote, and Turnstile guards the endpoint (the
+  // guard skips when TURNSTILE_SECRET_KEY is unset, see lib/turnstileGuard.ts).
+  app.post('/api/contact', apiLimiter, turnstileGuard({ action: 'contact_form' }), async (req, res) => {
     try {
       const { name, email, phone, subject, message, language } = req.body;
       
@@ -14939,7 +14947,7 @@ self.addEventListener('notificationclick', (event) => {
         }
       }
       
-      logger.info('Contact form submission received', { name, email, subject });
+      logger.info('Contact form submission received', { hasSubject: !!subject, emailDomain: String(email).split('@')[1] });
       
       // Generate a unique contact ID without Firestore
       const contactId = `contact-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').substring(0, 9)}`;
@@ -14948,15 +14956,15 @@ self.addEventListener('notificationclick', (event) => {
       const { EmailService } = await import('./emailService');
       const supportEmailSent = await EmailService.send({
         to: 'Support@PetWash.co.il',
-        subject: language === 'he' ? `הודעה חדשה מ-${name}` : `New message from ${name}`,
+        subject: language === 'he' ? `הודעה חדשה מ-${toHeaderText(name, 80)}` : `New message from ${toHeaderText(name, 80)}`,
         html: `
           <h2>${language === 'he' ? 'הודעת צור קשר חדשה' : 'New Contact Form Submission'}</h2>
-          <p><strong>${language === 'he' ? 'שם' : 'Name'}:</strong> ${name}</p>
-          <p><strong>${language === 'he' ? 'אימייל' : 'Email'}:</strong> ${email}</p>
-          ${phone ? `<p><strong>${language === 'he' ? 'טלפון' : 'Phone'}:</strong> ${phone}</p>` : ''}
-          ${subject ? `<p><strong>${language === 'he' ? 'נושא' : 'Subject'}:</strong> ${subject}</p>` : ''}
+          <p><strong>${language === 'he' ? 'שם' : 'Name'}:</strong> ${escapeHtml(name)}</p>
+          <p><strong>${language === 'he' ? 'אימייל' : 'Email'}:</strong> ${escapeHtml(email)}</p>
+          ${phone ? `<p><strong>${language === 'he' ? 'טלפון' : 'Phone'}:</strong> ${escapeHtml(phone)}</p>` : ''}
+          ${subject ? `<p><strong>${language === 'he' ? 'נושא' : 'Subject'}:</strong> ${escapeHtml(subject)}</p>` : ''}
           <p><strong>${language === 'he' ? 'הודעה' : 'Message'}:</strong></p>
-          <p>${message}</p>
+          <p style="white-space:pre-wrap">${escapeHtml(message)}</p>
           <hr>
           <p><small>ID: ${contactId}</small></p>
           <p><small>Submitted: ${new Date().toISOString()}</small></p>
@@ -14985,19 +14993,19 @@ self.addEventListener('notificationclick', (event) => {
         to: email,
         subject: language === 'he' ? 'קיבלנו את ההודעה שלך' : 'We received your message',
         html: language === 'he' 
+          // Fixed text only — no name, no message. This goes to an address the
+          // visitor typed, so nothing they wrote may ride along.
           ? `
-            <h2>שלום ${name},</h2>
+            <h2>שלום,</h2>
             <p>תודה שפנית אלינו! קיבלנו את הודעתך ונחזור אליך בהקדם האפשרי.</p>
-            <p><strong>ההודעה שלך:</strong></p>
-            <p>${message}</p>
+            <p>לא שלחת את ההודעה? אפשר להתעלם ממייל זה.</p>
             <hr>
             <p>בברכה,<br>צוות ⁦PetWash™⁩</p>
           `
           : `
-            <h2>Hello ${name},</h2>
+            <h2>Hello,</h2>
             <p>Thank you for contacting us! We've received your message and will get back to you as soon as possible.</p>
-            <p><strong>Your message:</strong></p>
-            <p>${message}</p>
+            <p>Didn't send a message? You can ignore this email.</p>
             <hr>
             <p>Best regards,<br>⁦PetWash™⁩ Team</p>
           `

@@ -1362,7 +1362,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <LoyaltyBirthday />}
         </Route>
         <Route path="/loyalty/refer">
-          {() => <LoyaltyRefer />}
+          {() => <Layout><LoyaltyRefer /></Layout>}
         </Route>
         <Route path="/loyalty/credits">
           {() => (
@@ -1454,7 +1454,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/booking">
           {() => (
             <RequireAuth>
-              <BookingUnified />
+              <Layout><BookingUnified /></Layout>
             </RequireAuth>
           )}
         </Route>
@@ -1513,11 +1513,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         {/* Support & Status */}
         <Route path="/support">
-          {() => <Support />}
+          {() => <Layout><Support /></Layout>}
         </Route>
         {/* PR-NAV-2: canonical /status (deduped — see removal below near /service-status) */}
         <Route path="/status">
-          {() => <SystemStatus />}
+          {() => <Layout><SystemStatus /></Layout>}
         </Route>
         {/* PR-NAV-2: /system-status alias so menu links resolve to the same page */}
         <Route path="/system-status">
@@ -1529,13 +1529,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <FranchisePartners />}
         </Route>
         <Route path="/partners/locations">
-          {() => <LocationPartners />}
+          {() => <Layout><LocationPartners /></Layout>}
         </Route>
         <Route path="/partners/suppliers">
-          {() => <SuppliersPartners />}
+          {() => <Layout><SuppliersPartners /></Layout>}
         </Route>
         <Route path="/partners/municipal">
-          {() => <MunicipalPartners />}
+          {() => <Layout><MunicipalPartners /></Layout>}
         </Route>
         
         {/* Legal Routes */}
@@ -1544,7 +1544,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             (sidebar + I-Accept, CEO mockup #4) sat at /legal/customer-terms —
             found live 2026-07-23. ONE terms page now. */}
         <Route path="/legal/terms">
-          {() => <LegalCustomerTerms />}
+          {() => <Layout><LegalCustomerTerms /></Layout>}
         </Route>
         <Route path="/legal/privacy">
           {() => <Layout><LegalPrivacyPolicy /></Layout>}

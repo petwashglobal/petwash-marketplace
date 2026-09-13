@@ -37,8 +37,11 @@ describe('Hosting rewrites serve the Hosting build', () => {
   });
 
   it('keeps the SPA fallback', () => {
+    // The fallback is the pristine shell, NOT /index.html: prerender writes the
+    // homepage snapshot to index.html, which made every other route serve the
+    // homepage (2026-09-13, see scripts/write-app-shell.mjs).
     for (const h of hosts) {
-      expect((h.rewrites ?? []).some((r: any) => r.source === '**' && r.destination === '/index.html')).toBe(true);
+      expect((h.rewrites ?? []).some((r: any) => r.source === '**' && r.destination === '/app-shell.html')).toBe(true);
     }
   });
 

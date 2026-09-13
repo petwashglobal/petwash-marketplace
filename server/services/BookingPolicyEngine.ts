@@ -196,18 +196,25 @@ export class BookingPolicyEngineService {
 
       if (ownerId && refundCents > 0) {
         // Credit the user's cash wallet (atomic upsert)
-        await pool.query(`
-          INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (wallet_id) DO NOTHING
-        `, [`WALLET-${ownerId.slice(0, 20)}`, ownerId, 0]);
-
-        await pool.query(`
-          UPDATE wallet_accounts
-          SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
-              updated_at = NOW()
-          WHERE user_id = $2
-        `, [refundCents, ownerId]);
+        // THROUGH THE LEDGER, KEYED BY THE BOOKING (2026-09-13).
+        // This was INSERT-wallet-if-missing then a bare `+= refundCents`
+        // UPDATE, on the pool, outside any transaction and with no guard: an
+        // auto-refund that ran twice (retry, duplicate cron tick, a second
+        // policy evaluation) credited twice, and it wrote NO
+        // credit_transactions row, so the balance drifted from the ledger the
+        // drift detector audits. addCredits dedupes on
+        // (walletId, sourceType, sourceId) inside a transaction holding
+        // FOR UPDATE on the wallet row, writes the ledger entry, and creates
+        // the wallet if it is missing.
+        const { walletService } = await import('./WalletService');
+        await walletService.addCredits(
+          ownerId,
+          'cash_wallet',
+          refundCents,
+          'auto_refund',
+          String(bookingId),
+          `Automatic refund for booking ${bookingId}`,
+        );
 
         logger.info('[BookingPolicyEngine] Wallet credited', { ownerId, refundCents, transactionId });
       } else if (!ownerId) {
