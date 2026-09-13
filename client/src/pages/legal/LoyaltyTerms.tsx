@@ -1,15 +1,55 @@
 import { Award, Star, Gift, Users, Calendar, TrendingUp, Shield, Mail, Check, Sparkles } from "lucide-react";
 
+import { TIER_CONFIGS, calculateTotalDiscount, type LoyaltyTier } from "@shared/schema-loyalty";
+import { useSEO } from "@/lib/seo";
+
+// Title = the page H1; description = the page's own intro paragraph. Canonical is
+// useSEO's route-derived default.
+export const LOYALTY_TERMS_SEO = {
+  title: "7-Star Loyalty Program Terms - ⁦PetWash™⁩",
+  description:
+    "Welcome to ⁦Pet Wash™⁩ Loyalty & VIP Club — your gateway to exclusive rewards, premium benefits, and unforgettable experiences across all our platforms.",
+};
+
+// "Last updated" is a FIXED date, never `new Date()` (that re-dated the terms
+// every day). Source: the date the tier table below was switched to render
+// from shared/schema-loyalty.ts (2026-09-13) — the last change to what this
+// page says. If this page's wording or the ladder in schema-loyalty.ts
+// changes, update this constant in the same change.
+export const LOYALTY_TERMS_LAST_UPDATED = "2026-09-13";
+
+// Styling only — every name, threshold and discount comes from TIER_CONFIGS.
+const TIER_STYLE: Record<string, { color: string; badge: string }> = {
+  bronze: { color: "text-[#B8932F]", badge: "luxury-badge" },
+  silver: { color: "text-gray-600", badge: "luxury-badge" },
+  gold: { color: "text-yellow-600", badge: "luxury-badge-gold" },
+  platinum: { color: "text-[#B8932F]", badge: "luxury-badge-gold" },
+  diamond: { color: "text-[#B8932F]", badge: "luxury-badge-gold" },
+  emerald: { color: "text-green-600", badge: "luxury-badge-gold" },
+  royal: { color: "text-[#B8932F]", badge: "luxury-badge-gold" },
+};
+
+/** Member discount for a tier, as the authoritative helper computes it (no special category). */
+export const loyaltyTermsTierDiscount = (tierId: string) =>
+  calculateTotalDiscount(tierId as LoyaltyTier, "none", false);
+
+/** The tier table exactly as the page renders it — derived, never copied. */
+export function loyaltyTermsTiers() {
+  return TIER_CONFIGS.map((cfg) => ({
+    id: cfg.id,
+    name: cfg.name,
+    points: cfg.threshold.toLocaleString("en-US"),
+    discount: loyaltyTermsTierDiscount(cfg.id),
+    ...(TIER_STYLE[cfg.id] ?? TIER_STYLE.bronze),
+  }));
+}
+
 export default function LoyaltyTerms() {
-  const tiers = [
-    { name: "Bronze", points: "0", color: "text-[#B8932F]", badge: "luxury-badge" },
-    { name: "Silver", points: "1,000", color: "text-gray-600", badge: "luxury-badge" },
-    { name: "Gold", points: "3,000", color: "text-yellow-600", badge: "luxury-badge-gold" },
-    { name: "Platinum", points: "6,000", color: "text-[#B8932F]", badge: "luxury-badge-gold" },
-    { name: "Diamond", points: "10,000", color: "text-[#B8932F]", badge: "luxury-badge-gold" },
-    { name: "Emerald", points: "20,000", color: "text-green-600", badge: "luxury-badge-gold" },
-    { name: "Royal", points: "35,000", color: "text-[#B8932F]", badge: "luxury-badge-gold" },
-  ];
+  useSEO(LOYALTY_TERMS_SEO);
+  const tiers = loyaltyTermsTiers();
+  const tierDiscounts = tiers.map((t) => t.discount);
+  const minDiscount = Math.min(...tierDiscounts);
+  const maxDiscount = Math.max(...tierDiscounts);
 
   const earningMethods = [
     { icon: Gift, title: "Service Bookings", desc: "1 point per ₪1 spent on any service" },
@@ -20,7 +60,7 @@ export default function LoyaltyTerms() {
   ];
 
   const benefits = [
-    "Discounted wash rates (5% to 25% off)",
+    `Discounted wash rates (${minDiscount}% to ${maxDiscount}% off)`,
     "Priority booking access",
     "Exclusive VIP events",
     "Free birthday washes",
@@ -45,7 +85,7 @@ export default function LoyaltyTerms() {
           </p>
           <div className="luxury-badge luxury-badge-gold">
             <Calendar className="w-4 h-4" />
-            Last updated: {new Date().toLocaleDateString()}
+            Last updated: {LOYALTY_TERMS_LAST_UPDATED}
           </div>
         </div>
 
@@ -57,7 +97,7 @@ export default function LoyaltyTerms() {
           <div className="luxury-grid-4">
             {tiers.map((tier, index) => (
               <div
-                key={tier.name}
+                key={tier.id}
                 className={`luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-slide-up luxury-delay-${index + 1}`}
               >
                 <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F] mb-4">
@@ -67,6 +107,7 @@ export default function LoyaltyTerms() {
                 <div className={`${tier.badge} mb-4`}>
                   {tier.points} points
                 </div>
+                <p className="luxury-text-small mb-2">{tier.discount}% off</p>
                 <div className="flex items-center justify-center gap-1">
                   <Check className="w-4 h-4 text-green-600" />
                   <span className="luxury-text-small">Active Tier</span>

@@ -105,6 +105,7 @@
 /kenzo-ai
 /legal
 /legal/accessibility
+/legal/egift-policy  # menu now opens the registry doc /legal/wallet-egift-terms; this page is outside the registry and contradicts the refund policy — kept only so old links resolve (2026-09-13)
 /legal/marketplace-terms
 /lost-pet
 /management

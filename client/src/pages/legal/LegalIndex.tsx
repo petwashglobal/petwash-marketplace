@@ -75,6 +75,7 @@ export default function LegalIndex() {
   const isHebrew = language === "he";
   return (
     <LegalPage
+      skipSeo
       titleHe="מרכז משפטי ומדריכים"
       titleEn="Legal & Manuals Centre"
       subtitleHe="כל המסמכים המשפטיים והמדריכים של PetWash, מקובצים לפי נושא."

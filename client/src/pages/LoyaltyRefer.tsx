@@ -1,11 +1,11 @@
-import { useState } from 'react';
 import { Link } from 'wouter';
-import { Share2, Users, Gift, Copy, Mail, MessageCircle, TrendingUp, Award, ArrowLeft, Send, Facebook, Loader2 } from 'lucide-react';
+import { Share2, Users, Gift, Copy, Mail, MessageCircle, Award, ArrowLeft, Send, Facebook, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { useLanguage } from '@/lib/languageStore';
 
 interface ReferralStats {
   totalInvites: number;
@@ -16,12 +16,15 @@ interface ReferralStats {
 
 interface SummaryData {
   referralCode: string | null;
+  /** Server-built share link (`${base}/ref?code=XXX`, server/routes/referral.ts GET /link). */
+  referralLink?: string | null;
   stats?: ReferralStats;
 }
 
 export default function LoyaltyRefer() {
   useSEO(pageSEO.loyaltyRefer);
-  const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
+  // App language store (same as sibling pages) — not the legacy petwash_lang key.
+  const { language } = useLanguage();
   const isHebrew = language === 'he';
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
@@ -44,13 +47,14 @@ export default function LoyaltyRefer() {
   const referralCode = linkData?.referralCode ?? null;
   const displayCode  = referralCode ?? (summaryLoading ? '…' : '');
 
-  // Only include a code in the share text when we actually have the member's real
-  // one — never share the generic non-attributable fallback.
-  const codeSuffix = referralCode ? (isHebrew ? ` השתמשו בקוד ההזמנה שלי: ${referralCode}` : ` Use my referral code: ${referralCode}`) : '';
+  // Share the member's OWN link (server-built, carries their code) — never the
+  // bare homepage, which attributes the signup to nobody. Until the link has
+  // loaded, the share buttons are disabled (same rule as the copy button).
+  const referralLink = linkData?.referralLink ?? null;
   const shareText = (isHebrew
-    ? `הצטרפו ל-PetWash™‎ — הטיפוח והשמירה הטובים ביותר לחיות מחמד!`
-    : `Join PetWash™‎ — the best pet care app!`) + codeSuffix;
-  const siteUrl = 'https://petwash.co.il';
+    ? `הצטרפו אליי ל-PetWash™‎ — קוד ההזמנה שלי: ${referralCode ?? ''}`
+    : `Join me on PetWash™‎ — my referral code: ${referralCode ?? ''}`);
+  const shareUrl = referralLink ?? '';
 
   const handleCopy = async () => {
     // Honesty guard: without a real code, displayCode is '' or the '…' loading
@@ -90,22 +94,22 @@ export default function LoyaltyRefer() {
     {
       icon: MessageCircle,
       label: isHebrew ? 'וואטסאפ' : 'WhatsApp',
-      href: `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+      href: `https://wa.me/?text=${encodeURIComponent(shareText + '\n' + shareUrl)}`,
     },
     {
       icon: Facebook,
       label: isHebrew ? 'פייסבוק' : 'Facebook',
-      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(siteUrl)}&quote=${encodeURIComponent(shareText)}`,
+      href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
     },
     {
       icon: Mail,
       label: isHebrew ? 'אימייל' : 'Email',
-      href: `mailto:?subject=${encodeURIComponent(isHebrew ? 'הזמנה ל-PetWash™‎' : 'Join PetWash™‎')}&body=${encodeURIComponent(shareText + '\n' + siteUrl)}`,
+      href: `mailto:?subject=${encodeURIComponent(isHebrew ? 'הזמנה ל-PetWash™‎' : 'Join PetWash™‎')}&body=${encodeURIComponent(shareText + '\n' + shareUrl)}`,
     },
     {
       icon: Send,
       label: 'SMS',
-      href: `sms:?body=${encodeURIComponent(shareText)}`,
+      href: `sms:?body=${encodeURIComponent(shareText + '\n' + shareUrl)}`,
     },
   ];
 
@@ -126,33 +130,6 @@ export default function LoyaltyRefer() {
       icon: Award,
       label: isHebrew ? 'הזמנות ממתינות' : 'Pending Invites',
       value: String(rs?.pendingInvites ?? 0),
-    },
-  ];
-
-  const rewards = [
-    {
-      friends: isHebrew ? 'חבר 1' : '1 Friend',
-      friendsAlt: isHebrew ? '1 Friend' : 'חבר 1',
-      reward: '200',
-      bonus: isHebrew ? 'רחיצה בסיסית חינם' : 'Free Basic Wash',
-    },
-    {
-      friends: isHebrew ? '3 חברים' : '3 Friends',
-      friendsAlt: isHebrew ? '3 Friends' : '3 חברים',
-      reward: '750',
-      bonus: isHebrew ? 'רחיצה פרימיום חינם' : 'Free Premium Wash',
-    },
-    {
-      friends: isHebrew ? '5 חברים' : '5 Friends',
-      friendsAlt: isHebrew ? '5 Friends' : '5 חברים',
-      reward: '1,500',
-      bonus: isHebrew ? 'שדרוג לדרגת כסף' : 'Silver Tier Upgrade',
-    },
-    {
-      friends: isHebrew ? '10 חברים' : '10 Friends',
-      friendsAlt: isHebrew ? '10 Friends' : '10 חברים',
-      reward: '3,500',
-      bonus: isHebrew ? 'שדרוג לדרגת זהב' : 'Gold Tier Upgrade',
     },
   ];
 
@@ -179,7 +156,7 @@ export default function LoyaltyRefer() {
             {isHebrew ? 'הזמנת חברים' : 'Refer a Friend'}
           </h1>
           <p className="text-lg text-[#7A7068] max-w-2xl mx-auto">
-            {isHebrew ? 'הזמינו חברים והרוויחו קרדיט רחיצה. שתפו את האהבה וקבלו תגמולים יחד!' : 'Invite friends and earn wash credits. Share the love and get rewarded together!'}
+            {isHebrew ? 'הזמינו חברים ל-PetWash™‎ עם קישור ההזמנה האישי שלכם.' : 'Invite friends to PetWash™‎ with your personal referral link.'}
           </p>
         </div>
 
@@ -221,10 +198,11 @@ export default function LoyaltyRefer() {
               {shareButtons.map((button, idx) => (
                 <a
                   key={idx}
-                  href={button.href}
+                  href={referralLink ? button.href : undefined}
+                  aria-disabled={!referralLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.15)] hover:bg-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.3)] transition-all duration-300"
+                  className={`flex flex-col items-center gap-2 py-4 px-3 rounded-xl bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.15)] hover:bg-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.3)] transition-all duration-300 ${referralLink ? '' : 'opacity-40 pointer-events-none'}`}
                 >
                   <button.icon className="w-5 h-5 text-[#D4AF37]" />
                   <span className="text-xs text-[#6A6A6A]">{button.label}</span>
@@ -234,31 +212,10 @@ export default function LoyaltyRefer() {
           </div>
         </div>
 
-        <div className="p-8 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl mb-10">
-          <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
-            {isHebrew ? 'תגמולי הפניה' : 'Referral Rewards'}
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {rewards.map((reward, idx) => (
-              <div
-                key={idx}
-                className="p-6 rounded-xl bg-white border border-[#E8E3D9] text-center transition-all duration-300 hover:border-[rgba(217, 184, 76,0.3)] hover:scale-[1.02]"
-              >
-                <div className="w-10 h-10 rounded-full bg-[rgba(217, 184, 76,0.1)] flex items-center justify-center mx-auto mb-3">
-                  <TrendingUp className="w-5 h-5 text-[#0a0a0a]" />
-                </div>
-                <p className="font-semibold text-[#1A1A1A] mb-1">{reward.friends}</p>
-                <p className="text-[#9A9088] text-xs mb-2">{reward.friendsAlt}</p>
-                <p className="text-2xl font-bold text-[#0a0a0a] mb-1">{reward.reward}</p>
-                <p className="text-[#8A8078] text-xs">{isHebrew ? 'נקודות' : 'Points'}</p>
-                <div className="mt-3 pt-3 border-t border-[#E8E3D9]">
-                  <p className="text-[#7A7068] text-sm">{reward.bonus}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
+        {/* The 200/750/1,500/3,500-point "Referral Rewards" ladder that stood here
+            was invented — no such ladder exists in the referral service
+            (server/routes/referral.ts). Removed rather than replaced: no reward
+            is promised on this page that the API does not report. */}
         <div className="p-8 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl">
           <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-8">
             {isHebrew ? 'איך זה עובד' : 'How It Works'}
@@ -282,8 +239,8 @@ export default function LoyaltyRefer() {
               <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#D9B84C] to-[#D9B84C] text-[#0A0A0F] font-bold text-xl flex items-center justify-center mx-auto mb-4">
                 3
               </div>
-              <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'הרוויחו תגמולים' : 'Earn Rewards'}</h3>
-              <p className="text-[#8A8078] text-sm">{isHebrew ? 'שניכם מקבלים נקודות בונוס ותגמולים' : 'Both of you receive bonus points and rewards'}</p>
+              <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'עקבו אחר ההזמנות' : 'Track Your Invites'}</h3>
+              <p className="text-[#8A8078] text-sm">{isHebrew ? 'חברים שהופנו והזמנות ממתינות מופיעים בראש העמוד' : 'Referred friends and pending invites appear at the top of this page'}</p>
             </div>
           </div>
         </div>

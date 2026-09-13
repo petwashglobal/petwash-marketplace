@@ -1,7 +1,24 @@
 import { Button } from "@/components/ui/button";
 import { Cookie, Shield, Target, TrendingUp, Settings, Database, Clock, Mail } from "lucide-react";
+import { useSEO } from "@/lib/seo";
+
+// Title = the page H1; description = the page's own first paragraph. Canonical is
+// useSEO's route-derived default.
+export const COOKIES_POLICY_SEO = {
+  title: "Cookie Policy - ⁦PetWash™⁩",
+  description:
+    "Cookies are small text files stored on your device when you visit our website. They help us provide a better experience and understand how you use our services.",
+};
+
+// "Last updated" is a FIXED date, never `new Date()` (that re-dated the policy
+// every day). This document has no entry in shared/lib/legalDocumentRegistry.ts,
+// so the source is the last commit touching this file on origin/main:
+// `git log -1 --format=%cs -- client/src/pages/legal/Cookies.tsx` -> 2026-06-28 (#1119).
+// Update this constant whenever the policy's wording changes.
+export const COOKIES_POLICY_LAST_UPDATED = "2026-06-28";
 
 export default function CookiesPolicy() {
+  useSEO(COOKIES_POLICY_SEO);
   return (
     <div className="min-h-screen luxury-bg-mesh">
       <div className="luxury-container max-w-5xl py-16">
@@ -19,7 +36,7 @@ export default function CookiesPolicy() {
           {/* Last Updated Badge */}
           <div className="luxury-badge luxury-badge-gold">
             <Clock className="w-4 h-4" />
-            Last updated: {new Date().toLocaleDateString()}
+            Last updated: {COOKIES_POLICY_LAST_UPDATED}
           </div>
         </div>
 
