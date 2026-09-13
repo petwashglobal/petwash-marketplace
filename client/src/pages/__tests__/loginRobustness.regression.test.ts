@@ -48,6 +48,8 @@ describe('Passkey button — shown on every capable device, the Apple way; serve
     expect(signup).not.toMatch(/setBioAvailable\(false\)/);
     expect(signup).toContain('Passkey sign-in did not complete');
     expect(signup).toContain('Account → Security');
+    // live 2026-09-13: server reason for a passkey PetWash never saved
+    expect(signup).toMatch(/credential not found\|cancel/);
   });
   it('uses Apple\'s word: "passkey", unlocked with Face ID / Touch ID', () => {
     expect(signup).toContain('Sign in with a passkey (${bioName})');
