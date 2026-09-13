@@ -380,6 +380,39 @@ router.get("/booking/:bookingId", requireAuth, async (req, res) => {
  * after checking the job evidence. The payout gates still run (disputes,
  * refund window, provider verification, declarations).
  */
+/**
+ * The admin approval queue (CEO rule 2026-09-13): every held escrow with its job
+ * evidence verdict, so a Pet Wash admin decides with the facts in front of them.
+ * READ-ONLY. No customer contact data is returned.
+ */
+router.get("/admin/awaiting-approval", requireAdmin, async (_req, res) => {
+  try {
+    const held = await EscrowService.listHeldForAdmin(100);
+    const { buildJobEvidenceReport } = await import("../services/jobEvidenceLoader");
+    const now = Date.now();
+    const items = [];
+    for (const e of held.slice(0, 60)) {
+      let evidence: any = null;
+      try { evidence = e.bookingId ? await buildJobEvidenceReport(String(e.bookingId)) : null; } catch { evidence = null; }
+      items.push({
+        escrowId: e.id,
+        bookingId: e.bookingId ?? null,
+        providerId: e.providerId ?? null,
+        amountIls: Number(e.amount ?? 0),
+        providerPayoutIls: e.providerPayoutCents != null ? e.providerPayoutCents / 100 : null,
+        currency: e.currency ?? "ILS",
+        holdUntil: e.holdUntil ?? null,
+        holdEnded: e.holdUntil ? new Date(e.holdUntil as any).getTime() <= now : false,
+        awaitingAdminApprovalAt: (e as any).awaitingAdminApprovalAt ?? null,
+        evidence,
+      });
+    }
+    res.json({ ok: true, total: held.length, items });
+  } catch (error: any) {
+    sendSanitizedError(res, error, "ESCROW_AWAITING_APPROVAL_FAILED", { logContext: { op: "awaiting-approval" } });
+  }
+});
+
 router.post("/admin/:escrowId/approve-release", requireAdmin, async (req, res) => {
   try {
     const adminUid = (req as any).firebaseUser?.uid || (req as any).user?.uid || (req as any).adminUser?.uid;

@@ -26,7 +26,6 @@
 /admin/expansion-marketing
 /admin/fault-intel
 /admin/financial-monitor
-/admin/franchise
 /admin/gemini-watchdog
 /admin/hr-erp
 /admin/identity-merge
@@ -47,6 +46,7 @@
 /admin/money-flow
 /admin/no-lost-money
 /admin/paw-finder
+/admin/payout-approvals  # linked from executive-nav.ts (DashboardShell renders href={item.path} dynamically; the static regex only sees literal href="..." strings) (2026-09-13)
 /admin/performance-reviews
 /admin/policy
 /admin/recruitment
@@ -58,9 +58,7 @@
 /admin/suppliers-erp
 /admin/support-incident
 /admin/system-config
-/admin/team
 /admin/treasury
-/admin/wallet-finance
 /approve-expenses
 /auth/action
 /backend-team
@@ -105,7 +103,6 @@
 /kenzo-ai
 /legal
 /legal/accessibility
-/legal/egift-policy  # menu now opens the registry doc /legal/wallet-egift-terms; this page is outside the registry and contradicts the refund policy — kept only so old links resolve (2026-09-13)
 /legal/marketplace-terms
 /lost-pet
 /management
