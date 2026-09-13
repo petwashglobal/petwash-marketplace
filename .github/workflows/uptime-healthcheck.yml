@@ -31,12 +31,20 @@ jobs:
         with:
           node-version: "20"
 
-      # Install ONLY Playwright (not the whole repo) to keep this fast/cheap.
       - name: Install Playwright + Chromium
+        # Install Playwright in an EMPTY directory, never the repo root (2026-09-13).
+        # "npm init -y" is a no-op when package.json exists, so the old
+        # "npm install --no-save playwright" at the root resolved the WHOLE repo
+        # tree — including @capacitor/assets -> sharp 0.32.6, whose native build
+        # fails whenever its prebuilt libvips download blips (run 34717591551:
+        # "vips/vips8: No such file"). The probe then reported a site outage.
+        # Node's resolver walks up to ./node_modules, so a symlink is enough.
         run: |
-          npm init -y >/dev/null 2>&1 || true
-          npm install --no-save playwright@1.58.2
-          npx playwright install --with-deps chromium
+          PW_DIR="$RUNNER_TEMP/pw"
+          mkdir -p "$PW_DIR"
+          (cd "$PW_DIR" && npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.58.2)
+          ln -sfn "$PW_DIR/node_modules" "$GITHUB_WORKSPACE/node_modules"
+          (cd "$PW_DIR" && npx playwright install --with-deps chromium)
 
       - name: Run health-check
         run: node scripts/monitoring/homepage-healthcheck.mjs "https://petwash.co.il"
