@@ -28,6 +28,7 @@ import { dispatchNotifications, buildBookingCancelledSms } from "../services/Pet
 import { calendarIntegrationService } from "../services/CalendarIntegrationService";
 import { logAuditEvent } from "../middleware/auditLog";
 import { assertOperatingControl } from "../lib/petwashOperatingControlGateway";
+import { walletService } from '../services/WalletService';
 
 const router = express.Router();
 
@@ -954,18 +955,29 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
       const customerId: string | null = booking.userId ?? booking.customerId ?? null;
       if (customerId) {
         try {
-          // Single atomic UPSERT: create wallet if missing AND credit in one statement.
-          // Eliminates the race between INSERT+UPDATE that could lose a credit on failure.
-          await pool.query(
-            `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents, updated_at)
-             VALUES ($1, $2, $3, NOW())
-             ON CONFLICT (wallet_id) DO UPDATE
-               SET cash_wallet_balance_cents = wallet_accounts.cash_wallet_balance_cents + EXCLUDED.cash_wallet_balance_cents,
-                   updated_at = NOW()`,
-            [`WALLET-${customerId.slice(0, 20)}`, customerId, netRefundCents],
+          // THROUGH THE LEDGER, KEYED BY THE BOOKING (2026-09-13).
+          // This used to be a bare UPSERT that added cents to the balance. It
+          // was atomic as ONE statement, but it wrote NO credit_transactions
+          // row — so wallet_accounts drifted from the ledger the drift
+          // detector audits — and it had NO idempotency key, while the guard
+          // that is supposed to stop a second cancel is three awaits earlier
+          // (read Firestore status → refund → write status → credit). Two
+          // concurrent cancels both passed the guard and both credited.
+          //
+          // addCredits dedupes on (walletId, sourceType, sourceId) INSIDE a
+          // transaction holding FOR UPDATE on the wallet row, so the booking
+          // id makes a second credit a no-op no matter how many cancels race.
+          // It also writes the ledger row and creates the wallet if missing.
+          await walletService.addCredits(
+            customerId,
+            'cash_wallet',
+            netRefundCents,
+            'booking_refund',
+            bookingId,
+            `Refund for cancelled booking ${bookingId}`,
           );
           refundStatus = "credited";
-          logger.info("[Bookings] Wallet refund credited (atomic UPSERT)", { customerId, netRefundCents, bookingId });
+          logger.info("[Bookings] Wallet refund credited (ledgered, idempotent by bookingId)", { customerId, netRefundCents, bookingId });
         } catch (walletErr: any) {
           // Do NOT tell the customer "refund credited" when the write failed. Persist an
           // anomaly row so ops can reconcile and retry, and surface refundStatus=pending
