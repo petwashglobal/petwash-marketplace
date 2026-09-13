@@ -103,6 +103,7 @@ router.get('/places/photo', requireGooglePlacesEnabled, async (req, res) => {
 });
 
 import { randomUUID } from 'crypto';
+import { safeEqual } from '../lib/safeEqual';
 
 logger.info('[GoogleMaps] keyPresent=' + !!process.env.GOOGLE_MAPS_API_KEY);
 
@@ -255,7 +256,10 @@ function isAllowedPlacesOrigin(req: any): boolean {
     const secret = process.env.INTERNAL_SERVICE_SECRET;
     if (secret) {
       const provided = req.headers['x-internal-secret'] as string | undefined;
-      if (provided && provided === secret) return true;
+      // Constant-time (2026-09-13): `===` on a shared secret leaks its prefix
+      // to a timing probe. server/routes/wallet.ts already uses safeEqual for
+      // the same secret; this was the outlier.
+      if (provided && safeEqual(provided, secret)) return true;
     }
 
     // Development without K_SERVICE — allow localhost

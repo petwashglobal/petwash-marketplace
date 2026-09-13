@@ -4,11 +4,14 @@
  * Backend is always the authority — Gemini is advisory only.
  */
 
-import fs from 'fs';
 import path from 'path';
 import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { logger } from '../lib/logger';
+import { readPhoto, isValidPhotoName } from '../lib/pawFinderPhotoStore';
+
+/** Same directory multer writes to in server/routes/paw-finder.ts. */
+const PAW_FINDER_UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'paw-finder');
 
 export interface ModerationInput {
   title?: string | null;
@@ -16,7 +19,7 @@ export interface ModerationInput {
   rewardAmount?: number | null;
   city: string;
   area?: string | null;
-  postType: 'lost' | 'found';
+  postType: 'lost' | 'found' | 'adoption';
   petType: 'dog' | 'cat' | 'bird' | 'other';
   mediaPaths: string[];
 }
@@ -93,28 +96,25 @@ export class PawFinderModerationService {
     const allImageFlags: string[] = [];
 
     for (const filePath of pathsToScan) {
-      // Validate path is within the expected upload directory
-      const resolved = path.resolve(filePath);
-      const cwd = process.cwd();
-      const uploadsDir = path.resolve(cwd, 'uploads');
-      const tempDir = '/tmp';
-      if (!resolved.startsWith(uploadsDir + path.sep) && !resolved.startsWith(tempDir + path.sep)) {
-        logger.warn('[PawFinderModeration] Skipping image outside upload dir', { filePath });
+      // Read the photo the same way the public route serves it: GCS first, the
+      // legacy local upload directory second.
+      //
+      // 2026-09-13: this used to `path.resolve(filePath)` on the URL path
+      // `/uploads/paw-finder/pf-….jpg`. An absolute URL path resolves to the
+      // filesystem ROOT (/uploads/…), never `<cwd>/uploads/…`, so every photo
+      // was "outside upload dir" and silently skipped — no post photo was ever
+      // scanned. The GCS path `/api/paw-finder/photo/…` would be skipped too.
+      const name = path.basename(String(filePath || ''));
+      if (!isValidPhotoName(name)) {
+        logger.warn('[PawFinderModeration] Skipping image with unexpected name', { filePath });
         continue;
       }
 
       try {
-        const fileBuffer = fs.readFileSync(resolved);
-        const imageData  = fileBuffer.toString('base64');
-
-        // Detect MIME type from file extension
-        const ext = path.extname(resolved).toLowerCase();
-        const mimeMap: Record<string, string> = {
-          '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-          '.png': 'image/png', '.webp': 'image/webp',
-          '.heic': 'image/heic', '.heif': 'image/heif',
-        };
-        const mimeType = mimeMap[ext] ?? 'image/jpeg';
+        const photo = await readPhoto(name, PAW_FINDER_UPLOAD_DIR);
+        if (!photo) throw new Error('photo_not_found');
+        const imageData = photo.buf.toString('base64');
+        const mimeType  = photo.contentType;
 
         const prompt =
           `You are a content safety moderator for a family-friendly lost/found pet platform.

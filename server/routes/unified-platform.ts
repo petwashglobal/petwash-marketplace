@@ -389,7 +389,32 @@ router.post('/wallet/add-funds', requireAuth, requireActive, async (req: any, re
   try {
     const userId = req.user.uid;
     const { amount, platform, description } = req.body;
-    
+
+    // SEALED 2026-09-13 — THIS ROUTE MINTED SPENDABLE MONEY ON REQUEST.
+    //
+    // It took `amount` from the body and called
+    //   unifiedWallet.addFunds() → walletService.addCredits(uid,'promo_credit',amount*100)
+    // behind requireAuth + requireActive only. No payment, no admin check, no
+    // authoriseWalletMoneyAction, no ceiling — and requireActive fails OPEN on
+    // a DB error. `promo_balance_cents` is a real redemption rail: that credit
+    // buys a wash at a K9000 bay. Any signed-in customer could POST
+    // {"amount": 100000} and hold ₪100,000.
+    //
+    // Nothing in client/ calls it. Paid top-ups go through
+    // /api/credit-wallet/topup (verified Nayax txn) or the SUMIT hosted page;
+    // admin grants go through walletService.adminInjectCredits, which carries
+    // dual approval, an audit row and an idempotency key.
+    //
+    // TO REOPEN: route it through the money-authority gateway with an admin
+    // identity and an idempotency key, then delete this block.
+    logger.warn('[Wallet API] /wallet/add-funds is sealed — it minted credit with no authority', { userId, amount });
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'Funds are added by a verified payment or an audited admin grant.',
+      messageHe: 'טעינת יתרה מתבצעת בתשלום מאומת או בזיכוי מנהל מתועד.',
+    });
+
+    // eslint-disable-next-line no-unreachable
     if (!amount || amount <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
     }

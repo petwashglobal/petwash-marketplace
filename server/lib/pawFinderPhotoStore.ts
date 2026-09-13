@@ -22,6 +22,18 @@ export const PAW_FINDER_OBJECT_PREFIX = 'paw-finder/';
 /** pf-<ms>-<12 hex>.<ext> — exactly what multer names an upload; nothing else is a valid object name. */
 export const PAW_FINDER_OBJECT_NAME_RE = /^pf-\d{10,16}-[a-f0-9]{12}\.(jpg|jpeg|png|webp|heic)$/;
 
+/**
+ * The two photo addresses /upload can return — and nothing else. A post's
+ * mediaFiles[].filePath must match.
+ *
+ * P0 (2026-09-13): #2428 made /upload return `/api/paw-finder/photo/<name>`
+ * when the GCS copy succeeds, but the post schema still only accepted
+ * `/uploads/paw-finder/…`. Every post whose photo reached GCS got a 400, and a
+ * photo is required — so nobody could publish a lost, found or adoption post.
+ */
+export const PAW_FINDER_MEDIA_PATH_RE =
+  /^\/(?:uploads\/paw-finder|api\/paw-finder\/photo)\/pf-\d{10,16}-[a-f0-9]{12}\.(?:jpg|jpeg|png|webp|heic)$/;
+
 export function bucketName(env: NodeJS.ProcessEnv = process.env): string {
   return env.PAW_FINDER_BUCKET_NAME || env.BIOMETRIC_BUCKET_NAME || 'signinpetwash.firebasestorage.app';
 }

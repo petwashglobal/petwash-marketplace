@@ -387,14 +387,57 @@ router.post(
       return res.status(400).json({ error: 'Valid MFA method required (totp, sms, email, webauthn)' });
     }
 
+    // THIS ENDPOINT VERIFIES NO FACTOR (2026-09-13 audit). It accepts a STRING
+    // naming a method — 'totp' | 'sms' | 'email' | 'webauthn' — and issues a
+    // 4-hour session. There is no code, no challenge, no TOTP digit. Every
+    // requireKYCMFA() gate on the national-ID surface is therefore satisfied
+    // by whoever holds the lowest KYC permission.
+    //
+    // Building a real factor here is a product change, and refusing outright
+    // would lock the KYC reviewers out of live work, so this is staged the way
+    // the other gates in this repo are: DARK by default, one env var to
+    // enforce. With KYC_MFA_REQUIRE_REAL_FACTOR=true a caller must present a
+    // one-time code proof (X-Transaction-Otp / transactionToken) that the
+    // canonical OTP service has already validated for THIS user; without the
+    // flag the session is still issued, but it is logged as unverified and the
+    // response says so plainly instead of claiming MFA was performed.
+    const requireRealFactor = String(process.env.KYC_MFA_REQUIRE_REAL_FACTOR || '').toLowerCase() === 'true';
+    const otpToken = (req.headers['x-transaction-otp'] as string) || (req.body?.transactionToken as string) || '';
+    let factorVerified = false;
+    if (otpToken) {
+      try {
+        const { transactionOTPService } = await import('../services/TransactionOTPService');
+        const result = await transactionOTPService.validateTransactionToken(otpToken);
+        factorVerified = !!(result as any)?.valid && (result as any)?.userId === userId;
+      } catch {
+        factorVerified = false;
+      }
+    }
+    if (requireRealFactor && !factorVerified) {
+      logger.warn('[KYC2026:MFA] refused — no verified second factor', { userId });
+      return res.status(403).json({
+        error: 'MFA_FACTOR_REQUIRED',
+        message: 'A verified one-time code is required before a KYC admin session can be issued.',
+        mfaRequired: true,
+      });
+    }
+
     const ipAddress = req.ip || req.socket.remoteAddress || 'unknown';
     const sessionToken = KYCAccessControl.registerMFASession(userId, ipAddress, method);
+    if (!factorVerified) {
+      logger.error('[KYC2026:MFA] 🔴 session issued WITHOUT a verified factor — set KYC_MFA_REQUIRE_REAL_FACTOR=true to enforce', {
+        userId, method, ipAddress,
+      });
+    }
 
     res.json({
       success: true,
       mfaSessionToken: sessionToken,
       expiresIn: '4 hours',
-      message: 'KYC MFA session issued. Include the token in X-KYC-MFA-Token header for admin operations.',
+      factorVerified,
+      message: factorVerified
+        ? 'KYC MFA session issued. Include the token in X-KYC-MFA-Token header for admin operations.'
+        : 'KYC session issued WITHOUT a verified second factor (no code was presented). Include the token in X-KYC-MFA-Token header for admin operations.',
     });
   },
 );

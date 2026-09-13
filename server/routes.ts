@@ -1011,7 +1011,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // the gift-card till showed "Coming Soon" forever even though all four
   // Nayax secrets are live. The canonical path is the `/api/` one; the bare
   // path stays registered so nothing that still calls it breaks.
-  const paymentGatewayStatus: import('express').RequestHandler = (req, res) => {
+  const paymentGatewayStatus: import('express').RequestHandler = async (req, res) => {
     // PRESENCE IS NOT CONFIGURATION (2026-09-13). The deploy auto-creates any
     // missing Nayax secret with the literal 'nayax-placeholder-not-active'
     // (.github/workflows/petwash-ci.yml — "Online Nayax payments will be
@@ -1026,6 +1026,11 @@ export async function registerRoutes(app: Express): Promise<void> {
       configured(process.env.NAYAX_SECRET) &&
       configured(process.env.NAYAX_WEBHOOK_SECRET)
     );
+    // The rail every online payment in this product actually uses.
+    const { sumitClient } = await import('./services/SumitClient');
+    const sumitWired = sumitClient.isWired();
+    const egiftFlag = (process.env.PETWASH_EGIFT_PURCHASE_ENABLED || '').trim().toLowerCase();
+    const egiftPurchaseEnabled = egiftFlag === 'true' || egiftFlag === '1' || egiftFlag === 'yes' || egiftFlag === 'on';
     
     res.set('Cache-Control', 'no-store').json({
       nayax: {
@@ -1039,11 +1044,25 @@ export async function registerRoutes(app: Express): Promise<void> {
           : 'תשלום Nayax בקרוב - השתמש בתשלום בכרטיס אשראי בינתיים'
       },
       creditCard: {
-        enabled: true,
-        status: 'operational',
-        message: 'Credit card payments are operational',
-        messageHe: 'תשלומי כרטיס אשראי פעילים'
-      }
+        // The rail cards actually ride: SUMIT's hosted page. `true` here was a
+        // constant, which is why nobody noticed the page below was gating on
+        // the WRONG gateway. Now it reflects sumitClient.isWired().
+        enabled: sumitWired,
+        status: sumitWired ? 'operational' : 'coming_soon',
+        message: sumitWired ? 'Credit card payments are operational' : 'Credit card payments coming soon',
+        messageHe: sumitWired ? 'תשלומי כרטיס אשראי פעילים' : 'תשלומי כרטיס אשראי בקרוב'
+      },
+      // THE GATE MUST MATCH THE RAIL (2026-09-13). /buy-gift-card hid itself
+      // behind `nayax.enabled`, but its submit goes to /api/egift/guest/start,
+      // which rides SUMIT (sumitClient.beginRedirect) and is gated by
+      // PETWASH_EGIFT_PURCHASE_ENABLED. It was asking a gateway it never uses.
+      // With this, the page opens by itself the moment the flag is flipped —
+      // no code change, no rebuild.
+      egiftPurchase: {
+        enabled: sumitWired && egiftPurchaseEnabled,
+        railWired: sumitWired,
+        featureEnabled: egiftPurchaseEnabled,
+      },
     });
   };
   app.get('/api/payments/gateway-status', paymentGatewayStatus);

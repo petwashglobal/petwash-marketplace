@@ -19,7 +19,7 @@ import {
 import { logger } from '../lib/logger';
 import { escapeLike } from '../lib/sqlLike';
 import { requireValidFileContentDisk } from '../lib/fileMagicValidation';
-import { uploadPhotoToGcs, readPhoto, photoPublicPath, isValidPhotoName } from '../lib/pawFinderPhotoStore';
+import { uploadPhotoToGcs, readPhoto, photoPublicPath, isValidPhotoName, PAW_FINDER_MEDIA_PATH_RE } from '../lib/pawFinderPhotoStore';
 
 const router = Router();
 
@@ -175,7 +175,7 @@ const createPostSchema = z.object({
   eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   mediaFiles: z.array(z.object({
     // filePath must be a server-generated upload path — never accept arbitrary paths
-    filePath: z.string().min(1).regex(/^\/uploads\/paw-finder\//, {
+    filePath: z.string().min(1).regex(PAW_FINDER_MEDIA_PATH_RE, {
       message: 'filePath must be a paw-finder upload path',
     }),
     mimeType: z.string().optional(),
