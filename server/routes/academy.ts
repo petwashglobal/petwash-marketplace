@@ -31,6 +31,7 @@ import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddre
 import crypto from 'crypto';
 import { eq, and, desc, sql, gte, lte, or, ilike, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { validateProviderRates } from '@shared/providerMinPrices';
 import { nanoid } from 'nanoid';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
@@ -914,6 +915,12 @@ router.post('/trainers/register', requireAuth, async (req, res) => {
 
     if (!firstName || !lastName || !email || !phone || !hourlyRate) {
       return res.status(400).json({ error: 'Missing required fields: firstName, lastName, email, phone, hourlyRate' });
+    }
+    // Platform price floor / ceiling (shared/providerMinPrices.ts), same rule as the rate card.
+    const trainerRateIls = parseFloat(hourlyRate);
+    const trainerRate = validateProviderRates('academy', [Math.round(trainerRateIls * 100)]);
+    if (!Number.isFinite(trainerRateIls) || trainerRateIls <= 0 || !trainerRate.ok) {
+      return res.status(400).json({ error: trainerRate.ok ? 'Invalid hourly rate' : trainerRate.message, errorCode: 'PRICE_OUT_OF_RANGE' });
     }
 
     const existing = await db.select({ id: trainers.id }).from(trainers).where(eq(trainers.userId, userId)).limit(1);

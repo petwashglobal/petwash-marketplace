@@ -45,6 +45,7 @@ import { calendarIntegrationService } from '../services/CalendarIntegrationServi
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import VATCalculatorService from '../services/VATCalculatorService';
 import { logger } from '../lib/logger';
+import { validateProviderRates } from '@shared/providerMinPrices';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
 import { syncChatToBookingStatus, checkCancellationWindow } from '../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../services/gcsBackupService';
@@ -112,6 +113,11 @@ router.post('/walkers/register', requireAuth, async (req, res) => {
       });
     }
     const { captchaToken, turnstileToken: walkerTurnstileToken, ...safeBody } = parsed.data;
+    // Platform price floor / ceiling (shared/providerMinPrices.ts), same rule as the rate card.
+    const walkerRate = validateProviderRates('walk_my_pet', [Math.round(Number(safeBody.baseHourlyRate) * 100)]);
+    if (!Number.isFinite(Number(safeBody.baseHourlyRate)) || !walkerRate.ok) {
+      return res.status(400).json({ error: walkerRate.ok ? 'Invalid rate' : walkerRate.message, errorCode: 'PRICE_OUT_OF_RANGE' });
+    }
     if (!captchaToken) {
       logger.warn('[Walk My Pet] Walker registration rejected — missing captchaToken', { userId });
       return res.status(400).json({ error: 'Security verification token required. Please refresh and try again.', errorCode: 'CAPTCHA_REQUIRED' });
@@ -326,6 +332,13 @@ router.patch('/walkers/:walkerId', requireAuth, async (req, res) => {
     for (const [k, v] of Object.entries(req.body || {})) {
       if (DENY.has(k)) { stripped.push(k); continue; }
       safeUpdates[k] = v;
+    }
+    if (safeUpdates.baseHourlyRate !== undefined) {
+      const rateIls = Number(safeUpdates.baseHourlyRate);
+      const check = validateProviderRates('walk_my_pet', [Math.round(rateIls * 100)]);
+      if (!Number.isFinite(rateIls) || rateIls <= 0 || !check.ok) {
+        return res.status(400).json({ error: check.ok ? 'Invalid rate' : check.message, errorCode: 'PRICE_OUT_OF_RANGE' });
+      }
     }
     if (stripped.length > 0) {
       console.warn('[Walk My Pet] Stripped privileged fields from self-update',
