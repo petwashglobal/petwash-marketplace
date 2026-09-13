@@ -1944,9 +1944,10 @@ export default function MyAccount() {
 
                 {/* Gold tier badge */}
                 <span className={`pw-tier-badge ${
-                  wallet?.loyaltyTier === 'PLATINUM' ? 'pw-tier-badge-platinum'
-                  : wallet?.loyaltyTier === 'GOLD' ? 'pw-tier-badge-gold'
-                  : wallet?.loyaltyTier === 'SILVER' ? 'pw-tier-badge-silver'
+                  // Case-insensitive: tiers were stored upper-case until 2026-09-13.
+                  String(wallet?.loyaltyTier || '').toUpperCase() === 'PLATINUM' ? 'pw-tier-badge-platinum'
+                  : String(wallet?.loyaltyTier || '').toUpperCase() === 'GOLD' ? 'pw-tier-badge-gold'
+                  : String(wallet?.loyaltyTier || '').toUpperCase() === 'SILVER' ? 'pw-tier-badge-silver'
                   : 'pw-tier-badge-bronze'
                 }`}>
                   <TierIcon className="w-3.5 h-3.5" />

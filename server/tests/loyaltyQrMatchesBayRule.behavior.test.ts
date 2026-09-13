@@ -19,7 +19,8 @@ import { LOYALTY_QUALIFYING_TIERS, LOYALTY_WASH_COST_POINTS, loyaltyWashEligible
 describe('loyaltyWashEligible — the one rule', () => {
   it('bay cost is 500 points, gold and above', () => {
     expect(LOYALTY_WASH_COST_POINTS).toBe(500);
-    expect(LOYALTY_QUALIFYING_TIERS).toEqual(['gold', 'platinum', 'diamond', 'elite', 'vip']);
+    // 2026-09-13: emerald and royal (above gold on TIER_CONFIGS) were missing.
+    expect(LOYALTY_QUALIFYING_TIERS).toEqual(['gold', 'platinum', 'diamond', 'emerald', 'royal', 'elite', 'vip']);
   });
   it.each([
     [{ loyaltyTier: 'gold', loyaltyPointsBalance: 500 }, true],

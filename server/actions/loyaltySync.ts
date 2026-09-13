@@ -14,6 +14,7 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { MEMBER_DISCOUNT_MAX_PERCENT } from '@shared/schema-member-discount';
+import { canonicalTierId, tierDisplayName } from '@shared/lib/tierLabels';
 
 /**
  * Loyalty tier thresholds — aligned with shared/schema-loyalty.ts LOYALTY_TIER_THRESHOLDS
@@ -111,6 +112,8 @@ export async function updateLoyalty(
   let newTier = '';
   let discount = 0;
   let duplicateReplay = false;
+  // The tier BEFORE this change, read inside the transaction (canonical id).
+  let previousTier = '';
   
   try {
     logger.info('[LoyaltySync] Updating loyalty points', {
@@ -140,7 +143,7 @@ export async function updateLoyalty(
             SELECT loyalty_points AS points, loyalty_tier AS tier FROM users WHERE id = ${userId} LIMIT 1
           `);
           newPoints = Number((cur.rows?.[0] as any)?.points ?? 0);
-          newTier = String((cur.rows?.[0] as any)?.tier ?? calculateTier(newPoints));
+          newTier = canonicalTierId(String((cur.rows?.[0] as any)?.tier ?? calculateTier(newPoints)));
           discount = getTierDiscount(newTier);
           logger.info('[LoyaltySync] Duplicate award skipped (replay guard)', {
             userId, reason, bookingId: metadata.bookingId,
@@ -169,9 +172,15 @@ export async function updateLoyalty(
       const userData = result.rows[0] as any;
       newPoints = userData.points;
       const oldTier = userData.oldTier;
+      previousTier = canonicalTierId(oldTier);
       
-      // Calculate new tier
-      newTier = calculateTier(newPoints);
+      // Calculate new tier. 2026-09-13: stored as the canonical LOWER-case id.
+      // calculateTier's ladder is upper-case, and that value was written
+      // straight into users.loyalty_tier and wallet_accounts.loyalty_tier while
+      // every reader compares lower-case ids (signup writes 'bronze',
+      // TIER_CONFIGS ids, K9000RedemptionService's gold+ list). An upgraded
+      // member became 'GOLD' — and the bay then refused their loyalty wash.
+      newTier = canonicalTierId(calculateTier(newPoints));
       discount = getTierDiscount(newTier);
       
       // Update tier in same transaction
@@ -244,8 +253,13 @@ export async function updateLoyalty(
     });
     
     // STEP 3: Send push notification if tier upgraded (best-effort, don't fail)
-    const oldTier = metadata?.oldTier;
-    if (oldTier && oldTier !== newTier) {
+    // 2026-09-13: this compared against `metadata?.oldTier`, which no caller
+    // passes — so the upgrade push never fired for anyone. The previous tier is
+    // the one read from users in the transaction above. Only an actual RISE on
+    // the ladder notifies (a points rollback must not say "upgrade").
+    const TIER_ORDER = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'emerald', 'royal'];
+    const oldTier = previousTier || canonicalTierId(metadata?.oldTier);
+    if (oldTier && TIER_ORDER.indexOf(newTier) > TIER_ORDER.indexOf(oldTier)) {
       // Don't await - fire and forget
       sendTierUpgradeNotification(userId, newTier, discount).catch(err => {
         logger.warn('[LoyaltySync] Push notification failed (non-critical)', {
@@ -290,7 +304,7 @@ export async function updateLoyalty(
         `);
         
         // Recalculate tier after rollback
-        const rollbackTier = calculateTier(Math.max(0, newPoints - pointsDelta));
+        const rollbackTier = canonicalTierId(calculateTier(Math.max(0, newPoints - pointsDelta)));
         await db.execute(sql`
           UPDATE users 
           SET loyalty_tier = ${rollbackTier}
@@ -391,7 +405,7 @@ async function sendTierUpgradeNotification(
     await messaging.send({
       token: fcmToken,
       notification: {
-        ...tierUpgradeMessage(locale, newTier, discount),
+        ...tierUpgradeMessage(locale, tierDisplayName(newTier, locale), discount),
       },
       data: {
         type: 'tier_upgrade',

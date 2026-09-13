@@ -16196,6 +16196,15 @@ export const stationSettlements = pgTable("station_settlements", {
   status: varchar("status").notNull().default("pending"), // CHECK: pending | settled | disputed
   settledAt: timestamp("settled_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  // Payout-release gate + reserve (migrations/0156, 2026-09-13). The routes and
+  // treasury forecast used these for months while no column existed (42703).
+  payoutHoldReason: text("payout_hold_reason"),
+  secondReleaseApprovalRequired: boolean("second_release_approval_required").notNull().default(false),
+  payoutReleaseRequestedAt: timestamp("payout_release_requested_at"),
+  payoutReleaseApprovedAt: timestamp("payout_release_approved_at"),
+  payoutReleaseApprovedBy: varchar("payout_release_approved_by"),
+  heldInReserve: boolean("held_in_reserve").notNull().default(false),
+  reserveReason: text("reserve_reason"),
 }, (table) => ({
   bookingIdx:   index("idx_station_settlements_booking").on(table.bookingId),
   stationIdx:   index("idx_station_settlements_station").on(table.stationId),

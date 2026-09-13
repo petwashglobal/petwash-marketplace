@@ -181,16 +181,29 @@ router.post('/join', async (req: Request, res: Response) => {
       );
       if ((existing as any).rows?.length > 0) {
         memberId = (existing as any).rows[0].member_id;
+        // 2026-09-13: bind an existing, unbound row to this account — but only
+        // when the email is the one on the verified sign-in token. The body
+        // email is caller-supplied and must never claim someone else's row.
+        const tokenEmail = String((req as any).firebaseUser?.email || '').trim().toLowerCase();
+        if (tokenEmail && tokenEmail === email.trim().toLowerCase()) {
+          await db.execute({
+            text: `UPDATE privilege_members SET firebase_uid = $1, updated_at = NOW()
+                    WHERE email = $2 AND firebase_uid IS NULL`,
+            values: [userId, tokenEmail],
+          } as any);
+        }
       } else {
         memberId = `PWP-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
         await db.execute({
           text: `
             INSERT INTO privilege_members
-              (member_id, first_name, last_name, email, phone, language, terms_consent, terms_consent_at, marketing_consent, sms_consent, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $8, 'pending_verification')
+              (member_id, first_name, last_name, email, phone, language, terms_consent, terms_consent_at, marketing_consent, sms_consent, status, firebase_uid)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $8, 'pending_verification', $9)
             ON CONFLICT (email) DO NOTHING
           `,
-          values: [memberId, firstName.trim(), lastName.trim(), email.trim().toLowerCase(), phone.trim(), language, consent === true, marketingConsent === true],
+          // $9: the signed-in account. Nothing wrote firebase_uid before
+          // 2026-09-13, and every membership reader looks it up by that column.
+          values: [memberId, firstName.trim(), lastName.trim(), email.trim().toLowerCase(), phone.trim(), language, consent === true, marketingConsent === true, userId],
         } as any);
       }
     } catch (privilegeErr: any) {

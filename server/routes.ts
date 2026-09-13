@@ -456,15 +456,16 @@ import {
  */
 async function resolveMemberTierDiscount(userId: string): Promise<{ percent: number; tier: string } | null> {
   try {
-    const { privilegeMembers } = await import('@shared/schema');
     const { calculateTotalDiscount } = await import('@shared/schema-loyalty');
-    const [member] = await db
-      .select({ tier: privilegeMembers.tier, status: privilegeMembers.status })
-      .from(privilegeMembers)
-      .where(eq(privilegeMembers.firebaseUid, userId))
-      .limit(1);
+    const { findPrivilegeMemberForUser } = await import('./lib/privilegeMemberLookup');
+    const { canonicalTierId } = await import('@shared/lib/tierLabels');
+    // 2026-09-13: this looked up privilege_members.firebase_uid, which no join
+    // route wrote — so no member ever got the tier discount. See the helper.
+    const member = await findPrivilegeMemberForUser(userId);
     if (!member || member.status !== 'active') return null;
-    const tier = String(member.tier || 'bronze');
+    // Lower-case, alias-resolved: TIER_CONFIGS ids are lower-case and the
+    // lookup below is exact, so 'GOLD' used to resolve to a 0% bonus.
+    const tier = canonicalTierId(member.tier);
     const percent = calculateTotalDiscount(tier as any, 'none', false);
     return Number.isFinite(percent) ? { percent, tier } : null;
   } catch (err: any) {
