@@ -27,8 +27,11 @@ describe('SUMIT stored-value Receipt carries no VAT (2026-07-09)', () => {
       SRC.indexOf("if ((input.documentType || 'InvoiceAndReceipt') !== 'Receipt') {"),
     ).slice(0, 1600);
     expect(branch).toMatch(/body\.Items = \[/);
-    expect(branch).toMatch(/UnitPrice: input\.amountBeforeVat/);
-    expect(SRC).toMatch(/body\.VATIncluded = false/);
+    // 2026-09-13: VAT-INCLUSIVE entry (bookkeeper instruction + SUMIT org default +
+    // the Nayax bridge that issued the 508 real invoices). The paid gross goes in
+    // and SUMIT extracts the VAT, so the document total equals the money exactly.
+    expect(branch).toMatch(/UnitPrice: input\.totalAmount/);
+    expect(SRC).toMatch(/body\.VATIncluded = true/);
   });
 
   it('documents the live verification (doc #30000, zero VAT)', () => {
