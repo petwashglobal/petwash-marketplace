@@ -53,7 +53,12 @@ describe('PawFinder', () => {
     const app = R('client/src/App.tsx');
     expect(app).toContain('<Route path="/paw-finder/:id">');
     expect(app).toContain('initialPostId={Number(params.id)}');
-    expect(R('scripts/guards/unreachable_routes_baseline.txt')).toContain('/paw-finder/:id');
+    // 2026-09-13: this used to assert the route was PRESENT in the
+    // unreachable-route baseline — it pinned the bookkeeping, not the
+    // behaviour, so it passed for exactly as long as the route stayed broken.
+    // The route is reachable now (the guard reported it healed), so the entry
+    // is gone and the correct assertion is its absence.
+    expect(R('scripts/guards/unreachable_routes_baseline.txt')).not.toContain('/paw-finder/:id');
   });
 });
 

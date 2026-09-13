@@ -11,8 +11,6 @@
 /__/auth/action
 /account/financials
 /accounting
-/adopt  # typed/marketing alias → Redirect to /adoption (2026-09-12)
-/adopt-pet  # typed/marketing alias → Redirect to /adoption (2026-09-12)
 /admin/access-denied
 /admin/bays
 /admin/brain
@@ -49,7 +47,6 @@
 /admin/money-flow
 /admin/no-lost-money
 /admin/paw-finder
-/paw-finder/:id  # deep link: shared from a post's social-share button (2026-09-12)
 /admin/performance-reviews
 /admin/policy
 /admin/recruitment
@@ -92,10 +89,6 @@
 /forms/club
 /founder-member
 /franchise-opportunities
-/franchise/inbox
-/franchise/marketing
-/franchise/reports
-/franchise/support
 /governance
 /groomers/provider/dashboard
 /guest/checkout
@@ -165,7 +158,6 @@
 /sitter-suite/explore
 /sitter-suite/hub
 /sitter-suite/sitter/edit-profile
-/status/uptime
 /system-status
 /team/inbox
 /track-my-pet

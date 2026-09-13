@@ -11,6 +11,7 @@ import {
 import { db } from "../db";
 import { opsTasksTable, opsIncidents, insertOpsTaskSchema, insertOpsIncidentSchema } from "@shared/schema-operations";
 import { eq, and, sql, inArray, desc, asc, gte, lte } from "drizzle-orm";
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 
 const router = Router();
 
@@ -179,7 +180,7 @@ router.post("/tasks", async (req: FranchiseAuthRequest, res) => {
 });
 
 // Update task with franchise authorization and audit trail
-router.patch("/tasks/:id", async (req: FranchiseAuthRequest, res) => {
+router.patch("/tasks/:id", reserveLiteralSegments('id', 'bulk'), async (req: FranchiseAuthRequest, res) => {
   try {
     const taskId = parseInt(req.params.id);
     
@@ -574,7 +575,7 @@ router.post("/incidents", async (req: FranchiseAuthRequest, res) => {
 });
 
 // Update incident with franchise authorization and audit trail
-router.patch("/incidents/:id", async (req: FranchiseAuthRequest, res) => {
+router.patch("/incidents/:id", reserveLiteralSegments('id', 'bulk'), async (req: FranchiseAuthRequest, res) => {
   try {
     const incidentId = parseInt(req.params.id);
     

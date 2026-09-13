@@ -22,6 +22,7 @@
  *   5. Card fallback (shortfall returned to client)
  */
 
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 import { safeEqual } from '../lib/safeEqual';
 import { Router, Request, Response, NextFunction } from 'express';
 import { createHash, createHmac, randomBytes } from 'crypto';
@@ -18192,7 +18193,7 @@ router.post('/admin/system/e2e/run', async (req, res) => {
   }
 });
 
-router.get('/admin/system/e2e/:id', async (req, res) => {
+router.get('/admin/system/e2e/:id', reserveLiteralSegments('id', 'history'), async (req, res) => {
   try {
     const r = await pool.query(`SELECT * FROM e2e_proof_runs WHERE id = $1`, [parseInt(req.params.id, 10)]);
     if (!r.rows.length) return res.status(404).json({ error: 'Run not found' });
