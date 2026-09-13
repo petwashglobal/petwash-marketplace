@@ -100,7 +100,7 @@ export default function SecuritySettings() {
         throw new Error('Failed to get registration options');
       }
 
-      const { options, challengeKey } = await optionsRes.json();
+      const { options, challengeId } = await optionsRes.json();
 
       // Step 2: Create passkey with browser
       const { startRegistration } = await import('@simplewebauthn/browser');
@@ -109,7 +109,7 @@ export default function SecuritySettings() {
       // Step 3: Verify and store
       const verifyRes = await apiRequest('POST', '/api/webauthn/register/verify', {
         response: attResp,
-        challengeKey,
+        challengeId,
       });
 
       return verifyRes;

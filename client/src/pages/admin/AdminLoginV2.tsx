@@ -262,10 +262,12 @@ export default function AdminLoginV2() {
         body: JSON.stringify({ email }),
       });
       const optionsBody = await optionsRes.json();
-      // Server may wrap options under { options, challengeKey, discoverable }
-      // depending on whether email was provided. Unwrap so the rest of the
-      // code (which expects `.challenge`, `.allowCredentials`) keeps working.
+      // Server wraps options under { options, challengeId, discoverable }.
+      // Unwrap so the rest of the code (which expects `.challenge`,
+      // `.allowCredentials`) keeps working. challengeId is the server-side,
+      // single-use challenge handle and MUST be sent back to /login/verify.
       const options = optionsBody.options || optionsBody;
+      const challengeId: string | undefined = optionsBody.challengeId;
 
       const credential = await navigator.credentials.get({
         publicKey: {
@@ -304,6 +306,7 @@ export default function AdminLoginV2() {
         method: "POST",
         body: JSON.stringify({
           response: serializedCredential,
+          challengeId,
         }),
       });
       const verifyResponse = await verifyRes.json();
