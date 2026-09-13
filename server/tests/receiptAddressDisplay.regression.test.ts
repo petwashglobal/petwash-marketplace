@@ -91,7 +91,8 @@ describe('all paid call sites pass the service address to the receipt', () => {
   // payment rail lands there.
   for (const f of [
     'server/routes/booking-requests.ts',
-    'server/routes/sitter-suite.ts',
+    // 2026-09-13: sitter accept (incl. its receipt) moved into the shared core.
+    'server/services/booking-response/acceptSitterBookingCore.ts',
     'server/routes/academy.ts',
     'server/services/ShopService.ts',
   ]) {
@@ -101,8 +102,11 @@ describe('all paid call sites pass the service address to the receipt', () => {
   }
 
   it('walk-my-pet accept issues NO fiscal receipt (no payment rail on that path)', () => {
-    const src = R('server/routes/walk-my-pet.ts');
-    expect(src).not.toMatch(/generateReceipt\(/);
-    expect(src).toMatch(/no receipt issued|NO fiscal receipt/i);
+    // 2026-09-13: accept moved into acceptWalkBookingCore — check route AND core.
+    const route = R('server/routes/walk-my-pet.ts');
+    const core = R('server/services/booking-response/acceptWalkBookingCore.ts');
+    expect(route).not.toMatch(/generateReceipt\(/);
+    expect(core).not.toMatch(/generateReceipt\(/);
+    expect(core).toMatch(/no receipt issued|NO fiscal receipt/i);
   });
 });

@@ -334,9 +334,15 @@ describe('PR-CI-PAYMENT-MODE — CI workflow boots smoke in mock mode', () => {
     expect(ciYaml).toMatch(/-e\s+PAYMENT_PROVIDER_MODE=mock/);
   });
 
-  it('28. petwash-ci.yml smoke test pins NAYAX_ENABLED + SUMIT_ENABLED to false', () => {
-    expect(ciYaml).toMatch(/-e\s+NAYAX_ENABLED=false/);
-    expect(ciYaml).toMatch(/-e\s+SUMIT_ENABLED=false/);
+  // 2026-09-13: since 2026-08-19 the smoke MIRRORS prod's NAYAX/SUMIT_ENABLED=true
+  // (false hid the prod-only init path that kept Cloud Run from booting for 4h).
+  // Safety now comes from mock mode + the explicit prod-mock opt-in — pin that pair.
+  it('28. petwash-ci.yml smoke boots real provider init paths but in MOCK mode', () => {
+    const smoke = ciYaml.slice(ciYaml.indexOf('docker run -d --name petwash-smoke'), ciYaml.indexOf('docker run -d --name petwash-smoke') + 3000);
+    expect(smoke).toMatch(/-e\s+PAYMENT_PROVIDER_MODE=mock/);
+    expect(smoke).toMatch(/-e\s+PAYMENT_MOCK_PROD_ALLOWED=true/);
+    expect(smoke).toMatch(/-e\s+NAYAX_ENABLED=(true|false)/);
+    expect(smoke).toMatch(/-e\s+SUMIT_ENABLED=(true|false)/);
   });
 });
 

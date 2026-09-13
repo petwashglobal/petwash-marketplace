@@ -118,7 +118,7 @@ describe('PR-F — caller-vs-booking ownership checks', () => {
 describe('PR-F — bookingLimiter rate limit on /start defends the 6-digit code path', () => {
   it('10. walk-my-pet imports bookingLimiter from middleware/rateLimiter', () => {
     expect(walkSrc).toMatch(
-      /import\s*\{\s*bookingLimiter\s*\}\s*from\s*['"][./]+middleware\/rateLimiter['"]/,
+      /import\s*\{[^}]*\bbookingLimiter\b[^}]*\}\s*from\s*['"][./]+middleware\/rateLimiter['"]/,
     );
   });
 

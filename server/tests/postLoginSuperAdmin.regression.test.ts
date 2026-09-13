@@ -35,8 +35,11 @@ describe('post-login super-admin promotion (#136-1)', () => {
     expect(fastPath).toBeGreaterThan(-1);
     expect(missingFieldsGate).toBeGreaterThan(-1);
     expect(fastPath).toBeLessThan(missingFieldsGate);
-    const window = src.slice(fastPath, fastPath + 160);
+    // 2026-09-13: the fast-path gained intent routing (CEO 2026-08-23 multi-role) and a
+    // long comment; /admin/dashboard is still the default — widen the window, pin the default.
+    const window = src.slice(fastPath, fastPath + 2500);
     expect(window).toMatch(/\/admin\/dashboard/);
+    expect(window).toMatch(/\/provider-os/);
   });
 
   it('gives super_admin an empty required-fields list so it is never profile-gated', () => {

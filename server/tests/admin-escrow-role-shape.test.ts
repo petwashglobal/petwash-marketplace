@@ -36,7 +36,7 @@ const SRC = fs.readFileSync(
 describe('admin-escrow role-check shape — Issue #153 regression pin', () => {
   it('imports isSuperAdmin from middleware/rbac', () => {
     expect(SRC).toMatch(
-      /import\s*\{\s*isSuperAdmin\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/,
+      /import\s*\{\s*isSuperAdminVerified\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/,
     );
   });
 
