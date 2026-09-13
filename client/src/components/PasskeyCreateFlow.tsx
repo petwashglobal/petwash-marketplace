@@ -91,7 +91,7 @@ export function PasskeyCreateFlow({ open, onOpenChange, language, onCreated, dev
               <AlertDialogDescription style={{ textAlign: 'center' }}>{T.successBody}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <button type="button" onClick={close} className="w-full rounded-full bg-black py-3 font-semibold text-white" style={{ fontSize: 16 }} data-testid="passkey-create-done">
+              <button type="button" onClick={close} className="w-full rounded-full py-3 font-semibold text-white" style={{ fontSize: 16, textAlign: 'center', backgroundColor: '#000' }} data-testid="passkey-create-done">
                 {T.done}
               </button>
             </AlertDialogFooter>
@@ -118,7 +118,7 @@ export function PasskeyCreateFlow({ open, onOpenChange, language, onCreated, dev
               })}
             </ul>
 
-            <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900" style={align} data-testid="passkey-consent-disclosure">
+            <p className="rounded-xl p-3 text-xs" style={{ ...align, backgroundColor: '#FFF8E6', color: '#7A4B00', border: '1px solid rgba(212,175,55,0.45)' }} data-testid="passkey-consent-disclosure">
               {T.disclosure}
             </p>
 
@@ -142,8 +142,8 @@ export function PasskeyCreateFlow({ open, onOpenChange, language, onCreated, dev
                 type="button"
                 onClick={close}
                 disabled={step === 'working'}
-                className="w-full rounded-full border border-gray-300 py-3 font-medium text-gray-800"
-                style={{ fontSize: 16 }}
+                className="flex w-full items-center justify-center rounded-full border border-gray-300 py-3 font-medium text-gray-800"
+                style={{ fontSize: 16, textAlign: 'center' }}
                 data-testid="passkey-consent-cancel"
               >
                 {T.cancel}
