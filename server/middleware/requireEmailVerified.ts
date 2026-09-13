@@ -66,10 +66,7 @@ export function requireEmailVerifiedForProtectedPaths(
   res: Response,
   next: NextFunction
 ) {
-  if (!req.firebaseUser?.uid) {
-    return next();
-  }
-
+  // Cheap exits first — this runs on every request.
   if (req.method === 'GET') {
     return next();
   }
@@ -79,7 +76,34 @@ export function requireEmailVerifiedForProtectedPaths(
     return next();
   }
 
-  return requireEmailVerified(req, res, next);
+  // THIS GATE WAS DEAD (2026-09-13). It is mounted globally in
+  // server/routes.ts, BEFORE the routers it protects mount their own auth —
+  // /api/bookings, /api/credit-wallet, /api/escrow and the rest attach
+  // validateFirebaseToken / optionalFirebaseToken further down the file. So
+  // `req.firebaseUser` was still undefined when this ran, the first line was
+  // `if (!req.firebaseUser?.uid) return next()`, and EVERY caller sailed
+  // through: an account with an unverified e-mail could book, move wallet
+  // money and submit KYC. The bail-out is still correct for an anonymous
+  // caller — but it has to be the answer to "no credentials at all", not to
+  // "identity has not been resolved yet". So resolve it here, for the handful
+  // of mutating requests on a protected prefix, and only when nobody has.
+  if (req.firebaseUser?.uid) {
+    return requireEmailVerified(req, res, next);
+  }
+
+  void (async () => {
+    try {
+      const { optionalFirebaseToken } = await import('./firebase-auth');
+      // optionalFirebaseToken never throws and never answers the request: it
+      // populates req.firebaseUser when the caller presented something valid.
+      await optionalFirebaseToken(req, res, () => { /* resolve only — do not continue here */ });
+      if (!req.firebaseUser?.uid) return next(); // genuinely anonymous — the route's own auth will answer
+      return requireEmailVerified(req, res, next);
+    } catch {
+      // Never let this gate be the reason a request fails to route.
+      return next();
+    }
+  })();
 }
 
 export default requireEmailVerified;
