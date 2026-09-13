@@ -43,6 +43,21 @@ async function checkHomepageRenders() {
   const browser = await chromium.launch({ args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage({ locale: "he-IL" });
+    // Evidence for a failure (2026-09-13). Run 34722753966 failed 3× with only
+    // "almost no content" — no status, no console, no failed asset — so it could
+    // not be told apart from a slow chunk. Collected quietly, printed on failure.
+    const consoleErrors = [];
+    const failedRequests = [];
+    page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 200)); });
+    page.on("pageerror", (e) => consoleErrors.push(`pageerror: ${String(e?.message || e).slice(0, 200)}`));
+    page.on("requestfailed", (r) => failedRequests.push(`${r.url()} (${r.failure()?.errorText})`));
+    page.on("response", (r) => { if (r.status() >= 400 && r.url().includes("/assets/")) failedRequests.push(`${r.url()} HTTP ${r.status()}`); });
+    const evidence = async () => {
+      const snippet = ((await page.innerText("body").catch(() => "")) || "").replace(/\s+/g, " ").slice(0, 160);
+      return `\n     body: "${snippet}"` +
+        `\n     console errors: ${consoleErrors.length ? consoleErrors.slice(0, 5).join(" | ") : "none"}` +
+        `\n     failed requests: ${failedRequests.length ? failedRequests.slice(0, 5).join(" | ") : "none"}`;
+    };
     // domcontentloaded — NOT networkidle. A live SPA holds open websockets /
     // polling / analytics beacons, so "networkidle" often NEVER fires and the old
     // wait burned the full 35s timeout every attempt. Stacked with 3 retries + the
@@ -54,19 +69,26 @@ async function checkHomepageRenders() {
 
     // Wait for React to actually mount content into #root. Bounded so it fails
     // fast on a genuine white-screen instead of hanging the whole job.
+    // Wait for CONTENT, not for "any child": a Suspense spinner is a child too,
+    // so the old wait returned the instant the loader mounted and the text check
+    // below then read an empty page whenever a lazy chunk was a bit slow.
     await page
-      .waitForFunction(() => (document.getElementById("root")?.childElementCount ?? 0) > 0, { timeout: 15000 })
+      .waitForFunction(
+        () => (document.getElementById("root")?.childElementCount ?? 0) > 0
+          && (document.body?.innerText || "").replace(/\s/g, "").length >= 50,
+        { timeout: 25000 },
+      )
       .catch(() => {});
 
     const body = (await page.innerText("body").catch(() => "")) || "";
     if (/Something went wrong|encountered an unexpected error|אירעה שגיאה/i.test(body)) {
-      return { ok: false, msg: "homepage shows the error boundary (white-screen / render crash)" };
+      return { ok: false, msg: "homepage shows the error boundary (white-screen / render crash)" + (await evidence()) };
     }
     const rootChildren = await page.evaluate(
       () => document.getElementById("root")?.childElementCount ?? 0,
     );
-    if (rootChildren === 0) return { ok: false, msg: "homepage #root is empty (app did not render)" };
-    if (body.replace(/\s/g, "").length < 50) return { ok: false, msg: "homepage rendered almost no content" };
+    if (rootChildren === 0) return { ok: false, msg: "homepage #root is empty (app did not render)" + (await evidence()) };
+    if (body.replace(/\s/g, "").length < 50) return { ok: false, msg: "homepage rendered almost no content after 25s" + (await evidence()) };
 
     return { ok: true, msg: `homepage rendered (root children=${rootChildren}, ${body.length} chars)` };
   } catch (e) {

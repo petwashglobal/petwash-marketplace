@@ -210,16 +210,19 @@ Disallow: /backend-team
 Disallow: /firebase-debug
 Disallow: /auth-test
 Disallow: /firebase-test
+Disallow: /payment-status
+Disallow: /payment-success
+Disallow: /payment-failed
+Crawl-delay: 1
 
-# Special handling for Google
-User-agent: Googlebot
-Allow: /
+# NO separate "User-agent: Googlebot" group (2026-09-13). A crawler obeys
+# ONLY the most specific group that names it, so the old
+# "User-agent: Googlebot / Allow: /" block silently threw away every
+# Disallow above for Google — /admin, /api, /dashboard, /my-wallet were all
+# open to Googlebot. Google's renderer was crashing on /payment-status.
 
 # Sitemap location
 Sitemap: ${baseUrl}/sitemap.xml
-
-# Crawl delay (be nice to our servers)
-Crawl-delay: 1
 `;
 
   res.header('Content-Type', 'text/plain');
