@@ -50,6 +50,9 @@ describe('Passkey button — shown on every capable device, the Apple way; serve
     expect(signup).toContain('Account → Security');
     // live 2026-09-13: server reason for a passkey PetWash never saved
     expect(signup).toMatch(/credential not found\|cancel/);
+    // Hebrew server text must not bypass the matcher — the English reason is matched too
+    expect(signup).toContain('`${r.error || \'\'} ${r.errorEn || \'\'}`');
+    expect(passkey).toContain('errorEn: error.error_en');
   });
   it('uses Apple\'s word: "passkey", unlocked with Face ID / Touch ID', () => {
     expect(signup).toContain('Sign in with a passkey (${bioName})');

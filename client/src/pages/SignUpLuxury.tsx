@@ -634,7 +634,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!r.success) {
         // Server says "Biometric credential not found" when this device holds a
         // passkey PetWash never saved (verified live 2026-09-13) — same guidance.
-        const noPasskey = /not.?allowed|no matching|no credential|credential not found|cancel|timed out/i.test(r.error || '');
+        // Match on the server's ENGLISH reason too: in Hebrew the server sends
+        // "אישור ביומטרי לא נמצא", which the English matcher missed, so Hebrew
+        // users saw the raw server text instead of this guidance (live 2026-09-13).
+        const noPasskey = /not.?allowed|no matching|no credential|credential not found|cancel|timed out/i.test(`${r.error || ''} ${r.errorEn || ''}`);
         if (noPasskey) {
           // Cancelled, timed out, or no PetWash passkey on this device. Keep the
           // button: a cancel is not "no passkey", and hiding it is what made it
