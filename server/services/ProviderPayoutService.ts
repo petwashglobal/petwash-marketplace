@@ -57,7 +57,7 @@ export class ProviderPayoutService {
    * Updates status from 'in_escrow' → 'processing' → 'completed'
    * MANDATORY: AI verification before payout release
    */
-  static async releaseEscrowAndPayout(payoutId: string, skipAIVerification = false): Promise<{
+  static async releaseEscrowAndPayout(payoutId: string, skipAIVerification = false, approvedByUid?: string): Promise<{
     success: boolean;
     error?: string;
     aiVerification?: {
@@ -66,6 +66,14 @@ export class ProviderPayoutService {
       riskLevel: string;
     };
   }> {
+    // CEO RULE (2026-09-13): a provider payout leaves only on a Pet Wash admin's approval.
+    {
+      const { isSystemPayoutActor } = await import('../lib/payoutHumanApproval');
+      if (isSystemPayoutActor(approvedByUid)) {
+        logger.warn('[ProviderPayout] refused — no human admin approver', { payoutId });
+        return { success: false, error: 'HUMAN_APPROVAL_REQUIRED' };
+      }
+    }
     try {
       // Get payout record
       const [payout] = await db.select()
@@ -585,15 +593,17 @@ ${bookingRow}
       let failed = 0;
       const errors: string[] = [];
 
+      // CEO RULE (2026-09-13): the hourly job no longer releases anything. Each
+      // expired escrow is flagged once for a Pet Wash admin to approve.
+      const { flagPayoutForAdminReview } = await import('../lib/payoutHumanApproval');
       for (const escrow of expiredEscrows) {
-        const result = await this.releaseEscrowAndPayout(escrow.id);
-        
-        if (result.success) {
-          released++;
-        } else {
-          failed++;
-          errors.push(`Payout ${escrow.id}: ${result.error}`);
-        }
+        await flagPayoutForAdminReview({
+          kind: 'super_app_payout', id: String(escrow.id), bookingId: (escrow as any).bookingId ?? null,
+          providerId: (escrow as any).providerId ?? null,
+          amountIls: (escrow as any).providerPayout != null ? Number((escrow as any).providerPayout) : null,
+          reason: 'escrow hold ended — approve after checking the job evidence',
+        });
+        released++; // "flagged for review" — kept in the same counter for the cron metrics
       }
 
       logger.info('[ProviderPayout] Auto-release job completed', {

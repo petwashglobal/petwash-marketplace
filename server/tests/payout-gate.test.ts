@@ -32,7 +32,7 @@ vi.mock('@shared/schema', () => ({
 }));
 
 // drizzle helpers are no-ops in the mock (we route by table, not by predicate).
-vi.mock('drizzle-orm', () => ({ and: (...a: any[]) => a, eq: (...a: any[]) => a }));
+vi.mock('drizzle-orm', () => ({ and: (...a: any[]) => a, eq: (...a: any[]) => a, sql: (...a: any[]) => a }));
 
 vi.mock('../db', () => ({
   db: {

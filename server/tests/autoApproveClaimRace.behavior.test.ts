@@ -94,6 +94,8 @@ vi.mock('../services/EscrowService', () => ({
   default: { getEscrowsByBooking: vi.fn(async () => [{ id: 'esc1', status: 'held' }]), releaseEscrowPayment },
 }));
 vi.mock('../services/bookingLedgerWriter', () => ({ writeBookingLedgerEntries }));
+const flagPayoutForAdminReview = vi.fn(async () => undefined);
+vi.mock('../lib/payoutHumanApproval', () => ({ flagPayoutForAdminReview }));
 vi.mock('../lib/notificationDispatcher', () => ({ dispatchNotification: vi.fn(async () => undefined) }));
 vi.mock('../email/sendServiceCompletedReview', () => ({ sendServiceCompletedReview: vi.fn(async () => undefined) }));
 vi.mock('@shared/formatAddress', () => ({ formatUserAddress: () => '', bookingSnapshotToAddress: () => ({}) }));
@@ -144,12 +146,14 @@ describe('auto-approve cron takes the same atomic claim as /confirm', () => {
     expect(row.status).toBe('provider_marked_complete'); // /confirm finishes it, not the cron
   });
 
-  it('unclaimed stale booking → exactly one receipt, escrow released once, completed', async () => {
+  it('unclaimed stale booking → exactly one receipt, escrow NOT released (admin approves), completed', async () => {
     const row = seed();
     await runCron();
     expect(generateReceipt).toHaveBeenCalledTimes(1);
     expect((generateReceipt.mock.calls[0] as any)[0]).toMatchObject({ bookingId: 'REQ-1', paymentClass: 'PROVIDER_BOOKING_COMMISSION' });
-    expect(releaseEscrowPayment).toHaveBeenCalledTimes(1);
+    // CEO rule 2026-09-13: 24h customer silence completes the job but never releases provider money.
+    expect(releaseEscrowPayment).not.toHaveBeenCalled();
+    expect(flagPayoutForAdminReview).toHaveBeenCalledWith(expect.objectContaining({ kind: 'escrow', id: 'esc1', bookingId: 'REQ-1' }));
     expect(row.status).toBe('completed');
     expect(row.ownerConfirmedAt).toBeInstanceOf(Date);
   });

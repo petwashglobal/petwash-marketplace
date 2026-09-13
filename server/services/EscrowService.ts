@@ -207,6 +207,12 @@ class EscrowService {
     releasedBy: string,
     opts?: { bypassGate?: boolean; enforceGate?: boolean },
   ): Promise<void> {
+    // CEO RULE (2026-09-13): no timer, cron or "system" actor releases provider
+    // money. Callers pass a human uid (customer confirming, admin approving).
+    const { isSystemPayoutActor, HumanPayoutApprovalRequired } = await import('../lib/payoutHumanApproval');
+    if (isSystemPayoutActor(releasedBy)) {
+      throw new HumanPayoutApprovalRequired(`escrow ${escrowId}`, releasedBy);
+    }
     const escrowRef = this.db.collection("escrow_payments").doc(escrowId);
 
     // ── §7 payout gate (fail-CLOSED) — applied to this Firestore rail so it
@@ -562,7 +568,21 @@ class EscrowService {
         // auto-approve. If the booking never actually completed (provider
         // no-show / abandoned), the gate HOLDS and we do NOT release. Legit
         // completed-but-stuck escrows still pass the gate and release here.
-        await this.releaseEscrowPayment(escrow.id, "system_auto_release", { enforceGate: true });
+        // CEO RULE (2026-09-13): an expired hold is no longer released by the
+        // clock. It is flagged ONCE for a Pet Wash admin, who approves it with
+        // POST /api/escrow/admin/:escrowId/approve-release.
+        if (!fresh?.awaitingAdminApprovalAt) {
+          await this.db.collection("escrow_payments").doc(escrow.id).update({
+            awaitingAdminApprovalAt: new Date(),
+            updatedAt: new Date(),
+          });
+          const { flagPayoutForAdminReview } = await import('../lib/payoutHumanApproval');
+          await flagPayoutForAdminReview({
+            kind: 'escrow', id: escrow.id, bookingId: (escrow as any).bookingId ?? null,
+            providerId: (escrow as any).providerId ?? null, amountIls: Number((escrow as any).amount ?? 0) || null,
+            reason: 'hold period ended — approve after checking the job evidence',
+          });
+        }
         releasedCount++;
       } catch (error: any) {
         // BOOKING_NOT_FOUND (2026-08-24): escrow references a Firestore
