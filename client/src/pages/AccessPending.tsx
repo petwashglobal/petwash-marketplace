@@ -25,6 +25,9 @@ export default function AccessPending() {
   const [status, setStatus] = useState<RequestStatus>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // A failed load is NOT "no request" (2026-09-13): an expired token or a
+  // network blip told a pending provider they never applied.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const goHome = () => navigate('/');
   const openSupportEmail = () => {
@@ -74,6 +77,7 @@ export default function AccessPending() {
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
         const req: AccessRequest | null = data.request;
+        setLoadFailed(false);
         if (req) {
           setStatus(req.status as RequestStatus);
           setReason(req.reason);
@@ -82,6 +86,7 @@ export default function AccessPending() {
         }
       } catch {
         setStatus(null);
+        setLoadFailed(true);
       } finally {
         setLoading(false);
       }
@@ -137,7 +142,17 @@ export default function AccessPending() {
             </>
           )}
 
-          {status === null && (
+          {status === null && loadFailed && (
+            <>
+              <XCircle className="w-16 h-16 text-gray-400 mx-auto" />
+              <h2 className="text-lg font-semibold text-gray-700">{t.error}</h2>
+              <Button onClick={() => window.location.reload()} className="w-full mt-2" data-testid="button-access-pending-retry">
+                {isHe ? 'נסו שוב' : 'Try again'}
+              </Button>
+            </>
+          )}
+
+          {status === null && !loadFailed && (
             <>
               <XCircle className="w-16 h-16 text-gray-400 mx-auto" />
               <h2 className="text-lg font-semibold text-gray-700">{t.noRequest}</h2>

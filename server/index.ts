@@ -852,6 +852,14 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // CSRF gate 403s every real SUMIT webhook before activation can run — the
     // [[csrf-public-post-regression-class]] failure mode.
     if (req.path === '/api/sumit/webhook') return true;
+    // Provider document RESUBMIT (2026-09-13): the credential is the single-use,
+    // expiring secure token in the path, claimed atomically by the handler
+    // (server/routes/provider-onboarding.ts POST /resubmit/:token). A cross-site
+    // page cannot know it, so there is no CSRF surface. The page sends no Bearer
+    // by design (the applicant may not be signed in) — without this skip every
+    // "please resubmit your documents" link ended in a 403 and the application
+    // stayed stuck in pending_resubmission.
+    if (/^\/api\/provider-onboarding\/resubmit\/[^/]+$/.test(req.path)) return true;
     // WebAuthn / passkey (Face ID, Touch ID) ceremonies are inherently CSRF-safe:
     // every register/authenticate step requires a SERVER-ISSUED challenge (stored in
     // a signed, HMAC'd cookie) AND the authenticator signs over the page origin, which

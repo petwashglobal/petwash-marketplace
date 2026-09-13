@@ -1226,7 +1226,7 @@ export class BackgroundJobProcessor {
             });
 
             // Send SMS (Hebrew — since this is an Israeli app)
-            const promoUrl = `https://petwash.co.il/birthday?code=${code}&pet=${encodeURIComponent(petName)}`;
+            const promoUrl = `https://petwash.co.il/loyalty/birthday?code=${code}&pet=${encodeURIComponent(petName)}`;
             const smsBody =
               `🎂 יום הולדת שמח ל${petName}! 🐾\n` +
               `PetWash™ שולח לך הנחה של 10% כמתנת יום הולדת:\n` +

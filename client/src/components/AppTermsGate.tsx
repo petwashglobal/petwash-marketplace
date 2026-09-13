@@ -28,6 +28,15 @@ import type { Language } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, ArrowRight, ArrowLeft, ExternalLink } from 'lucide-react';
 
+async function authHeaders(user: { getIdToken?: () => Promise<string> } | null | undefined): Promise<Record<string, string>> {
+  try {
+    const token = user?.getIdToken ? await user.getIdToken() : '';
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 type AppFlavor = 'customer' | 'provider';
 
 // The consent document each app is responsible for. Matches the server-side
@@ -146,9 +155,14 @@ export default function AppTermsGate({
       try {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 5000);
+        // Bearer is REQUIRED (2026-09-13): the native app authenticates with a
+        // Firebase ID token, not a cookie. Without it /api/consent/status 401'd,
+        // the fail-open branch passed, and the terms screen never showed in
+        // either app.
         const res = await fetch(getApiUrl('/api/consent/status'), {
           method: 'GET',
           credentials: 'include',
+          headers: await authHeaders(user),
           signal: controller.signal,
         });
         clearTimeout(timer);
@@ -188,12 +202,15 @@ export default function AppTermsGate({
       // user accepted the privacy policy. Additive: it does not change what the
       // gate REQUIRES, so no existing user is re-blocked.
       const acceptDocs = Array.from(new Set([doc, 'privacy']));
+      // Same Bearer requirement as the status check — without it every accept
+      // was a 401 (swallowed below) and no consent evidence was ever stored.
+      const authHeaders_ = await authHeaders(user);
       await Promise.all(
         acceptDocs.map((d) =>
           fetch(getApiUrl('/api/consent/accept'), {
             method: 'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...authHeaders_ },
             signal: controller.signal,
             body: JSON.stringify({
               consentType: d,

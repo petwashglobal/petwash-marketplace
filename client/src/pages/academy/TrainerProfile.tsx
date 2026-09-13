@@ -392,7 +392,7 @@ export default function TrainerProfile() {
                     <>
                       <Button
                         className="luxury-btn-primary w-full mb-3 gap-2 py-3 text-lg"
-                        onClick={() => setLocation(`/academy/book/${trainer.id}`)}
+                        onClick={() => setLocation(`/booking/new/training/${trainer.id}`) /* was /academy/book — legacy flow confirms with no payment captured (2026-09-13) */}
                         data-testid="button-book-trainer"
                       >
                         <CalendarIcon className="h-5 w-5" />
