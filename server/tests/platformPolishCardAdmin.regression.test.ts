@@ -49,7 +49,8 @@ describe('PawFinder', () => {
     expect(src).toContain('initialPostId?: number;');
     expect(src).toContain("if (initialPostId && Number.isFinite(initialPostId)) setSelectedId(initialPostId);");
     expect(src).toContain("apiRequest(`/api/paw-finder/posts/${selectedId}`)");
-    expect(src).toContain("/paw-finder/${post.id}`}");
+    // Share Alert (canonical board 2026-09-13) shares the alert's own page.
+    expect(src).toContain("const url = `${window.location.origin}/paw-finder/${post.id}`;");
     const app = R('client/src/App.tsx');
     expect(app).toContain('<Route path="/paw-finder/:id">');
     expect(app).toContain('initialPostId={Number(params.id)}');

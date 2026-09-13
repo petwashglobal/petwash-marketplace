@@ -72,6 +72,10 @@ export const createAdoptionListingSchema = z.object({
   goodWithChildren: YES_NO,
   goodWithDogs: YES_NO,
   goodWithCats: YES_NO,
+  apartmentFriendly: YES_NO,
+  lowShedding: YES_NO,
+  /** Approximate age in months (0–360); optional — ageGroup is the fallback. */
+  ageMonths: z.number().int().min(0).max(360).optional(),
   city: z.string().trim().min(1).max(100),
   area: z.string().trim().max(100).optional(),
   // Needed to arrange a meeting. Never public — shown only to an applicant the
@@ -136,4 +140,64 @@ export function adoptionMessage(
     case 'enquiry_declined':
       return { title: 'עדכון על הפנייה שלך', body: `הפנייה לאימוץ ${name} לא התקדמה הפעם` };
   }
+}
+
+/* ── Adopter profile + matching ───────────────────────────────────────────── */
+
+export const adopterProfileSchema = z.object({
+  homeType: z.enum(['apartment', 'house', 'house_with_yard', 'other', 'unspecified']).default('unspecified'),
+  hasChildren: YES_NO,
+  hasDogs: YES_NO,
+  hasCats: YES_NO,
+  wantsLowShedding: YES_NO,
+  preferredSpecies: z.enum(['any', ...ADOPTION_PET_TYPES]).default('any'),
+  city: z.string().trim().max(100).optional(),
+  about: z.string().trim().max(1000).optional(),
+}).strict();
+
+export type AdopterProfile = z.infer<typeof adopterProfileSchema>;
+
+export interface FitListing {
+  pet_type: string;
+  good_with_children?: string | null;
+  good_with_dogs?: string | null;
+  good_with_cats?: string | null;
+  apartment_friendly?: string | null;
+  low_shedding?: string | null;
+}
+
+export type FitReason = 'species' | 'children' | 'dogs' | 'cats' | 'apartment' | 'low_shedding';
+
+/**
+ * Honest compatibility — no invented percentage. A pet is a "great fit" only
+ * when nothing the lister said conflicts with the adopter's home AND at least
+ * one of the adopter's needs is positively confirmed. Unknown never counts as
+ * a match, and never as a conflict.
+ */
+export function adoptionFit(listing: FitListing, profile: Partial<AdopterProfile> | null | undefined): {
+  greatFit: boolean;
+  conflicts: FitReason[];
+  confirmed: FitReason[];
+} {
+  const conflicts: FitReason[] = [];
+  const confirmed: FitReason[] = [];
+  if (!profile) return { greatFit: false, conflicts, confirmed };
+
+  const check = (need: boolean, answer: string | null | undefined, reason: FitReason) => {
+    if (!need) return;
+    if (answer === 'no') conflicts.push(reason);
+    else if (answer === 'yes') confirmed.push(reason);
+  };
+
+  if (profile.preferredSpecies && profile.preferredSpecies !== 'any') {
+    if (listing.pet_type === profile.preferredSpecies) confirmed.push('species');
+    else conflicts.push('species');
+  }
+  check(profile.hasChildren === 'yes', listing.good_with_children, 'children');
+  check(profile.hasDogs === 'yes', listing.good_with_dogs, 'dogs');
+  check(profile.hasCats === 'yes', listing.good_with_cats, 'cats');
+  check(profile.homeType === 'apartment', listing.apartment_friendly, 'apartment');
+  check(profile.wantsLowShedding === 'yes', listing.low_shedding, 'low_shedding');
+
+  return { greatFit: conflicts.length === 0 && confirmed.length > 0, conflicts, confirmed };
 }

@@ -77,7 +77,7 @@ describe('Adopt a Pet has its own product surface', () => {
     const maison = R('client/src/pages/AdoptionMaison.tsx');
     expect(maison).toContain("fetch('/api/adoption/listings'");
     expect(maison).toContain('<Link href="/adoption/new">');
-    expect(maison).toContain('<Link href={`/adoption/${p.id}`}>');
+    expect(maison).toContain('<Link href={`/adoption/${l.id}`}>');
     expect(maison).not.toContain('/paw-finder');
     expect(maison).not.toContain('reward');
   });
@@ -85,7 +85,8 @@ describe('Adopt a Pet has its own product surface', () => {
   it('keeps the approved #920 concept copy', () => {
     const maison = R('client/src/pages/AdoptionMaison.tsx');
     expect(maison).toContain("'Every soul deserves a home.'");
-    expect(maison).toContain('A free portal connecting pets waiting for adoption with loving families. Every listing is checked.');
+    // Superseded by the CEO's canonical Adopt a Pet mockup (2026-09-13).
+    expect(maison).toContain('A free members-only adoption platform.');
     expect(maison).toContain("'List a pet for adoption ←'");
   });
 

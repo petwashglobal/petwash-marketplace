@@ -198,6 +198,8 @@ export default function AdoptionListingPage({ listingId }: { listingId: number }
             <Fact label={isHe ? 'ילדים' : 'Children'} value={yesNoLabel(isHe, l.good_with_children)} />
             <Fact label={isHe ? 'כלבים' : 'Dogs'} value={yesNoLabel(isHe, l.good_with_dogs)} />
             <Fact label={isHe ? 'חתולים' : 'Cats'} value={yesNoLabel(isHe, l.good_with_cats)} />
+            <Fact label={isHe ? 'מתאים לדירה' : 'Apartment friendly'} value={yesNoLabel(isHe, (l as any).apartment_friendly)} />
+            <Fact label={isHe ? 'נשירה נמוכה' : 'Low shedding'} value={yesNoLabel(isHe, (l as any).low_shedding)} />
           </div>
         </section>
 
@@ -210,7 +212,7 @@ export default function AdoptionListingPage({ listingId }: { listingId: number }
 
         <div className="mx-auto my-10 h-px w-12" style={{ backgroundColor: GOLD }} />
 
-        <section>
+        <section id="enquire">
           <h2 className="font-serif text-xl mb-4">{isHe ? 'רוצים לאמץ?' : 'Would you like to adopt?'}</h2>
           {!open ? (
             <p className="text-sm text-black/60">{isHe ? 'החיה הזו כבר מצאה בית. תודה שבאתם.' : 'This pet has found a home. Thank you for visiting.'}</p>

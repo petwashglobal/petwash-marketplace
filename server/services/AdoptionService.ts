@@ -130,8 +130,9 @@ export async function createAdoptionListing(
         (listing_key, user_id, lister_type, pet_type, pet_name, breed, sex, age_group, size_category, color,
          description, temperament, health_notes, special_needs,
          vaccinated, neutered, microchipped, good_with_children, good_with_dogs, good_with_cats,
-         city, area, contact_phone, status, moderation_status, moderation_reason, moderation_confidence, image_hash)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28)
+         city, area, contact_phone, status, moderation_status, moderation_reason, moderation_confidence, image_hash,
+         apartment_friendly, low_shedding, age_months)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
        RETURNING id`,
       [
         listingKey, userId, input.listerType, input.petType, input.petName, input.breed ?? null,
@@ -141,6 +142,7 @@ export async function createAdoptionListing(
         input.goodWithChildren, input.goodWithDogs, input.goodWithCats,
         input.city, input.area ?? null, input.contactPhone,
         status, mod.verdict, mod.moderationReason, mod.confidence, imageHash,
+        input.apartmentFriendly, input.lowShedding, input.ageMonths ?? null,
       ],
     );
     listingId = Number(rows[0].id);

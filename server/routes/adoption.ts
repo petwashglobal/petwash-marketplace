@@ -28,6 +28,8 @@ import {
   uploadAdoptionPhoto,
 } from '../lib/adoptionPhotoStore';
 import {
+  adopterProfileSchema,
+  adoptionFit,
   adoptionEnquirySchema,
   createAdoptionListingSchema,
   ownerStatusSchema,
@@ -148,6 +150,7 @@ const PUBLIC_LISTING_COLUMNS = `
   l.id, l.listing_key, l.lister_type, l.pet_type, l.pet_name, l.breed, l.sex, l.age_group,
   l.size_category, l.color, l.description, l.temperament, l.health_notes, l.special_needs,
   l.vaccinated, l.neutered, l.microchipped, l.good_with_children, l.good_with_dogs, l.good_with_cats,
+  l.apartment_friendly, l.low_shedding, l.age_months,
   l.city, l.area, l.status, l.published_at, l.adopted_at`;
 
 /** GET /api/adoption/listings — available + pending by default; contact phone never returned. */
@@ -336,6 +339,129 @@ router.post('/my/notifications/read-all', requireAuth, async (req, res) => {
     return res.json({ ok: true });
   } catch (err: any) {
     return sendError(res, err, 'POST /my/notifications/read-all');
+  }
+});
+
+/* ── Saved pets (the heart on a card) ──────────────────────────────────── */
+
+router.get('/my/favorites', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  try {
+    const { rows } = await pool.query(
+      `SELECT ${PUBLIC_LISTING_COLUMNS},
+              (SELECT m.file_path FROM adoption_listing_media m WHERE m.listing_id = l.id
+                ORDER BY CASE WHEN m.media_role = 'primary' THEN 0 ELSE 1 END, m.id LIMIT 1) AS primary_media
+         FROM adoption_favorites f JOIN adoption_listings l ON l.id = f.listing_id
+        WHERE f.user_id = $1 AND l.status = ANY($2::text[])
+        ORDER BY f.created_at DESC`,
+      [userId, PUBLIC_ADOPTION_STATUSES],
+    );
+    return res.json({ rows, ids: rows.map((r: any) => r.id) });
+  } catch (err: any) {
+    return sendError(res, err, 'GET /my/favorites');
+  }
+});
+
+router.post('/listings/:id/favorite', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'invalid_id' });
+  try {
+    const { rows } = await pool.query(`SELECT 1 FROM adoption_listings WHERE id = $1 AND status = ANY($2::text[])`, [id, PUBLIC_ADOPTION_STATUSES]);
+    if (!rows.length) return res.status(404).json({ error: 'not_found' });
+    await pool.query(
+      `INSERT INTO adoption_favorites (user_id, listing_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
+      [userId, id],
+    );
+    return res.json({ ok: true, saved: true });
+  } catch (err: any) {
+    return sendError(res, err, 'POST /listings/:id/favorite');
+  }
+});
+
+router.delete('/listings/:id/favorite', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  try {
+    await pool.query(`DELETE FROM adoption_favorites WHERE user_id = $1 AND listing_id = $2`, [userId, Number(req.params.id)]);
+    return res.json({ ok: true, saved: false });
+  } catch (err: any) {
+    return sendError(res, err, 'DELETE /listings/:id/favorite');
+  }
+});
+
+/* ── Adopter profile + My Matches ───────────────────────────────────────── */
+
+const PROFILE_COLUMNS = `home_type, has_children, has_dogs, has_cats, wants_low_shedding, preferred_species, city, about, updated_at`;
+
+function profileFromRow(r: any) {
+  return r ? {
+    homeType: r.home_type, hasChildren: r.has_children, hasDogs: r.has_dogs, hasCats: r.has_cats,
+    wantsLowShedding: r.wants_low_shedding, preferredSpecies: r.preferred_species,
+    city: r.city ?? undefined, about: r.about ?? undefined, updatedAt: r.updated_at,
+  } : null;
+}
+
+router.get('/my/profile', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  try {
+    const { rows } = await pool.query(`SELECT ${PROFILE_COLUMNS} FROM adoption_adopter_profiles WHERE user_id = $1`, [userId]);
+    return res.json({ profile: profileFromRow(rows[0]) });
+  } catch (err: any) {
+    return sendError(res, err, 'GET /my/profile');
+  }
+});
+
+router.put('/my/profile', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  const parsed = adopterProfileSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
+  const p = parsed.data;
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO adoption_adopter_profiles
+         (user_id, home_type, has_children, has_dogs, has_cats, wants_low_shedding, preferred_species, city, about, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
+       ON CONFLICT (user_id) DO UPDATE SET
+         home_type = EXCLUDED.home_type, has_children = EXCLUDED.has_children, has_dogs = EXCLUDED.has_dogs,
+         has_cats = EXCLUDED.has_cats, wants_low_shedding = EXCLUDED.wants_low_shedding,
+         preferred_species = EXCLUDED.preferred_species, city = EXCLUDED.city, about = EXCLUDED.about, updated_at = NOW()
+       RETURNING ${PROFILE_COLUMNS}`,
+      [userId, p.homeType, p.hasChildren, p.hasDogs, p.hasCats, p.wantsLowShedding, p.preferredSpecies, p.city ?? null, p.about ?? null],
+    );
+    return res.json({ profile: profileFromRow(rows[0]) });
+  } catch (err: any) {
+    return sendError(res, err, 'PUT /my/profile');
+  }
+});
+
+/** Open listings that are a great fit for the member's adopter profile. */
+router.get('/my/matches', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  try {
+    const { rows: prof } = await pool.query(`SELECT ${PROFILE_COLUMNS} FROM adoption_adopter_profiles WHERE user_id = $1`, [userId]);
+    const profile = profileFromRow(prof[0]);
+    if (!profile) return res.json({ profile: null, rows: [] });
+    const { rows } = await pool.query(
+      `SELECT ${PUBLIC_LISTING_COLUMNS},
+              (SELECT m.file_path FROM adoption_listing_media m WHERE m.listing_id = l.id
+                ORDER BY CASE WHEN m.media_role = 'primary' THEN 0 ELSE 1 END, m.id LIMIT 1) AS primary_media
+         FROM adoption_listings l
+        WHERE l.status IN ('available','pending') AND l.user_id <> $1
+        ORDER BY l.published_at DESC NULLS LAST LIMIT 200`,
+      [userId],
+    );
+    const matches = rows
+      .map((r: any) => ({ ...r, fit: adoptionFit(r, profile as any) }))
+      .filter((r: any) => r.fit.greatFit);
+    return res.json({ profile, rows: matches });
+  } catch (err: any) {
+    return sendError(res, err, 'GET /my/matches');
   }
 });
 

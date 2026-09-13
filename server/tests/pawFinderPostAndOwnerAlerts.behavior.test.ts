@@ -155,7 +155,7 @@ describe('4. the AI photo scan reads the real photo', () => {
 
 describe('5. adoption "Meet" opens the pet', () => {
   it('links to the adoption pet page — never a PawFinder notice — and that route exists', () => {
-    expect(R('client/src/pages/AdoptionMaison.tsx')).toContain('<Link href={`/adoption/${p.id}`}>');
+    expect(R('client/src/pages/AdoptionMaison.tsx')).toContain('<Link href={`/adoption/${l.id}`}>');
     expect(R('client/src/pages/AdoptionMaison.tsx')).not.toContain('/paw-finder');
     expect(R('client/src/App.tsx')).toContain('<Route path="/adoption/:id">');
   });
