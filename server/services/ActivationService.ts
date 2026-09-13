@@ -134,6 +134,13 @@ export async function markMobileVerified(userId: string): Promise<ActivationStat
 
   logger.info('[Activation] Mobile verified', { userId, newStatus });
 
+  // A Prestige membership waiting on verified contacts becomes active the
+  // moment both are proven (no-op otherwise; never throws). 2026-09-13.
+  {
+    const { activateVerifiedPrivilegeMember } = await import('../lib/privilegeMemberActivation');
+    await activateVerifiedPrivilegeMember(userId);
+  }
+
   await eventPublisher.publishEvent(DomainEventType.MOBILE_VERIFIED, { userId }, {
     aggregateType: 'user', aggregateId: userId, userId,
   });
@@ -179,6 +186,13 @@ export async function markEmailVerified(
     .where(eq(users.id, userId));
 
   logger.info('[Activation] Email verified', { userId, newStatus });
+
+  // A Prestige membership waiting on verified contacts becomes active the
+  // moment both are proven (no-op otherwise; never throws). 2026-09-13.
+  {
+    const { activateVerifiedPrivilegeMember } = await import('../lib/privilegeMemberActivation');
+    await activateVerifiedPrivilegeMember(userId);
+  }
 
   await eventPublisher.publishEvent(DomainEventType.EMAIL_ACTIVATED, { userId }, {
     aggregateType: 'user', aggregateId: userId, userId,

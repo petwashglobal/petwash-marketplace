@@ -183,7 +183,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         id_type, id_number, id_document_url,
         referral_source, referral_code,
         marketing_consent, sms_consent, terms_consent,
-        language
+        language, status
       ) VALUES (
         ${memberId},
         ${firstName.trim()},
@@ -204,9 +204,13 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         ${marketingConsent === 'true' || marketingConsent === true},
         ${smsConsent === 'true' || smsConsent === true},
         ${termsConsent === 'true' || termsConsent === true},
-        ${language || 'en'}
+        ${language || 'en'},
+        ${'pending_verification'}
       )
     `);
+    // 2026-09-13: this unauthenticated form used to create the row as 'active'
+    // (column default) with nothing verified. It now waits for verified
+    // contacts like every other join (see lib/privilegeMemberActivation.ts).
 
     logger.info('[Privilege] New member registered', {
       memberId,

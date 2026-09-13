@@ -67,8 +67,8 @@ describe('findPrivilegeMemberForUser', () => {
 
 describe('every membership reader uses the helper, none keys on the unwritten column alone', () => {
   it('routes.ts tier discount', () => {
-    const src = read('server/routes.ts');
-    const fn = src.slice(src.indexOf('async function resolveMemberTierDiscount'), src.indexOf('import { z } from "zod";'));
+    const src = read('server/lib/memberTierDiscount.ts');
+    const fn = src.slice(src.indexOf('async function resolveMemberTierDiscount'));
     expect(fn).toContain('findPrivilegeMemberForUser(userId)');
     expect(fn).toContain('canonicalTierId(member.tier)');
     expect(fn).not.toContain('privilegeMembers.firebaseUid');

@@ -319,8 +319,24 @@ router.post('/join', async (req: Request, res: Response) => {
       });
     }
 
+    // Membership becomes active only on verified contacts (mobile by SMS code
+    // + verified email of this same account). Otherwise it stays
+    // pending_verification and activates the moment verification completes
+    // (ActivationService calls the same helper). 2026-09-13.
+    const { activateVerifiedPrivilegeMember } = await import('../lib/privilegeMemberActivation');
+    await activateVerifiedPrivilegeMember(userId, {
+      email: (req as any).firebaseUser?.email,
+      emailVerified: (req as any).firebaseUser?.email_verified === true,
+    });
+    let membershipStatus: string = 'pending_verification';
+    try {
+      const { findPrivilegeMemberForUser } = await import('../lib/privilegeMemberLookup');
+      membershipStatus = (await findPrivilegeMemberForUser(userId))?.status || membershipStatus;
+    } catch { /* status stays pending — grants nothing */ }
+
     return res.json({
       ok:            true,
+      membershipStatus,
       memberId,
       cardNumber:    passCardNumber,
       tier:          tierKey,

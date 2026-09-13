@@ -15,7 +15,71 @@ import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { format } from 'date-fns';
 import { db } from '../db';
-import { bookings, payments, stations } from '@shared/super-app-schema';
+import { pool } from '../db';
+
+/*
+ * 2026-09-13: every revenue figure and transaction list in this file came from
+ * three tables imported from @shared/super-app-schema, a SECOND TypeScript
+ * definition with columns the database does not have (a payment method column,
+ * a string franchise id on stations). Nothing writes the real payments table
+ * either, so revenue was always 0 and the transaction list threw 42703.
+ * CEO rule: only real, verified data.
+ *
+ * The real record of what a station earned is `station_settlements` (one row
+ * per completed booking: gross total, platform share, franchise share, owner).
+ * The franchise is linked through verified identity: franchise_owners
+ * .owner_user_id is the signed-in owner's own account id. A franchise user with
+ * no franchise_owners row (e.g. staff, or an owner not yet onboarded in
+ * Postgres) sees 0 and `dataSource: 'no_linked_franchise_owner'` — never a
+ * number that is not backed by a settlement row.
+ */
+async function franchiseOwnerIdFor(uid: string | undefined): Promise<number | null> {
+  if (!uid) return null;
+  const r = await pool.query(
+    `SELECT id FROM franchise_owners WHERE owner_user_id = $1 AND status = 'active' ORDER BY id LIMIT 1`,
+    [uid],
+  );
+  return r.rows?.[0]?.id ?? null;
+}
+
+type SettlementTx = {
+  id: number;
+  bookingNumber: string | null;
+  amount: string;          // gross, shekels, 2dp
+  franchiseAmount: string; // franchise share, shekels, 2dp
+  paymentMethod: null;     // settlements do not record a tender
+  createdAt: Date;
+  bookingStatus: string | null;
+};
+
+async function settlementTransactions(ownerId: number | null, start: Date, end: Date): Promise<SettlementTx[]> {
+  if (ownerId == null) return [];
+  const r = await pool.query(
+    `SELECT ss.id, b.booking_number, ss.total_amount_cents, ss.franchise_amount_cents,
+            ss.created_at, b.status AS booking_status
+       FROM station_settlements ss
+       LEFT JOIN bookings b ON b.id = ss.booking_id
+      WHERE ss.franchise_owner_id = $1
+        AND ss.status IN ('pending', 'settled')
+        AND ss.created_at >= $2 AND ss.created_at <= $3
+      ORDER BY ss.created_at DESC`,
+    [ownerId, start, end],
+  );
+  return (r.rows || []).map((x: any) => ({
+    id: Number(x.id),
+    bookingNumber: x.booking_number ?? null,
+    amount: (Number(x.total_amount_cents || 0) / 100).toFixed(2),
+    franchiseAmount: (Number(x.franchise_amount_cents || 0) / 100).toFixed(2),
+    paymentMethod: null,
+    createdAt: x.created_at,
+    bookingStatus: x.booking_status ?? null,
+  }));
+}
+
+async function settlementGrossShekels(ownerId: number | null, start: Date, end: Date): Promise<number> {
+  const rows = await settlementTransactions(ownerId, start, end);
+  return Number(rows.reduce((sum, t) => sum + Number(t.amount), 0).toFixed(2));
+}
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 import { createHash } from 'crypto';
@@ -127,48 +191,16 @@ router.get('/dashboard/stats', requireFranchiseAuth, async (req, res) => {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
-    // Get total washes from stations stats
-    const franchiseStations = await db
-      .select({ totalWashes: sql<number>`COALESCE(SUM(${stations.totalWashes}), 0)` })
-      .from(stations)
-      .where(eq(stations.franchiseId, franchiseId));
-    
-    // Get revenue for today
-    const todayRevenue = await db
-      .select({ total: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS NUMERIC)), 0)` })
-      .from(payments)
-      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
-      .innerJoin(stations, eq(bookings.stationId, stations.id))
-      .where(and(
-        eq(stations.franchiseId, franchiseId),
-        eq(payments.status, 'succeeded'),
-        gte(payments.createdAt, todayStart)
-      ));
-
-    // Get revenue for this month
-    const thisMonthRevenue = await db
-      .select({ total: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS NUMERIC)), 0)` })
-      .from(payments)
-      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
-      .innerJoin(stations, eq(bookings.stationId, stations.id))
-      .where(and(
-        eq(stations.franchiseId, franchiseId),
-        eq(payments.status, 'succeeded'),
-        gte(payments.createdAt, monthStart)
-      ));
-
-    // Get revenue for last month
-    const lastMonthRevenue = await db
-      .select({ total: sql<number>`COALESCE(SUM(CAST(${payments.amount} AS NUMERIC)), 0)` })
-      .from(payments)
-      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
-      .innerJoin(stations, eq(bookings.stationId, stations.id))
-      .where(and(
-        eq(stations.franchiseId, franchiseId),
-        eq(payments.status, 'succeeded'),
-        gte(payments.createdAt, lastMonthStart),
-        lte(payments.createdAt, lastMonthEnd)
-      ));
+    const ownerId = await franchiseOwnerIdFor((req as any).franchiseUser?.uid);
+    const washesRow = ownerId == null ? null : (await pool.query(
+      `SELECT COALESCE(SUM(total_washes), 0)::int AS total FROM stations WHERE franchise_id = $1`,
+      [ownerId],
+    )).rows?.[0];
+    const farFuture = new Date(8640000000000000);
+    const franchiseStations = [{ totalWashes: Number(washesRow?.total ?? 0) }];
+    const todayRevenue = [{ total: await settlementGrossShekels(ownerId, todayStart, farFuture) }];
+    const thisMonthRevenue = [{ total: await settlementGrossShekels(ownerId, monthStart, farFuture) }];
+    const lastMonthRevenue = [{ total: await settlementGrossShekels(ownerId, lastMonthStart, lastMonthEnd) }];
 
     const stats = {
       locationName: profile?.locationName || 'Unknown Location',
@@ -179,6 +211,7 @@ router.get('/dashboard/stats', requireFranchiseAuth, async (req, res) => {
         lastMonth: lastMonthRevenue[0]?.total || 0,
       },
       loyaltyRedemptionRate: 0,
+      dataSource: ownerId == null ? 'no_linked_franchise_owner' : 'station_settlements',
       machineStatus: profile?.machineIds?.map((id: string) => ({
         machineId: id,
         status: 'online',
@@ -349,27 +382,7 @@ router.get('/reports/financial', requireFranchiseAuth, async (req, res) => {
     }
 
     // Get all transactions for the period
-    const transactionRecords = await db
-      .select({
-        id: payments.id,
-        bookingNumber: bookings.bookingNumber,
-        amount: payments.amount,
-        currency: payments.currency,
-        status: payments.status,
-        paymentMethod: payments.paymentMethod,
-        createdAt: payments.createdAt,
-        bookingStatus: bookings.status,
-      })
-      .from(payments)
-      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
-      .innerJoin(stations, eq(bookings.stationId, stations.id))
-      .where(and(
-        eq(stations.franchiseId, franchiseId),
-        eq(payments.status, 'succeeded'),
-        gte(payments.createdAt, startDate),
-        lte(payments.createdAt, endDate)
-      ))
-      .orderBy(desc(payments.createdAt));
+    const transactionRecords = await settlementTransactions(await franchiseOwnerIdFor((req as any).franchiseUser?.uid), startDate, endDate);
 
     // Calculate totals (VAT rate 18% in Israel - updated Jan 2025)
     const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
@@ -445,23 +458,7 @@ router.get('/reports/export/excel', requireFranchiseAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid period or date format' });
     }
 
-    const transactionRecords = await db
-      .select({
-        bookingNumber: bookings.bookingNumber,
-        amount: payments.amount,
-        paymentMethod: payments.paymentMethod,
-        createdAt: payments.createdAt,
-      })
-      .from(payments)
-      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
-      .innerJoin(stations, eq(bookings.stationId, stations.id))
-      .where(and(
-        eq(stations.franchiseId, franchiseId),
-        eq(payments.status, 'succeeded'),
-        gte(payments.createdAt, startDate),
-        lte(payments.createdAt, endDate)
-      ))
-      .orderBy(desc(payments.createdAt));
+    const transactionRecords = await settlementTransactions(await franchiseOwnerIdFor((req as any).franchiseUser?.uid), startDate, endDate);
 
     // Add transaction rows with VAT calculations
     // Admin-audit CRIT #6 fix (2026-08-25): payments.amount is stored VAT-INCLUSIVE
@@ -553,23 +550,7 @@ router.get('/reports/export/pdf', requireFranchiseAuth, async (req, res) => {
       return;
     }
 
-    const transactionRecords = await db
-      .select({
-        bookingNumber: bookings.bookingNumber,
-        amount: payments.amount,
-        paymentMethod: payments.paymentMethod,
-        createdAt: payments.createdAt,
-      })
-      .from(payments)
-      .innerJoin(bookings, eq(payments.bookingId, bookings.id))
-      .innerJoin(stations, eq(bookings.stationId, stations.id))
-      .where(and(
-        eq(stations.franchiseId, franchiseId),
-        eq(payments.status, 'succeeded'),
-        gte(payments.createdAt, startDate),
-        lte(payments.createdAt, endDate)
-      ))
-      .orderBy(desc(payments.createdAt));
+    const transactionRecords = await settlementTransactions(await franchiseOwnerIdFor((req as any).franchiseUser?.uid), startDate, endDate);
 
     // Add transaction summary
     // Admin-audit CRIT #6 fix (2026-08-25): payments.amount is VAT-inclusive

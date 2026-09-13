@@ -18,7 +18,9 @@ import { pool } from '../db';
  *      (`firebase_uid IS NULL`). This is the same enrollment-by-email rule the
  *      wallet/pass surfaces use, and it recovers every member who joined before
  *      the uid was written. The email is read from the users row, never from a
- *      request body, so a caller cannot claim someone else's membership.
+ *      request body, so a caller cannot claim someone else's membership, and
+ *      only when that account email is itself verified (2026-09-13, "only real
+ *      data verified").
  *
  * Read-only. Returns null when there is no row or when the lookup fails — a
  * lookup failure must never grant a benefit.
@@ -39,6 +41,7 @@ export async function findPrivilegeMemberForUser(uid: string | null | undefined)
          OR (pm.firebase_uid IS NULL
              AND lower(pm.email) = (SELECT lower(u.email) FROM users u
                                      WHERE u.id = $1 AND u.email IS NOT NULL AND u.email <> ''
+                                       AND (u.email_verified = true OR u.email_verified_at IS NOT NULL)
                                      LIMIT 1))
       ORDER BY bound DESC NULLS LAST
       LIMIT 1`,
