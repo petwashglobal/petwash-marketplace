@@ -1,3 +1,6 @@
+import { smartGreetingParts, type GreetLang } from './smartGreeting';
+import type { Occasion } from './israelOccasions';
+
 /**
  * welcomeBackOr — where to send a member right after a successful sign-in.
  *
@@ -20,4 +23,28 @@ export function welcomeBackOr(data: any, dest: string): string {
   const returning = settled && data?.userStatus !== 'new';
   if (!returning || !next || GATE_PREFIXES.some((p) => next.startsWith(p))) return next;
   return `/welcome-back?returnTo=${encodeURIComponent(next)}`;
+}
+
+/**
+ * The celebration line above the name: the member's birthday, a pet's
+ * birthday, an Israeli holiday (Rosh Hashana → "שנה טובה ומתוקה 🍎") or World
+ * Dog Day — the SAME rules the home page greeting uses (smartGreeting.ts +
+ * israelOccasions.ts), so the two screens can never disagree about what today
+ * is. Returns null on an ordinary day: Welcome Back already greets by name, so
+ * a plain "good evening" would only repeat it.
+ */
+export function welcomeBackCelebration(
+  lang: GreetLang,
+  ctx: { birthday?: string | null; pets?: Array<{ name: string; dob?: string | null }> } | null,
+  occasion: Occasion | null,
+  now: Date = new Date(),
+): string | null {
+  const parts = smartGreetingParts(lang, {
+    now,
+    birthday: ctx?.birthday ?? null,
+    petBirthdays: ctx?.pets ?? [],
+    occasion,
+  });
+  if (!parts.celebration) return null;
+  return parts.emoji ? `${parts.text} ${parts.emoji}` : parts.text;
 }
