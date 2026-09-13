@@ -242,6 +242,23 @@ async function resolveContact(req: Request, userId: string): Promise<{ email?: s
   return { email, phone, displayName };
 }
 
+// 2026-09-13: every pass surface took the tier from walletAccounts.loyaltyTier,
+// which is 'bronze' at signup for EVERYONE and rises with points — so free
+// members were printed as Prestige tiers. Enrollment (privilegeMembers) is the
+// one truth; email comes from token/session/users row so phone-only members resolve.
+async function verifiedTier(req: Request, userId: string, loyaltyTier: string | null | undefined): Promise<string> {
+  const { email } = await resolveContact(req, userId);
+  return resolveMemberTier(loyaltyTier, email);
+}
+async function verifiedTierForUid(userId: string, loyaltyTier: string | null | undefined): Promise<string> {
+  let email: string | undefined;
+  try {
+    const r = await pool.query('SELECT email FROM users WHERE id = $1 LIMIT 1', [userId]);
+    email = r.rows?.[0]?.email || undefined;
+  } catch { /* not enrolled by default */ }
+  return resolveMemberTier(loyaltyTier, email);
+}
+
 const LEGACY_PRESTIGE_MONEY_ROUTE_GATES: Array<{
   pattern: RegExp;
   actionType: OperatingActionType;
@@ -595,14 +612,14 @@ router.get('/wallet', async (req: Request, res: Response) => {
         userId,
         serialNumber,
         passClass: 'public_member',
-        tier: wallet?.loyaltyTier || 'new',
+        tier: 'new',
         issuedAt: new Date().toISOString(),
         cashWalletCents: 0,
       };
       await firestoreDb.collection('prestige_passes').doc(userId).set(passData);
     }
 
-    const tier    = wallet?.loyaltyTier || passData.tier || 'new';
+    const tier    = await verifiedTier(req, userId, wallet?.loyaltyTier);
     const variant = TIER_VARIANT[tier] || 'gold';
 
     // ONE member id (2026-09-12): the membership-card id is the number this
@@ -1097,7 +1114,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
     const passData = passDoc.exists ? passDoc.data()! : {};
     const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
 
-    const tier    = wallet?.loyaltyTier || 'new';
+    const tier    = await verifiedTier(req, userId, wallet?.loyaltyTier);
     const balance = ((wallet?.cashWalletBalanceCents || 0) + (wallet?.egiftBalanceCents || 0)) / 100;
     const washes  = wallet?.washPackageCredits || 0;
 
@@ -1220,7 +1237,7 @@ router.get('/google-wallet', async (req: Request, res: Response) => {
     const passData = passDoc.exists ? passDoc.data()! : {};
     const [wallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
 
-    const tier        = wallet?.loyaltyTier || 'new';
+    const tier        = await verifiedTier(req, userId, wallet?.loyaltyTier);
     const balance     = ((wallet?.cashWalletBalanceCents || 0) + (wallet?.egiftBalanceCents || 0)) / 100;
     const washes      = wallet?.washPackageCredits || 0;
     const serialNumber = passData.serialNumber || `PWL-${userId.slice(0, 8).toUpperCase()}`;
@@ -1576,7 +1593,16 @@ router.post('/activate', auditLogMiddleware('PRESTIGE_JOIN'), async (req: Reques
 
     const parsed = activateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
-    const { tier, firstName, email, cardNumber } = parsed.data;
+    // 2026-09-13: any signed-in free member could POST {tier:"black"} and get a
+    // Prestige pass doc + "your Black Reserve pass is ready" email to ANY address.
+    // Joining is /api/prestige/join (paid). Here: enrolled members only; the tier
+    // is the verified one and the email goes only to the member's own address.
+    const { firstName, cardNumber } = parsed.data;
+    const contact = await resolveContact(req, userId);
+    const [activateTierWallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
+    const tier = await resolveMemberTier(activateTierWallet?.loyaltyTier, contact.email);
+    if (tier === 'new') return res.status(403).json({ ok: false, error: 'Prestige membership required' });
+    const email = contact.email;
 
     // Derive card number if not supplied
     const passCardNumber = cardNumber || `${userId.slice(0, 4).toUpperCase()}${Date.now().toString().slice(-8)}`;
@@ -1599,7 +1625,7 @@ router.post('/activate', auditLogMiddleware('PRESTIGE_JOIN'), async (req: Reques
     }
 
     const [activateWallet] = await db.select().from(walletAccounts).where(eq(walletAccounts.userId, userId)).limit(1);
-    const recipientEmail = email || session?.user?.email;
+    const recipientEmail = email;
 
     // Send wallet email with both wallet buttons
     if (recipientEmail) {
@@ -1607,7 +1633,7 @@ router.post('/activate', auditLogMiddleware('PRESTIGE_JOIN'), async (req: Reques
       const activateCash      = activateWallet?.cashWalletBalanceCents || 0;
       const activateEgift     = activateWallet?.egiftBalanceCents || 0;
       const activateWashes    = activateWallet?.washPackageCredits || 0;
-      const activateDisplay   = firstName || session?.user?.displayName || '';
+      const activateDisplay   = firstName || contact.displayName || '';
 
       const googleWalletSaveUrl = await buildGoogleWalletSaveUrl({
         userId,
@@ -1671,7 +1697,7 @@ router.get('/me', async (req: Request, res: Response) => {
 
     const passDoc  = await firestoreDb.collection('prestige_passes').doc(userId).get();
     const passData = passDoc.data() || {};
-    const tier = wallet?.loyaltyTier || passData.tier || 'new';
+    const tier = await verifiedTier(req, userId, wallet?.loyaltyTier);
 
     // Derive a stable card number: PW- + last 8 chars of userId (uppercase)
     const rawId    = (passData.cardNumber as string) || userId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
@@ -2453,7 +2479,7 @@ router.post('/staff/lookup', requireStaffApproved, async (req: Request, res: Res
       customer: {
         userId,
         displayName: displayName || passData.firstName || '—',
-        tier:        wallet?.loyaltyTier || passData.tier || 'new',
+        tier:        await verifiedTierForUid(userId, wallet?.loyaltyTier),
         serialNumber: passData.serialNumber,
         cardId,
         memberSince: passData.issuedAt || null,
