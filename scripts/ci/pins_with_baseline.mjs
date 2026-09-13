@@ -68,8 +68,10 @@ const healed = [...baseline.keys()].filter((f) => green.has(f));
 const missing = [...baseline.keys()].filter((f) => !green.has(f) && !red.includes(f));
 
 console.log(`pins gate: ${report.numTotalTestSuites} files, ${report.numTotalTests} tests, ${red.length} red files (${baseline.size} baselined)`);
-if (healed.length) console.log(`pins gate: ${healed.length} baselined file(s) are GREEN now — remove them from ${rel(BASELINE)}:\n  ` + healed.join('\n  '));
-if (missing.length) console.log(`pins gate: ${missing.length} baselined file(s) no longer exist — remove them:\n  ` + missing.join('\n  '));
+// stderr, same stream as the RED list below — mixing stdout/stderr interleaved
+// the two lists in the Actions log, so 5 healed files appeared under "1 RED".
+if (healed.length) console.error(`pins gate: ${healed.length} baselined file(s) are GREEN now — remove them from ${rel(BASELINE)}:\n  ` + healed.join('\n  '));
+if (missing.length) console.error(`pins gate: ${missing.length} baselined file(s) no longer exist — remove them:\n  ` + missing.join('\n  '));
 if (newRed.length) {
   console.error(`\npins gate: ${newRed.length} test file(s) are RED and not in the baseline:\n  ` + newRed.join('\n  '));
   // Print WHY. The suite runs --silent (a full-suite log is unreadable), so
