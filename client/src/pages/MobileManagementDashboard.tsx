@@ -45,15 +45,15 @@ interface DashboardSection {
 }
 
 const dashboardSections: DashboardSection[] = [
-  { id: 'applications', icon: FileText, label: { en: 'Applications', he: 'בקשות הצטרפות' }, description: { en: 'Review provider applications', he: 'סקירת בקשות ספקים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/provider-intake' },
-  { id: 'hr', icon: Users, label: { en: 'HR Management', he: 'ניהול משאבי אנוש' }, description: { en: 'Employee management', he: 'ניהול עובדים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/hr-admin' },
+  { id: 'applications', icon: FileText, label: { en: 'Applications', he: 'בקשות הצטרפות' }, description: { en: 'Review provider applications', he: 'סקירת בקשות ספקים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/applications' },
+  { id: 'hr', icon: Users, label: { en: 'HR Management', he: 'ניהול משאבי אנוש' }, description: { en: 'Employee management', he: 'ניהול עובדים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/hr' },
   { id: 'finance', icon: DollarSign, label: { en: 'Finance', he: 'פיננסים' }, description: { en: 'Revenue & payments', he: 'הכנסות ותשלומים' }, bgGradient: 'from-emerald-500/30 to-teal-600/20', route: '/accounting' },
   { id: 'sales', icon: TrendingUp, label: { en: 'Sales & CRM', he: 'מכירות ו-CRM' }, description: { en: 'Sales pipeline', he: 'צינור מכירות' }, bgGradient: 'from-amber-500/30 to-[#B8932F]/20', route: '/admin/sales' },
-  { id: 'marketing', icon: Megaphone, label: { en: 'Marketing', he: 'שיווק' }, description: { en: 'Campaigns & ads', he: 'קמפיינים ופרסום' }, bgGradient: 'from-rose-500/30 to-red-600/20', route: '/admin/marketing' },
+  { id: 'marketing', icon: Megaphone, label: { en: 'Marketing', he: 'שיווק' }, description: { en: 'Campaigns & ads', he: 'קמפיינים ופרסום' }, bgGradient: 'from-rose-500/30 to-red-600/20', route: '/admin/expansion-marketing' },
   { id: 'social', icon: Share2, label: { en: 'Social Media', he: 'רשתות חברתיות' }, description: { en: 'Social channels', he: 'ערוצים חברתיים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/social' },
-  { id: 'leads', icon: UserPlus, label: { en: 'Leads', he: 'לידים' }, description: { en: 'Lead tracking', he: 'מעקב לידים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/leads' },
-  { id: 'promotions', icon: Gift, label: { en: 'Promotions', he: 'מבצעים' }, description: { en: 'Coupons & offers', he: 'קופונים והצעות' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/promotions' },
-  { id: 'influencers', icon: Star, label: { en: 'Influencers', he: 'משפיענים' }, description: { en: 'Partnerships', he: 'שותפויות' }, bgGradient: 'from-yellow-500/30 to-amber-600/20', route: '/admin/influencers' },
+  { id: 'leads', icon: UserPlus, label: { en: 'Leads', he: 'לידים' }, description: { en: 'Lead tracking', he: 'מעקב לידים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/maya/leads' },
+  { id: 'promotions', icon: Gift, label: { en: 'Promotions', he: 'מבצעים' }, description: { en: 'Coupons & offers', he: 'קופונים והצעות' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/coupons' },
+  { id: 'influencers', icon: Star, label: { en: 'Influencers', he: 'משפיענים' }, description: { en: 'Partnerships', he: 'שותפויות' }, bgGradient: 'from-yellow-500/30 to-amber-600/20', route: '/admin/social' },
   { id: 'analytics', icon: BarChart3, label: { en: 'Analytics', he: 'אנליטיקס' }, description: { en: 'Reports & insights', he: 'דוחות ותובנות' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/company-reports' },
 ];
 

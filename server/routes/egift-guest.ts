@@ -27,6 +27,7 @@ import { logger } from '../lib/logger';
 // eGift purchase POST — pay-then-issue mutates money and issues a voucher.
 import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 import { sumitExternalRefMismatch, readSumitExternalRef } from '../lib/sumitExternalRef';
+import { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } from '../lib/sumitPaymentReturn';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -105,7 +106,8 @@ router.post('/guest/start', paymentLimiter, auditLogMiddleware('EGIFT_ISSUE'), a
 
 // GET /api/egift/guest/return — SUMIT redirects the buyer back. Verify → issue → done.
 router.get('/guest/return', async (req: Request, res: Response) => {
-  const txnId = String(req.query.ID || req.query.id || '');
+  // SUMIT appends OG-PaymentID (official schema) — see server/lib/sumitPaymentReturn.ts.
+  const txnId = readSumitPaymentIdFromReturn(req.query as Record<string, unknown>);
   const ext = String(req.query.ext || '');
   const base = baseUrl();
   if (!txnId || !ext) return res.redirect(`${base}/egift?status=failed`);
@@ -132,6 +134,13 @@ router.get('/guest/return', async (req: Request, res: Response) => {
     logger.error('[GuestEgift] 🔴 external-ref mismatch — transaction belongs to another order; NOT issuing', {
       ext, txnId, sumitRef: readSumitExternalRef(verify.raw),
     });
+    return res.redirect(`${base}/egift?status=failed&ref=${encodeURIComponent(ext)}`);
+  }
+
+  // ONE PAYMENT, ONE ORDER — the durable binding SUMIT's payload cannot give us.
+  const claim = await claimSumitPayment(txnId, ext, 'egift_guest');
+  if (!claimAllowsFulfil(claim)) {
+    logger.error('[GuestEgift] 🔴 NOT issuing — payment claim refused', { ext, txnId, claim });
     return res.redirect(`${base}/egift?status=failed&ref=${encodeURIComponent(ext)}`);
   }
 

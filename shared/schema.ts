@@ -16953,6 +16953,14 @@ export const purchases = pgTable("purchases", {
   statusIdx:    index("purchases_status_idx").on(t.status),
   createdIdx:   index("purchases_created_at_idx").on(t.createdAt),
 }));
+// One SUMIT PaymentID fulfils exactly one order (migration 0154, 2026-09-13).
+// SUMIT's Payment object has no external identifier, so this claim IS the binding.
+export const sumitPaymentClaims = pgTable("sumit_payment_claims", {
+  paymentId: bigint("payment_id", { mode: "number" }).primaryKey(),
+  orderRef:  text("order_ref").notNull(),
+  surface:   text("surface").notNull(),
+  claimedAt: timestamp("claimed_at", { withTimezone: true }).notNull().defaultNow(),
+});
 export type Purchase = typeof purchases.$inferSelect;
 export type InsertPurchase = typeof purchases.$inferInsert;
 

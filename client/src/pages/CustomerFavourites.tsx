@@ -200,7 +200,7 @@ function PreviouslyBookedCard({ booking, isRTL }: { booking: Booking; isRTL: boo
   };
 
   return (
-    <Link href={`/booking/${booking.requestId}`}>
+    <Link href={`/booking/confirmation/${booking.requestId}`}>
       <div
         className="p-4 bg-white border border-gray-100 rounded-2xl mb-3 active:bg-white cursor-pointer shadow-sm hover:shadow-md transition-shadow"
         dir={isRTL ? 'rtl' : 'ltr'}

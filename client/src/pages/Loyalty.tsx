@@ -9,11 +9,12 @@ import {
   getTierProgress, 
   getTierConfig, 
   getTierDisplay,
-  calculatePointsValue,
   type LoyaltyTier 
 } from '@/lib/loyalty';
-import { formatILS } from '@/lib/currency';
-import { TIER_CONFIGS } from '@shared/schema-loyalty';
+// Displayed discounts come from the authoritative ladder, not from a copy.
+import { calculateTotalDiscount } from '@shared/schema-loyalty';
+import { useLanguage } from '@/lib/languageStore';
+import { useWhoami } from '@/auth/useWhoami';
 import { Crown, Gift, Star, Sparkles, TrendingUp, Zap, Award, Heart, Diamond, Shield, ArrowRight, Users, Calendar, MapPin, Clock, Check, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Language } from '@/lib/i18n';
@@ -731,7 +732,12 @@ export default function Loyalty() {
   const { user: firebaseUser, loading: authLoading } = useFirebaseAuth();
   const { trackEvent } = useAnalytics();
   const [, setLocation] = useLocation();
-  const [language, setLanguage] = useState<Language>((localStorage.getItem('petwash_lang') as Language) || 'he');
+  // App language store (same as sibling pages) — not the legacy petwash_lang key.
+  const { language, setLanguage } = useLanguage();
+  // Membership truth = server-derived enrolment (same signal PrestigeHome uses).
+  // A signed-in account that has NOT joined is not a "Member"-tier holder.
+  const { whoami, isLoading: whoamiLoading } = useWhoami();
+  const prestigeEnrolled = whoami?.prestigeStatus === 'active';
   const [profileData, setProfileData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -776,7 +782,7 @@ export default function Loyalty() {
 
   const isRTL = language === 'he' || language === 'ar';
 
-  if (authLoading || (firebaseUser && loading)) {
+  if (authLoading || (firebaseUser && (loading || whoamiLoading))) {
     return (
       <Layout language={language} onLanguageChange={setLanguage}>
         <div className="min-h-screen flex items-center justify-center bg-white">
@@ -796,7 +802,10 @@ export default function Loyalty() {
     );
   }
 
-  if (!firebaseUser) {
+  // Signed out OR signed in without an active Prestige enrolment → the same
+  // join landing (CTA → /privilege). Previously a signed-in non-member got a
+  // fake Member-tier dashboard greeting them as "Guest".
+  if (!firebaseUser || !prestigeEnrolled) {
     return (
       <Layout language={language} onLanguageChange={setLanguage}>
         <PublicPrivilegeLanding language={language} isRTL={isRTL} />
@@ -805,22 +814,15 @@ export default function Loyalty() {
   }
 
   const washes = profileData?.washes || 0;
-  const firstName = profileData?.firstName || firebaseUser?.displayName?.split(' ')[0] || 'Guest';
+  const firstName = profileData?.firstName || firebaseUser?.displayName?.split(' ')[0] || '';
   const tierProgress = getTierProgress(washes);
   const currentTierConfig = getTierConfig(tierProgress.currentTier);
-  const totalSaved = calculatePointsValue(washes);
-
-  // Tier nudge — READ-ONLY display derived from the same `washes` this page already fetches.
-  // Canonical ladder = shared/schema-loyalty.ts TIER_CONFIGS (10 pts per ₪1, avg wash ₪50 = 500 pts,
-  // so every threshold is exactly washesRequired × 500). No balance is read or written beyond `washes`.
-  const POINTS_PER_WASH = 500;
-  const nextTierCfg = tierProgress.nextTier ? TIER_CONFIGS.find(c => c.id === tierProgress.nextTier) : undefined;
-  const pointsToNextTier = nextTierCfg ? Math.max(0, nextTierCfg.threshold - washes * POINTS_PER_WASH) : null;
-  const nextTierPointsNudge = tierProgress.nextTier && pointsToNextTier !== null && pointsToNextTier > 0
-    ? t('loyalty.pointsToNextTier', language)
-        .replace('{points}', pointsToNextTier.toLocaleString(language === 'he' ? 'he-IL' : 'en-US'))
-        .replace('{tier}', getTierDisplay(tierProgress.nextTier, language as any))
-    : null;
+  // Discount shown = BASE_CLUB_DISCOUNT + tier bonus, capped — straight from
+  // shared/schema-loyalty.ts. No "total saved" estimate (it multiplied washes by
+  // an assumed ₪50 price) and no points-to-next-tier estimate (it assumed
+  // 500 points per wash); neither figure is recorded anywhere.
+  const tierDiscount = (tier: LoyaltyTier) => calculateTotalDiscount(tier, 'none', false);
+  const currentDiscount = tierDiscount(tierProgress.currentTier);
   const memberSince = profileData?.createdAt ? new Date(profileData.createdAt.toDate()).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'long', year: 'numeric' }) : '';
 
   const getPerkTranslation = (perkKey: string): string => {
@@ -828,15 +830,12 @@ export default function Loyalty() {
       'perk_welcome_bonus': 'loyalty.perk.welcomeBonus',
       'perk_pet_profile': 'loyalty.perk.petProfile',
       'perk_email_notifications': 'loyalty.perk.emailNotifications',
-      'perk_10_discount': 'loyalty.perk.discount10',
       'perk_priority_booking': 'loyalty.perk.priorityBooking',
       'perk_birthday_bonus': 'loyalty.perk.birthdayBonus',
       'perk_sms_notifications': 'loyalty.perk.smsNotifications',
-      'perk_15_discount': 'loyalty.perk.discount15',
       'perk_priority_247': 'loyalty.perk.priority247',
       'perk_early_access_products': 'loyalty.perk.earlyAccessProducts',
       'perk_premium_shampoo': 'loyalty.perk.premiumShampoo',
-      'perk_20_discount': 'loyalty.perk.discount20',
       'perk_vip_priority': 'loyalty.perk.vipPriority',
       'perk_early_access_events': 'loyalty.perk.earlyAccessEvents',
       'perk_exclusive_vip': 'loyalty.perk.exclusiveVip',
@@ -845,6 +844,11 @@ export default function Loyalty() {
     const i18nKey = perkMap[perkKey];
     return i18nKey ? t(i18nKey, language) : perkKey;
   };
+  // Discount perks are dropped (the discount is shown once, from schema-loyalty),
+  // and so are keys with no translation — they rendered as raw "perk_…" strings.
+  const perkHasCopy = (perkKey: string) =>
+    !/^perk_\d+_discount$/.test(perkKey) && getPerkTranslation(perkKey) !== perkKey;
+  const displayPerks = currentTierConfig.perks.filter(perkHasCopy);
 
   const tierEmoji = (tier: LoyaltyTier) => {
     const map: Record<string, string> = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎', diamond: '💠', emerald: '💚', royal: '👑' };
@@ -928,17 +932,6 @@ export default function Loyalty() {
                           transition={{ delay: 0.8, duration: 1, ease: "easeOut" }}
                         />
                       </div>
-                      {nextTierPointsNudge && (
-                        <div className="flex justify-center mt-3">
-                          <span
-                            className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] uppercase tracking-wider font-bold"
-                            style={{ background: `${gold}12`, color: gold, borderRadius: '2px' }}
-                          >
-                            <Sparkles className="w-3 h-3" />
-                            {nextTierPointsNudge}
-                          </span>
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -952,10 +945,7 @@ export default function Loyalty() {
 
                   <div className="flex items-center gap-4 pt-4 border-t border-white/10">
                     <span className="px-3 py-1 text-[10px] uppercase tracking-wider text-white/80" style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
-                      {currentTierConfig.discount}% {t('loyalty.discount', language)}
-                    </span>
-                    <span className="px-3 py-1 text-[10px] uppercase tracking-wider" style={{ background: `${gold}15`, color: gold, borderRadius: '2px' }}>
-                      {formatILS(totalSaved, language)} {t('loyalty.totalSaved', language)}
+                      {currentDiscount}% {t('loyalty.discount', language)}
                     </span>
                   </div>
 
@@ -972,12 +962,11 @@ export default function Loyalty() {
         {/* QUICK STATS ROW */}
         <section className="bg-white border-t border-gray-100 py-10">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+            <div className="grid grid-cols-3 gap-6 text-center">
               {[
                 { value: washes.toString(), label: t('loyalty.washes', language), icon: <Sparkles className="w-5 h-5" /> },
-                { value: `${currentTierConfig.discount}%`, label: t('loyalty.discount', language), icon: <Gift className="w-5 h-5" /> },
-                { value: formatILS(totalSaved, language), label: t('loyalty.totalSaved', language), icon: <TrendingUp className="w-5 h-5" /> },
-                { value: currentTierConfig.perks.length.toString(), label: t('loyalty.yourPerks', language), icon: <Star className="w-5 h-5" /> },
+                { value: `${currentDiscount}%`, label: t('loyalty.discount', language), icon: <Gift className="w-5 h-5" /> },
+                { value: displayPerks.length.toString(), label: t('loyalty.yourPerks', language), icon: <Star className="w-5 h-5" /> },
               ].map((stat, i) => (
                 <motion.div
                   key={i}
@@ -1005,7 +994,7 @@ export default function Loyalty() {
               </h2>
             </motion.div>
             <div className="grid sm:grid-cols-2 gap-3">
-              {currentTierConfig.perks.map((perk, i) => (
+              {displayPerks.map((perk, i) => (
                 <motion.div
                   key={i}
                   initial={{ opacity: 0, x: isRTL ? 15 : -15 }}
@@ -1140,10 +1129,10 @@ export default function Loyalty() {
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-gray-400">{config.minWashes}+ {t('loyalty.washes', language)} · {config.discount}% {t('loyalty.discount', language)}</div>
+                            <div className="text-[11px] text-gray-400">{config.minWashes}+ {t('loyalty.washes', language)} · {tierDiscount(tier)}% {t('loyalty.discount', language)}</div>
                           </div>
                         </div>
-                        <div className="text-xs text-gray-400">{config.perks.length} {t('loyalty.yourPerks', language)}</div>
+                        <div className="text-xs text-gray-400">{config.perks.filter(perkHasCopy).length} {t('loyalty.yourPerks', language)}</div>
                       </motion.div>
                     );
                   })}

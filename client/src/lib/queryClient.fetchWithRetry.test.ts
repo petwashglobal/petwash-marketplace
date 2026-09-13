@@ -100,4 +100,42 @@ describe('fetchWithRetry', () => {
     ).rejects.toThrow(/Blocked request/);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+  // 2026-09-13 — native apps: page origin is capacitor://localhost, API is
+  // https://petwash.co.il. The guard blocked every call in TestFlight build 15.
+  it('allows our own API origin from a native (capacitor://localhost) page', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(new Response('ok', { status: 200 }));
+    globalThis.fetch = fetchSpy as any;
+    const prevWindow = (globalThis as any).window;
+    (globalThis as any).window = { location: { origin: 'capacitor://localhost' } };
+    try {
+      const res = await fetchWithRetry('https://petwash.co.il/api/prestige-pass/me', {});
+      expect(res.status).toBe(200);
+      await expect(fetchWithRetry('https://evil.example.com/api/x', {})).rejects.toThrow(/Blocked request/);
+    } finally {
+      (globalThis as any).window = prevWindow;
+    }
+  });
+
+  it('does NOT replay a deliberate 503 on a POST (e.g. ONLINE_CARD_NOT_LIVE)', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ errorCode: 'ONLINE_CARD_NOT_LIVE' }), { status: 503 }),
+    );
+    globalThis.fetch = fetchSpy as any;
+    const res = await fetchWithRetry('/api/booking-requests/x/pay', { method: 'POST' });
+    expect(res.status).toBe(503);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('still retries a POST that hit the cold-start SERVICE_STARTING 503', async () => {
+    const fetchSpy = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: 'SERVICE_STARTING' }), { status: 503 }))
+      .mockResolvedValueOnce(new Response('ok', { status: 200 }));
+    globalThis.fetch = fetchSpy as any;
+    const p = fetchWithRetry('/api/x', { method: 'POST' });
+    await vi.advanceTimersByTimeAsync(FETCH_RETRY_503_DELAYS_MS[0]);
+    const res = await p;
+    expect(res.status).toBe(200);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
 });

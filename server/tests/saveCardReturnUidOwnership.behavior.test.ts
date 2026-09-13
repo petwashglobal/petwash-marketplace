@@ -60,6 +60,17 @@ vi.mock('../services/SumitClient', () => ({
 }));
 
 const saveCardMock = vi.fn(async (_input: any) => ({ saved: true }));
+vi.mock('../lib/sumitPaymentReturn', async (importOriginal: any) => ({
+  ...(await importOriginal()),
+  // One payment → one order: a durable DB claim in production. These tests pin
+  // the Redis handoff, so the claim is an in-memory stand-in with the same rule.
+  claimSumitPayment: async (paymentId: string, orderRef: string, surface: string) => {
+    const prev = (globalThis as any).__sumitClaims?.get(paymentId);
+    (globalThis as any).__sumitClaims ??= new Map();
+    if (!prev) { (globalThis as any).__sumitClaims.set(paymentId, `${surface}:${orderRef}`); return 'claimed'; }
+    return prev === `${surface}:${orderRef}` ? 'same_order' : 'other_order';
+  },
+}));
 vi.mock('../services/SumitCardVault', () => ({
   isCardVaultEnabled: () => true,
   SumitCardVault: { saveCard: (input: any) => saveCardMock(input) },
@@ -75,6 +86,7 @@ async function makeApp(uid: string | null) {
 }
 
 beforeEach(() => {
+  (globalThis as any).__sumitClaims = new Map();
   redisStore.clear();
   capturedExternalId = null;
   saveCardMock.mockClear();
@@ -102,7 +114,7 @@ describe('GET /api/payments/save-card/return · ownership is server-derived, not
     // under the attacker's account instead.
     const returnRes = await request(app)
       .get('/api/payments/save-card/return')
-      .query({ ID: 'txn_123', ext: capturedExternalId, uid: 'attacker_uid' });
+      .query({ 'OG-PaymentID': '123', ext: capturedExternalId, uid: 'attacker_uid' });
 
     expect(returnRes.status).toBe(302);
     expect(returnRes.headers.location).toContain('card=saved');
@@ -119,7 +131,7 @@ describe('GET /api/payments/save-card/return · ownership is server-derived, not
 
     const returnRes = await request(app)
       .get('/api/payments/save-card/return')
-      .query({ ID: 'txn_999', ext: 'savecard_never-started_1', uid: 'anyone' });
+      .query({ 'OG-PaymentID': '999', ext: 'savecard_never-started_1', uid: 'anyone' });
 
     expect(returnRes.status).toBe(302);
     expect(returnRes.headers.location).toContain('card=failed');
@@ -135,13 +147,13 @@ describe('GET /api/payments/save-card/return · ownership is server-derived, not
 
     const first = await request(app)
       .get('/api/payments/save-card/return')
-      .query({ ID: 'txn_1', ext, uid: 'replay_uid' });
+      .query({ 'OG-PaymentID': '1', ext, uid: 'replay_uid' });
     expect(first.headers.location).toContain('card=saved');
     expect(saveCardMock).toHaveBeenCalledTimes(1);
 
     const replay = await request(app)
       .get('/api/payments/save-card/return')
-      .query({ ID: 'txn_1', ext, uid: 'replay_uid' });
+      .query({ 'OG-PaymentID': '1', ext, uid: 'replay_uid' });
     expect(replay.status).toBe(302);
     expect(replay.headers.location).toContain('card=failed');
     // Still only the one call from the first, legitimate return.
@@ -152,7 +164,7 @@ describe('GET /api/payments/save-card/return · ownership is server-derived, not
     const app = await makeApp('someone');
     const res = await request(app)
       .get('/api/payments/save-card/return')
-      .query({ ID: 'txn_1', uid: 'someone' });
+      .query({ 'OG-PaymentID': '1', uid: 'someone' });
     expect(res.status).toBe(302);
     expect(res.headers.location).toContain('card=failed');
     expect(saveCardMock).not.toHaveBeenCalled();

@@ -18,6 +18,14 @@ import goldCardFront from '@assets/IMG_1996_1770750271081.png';
 import { useSEO, pageSEO } from '@/lib/seo';
 import { SeoFaqSection, type SeoFaqItem } from '@/components/SeoFaqSection';
 
+/** DB wash-package → server-owned SUMIT catalog SKU (client/src/lib/sumitCheckout.ts). */
+const PACKAGE_SKU_BY_WASH_COUNT: Record<number, string> = {
+  1: 'SINGLE_WASH',
+  3: 'WASH_PACKAGE_3',
+  5: 'WASH_PACKAGE_5',
+  10: 'WASH_PACKAGE_10',
+};
+
 const WASH_PRICE = 55;
 
 // AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines can
@@ -141,9 +149,36 @@ export default function Packages() {
   const [showDetails, setShowDetails] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState<{ washesAdded: number; amountPaid: number; discountApplied: number } | null>(null);
 
-  const { data: packages, isLoading, isError } = useQuery<WashPackage[]>({
+  // 2026-09-13: the page showed ONLY the admin wash_packages table, which is
+  // EMPTY in production (GET /api/packages → []), so this page — linked from
+  // the Prestige home, Dashboard and Loyalty — offered nothing to buy. The
+  // price a customer is CHARGED comes from the server-owned SUMIT catalog, so
+  // that is what we list (names from the admin table when a row matches).
+  const { data: dbPackages, isLoading: dbLoading } = useQuery<WashPackage[]>({
     queryKey: ['/api/packages'],
   });
+  const { data: catalog, isLoading: catalogLoading, isError } = useQuery<{
+    products: Array<{ sku: string; amountCents: number; washCount?: number; surface?: string }>;
+  }>({
+    queryKey: ['/api/payments/sumit/catalog'],
+  });
+  const isLoading = dbLoading || catalogLoading;
+  const packages: WashPackage[] | undefined = catalog
+    ? catalog.products
+        .filter((p) => typeof p.washCount === 'number' && PACKAGE_SKU_BY_WASH_COUNT[p.washCount] === p.sku)
+        .sort((a, b) => (a.washCount ?? 0) - (b.washCount ?? 0))
+        .map((p) => {
+          const row = dbPackages?.find((d) => d.washCount === p.washCount);
+          return {
+            ...(row ?? {}),
+            id: row?.id ?? (p.washCount as number),
+            washCount: p.washCount as number,
+            name: row?.name ?? (p.washCount === 1 ? 'Single wash' : `${p.washCount} washes`),
+            nameHe: row?.nameHe ?? (p.washCount === 1 ? 'שטיפה אחת' : `${p.washCount} שטיפות`),
+            price: String(p.amountCents / 100),
+          } as WashPackage;
+        })
+    : undefined;
 
   const selectedPackage = packages?.find(p => p.id === selectedPackageId) ?? null;
 
@@ -181,7 +216,21 @@ export default function Packages() {
       setLocation('/sign-up');
       return;
     }
-    purchaseMutation.mutate({ packageId: selectedPackage.id });
+    // 2026-09-13: pay through the canonical SUMIT checkout (server-owned SKU
+    // price, verified return, receipt). The old POST /api/checkout rode the
+    // Nayax online rail (placeholder credentials in prod → 502), burned the
+    // one-time new-member discount BEFORE any payment existed, ignored the
+    // paymentUrl it returned, and then crashed on data.amountPaid.toFixed.
+    const sku = PACKAGE_SKU_BY_WASH_COUNT[selectedPackage.washCount];
+    if (sku) {
+      setLocation(`/checkout?sku=${sku}`);
+      return;
+    }
+    toast({
+      title: isHe ? 'החבילה אינה זמינה לרכישה אונליין' : 'This package is not available online',
+      description: isHe ? 'בחרו חבילת 1, 3, 5 או 10 שטיפות.' : 'Choose a 1, 3, 5 or 10 wash package.',
+      variant: 'destructive',
+    });
   };
 
   if (purchaseSuccess && selectedPackage) {

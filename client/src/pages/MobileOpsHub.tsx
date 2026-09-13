@@ -80,7 +80,7 @@ export default function MobileOpsHub() {
       id: 'payments',
       title: 'Payments',
       icon: CreditCard,
-      path: '/admin/nayax',
+      path: '/admin/nayax-events',
       color: '#10b981',
       description: 'Nayax monitoring'
     },
@@ -96,7 +96,7 @@ export default function MobileOpsHub() {
       id: 'analytics',
       title: 'Analytics',
       icon: BarChart3,
-      path: '/admin/analytics',
+      path: '/admin/providers/analytics',
       color: '#667eea',
       description: 'View reports & stats'
     },
@@ -137,7 +137,7 @@ export default function MobileOpsHub() {
       id: 'monitoring',
       title: 'Monitoring',
       icon: Activity,
-      path: '/admin/monitoring',
+      path: '/admin/ops-monitor',
       color: '#10b981',
       description: 'System health'
     }

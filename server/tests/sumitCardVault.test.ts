@@ -26,7 +26,7 @@ describe('SumitCardVault — fail-closed + flag-gated', () => {
 
   it('saveCard never saves when the flag is off', async () => {
     const r = await SumitCardVault.saveCard({
-      userId: 'u1', sumitCustomerId: 123, singlePaymentToken: 'tok_x',
+      userId: 'u1', sumitCustomerId: 123, expectedPaymentMethodId: '77',
     });
     expect(r.saved).toBe(false);
     expect(r.reason).toBe('vault_disabled');

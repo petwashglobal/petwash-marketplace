@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'wouter';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSuppressFloatingStack } from '@/hooks/useSuppressFloatingStack';
 import { Button } from '@/components/ui/button';
 import { WashPackages } from '@/components/WashPackages';
@@ -18,7 +18,7 @@ import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/componen
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
 import { smartGreeting, type GreetLang } from '@/lib/smartGreeting';
-import { israelOccasion } from '@/lib/israelOccasions';
+import type { Occasion } from '@/lib/israelOccasions';
 import { useQuery } from '@tanstack/react-query';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -57,8 +57,19 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
       return res.json();
     },
   });
-  // Today's Israeli-holiday / World-Dog-Day greeting (computed once per render cycle).
-  const occasion = useMemo(() => israelOccasion(language as GreetLang), [language]);
+  // Today's Israeli-holiday / World-Dog-Day greeting. Loaded after first paint:
+  // israelOccasions pulls in @hebcal/core (+ temporal-polyfill, ≈120 KB), and
+  // Landing is statically imported by App.tsx, so a static import put the Hebrew
+  // calendar in the main bundle of EVERY route (2026-09-13). Until it resolves
+  // the greeting is the time-of-day one — the same as on an ordinary day.
+  const [occasion, setOccasion] = useState<Occasion | null>(null);
+  useEffect(() => {
+    let alive = true;
+    import('@/lib/israelOccasions')
+      .then(({ israelOccasion }) => { if (alive) setOccasion(israelOccasion(language as GreetLang)); })
+      .catch(() => { /* greeting simply stays time-of-day */ });
+    return () => { alive = false; };
+  }, [language]);
   const greetOpts = { birthday: greetCtx?.birthday ?? null, petBirthdays: greetCtx?.pets ?? [], occasion };
 
   /** Navigate to the user's account destination.

@@ -3490,6 +3490,7 @@ self.addEventListener('notificationclick', (event) => {
 
       const {
         generateRegistrationOptionsForUser,
+        sendWebAuthnError,
       } = await import('./webauthn/service');
 
       const result = await generateRegistrationOptionsForUser(
@@ -3497,15 +3498,19 @@ self.addEventListener('notificationclick', (event) => {
         decoded.email || '',
         isAdmin,
         req,
-        res
       );
 
       if (!result.success) {
-        return res.status(result.error?.status || 500).json({ error: result.error?.message || 'Failed to generate options' });
+        // bilingualError carries { error, error_en, error_he, statusCode } — the
+        // old `error.status` / `error.message` read undefined on every failure.
+        return sendWebAuthnError(res, result.error, 500, 'Failed to generate registration options');
       }
 
       logger.info('[WebAuthn Register] Options generated', { uid: decoded.uid, isAdmin });
-      res.json({ options: result.options });
+      // challengeId: the server-side, single-use challenge handle. The client
+      // sends it back to /register/verify. challengeKey is the same value under
+      // the name older client bundles already send back.
+      res.json({ options: result.options, challengeId: result.challengeId, challengeKey: result.challengeId });
     } catch (error) {
       logger.error('[WebAuthn Register] Options error', error);
       res.status(500).json({ error: 'Failed to generate registration options' });
@@ -3520,7 +3525,8 @@ self.addEventListener('notificationclick', (event) => {
     let email: string | undefined;
     
     try {
-      const { response } = req.body;
+      const { response } = req.body || {};
+      const challengeId = req.body?.challengeId ?? req.body?.challengeKey;
       const token = req.cookies?.pw_session;
       
       if (!token) {
@@ -3535,19 +3541,18 @@ self.addEventListener('notificationclick', (event) => {
       const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
-      const { verifyAndStoreRegistration } = await import('./webauthn/service');
+      const { verifyAndStoreRegistration, sendWebAuthnError } = await import('./webauthn/service');
 
+      // The challenge must have been issued to THIS signed-in uid (bound in the store).
       const result = await verifyAndStoreRegistration(
         response,
+        challengeId,
+        decoded.uid,
         req,
-        res
       );
 
       if (!result.verified) {
-        // Return proper status code from service instead of throwing
-        return res.status(result.error?.status || 400).json({ 
-          error: result.error?.message || 'Verification failed' 
-        });
+        return sendWebAuthnError(res, result.error, 400, 'Verification failed');
       }
 
       // Get city for location-based alerts
@@ -3587,39 +3592,58 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
       
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Registration failed' });
+      // Never echo internal error text (Firebase / Firestore messages) to the client.
+      res.status(400).json({ error: 'Registration failed' });
     }
   });
 
   // POST /api/webauthn/login/options - Generate passkey authentication options (no auth required)
   app.post('/api/webauthn/login/options', webauthnLimiter, async (req, res) => {
     try {
-      const { email } = req.body;
+      const rawEmail = req.body?.email;
+      const { sendWebAuthnError } = await import('./webauthn/service');
+
+      if (rawEmail !== undefined && rawEmail !== null && rawEmail !== '' && typeof rawEmail !== 'string') {
+        return res.status(400).json({ error: 'Invalid email' });
+      }
+      const email = typeof rawEmail === 'string' ? rawEmail.trim() : '';
 
       if (!email) {
+        // Discoverable (usernameless) — this is the conditional-UI probe that runs
+        // on every signed-out page load. It needs no user: a normal 200 options
+        // payload whenever the origin is allowed and the challenge store is up.
         const { generateDiscoverableAuthenticationOptions } = await import('./webauthn/service');
-        const result = await generateDiscoverableAuthenticationOptions(req, res);
+        const result = await generateDiscoverableAuthenticationOptions(req);
 
         if (!result.success) {
-          return res.status(result.error?.status || 400).json({ error: result.error?.message || 'Failed to generate options' });
+          return sendWebAuthnError(res, result.error, 400, 'Failed to generate options');
         }
 
-        logger.info('[WebAuthn Login] Discoverable options generated (no email)');
-        return res.json({ options: result.options, challengeKey: result.challengeKey, discoverable: true });
+        return res.json({
+          options: result.options,
+          challengeId: result.challengeId,
+          challengeKey: result.challengeId, // same value; older bundles read this name
+          discoverable: true,
+        });
       }
 
       const { generateAuthenticationOptionsForEmail } = await import('./webauthn/service');
-      const result = await generateAuthenticationOptionsForEmail(email, req, res);
+      const result = await generateAuthenticationOptionsForEmail(email, req);
 
       if (!result.success) {
-        return res.status(result.error?.status || 400).json({ error: result.error?.message || 'No passkeys found' });
+        return sendWebAuthnError(res, result.error, 400, 'No passkeys found');
       }
 
-      logger.info('[WebAuthn Login] Options generated', { email, hasCredentials: true });
-      res.json({ options: result.options });
+      logger.info('[WebAuthn Login] Options generated', { hasCredentials: true });
+      res.json({
+        options: result.options,
+        challengeId: result.challengeId,
+        challengeKey: result.challengeId,
+        discoverable: false,
+      });
     } catch (error) {
       logger.error('[WebAuthn Login] Options error', error);
-      res.status(400).json({ error: error instanceof Error ? error.message : 'No passkeys found for this email' });
+      res.status(500).json({ error: 'Failed to generate options' });
     }
   });
 
@@ -3631,20 +3655,18 @@ self.addEventListener('notificationclick', (event) => {
     let email: string | undefined;
     
     try {
-      const { response } = req.body;
+      const { response } = req.body || {};
+      const challengeId = req.body?.challengeId ?? req.body?.challengeKey;
 
-      const { verifyAuthenticationAndGetUser, verifyDiscoverableAuthentication } = await import('./webauthn/service');
-      
-      const isDiscoverable = req.body.discoverable === true;
-      
-      const result = isDiscoverable 
-        ? await verifyDiscoverableAuthentication(response, req, res)
-        : await verifyAuthenticationAndGetUser(response, req, res);
-      
+      const { verifyAuthentication, sendWebAuthnError } = await import('./webauthn/service');
+
+      // The server-side challenge record (consumed exactly once) decides whether
+      // this is a discoverable or an email-scoped ceremony — the client's
+      // `discoverable` flag is no longer trusted for that choice.
+      const result = await verifyAuthentication(response, challengeId, req);
+
       if (!result.verified) {
-        return res.status(result.error?.status || 401).json({ 
-          error: result.error?.message || 'Authentication failed' 
-        });
+        return sendWebAuthnError(res, result.error, 401, 'Authentication failed');
       }
       
       uid = result.uid;
@@ -3742,7 +3764,7 @@ self.addEventListener('notificationclick', (event) => {
         await checkFailedBurst(uid, email);
       }
       
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Authentication failed' });
+      res.status(400).json({ error: 'Authentication failed' });
     }
   });
 
@@ -7961,59 +7983,19 @@ self.addEventListener('notificationclick', (event) => {
   // MODERN E-VOUCHER SYSTEM (2025-2026 Standard with UUID, Hashing, Anti-Fraud)
   // ============================================================================
 
-  // Purchase voucher (guest or authenticated)
-  app.post('/api/vouchers/purchase', async (req, res) => {
-    const correlationId = crypto.randomUUID();
-    try {
-      const schema = z.object({
-        type: z.enum(['FIXED', 'STORED_VALUE']),
-        amount: z.number().positive().max(2000).multipleOf(0.01),
-        currency: z.enum(['ILS', 'USD', 'EUR']).default('ILS'),
-        purchaserEmail: z.string().email({ message: "Please enter a valid email address" }),
-        recipientEmail: z.string().email({ message: "Please enter a valid email address" }).optional(),
-        expiresAt: z.string().datetime().optional(),
-        returnPlainForTest: z.boolean().optional()
-      });
-      
-      const data = schema.parse(req.body);
-      const userId = (req as any).user?.claims?.sub;
-      
-      const result = await storage.createVoucher({
-        type: data.type,
-        currency: data.currency,
-        amount: data.amount.toFixed(2),
-        purchaserEmail: data.purchaserEmail,
-        recipientEmail: data.recipientEmail || null,
-        purchaserUid: userId || null,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-        nayaxTxId: null
-      });
-      
-      const emailRecipient = data.recipientEmail || data.purchaserEmail;
-      await EmailService.sendVoucherPurchaseEmail(
-        emailRecipient,
-        result.codePlain,
-        result.codeLast4,
-        data.amount.toFixed(2),
-        data.currency,
-        data.expiresAt ? new Date(data.expiresAt) : null,
-        'he'
-      );
-      
-      logger.info('Voucher purchased', { correlationId, voucherId: result.voucherId });
-      
-      res.status(201).json({
-        voucherId: result.voucherId,
-        codeLast4: result.codeLast4,
-        ...(data.returnPlainForTest && process.env.NODE_ENV !== 'production' ? { code: result.codePlain } : {})
-      });
-    } catch (error) {
-      logger.error('Voucher purchase failed', error, { correlationId });
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid request', details: error.errors });
-      }
-      res.status(500).json({ error: 'Purchase failed' });
-    }
+  // SEALED 2026-09-13 (P0). POST /api/vouchers/purchase took NO payment and NO
+  // login: it created a real e-voucher for any amount up to ₪2,000, emailed the
+  // plain code to any address (a free SendGrid relay), and /api/vouchers/claim
+  // → /api/gift-cards/activate-wallet then turned that code into spendable
+  // eGift wallet credit. No client page calls it. Paid gifts are issued only by
+  // verified-payment flows (SUMIT /begin → PurchaseActivationService,
+  // /api/egift/guest/*). Never re-open this without a verified payment binding.
+  // Pinned by server/tests/voucherPurchaseSealed.regression.test.ts.
+  app.post('/api/vouchers/purchase', (_req, res) => {
+    res.status(410).json({
+      error: 'This endpoint is retired. Gift cards are sold at /egift.',
+      errorCode: 'VOUCHER_PURCHASE_RETIRED',
+    });
   });
 
   // Claim voucher (requires authentication)
@@ -12339,6 +12321,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Phase 6.12 — winback click-tracking (no auth; JWT-gated internally)
   app.use('/w', winbackTrackingRouter);
+  // Hosting forwards only /api/**, so /w links never reached this router (NotFound,
+  // zero click data). Links are now built under /api/w (2026-09-13).
+  app.use('/api/w', winbackTrackingRouter);
   
   // Control Panel Registry - RBAC (Role-Based Access Control)
   app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);

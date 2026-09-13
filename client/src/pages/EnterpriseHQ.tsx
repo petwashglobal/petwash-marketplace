@@ -41,12 +41,12 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
 
   const navigation = [
     { name: "HQ Dashboard", href: "/enterprise/hq", icon: Home },
-    { name: "Stations", href: "/enterprise/stations", icon: Building2 },
-    { name: "Franchisees", href: "/enterprise/franchisees", icon: Users },
-    { name: "Documents", href: "/enterprise/documents", icon: FileText },
-    { name: "Work Orders", href: "/enterprise/work-orders", icon: Wrench },
-    { name: "Analytics", href: "/enterprise/analytics", icon: BarChart3 },
-    { name: "Security & Access", href: "/enterprise/rbac", icon: Shield },
+    { name: "Stations", href: "/admin/stations", icon: Building2 },
+    { name: "Franchisees", href: "/admin/franchise", icon: Users },
+    { name: "Documents", href: "/documents", icon: FileText },
+    { name: "Work Orders", href: "/admin/jobs", icon: Wrench },
+    { name: "Analytics", href: "/admin/providers/analytics", icon: BarChart3 },
+    { name: "Security & Access", href: "/admin/users", icon: Shield },
   ];
 
   const { data: analytics, isLoading: analyticsLoading} = useQuery({

@@ -23,6 +23,7 @@ import { logger } from '../lib/logger';
 import { resolveWashDiscount, applyWashDiscountCents, type WashDiscount } from '../services/memberDiscount';
 import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
 import { sumitExternalRefMismatch, readSumitExternalRef } from '../lib/sumitExternalRef';
+import { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } from '../lib/sumitPaymentReturn';
 
 const router = Router();
 
@@ -310,7 +311,8 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
 
 // GET /api/payments/sumit/return  (SUMIT redirects the customer back here)
 router.get('/return', async (req: Request, res: Response) => {
-  const txnId = String(req.query.ID || req.query.id || '');
+  // SUMIT appends OG-PaymentID (official schema) — see server/lib/sumitPaymentReturn.ts.
+  const txnId = readSumitPaymentIdFromReturn(req.query as Record<string, unknown>);
   const ext = String(req.query.ext || '');
   const base = baseUrl();
   if (!txnId) return res.redirect(`${base}/payment-failed`);
@@ -333,6 +335,12 @@ router.get('/return', async (req: Request, res: Response) => {
       txnId, ext, sumitRef: readSumitExternalRef(verify.raw),
     });
     return res.redirect(`${base}/payment-failed?ref=${encodeURIComponent(ext)}`);
+  }
+  // ONE PAYMENT, ONE ORDER — the durable binding SUMIT's payload cannot give us.
+  const claim = await claimSumitPayment(txnId, ext || 'no_ext', 'wallet_purchase');
+  if (!claimAllowsFulfil(claim)) {
+    logger.error('[SumitPay] 🔴 payment not fulfilled — claim refused', { txnId, ext, claim });
+    return res.redirect(`${base}/payment-failed?ref=${encodeURIComponent(ext || txnId)}`);
   }
   logger.info('[SumitPay] payment verified', { txnId, ext });
 

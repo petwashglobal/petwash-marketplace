@@ -569,7 +569,7 @@ export default function PrestigeHome() {
           </div>
           {lastEvent ? (
             <button
-              onClick={() => navigate(lastEvent.transactionId ? `/receipt/${lastEvent.transactionId}` : '/my-wallet')}
+              onClick={() => navigate(lastEvent.transactionId ? '/account/transactions' : '/my-wallet') /* was /receipt/:id — wallet TXN- ids are not in smart_wash_receipts, every tap said "Receipt Not Found" (2026-09-13) */}
               className="w-full text-left rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3"
             >
               <span className="w-10 h-10 rounded-full bg-[#FBF6E7] border border-[#ECDFB4] flex items-center justify-center shrink-0">

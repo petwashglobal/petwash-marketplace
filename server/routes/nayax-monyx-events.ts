@@ -20,6 +20,7 @@ import {
 import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { isRealSecret } from '../lib/envSwitch';
 import {
   awardLoyaltyPoints as awardCanonicalPoints,
   reverseLoyaltyPoints as reverseCanonicalPoints,
@@ -46,7 +47,8 @@ const KIOSK_PRESTIGE_SYNC_ENABLED =
 const router = express.Router();
 
 // ─── Configuration ───────────────────────────────────────────────────────────
-const WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || '';
+// A deploy placeholder is NOT a signing key (2026-09-13) — treat it as unset → 503 in prod.
+const WEBHOOK_SECRET = isRealSecret(process.env.NAYAX_WEBHOOK_SECRET) ? (process.env.NAYAX_WEBHOOK_SECRET as string) : '';
 
 // Points per ILS spent — 1 point per ₪1 gross
 const POINTS_PER_ILS = 1;

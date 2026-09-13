@@ -1738,6 +1738,12 @@ export default function EGift() {
             </div>
           </div>
 
+          {/* Custom amount is offered ONLY on the guest express rail, which prices
+              any ₪50–1,500 amount server-side. The signed-in rail is SKU-priced
+              (₪100/250/500/1,000) and answered a custom amount with "coming soon"
+              AFTER the member had typed it and filled the whole form — so the box
+              is not shown to signed-in users at all. */}
+          {!user && (
           <div className="mt-6 sm:mt-8 max-w-md mx-auto">
             <Button
               type="button"
@@ -1780,6 +1786,7 @@ export default function EGift() {
               </div>
             )}
           </div>
+          )}
 
           {selectedOption && (
             <div className="mt-8 sm:mt-10 md:mt-12 text-center">

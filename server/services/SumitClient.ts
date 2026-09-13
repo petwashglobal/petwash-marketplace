@@ -28,6 +28,8 @@
 
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { parseSumitPaymentId } from '../lib/sumitPaymentId';
+export { parseSumitPaymentId };
 import { israeliFiscalDate } from '@shared/israel-compliance-config';
 
 /**
@@ -81,24 +83,33 @@ function readEnv() {
  * the outbound audit row).
  */
 function extractDocumentId(body: unknown): string | undefined {
-  if (!body || typeof body !== 'object') return undefined;
-  const b = body as Record<string, unknown>;
-  // Try known/likely shapes:
-  const candidates = [
-    b.DocumentNumber,
-    b.documentNumber,
-    (b.Document as Record<string, unknown> | undefined)?.DocumentNumber,
-    (b.Document as Record<string, unknown> | undefined)?.Number,
-    b.DocumentID,
-    b.documentId,
-    b.ID,
-    b.id,
-  ];
-  for (const c of candidates) {
-    if (typeof c === 'string' && c.trim()) return c.trim();
-    if (typeof c === 'number' && Number.isFinite(c)) return String(c);
-  }
+  // Official schema (api.sumit.co.il/swagger, 2026-09-13): documents/create,
+  // payments/charge and recurring/charge all return the id at Data.DocumentID
+  // (integer) and the printed number separately at Data.DocumentNumber. The old
+  // lookup only read the TOP level — so every document SUMIT really created came
+  // back "without an id". DocumentNumber is deliberately NOT a fallback: it is
+  // not the id, and an id feeds OriginalDocumentID on credit notes.
+  const id = (body as { Data?: { DocumentID?: unknown } } | null)?.Data?.DocumentID;
+  if (typeof id === 'number' && Number.isSafeInteger(id) && id > 0) return String(id);
   return undefined;
+}
+
+/**
+ * SUMIT answers EVERY call with HTTP 200 — success is the envelope `Status: 0`.
+ * Live 2026-09-13: wrong key → 200 + Status 1 "Invalid Credentials"; unknown
+ * payment → 200 + Status 1 "Payment not found". A `res.ok` check alone treats a
+ * refusal as success. Every call goes through this.
+ */
+export function readSumitEnvelope(parsed: unknown):
+  | { ok: true; data: Record<string, any> }
+  | { ok: false; reason: string } {
+  const e = parsed as { Status?: unknown; UserErrorMessage?: unknown; Data?: unknown } | null;
+  if (!e || typeof e !== 'object') return { ok: false, reason: 'SUMIT returned no JSON envelope' };
+  if (e.Status !== 0) {
+    return { ok: false, reason: `SUMIT Status ${String(e.Status)}: ${String(e.UserErrorMessage ?? '').slice(0, 160)}` };
+  }
+  const data = e.Data && typeof e.Data === 'object' ? (e.Data as Record<string, any>) : {};
+  return { ok: true, data };
 }
 
 /**
@@ -136,28 +147,6 @@ function safePreview(obj: unknown): string {
   }
 }
 
-/**
- * Last-resort extraction of a hosted-payment-page URL from an unknown SUMIT
- * response shape: recursively find the first https URL string. Only used after
- * every known field name misses, so an unexpected key still routes the customer
- * to SUMIT instead of a silent 502.
- */
-function deepFindUrl(obj: unknown, depth = 0): string | undefined {
-  if (obj == null || depth > 6) return undefined;
-  if (typeof obj === 'string') {
-    return /^https:\/\/\S+/i.test(obj.trim()) ? obj.trim() : undefined;
-  }
-  if (Array.isArray(obj)) {
-    for (const v of obj) { const u = deepFindUrl(v, depth + 1); if (u) return u; }
-    return undefined;
-  }
-  if (typeof obj === 'object') {
-    for (const v of Object.values(obj as Record<string, unknown>)) {
-      const u = deepFindUrl(v, depth + 1); if (u) return u;
-    }
-  }
-  return undefined;
-}
 
 export interface SumitHealth {
   wired: boolean;
@@ -360,6 +349,11 @@ export class SumitClient {
 
     // Extract the SUMIT-assigned document id. Field name unverified;
     // try common variants in order.
+    const envelope = readSumitEnvelope(parsedBody);
+    if (!envelope.ok) {
+      logger.warn('[SumitClient] createDocument refused by SUMIT', { supplierInvoiceId: input.supplierInvoiceId, reason: envelope.reason });
+      return { wired: true, idempotencyKey: input.idempotencyKey, reason: envelope.reason, rawResponse: parsedBody };
+    }
     const sumitDocumentId = extractDocumentId(parsedBody);
 
     logger.info('[SumitClient] document created', {
@@ -573,6 +567,11 @@ export class SumitClient {
       };
     }
 
+    const envelope = readSumitEnvelope(parsedBody);
+    if (!envelope.ok) {
+      logger.warn('[SumitClient] createCustomerReceipt refused by SUMIT', { idempotencyKey: input.idempotencyKey, reason: envelope.reason, ...input.context });
+      return { wired: true, idempotencyKey: input.idempotencyKey, reason: envelope.reason, rawResponse: parsedBody };
+    }
     const sumitDocumentId = extractDocumentId(parsedBody);
     logger.info('[SumitClient] customer receipt created', {
       idempotencyKey: input.idempotencyKey, sumitDocumentId, sandbox: env.sandbox,
@@ -662,6 +661,11 @@ export class SumitClient {
     if (!res.ok) {
       logger.warn('[SumitClient] createCreditDocument non-2xx', { idempotencyKey: input.idempotencyKey, status: res.status, elapsedMs: Date.now() - startMs, ...input.context });
       return { wired: true, idempotencyKey: input.idempotencyKey, reason: `SUMIT returned ${res.status}`, rawResponse: parsedBody };
+    }
+    const envelope = readSumitEnvelope(parsedBody);
+    if (!envelope.ok) {
+      logger.warn('[SumitClient] createCreditDocument refused by SUMIT', { idempotencyKey: input.idempotencyKey, reason: envelope.reason, ...input.context });
+      return { wired: true, idempotencyKey: input.idempotencyKey, reason: envelope.reason, rawResponse: parsedBody };
     }
     const sumitDocumentId = extractDocumentId(parsedBody);
     logger.info('[SumitClient] credit document created', { idempotencyKey: input.idempotencyKey, sumitDocumentId, originalId, ...input.context });
@@ -942,9 +946,13 @@ export class SumitClient {
     // Response fields pinned to the official contract. Do NOT add fallback
     // field-name heuristics — if SUMIT changes the contract we want tests +
     // logs to surface it, not silently paper over.
-    const b = (parsedBody && typeof parsedBody === 'object')
-      ? parsedBody as Record<string, unknown>
-      : {};
+    // Official schema: { Status, Data: { CustomerID, CustomerHistoryURL } }.
+    const envelope = readSumitEnvelope(parsedBody);
+    if (!envelope.ok) {
+      logger.warn('[SumitClient] createCustomer refused by SUMIT', { externalIdentifier: input.externalIdentifier, reason: envelope.reason });
+      return { wired: true, reason: envelope.reason, rawResponse: parsedBody };
+    }
+    const b = envelope.data;
     const sumitCustomerId = b.CustomerID != null ? String(b.CustomerID) : undefined;
     const customerHistoryUrl = typeof b.CustomerHistoryURL === 'string'
       ? b.CustomerHistoryURL
@@ -1034,16 +1042,11 @@ export class SumitClient {
     // most likely name (`URL`) — if SUMIT confirms a different key, the log
     // + rawResponse surface it and we pin it in the next iteration. Do NOT
     // fall back to deep parsing.
-    const b = (parsedBody && typeof parsedBody === 'object')
-      ? parsedBody as Record<string, unknown>
-      : {};
-    const urlOut = typeof b.URL === 'string'
-      ? b.URL
-      : typeof b.DetailsURL === 'string'
-        ? b.DetailsURL
-        : typeof b.CustomerHistoryURL === 'string'
-          ? b.CustomerHistoryURL
-          : undefined;
+    // Official schema: { Status, Data: { CustomerHistoryURL } }.
+    const envelope = readSumitEnvelope(parsedBody);
+    if (!envelope.ok) return { wired: true, reason: envelope.reason, rawResponse: parsedBody };
+    const b = envelope.data;
+    const urlOut = typeof b.CustomerHistoryURL === 'string' ? b.CustomerHistoryURL : undefined;
 
     if (!urlOut) {
       logger.warn('[SumitClient] getCustomerDetailsUrl — no URL field in response', {
@@ -1117,9 +1120,29 @@ export class SumitClient {
       };
     }
 
+    // SUMIT answers EVERYTHING with HTTP 200 — including wrong credentials.
+    // Live probe 2026-09-13 with a wrong key: HTTP 200,
+    // { Data: null, Status: 1, UserErrorMessage: "Invalid Credentials (CompanyID/APIKey are incorrect)" }.
+    // The old branch reported that as "Key authenticated". Status must be 0.
+    const envelope = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+    if (res.ok && envelope.Status !== 0) {
+      const msg = String(envelope.UserErrorMessage ?? '');
+      const credentials = /credential|apikey|companyid/i.test(msg);
+      logger.warn('[SumitClient] connectionTest refused by SUMIT', { httpStatus: res.status, sumitStatus: envelope.Status, credentials });
+      return {
+        ok: false,
+        reachable: true,
+        authRejected: credentials,
+        httpStatus: res.status,
+        reason: credentials
+          ? 'SUMIT rejected the credentials — check the API key / Company ID'
+          : `SUMIT refused the call (Status ${String(envelope.Status)}): ${msg.slice(0, 120)}`,
+      };
+    }
+
     if (res.ok) {
-      const b = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
-      const rawRate = b.VATRate ?? b.Rate ?? (b.Data as Record<string, unknown> | undefined)?.VATRate;
+      // Live shape: { Status: 0, Data: { Rate: 18.0 } }.
+      const rawRate = (envelope.Data as Record<string, unknown> | undefined)?.Rate;
       const vatRate = typeof rawRate === 'number' ? rawRate : undefined;
       logger.info('[SumitClient] connectionTest OK', { httpStatus: res.status, vatRate });
       return {
@@ -1239,12 +1262,16 @@ export class SumitClient {
       // Try every plausible key, then fall back to a deep scan for the first
       // https URL anywhere in the payload — so an unexpected field name still
       // works on the first real call rather than silently 502-ing the customer.
-      const url =
-        parsed?.RedirectURL || parsed?.PaymentURL || parsed?.URL || parsed?.PaymentPageURL || parsed?.PaymentPageUrl ||
-        parsed?.RedirectUrl || parsed?.Url ||
-        parsed?.Data?.RedirectURL || parsed?.Data?.URL || parsed?.Data?.PaymentURL || parsed?.Data?.PaymentPageURL ||
-        parsed?.Payment?.RedirectURL || parsed?.Payment?.URL ||
-        deepFindUrl(parsed);
+      // Official schema + live 2026-08-05: { Status: 0, Data: { RedirectURL } }.
+      // No deep scan: on a refusal the only https string may be inside the
+      // error text, and that must never be handed to a customer as a pay page.
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) {
+        logger.error('[SumitClient] beginRedirect refused by SUMIT', { externalId: input.externalId, reason: envelope.reason });
+        return { wired: true, reason: envelope.reason, rawResponse: parsed };
+      }
+      const rawUrl = envelope.data.RedirectURL;
+      const url = typeof rawUrl === 'string' && /^https:\/\//.test(rawUrl) ? rawUrl : undefined;
       if (!url) {
         // Diagnostic gold: dump the actual shape so we learn the real field name
         // from ONE live test instead of guessing again.
@@ -1263,22 +1290,44 @@ export class SumitClient {
    * spoofable — this is the authoritative check before we treat a payment as real.
    * No-op without creds; never throws.
    *
-   * ENDPOINT FIX (2026-06-23): was POST /billing/payments/gettransaction/ which is
-   * NOT in the official OfficeGuy API (it would 404 → verification always failed).
-   * Our redirect flow is /billing/payments/beginredirect/, so the namespace-correct
-   * "get" is POST /billing/payments/get/ ("Get payment details"). ⚠️ The request
-   * field (PaymentID vs TransactionID) + the Valid/Amount response field names are
-   * still UNVERIFIED — confirm in SUMIT sandbox before go-live. We send both id
-   * fields and accept multiple response shapes as defence-in-depth.
+   * FIELDS PINNED TO SUMIT'S OFFICIAL SCHEMA (2026-09-13), read from
+   * https://api.sumit.co.il/swagger/v1/swagger.json, not guessed:
+   *   request   { Credentials, PaymentID: integer }
+   *   response  { Status: 0 | 1 | 2, UserErrorMessage, Data: { Payment: {
+   *               ID, CustomerID, ValidPayment: boolean, Status, Amount: number, … } } }
+   * Live probe on the production account: an unknown id answers HTTP 200 with
+   * Status 1 "Payment not found" and Data null.
+   *
+   * The previous body read `Valid` / `Data.Valid` / `Status === 'approved'` —
+   * none of which SUMIT sends — so every genuinely paid customer would have been
+   * verified as NOT paid, and it read `Data.Amount` (really `Data.Payment.Amount`),
+   * so the amount comparison every caller relies on was silently skipped.
+   *
+   * FAIL CLOSED: a payment is valid only when Status is Success, ValidPayment is
+   * exactly true, the returned Payment.ID is the id we asked about, and Amount is
+   * a finite number. A missing amount is now a refusal, never "skip the check".
    */
-  async getTransaction(transactionId: string): Promise<{ wired: boolean; valid: boolean; amountCents?: number; raw?: unknown; reason?: string }> {
+  async getTransaction(transactionId: string): Promise<{
+    wired: boolean;
+    valid: boolean;
+    amountCents?: number;
+    customerId?: string;
+    paymentMethodId?: string;
+    raw?: unknown;
+    reason?: string;
+  }> {
     const env = readEnv();
     if (!isWired()) return { wired: false, valid: false, reason: 'SUMIT not enabled' };
+    const paymentId = parseSumitPaymentId(transactionId);
+    if (paymentId === null) {
+      logger.warn('[SumitClient] getTransaction refused a non-numeric payment id', { transactionId: String(transactionId).slice(0, 40) });
+      return { wired: true, valid: false, reason: 'invalid_payment_id' };
+    }
     try {
       const res = await fetch(`${env.baseUrl}/billing/payments/get/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ Credentials: { CompanyID: env.companyId, APIKey: env.apiKey }, PaymentID: transactionId, TransactionID: transactionId }),
+        body: JSON.stringify({ Credentials: { CompanyID: env.companyId, APIKey: env.apiKey }, PaymentID: paymentId }),
       });
       let parsed: any = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
@@ -1286,23 +1335,7 @@ export class SumitClient {
         logger.error('[SumitClient] getTransaction non-2xx', { transactionId, status: res.status, raw: safePreview(parsed) });
         return { wired: true, valid: false, reason: `SUMIT returned ${res.status}`, raw: parsed };
       }
-      // Valid/approved field name unverified — accept common shapes. Log the raw
-      // shape so the first live verify confirms the real Valid/Amount field names
-      // (turns a silent verify-fail into an immediate, fixable answer).
-      logger.info('[SumitClient] getTransaction ok — raw shape for field confirmation', { transactionId, raw: safePreview(parsed) });
-      const valid = parsed?.Valid === true || parsed?.Valid === 1 || parsed?.Data?.Valid === true ||
-        String(parsed?.Status || parsed?.Data?.Status || '').toLowerCase() === 'approved';
-      // Charged amount (gross, ILS) — field name UNVERIFIED, accept common shapes.
-      // Returned in CENTS so callers can compare against purchases.amountCents
-      // (defence-in-depth against price tampering). undefined when not present.
-      const rawAmount =
-        parsed?.Amount ?? parsed?.Sum ?? parsed?.Total ??
-        parsed?.Data?.Amount ?? parsed?.Data?.Sum ?? parsed?.Data?.Total ??
-        parsed?.Payment?.Amount ?? parsed?.payment?.amount;
-      const amountNum = Number(rawAmount);
-      const amountCents =
-        rawAmount != null && Number.isFinite(amountNum) ? Math.round(amountNum * 100) : undefined;
-      return { wired: true, valid, amountCents, raw: parsed };
+      return { wired: true, ...interpretSumitPaymentGet(parsed, paymentId), raw: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] getTransaction network error', { transactionId, err: err?.message });
       return { wired: false, valid: false, reason: `Network error: ${err?.message}` };
@@ -1336,16 +1369,26 @@ export class SumitClient {
     const env = readEnv();
     if (!isWired()) return { wired: false, reason: 'SUMIT not enabled' };
 
+    // DISABLED 2026-09-13 — fail closed, same reason as chargeSavedCard: the
+    // official /billing/recurring/charge/ schema has no idempotency field, and
+    // the old body sent fields SUMIT does not have (Language:'he',
+    // ExternalIdentifier, RecurrenceMonths — real: DocumentLanguage,
+    // Items[].Item.Duration_Months). Nothing calls this today.
+    if (process.env.SUMIT_RECURRING_CHARGE_ENABLED !== 'true') {
+      return { wired: true, reason: 'recurring charge disabled: SUMIT has no idempotency key for recurring/charge' };
+    }
     const body = {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
       Customer: { ID: input.sumitCustomerId },
-      Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountIls }],
+      Items: [{
+        Item: { Name: input.description, ...(input.recurrenceMonths ? { Duration_Months: input.recurrenceMonths } : {}) },
+        Quantity: 1,
+        UnitPrice: input.amountIls,
+      }],
       VATIncluded: true,        // gross already includes VAT
-      Language: 'he',
-      ExternalIdentifier: input.idempotencyKey,
+      DocumentLanguage: 'Hebrew',
       // REQUIRED (SUMIT docs): email the fiscal doc after each recurring charge.
       UpdateCustomerByEmail: true,
-      ...(input.recurrenceMonths ? { RecurrenceMonths: input.recurrenceMonths } : {}),
     };
     try {
       const res = await fetch(`${env.baseUrl}/billing/recurring/charge/`, {
@@ -1356,8 +1399,11 @@ export class SumitClient {
       let parsed: any = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
       if (!res.ok) return { wired: true, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, reason: envelope.reason, rawResponse: parsed };
+      if (envelope.data.Payment?.ValidPayment !== true) return { wired: true, reason: 'SUMIT did not confirm the payment', rawResponse: parsed };
       const sumitDocumentId = extractDocumentId(parsed);
-      const recurringRaw = parsed?.RecurringID ?? parsed?.RecurringPaymentID ?? parsed?.Data?.RecurringID;
+      const recurringRaw = Array.isArray(envelope.data.RecurringCustomerItemIDs) ? envelope.data.RecurringCustomerItemIDs[0] : undefined;
       return {
         wired: true,
         sumitDocumentId,
@@ -1398,7 +1444,7 @@ export class SumitClient {
     const body = {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
       Customer: { ID: input.sumitCustomerId },
-      RecurringCustomerItemID: input.recurringId,
+      RecurringCustomerItemID: Number(input.recurringId),
     };
 
     try {
@@ -1416,6 +1462,8 @@ export class SumitClient {
       if (!res.ok) {
         return { wired: true, cancelled: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
       }
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, cancelled: false, reason: envelope.reason, rawResponse: parsed };
       return { wired: true, cancelled: true, rawResponse: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] cancelRecurring network error', {
@@ -1472,11 +1520,10 @@ export class SumitClient {
       // Response field name unverified — try common variants once (list APIs
       // typically return `Items` or `Data`). If neither matches, empty list
       // + rawResponse for the caller to inspect.
-      const items = Array.isArray(parsed?.Items)
-        ? parsed.Items
-        : Array.isArray(parsed?.Data)
-          ? parsed.Data
-          : [];
+      // Official schema: { Status, Data: { RecurringItems: [...] } }.
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, items: [], reason: envelope.reason, rawResponse: parsed };
+      const items = Array.isArray(envelope.data.RecurringItems) ? envelope.data.RecurringItems : [];
       return { wired: true, items, rawResponse: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] listRecurringForCustomer network error', {
@@ -1532,13 +1579,12 @@ export class SumitClient {
       if (!res.ok) {
         return { wired: true, items: [], reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
       }
-      const items = Array.isArray(parsed?.Items)
-        ? parsed.Items
-        : Array.isArray(parsed?.PaymentMethods)
-          ? parsed.PaymentMethods
-          : Array.isArray(parsed?.Data)
-            ? parsed.Data
-            : [];
+      // Official schema: { Status, Data: { PaymentMethod: {...} | null, InactivePaymentMethods: [...] } }
+      // — ONE active method, not an array.
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, items: [], reason: envelope.reason, rawResponse: parsed };
+      const active = envelope.data.PaymentMethod;
+      const items = active && typeof active === 'object' ? [active] : [];
       return { wired: true, items, rawResponse: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] getForCustomer network error', {
@@ -1577,13 +1623,24 @@ export class SumitClient {
     if (!sumitCustomerId) return { wired: false, items: [], reason: 'missing sumitCustomerId' };
     // Best-known body — CoreTypedFilter around Customer.ID + a paging cap.
     // UNTESTED-SWAGGER — see docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.2.
+    // /accounting/documents/search/ does NOT exist in SUMIT's schema. The real
+    // endpoint is documents/list, which has NO customer filter — page a window
+    // and keep this customer's rows (Data.Documents[].CustomerID).
+    const wanted = String(sumitCustomerId);
+    const pageSize = Math.min(Math.max(opts?.pageSize ?? 50, 1), 100);
+    const since = new Date(Date.now() - 400 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const body = {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
-      Filter: { Customer: { ID: sumitCustomerId } },
-      Paging: { Page: 1, PageSize: opts?.pageSize ?? 50 },
+      DateFrom: `${since}T00:00:00`,
+      DateTo: `${new Date().toISOString().slice(0, 10)}T23:59:59`,
+      IncludeDrafts: false,
+      Paging: { StartIndex: 0, PageSize: 100 },
     };
     try {
-      const res = await fetch(`${env.baseUrl}/accounting/documents/search/`, {
+      const items: any[] = [];
+      let parsed: any = null;
+      for (let page = 0; page < 20 && items.length < pageSize; page++) {
+      const res = await fetch(`${env.baseUrl}/accounting/documents/list/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1592,19 +1649,19 @@ export class SumitClient {
         },
         body: JSON.stringify(body),
       });
-      let parsed: any = null;
+      parsed = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
       if (!res.ok) {
         return { wired: true, items: [], reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
       }
-      const items = Array.isArray(parsed?.Items)
-        ? parsed.Items
-        : Array.isArray(parsed?.Documents)
-          ? parsed.Documents
-          : Array.isArray(parsed?.Data)
-            ? parsed.Data
-            : [];
-      return { wired: true, items, rawResponse: parsed };
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, items: [], reason: envelope.reason, rawResponse: parsed };
+      const rows = Array.isArray(envelope.data.Documents) ? envelope.data.Documents : [];
+      for (const d of rows) if (String(d?.CustomerID) === wanted) items.push(d);
+      if (!envelope.data.HasNextPage || rows.length === 0) break;
+      body.Paging.StartIndex += rows.length;
+      }
+      return { wired: true, items: items.slice(0, pageSize), rawResponse: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] listDocumentsForCustomer network error', {
         sumitCustomerId, err: err?.message,
@@ -1639,8 +1696,9 @@ export class SumitClient {
     }
     const body = {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      // Official schema: remove takes ONLY Customer — it removes that customer's
+      // active payment method (there is no PaymentMethodID field).
       Customer: { ID: input.sumitCustomerId },
-      PaymentMethodID: input.paymentMethodId,
     };
     try {
       const res = await fetch(`${env.baseUrl}/billing/paymentmethods/remove/`, {
@@ -1657,6 +1715,8 @@ export class SumitClient {
       if (!res.ok) {
         return { wired: true, removed: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
       }
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, removed: false, reason: envelope.reason, rawResponse: parsed };
       return { wired: true, removed: true, rawResponse: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] removeSavedMethod network error', {
@@ -1695,7 +1755,7 @@ export class SumitClient {
         ...(input.customerName ? { Name: input.customerName } : {}),
         ...(input.customerEmail ? { EmailAddress: input.customerEmail } : {}),
       },
-      SinglePaymentToken: input.singlePaymentToken,
+      SingleUseToken: input.singlePaymentToken, // official field name (SinglePaymentToken is ignored by SUMIT)
     };
     try {
       const res = await fetch(`${env.baseUrl}/billing/paymentmethods/setforcustomer/`, {
@@ -1706,16 +1766,14 @@ export class SumitClient {
       let parsed: any = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
       if (!res.ok) return { wired: true, saved: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
-      const pmRaw =
-        parsed?.PaymentMethodID ?? parsed?.PaymentMethodId ?? parsed?.ID ??
-        parsed?.Data?.PaymentMethodID ?? parsed?.Data?.ID ?? parsed?.PaymentMethod?.ID;
-      // SUMIT signals success via a non-error body; require a payment-method id OR an
-      // explicit success flag before we treat the card as saved (fail-closed otherwise).
-      const explicitOk = parsed?.Valid === true || String(parsed?.Status || '').toLowerCase() === 'success';
-      if (pmRaw == null && !explicitOk) {
-        return { wired: true, saved: false, reason: 'no payment-method id / success flag in SUMIT response', rawResponse: parsed };
+      // Official schema: { Status, Data: { CustomerID, PaymentMethod: { ID, ... } } }.
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, saved: false, reason: envelope.reason, rawResponse: parsed };
+      const pmRaw = envelope.data.PaymentMethod?.ID;
+      if (pmRaw == null) {
+        return { wired: true, saved: false, reason: 'SUMIT returned no PaymentMethod.ID', rawResponse: parsed };
       }
-      return { wired: true, saved: true, paymentMethodId: pmRaw != null ? String(pmRaw) : undefined, rawResponse: parsed };
+      return { wired: true, saved: true, paymentMethodId: String(pmRaw), rawResponse: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] setForCustomer network error', { sumitCustomerId: input.sumitCustomerId, err: err?.message });
       return { wired: false, saved: false, reason: `Network error: ${err?.message}` };
@@ -1741,13 +1799,22 @@ export class SumitClient {
     const env = readEnv();
     if (!isWired()) return { wired: false, captured: false, reason: 'SUMIT not enabled' };
     if (!input.sumitCustomerId) return { wired: true, captured: false, reason: 'sumitCustomerId required (no saved card)' };
+    // DISABLED 2026-09-13 — fail closed. /billing/payments/charge/ has NO
+    // ExternalIdentifier / idempotency field in SUMIT's official schema, so the
+    // old "SUMIT dedups repeat charges" assumption was false: any retry after a
+    // lost response charges the card again. It also read success from top-level
+    // fields SUMIT never sends, so a real charge reported captured:false and
+    // invited exactly that retry. Nothing calls this today. Re-enable only with a
+    // durable pre-charge claim and a payments/list lookup before any retry.
+    if (process.env.SUMIT_SAVED_CARD_CHARGE_ENABLED !== 'true') {
+      return { wired: true, captured: false, reason: 'saved-card charge disabled: SUMIT has no idempotency key for payments/charge' };
+    }
     const body = {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
       Customer: { ID: input.sumitCustomerId },     // charge the saved payment method
       Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountIls }],
       VATIncluded: true,
-      Language: 'he',
-      ExternalIdentifier: input.idempotencyKey,     // idempotency — SUMIT dedups repeat charges
+      DocumentLanguage: 'Hebrew',
       UpdateCustomerByEmail: true,                  // email the fiscal doc
     };
     try {
@@ -1759,12 +1826,12 @@ export class SumitClient {
       let parsed: any = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
       if (!res.ok) return { wired: true, captured: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      const envelope = readSumitEnvelope(parsed);
+      if (!envelope.ok) return { wired: true, captured: false, reason: envelope.reason, rawResponse: parsed };
       const sumitDocumentId = extractDocumentId(parsed);
-      const txnRaw = parsed?.TransactionID ?? parsed?.PaymentID ?? parsed?.ID ?? parsed?.Data?.TransactionID ?? parsed?.Data?.ID;
-      const valid = parsed?.Valid === true || parsed?.Valid === 1 || parsed?.Data?.Valid === true ||
-        String(parsed?.Status || parsed?.Data?.Status || '').toLowerCase() === 'approved' ||
-        sumitDocumentId != null;
-      if (!valid || (sumitDocumentId == null && txnRaw == null)) {
+      const txnRaw = envelope.data.Payment?.ID;
+      const valid = envelope.data.Payment?.ValidPayment === true;
+      if (!valid || txnRaw == null) {
         return { wired: true, captured: false, reason: 'SUMIT did not confirm the charge (fail-closed)', rawResponse: parsed };
       }
       return {
@@ -1782,3 +1849,37 @@ export class SumitClient {
 }
 
 export const sumitClient = new SumitClient();
+
+/**
+ * Pure reading of a /billing/payments/get/ response against the official schema.
+ * Exported so the verdict is tested without the network.
+ */
+export function interpretSumitPaymentGet(parsed: any, expectedPaymentId: number): {
+  valid: boolean;
+  amountCents?: number;
+  customerId?: string;
+  paymentMethodId?: string;
+  reason?: string;
+} {
+  const status = parsed?.Status;
+  const statusOk = status === 0 || status === '0' || (typeof status === 'string' && /^success/i.test(status));
+  if (!statusOk) {
+    return { valid: false, reason: `sumit_status_${String(status)}:${String(parsed?.UserErrorMessage ?? '').slice(0, 80)}` };
+  }
+  const payment = parsed?.Data?.Payment;
+  if (!payment || typeof payment !== 'object') return { valid: false, reason: 'no_payment_in_response' };
+  if (Number(payment.ID) !== expectedPaymentId) return { valid: false, reason: 'payment_id_mismatch' };
+
+  const amountNum = typeof payment.Amount === 'number' ? payment.Amount : Number.NaN;
+  const amountCents = Number.isFinite(amountNum) ? Math.round(amountNum * 100) : undefined;
+  const customerId = payment.CustomerID != null ? String(payment.CustomerID) : undefined;
+  const paymentMethodId = payment.PaymentMethod?.ID != null ? String(payment.PaymentMethod.ID) : undefined;
+
+  if (payment.ValidPayment !== true) {
+    return { valid: false, amountCents, customerId, reason: `not_valid:${String(payment.Status ?? '')}` };
+  }
+  if (amountCents === undefined || amountCents <= 0) {
+    return { valid: false, customerId, reason: 'amount_missing' };
+  }
+  return { valid: true, amountCents, customerId, paymentMethodId };
+}

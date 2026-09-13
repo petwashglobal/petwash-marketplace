@@ -151,8 +151,12 @@ export default function Verify() {
       }
 
       try {
+        // Bearer REQUIRED (2026-09-13): /api/kyc/* accepts only a Firebase ID
+        // token, not the session cookie — this call 401'd silently, so the page
+        // always said "no KYC submitted".
         const response = await fetch(getApiUrl(`/api/kyc/status/${firebaseUser.uid}`), {
           credentials: 'include',
+          headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
         });
         if (response.ok) {
           const data = await response.json();
@@ -250,9 +254,13 @@ export default function Verify() {
         setUploadProgress((prev) => Math.min(prev + 10, 90));
       }, 200);
 
+      // Bearer REQUIRED (2026-09-13): without it the POST hit the CSRF gate
+      // (403) and, past that, the Bearer-only /api/kyc/upload (401) — every
+      // KYC upload from this page failed.
       const response = await fetch(getApiUrl('/api/kyc/upload'), {
         method: 'POST',
         credentials: 'include',
+        headers: firebaseUser ? { Authorization: `Bearer ${await firebaseUser.getIdToken()}` } : undefined,
         body: formData,
       });
 

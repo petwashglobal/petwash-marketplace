@@ -12,8 +12,24 @@ import {
   Smartphone,
   HelpCircle
 } from "lucide-react";
+import { useSEO } from "@/lib/seo";
+
+// Title and description = the page H1 (the page has no intro paragraph). Canonical
+// is useSEO's route-derived default.
+export const EGIFT_POLICY_SEO = {
+  title: "E-Gift Card Policy - ⁦PetWash™⁩",
+  description: "E-Gift Card Policy",
+};
+
+// "Last updated" is a FIXED date, never `new Date()` (that re-dated the policy
+// every day). This document has no entry in shared/lib/legalDocumentRegistry.ts,
+// so the source is the last commit touching this file on origin/main:
+// `git log -1 --format=%cs -- client/src/pages/legal/EGiftPolicy.tsx` -> 2026-06-28 (#1119).
+// Update this constant whenever the policy's wording changes.
+export const EGIFT_POLICY_LAST_UPDATED = "2026-06-28";
 
 export default function EGiftPolicy() {
+  useSEO(EGIFT_POLICY_SEO);
   return (
     <div className="min-h-screen luxury-bg-mesh">
       <div className="luxury-container max-w-4xl mx-auto py-12">
@@ -27,7 +43,7 @@ export default function EGiftPolicy() {
           </h1>
           <div className="luxury-badge luxury-badge-gold">
             <Calendar className="w-4 h-4" />
-            Last updated: {new Date().toLocaleDateString()}
+            Last updated: {EGIFT_POLICY_LAST_UPDATED}
           </div>
         </div>
 

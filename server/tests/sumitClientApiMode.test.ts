@@ -105,13 +105,13 @@ describe('SumitClient — createDocument HTTP shape (sandbox)', () => {
   it('POSTs to the api host with body-embedded Credentials + Idempotency-Key header', async () => {
     setSumitEnv();
     const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ DocumentNumber: 'doc-1' }), { status: 200 }),
+      new Response(JSON.stringify({ Status: 0, Data: { DocumentID: 1001, DocumentNumber: 1 } }), { status: 200 }),
     );
     vi.stubGlobal('fetch', fetchMock);
 
     const r = await new SumitClient().createDocument(sampleInput);
     expect(r.wired).toBe(true);
-    expect(r.sumitDocumentId).toBe('doc-1');
+    expect(r.sumitDocumentId).toBe('1001');
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
     const [url, init] = fetchMock.mock.calls[0];
@@ -156,22 +156,23 @@ describe('SumitClient — createDocument HTTP shape (sandbox)', () => {
     expect(headers['X-PetWash-Sandbox']).toBe('false');
   });
 
-  it('extracts documentId from various response shapes', async () => {
+  it('reads the document id ONLY from the official Data.DocumentID (2026-09-13)', async () => {
     setSumitEnv();
-    const variants: Array<[string, string]> = [
-      [JSON.stringify({ DocumentNumber: 'A' }), 'A'],
-      [JSON.stringify({ documentNumber: 'B' }), 'B'],
-      [JSON.stringify({ Document: { DocumentNumber: 'C' } }), 'C'],
-      [JSON.stringify({ Document: { Number: 'D' } }), 'D'],
-      [JSON.stringify({ DocumentID: 'E' }), 'E'],
-      [JSON.stringify({ id: 99 }), '99'],
+    // Official schema: { Status: 0, Data: { DocumentID: integer, DocumentNumber: integer } }.
+    // The old guessed top-level shapes are what SUMIT never sends; accepting them
+    // hid the real bug (every created document came back id-less).
+    const variants: Array<[unknown, string | undefined]> = [
+      [{ Status: 0, Data: { DocumentID: 424242, DocumentNumber: 10501 } }, '424242'],
+      [{ Status: 0, Data: { DocumentNumber: 10501 } }, undefined], // a number is not an id
+      [{ DocumentNumber: 'A' }, undefined],
+      [{ DocumentID: 'E' }, undefined],
+      [{ id: 99 }, undefined],
+      [{ Status: 1, Data: { DocumentID: 5 }, UserErrorMessage: 'refused' }, undefined],
     ];
-
     for (const [payload, expected] of variants) {
-      const fetchMock = vi.fn(async () => new Response(payload, { status: 200 }));
-      vi.stubGlobal('fetch', fetchMock);
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })));
       const r = await new SumitClient().createDocument(sampleInput);
-      expect(r.sumitDocumentId, `payload=${payload}`).toBe(expected);
+      expect(r.sumitDocumentId, `payload=${JSON.stringify(payload)}`).toBe(expected);
     }
   });
 

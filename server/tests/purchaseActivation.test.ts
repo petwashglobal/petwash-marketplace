@@ -233,6 +233,37 @@ describe('activateFromVerifiedPayment — safety', () => {
     expect(row.status).not.toBe('activated');
     expect(row.status).toBe('failed');
   });
+
+  // 2026-09-13: an OUTAGE is not a decline. A paid purchase must stay
+  // re-runnable, and activate once SUMIT answers again.
+  for (const reason of ['SUMIT returned 503', 'Network error: ETIMEDOUT', 'verify_threw']) {
+    it(`SUMIT unreachable (${reason}) → pending, NOT failed, never activates; recovers when SUMIT answers`, async () => {
+      isWired.mockReturnValue(true);
+      getTransaction.mockResolvedValue({ wired: reason.startsWith('Network') ? false : true, valid: false, reason });
+      const row = seed({ id: 'PUR-OUT', surfaceRefId: 'ext-out', productType: 'WASH_PACKAGE', metadataJson: { washCount: 2 } });
+
+      const r = await activateFromVerifiedPayment({ providerReference: 'txn-out', transactionId: 'txn-out', externalRef: 'ext-out' });
+      expect(r.outcome).toBe('pending');
+      expect(r.reason).toBe('verify_unavailable');
+      expect(addCredits).not.toHaveBeenCalled();
+      expect(row.status).not.toBe('failed');
+      expect(row.status).not.toBe('activated');
+
+      getTransaction.mockResolvedValue({ wired: true, valid: true });
+      const again = await activateFromVerifiedPayment({ providerReference: 'txn-out', transactionId: 'txn-out', externalRef: 'ext-out' });
+      expect(again.outcome).toBe('activated');
+      expect(addCredits).toHaveBeenCalledTimes(1);
+    });
+  }
+
+  it('SUMIT answering 4xx is a real "not valid" → still failed', async () => {
+    isWired.mockReturnValue(true);
+    getTransaction.mockResolvedValue({ wired: true, valid: false, reason: 'SUMIT returned 404' });
+    const row = seed({ id: 'PUR-404', surfaceRefId: 'ext-404', productType: 'WASH_PACKAGE' });
+    const r = await activateFromVerifiedPayment({ providerReference: 'txn-404', transactionId: 'txn-404', externalRef: 'ext-404' });
+    expect(r.outcome).toBe('unverified');
+    expect(row.status).toBe('failed');
+  });
 });
 
 describe('activateProduct — per-type behaviour', () => {
