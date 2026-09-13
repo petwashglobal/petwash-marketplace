@@ -136,6 +136,20 @@ export class BackgroundJobProcessor {
     //
     // Hourly is plenty for a 12-hour staleness threshold, and the check is a
     // single indexed MAX() — it costs nothing when healthy.
+    // JOB WATCHDOG (2026-09-13): hourly cross-examination of recently completed
+    // provider jobs → /admin/alerts. Read-only; payouts stay human-only.
+    cron.schedule('37 * * * *', async () => {
+      if (await this.acquireLock('jobEvidenceWatchdog')) {
+        try {
+          const { runJobEvidenceWatchdog } = await import('./services/jobEvidenceWatchdog');
+          await runJobEvidenceWatchdog();
+        } catch (e: any) {
+          logger.error('[JobWatchdog] cron failed', { error: e?.message });
+        } finally {
+          this.releaseLock('jobEvidenceWatchdog');
+        }
+      }
+    });
     cron.schedule('7 * * * *', async () => {
       if (await this.acquireLock('nayaxFeedWatchdog')) {
         try {
