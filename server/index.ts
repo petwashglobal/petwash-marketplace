@@ -853,8 +853,9 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // [[csrf-public-post-regression-class]] failure mode.
     if (req.path === '/api/sumit/webhook') return true;
     // WebAuthn / passkey (Face ID, Touch ID) ceremonies are inherently CSRF-safe:
-    // every register/authenticate step requires a SERVER-ISSUED challenge (stored in
-    // a signed, HMAC'd cookie) AND the authenticator signs over the page origin, which
+    // every register/authenticate step requires a SERVER-ISSUED challenge (stored
+    // server-side in Redis, single-use, bound to type/rpId/origin/uid — see
+    // server/webauthn/challengeStore.ts) AND the authenticator signs over the page origin, which
     // verifyRegistration/AuthenticationResponse checks via expectedOrigin/expectedRPID.
     // A cross-origin attacker can neither read the challenge nor produce a valid signed
     // assertion. Without this skip the @simplewebauthn/browser client (which sends no

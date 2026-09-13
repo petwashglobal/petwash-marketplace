@@ -71,7 +71,7 @@ export async function registerPasskey(): Promise<boolean> {
       throw new Error(error.error || 'Failed to get registration options');
     }
 
-    const { options, challengeKey } = await optionsRes.json();
+    const { options, challengeId } = await optionsRes.json();
 
     // Start registration with browser
     const response = await startRegistration(options);
@@ -81,7 +81,7 @@ export async function registerPasskey(): Promise<boolean> {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ response, challengeKey }),
+      body: JSON.stringify({ response, challengeId }),
     });
 
     if (!verifyRes.ok) {
@@ -131,7 +131,7 @@ export async function authenticateWithPasskey(email: string): Promise<{
       throw new Error(error.error || 'No passkeys found for this email');
     }
 
-    const { options, challengeKey } = await optionsRes.json();
+    const { options, challengeId } = await optionsRes.json();
 
     // Start authentication with browser
     const response = await startAuthentication(options);
@@ -141,7 +141,7 @@ export async function authenticateWithPasskey(email: string): Promise<{
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ response, challengeKey }),
+      body: JSON.stringify({ response, challengeId }),
     });
 
     if (!verifyRes.ok) {

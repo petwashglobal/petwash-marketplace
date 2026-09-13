@@ -4,22 +4,19 @@
  */
 
 import { logger } from '../lib/logger';
-import { WebAuthnConfig, WebAuthnChallenge } from '../types/webauthn';
-import crypto from 'crypto';
-
-const APP_ENV = process.env.APP_ENV || 'development';
-const isDev = APP_ENV === 'development';
+import { WebAuthnConfig } from '../types/webauthn';
 
 /**
- * Secret key for signing challenge cookies
- * In production, this MUST be set via environment variable
+ * Environment detection.
+ *
+ * PRODUCTION FIX 2026-09-13: this used to be `APP_ENV === 'development'` with
+ * APP_ENV defaulting to 'development'. APP_ENV is NOT set on Cloud Run
+ * (NODE_ENV=production is), so production logged `"environment":"development"`
+ * and the `.replit.dev` wildcard origin branch below was LIVE in production.
+ * NODE_ENV=production now always wins, whatever APP_ENV says.
  */
-const CHALLENGE_COOKIE_SECRET = process.env.WEBAUTHN_COOKIE_SECRET || 
-  (isDev ? 'dev-only-secret-change-in-production' : '');
-
-if (!CHALLENGE_COOKIE_SECRET && !isDev) {
-  throw new Error('WEBAUTHN_COOKIE_SECRET environment variable is required in production');
-}
+const APP_ENV = process.env.APP_ENV || 'development';
+export const isDev = process.env.NODE_ENV !== 'production' && APP_ENV === 'development';
 
 /**
  * Multi-Domain RP Support
@@ -135,12 +132,60 @@ export const webauthnConfig: WebAuthnConfig = {
   enableAttestationValidation: process.env.WEBAUTHN_VALIDATE_ATTESTATION === 'true',
 };
 
+function firstHeaderValue(value: unknown): string {
+  if (Array.isArray(value)) value = value[0];
+  if (typeof value !== 'string') return '';
+  return value.split(',')[0].trim();
+}
+
+function readHeader(req: any, name: string): string {
+  if (!req) return '';
+  if (typeof req.get === 'function') return firstHeaderValue(req.get(name));
+  return firstHeaderValue(req.headers?.[name.toLowerCase()]);
+}
+
 /**
- * Get expected origin for the current request
+ * Get the origin the BROWSER is on for this request.
+ *
+ * PRODUCTION FIX 2026-09-13: this used to be `${req.protocol}://${req.get('host')}`.
+ * Behind Firebase Hosting -> Cloud Run the Host header is the run.app host
+ * (petwash-api-….a.run.app), so every ceremony was refused as
+ * "unauthorized origin" and, had it got further, would have been verified
+ * against the wrong expectedOrigin (clientDataJSON.origin is https://petwash.co.il).
+ *
+ * Order:
+ *   1. `Origin` — a browser always sends it on a POST (same-origin fetch included)
+ *      and a page script cannot forge it.
+ *   2. `X-Forwarded-Host` (https) — set by Firebase Hosting / proxies.
+ *   3. Host with req.protocol — local dev without a proxy.
+ *
+ * This function does NOT decide trust. The result is always gated by
+ * isOriginAllowed(), and @simplewebauthn then checks it against the
+ * authenticator-signed clientDataJSON.origin — so a non-browser client that
+ * forges these headers can only choose among allowlisted origins, and still
+ * cannot produce an assertion signed for one.
+ *
+ * A malformed or opaque Origin ("null") is returned as-is so the allowlist
+ * refuses it; it never falls through to the forwarded host.
  */
 export function getExpectedOrigin(req: any): string {
-  const host = req.get('host') || '';
-  const protocol = req.protocol || 'https';
+  const originHeader = readHeader(req, 'origin');
+  if (originHeader) {
+    try {
+      const parsed = new URL(originHeader);
+      return parsed.origin; // normalises case / default ports; "null" for opaque schemes
+    } catch {
+      return originHeader;
+    }
+  }
+
+  const forwardedHost = readHeader(req, 'x-forwarded-host');
+  if (forwardedHost) {
+    return `https://${forwardedHost}`;
+  }
+
+  const host = readHeader(req, 'host');
+  const protocol = req?.protocol || 'https';
   return `${protocol}://${host}`;
 }
 
@@ -152,165 +197,50 @@ export function isOriginAllowed(origin: string): boolean {
   if (ORIGINS.includes(origin)) {
     return true;
   }
-  
-  // Wildcard for Replit dev domains (development only)
-  if (isDev && origin.includes('.replit.dev')) {
-    return true;
+
+  // Wildcard for Replit dev domains (development only — never when NODE_ENV=production)
+  if (isDev) {
+    try {
+      const { protocol, hostname } = new URL(origin);
+      if (protocol === 'https:' && hostname.endsWith('.replit.dev')) return true;
+    } catch {
+      /* not a URL — refuse */
+    }
   }
-  
+
   return false;
 }
 
 /**
- * Get RP ID dynamically based on request hostname
+ * Get RP ID for the request: the hostname of the browser origin
+ * (getExpectedOrigin) when it is a configured RP ID, else the configured default.
+ * Registration and authentication both go through this one helper.
  */
 export function getRpId(req?: any): string {
   if (!req) {
     return webauthnConfig.rpId;
   }
 
-  const host = req.get('host') || '';
-  const hostname = host.split(':')[0];
-  
-  if (RP_IDS.includes(hostname)) {
+  let hostname = '';
+  try {
+    hostname = new URL(getExpectedOrigin(req)).hostname;
+  } catch {
+    hostname = '';
+  }
+
+  if (hostname && RP_IDS.includes(hostname)) {
     return hostname;
   }
-  
+
   return webauthnConfig.rpId;
 }
 
 /**
- * Check if secure cookie flag should be used
+ * The single place a ceremony learns where it is running.
  */
-export function shouldUseSecureCookie(req?: any): boolean {
-  if (!req) {
-    return !isDev;
-  }
-
-  const protocol = req.protocol || 'https';
-  const host = req.get('host') || '';
-  
-  // Allow insecure cookies for localhost HTTP
-  if (protocol === 'http' && (host.startsWith('localhost') || host.startsWith('127.0.0.1'))) {
-    return false;
-  }
-  
-  return true;
-}
-
-/**
- * Sign challenge data for cookie storage
- * Prevents tampering with challenge data
- */
-export function signChallenge(data: Omit<WebAuthnChallenge, 'csrfToken'>): string {
-  const payload = JSON.stringify(data);
-  const signature = crypto
-    .createHmac('sha256', CHALLENGE_COOKIE_SECRET)
-    .update(payload)
-    .digest('hex');
-  
-  return `${Buffer.from(payload).toString('base64')}.${signature}`;
-}
-
-/**
- * Verify and parse signed challenge from cookie
- */
-export function verifyChallenge(signedData: string): WebAuthnChallenge | null {
-  try {
-    const [encodedPayload, signature] = signedData.split('.');
-    
-    if (!encodedPayload || !signature) {
-      logger.warn('[WebAuthn Config] Invalid signed challenge format');
-      return null;
-    }
-    
-    // Verify signature
-    const payload = Buffer.from(encodedPayload, 'base64').toString('utf8');
-    const expectedSignature = crypto
-      .createHmac('sha256', CHALLENGE_COOKIE_SECRET)
-      .update(payload)
-      .digest('hex');
-    
-    // Constant-time comparison to prevent timing attacks
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
-      logger.warn('[WebAuthn Config] Challenge signature verification failed');
-      return null;
-    }
-    
-    // Parse and validate payload
-    const data = JSON.parse(payload) as WebAuthnChallenge;
-    
-    // Check expiration
-    if (data.expiresAt < Date.now()) {
-      logger.info('[WebAuthn Config] Challenge expired', {
-        expiresAt: new Date(data.expiresAt),
-        now: new Date()
-      });
-      return null;
-    }
-    
-    return data;
-  } catch (error) {
-    logger.error('[WebAuthn Config] Failed to verify challenge', error);
-    return null;
-  }
-}
-
-/**
- * Store challenge in signed cookie
- */
-export function storeChallengeInCookie(
-  res: any,
-  challenge: Omit<WebAuthnChallenge, 'csrfToken'>,
-  req?: any
-): string {
-  const signedChallenge = signChallenge(challenge);
-  const useSecure = shouldUseSecureCookie(req);
-  
-  // Set secure, HTTP-only cookie
-  res.cookie('wa_challenge', signedChallenge, {
-    httpOnly: true,
-    secure: useSecure,
-    sameSite: useSecure ? 'none' : 'lax',
-    path: '/',
-    maxAge: webauthnConfig.challengeExpiry,
-  });
-  
-  logger.debug('[WebAuthn Config] Challenge stored in cookie', {
-    type: challenge.type,
-    expiresIn: webauthnConfig.challengeExpiry,
-    secure: useSecure
-  });
-  
-  return signedChallenge;
-}
-
-/**
- * Retrieve and verify challenge from cookie
- */
-export function retrieveChallengeFromCookie(req: any): WebAuthnChallenge | null {
-  const signedChallenge = req.cookies?.wa_challenge;
-  
-  if (!signedChallenge) {
-    logger.warn('[WebAuthn Config] No challenge cookie found');
-    return null;
-  }
-  
-  return verifyChallenge(signedChallenge);
-}
-
-/**
- * Clear challenge cookie
- */
-export function clearChallengeFromCookie(res: any): void {
-  res.clearCookie('wa_challenge', {
-    httpOnly: true,
-    secure: !isDev,
-    sameSite: !isDev ? 'none' : 'lax',
-    path: '/'
-  });
-  
-  logger.debug('[WebAuthn Config] Challenge cookie cleared');
+export function resolveCeremonyContext(req: any): { origin: string; rpId: string; allowed: boolean } {
+  const origin = getExpectedOrigin(req);
+  return { origin, rpId: getRpId(req), allowed: isOriginAllowed(origin) };
 }
 
 /**
@@ -406,10 +336,11 @@ export function getSupportedTransports(): AuthenticatorTransport[] {
 logger.info('[WebAuthn Config] Banking-level configuration initialized', {
   rpId: webauthnConfig.rpId,
   rpName: webauthnConfig.rpName,
-  environment: APP_ENV,
+  environment: process.env.NODE_ENV === 'production' ? 'production' : APP_ENV,
+  devOriginWildcards: isDev,
+  challengeStore: 'redis (single-use, server-side)',
   requireUserVerification: webauthnConfig.requireUserVerification,
   maxDevicesPerUser: webauthnConfig.maxDevicesPerUser,
   deviceTrustThreshold: webauthnConfig.deviceTrustThreshold,
   attestation: webauthnConfig.attestation,
-  signedCookies: !!CHALLENGE_COOKIE_SECRET
 });

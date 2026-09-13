@@ -1291,10 +1291,10 @@ export default function MyAccount() {
       // used apiRequest correctly; the options call drifted.
       const optionsRes = await apiRequest('POST', '/api/webauthn/register/options');
       if (!optionsRes.ok) throw new Error('Failed to get registration options');
-      const { options, challengeKey } = await optionsRes.json();
+      const { options, challengeId } = await optionsRes.json();
       const { startRegistration } = await import('@simplewebauthn/browser');
       const attResp = await startRegistration(options);
-      return apiRequest('POST', '/api/webauthn/register/verify', { response: attResp, challengeKey });
+      return apiRequest('POST', '/api/webauthn/register/verify', { response: attResp, challengeId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });

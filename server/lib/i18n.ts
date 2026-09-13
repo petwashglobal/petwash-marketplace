@@ -137,6 +137,10 @@ export const webauthnMessages = {
     en: 'Authentication challenge mismatch',
     he: 'אתגר אימות לא תואם'
   },
+  challengeStoreUnavailable: {
+    en: 'Biometric sign-in is temporarily unavailable. Please try again in a moment.',
+    he: 'כניסה ביומטרית אינה זמינה כרגע. אנא נסה שוב בעוד רגע.'
+  },
   
   // Credentials
   credentialNotFound: {

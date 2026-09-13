@@ -3490,6 +3490,7 @@ self.addEventListener('notificationclick', (event) => {
 
       const {
         generateRegistrationOptionsForUser,
+        sendWebAuthnError,
       } = await import('./webauthn/service');
 
       const result = await generateRegistrationOptionsForUser(
@@ -3497,15 +3498,19 @@ self.addEventListener('notificationclick', (event) => {
         decoded.email || '',
         isAdmin,
         req,
-        res
       );
 
       if (!result.success) {
-        return res.status(result.error?.status || 500).json({ error: result.error?.message || 'Failed to generate options' });
+        // bilingualError carries { error, error_en, error_he, statusCode } — the
+        // old `error.status` / `error.message` read undefined on every failure.
+        return sendWebAuthnError(res, result.error, 500, 'Failed to generate registration options');
       }
 
       logger.info('[WebAuthn Register] Options generated', { uid: decoded.uid, isAdmin });
-      res.json({ options: result.options });
+      // challengeId: the server-side, single-use challenge handle. The client
+      // sends it back to /register/verify. challengeKey is the same value under
+      // the name older client bundles already send back.
+      res.json({ options: result.options, challengeId: result.challengeId, challengeKey: result.challengeId });
     } catch (error) {
       logger.error('[WebAuthn Register] Options error', error);
       res.status(500).json({ error: 'Failed to generate registration options' });
@@ -3520,7 +3525,8 @@ self.addEventListener('notificationclick', (event) => {
     let email: string | undefined;
     
     try {
-      const { response } = req.body;
+      const { response } = req.body || {};
+      const challengeId = req.body?.challengeId ?? req.body?.challengeKey;
       const token = req.cookies?.pw_session;
       
       if (!token) {
@@ -3535,19 +3541,18 @@ self.addEventListener('notificationclick', (event) => {
       const employeeDoc = await firestoreDb.collection('employees').doc(decoded.uid).get();
       const isAdmin = employeeDoc.exists;
 
-      const { verifyAndStoreRegistration } = await import('./webauthn/service');
+      const { verifyAndStoreRegistration, sendWebAuthnError } = await import('./webauthn/service');
 
+      // The challenge must have been issued to THIS signed-in uid (bound in the store).
       const result = await verifyAndStoreRegistration(
         response,
+        challengeId,
+        decoded.uid,
         req,
-        res
       );
 
       if (!result.verified) {
-        // Return proper status code from service instead of throwing
-        return res.status(result.error?.status || 400).json({ 
-          error: result.error?.message || 'Verification failed' 
-        });
+        return sendWebAuthnError(res, result.error, 400, 'Verification failed');
       }
 
       // Get city for location-based alerts
@@ -3587,39 +3592,58 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
       
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Registration failed' });
+      // Never echo internal error text (Firebase / Firestore messages) to the client.
+      res.status(400).json({ error: 'Registration failed' });
     }
   });
 
   // POST /api/webauthn/login/options - Generate passkey authentication options (no auth required)
   app.post('/api/webauthn/login/options', webauthnLimiter, async (req, res) => {
     try {
-      const { email } = req.body;
+      const rawEmail = req.body?.email;
+      const { sendWebAuthnError } = await import('./webauthn/service');
+
+      if (rawEmail !== undefined && rawEmail !== null && rawEmail !== '' && typeof rawEmail !== 'string') {
+        return res.status(400).json({ error: 'Invalid email' });
+      }
+      const email = typeof rawEmail === 'string' ? rawEmail.trim() : '';
 
       if (!email) {
+        // Discoverable (usernameless) — this is the conditional-UI probe that runs
+        // on every signed-out page load. It needs no user: a normal 200 options
+        // payload whenever the origin is allowed and the challenge store is up.
         const { generateDiscoverableAuthenticationOptions } = await import('./webauthn/service');
-        const result = await generateDiscoverableAuthenticationOptions(req, res);
+        const result = await generateDiscoverableAuthenticationOptions(req);
 
         if (!result.success) {
-          return res.status(result.error?.status || 400).json({ error: result.error?.message || 'Failed to generate options' });
+          return sendWebAuthnError(res, result.error, 400, 'Failed to generate options');
         }
 
-        logger.info('[WebAuthn Login] Discoverable options generated (no email)');
-        return res.json({ options: result.options, challengeKey: result.challengeKey, discoverable: true });
+        return res.json({
+          options: result.options,
+          challengeId: result.challengeId,
+          challengeKey: result.challengeId, // same value; older bundles read this name
+          discoverable: true,
+        });
       }
 
       const { generateAuthenticationOptionsForEmail } = await import('./webauthn/service');
-      const result = await generateAuthenticationOptionsForEmail(email, req, res);
+      const result = await generateAuthenticationOptionsForEmail(email, req);
 
       if (!result.success) {
-        return res.status(result.error?.status || 400).json({ error: result.error?.message || 'No passkeys found' });
+        return sendWebAuthnError(res, result.error, 400, 'No passkeys found');
       }
 
-      logger.info('[WebAuthn Login] Options generated', { email, hasCredentials: true });
-      res.json({ options: result.options });
+      logger.info('[WebAuthn Login] Options generated', { hasCredentials: true });
+      res.json({
+        options: result.options,
+        challengeId: result.challengeId,
+        challengeKey: result.challengeId,
+        discoverable: false,
+      });
     } catch (error) {
       logger.error('[WebAuthn Login] Options error', error);
-      res.status(400).json({ error: error instanceof Error ? error.message : 'No passkeys found for this email' });
+      res.status(500).json({ error: 'Failed to generate options' });
     }
   });
 
@@ -3631,20 +3655,18 @@ self.addEventListener('notificationclick', (event) => {
     let email: string | undefined;
     
     try {
-      const { response } = req.body;
+      const { response } = req.body || {};
+      const challengeId = req.body?.challengeId ?? req.body?.challengeKey;
 
-      const { verifyAuthenticationAndGetUser, verifyDiscoverableAuthentication } = await import('./webauthn/service');
-      
-      const isDiscoverable = req.body.discoverable === true;
-      
-      const result = isDiscoverable 
-        ? await verifyDiscoverableAuthentication(response, req, res)
-        : await verifyAuthenticationAndGetUser(response, req, res);
-      
+      const { verifyAuthentication, sendWebAuthnError } = await import('./webauthn/service');
+
+      // The server-side challenge record (consumed exactly once) decides whether
+      // this is a discoverable or an email-scoped ceremony — the client's
+      // `discoverable` flag is no longer trusted for that choice.
+      const result = await verifyAuthentication(response, challengeId, req);
+
       if (!result.verified) {
-        return res.status(result.error?.status || 401).json({ 
-          error: result.error?.message || 'Authentication failed' 
-        });
+        return sendWebAuthnError(res, result.error, 401, 'Authentication failed');
       }
       
       uid = result.uid;
@@ -3742,7 +3764,7 @@ self.addEventListener('notificationclick', (event) => {
         await checkFailedBurst(uid, email);
       }
       
-      res.status(400).json({ error: error instanceof Error ? error.message : 'Authentication failed' });
+      res.status(400).json({ error: 'Authentication failed' });
     }
   });
 

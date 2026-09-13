@@ -236,7 +236,8 @@ export async function registerPasskey(
       return { success: false, error: error.error || 'Failed to get registration options' };
     }
 
-    const { options, challengeKey } = await optionsResponse.json();
+    // challengeId = server-side single-use challenge handle; it must come back on verify.
+    const { options, challengeId } = await optionsResponse.json();
     
     // PRODUCTION: Prefer platform authenticator (Face ID/Touch ID) with fallback
     // If platform auth not available (old devices), allow cross-platform (USB/NFC keys)
@@ -263,7 +264,7 @@ export async function registerPasskey(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        challengeKey,
+        challengeId,
         response: credential,
       }),
     });
@@ -337,7 +338,8 @@ export async function signInWithPasskey(
       return { success: false, error: error.error || 'Failed to get authentication options' };
     }
 
-    const { options, challengeKey, discoverable } = await optionsResponse.json();
+    // challengeId = server-side single-use challenge handle; it must come back on verify.
+    const { options, challengeId, discoverable } = await optionsResponse.json();
     
     const credential = await startAuthentication({
       optionsJSON: options,
@@ -350,7 +352,7 @@ export async function signInWithPasskey(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        challengeKey,
+        challengeId,
         response: credential,
         discoverable: discoverable || false,
       }),
@@ -455,7 +457,8 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
       return false;
     }
 
-    const { options, challengeKey, discoverable } = await optionsResponse.json();
+    // challengeId = server-side single-use challenge handle; it must come back on verify.
+    const { options, challengeId, discoverable } = await optionsResponse.json();
     
     // CONDITIONAL UI: This is the key to iPhone Face ID!
     // useBrowserAutofill: true enables mediation: "conditional"
@@ -473,7 +476,7 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
       },
       credentials: 'include',
       body: JSON.stringify({
-        challengeKey,
+        challengeId,
         response: credential,
         discoverable: discoverable || false,
       }),

@@ -17,7 +17,7 @@
  *   2. The passkey CTA drives `navigator.credentials.get()` against
  *      the virtual authenticator, and the assertion response reaches
  *      POST /api/webauthn/login/verify in the shape the server
- *      contract requires (challengeKey + response).
+ *      contract requires (challengeId + response).
  *
  *   3. When platform authenticator is NOT available, the returning-
  *      user door silently falls back to /signin — the CEO's D6
@@ -77,7 +77,7 @@ async function stubReturnLoginEndpoints(page: import('@playwright/test').Page) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        challengeKey: 'chal_test_key_' + Date.now(),
+        challengeId: 'chal_test_key_' + Date.now(),
         options: {
           challenge: 'AAECAwQFBgcICQoLDA0ODw',
           rpId: new URL(page.url() || 'http://localhost:5173').hostname,
@@ -93,8 +93,8 @@ async function stubReturnLoginEndpoints(page: import('@playwright/test').Page) {
   // this endpoint with the right shape, not to re-implement the
   // server's signature check.
   await page.route('**/api/webauthn/login/verify', async (route, req) => {
-    const body = req.postDataJSON() as { challengeKey?: string; response?: unknown };
-    if (!body?.challengeKey || !body?.response) {
+    const body = req.postDataJSON() as { challengeId?: string; response?: unknown };
+    if (!body?.challengeId || !body?.response) {
       return route.fulfill({
         status: 400,
         contentType: 'application/json',
@@ -189,8 +189,8 @@ test.describe('auth-rebuild Phase 11 — returning-user passkey cycle', () => {
         );
         await passkeyBtn.click();
         const req = await verifyReq;
-        const body = req.postDataJSON() as { challengeKey?: string; response?: unknown };
-        expect(body.challengeKey).toBeTruthy();
+        const body = req.postDataJSON() as { challengeId?: string; response?: unknown };
+        expect(body.challengeId).toBeTruthy();
         expect(body.response).toBeTruthy();
       } finally {
         await authenticator.dispose();
@@ -242,8 +242,8 @@ test.describe('auth-rebuild Phase 11 — returning-user passkey cycle', () => {
         );
         await page.getByTestId('button-return-login-passkey').click();
         const req = await verifyReq;
-        const body = req.postDataJSON() as { challengeKey?: string; response?: unknown };
-        expect(body.challengeKey).toBeTruthy();
+        const body = req.postDataJSON() as { challengeId?: string; response?: unknown };
+        expect(body.challengeId).toBeTruthy();
         expect(body.response).toBeTruthy();
 
         // Full navigation to /pet-parent/home requires a real Firebase

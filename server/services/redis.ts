@@ -189,6 +189,29 @@ class RedisService {
     }
   }
 
+  /**
+   * Atomic GETDEL, TRI-STATE. Same reasoning as setNxStrict: for a one-use
+   * security value (a WebAuthn challenge), "the key is gone / already used"
+   * and "I could not ask the store" are opposite facts. The first is the
+   * caller's problem (400); the second is ours and must fail closed (503).
+   *
+   *   { state: 'VALUE', value }  the command SUCCEEDED; the key existed and is now deleted.
+   *   { state: 'MISSING' }       the command SUCCEEDED and replied nil.
+   *   { state: 'UNAVAILABLE' }   no client, or the command threw. Nothing is known.
+   */
+  async getDelStrict(
+    key: string,
+  ): Promise<{ state: 'VALUE'; value: string } | { state: 'MISSING' } | { state: 'UNAVAILABLE' }> {
+    if (!this.isEnabled || !this.client) return { state: 'UNAVAILABLE' };
+    try {
+      const value = await this.client.getdel(key);
+      return value === null ? { state: 'MISSING' } : { state: 'VALUE', value };
+    } catch (error) {
+      logger.error(`[Redis] GETDEL(strict) FAILED for key ${key} — reporting UNAVAILABLE, not MISSING:`, error);
+      return { state: 'UNAVAILABLE' };
+    }
+  }
+
   async del(key: string | string[]): Promise<boolean> {
     if (!this.isEnabled || !this.client) {
       return false;
