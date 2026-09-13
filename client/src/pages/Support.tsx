@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { useSEO } from "@/lib/seo";
 import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
+import { SeoFaqSection } from "@/components/SeoFaqSection";
+import { K9000_FAQ } from "@/content/k9000Faq";
 
 export default function Support() {
   const [, setLocation] = useLocation();
-  const { t, dir } = useLanguage();
+  const { t, dir, language } = useLanguage();
   const [helpQuery, setHelpQuery] = useState("");
 
   /**
@@ -25,6 +27,12 @@ export default function Support() {
    * contact form with the text pre-filled, so the label ("How do I use a K9000
    * station?") genuinely leads to getting that question answered. The FAQ card
    * gets an explicit coming-soon state instead of a button that goes nowhere.
+   *
+   * 2026-09-13 (menu dead-end audit): the menu calls this page "Help center &
+   * FAQ", but the FAQ was only a "coming soon" badge. A reviewed FAQ DOES exist
+   * — the K9000 FAQ already live on /k9000 (now shared from
+   * @/content/k9000Faq). The FAQ card now jumps to that accordion rendered
+   * below; no new Q&A was written for this page.
    */
   const askSupport = (question: string) => {
     setLocation(`/contact?message=${encodeURIComponent(question)}`);
@@ -141,15 +149,20 @@ export default function Support() {
             </div>
             <h3 className="luxury-heading-sm mb-2">{t('supportPage.faq')}</h3>
             <p className="luxury-text-small mb-4">
-              {t('supportPage.faqComingSoonDesc')}
+              {language === 'he' ? 'תשובות לשאלות הנפוצות על עמדות השטיפה' : 'Answers to common questions about the wash stations'}
             </p>
-            <div
-              className="w-full py-2 rounded-lg bg-white/70 text-gray-500 text-sm font-medium text-center cursor-default"
-              data-testid="badge-faq-coming-soon"
+            <Button
+              className="luxury-btn-secondary w-full"
+              data-testid="button-faq"
+              onClick={() => document.getElementById('support-faq')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             >
-              {t('supportPage.faqComingSoon')}
-            </div>
+              {language === 'he' ? 'לשאלות הנפוצות' : 'View FAQ'}
+            </Button>
           </div>
+        </div>
+
+        <div id="support-faq" className="luxury-glass-card luxury-shadow-xl mb-12">
+          <SeoFaqSection faq={K9000_FAQ} isHebrew={language === 'he'} className="max-w-3xl mx-auto px-4 py-10" />
         </div>
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 luxury-animate-fade-in luxury-delay-8">

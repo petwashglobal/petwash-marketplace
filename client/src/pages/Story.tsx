@@ -26,8 +26,8 @@ export default function Story() {
             </h2>
             <p className="luxury-text-body leading-relaxed text-lg">
               ⁦PetWash™⁩ was born from a simple idea: every pet deserves access to premium care,
-              and every pet owner deserves convenience. We've built the world's first integrated
-              pet care ecosystem, connecting 8 different platforms under one unified experience.
+              and every pet owner deserves convenience. We're building one connected pet care
+              experience, bringing wash stations, pet services and membership together in one place.
             </p>
           </div>
 
