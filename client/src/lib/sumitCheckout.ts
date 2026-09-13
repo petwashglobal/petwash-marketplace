@@ -22,6 +22,7 @@
  * surfaces the exact field SUMIT rejects.
  */
 import { apiRequest } from '@/lib/queryClient';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 
 /** The server-owned Phase-1 catalog SKUs `/begin` accepts (besides ACCOUNT_CREDIT). */
 export type SumitSku =
@@ -137,6 +138,17 @@ export async function startGuestEgiftCheckout(input: {
   turnstileToken?: string;
 }): Promise<SumitCheckoutResult> {
   if (!(input.amountIls > 0)) return { ok: false, error: 'Invalid amount' };
+  // The route rejects a missing token (BOT_CHECK) whenever Turnstile is
+  // configured, and no caller passed one — so every guest eGift purchase would
+  // have failed once the till opened. Fetch it here so no caller can forget.
+  // Non-blocking: a widget failure sends no token and the server decides.
+  let turnstileToken = input.turnstileToken;
+  if (!turnstileToken) {
+    try {
+      const r = await executeTurnstileInvisible('egift_purchase');
+      if (r.ok) turnstileToken = r.token;
+    } catch { /* server decides */ }
+  }
   try {
     const res = await apiRequest('POST', '/api/egift/guest/start', {
       amountIls: input.amountIls,
@@ -146,7 +158,7 @@ export async function startGuestEgiftCheckout(input: {
       recipientName: input.recipientName,
       recipientPhone: input.recipientPhone,
       message: input.message,
-      ...(input.turnstileToken ? { turnstileToken: input.turnstileToken } : {}),
+      ...(turnstileToken ? { turnstileToken } : {}),
     });
     const data = await res.json().catch(() => ({} as any));
     if (!data?.redirectUrl) {

@@ -26,6 +26,7 @@
  */
 
 import { Component, ErrorInfo, ReactNode } from 'react';
+import { isChunkLoadError, tryChunkReload } from '@/lib/chunkRecovery';
 
 interface Props {
   children: ReactNode;
@@ -64,6 +65,9 @@ export class AuthRouteErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(err: unknown, info: ErrorInfo): void {
+    // A failed chunk on the sign-in path: reload (bounded) before anyone sees
+    // the card. Shared with AppErrorBoundary — client/src/lib/chunkRecovery.ts.
+    if (isChunkLoadError(err) && tryChunkReload()) return;
     const raw = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
     // Console: loud in dev, structured in prod so Cloud Run picks it up.

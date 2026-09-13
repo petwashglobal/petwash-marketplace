@@ -509,7 +509,7 @@ function PrestigeAccountCommandCenter({
       description: isHebrew
         ? 'תמונות, תעריפים, אזורי שירות, מסמכים, ביטוח, בנק ואישור ידני לפני עבודות.'
         : 'Photos, rates, service areas, documents, insurance, bank and manual approval before work.',
-      href: '/provider-dashboard',
+      href: '/provider-os', // was /provider-dashboard — no such route, landed on 404 (2026-09-13)
       status: 'action',
       statusLabel: isHebrew ? 'בדיקה' : 'Review',
       Icon: FileCheck,

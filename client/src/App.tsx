@@ -29,6 +29,7 @@ import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from "
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
 import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
+import { isChunkLoadError, tryChunkReload } from "@/lib/chunkRecovery";
 import { getApiUrl } from "@/lib/apiConfig";
 import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
@@ -650,14 +651,19 @@ function routeReferenceId(): string {
   }
 }
 
-class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean; referenceId: string }> {
-  state = { hasError: false, referenceId: '' };
+class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean; referenceId: string; reloading?: boolean }> {
+  state = { hasError: false, referenceId: '', reloading: false };
 
-  static getDerivedStateFromError() {
-    return { hasError: true, referenceId: routeReferenceId() };
+  static getDerivedStateFromError(error: unknown) {
+    // A failed page chunk is not a render bug: reload (bounded) instead of a
+    // crash card + critical alert. See client/src/lib/chunkRecovery.ts.
+    return { hasError: true, referenceId: routeReferenceId(), reloading: isChunkLoadError(error) };
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
+    const isChunk = isChunkLoadError(error);
+    if (isChunk && tryChunkReload()) return;
+    if (this.state.reloading) this.setState({ reloading: false });
     const referenceId = this.state.referenceId || routeReferenceId();
     try {
       fetch(getApiUrl('/api/errors/log'), {
@@ -667,7 +673,7 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
         body: JSON.stringify({
           referenceId,
           context: `RouteErrorBoundary:${this.props.routeName}`,
-          errorKind: 'render',
+          errorKind: isChunk ? 'chunk-load' : 'render',
           errorName: error?.name,
           message: error?.message,
           stack: error?.stack,
@@ -684,6 +690,7 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    if (this.state.reloading) return null;
     const copy = crashCardCopy(isHebrewCrashLocale(), false);
     return (
       <div className="min-h-[60dvh] bg-white flex items-center justify-center p-6" dir={copy.dir} data-testid="route-error-boundary">

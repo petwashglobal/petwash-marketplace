@@ -405,7 +405,7 @@ export default function Hub() {
       icon: Dog,
       nameKey: "walkMyPet",
       descKey: "walkMyPetDesc",
-      href: "/walk-my-pet/overview",
+      href: "/walk-my-pet", // was /walk-my-pet/overview — no such route (2026-09-13)
       comingSoon: false,
       gradient: "from-[#D4AF37] to-amber-500",
     },
