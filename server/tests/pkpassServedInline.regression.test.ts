@@ -39,7 +39,13 @@ describe('Apple Wallet passes are handed to Wallet, not downloaded', () => {
   it('no server file serves a .pkpass as an attachment', () => {
     const offenders: string[] = [];
     for (const file of walk(SERVER)) {
-      const src = readFileSync(file, 'utf8')
+      const raw = readFileSync(file, 'utf8');
+      // Cheap pre-filter before the comment-stripping regexes: a file that does not
+      // contain BOTH words cannot produce an offending line. Running the block-comment
+      // regex over every server file (routes.ts alone is ~17k lines) timed this test
+      // out under a loaded parallel run. The assertion itself is unchanged.
+      if (!/pkpass/i.test(raw) || !/Content-Disposition/i.test(raw)) continue;
+      const src = raw
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '');   // the comment explaining this mentions both words
       for (const line of src.split('\n')) {
@@ -54,7 +60,7 @@ describe('Apple Wallet passes are handed to Wallet, not downloaded', () => {
       offenders,
       'A .pkpass served as `attachment` makes iOS answer "Safari cannot download this file".',
     ).toEqual([]);
-  });
+  }, 60_000);
 
   it('the universal pass route serves inline', () => {
     const src = readFileSync(resolve(SERVER, 'routes/pass-universal.ts'), 'utf8');

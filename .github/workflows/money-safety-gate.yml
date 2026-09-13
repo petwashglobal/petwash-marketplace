@@ -41,6 +41,8 @@ jobs:
         run: python3 scripts/guards/trademark_bidi_anchored.py --fail
       - name: No new unreachable route
         run: python3 scripts/guards/no_new_unreachable_route.py
+      - name: Deploy env flags are mirrored in the pre-deploy smoke container
+        run: python3 scripts/guards/deploy_env_mirrors_smoke.py
       # 2026-09-13: a client path Hosting does not forward gets index.html, not
       # JSON — silently. That is how /buy-gift-card said "Coming Soon" for
       # months while Nayax was live. See the guard's header.

@@ -15,11 +15,36 @@ import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { type Language } from '@/lib/i18n';
 import { getApiUrl } from '@/lib/apiConfig';
+import { getFirebaseBearerToken } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { logger } from '@/lib/logger';
 import { ShoppingBag, Plus, Minus, X, Loader2, Sparkles, ArrowLeft, Package, Gem, Bone, Droplets, Shirt } from 'lucide-react';
 import { CityPicker, type CityPickerSelection } from '@/components/location/CityPicker';
 import { findIsraelCityBySymbol } from '@shared/data/israel-cities';
+
+/**
+ * Every call this page makes to an authenticated endpoint MUST carry the Firebase
+ * ID token. (2026-09-13)
+ *
+ * The page used bare `fetch(..., { credentials: 'include' })`. That fails twice:
+ *   1. Mutations (add to cart, change quantity, save address, checkout) are POST /
+ *      PATCH / DELETE, so the global CSRF middleware demands an X-CSRF-Token. It
+ *      exempts Bearer-authenticated requests, but these sent no Bearer and no CSRF
+ *      token → 403 EBADCSRFTOKEN before any shop code ran. Add-to-cart has never
+ *      worked in production.
+ *   2. Reads (cart, wallet, saved addresses) carried no identity at all: Firebase
+ *      Hosting forwards only the `__session` cookie, so `credentials: 'include'`
+ *      identifies nobody and the server sees an anonymous caller.
+ * Keeping raw fetch semantics (not apiRequest) on purpose: apiRequest throws on any
+ * non-2xx, which would swallow the specific error messages checkout shows today.
+ */
+async function shopFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const token = await getFirebaseBearerToken();
+  const headers = new Headers(init.headers || {});
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(getApiUrl(path), { ...init, headers, credentials: 'include' });
+}
+
 
 interface ShopStoreProps { language: Language; onLanguageChange?: (l: Language) => void; }
 
@@ -175,7 +200,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   // can never dead-end.
   async function loadWalletBalance() {
     try {
-      const r = await fetch(getApiUrl('/api/credit-wallet/summary'), { credentials: 'include' });
+      const r = await shopFetch('/api/credit-wallet/summary', { credentials: 'include' });
       if (!r.ok) return;
       const d = await r.json();
       const cents = d?.wallet?.cashWalletBalanceCents;
@@ -190,7 +215,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
 
   async function loadProducts() {
     try {
-      const r = await fetch(getApiUrl('/api/shop/products'), { credentials: 'include' });
+      const r = await shopFetch('/api/shop/products', { credentials: 'include' });
       if (r.status === 503) { setComingSoon(true); return; }
       const d = await r.json();
       setProducts((d.products || d.items || (Array.isArray(d) ? d : [])) as Product[]);
@@ -199,7 +224,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
 
   async function refreshCart() {
     if (!user) return;
-    try { const r = await fetch(getApiUrl('/api/shop/cart'), { credentials: 'include' }); if (r.ok) setCart(await r.json()); } catch { /* ignore */ }
+    try { const r = await shopFetch('/api/shop/cart', { credentials: 'include' }); if (r.ok) setCart(await r.json()); } catch { /* ignore */ }
   }
 
   async function addToCart(p: Product) {
@@ -230,7 +255,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
       }
       // raw fetch does NOT throw on 4xx/5xx — check r.ok so a rejected add (401,
       // out-of-stock, validation) does not silently open a cart missing the item. (2026-08-08)
-      const res = await fetch(getApiUrl('/api/shop/cart/items'), {
+      const res = await shopFetch('/api/shop/cart/items', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify(body),
       });
@@ -246,8 +271,8 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     setBusy(true);
     try {
       const res = q <= 0
-        ? await fetch(getApiUrl(`/api/shop/cart/items/${item.id}`), { method: 'DELETE', credentials: 'include' })
-        : await fetch(getApiUrl(`/api/shop/cart/items/${item.id}`), {
+        ? await shopFetch(`/api/shop/cart/items/${item.id}`, { method: 'DELETE', credentials: 'include' })
+        : await shopFetch(`/api/shop/cart/items/${item.id}`, {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ quantity: q }),
           });
       if (!res.ok) throw new Error(`cart qty update failed (${res.status})`);
@@ -286,7 +311,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     if (!cart || cart.subtotalCents <= 0) { setEstimate(null); return; }
     const grams = cart.items.reduce((g, i) => g + (i.weight_grams || 0) * i.quantity, 0);
     const city = addresses?.find(a => a.id === addressId)?.city || '';
-    fetch(getApiUrl(`/api/shop/delivery/estimate?subtotalCents=${cart.subtotalCents}&totalGrams=${grams}&city=${encodeURIComponent(city)}`), { credentials: 'include' })
+    shopFetch(`/api/shop/delivery/estimate?subtotalCents=${cart.subtotalCents}&totalGrams=${grams}&city=${encodeURIComponent(city)}`, { credentials: 'include' })
       .then(r => (r.ok ? r.json() : null))
       .then(d => { if (d?.standard) setEstimate(d); })
       .catch(e => logger.error('[ShopStore] delivery estimate', e));
@@ -305,7 +330,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const [savedUserAddrs, setSavedUserAddrs] = useState<any[]>([]);
   useEffect(() => {
     if (!user?.uid) return;
-    fetch(getApiUrl('/api/user/addresses'), { credentials: 'include' })
+    shopFetch('/api/user/addresses', { credentials: 'include' })
       .then(r => (r.ok ? r.json() : []))
       .then((rows: any) => {
         const list = Array.isArray(rows) ? rows : [];
@@ -330,7 +355,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
 
   async function loadAddresses(preferId?: number) {
     try {
-      const r = await fetch(getApiUrl('/api/shop/delivery/addresses'), { credentials: 'include' });
+      const r = await shopFetch('/api/shop/delivery/addresses', { credentials: 'include' });
       const list: SavedAddress[] = r.ok ? await r.json() : [];
       setAddresses(list);
       if (list.length === 0) setAddingAddress(true);
@@ -350,7 +375,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     }
     setBusy(true); setErr(null);
     try {
-      const r = await fetch(getApiUrl('/api/shop/delivery/address'), {
+      const r = await shopFetch('/api/shop/delivery/address', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({
           fullName: addr.fullName.trim(), phone: addr.phone.trim(), street: addr.street.trim(),
@@ -376,7 +401,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     if (!addressId) { setErr(tr('Please choose a delivery address.', 'נא לבחור כתובת למשלוח.')); return; }
     setBusy(true); setErr(null);
     try {
-      const r = await fetch(getApiUrl('/api/shop/checkout'), {
+      const r = await shopFetch('/api/shop/checkout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ cartId: cart.id, paymentMethod: payMethod, deliveryMethod: 'delivery', deliveryAddressId: addressId, language }),
       });

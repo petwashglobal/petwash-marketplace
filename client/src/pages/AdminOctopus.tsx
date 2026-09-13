@@ -26,7 +26,7 @@ const GROUP_TITLE_HE: Record<string, string> = {
 const GOLD = '#D4AF37';
 const INK = '#0a0a0a';
 
-interface PerPeriod { sumitCents: number; kioskCents: number; kioskCount: number; shopCents: number; bookingCents: number }
+interface PerPeriod { sumitCents: number; kioskCents: number; kioskCount: number; shopCents: number; bookingCents: number; egiftGuestCents?: number }
 interface Overview {
   ok: boolean;
   generatedAt: string;
@@ -40,7 +40,7 @@ interface Overview {
 
 const nis = (cents: number) => `₪${Math.round((cents ?? 0) / 100).toLocaleString('he-IL')}`;
 const totalOf = (p?: PerPeriod | null) =>
-  p ? p.sumitCents + p.kioskCents + p.shopCents + p.bookingCents : 0;
+  p ? p.sumitCents + p.kioskCents + p.shopCents + p.bookingCents + (p.egiftGuestCents ?? 0) : 0;
 
 const MACHINE_NAMES: Record<string, string> = {
   '182443': 'פארק ולד — תא ימין',
@@ -135,6 +135,7 @@ export default function AdminOctopus() {
                 <span>אונליין (SUMIT)</span><span className="text-left font-semibold text-white">{nis(s.today.sumitCents)}</span>
                 <span>חנות</span><span className="text-left font-semibold text-white">{nis(s.today.shopCents)}</span>
                 <span>שירותים</span><span className="text-left font-semibold text-white">{nis(s.today.bookingCents)}</span>
+                <span>מתנות (אורחים)</span><span className="text-left font-semibold text-white">{nis(s.today.egiftGuestCents ?? 0)}</span>
               </div>
             )}
           </div>
@@ -200,6 +201,7 @@ export default function AdminOctopus() {
                   <th className="pb-2 font-medium">אונליין</th>
                   <th className="pb-2 font-medium">חנות</th>
                   <th className="pb-2 font-medium">שירותים</th>
+                  <th className="pb-2 font-medium">מתנות</th>
                   <th className="pb-2 font-semibold" style={{ color: INK }}>סה״כ</th>
                 </tr>
               </thead>
@@ -211,6 +213,7 @@ export default function AdminOctopus() {
                     <td className="py-2 text-neutral-600">{p ? nis(p.sumitCents) : '—'}</td>
                     <td className="py-2 text-neutral-600">{p ? nis(p.shopCents) : '—'}</td>
                     <td className="py-2 text-neutral-600">{p ? nis(p.bookingCents) : '—'}</td>
+                    <td className="py-2 text-neutral-600">{p ? nis(p.egiftGuestCents ?? 0) : '—'}</td>
                     <td className="py-2 font-extrabold" style={{ color: INK }}>{p ? nis(totalOf(p)) : '—'}</td>
                   </tr>
                 ))}
