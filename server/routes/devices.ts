@@ -16,6 +16,10 @@ import { requireAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { UserDeviceService, type DeviceTelemetry } from '../services/UserDeviceService';
 import { z } from 'zod';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { db as firestore } from '../lib/firebase-admin';
+import { getUserSecurityEvents, PASSKEY_EVENT_TYPES } from '../services/securityEvents';
+import { publicCredentialView } from '../webauthn/routes';
 
 const router = Router();
 
@@ -366,6 +370,66 @@ router.get('/admin/user/:userId', requireAdmin, async (req: Request, res: Respon
   } catch (error) {
     logger.error('[Devices API] Error fetching user devices:', error);
     res.status(500).json({ error: 'Failed to fetch user devices' });
+  }
+});
+
+/**
+ * GET /api/devices/admin/user/:userId/passkeys - Passkeys + passkey audit trail
+ * for one Firebase uid (ADMIN ONLY, read-only).
+ *
+ * 2026-09-13: every passkey ceremony outcome is recorded server-side in Firestore
+ * `securityEvents` (server/webauthn/routes.ts), but nothing let an owner READ it.
+ * There is no admin UI page for a user's security trail yet, so this is an API
+ * next to the existing admin device lookup above. Never returns a public key,
+ * attestation data, raw IP or raw user-agent.
+ */
+router.get('/admin/user/:userId/passkeys', validateFirebaseToken, requireAdmin, async (req: Request, res: Response) => {
+  const { userId } = req.params;
+  if (!/^[^/\s\x00-\x1f]{1,128}$/.test(userId) || userId === '.' || userId === '..') {
+    return res.status(400).json({ error: 'Invalid user id' });
+  }
+  const limit = Math.min(Math.max(parseInt(String(req.query.limit || '100'), 10) || 100, 1), 200);
+
+  try {
+    const [events, userCreds, employeeCreds] = await Promise.all([
+      getUserSecurityEvents(userId, limit),
+      firestore.collection('users').doc(userId).collection('webauthnCredentials').get(),
+      firestore.collection('employees').doc(userId).collection('webauthnCredentials').get(),
+    ]);
+
+    const credentials = [
+      ...userCreds.docs.map((d: any) => ({ ...publicCredentialView(d.data()), store: 'users' })),
+      ...employeeCreds.docs.map((d: any) => ({ ...publicCredentialView(d.data()), store: 'employees' })),
+    ];
+
+    const passkeyEvents = events
+      .filter((e: any) => (PASSKEY_EVENT_TYPES as readonly string[]).includes(e.type))
+      .map((e: any) => {
+        const { error: _legacyErrorText, ...meta } = e.meta || {};
+        return {
+          id: e.id,
+          type: e.type,
+          result: e.result || (String(e.type).endsWith('_FAILED') ? 'failure' : 'success'),
+          reason: e.reason ?? null,
+          credentialId: e.credentialId ?? e.meta?.credentialId ?? null,
+          device: e.device ?? null,
+          maskedIp: e.maskedIp ?? null,
+          meta,
+          createdAt: typeof e.createdAt === 'number' ? new Date(e.createdAt).toISOString() : e.timestamp ?? null,
+        };
+      });
+
+    logger.info('[Devices API] Admin read passkey audit', {
+      targetUid: userId,
+      actor: (req as AuthenticatedRequest).firebaseUser?.uid,
+      credentials: credentials.length,
+      events: passkeyEvents.length,
+    });
+
+    res.json({ ok: true, uid: userId, credentials, events: passkeyEvents });
+  } catch (error) {
+    logger.error('[Devices API] Error reading passkey audit:', error);
+    res.status(500).json({ error: 'Failed to read passkey audit' });
   }
 });
 

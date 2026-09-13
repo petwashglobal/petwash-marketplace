@@ -42,6 +42,7 @@ import {
   StepUpError,
   type StepUpPurpose,
 } from '@/auth/stepUp';
+import { getServerPasskeyStatus } from '@/auth/passkey';
 
 interface LinkRow {
   provider: string;
@@ -133,7 +134,13 @@ export default function AccountSecurity() {
    * Throws StepUpError on failure — caller must handle.
    */
   async function obtainProof(purpose: StepUpPurpose): Promise<string> {
-    const hasPasskeyLink = (links ?? []).some((l) => l.provider === 'passkey');
+    // identity_accounts only gets a 'passkey' link while
+    // ff.returning_user.identity_unified.enabled is on (DARK in production), so
+    // the link alone never offered passkey step-up. The enrolled credential list
+    // on the server is the authority.
+    const hasPasskeyLink =
+      (links ?? []).some((l) => l.provider === 'passkey') ||
+      (await getServerPasskeyStatus()).enrolled;
     if (hasPasskeyLink) {
       return requestStepUpProofWithPasskey(purpose);
     }

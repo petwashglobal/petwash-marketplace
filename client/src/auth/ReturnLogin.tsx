@@ -101,7 +101,9 @@ export default function ReturnLogin({ hintOverride }: ReturnLoginProps = {}) {
     setErrMsg(null);
     try {
       const result = await signInWithPasskey(hint || undefined);
-      if (!result?.ok) {
+      // signInWithPasskey returns { success } — this read `.ok`, which is always
+      // undefined, so even a SUCCESSFUL passkey sign-in showed "Sign-in failed".
+      if (!result?.success) {
         setPhase('error');
         setErrMsg(result?.error || 'Sign-in failed. Try another way.');
         return;

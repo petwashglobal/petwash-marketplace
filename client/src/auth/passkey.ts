@@ -185,6 +185,21 @@ function rememberPasskeyEmailHint(email?: string | null): void {
 }
 
 /**
+ * Bearer header for the signed-in user (or the token a caller already holds).
+ * The /api/webauthn signed-in routes accept a Firebase ID token OR the session
+ * cookie; sending only the cookie left token-only sessions (native shell, a page
+ * before the cookie is minted) unable to enrol or list passkeys (401).
+ */
+async function authHeader(firebaseToken?: string): Promise<Record<string, string>> {
+  try {
+    const token = firebaseToken || (await auth.currentUser?.getIdToken());
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Server-authoritative passkey status for the CURRENT authenticated user.
  *
  * Returns { enrolled, count } derived from GET /api/webauthn/credentials, which
@@ -199,6 +214,7 @@ export async function getServerPasskeyStatus(): Promise<{ enrolled: boolean; cou
     const res = await fetch(getApiUrl('/api/webauthn/credentials'), {
       method: 'GET',
       credentials: 'include',
+      headers: await authHeader(),
     });
     if (!res.ok) return { enrolled: false, count: 0 };
     const data = await res.json();
@@ -222,12 +238,14 @@ export async function registerPasskey(
     // Check if platform authenticator is available (Face ID, Touch ID, Windows Hello)
     const hasPlatformAuth = await isPlatformAuthenticatorAvailable();
 
-    // Get registration options from server (using session cookie)
+    // Get registration options from server (Firebase ID token, or the session cookie)
+    const bearer = await authHeader(firebaseToken);
     const optionsResponse = await fetch(getApiUrl('/api/webauthn/register/options'), {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        ...bearer,
       },
     });
 
@@ -262,6 +280,7 @@ export async function registerPasskey(
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        ...bearer,
       },
       body: JSON.stringify({
         challengeId,
@@ -301,7 +320,8 @@ export async function registerPasskey(
  * PRODUCTION: Platform authenticator preferred for Face ID/Touch ID
  */
 export async function signInWithPasskey(
-  uid?: string
+  uid?: string,
+  opts: { purpose?: 'step_up' } = {},
 ): Promise<{ success: boolean; error?: string; uid?: string }> {
   try {
     if (!isPasskeySupported()) {
@@ -349,16 +369,21 @@ export async function signInWithPasskey(
       optionsJSON: options,
     });
 
+    // Step-up: the server requires the signed-in caller and refuses a passkey
+    // that belongs to a different account (and records the outcome).
+    const isStepUp = opts.purpose === 'step_up';
     const verifyResponse = await fetch(getApiUrl('/api/webauthn/login/verify'), {
       method: 'POST',
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
+        ...(isStepUp ? await authHeader() : {}),
       },
       body: JSON.stringify({
         challengeId,
         response: credential,
         discoverable: discoverable || false,
+        ...(isStepUp ? { purpose: 'step_up' } : {}),
       }),
     });
 

@@ -436,15 +436,23 @@ export async function revokeDevice(
  */
 export async function getUserDevices(uid: string, isAdmin: boolean): Promise<WebAuthnCredential[]> {
   const collectionPath = isAdmin ? 'employees' : 'users';
+  // FIX 2026-09-13: was `.where(isRevoked).orderBy(lastUsedAt desc)`, which needs a
+  // composite index. Production answered GET /api/webauthn/credentials with 500
+  // "9 FAILED_PRECONDITION: The query requires an index" (09-04, 09-09) until the
+  // index from #2347 was deployed. A member has at most a handful of passkeys — sort
+  // in memory so the device list can never again depend on an index deploy.
   const snapshot = await db
     .collection(collectionPath)
     .doc(uid)
     .collection('webauthnCredentials')
     .where('isRevoked', '==', false)
-    .orderBy('lastUsedAt', 'desc')
     .get();
-  
-  return snapshot.docs.map(doc => doc.data() as WebAuthnCredential);
+
+  const millis = (t: any): number =>
+    typeof t?.toMillis === 'function' ? t.toMillis() : typeof t?._seconds === 'number' ? t._seconds * 1000 : 0;
+  return snapshot.docs
+    .map(doc => doc.data() as WebAuthnCredential)
+    .sort((a, b) => millis(b.lastUsedAt) - millis(a.lastUsedAt));
 }
 
 /**
