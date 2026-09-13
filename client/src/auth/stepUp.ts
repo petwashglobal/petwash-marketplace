@@ -152,9 +152,14 @@ export async function requestStepUpProofWithPasskey(purpose: StepUpPurpose): Pro
   if (!user) {
     throw new StepUpError('NOT_SIGNED_IN', 'No signed-in user');
   }
-  const passkey = await signInWithPasskey(user.uid);
+  const passkey = await signInWithPasskey(user.uid, { purpose: 'step_up' });
   if (!passkey.success) {
     throw new StepUpError('PASSKEY_REAUTH_FAILED', passkey.error || 'passkey ceremony failed');
+  }
+  // The server already refuses a passkey from another account for step-up;
+  // belt-and-braces so a proof is never minted for a different uid.
+  if (passkey.uid && passkey.uid !== user.uid) {
+    throw new StepUpError('PASSKEY_REAUTH_FAILED', 'passkey belongs to a different account');
   }
   const refreshed = auth.currentUser;
   if (!refreshed) {

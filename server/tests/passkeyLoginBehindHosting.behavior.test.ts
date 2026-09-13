@@ -315,10 +315,12 @@ describe('route error mapping', () => {
   });
 
   it('no /api/webauthn route still reads the non-existent error.status / error.message', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '..', 'routes.ts'), 'utf8');
-    const start = src.indexOf("app.post('/api/webauthn/register/options'");
-    const end = src.indexOf("app.get('/api/webauthn/credentials'");
+    // The /api/webauthn handlers moved to server/webauthn/routes.ts (2026-09-13).
+    const src = fs.readFileSync(path.resolve(__dirname, '..', 'webauthn', 'routes.ts'), 'utf8');
+    const start = src.indexOf('async function registerOptionsHandler');
+    const end = src.indexOf('async function listCredentialsHandler');
     expect(start).toBeGreaterThan(0);
+    expect(end).toBeGreaterThan(start);
     const block = src.slice(start, end);
     expect(block).not.toMatch(/result\.error\?\.status\b/);
     expect(block).not.toMatch(/result\.error\?\.message\b/);

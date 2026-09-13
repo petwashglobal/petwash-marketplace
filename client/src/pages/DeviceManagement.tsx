@@ -82,6 +82,7 @@ export default function DeviceManagement() {
         
         const response = await fetch(getApiUrl('/api/webauthn/credentials'), {
           credentials: 'include',
+          headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
         });
 
         if (response.ok) {
@@ -109,6 +110,7 @@ export default function DeviceManagement() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${await firebaseUser.getIdToken()}`,
         },
         credentials: 'include',
         body: JSON.stringify({
@@ -152,6 +154,7 @@ export default function DeviceManagement() {
       const response = await fetch(getApiUrl(`/api/webauthn/credentials/${credId}`), {
         method: 'DELETE',
         credentials: 'include',
+        headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
       });
 
       if (response.ok) {
@@ -203,6 +206,7 @@ export default function DeviceManagement() {
         // Refresh devices list
         const response = await fetch(getApiUrl('/api/webauthn/credentials'), {
           credentials: 'include',
+          headers: { Authorization: `Bearer ${await firebaseUser.getIdToken()}` },
         });
 
         if (response.ok) {

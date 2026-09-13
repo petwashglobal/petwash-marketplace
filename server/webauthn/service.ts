@@ -103,6 +103,14 @@ function clientIp(req: any): string {
 /** base64url credential id as sent by the browser (response.id). */
 const CREDENTIAL_ID_RE = /^[A-Za-z0-9_-]{16,1024}$/;
 
+/** A credential id taken from a URL path (rename / remove) — same shape rule. */
+export function isValidCredentialId(id: unknown): id is string {
+  return typeof id === 'string' && CREDENTIAL_ID_RE.test(id);
+}
+
+/** Machine-readable failure reason recorded on the passkey audit trail. */
+export type PasskeyFailureReason = string;
+
 export function readCredentialId(response: any): string | null {
   const id = response?.id;
   if (typeof id !== 'string' || !CREDENTIAL_ID_RE.test(id)) return null;
@@ -141,7 +149,7 @@ export async function generateRegistrationOptionsForUser(
   email: string,
   isAdmin: boolean,
   req: any,
-): Promise<{ options: any; success: boolean; challengeId?: string; error?: WebAuthnServiceError }> {
+): Promise<{ options: any; success: boolean; challengeId?: string; error?: WebAuthnServiceError; reason?: PasskeyFailureReason }> {
   try {
     const lang = getLanguage(req);
     const { origin, rpId, allowed } = resolveCeremonyContext(req);
@@ -152,6 +160,7 @@ export async function generateRegistrationOptionsForUser(
       return {
         success: false,
         error: bilingualError(webauthnMessages.originMismatch, 403, lang),
+        reason: 'origin_mismatch',
         options: null
       };
     }
@@ -178,6 +187,7 @@ export async function generateRegistrationOptionsForUser(
       return {
         success: false,
         error: bilingualError(webauthnMessages.tooManyDevices, 400, lang),
+        reason: 'max_devices',
         options: null
       };
     }
@@ -186,8 +196,10 @@ export async function generateRegistrationOptionsForUser(
       rpName: webauthnConfig.rpName,
       rpID: rpId,
       userID: isoUint8Array.fromUTF8String(uid),
-      userName: email,
-      userDisplayName: email.split('@')[0],
+      // `email` is the account label: email, else phone, else uid (phone-OTP
+      // members have no email — an empty name used to block their enrolment).
+      userName: email || uid,
+      userDisplayName: (email || uid).split('@')[0],
       timeout: webauthnConfig.timeout,
       attestationType: 'direct', // Request attestation certificate to verify device authenticity
       excludeCredentials,
@@ -209,6 +221,7 @@ export async function generateRegistrationOptionsForUser(
       return {
         success: false,
         error: bilingualError(webauthnMessages.challengeStoreUnavailable, 503, lang),
+        reason: 'challenge_store_unavailable',
         options: null
       };
     }
@@ -243,6 +256,7 @@ export async function generateRegistrationOptionsForUser(
     return {
       success: false,
       error: bilingualError(webauthnMessages.registrationFailed, 500, getLanguage(req)),
+      reason: 'exception',
       options: null
     };
   }
@@ -260,7 +274,7 @@ export async function verifyAndStoreRegistration(
   challengeId: unknown,
   expectedUid: string,
   req: any,
-): Promise<{ verified: boolean; credential?: WebAuthnCredential; error?: WebAuthnServiceError }> {
+): Promise<{ verified: boolean; credential?: WebAuthnCredential; error?: WebAuthnServiceError; reason?: PasskeyFailureReason }> {
   try {
     const lang = getLanguage(req);
     const { origin, rpId, allowed } = resolveCeremonyContext(req);
@@ -269,7 +283,7 @@ export async function verifyAndStoreRegistration(
 
     if (!allowed) {
       logger.warn('[WebAuthn] Registration verify from unauthorized origin', { origin, uid: expectedUid });
-      return { verified: false, error: bilingualError(webauthnMessages.originMismatch, 403, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.originMismatch, 403, lang), reason: 'origin_mismatch' };
     }
 
     const consumed = await consumeChallenge(challengeId, {
@@ -279,12 +293,15 @@ export async function verifyAndStoreRegistration(
       uid: expectedUid,
     });
     if (!consumed.ok) {
-      return { verified: false, error: refusalToError(consumed.reason, lang) };
+      return { verified: false, error: refusalToError(consumed.reason, lang), reason: `challenge_${consumed.reason}` };
     }
     const challengeData = consumed.record;
 
-    if (!challengeData.uid || !challengeData.email) {
-      return { verified: false, error: bilingualError(webauthnMessages.challengeMismatch, 400, lang) };
+    // The uid binding (checked by consumeChallenge) is what authorises the
+    // enrolment. An email is NOT required: phone-OTP members have none, and
+    // requiring it made enrolment impossible for them.
+    if (!challengeData.uid) {
+      return { verified: false, error: bilingualError(webauthnMessages.challengeMismatch, 400, lang), reason: 'challenge_mismatch' };
     }
 
     const verification: VerifiedRegistrationResponse = await verifyRegistrationResponse({
@@ -304,7 +321,7 @@ export async function verifyAndStoreRegistration(
         errorMessage: 'Verification failed'
       });
 
-      return { verified: false, error: bilingualError(webauthnMessages.registrationFailed, 400, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.registrationFailed, 400, lang), reason: 'verification_failed' };
     }
 
     const { credential, credentialDeviceType, credentialBackedUp, aaguid } =
@@ -338,16 +355,16 @@ export async function verifyAndStoreRegistration(
 
       if (!isAttestationFormatAllowed(fmt)) {
         logger.warn('[WebAuthn] Attestation format not allowed', { fmt });
-        return { verified: false, error: bilingualError(webauthnMessages.attestationFailed, 400, lang) };
+        return { verified: false, error: bilingualError(webauthnMessages.attestationFailed, 400, lang), reason: 'attestation_rejected' };
       }
 
       if (fmt === 'apple' && !validateAppleAttestation(verification.registrationInfo)) {
-        return { verified: false, error: bilingualError(webauthnMessages.attestationFailed, 400, lang) };
+        return { verified: false, error: bilingualError(webauthnMessages.attestationFailed, 400, lang), reason: 'attestation_rejected' };
       }
 
       if ((fmt === 'android-key' || fmt === 'android-safetynet') &&
           !validateAndroidAttestation(verification.registrationInfo)) {
-        return { verified: false, error: bilingualError(webauthnMessages.attestationFailed, 400, lang) };
+        return { verified: false, error: bilingualError(webauthnMessages.attestationFailed, 400, lang), reason: 'attestation_rejected' };
       }
     }
 
@@ -387,7 +404,8 @@ export async function verifyAndStoreRegistration(
     logger.error('[WebAuthn] Registration verification failed', error);
     return {
       verified: false,
-      error: bilingualError(webauthnMessages.registrationFailed, 400, getLanguage(req))
+      error: bilingualError(webauthnMessages.registrationFailed, 400, getLanguage(req)),
+      reason: 'exception',
     };
   }
 }
@@ -398,7 +416,7 @@ export async function verifyAndStoreRegistration(
 export async function generateAuthenticationOptionsForEmail(
   email: string,
   req: any,
-): Promise<{ options: any; success: boolean; challengeId?: string; error?: WebAuthnServiceError }> {
+): Promise<{ options: any; success: boolean; challengeId?: string; error?: WebAuthnServiceError; reason?: PasskeyFailureReason }> {
   try {
     const lang = getLanguage(req);
     const { origin, rpId, allowed } = resolveCeremonyContext(req);
@@ -494,6 +512,7 @@ export async function generateAuthenticationOptionsForEmail(
       return {
         success: false,
         error: bilingualError(webauthnMessages.challengeStoreUnavailable, 503, lang),
+        reason: 'challenge_store_unavailable',
         options: null
       };
     }
@@ -536,7 +555,7 @@ export async function generateAuthenticationOptionsForEmail(
  */
 export async function generateDiscoverableAuthenticationOptions(
   req: any,
-): Promise<{ options: any; success: boolean; challengeId?: string; error?: WebAuthnServiceError }> {
+): Promise<{ options: any; success: boolean; challengeId?: string; error?: WebAuthnServiceError; reason?: PasskeyFailureReason }> {
   try {
     const lang = getLanguage(req);
     const { origin, rpId, allowed } = resolveCeremonyContext(req);
@@ -571,6 +590,7 @@ export async function generateDiscoverableAuthenticationOptions(
       return {
         success: false,
         error: bilingualError(webauthnMessages.challengeStoreUnavailable, 503, lang),
+        reason: 'challenge_store_unavailable',
         options: null
       };
     }
@@ -588,7 +608,20 @@ export async function generateDiscoverableAuthenticationOptions(
   }
 }
 
-type AuthResult = { verified: boolean; uid?: string; email?: string; isAdmin?: boolean; error?: WebAuthnServiceError };
+/**
+ * On failure `uid` is set ONLY when the server itself resolved the account (an
+ * email-scoped challenge, or a stored credential that matched) — for the audit
+ * record. Routes must never echo it to the client (account enumeration).
+ */
+type AuthResult = {
+  verified: boolean;
+  uid?: string;
+  email?: string;
+  isAdmin?: boolean;
+  error?: WebAuthnServiceError;
+  reason?: PasskeyFailureReason;
+  credentialId?: string;
+};
 
 /**
  * Verify a passkey assertion. The challenge is consumed (single use) FIRST; the
@@ -605,7 +638,7 @@ export async function verifyAuthentication(
 
   if (!ctx.allowed) {
     logger.warn('[WebAuthn] Authentication verify from unauthorized origin', { origin: ctx.origin });
-    return { verified: false, error: bilingualError(webauthnMessages.originMismatch, 403, lang) };
+    return { verified: false, error: bilingualError(webauthnMessages.originMismatch, 403, lang), reason: 'origin_mismatch' };
   }
 
   let consumed: Awaited<ReturnType<typeof consumeChallenge>>;
@@ -617,10 +650,10 @@ export async function verifyAuthentication(
     });
   } catch (error) {
     logger.error('[WebAuthn] challenge consume threw', error);
-    return { verified: false, error: refusalToError('store_unavailable', lang) };
+    return { verified: false, error: refusalToError('store_unavailable', lang), reason: 'challenge_store_unavailable' };
   }
   if (!consumed.ok) {
-    return { verified: false, error: refusalToError(consumed.reason, lang) };
+    return { verified: false, error: refusalToError(consumed.reason, lang), reason: `challenge_${consumed.reason}` };
   }
 
   return consumed.record.discoverable
@@ -643,12 +676,12 @@ export async function verifyDiscoverableAuthentication(
     const userAgent = req.headers['user-agent'] || 'unknown';
 
     if (challengeData.type !== 'authentication' || !challengeData.discoverable) {
-      return { verified: false, error: bilingualError(webauthnMessages.challengeMismatch, 400, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.challengeMismatch, 400, lang), reason: 'challenge_mismatch' };
     }
 
     const credentialId = readCredentialId(response);
     if (!credentialId) {
-      return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang), reason: 'credential_id_invalid' };
     }
 
     let uid: string | null = null;
@@ -683,17 +716,17 @@ export async function verifyDiscoverableAuthentication(
         credentialId: credentialId.substring(0, 12) + '...',
         hadUserHandle: !!handleUid,
       });
-      return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang), reason: 'credential_not_found', credentialId };
     }
 
     if (credential.isRevoked) {
       logger.warn('[WebAuthn] Discoverable credential is revoked', { uid });
-      return { verified: false, error: bilingualError(webauthnMessages.deviceRevoked, 403, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.deviceRevoked, 403, lang), reason: 'device_revoked', uid, credentialId };
     }
 
     if (credential.trustScore < webauthnConfig.deviceTrustThreshold) {
       logger.warn('[WebAuthn] Low trust discoverable device', { uid });
-      return { verified: false, error: bilingualError(webauthnMessages.deviceLowTrust, 403, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.deviceLowTrust, 403, lang), reason: 'low_trust', uid, credentialId };
     }
 
     const verification = await verifyAuthenticationResponse({
@@ -712,7 +745,7 @@ export async function verifyDiscoverableAuthentication(
 
     if (!verification.verified) {
       await recordAuthFailure(uid, isAdmin, credentialId, 'Verification failed');
-      return { verified: false, error: bilingualError(webauthnMessages.authenticationFailed, 401, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.authenticationFailed, 401, lang), reason: 'signature_invalid', uid, credentialId };
     }
 
     // updateDeviceOnAuth's signature is (uid, isAdmin, credId, newCounter,
@@ -741,12 +774,15 @@ export async function verifyDiscoverableAuthentication(
 
     logger.info('[WebAuthn] Discoverable authentication successful', { uid, isAdmin });
 
-    return { verified: true, uid, email: email || undefined, isAdmin };
+    return { verified: true, uid, email: email || undefined, isAdmin, credentialId };
   } catch (error) {
     logger.error('[WebAuthn] Discoverable authentication verification failed', error);
+    // @simplewebauthn throws (rather than returning verified:false) on a bad
+    // signature / counter / origin — that is a failed ceremony, not a crash.
     return {
       verified: false,
-      error: bilingualError(webauthnMessages.authenticationFailed, 401, getLanguage(req))
+      error: bilingualError(webauthnMessages.authenticationFailed, 401, getLanguage(req)),
+      reason: 'verification_error',
     };
   }
 }
@@ -765,7 +801,7 @@ export async function verifyAuthenticationAndGetUser(
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   if (challengeData.type !== 'authentication' || challengeData.discoverable || !challengeData.uid || !challengeData.email) {
-    return { verified: false, error: bilingualError(webauthnMessages.challengeMismatch, 400, lang) };
+    return { verified: false, error: bilingualError(webauthnMessages.challengeMismatch, 400, lang), reason: 'challenge_mismatch' };
   }
 
   const uid = challengeData.uid;
@@ -775,7 +811,7 @@ export async function verifyAuthenticationAndGetUser(
 
   const credentialId = readCredentialId(response);
   if (!credentialId) {
-    return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang) };
+    return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang), reason: 'credential_id_invalid', uid };
   }
 
   try {
@@ -795,20 +831,20 @@ export async function verifyAuthenticationAndGetUser(
         errorMessage: 'Credential not found'
       });
 
-      return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.credentialNotFound, 404, lang), reason: 'credential_not_found', uid, credentialId };
     }
 
     const credential = credentialDoc.data() as WebAuthnCredential;
 
     if (credential.isRevoked) {
       logger.warn('[WebAuthn] Revoked credential used', { uid });
-      return { verified: false, error: bilingualError(webauthnMessages.deviceRevoked, 403, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.deviceRevoked, 403, lang), reason: 'device_revoked', uid, credentialId };
     }
 
     if (credential.trustScore < webauthnConfig.deviceTrustThreshold) {
       logger.warn('[WebAuthn] Low trust device', { uid, trustScore: credential.trustScore });
       await recordAuthFailure(uid, isAdmin, credentialId, 'Low trust score');
-      return { verified: false, error: bilingualError(webauthnMessages.deviceLowTrust, 403, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.deviceLowTrust, 403, lang), reason: 'low_trust', uid, credentialId };
     }
 
     const verification: VerifiedAuthenticationResponse = await verifyAuthenticationResponse({
@@ -827,7 +863,7 @@ export async function verifyAuthenticationAndGetUser(
 
     if (!verification.verified) {
       await recordAuthFailure(uid, isAdmin, credentialId, 'Verification failed');
-      return { verified: false, error: bilingualError(webauthnMessages.authenticationFailed, 401, lang) };
+      return { verified: false, error: bilingualError(webauthnMessages.authenticationFailed, 401, lang), reason: 'signature_invalid', uid, credentialId };
     }
 
     await updateDeviceOnAuth(
@@ -846,7 +882,7 @@ export async function verifyAuthenticationAndGetUser(
       newCounter: verification.authenticationInfo.newCounter
     });
 
-    return { verified: true, uid, email, isAdmin };
+    return { verified: true, uid, email, isAdmin, credentialId };
   } catch (error) {
     logger.error('[WebAuthn] Authentication verification failed', error);
     try {
@@ -858,7 +894,10 @@ export async function verifyAuthenticationAndGetUser(
     }
     return {
       verified: false,
-      error: bilingualError(webauthnMessages.authenticationFailed, 401, lang)
+      error: bilingualError(webauthnMessages.authenticationFailed, 401, lang),
+      reason: 'verification_error',
+      uid,
+      credentialId,
     };
   }
 }

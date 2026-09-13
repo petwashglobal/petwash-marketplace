@@ -91,10 +91,9 @@ export default function SecuritySettings() {
   const createPasskeyMutation = useMutation({
     mutationFn: async () => {
       // Step 1: Get registration options
-      const optionsRes = await fetch(getApiUrl('/api/webauthn/register/options'), {
-        method: 'POST',
-        credentials: 'include',
-      });
+      // apiRequest attaches the Firebase ID token; the bare cookie-only fetch left
+      // token-only sessions unable to enrol (401). Same fix MyAccount already has.
+      const optionsRes = await apiRequest('POST', '/api/webauthn/register/options');
 
       if (!optionsRes.ok) {
         throw new Error('Failed to get registration options');

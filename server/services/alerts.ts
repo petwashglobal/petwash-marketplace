@@ -10,6 +10,7 @@ import { logger } from '../lib/logger';
 import { countFailedAttempts } from './securityEvents';
 import { isPublicIP } from '../utils/ipValidation';
 import { safeIPFetch } from '../lib/safeOutboundUrl';
+import { hashIp } from '../lib/ipHash';
 
 const FROM = process.env.ALERT_EMAIL_FROM || 'noreply@petwash.co.il';
 const TO = process.env.ALERT_EMAIL_TO || 'nir.h@petwash.co.il';
@@ -175,17 +176,20 @@ export async function alertNewDeviceIfUnusual(
       .where('createdAt', '>=', since)
       .get();
 
-    // Build set of seen IP:city combinations
+    // Build set of seen IP:city combinations. securityEvents stores only the
+    // salted ipHash since 2026-09-13 (older rows carried the raw ip).
+    let currentIpKey = ip;
+    try { currentIpKey = hashIp(ip, uid); } catch { /* no salt: compare raw */ }
     const seenLocations = new Set<string>();
     snapshot.forEach((doc) => {
       const data = doc.data();
-      const eventIp = data.ip || '';
+      const eventIp = data.ipHash || data.ip || '';
       const eventCity = data.meta?.city || '';
       const key = `${eventIp}:${eventCity}`;
       if (key) seenLocations.add(key);
     });
 
-    const currentKey = `${ip}:${city || ''}`;
+    const currentKey = `${currentIpKey}:${city || ''}`;
     
     // If this is a new location, send alert
     if (!seenLocations.has(currentKey) && seenLocations.size > 0) {
