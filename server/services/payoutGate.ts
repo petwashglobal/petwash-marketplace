@@ -149,7 +149,12 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
       const [dispute] = await db
         .select({ status: bookingDisputes.status })
         .from(bookingDisputes)
-        .where(eq(bookingDisputes.bookingId, bookingId))
+        // 2026-09-13: filter to OPEN statuses. `.limit(1)` with no status filter
+        // could read an old closed dispute and miss a newer open one.
+        .where(and(
+          eq(bookingDisputes.bookingId, bookingId),
+          sql`${bookingDisputes.status} IN ('open', 'under_review', 'pending', 'escalated')`,
+        ))
         .limit(1);
       if (dispute && OPEN_DISPUTE_STATUSES.has(String(dispute.status))) {
         return { ok: false, reason: 'OPEN_DISPUTE', message: `An open dispute (${dispute.status}) exists for this booking — payout held.` };

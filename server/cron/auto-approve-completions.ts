@@ -144,20 +144,27 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         status: 'completed',
         timestamp: now.toISOString(),
         actorType: 'system',
-        note: 'Auto-approved by platform after 24-hour customer inaction. Payment released to provider.',
+        note: 'Auto-completed after 24-hour customer inaction. Provider payout waits for Pet Wash admin approval.',
       });
 
-      // ── Real escrow release: update Firestore escrow to 'released' ──────────
+      // ── NO automatic release (CEO rule 2026-09-13) ───────────────────────────
+      // 24h of customer silence is not evidence the job was done. The escrow stays
+      // 'held' and ONE admin alert asks a Pet Wash admin to check the evidence and
+      // approve (POST /api/escrow/admin/:escrowId/approve-release).
       try {
         const escrows = await EscrowService.getEscrowsByBooking(booking.requestId);
+        const { flagPayoutForAdminReview } = await import('../lib/payoutHumanApproval');
         for (const escrow of escrows) {
           if (escrow.status === 'held') {
-            await EscrowService.releaseEscrowPayment(escrow.id, 'system_auto_approve');
-            logger.info('[AutoApprove] Firestore escrow released', { requestId: booking.requestId, escrowId: escrow.id });
+            await flagPayoutForAdminReview({
+              kind: 'escrow', id: escrow.id, bookingId: booking.requestId, providerId: booking.providerId,
+              amountIls: (booking.subtotalCents ?? booking.totalCents) / 100,
+              reason: 'auto-completed after 24h customer silence — no customer confirmation',
+            });
           }
         }
       } catch (escrowErr: any) {
-        logger.warn('[AutoApprove] Firestore escrow release failed (non-blocking)', {
+        logger.warn('[AutoApprove] payout review flag failed (non-blocking)', {
           error: escrowErr.message, requestId: booking.requestId,
         });
       }
@@ -244,7 +251,7 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           status: 'completed',
           ownerConfirmedAt: now,
           customerApprovedAt: now,
-          paymentReleasedAt: now,
+          // paymentReleasedAt is NOT set: nothing was released (CEO rule 2026-09-13).
           statusHistory: statusHistory as any, // jsonb column — cast required by Drizzle
           updatedAt: now,
         })
@@ -268,14 +275,14 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         await dispatchNotification({
           uid: booking.providerId,
           type: 'receipt',
-          title: '💰 תשלום שוחרר (אישור אוטומטי) / Payment released (auto-approved)',
+          title: '✅ ההזמנה הושלמה — התשלום בבדיקה / Job completed — payout under review',
           bodyHtml:
-            `<p>ה-24 שעות חלפו. התשלום עבור הזמנה <strong>${booking.requestId}</strong> שוחרר אוטומטית. ` +
-            `₪${providerAmountIls} יועבר לחשבונך תוך 72 שעות.</p>` +
+            `<p>ה-24 שעות חלפו וההזמנה <strong>${booking.requestId}</strong> סומנה כהושלמה. ` +
+            `התשלום בסך ₪${providerAmountIls} ממתין לאישור צוות Pet Wash לאחר בדיקת פרטי העבודה.</p>` +
             `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
-            `<p>24 hours passed without customer confirmation. Payment of ` +
-            `<strong>₪${providerAmountIls}</strong> for booking <strong>${booking.requestId}</strong> ` +
-            `has been auto-released and will arrive in your account within 72 hours.</p>`,
+            `<p>24 hours passed and booking <strong>${booking.requestId}</strong> was marked completed. ` +
+            `Your payout of <strong>₪${providerAmountIls}</strong> is waiting for Pet Wash approval ` +
+            `after the job details are reviewed.</p>`,
           ctaText: 'צפה בהזמנה / View booking',
           ctaUrl: `https://petwash.co.il/provider/jobs/${booking.requestId}`,
           channels: ['inbox', 'email', 'push'],
@@ -293,8 +300,8 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           type: 'booking_auto_completed',
           title: '✅ הזמנה הושלמה אוטומטית',
           titleHe: '✅ הזמנה הושלמה אוטומטית',
-          body: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סגורה אוטומטית והתשלום שוחרר לספק.`,
-          bodyHe: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סגורה אוטומטית והתשלום שוחרר לספק.`,
+          body: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סומנה כהושלמה; התשלום לספק ממתין לבדיקת Pet Wash.`,
+          bodyHe: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סומנה כהושלמה; התשלום לספק ממתין לבדיקת Pet Wash.`,
           // ?review=1 fires the end-of-stay banner + rating form auto-scroll
           // on BookingConfirmation.tsx (PR #1906). The customer never rated
           // the service (that's why cron auto-approved) — deep-link them

@@ -375,6 +375,33 @@ router.get("/booking/:bookingId", requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * THE HUMAN "YES" (CEO rule, 2026-09-13). A Pet Wash admin approves ONE escrow
+ * after checking the job evidence. The payout gates still run (disputes,
+ * refund window, provider verification, declarations).
+ */
+router.post("/admin/:escrowId/approve-release", requireAdmin, async (req, res) => {
+  try {
+    const adminUid = (req as any).firebaseUser?.uid || (req as any).user?.uid || (req as any).adminUser?.uid;
+    if (!adminUid) return res.status(401).json({ error: "ADMIN_IDENTITY_REQUIRED" });
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim().slice(0, 500) : "";
+    if (!reason) return res.status(400).json({ error: "REASON_REQUIRED", message: "Say what evidence you checked." });
+    await EscrowService.releaseEscrowPayment(req.params.escrowId, adminUid);
+    logger.info("[Escrow] admin approved provider payout release", { escrowId: req.params.escrowId, adminUid, reason });
+    try {
+      const { resolveClearedByPrefix } = await import("../services/AlertEngine");
+      await resolveClearedByPrefix(`payout_review:escrow:${req.params.escrowId}`, []);
+    } catch { /* alert housekeeping only */ }
+    res.json({ success: true });
+  } catch (error: any) {
+    if (error?.code === "PAYOUT_HELD_GATE") {
+      // Reason CODE only — gate texts stay in the server log (AGENT-14: no raw error text in responses).
+      return res.status(409).json({ error: "PAYOUT_HELD_GATE", reason: error.gateReason ?? null });
+    }
+    sendSanitizedError(res, error, "ESCROW_ADMIN_APPROVE_FAILED", { logContext: { op: "admin-approve-release" } });
+  }
+});
+
 router.post("/admin/auto-release", requireAdmin, async (req, res) => {
   try {
     const releasedCount = await EscrowService.autoReleaseExpiredHolds();

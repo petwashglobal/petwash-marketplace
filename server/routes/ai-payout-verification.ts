@@ -236,7 +236,10 @@ router.post("/override/:payoutId", async (req, res) => {
       })
       .where(eq(superAppPayouts.id, payoutId));
 
-    const payoutResult = await ProviderPayoutService.releaseEscrowAndPayout(payoutId, true);
+    // The approver is the VERIFIED signed-in admin (mount: validateFirebaseToken +
+    // admin role + MFA) — never the adminId typed into the request body.
+    const approverUid = (req as any).firebaseUser?.uid as string | undefined;
+    const payoutResult = await ProviderPayoutService.releaseEscrowAndPayout(payoutId, true, approverUid);
 
     res.json({
       success: payoutResult.success,

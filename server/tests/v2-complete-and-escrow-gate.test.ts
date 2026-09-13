@@ -68,13 +68,16 @@ describe('Escrow time-based release forces the payout gate (#2a)', () => {
     expect(ESCROW).not.toMatch(/ESCROW_PAYOUT_GATE_ENFORCE === "true"/);
   });
 
-  it('the time-based orphan auto-release passes enforceGate:true', () => {
-    expect(ESCROW).toMatch(/releaseEscrowPayment\(escrow\.id,\s*"system_auto_release",\s*\{\s*enforceGate:\s*true\s*\}\)/);
+  it('the time-based sweep never releases: it flags the hold for a Pet Wash admin (CEO rule 2026-09-13)', () => {
+    expect(ESCROW).not.toMatch(/releaseEscrowPayment\(escrow\.id,\s*"system_auto_release"/);
+    expect(ESCROW).toMatch(/flagPayoutForAdminReview\(\{/);
+    expect(ESCROW).toMatch(/awaitingAdminApprovalAt: new Date\(\)/);
   });
 
-  it('explicit owner-confirm / manual releases are NOT force-gated (no enforceGate on them)', () => {
-    // the immediate release paths call the 2-arg form; only the orphan cron adds enforceGate
-    expect(ESCROW).toMatch(/system_auto_release",\s*\{\s*enforceGate:\s*true\s*\}/);
+  it('releaseEscrowPayment refuses any system actor before touching the escrow', () => {
+    const fn = ESCROW.indexOf('async releaseEscrowPayment(');
+    const body = ESCROW.slice(fn, fn + 900);
+    expect(body).toMatch(/if \(isSystemPayoutActor\(releasedBy\)\) \{\s*throw new HumanPayoutApprovalRequired/);
   });
 });
 
