@@ -17,6 +17,7 @@ import { sumitClient } from './SumitClient';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { sumitDocTypeForPaidSale } from '@shared/serviceDivisions';
 import { logger } from '../lib/logger';
+import { getSumitDocumentMapping, type PetWashPaymentClass } from './sumitDocumentMapping';
 
 export interface CustomerReceiptInput {
   /** stable idempotency key for this cash-in (e.g. `nayax-<txId>`) */
@@ -29,6 +30,14 @@ export interface CustomerReceiptInput {
   /** GROSS amount the customer paid, VAT-inclusive, in ILS */
   totalAmountIls: number;
   description: string;
+  /**
+   * CPA class of the sale (server/services/sumitDocumentMapping.ts). Omitted =
+   * a paid taxable sale (InvoiceAndReceipt, full VAT). Stored value
+   * (EGIFT_PURCHASE / WALLET_TOPUP) MUST pass its class: the mapping says a
+   * payment-only Receipt with no VAT, and without this an eGift sold through
+   * the Nayax online till was documented as a full-VAT sale.
+   */
+  paymentClass?: PetWashPaymentClass;
 }
 
 export interface CustomerReceiptResult {
@@ -48,8 +57,14 @@ export class SumitReceiptService {
 
       const total = Math.round(input.totalAmountIls * 100) / 100;
       if (!(total > 0)) return { ok: false, reason: 'non-positive amount' };
-      const beforeVat = Math.round((total / (1 + ISRAEL_VAT_RATE)) * 100) / 100;
-      const vatAmount = Math.round((total - beforeVat) * 100) / 100;
+      const mapping = input.paymentClass ? getSumitDocumentMapping(input.paymentClass) : null;
+      const storedValue = mapping?.vatMode === 'NO_VAT_STORED_VALUE';
+      if (mapping && !storedValue && mapping.vatMode !== 'FULL_VAT' && mapping.vatMode !== 'VAT_AT_REDEMPTION') {
+        // Commission-only / credit classes have their own paths; never guess here.
+        return { ok: false, reason: `payment class ${input.paymentClass} is not issued through issueCustomerReceipt` };
+      }
+      const beforeVat = storedValue ? total : Math.round((total / (1 + ISRAEL_VAT_RATE)) * 100) / 100;
+      const vatAmount = storedValue ? 0 : Math.round((total - beforeVat) * 100) / 100;
 
       // Canonical: a B2C already-paid sale is a חשבונית מס/קבלה
       // (InvoiceAndReceipt) — not a bare 'Invoice'. createCustomerReceipt()
@@ -58,6 +73,7 @@ export class SumitReceiptService {
       void sumitDocTypeForPaidSale(null);
       const result = await sumitClient.createCustomerReceipt({
         idempotencyKey: input.idempotencyKey,
+        ...(mapping ? { documentType: mapping.documentType } : {}),
         customer: {
           name: input.customerName?.trim() || 'PetWash Customer',
           email: input.customerEmail,

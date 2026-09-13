@@ -31,15 +31,24 @@ export interface CaptureResult {
 
 export class SumitCardVault {
   /**
-   * Save a card to a SUMIT customer + record its token locally. `singlePaymentToken`
-   * comes from SUMIT's own tokenization (hosted page / widget) — we never see the PAN.
-   * Returns saved:false fail-closed on any problem; caller must NOT treat the user as
-   * having a card on file unless saved:true.
+   * Record the card SUMIT saved during the ₪1 hosted-page payment.
+   *
+   * CORRECTED 2026-09-13 against SUMIT's official schema. The hosted payment page
+   * saves the paying card on the SUMIT customer itself (BeginRedirect
+   * `PreventSavingPaymentMethod` defaults to false). There is no one-time token to
+   * hand to setforcustomer afterwards — the old code passed the payment's
+   * PaymentMethod.ID (or even the customer id) as `SinglePaymentToken`, a field
+   * SUMIT does not have, so every save failed after the customer had paid ₪1.
+   *
+   * Now: READ the customer's active method (getforcustomer → Data.PaymentMethod)
+   * and record it only when it exists — and, when the payment named a method,
+   * only when it is that same method. Fail-closed on anything else.
    */
   static async saveCard(input: {
     userId: string;
     sumitCustomerId: number | string;
-    singlePaymentToken: string;
+    /** PaymentMethod.ID from the verified payment, when SUMIT returned one. */
+    expectedPaymentMethodId?: string;
     cardBrand?: string;
     cardLast4?: string;
     expMonth?: number;
@@ -49,25 +58,28 @@ export class SumitCardVault {
     consentVersion?: string;
   }): Promise<{ saved: boolean; reason?: string }> {
     if (!isCardVaultEnabled()) return { saved: false, reason: 'vault_disabled' };
-    const r = await sumitClient.setForCustomer({
-      sumitCustomerId: input.sumitCustomerId,
-      singlePaymentToken: input.singlePaymentToken,
-      customerName: input.billingName,
-      customerEmail: input.customerEmail,
-    });
-    if (!r.saved) {
-      logger.warn('[SumitCardVault] setForCustomer did not save (fail-closed)', { userId: input.userId, reason: r.reason });
-      return { saved: false, reason: r.reason || 'sumit_did_not_save' };
+    const r = await sumitClient.getForCustomer(input.sumitCustomerId);
+    const active = (r.items[0] ?? null) as { ID?: unknown; CreditCard_LastDigits?: unknown; CreditCard_ExpirationMonth?: unknown; CreditCard_ExpirationYear?: unknown } | null;
+    if (!r.wired || !active || active.ID == null) {
+      logger.warn('[SumitCardVault] no active SUMIT payment method after the save-card payment (fail-closed)', {
+        userId: input.userId, reason: r.reason || 'no_active_method',
+      });
+      return { saved: false, reason: r.reason || 'sumit_has_no_active_method' };
+    }
+    const methodId = String(active.ID);
+    if (input.expectedPaymentMethodId && input.expectedPaymentMethodId !== methodId) {
+      logger.warn('[SumitCardVault] active SUMIT method is not the card just paid with (fail-closed)', { userId: input.userId });
+      return { saved: false, reason: 'active_method_mismatch' };
     }
     await PaymentTokenVault.saveToken({
       userId: input.userId,
       provider: 'sumit',
       processorCustomerId: String(input.sumitCustomerId),
-      processorTokenId: r.paymentMethodId || String(input.sumitCustomerId), // the saved method ref
+      processorTokenId: methodId,
       cardBrand: input.cardBrand,
-      cardLast4: input.cardLast4,
-      expMonth: input.expMonth,
-      expYear: input.expYear,
+      cardLast4: input.cardLast4 ?? (typeof active.CreditCard_LastDigits === 'string' ? active.CreditCard_LastDigits : undefined),
+      expMonth: input.expMonth ?? (typeof active.CreditCard_ExpirationMonth === 'number' ? active.CreditCard_ExpirationMonth : undefined),
+      expYear: input.expYear ?? (typeof active.CreditCard_ExpirationYear === 'number' ? active.CreditCard_ExpirationYear : undefined),
       billingName: input.billingName,
       consentVersion: input.consentVersion,
     });

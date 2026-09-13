@@ -79,11 +79,12 @@ describe('SumitClient.createCustomerReceipt', () => {
     let sentBody: any;
     vi.spyOn(globalThis, 'fetch' as any).mockImplementation(async (_url: any, opts: any) => {
       sentBody = JSON.parse(opts.body);
-      return { ok: true, status: 200, json: async () => ({ DocumentNumber: 'INV-999' }) } as any;
+      // Official schema (api.sumit.co.il/swagger): id at Data.DocumentID, number separately.
+      return { ok: true, status: 200, json: async () => ({ Status: 0, Data: { DocumentID: 999, DocumentNumber: 10999 } }) } as any;
     });
     const client = new SumitClient();
     const res = await client.createCustomerReceipt(SAMPLE);
-    expect(res.sumitDocumentId).toBe('INV-999');
+    expect(res.sumitDocumentId).toBe('999');
     expect(sentBody.Details.Type).toBe('InvoiceAndReceipt');
     expect(sentBody.Payments?.[0]?.Amount).toBe(59);
     // Shape facts VERIFIED LIVE 2026-07-05 (document #10000):
