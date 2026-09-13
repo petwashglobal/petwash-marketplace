@@ -424,6 +424,7 @@ const AdminMemberDiscounts = lazy(() => import("@/pages/admin/AdminMemberDiscoun
 const AdminCustomerDetail = lazy(() => import("@/pages/admin/AdminCustomerDetail"));
 const AdminBayControl = lazy(() => import("@/pages/admin/AdminBayControl"));
 const AdminAlertsCenter = lazy(() => import("@/pages/admin/AdminAlertsCenter"));
+const AdminPayoutApprovals = lazy(() => import("@/pages/admin/AdminPayoutApprovals"));
 const AdminProviderVerification = lazy(() => import("@/pages/admin/AdminProviderVerification"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
@@ -2746,6 +2747,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminBayControl />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Provider payouts waiting for a Pet Wash admin's approval (CEO rule 2026-09-13) */}
+        <Route path="/admin/payout-approvals">
+          {() => (
+            <AdminRouteGuard>
+              <AdminPayoutApprovals />
             </AdminRouteGuard>
           )}
         </Route>

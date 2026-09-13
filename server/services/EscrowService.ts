@@ -522,6 +522,18 @@ class EscrowService {
     return doc.exists ? (doc.data() as EscrowPayment) : null;
   }
 
+  /** Held escrows for the admin approval queue — oldest hold end first. Read-only. */
+  async listHeldForAdmin(limit = 100): Promise<Array<EscrowPayment & { awaitingAdminApprovalAt?: Date | null }>> {
+    const snapshot = await this.db.collection("escrow_payments").where("status", "==", "held").limit(Math.min(limit, 300)).get();
+    const toDate = (v: any) => (v && typeof v.toDate === "function" ? v.toDate() : v ? new Date(v) : null);
+    return snapshot.docs
+      .map((doc) => {
+        const d = doc.data() as any;
+        return { ...d, holdUntil: toDate(d.holdUntil), createdAt: toDate(d.createdAt), awaitingAdminApprovalAt: toDate(d.awaitingAdminApprovalAt) };
+      })
+      .sort((a, b) => (a.holdUntil?.getTime?.() ?? 0) - (b.holdUntil?.getTime?.() ?? 0));
+  }
+
   async getEscrowsByBooking(bookingId: string): Promise<EscrowPayment[]> {
     const snapshot = await this.db
       .collection("escrow_payments")

@@ -69,6 +69,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     group: 'Money',
     groupHe: 'כספים',
     items: [
+      { label: 'Provider Payout Approvals', labelHe: 'אישור תשלומים לספקים', path: '/admin/payout-approvals', icon: ShieldAlert, roles: ['admin', 'ceo'], hint: 'Held provider money + job evidence — nothing is paid without your yes', hintHe: 'כסף ספקים בהחזקה + ראיות העבודה — שום תשלום בלי אישורך' },
       { label: 'No Lost Money', labelHe: 'בלי כסף אבוד', path: '/admin/no-lost-money', icon: ShieldAlert, roles: ['admin', 'ceo'], hint: 'Money-leak detector', hintHe: 'גלאי דליפות כסף' },
       { label: 'Finance', labelHe: 'כספים', path: '/admin/finance', icon: Banknote, roles: ['admin', 'ceo'], hint: 'Accounting & tax', hintHe: 'הנהלת חשבונות ומיסוי' },
       { label: 'Wallet & Reconciliation', labelHe: 'ארנק והתחשבנות', path: '/admin/wallet-finance', icon: Wallet, roles: ['admin', 'ceo'], hint: 'Balances, payouts, settlement', hintHe: 'יתרות, תשלומים וסליקה' },

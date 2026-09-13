@@ -94,3 +94,18 @@ describe('the admin Yes button cross-examines the job first', () => {
     expect(body).toContain('error: "EVIDENCE_BLOCKED"');
   });
 });
+
+describe('admin approval queue endpoint', () => {
+  it('is admin-only, read-only, and returns no customer contact data', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const src = readFileSync(join(__dirname, '../routes/escrow.ts'), 'utf8');
+    const i = src.indexOf('router.get("/admin/awaiting-approval", requireAdmin');
+    expect(i).toBeGreaterThan(0);
+    const body = src.slice(i, i + 1800);
+    expect(body).toContain('listHeldForAdmin(100)');
+    expect(body).toContain('buildJobEvidenceReport(');
+    expect(body).not.toMatch(/customerId|email|phone/);
+    expect(body).not.toMatch(/releaseEscrowPayment|update\(/);
+  });
+});
