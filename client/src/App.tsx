@@ -30,6 +30,9 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { isRTL } from "@/lib/i18n";
 import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
 import { isChunkLoadError, tryChunkReload } from "@/lib/chunkRecovery";
+import { ReferralSignupLinker } from "@/components/ReferralSignupLinker";
+import { storeReferralCode } from "@/lib/referralCapture";
+import { inAppPathFromDeepLink } from "@/lib/deepLink";
 import { getApiUrl } from "@/lib/apiConfig";
 import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
@@ -834,6 +837,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     return () => { window.removeEventListener('focus', refreshLive); removeCap?.(); };
   }, []);
 
+  // UNIVERSAL / DEEP LINKS (2026-09-13): the AASA claims /provider/*, /jobs/*
+  // etc. for the apps, so iOS opens the APP for those links — but nothing
+  // listened for `appUrlOpen`, so every tapped email/SMS/push link landed on the
+  // app's home screen instead of the booking/job it named. Only our own hosts
+  // are honoured; the path+query is routed in-app.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    let remove: (() => void) | undefined;
+    import('@capacitor/app')
+      .then(({ App: CapApp }) =>
+        CapApp.addListener('appUrlOpen', ({ url }: { url: string }) => {
+          const target = inAppPathFromDeepLink(url);
+          if (target) setLocation(target);
+        }).then((h: { remove: () => void }) => { remove = () => h.remove(); }),
+      )
+      .catch(() => { /* no Capacitor App plugin */ });
+    return () => remove?.();
+  }, [isNativeApp, setLocation]);
+
   // APP-FLAVOR ROUTING (2026-06-17): the customer (com.petwash.il) and
   // provider (il.co.petwash.provider) apps ship the SAME web bundle. On a cold
   // Detect the native app flavor once (provider vs customer bundle id). Web stays false.
@@ -986,6 +1008,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     <Suspense fallback={<PageLoader />}>
       {/* Google One Tap - shows floating "Continue as …?" card for signed-in Google users */}
       {showOneTap && <GoogleOneTap enabled={true} autoPrompt={true} />}
+      <ReferralSignupLinker />
       
       <Switch>
         {/* Public routes */}
@@ -1386,6 +1409,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <ReferralPage />
             </RequireAuth>
           )}
+        </Route>
+        {/* Referral landing (2026-09-13): the server shares ${base}/ref?code=XXX
+            but no route existed — every invite opened NotFound. Capture the
+            code, then sign-up; ReferralSignupLinker attaches it after login. */}
+        <Route path="/ref">
+          {() => {
+            const code = storeReferralCode(new URLSearchParams(window.location.search).get('code'));
+            return <Redirect to={code ? `/signup?ref=${encodeURIComponent(code)}` : '/signup'} />;
+          }}
         </Route>
         <Route path="/refer">
           {() => (

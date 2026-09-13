@@ -185,3 +185,53 @@ describe('Provider OS calendar speaks the server contract', () => {
     expect(src).toContain("'/account/transactions'");
   });
 });
+
+describe('referral links attach', () => {
+  it('captures a valid code, expires it, rejects junk', async () => {
+    const store = new Map<string, string>();
+    (globalThis as any).localStorage = {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    };
+    const esbuild = await import('esbuild');
+    const js = esbuild.transformSync(R('client/src/lib/referralCapture.ts'), { loader: 'ts', format: 'cjs' }).code;
+    const mod = { exports: {} as any };
+    // eslint-disable-next-line no-new-func
+    new Function('module', 'exports', js)(mod, mod.exports);
+    const { storeReferralCode, readReferralCode, clearReferralCode } = mod.exports;
+    expect(storeReferralCode('ab23cdef', 1000)).toBe('AB23CDEF');
+    expect(readReferralCode(2000)).toBe('AB23CDEF');
+    expect(readReferralCode(1000 + 31 * 24 * 3600 * 1000)).toBeNull();
+    expect(storeReferralCode('<script>')).toBeNull();
+    storeReferralCode('ZZZZ9999', 5);
+    clearReferralCode();
+    expect(readReferralCode(6)).toBeNull();
+  });
+
+  it('/ref route exists, the server link uses it, and the linker posts link-signup once signed in', () => {
+    const app = R('client/src/App.tsx');
+    expect(app).toContain('<Route path="/ref">');
+    expect(app).toContain('<ReferralSignupLinker />');
+    expect(R('server/routes/referral.ts')).toContain('/ref?code=');
+    expect(R('client/src/components/ReferralSignupLinker.tsx')).toContain("apiRequest('POST', '/api/referral/link-signup', { referralCode: code })");
+  });
+});
+
+describe('native deep links route in-app, own hosts only', () => {
+  it('maps petwash links to paths and ignores everything else', async () => {
+    const esbuild = await import('esbuild');
+    const js = esbuild.transformSync(R('client/src/lib/deepLink.ts'), { loader: 'ts', format: 'cjs' }).code;
+    const mod = { exports: {} as any };
+    // eslint-disable-next-line no-new-func
+    new Function('module', 'exports', js)(mod, mod.exports);
+    const { inAppPathFromDeepLink: f } = mod.exports;
+    expect(f('https://petwash.co.il/provider/jobs/R1?x=1#t')).toBe('/provider/jobs/R1?x=1#t');
+    expect(f('https://www.petwash.co.il/booking/confirmation/B2')).toBe('/booking/confirmation/B2');
+    expect(f('https://evil.example/provider/jobs/R1')).toBeNull();
+    expect(f('http://petwash.co.il/x')).toBeNull();
+    expect(f('https://petwash.co.il/api/admin/x')).toBeNull();
+    expect(f('not a url')).toBeNull();
+    expect(R('client/src/App.tsx')).toMatch(/addListener\('appUrlOpen'/);
+  });
+});
