@@ -6,6 +6,7 @@ import { eq, desc, and, gte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { eventPublisher } from '../services/EventPublisher';
 import { z } from 'zod';
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 
 const router = Router();
 
@@ -56,7 +57,7 @@ router.get('/', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/:id', requireAdmin, async (req, res) => {
+router.get('/:id', reserveLiteralSegments('id', 'stats'), requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

@@ -29,6 +29,7 @@ import { eq, and, desc, sql, gte, lte, or } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { EmailService } from '../emailService';
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 
 const router = Router();
 
@@ -77,7 +78,7 @@ router.get('/spare-parts', async (req: Request, res: Response) => {
 /**
  * GET /api/k9000/spare-parts/:id - Get specific spare part
  */
-router.get('/spare-parts/:id', async (req: Request, res: Response) => {
+router.get('/spare-parts/:id', reserveLiteralSegments('id', 'orders', 'summary'), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     

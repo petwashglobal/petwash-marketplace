@@ -7616,6 +7616,22 @@ self.addEventListener('notificationclick', (event) => {
 
   // Legacy gift card endpoint (redirects to Nayax)
   app.post('/api/express-gift-purchase', async (req, res) => {
+    // SEALED 2026-09-13 — unauthenticated gift purchase that re-entered the app
+    // over loopback: it fetched http://127.0.0.1:$PORT/api/nayax-checkout, which
+    // rewrites to /api/nayax/payment. That target is hard-disabled today, so the
+    // endpoint is inert — but it is inert by accident, not by design, and it
+    // becomes a live unauthenticated purchase path the moment Nayax online keys
+    // are configured.
+    // Nothing in client/src calls this path (grep: 0 hits). The live gift rail is
+    // the guest eGift order through SUMIT.
+    // TO REOPEN: call the payment service in-process with a server-derived
+    // amount, never a loopback fetch, and require a session.
+    logger.warn('[Gifts] /api/express-gift-purchase is sealed — unauthenticated loopback purchase path');
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'Gift purchase moved to the paid eGift rail.',
+    });
+
     try {
       const { packageId, email, recipientName, recipientEmail, personalMessage } = req.body;
       
@@ -7929,6 +7945,23 @@ self.addEventListener('notificationclick', (event) => {
 
   // Validate QR code (for Nayax terminal pre-validation)
   app.post('/api/qr-validate', async (req, res) => {
+    // SEALED 2026-09-13 — unauthenticated voucher-balance oracle.
+    // Any caller could POST a QR payload and learn whether a voucher code is
+    // ACTIVE and how much value remains on it, with no session and no rate
+    // limiter. That turns code guessing into a cheap enumeration loop, and it
+    // pairs with the (now sealed) free mint above.
+    // Nothing in client/src calls this path (grep: 0 hits). Redemption at a bay
+    // goes through POST /api/vouchers/redeem, which requires auth, App Check and
+    // the payment limiter.
+    // TO REOPEN: put it behind requireAuth + paymentLimiter and return only
+    // valid/invalid, never the remaining balance.
+    logger.warn('[Vouchers] /api/qr-validate is sealed — it disclosed voucher balances without auth');
+    return res.status(410).json({
+      valid: false,
+      error: 'ENDPOINT_SEALED',
+      message: 'Voucher validation moved to the authenticated redemption rail.',
+    });
+
     try {
       const { qrCodeData } = req.body;
       
@@ -7974,6 +8007,28 @@ self.addEventListener('notificationclick', (event) => {
 
   // Purchase voucher (guest or authenticated)
   app.post('/api/vouchers/purchase', async (req, res) => {
+    // SEALED 2026-09-13 — free-money endpoint reachable from the public internet.
+    // No requireAuth, no rate limiter, and NO PAYMENT STEP: it called
+    // storage.createVoucher({ nayaxTxId: null }) for any amount up to 2000 and
+    // emailed the PLAINTEXT redemption code to a caller-supplied address.
+    // The minted voucher is real stored value: POST /api/vouchers/claim binds it
+    // to a signed-in account and POST /api/vouchers/redeem spends it at a bay.
+    // So `curl -d '{"type":"STORED_VALUE","amount":2000,...}'` produced 2000 of
+    // spendable credit, unlimited times, with no charge and no audit trail.
+    // Nothing in client/src calls this path (grep: 0 hits). The live gift rails
+    // are POST /api/payments/sumit/begin (EGIFT_*) and the guest eGift order,
+    // both of which take money before they issue anything.
+    // TO REOPEN: require a settled payment reference before createVoucher, then
+    // delete this block.
+    logger.warn('[Vouchers] /api/vouchers/purchase is sealed — it minted stored value with no payment', {
+      correlationId,
+    });
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'Voucher purchase moved to the paid eGift rail.',
+      messageHe: 'רכישת שובר עברה למסלול ה-eGift בתשלום.',
+    });
+
     const correlationId = crypto.randomUUID();
     try {
       const schema = z.object({
@@ -9017,6 +9072,24 @@ self.addEventListener('notificationclick', (event) => {
 
   // Smart Wash Receipt API routes
   app.post('/api/smart-receipts', async (req, res) => {
+    // SEALED 2026-09-13 — unauthenticated receipt minting with caller-supplied
+    // identity. Every field that matters (userId, customerEmail, customerName,
+    // paymentMethod, originalAmount, finalTotal, nayaxTransactionId) came
+    // straight from req.body with no session and no verification that the
+    // payment it describes ever happened. The response returns
+    // loyaltyPointsEarned, so the handler is also a self-serve way to award
+    // points against any userId.
+    // Nothing in client/src calls this path (grep: 0 hits). Real receipts are
+    // issued from the money rails themselves — IsraeliDigitalReceiptService and
+    // the fiscal outbox — off a settled transaction.
+    // TO REOPEN: derive userId from the session and require a verified payment
+    // reference, never the request body.
+    logger.warn('[Receipts] /api/smart-receipts is sealed — it minted receipts from unverified request bodies');
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'Receipts are issued by the payment rail, not by request.',
+    });
+
     try {
       const { 
         userId, 
@@ -11755,10 +11828,17 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Firebase user sync to HubSpot
-  app.post('/api/hubspot/sync-user', async (req, res) => {
+  // SECURITY 2026-09-13: was unauthenticated and took `uid` and `email` straight
+  // from the body — an open relay that pushed any caller-supplied name, phone and
+  // consent flag into the CRM against any address, and let one person's activity
+  // be written onto another person's contact record. The identity now comes from
+  // the verified session; the body may only carry the optional profile fields.
+  app.post('/api/hubspot/sync-user', requireAuth, async (req: any, res) => {
     try {
       const { syncUserToHubSpot } = await import('./hubspot');
-      const { uid, email, firstname, lastname, phone, lang, consent } = req.body;
+      const { firstname, lastname, phone, lang, consent } = req.body;
+      const uid = req.user?.uid || req.firebaseUser?.uid;
+      const email = req.firebaseUser?.email || req.user?.email;
       
       if (!email || !uid) {
         return res.status(400).json({ message: "Email and UID required" });
@@ -11789,10 +11869,14 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Track HubSpot event
-  app.post('/api/hubspot/track-event', async (req, res) => {
+  // SECURITY 2026-09-13: was unauthenticated and tracked against a body-supplied
+  // `email`, so anyone could write arbitrary events onto anyone's CRM contact.
+  // The address now comes from the verified session.
+  app.post('/api/hubspot/track-event', requireAuth, async (req: any, res) => {
     try {
       const { trackHubSpotEvent } = await import('./hubspot');
-      const { email, eventName, properties } = req.body;
+      const { eventName, properties } = req.body;
+      const email = req.firebaseUser?.email || req.user?.email;
       
       if (!email || !eventName) {
         return res.status(400).json({ message: "Email and event name required" });
@@ -11950,6 +12034,22 @@ self.addEventListener('notificationclick', (event) => {
   // Public loyalty enrollment (no auth required) - for walk-in customers, partner referrals
   // MUST be registered BEFORE the auth-protected /api/loyalty routes
   app.post('/api/loyalty/external-enroll', apiLimiter, async (req, res) => {
+    // SEALED 2026-09-13 — unauthenticated identity creation plus mail
+    // amplification. It inserted a loyaltyProfiles row keyed EXT-<email> from an
+    // attacker-supplied email and phone, then sent a welcome message to that
+    // address. No session, no ownership proof over the contact; apiLimiter was
+    // the only gate.
+    // Nothing in client/src calls this path (grep: 0 hits). Enrolment for real
+    // members happens through the authenticated loyalty routes after signup.
+    // TO REOPEN: require a verified contact (UnifiedVerificationService) before
+    // the insert, so a profile can only be created for an address its owner
+    // proved.
+    logger.warn('[Loyalty] /api/loyalty/external-enroll is sealed — it created profiles for unverified addresses');
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'External enrolment requires a verified contact.',
+    });
+
     try {
       const { z } = await import('zod');
       const { db } = await import('./db');

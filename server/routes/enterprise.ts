@@ -46,6 +46,7 @@ import { requireAdmin } from "../adminAuth";
 import { requireAuth } from "../customAuth";
 import { logger } from "../lib/logger";
 import { ZodError } from "zod";
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 
 const router = Router();
 
@@ -234,7 +235,7 @@ router.get("/stations", requireAdmin, async (req, res) => {
 });
 
 // Get single station with full details
-router.get("/stations/:id", requireAdmin, async (req, res) => {
+router.get("/stations/:id", reserveLiteralSegments('id', 'map'), requireAdmin, async (req, res) => {
   try {
     const [station] = await db
       .select()

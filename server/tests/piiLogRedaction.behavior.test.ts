@@ -219,14 +219,37 @@ describe('PAN scrubbing is Luhn-gated — cards redacted, identifiers kept', () 
     }
   });
 
-  it('does NOT redact epoch-millisecond timestamps', () => {
-    const ts = String(Date.now());
-    expect(scrubSensitiveText(`booking created at ${ts}`)).toContain(ts);
+  /**
+   * 2026-09-13: this used to assert on `String(Date.now())`. Luhn is a mod-10
+   * checksum, so about one timestamp in ten satisfies it — and those runs
+   * failed, on every branch, reading as a flake. `1789259928924` below is a
+   * real Date.now() from 13 Sep 2026 whose digits sum to 70; it is pinned here
+   * precisely because it DOES pass Luhn, so this test now proves the issuer
+   * gate rather than the clock.
+   */
+  const LUHN_VALID_EPOCH_MS = ['1789259928924', '1788646074650', '1757000000004'];
+
+  it('does NOT redact epoch-millisecond timestamps, even Luhn-valid ones', () => {
+    for (const ts of LUHN_VALID_EPOCH_MS) {
+      expect(scrubSensitiveText(`booking created at ${ts}`), ts).toContain(ts);
+    }
+    const now = String(Date.now());
+    expect(scrubSensitiveText(`booking created at ${now}`), now).toContain(now);
   });
 
   it('does NOT redact txn / idempotency ids built from Date.now()', () => {
-    const id = `txn-${Date.now()}`;
-    expect(scrubSensitiveText(`wallet mutation ${id} applied`)).toContain(id);
+    for (const ts of [...LUHN_VALID_EPOCH_MS, String(Date.now())]) {
+      const id = `txn-${ts}`;
+      expect(scrubSensitiveText(`wallet mutation ${id} applied`), id).toContain(id);
+    }
+  });
+
+  it('does NOT redact long numeric ids with no payment-network prefix', () => {
+    // 14-digit order id and a 16-digit run starting with 7 (petroleum MII):
+    // both Luhn-valid, neither is a card any network issues.
+    for (const id of ['20260906123458', '7000000000000008']) {
+      expect(scrubSensitiveText(`order ${id} settled`), id).toContain(id);
+    }
   });
 
   it('leaves ordinary log lines untouched', () => {

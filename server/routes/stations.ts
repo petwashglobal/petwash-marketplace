@@ -19,6 +19,7 @@ import {
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { computeStationScore, isComputeError } from './station-performance';
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 
 const router = Router();
 
@@ -128,7 +129,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response) => {
 });
 
 // GET /api/admin/stations/:id - Get station details with inventory (subcollection format)
-router.get('/:id', requireAdmin, async (req: Request, res: Response) => {
+router.get('/:id', reserveLiteralSegments('id', 'low-stock'), requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
