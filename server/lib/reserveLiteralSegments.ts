@@ -1,4 +1,3 @@
-import type { Request, Response, NextFunction, RequestHandler } from 'express';
 
 /**
  * Let a literal route win over an earlier `/:param` route that swallows it.
@@ -26,10 +25,21 @@ import type { Request, Response, NextFunction, RequestHandler } from 'express';
  * It must be the FIRST handler in the stack, so the shadowed route is skipped
  * before any auth, rate limit or database work runs.
  */
-export function reserveLiteralSegments(paramName: string, ...literals: string[]): RequestHandler {
+/*
+ * Deliberately typed with `any` request/response rather than express's
+ * RequestHandler: the routes this guard is inserted into declare their own
+ * widened request types (FranchiseAuthRequest, the Firebase-auth Request, and
+ * so on), and a concrete RequestHandler in front of those breaks express's
+ * handler-overload resolution — which shows up as type errors in files that
+ * were never edited. The body below touches only `req.params`.
+ */
+export function reserveLiteralSegments(
+  paramName: string,
+  ...literals: string[]
+): (req: any, res: any, next: (err?: any) => void) => void {
   const reserved = new Set(literals.map((l) => l.toLowerCase()));
-  return function skipReservedSegment(req: Request, _res: Response, next: NextFunction) {
-    const value = (req.params as Record<string, string | undefined>)[paramName];
+  return function skipReservedSegment(req: any, _res: any, next: (err?: any) => void) {
+    const value = (req?.params as Record<string, string | undefined> | undefined)?.[paramName];
     if (typeof value === 'string' && reserved.has(value.toLowerCase())) {
       // Not an error: hand control back to the router so the literal route matches.
       return next('route');
