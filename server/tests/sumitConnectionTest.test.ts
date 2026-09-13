@@ -43,7 +43,7 @@ describe('SumitClient.connectionTest — read-only key proof', () => {
     // No SUMIT_ENABLED, no SUMIT_WEBHOOK_SECRET on purpose.
     process.env.SUMIT_API_KEY = 'sk_test';
     process.env.SUMIT_COMPANY_ID = 'co_test';
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ VATRate: 18 }), { status: 200 }));
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ Status: 0, Data: { Rate: 18 }, UserErrorMessage: null }), { status: 200 }) /* live getvatrate shape, probed 2026-09-13 */);
     vi.stubGlobal('fetch', fetchMock);
 
     const r = await new SumitClient().connectionTest();
