@@ -11811,12 +11811,13 @@ self.addEventListener('notificationclick', (event) => {
   // consent flag into the CRM against any address, and let one person's activity
   // be written onto another person's contact record. The identity now comes from
   // the verified session; the body may only carry the optional profile fields.
-  app.post('/api/hubspot/sync-user', requireAuth, async (req: any, res) => {
+  app.post('/api/hubspot/sync-user', requireAuth, async (req, res) => {
     try {
       const { syncUserToHubSpot } = await import('./hubspot');
       const { firstname, lastname, phone, lang, consent } = req.body;
-      const uid = req.user?.uid || req.firebaseUser?.uid;
-      const email = req.firebaseUser?.email || req.user?.email;
+      const authed = req as any;
+      const uid = authed.user?.uid || authed.firebaseUser?.uid;
+      const email = authed.firebaseUser?.email || authed.user?.email;
       
       if (!email || !uid) {
         return res.status(400).json({ message: "Email and UID required" });
@@ -11850,11 +11851,12 @@ self.addEventListener('notificationclick', (event) => {
   // SECURITY 2026-09-13: was unauthenticated and tracked against a body-supplied
   // `email`, so anyone could write arbitrary events onto anyone's CRM contact.
   // The address now comes from the verified session.
-  app.post('/api/hubspot/track-event', requireAuth, async (req: any, res) => {
+  app.post('/api/hubspot/track-event', requireAuth, async (req, res) => {
     try {
       const { trackHubSpotEvent } = await import('./hubspot');
       const { eventName, properties } = req.body;
-      const email = req.firebaseUser?.email || req.user?.email;
+      const authed = req as any;
+      const email = authed.firebaseUser?.email || authed.user?.email;
       
       if (!email || !eventName) {
         return res.status(400).json({ message: "Email and event name required" });

@@ -98,7 +98,7 @@ describe('HubSpot relays take identity from the session, not the request body', 
     expect(at).toBeGreaterThan(-1);
     const body = routes.slice(at, routes.indexOf('\n  app.', at + 40));
     expect(body).toContain('requireAuth');
-    expect(body).toContain('req.user?.uid || req.firebaseUser?.uid');
+    expect(body).toContain('authed.user?.uid || authed.firebaseUser?.uid');
     // the destructure must no longer pull identity out of the body
     expect(body).not.toContain('const { uid, email,');
   });
