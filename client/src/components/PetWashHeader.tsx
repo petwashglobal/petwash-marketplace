@@ -155,7 +155,9 @@ const T: Record<string, Record<string, string>> = {
   "terms.label": { en: "Terms and conditions", he: "תנאים והגבלות", ru: "Условия использования", fr: "Conditions générales", es: "Términos y condiciones", ar: "الشروط والأحكام" },
   "trust-safety.label": { en: "Trust & Safety", he: "אמון ובטיחות", ru: "Доверие и безопасность", fr: "Confiance et sécurité", es: "Confianza y seguridad", ar: "الثقة والأمان" },
   "privacy.label": { en: "Privacy & data protection", he: "פרטיות והגנת מידע", ru: "Конфиденциальность и защита данных", fr: "Confidentialité et protection des données", es: "Privacidad y protección de datos", ar: "الخصوصية وحماية البيانات" },
-  "egift-policy.label": { en: "eGift and refund policy", he: "מדיניות תווי שי והחזרים", ru: "Политика ваучеров и возвратов", fr: "Politique des bons et remboursement", es: "Política de vales y reembolso", ar: "سياسة القسائم والاسترداد" },
+  // Label mirrors the page it opens (WalletEGiftTerms title). The old
+  // "eGift and refund policy" opened a page with no refund section.
+  "egift-policy.label": { en: "Wallet & eGift Terms", he: "תנאי ארנק ו-eGift", ru: "Условия кошелька и eGift", fr: "Conditions du portefeuille et eGift", es: "Términos de billetera y eGift", ar: "شروط المحفظة وeGift" },
   "loyalty-terms.label": { en: "PetWash Prestige terms", he: "תנאי ⁦PetWash Prestige⁩", ru: "Условия PetWash Prestige", fr: "Conditions PetWash Prestige", es: "Términos PetWash Prestige", ar: "شروط ⁦PetWash Prestige⁩" },
   "cookies.label": { en: "Cookies & tracking", he: "עוגיות ומעקב", ru: "Файлы cookie и отслеживание", fr: "Cookies et suivi", es: "Cookies y seguimiento", ar: "ملفات تعريف الارتباط والتتبع" },
   "accessibility.label": { en: "Accessibility statement", he: "הצהרת נגישות", ru: "Заявление о доступности", fr: "Déclaration d'accessibilité", es: "Declaración de accesibilidad", ar: "بيان إمكانية الوصول" },
@@ -241,7 +243,10 @@ const LEGAL_MENU_ITEMS = [
   { id: "trust-safety", labelKey: "trust-safety.label", href: "/trust-safety" },
   { id: "terms", labelKey: "terms.label", href: "/legal/terms" },
   { id: "privacy", labelKey: "privacy.label", href: "/legal/privacy" },
-  { id: "egift-policy", labelKey: "egift-policy.label", href: "/legal/egift-policy" },
+  // Registry document wallet_egift_terms (shared/lib/legalDocumentRegistry.ts) — the
+  // terms users actually accept at top-up. /legal/egift-policy (EGiftPolicy.tsx) is
+  // not in the registry and contradicts CancellationRefundPolicy.
+  { id: "egift-policy", labelKey: "egift-policy.label", href: "/legal/wallet-egift-terms" },
   { id: "loyalty-terms", labelKey: "loyalty-terms.label", href: "/legal/loyalty-terms" },
   { id: "cookies", labelKey: "cookies.label", href: "/legal/cookies" },
   { id: "accessibility", labelKey: "accessibility.label", href: "/accessibility" }, // PR-NAV-2: canonical path (was /legal/accessibility — now redirects)
