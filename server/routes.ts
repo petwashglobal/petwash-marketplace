@@ -682,6 +682,8 @@ export async function registerRoutes(app: Express): Promise<void> {
   // (limiter + Firebase + role + MFA + read-only-mutations) applies;
   // the two write endpoints add an extra isSuperAdminVerified check.
   app.use('/api/admin/fiscal-outbox', adminFiscalOutboxRouter);
+  // Job evidence — cross-examine provider jobs before a payout approval (2026-09-13).
+  app.use('/api/admin/job-evidence', (await import('./routes/admin-job-evidence')).default);
   app.use('/api/admin', adminFaultIntelRouter); // §11 fault-cost + §12 predictive-maintenance (read-only)
   app.use('/api/admin', adminStaffAcademyRouter); // §16 staff-performance + §17 academy (read-only)
   app.use('/api/admin', adminExpansionMarketingRouter); // §9 location-scoring (model) + §25 marketing-campaigns (read-only)

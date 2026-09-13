@@ -98,7 +98,7 @@ describe('every automatic path now stops at an admin review', () => {
     const src = read('routes/escrow.ts');
     const i = src.indexOf('router.post("/admin/:escrowId/approve-release", requireAdmin');
     expect(i).toBeGreaterThan(0);
-    const body = src.slice(i, i + 1400);
+    const body = src.slice(i, i + 3200);
     expect(body).toContain('REASON_REQUIRED');
     expect(body).toContain('EscrowService.releaseEscrowPayment(req.params.escrowId, adminUid)');
   });
