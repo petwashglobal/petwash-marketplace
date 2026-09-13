@@ -264,20 +264,11 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         </section>
 
 
-        {/* PetWash Platforms — premium cards shipped (PR-PREMIUM-CARDS-2).
-            Default ON. Set VITE_PREMIUM_PLATFORM_CARDS_ENABLED='false'
-            as an emergency disable to revert to the legacy
-            PetWashDivisions grid; otherwise the new premium grid
-            renders. Toggling the flag swaps components — no other
-            behavior change. */}
-        {import.meta.env.VITE_PREMIUM_PLATFORM_CARDS_ENABLED !== 'false' ? (
-          <PremiumPlatformGrid language={language} />
-        ) : (
-          <PetWashDivisions language={language} />
-        )}
-
-        {/* How-to video (CEO 2026-08-04): sits right below the platforms / "World of
-            PetWash" section. youtube-nocookie for privacy; ™‎ isolated for RTL. */}
+        {/* How-to video (CEO 2026-08-04; repositioned 2026-09-13 per CEO): the
+            how-to video + technology / features / organic-promise block now sits
+            ABOVE the platforms / "World of PetWash" section, so visitors see what
+            a PetWash™ station is before the platform cards. Content unchanged —
+            order only. youtube-nocookie for privacy; ™‎ isolated for RTL. */}
         <section className="py-10 px-4 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-6">
@@ -447,6 +438,18 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             </div>
           </div>
         </section>
+
+        {/* PetWash Platforms — premium cards shipped (PR-PREMIUM-CARDS-2).
+            Default ON. Set VITE_PREMIUM_PLATFORM_CARDS_ENABLED='false'
+            as an emergency disable to revert to the legacy
+            PetWashDivisions grid; otherwise the new premium grid
+            renders. Toggling the flag swaps components — no other
+            behavior change. */}
+        {import.meta.env.VITE_PREMIUM_PLATFORM_CARDS_ENABLED !== 'false' ? (
+          <PremiumPlatformGrid language={language} />
+        ) : (
+          <PetWashDivisions language={language} />
+        )}
 
         {/* Wash Packages Section.
             NO `id="packages"` wrapper here — WashPackages already puts that id
