@@ -187,6 +187,23 @@ export class BackgroundJobProcessor {
         }
       }
     });
+    // FISCAL WATCHDOG (2026-09-13) — was started only in the DEV boot branch, so
+    // production never ran it. Daily 03:20 UTC (06:20 Israel); on the 1st the run
+    // is the monthly report. Read-only: claims ledger, online payments ↔ official
+    // documents, fiscal outbox; findings → fiscal_watchdog_runs + /admin/alerts.
+    cron.schedule('20 3 * * *', async () => {
+      if ((process.env.FISCAL_WATCHDOG_DISABLED || '').toLowerCase() === 'true') return;
+      if (await this.acquireLock('fiscalWatchdog')) {
+        try {
+          const { runFiscalWatchdogTick } = await import('./cron/fiscal-watchdog');
+          await runFiscalWatchdogTick(new Date().getUTCDate() === 1 ? 'monthly' : 'daily');
+        } catch (e: any) {
+          logger.error('[FiscalWatchdog] cron failed', { error: e?.message });
+        } finally {
+          this.releaseLock('fiscalWatchdog');
+        }
+      }
+    });
     // Daily K9000 reconciliation at 02:30 — writes k9000_reconciliation_breaks.
     cron.schedule('30 2 * * *', async () => {
       if (await this.acquireLock('k9000Reconciliation')) {

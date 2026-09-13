@@ -201,6 +201,128 @@ export function evaluateClaimLedger(rows: Array<{
   return { exceptions, warnings, documented, documentedMinor };
 }
 
+/**
+ * ONLINE PAYMENTS ↔ OFFICIAL DOCUMENTS (2026-09-13).
+ *
+ * Every SUMIT hosted-page payment (Upay clears underneath) leaves one row in
+ * sumit_payment_claims. Since #2487 SUMIT's own page document is a DRAFT, so
+ * each paid order must carry exactly ONE official document of ours — and it
+ * must be for the same money. PURE over the rows, testable without a database.
+ *
+ *   PAID_WITHOUT_ORDER       money claimed, no order/purchase row to deliver
+ *   PAID_WITHOUT_DOCUMENT    order exists, no receipt after the grace period
+ *   DUPLICATE_DOCUMENT       more than one live receipt for one payment
+ *   DOCUMENT_AMOUNT_MISMATCH receipt total ≠ order amount (> 1 agora)
+ *   NOT_ISSUED_AT_SUMIT      receipt exists locally, never became a SUMIT document
+ *   PAYMENT_DOCUMENT_WITHHELD booking payment: commission document on hold (accountant)
+ */
+export interface OnlinePaymentRow {
+  payment_id: string;
+  surface: string;
+  order_ref: string;
+  claimed_at: Date;
+  document_key: string | null;
+  expected_minor: number | null;
+  receipt_count: number;
+  receipt_total_minor: number | null;
+  receipt_sumit_doc: string | null;
+}
+
+export function evaluateOnlinePayments(
+  rows: OnlinePaymentRow[],
+  opts: { now?: number; sumitWired: boolean; graceHours?: number; sumitHours?: number },
+): { exceptions: WatchdogException[]; warnings: WatchdogException[] } {
+  const now = opts.now ?? Date.now();
+  const grace = (opts.graceHours ?? 2) * 3_600_000;
+  const sumitGrace = (opts.sumitHours ?? 24) * 3_600_000;
+  const exceptions: WatchdogException[] = [];
+  const warnings: WatchdogException[] = [];
+
+  for (const r of rows) {
+    const ref = `sumit-payment:${r.payment_id}`;
+    const age = now - new Date(r.claimed_at).getTime();
+    if (r.surface === 'save_card') continue;          // ₪1 verification — SUMIT's own document stays final
+    if (age < grace) continue;                         // still in flight
+    if (r.surface === 'booking') {
+      warnings.push({ check: 'PAYMENT_DOCUMENT_WITHHELD', ref, amountMinor: r.expected_minor ?? undefined,
+        detail: 'booking paid by card — commission document is withheld until the accountant confirms its structure' });
+      continue;
+    }
+    if (!r.document_key) {
+      exceptions.push({ check: 'PAID_WITHOUT_ORDER', ref, amountMinor: r.expected_minor ?? undefined,
+        detail: `card payment claimed for ${r.surface} ${r.order_ref} but no order/purchase row exists to deliver or document it` });
+      continue;
+    }
+    const n = Number(r.receipt_count || 0);
+    if (n === 0) {
+      exceptions.push({ check: 'PAID_WITHOUT_DOCUMENT', ref, amountMinor: r.expected_minor ?? undefined,
+        detail: `no official document for ${r.document_key} ${Math.floor(age / 3_600_000)}h after payment` });
+      continue;
+    }
+    if (n > 1) {
+      exceptions.push({ check: 'DUPLICATE_DOCUMENT', ref, amountMinor: r.expected_minor ?? undefined,
+        detail: `${n} live receipts for ${r.document_key} — one payment must carry exactly one document` });
+    }
+    if (r.expected_minor != null && r.receipt_total_minor != null
+        && Math.abs(Number(r.receipt_total_minor) - Number(r.expected_minor)) > 1) {
+      exceptions.push({ check: 'DOCUMENT_AMOUNT_MISMATCH', ref, amountMinor: r.expected_minor,
+        detail: `document ${ils(Number(r.receipt_total_minor))} vs order ${ils(Number(r.expected_minor))} for ${r.document_key}` });
+    }
+    if (opts.sumitWired && !r.receipt_sumit_doc) {
+      (age >= sumitGrace ? exceptions : warnings).push({
+        check: 'NOT_ISSUED_AT_SUMIT', ref, amountMinor: r.expected_minor ?? undefined,
+        detail: `receipt for ${r.document_key} exists locally but has no SUMIT document id after ${Math.floor(age / 3_600_000)}h`,
+      });
+    }
+  }
+  return { exceptions, warnings };
+}
+
+/** Fiscal document outbox: failed or stuck document jobs. PURE. */
+export function evaluateFiscalOutbox(
+  rows: Array<{ kind: string; source_key: string; status: string; attempts: number; created_at: Date; last_error: string | null }>,
+  opts: { now?: number; staleHours?: number } = {},
+): { exceptions: WatchdogException[]; warnings: WatchdogException[] } {
+  const now = opts.now ?? Date.now();
+  const stale = (opts.staleHours ?? 24) * 3_600_000;
+  const exceptions: WatchdogException[] = [];
+  const warnings: WatchdogException[] = [];
+  for (const r of rows) {
+    const ref = `outbox:${r.kind}:${r.source_key}`;
+    const err = r.last_error ? ` — ${r.last_error.slice(0, 160)}` : '';
+    if (r.status === 'failed_needs_review') {
+      exceptions.push({ check: 'OUTBOX_FAILED', ref, detail: `document job gave up after ${r.attempts} attempts${err}` });
+    } else if (r.status === 'pending' && now - new Date(r.created_at).getTime() > stale) {
+      warnings.push({ check: 'OUTBOX_STALE', ref, detail: `document job pending ${Math.floor((now - new Date(r.created_at).getTime()) / 3_600_000)}h (${r.attempts} attempts)${err}` });
+    }
+  }
+  return { exceptions, warnings };
+}
+
+/** Exported so the join is executed against a real Postgres engine in tests. */
+export const ONLINE_PAYMENTS_SQL = `
+    SELECT c.payment_id::text AS payment_id, c.surface, c.order_ref, c.claimed_at,
+           k.document_key,
+           COALESCE(p.amount_cents, g.amount_ils_cents)::bigint AS expected_minor,
+           (SELECT COUNT(*) FROM digital_receipts r WHERE NOT r.is_voided AND r.booking_id = k.document_key)::int AS receipt_count,
+           (SELECT MAX(ROUND(r.total_amount * 100)) FROM digital_receipts r WHERE NOT r.is_voided AND r.booking_id = k.document_key)::bigint AS receipt_total_minor,
+           (SELECT MAX(r.sumit_document_id) FROM digital_receipts r WHERE NOT r.is_voided AND r.booking_id = k.document_key) AS receipt_sumit_doc
+      FROM sumit_payment_claims c
+      LEFT JOIN purchases p          ON c.surface = 'wallet_purchase' AND p.surface_ref_id = c.order_ref
+      LEFT JOIN egift_guest_orders g ON c.surface = 'egift_guest'     AND g.external_id   = c.order_ref
+      LEFT JOIN shop_orders so       ON p.surface = 'shop'            AND so.payment_ref  = c.payment_id::text
+      CROSS JOIN LATERAL (SELECT CASE
+          WHEN c.surface = 'egift_guest' AND g.id IS NOT NULL THEN 'egift_guest:' || c.order_ref
+          WHEN p.surface = 'shop' AND so.order_number IS NOT NULL THEN 'shop:' || so.order_number
+          WHEN p.id IS NOT NULL AND p.surface <> 'shop' THEN 'sumit:' || p.id
+          ELSE NULL END AS document_key) k
+     WHERE c.claimed_at > now() - interval '45 days'`;
+
+async function loadOnlinePaymentRows(): Promise<OnlinePaymentRow[]> {
+  const { rows } = await pool.query(ONLINE_PAYMENTS_SQL);
+  return rows as OnlinePaymentRow[];
+}
+
 /** Run the A↔C leg against production and return the verdict. Never throws. */
 export async function runFiscalWatchdog(opts: {
   runKind?: 'daily' | 'monthly' | 'manual';
@@ -230,6 +352,30 @@ export async function runFiscalWatchdog(opts: {
   );
 
   const { exceptions, warnings, documented, documentedMinor } = evaluateClaimLedger(rows);
+
+  // Online payments (Upay via SUMIT) ↔ official documents, and stuck document
+  // jobs. Each leg reports its own failure rather than passing silently.
+  if (!period) {
+    try {
+      const { sumitClient } = await import('./SumitClient');
+      const online = evaluateOnlinePayments(await loadOnlinePaymentRows(), { sumitWired: sumitClient.isWired() });
+      exceptions.push(...online.exceptions);
+      warnings.push(...online.warnings);
+    } catch (e) {
+      warnings.push({ check: 'ONLINE_CHECK_FAILED', ref: 'sumit_payment_claims', detail: (e as Error).message });
+    }
+    try {
+      const { rows: ob } = await pool.query(
+        `SELECT kind, source_key, status, attempts, created_at, last_error
+           FROM fiscal_document_outbox
+          WHERE status IN ('failed_needs_review', 'pending')`);
+      const outbox = evaluateFiscalOutbox(ob);
+      exceptions.push(...outbox.exceptions);
+      warnings.push(...outbox.warnings);
+    } catch (e) {
+      warnings.push({ check: 'OUTBOX_CHECK_FAILED', ref: 'fiscal_document_outbox', detail: (e as Error).message });
+    }
+  }
 
   const latest = rows
     .map((r: { settled_at: Date | null }) => r.settled_at)
@@ -341,7 +487,37 @@ export function renderReport(run: WatchdogRun, recipients: { to: string[]; unres
 }
 
 /** Persist the run, then distribute. Delivery outcome is recorded either way. */
+/**
+ * Mirror every critical finding into the admin alert center (/admin/alerts —
+ * the Octopus brain's inbox), and auto-resolve the ones that cleared. Dedupe
+ * keys are stable per check+reference, so a finding raises ONE alert until it
+ * is fixed, not one per run.
+ */
+export async function mirrorToAlerts(run: WatchdogRun): Promise<void> {
+  try {
+    const { createOrUpdateAlert, resolveClearedByPrefix } = await import('./AlertEngine');
+    const keys: string[] = [];
+    for (const e of run.exceptions) {
+      const dedupeKey = `fiscal_watchdog:${e.check}:${e.ref}`.slice(0, 250);
+      keys.push(dedupeKey);
+      await createOrUpdateAlert({
+        dedupeKey,
+        category: e.check.startsWith('PAID_WITHOUT_ORDER') ? 'payment' : 'finance_doc',
+        severity: 'critical',
+        title: `Fiscal watchdog: ${e.check}`,
+        message: `${e.ref}${e.amountMinor !== undefined ? ` · ${ils(e.amountMinor)}` : ''} — ${e.detail}`,
+        source: 'auto_sweep',
+        metadata: { runId: run.runId, check: e.check, ref: e.ref },
+      });
+    }
+    if (!run.period) await resolveClearedByPrefix('fiscal_watchdog:', keys);
+  } catch (e) {
+    logger.error('[FiscalWatchdog] alert mirror failed', { err: (e as Error).message });
+  }
+}
+
 export async function recordAndDistribute(run: WatchdogRun): Promise<void> {
+  await mirrorToAlerts(run);
   const recipients = resolveRecipients();
   const html = renderReport(run, recipients);
   const reportHash = createHash('sha256').update(html).digest('hex');

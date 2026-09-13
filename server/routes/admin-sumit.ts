@@ -475,4 +475,56 @@ router.get(
   },
 );
 
+/**
+ * FISCAL WATCHDOG — read the evidence, or run it now (2026-09-13).
+ *   GET  /api/admin/sumit/fiscal-watchdog/runs?limit=10
+ *   POST /api/admin/sumit/fiscal-watchdog/run-now
+ * Read-only on fiscal state: the run never issues, credits or alters a document.
+ */
+router.get(
+  '/fiscal-watchdog/runs',
+  validateFirebaseToken,
+  loadUserRole,
+  checkAccessLevel(8),
+  requireSuperAdminGate,
+  async (req: Request, res: Response) => {
+    try {
+      const { pool } = await import('../db');
+      const raw = Number(req.query.limit);
+      const limit = Number.isFinite(raw) && raw > 0 ? Math.min(Math.floor(raw), 50) : 10;
+      const { rows } = await pool.query(
+        `SELECT run_id, run_kind, period, finished_at, status, ac_result, bd_result,
+                txn_count, documented_count, critical_count, warning_count, exceptions,
+                delivery_state
+           FROM fiscal_watchdog_runs ORDER BY finished_at DESC NULLS LAST LIMIT $1`, [limit]);
+      return res.json({ ok: true, runs: rows });
+    } catch (err) {
+      return sendSanitizedError(res, err, 'FISCAL_WATCHDOG_RUNS_FAILED');
+    }
+  },
+);
+
+router.post(
+  '/fiscal-watchdog/run-now',
+  validateFirebaseToken,
+  loadUserRole,
+  checkAccessLevel(8),
+  requireSuperAdminGate,
+  async (_req: Request, res: Response) => {
+    try {
+      const { runFiscalWatchdog, recordAndDistribute } = await import('../services/FiscalWatchdogService');
+      const run = await runFiscalWatchdog({ runKind: 'manual' });
+      if (!run) return res.status(503).json({ ok: false, error: 'DATABASE_UNAVAILABLE' });
+      await recordAndDistribute(run);
+      return res.json({
+        ok: true, runId: run.runId, status: run.status,
+        critical: run.exceptions.length, warnings: run.warnings.length,
+        exceptions: run.exceptions, warningsList: run.warnings,
+      });
+    } catch (err) {
+      return sendSanitizedError(res, err, 'FISCAL_WATCHDOG_RUN_FAILED');
+    }
+  },
+);
+
 export default router;
