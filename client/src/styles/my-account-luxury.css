@@ -308,9 +308,17 @@
   content: '';
   position: absolute;
   inset: 0;
+  pointer-events: none;
+  z-index: 0;
   background: var(--metallic-shimmer);
   background-size: 300% 100%;
   transition: background-position 0.5s ease;
+}
+
+.pw-action-btn > * {
+  /* the shimmer ::before painted over the icon + label (text looked covered) */
+  position: relative;
+  z-index: 1;
 }
 
 .pw-action-btn:hover {

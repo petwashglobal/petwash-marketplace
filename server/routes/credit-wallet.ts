@@ -4,7 +4,7 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
-import { db } from '../db';
+import { db, pool } from '../db';
 import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdminVerified } from '../middleware/rbac';
@@ -445,7 +445,16 @@ router.get('/summary', async (req, res) => {
     // /my-account rendered "Bronze Member · 5% permanent discount" for a member
     // who never joined Prestige (live QA 2026-09-09): getWalletSummary defaults
     // loyaltyTier to 'bronze'. Display 'new' unless actually enrolled.
-    const prestigeEnrolled = await isPrestigeEnrolled(req.user?.email || req.firebaseUser?.email);
+    // Phone-only sign-ins carry no email in the token — a PAID member then read
+    // as not enrolled. Fall back to the users row (2026-09-13).
+    let enrollEmail: string | undefined = req.user?.email || req.firebaseUser?.email;
+    if (!enrollEmail) {
+      try {
+        const r = await pool.query('SELECT email FROM users WHERE id = $1 LIMIT 1', [userId]);
+        enrollEmail = r.rows?.[0]?.email || undefined;
+      } catch { /* not enrolled by default */ }
+    }
+    const prestigeEnrolled = await isPrestigeEnrolled(enrollEmail);
 
     // Fetch unified voucher aggregates
     const activeStatuses = ['ISSUED', 'ACTIVE', 'PARTIALLY_REDEEMED'];

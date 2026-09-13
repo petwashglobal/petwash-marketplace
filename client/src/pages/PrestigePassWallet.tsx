@@ -487,7 +487,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
         <div style={{ color:'rgba(255,255,255,0.55)', fontSize:'0.68rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', marginBottom:'6px' }}>
           {he ? 'יתרה כוללת זמינה' : 'Total Available Balance'}
         </div>
-        <div style={{ color:'#0a0a0a', fontSize:'2.4rem', fontWeight:800, letterSpacing:'-0.03em', lineHeight:1 }}>
+        <div style={{ color:'#FFFFFF', fontSize:'2.4rem', fontWeight:800, letterSpacing:'-0.03em', lineHeight:1 }}>
           {fmt(totalLiquid)}
         </div>
 

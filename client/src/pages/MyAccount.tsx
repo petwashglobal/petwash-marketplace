@@ -73,6 +73,8 @@ import {
   FileText,
   Send,
   Receipt,
+  Tag,
+  Users,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -643,6 +645,17 @@ export default function MyAccount() {
   });
 
   // Send the pass by email or SMS (server endpoints are rate-limited).
+  // apiRequest throws "<status>: <server text>" — never show that raw English to a member.
+  const sendErrorText = (err: any, channel: 'email' | 'sms'): string => {
+    const status = Number(err?.status ?? String(err?.message || '').match(/^(\d{3})/)?.[1]);
+    if (status === 401) return isHebrew ? 'פג תוקף ההתחברות. התחבר מחדש ונסה שוב.' : 'Your sign-in expired. Please sign in again.';
+    if (status === 429) return isHebrew ? 'כבר שלחנו לאחרונה. נסה שוב בעוד כמה דקות.' : 'Already sent recently. Try again in a few minutes.';
+    if (status === 404) return isHebrew ? 'הכרטיס שלך עדיין לא מוכן.' : "Your pass isn't ready yet.";
+    if (status === 400) return channel === 'sms'
+      ? (isHebrew ? 'אין מספר טלפון בפרופיל. הוסף אותו ונסה שוב.' : 'No phone number on file. Add one in your profile.')
+      : (isHebrew ? 'אין כתובת מייל בפרופיל. הוסף אותה ונסה שוב.' : 'No email on file. Add one in your profile.');
+    return isHebrew ? 'לא הצלחנו לשלוח כרגע. נסה שוב מאוחר יותר.' : "We couldn't send right now. Please try again later.";
+  };
   const emailPassMutation = useMutation({
     mutationFn: async () => {
       const resp = await apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {});
@@ -651,7 +664,7 @@ export default function MyAccount() {
       return data;
     },
     onSuccess: () => toast({ title: isHebrew ? 'נשלח למייל ✓' : 'Sent to email ✓', description: isHebrew ? 'הפאס נשלח עם כפתורי Apple/Google Wallet.' : 'Pass sent with Apple & Google Wallet buttons.' }),
-    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: sendErrorText(err, 'email'), variant: 'destructive' }),
   });
   const smsPassMutation = useMutation({
     mutationFn: async () => {
@@ -661,7 +674,7 @@ export default function MyAccount() {
       return data;
     },
     onSuccess: () => toast({ title: isHebrew ? 'נשלח ב-SMS ✓' : 'Sent by SMS ✓', description: isHebrew ? 'בדוק את ההודעות שלך.' : 'Check your messages.' }),
-    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: sendErrorText(err, 'sms'), variant: 'destructive' }),
   });
 
   const [activeTab, setActiveTab] = useState('profile');
@@ -1757,6 +1770,12 @@ export default function MyAccount() {
     }
   };
 
+  // The floating accessibility/WhatsApp/chat stack covered the balance cards on iPhone.
+  useEffect(() => {
+    document.body.dataset.pwMemberDashboard = 'true';
+    return () => { delete document.body.dataset.pwMemberDashboard; };
+  }, []);
+
   const wallet = walletData?.wallet;
   const tier = wallet?.loyaltyTier?.toLowerCase() || 'new';
   const tierInfo = tierConfig[tier] || tierConfig.new;
@@ -2014,7 +2033,9 @@ export default function MyAccount() {
             )}
           </div>
 
-          {/* ── Add to Apple Wallet — prominent, on the dashboard ── */}
+          {/* ── Add to Apple Wallet — Prestige members only (2026-09-13: free members
+              were offered a pass they don't hold; email/SMS then 404'd) ── */}
+          {isPrestigeMember && (<>
           <button
             onClick={() => addToAppleWalletMutation.mutate()}
             disabled={addToAppleWalletMutation.isPending}
@@ -2047,22 +2068,27 @@ export default function MyAccount() {
               {smsPassMutation.isPending ? (isHebrew ? 'שולח…' : 'Sending…') : (isHebrew ? 'שלח ב-SMS' : 'Text it')}
             </button>
           </div>
+          </>)}
 
           {/* ── Wallet Balance Cards ── */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { label: isHebrew ? 'כרטיסי מתנה' : 'Gift Cards', value: formatCurrency(wallet?.egiftBalanceCents || 0), icon: Gift, emoji: '🎁' },
-              { label: isHebrew ? 'חבילות שטיפה' : 'Wash Packs', value: wallet?.washPackageCredits || 0, icon: Sparkles, emoji: '✨' },
-              { label: isHebrew ? 'נקודות נאמנות' : 'Loyalty Pts', value: wallet?.loyaltyPointsBalance || 0, icon: Star, emoji: '⭐' },
-              { label: isHebrew ? 'קרדיט מבצעים' : 'Promo Credit', value: formatCurrency(wallet?.promoBalanceCents || 0), icon: Gift, emoji: '🏷️' },
-              { label: isHebrew ? 'קרדיט הפניות' : 'Referral', value: formatCurrency(wallet?.referralBalanceCents || 0), icon: User, emoji: '🤝' },
+              // Gift cards + wash packs also count the unified vouchers the summary
+              // returns — before, a bought eGift/package showed ₪0 / 0 here.
+              { label: isHebrew ? 'כרטיסי מתנה' : 'Gift Cards', value: formatCurrency((wallet?.egiftBalanceCents || 0) + ((wallet as any)?.unifiedVouchers?.totalPlatformCreditRemainingCents || 0)), icon: Gift },
+              { label: isHebrew ? 'חבילות שטיפה' : 'Wash Packs', value: (wallet?.washPackageCredits || 0) + ((wallet as any)?.unifiedVouchers?.totalWashPackagesRemaining || 0), icon: Sparkles },
+              { label: isHebrew ? 'נקודות נאמנות' : 'Loyalty Pts', value: wallet?.loyaltyPointsBalance || 0, icon: Star },
+              { label: isHebrew ? 'קרדיט מבצעים' : 'Promo Credit', value: formatCurrency(wallet?.promoBalanceCents || 0), icon: Tag },
+              { label: isHebrew ? 'קרדיט הפניות' : 'Referral', value: formatCurrency(wallet?.referralBalanceCents || 0), icon: Users },
             ].map((item, idx) => (
-              <div key={idx} className="pw-stat-card">
+              // Odd 5th card spans the row on mobile instead of leaving a hole.
+              // Inline textAlign: html[lang="he"] * {text-align:inherit} beats .pw-stat-card.
+              <div key={idx} className={`pw-stat-card${idx === 4 ? ' col-span-2 md:col-span-1' : ''}`} style={{ textAlign: 'center' }}>
                 <div className="pw-stat-card-icon-wrap pw-stat-card-icon-wrap-gold">
                   <item.icon className="w-5 h-5" aria-hidden="true" />
                 </div>
-                <p className="pw-stat-value">{item.value}</p>
-                <p className="pw-stat-label">{item.label}</p>
+                <p className="pw-stat-value" dir="ltr" style={{ textAlign: 'center' }}>{item.value}</p>
+                <p className="pw-stat-label" style={{ textAlign: 'center' }}>{item.label}</p>
               </div>
             ))}
           </div>
@@ -2071,19 +2097,19 @@ export default function MyAccount() {
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[
               { icon: Wallet,       label: isHebrew ? 'הארנק שלי' : 'My Wallet',       href: '/my-wallet',        emoji: '💳' },
-              { icon: QrCode,       label: isHebrew ? 'מימוש בתחנה' : 'Redeem',        href: '/stations',         emoji: '📍' },
+              { icon: QrCode,       label: isHebrew ? 'מימוש בתחנה' : 'Redeem',        href: '/wallet/redeem',    emoji: '📍' },
               { icon: Award,        label: isHebrew ? 'נאמנות' : 'Loyalty',            href: '/loyalty/dashboard', emoji: '🏆' },
               { icon: Gift,         label: isHebrew ? 'כרטיס מתנה' : 'Gift Card',      href: '/buy-gift-card',    emoji: '🎁' },
               { icon: Crown,        label: isHebrew ? 'Prestige' : 'Prestige',          href: '/prestige-club',    emoji: '👑' },
               { icon: CalendarCheck,label: isHebrew ? 'הזמנות' : 'Bookings',           href: '/bookings',         emoji: '📅' },
               { icon: Receipt,      label: isHebrew ? 'הרכישות שלי' : 'My Purchases', href: '/my-purchases',     emoji: '🧾' },
             ].map((item, idx) => (
-              <a key={idx} href={item.href} className="pw-action-btn" style={{ textDecoration: 'none' }}>
+              <Link key={idx} href={item.href} className="pw-action-btn" style={{ textDecoration: 'none' }}>
                 <div className="pw-action-btn-icon-ring">
                   <item.icon className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <span className="pw-action-btn-label">{item.label}</span>
-              </a>
+              </Link>
             ))}
           </div>
 
