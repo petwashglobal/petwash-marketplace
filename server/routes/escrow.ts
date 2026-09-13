@@ -395,7 +395,8 @@ router.post("/admin/:escrowId/approve-release", requireAdmin, async (req, res) =
     res.json({ success: true });
   } catch (error: any) {
     if (error?.code === "PAYOUT_HELD_GATE") {
-      return res.status(409).json({ error: "PAYOUT_HELD_GATE", reason: error.gateReason, message: error.message });
+      // Reason CODE only — gate texts stay in the server log (AGENT-14: no raw error text in responses).
+      return res.status(409).json({ error: "PAYOUT_HELD_GATE", reason: error.gateReason ?? null });
     }
     sendSanitizedError(res, error, "ESCROW_ADMIN_APPROVE_FAILED", { logContext: { op: "admin-approve-release" } });
   }
