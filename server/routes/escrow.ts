@@ -386,13 +386,37 @@ router.post("/admin/:escrowId/approve-release", requireAdmin, async (req, res) =
     if (!adminUid) return res.status(401).json({ error: "ADMIN_IDENTITY_REQUIRED" });
     const reason = typeof req.body?.reason === "string" ? req.body.reason.trim().slice(0, 500) : "";
     if (!reason) return res.status(400).json({ error: "REASON_REQUIRED", message: "Say what evidence you checked." });
+
+    // CROSS-EXAMINE THE JOB FIRST (CEO rule 2026-09-13). The admin sees the
+    // evidence report; a BLOCKED job can be approved only with an explicit
+    // overrideBlocked flag and a written reason of at least 20 characters.
+    const escrow = await EscrowService.getEscrowPayment(req.params.escrowId);
+    if (!escrow) return res.status(404).json({ error: "ESCROW_NOT_FOUND" });
+    let evidence: any = null;
+    if ((escrow as any).bookingId) {
+      const { buildJobEvidenceReport } = await import("../services/jobEvidenceLoader");
+      evidence = await buildJobEvidenceReport(String((escrow as any).bookingId));
+    }
+    const override = req.body?.overrideBlocked === true;
+    if (evidence?.verdict === "blocked" && !(override && reason.length >= 20)) {
+      return res.status(409).json({
+        error: "EVIDENCE_BLOCKED",
+        message: "The job evidence blocks this payout. Approve only with overrideBlocked:true and a written reason (20+ characters).",
+        evidence,
+      });
+    }
     await EscrowService.releaseEscrowPayment(req.params.escrowId, adminUid);
-    logger.info("[Escrow] admin approved provider payout release", { escrowId: req.params.escrowId, adminUid, reason });
+    logger.info("[Escrow] admin approved provider payout release", {
+      escrowId: req.params.escrowId, adminUid, reason,
+      evidenceVerdict: evidence?.verdict ?? "no_job_record",
+      evidenceCodes: evidence?.findings?.map((f: any) => f.code) ?? [],
+      overrideBlocked: evidence?.verdict === "blocked" ? true : undefined,
+    });
     try {
       const { resolveClearedByPrefix } = await import("../services/AlertEngine");
       await resolveClearedByPrefix(`payout_review:escrow:${req.params.escrowId}`, []);
     } catch { /* alert housekeeping only */ }
-    res.json({ success: true });
+    res.json({ success: true, evidenceVerdict: evidence?.verdict ?? null });
   } catch (error: any) {
     if (error?.code === "PAYOUT_HELD_GATE") {
       // Reason CODE only — gate texts stay in the server log (AGENT-14: no raw error text in responses).

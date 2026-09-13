@@ -77,3 +77,20 @@ describe('job watchdog', () => {
     expect(shouldAlert({ jobId: 'B', kind: 'booking_request', verdict: 'review', findings: [{ code: 'NO_CUSTOMER_CONFIRMATION', severity: 'warn', detail: '' }], measured: {} as any })).toBe(true);
   });
 });
+
+describe('the admin Yes button cross-examines the job first', () => {
+  it('approve-release loads the evidence and refuses a BLOCKED job without an explicit override + 20-char reason', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const src = readFileSync(join(__dirname, '../routes/escrow.ts'), 'utf8');
+    const i = src.indexOf('router.post("/admin/:escrowId/approve-release"');
+    const body = src.slice(i, i + 2600);
+    const evidenceAt = body.indexOf('buildJobEvidenceReport(');
+    const blockedAt = body.indexOf('evidence?.verdict === "blocked" && !(override && reason.length >= 20)');
+    const releaseAt = body.indexOf('EscrowService.releaseEscrowPayment(req.params.escrowId, adminUid)');
+    expect(evidenceAt).toBeGreaterThan(0);
+    expect(blockedAt).toBeGreaterThan(evidenceAt);
+    expect(releaseAt).toBeGreaterThan(blockedAt);
+    expect(body).toContain('error: "EVIDENCE_BLOCKED"');
+  });
+});
