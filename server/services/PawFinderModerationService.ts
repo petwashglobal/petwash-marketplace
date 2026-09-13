@@ -19,10 +19,18 @@ export interface ModerationInput {
   rewardAmount?: number | null;
   city: string;
   area?: string | null;
+  /** lost | found for PawFinder; 'adoption' when Adopt a Pet borrows the scan. */
   postType: 'lost' | 'found' | 'adoption';
   petType: 'dog' | 'cat' | 'bird' | 'other';
   mediaPaths: string[];
 }
+
+/**
+ * Reads a listing photo for the image scan. PawFinder's own store is the
+ * default; Adopt a Pet passes its store so the shared safety scan never has to
+ * know another service's photo addresses.
+ */
+export type ModerationPhotoReader = (filePath: string) => Promise<{ buf: Buffer; contentType: string } | null>;
 
 export interface ModerationResult {
   verdict: 'approved' | 'flagged' | 'blocked';
@@ -88,7 +96,7 @@ export class PawFinderModerationService {
    * Returns any content flags detected in the photos.
    * Non-blocking: if Gemini is unavailable the post is flagged for manual review.
    */
-  private async moderateImages(mediaPaths: string[]): Promise<string[]> {
+  private async moderateImages(mediaPaths: string[], readPhotoBytes?: ModerationPhotoReader): Promise<string[]> {
     if (!this.genAI || !mediaPaths.length) return [];
 
     // Cap at 3 images to bound latency
@@ -105,19 +113,19 @@ export class PawFinderModerationService {
       // was "outside upload dir" and silently skipped — no post photo was ever
       // scanned. The GCS path `/api/paw-finder/photo/…` would be skipped too.
       const name = path.basename(String(filePath || ''));
-      if (!isValidPhotoName(name)) {
+      if (!readPhotoBytes && !isValidPhotoName(name)) {
         logger.warn('[PawFinderModeration] Skipping image with unexpected name', { filePath });
         continue;
       }
 
       try {
-        const photo = await readPhoto(name, PAW_FINDER_UPLOAD_DIR);
+        const photo = readPhotoBytes ? await readPhotoBytes(filePath) : await readPhoto(name, PAW_FINDER_UPLOAD_DIR);
         if (!photo) throw new Error('photo_not_found');
         const imageData = photo.buf.toString('base64');
         const mimeType  = photo.contentType;
 
         const prompt =
-          `You are a content safety moderator for a family-friendly lost/found pet platform.
+          `You are a content safety moderator for a family-friendly pet community platform (lost & found notices and adoption listings).
 Examine this image and respond ONLY with valid JSON:
 {
   "safe": true or false,
@@ -134,7 +142,7 @@ Concern types (only flag what you actually see):
 - hate_content: hate symbols or imagery
 - disturbing_content: disturbing, graphic, or unsafe for family viewing
 
-A photo of a lost or found pet with normal surroundings should always be safe = true.`;
+A photo of a pet with normal surroundings should always be safe = true.`;
 
         const response = await this.genAI.models.generateContent({
           model: 'gemini-2.5-flash',
@@ -175,7 +183,7 @@ A photo of a lost or found pet with normal surroundings should always be safe = 
     // Gemini deep check for borderline content (only when not already blocked)
     if (verdict !== 'blocked' && this.genAI) {
       try {
-        const prompt = `You are a content moderator for a lost/found pet platform in Israel.
+        const prompt = `You are a content moderator for a pet community platform in Israel (lost & found notices and adoption listings).
 Review this post and respond ONLY with valid JSON:
 {
   "safe": true/false,
@@ -216,12 +224,12 @@ Concern types: sexual_content, drug_content, political_content, hate_content, vi
     return { verdict, confidence, flags, moderationReason, safeToPublish: verdict === 'approved' };
   }
 
-  async moderateFinal(input: ModerationInput): Promise<ModerationResult> {
+  async moderateFinal(input: ModerationInput, opts: { readPhotoBytes?: ModerationPhotoReader } = {}): Promise<ModerationResult> {
     const result = await this.moderateInitial(input);
 
     // Block if image scanning raised hard flags (even if text was clean)
     if (result.verdict !== 'blocked' && input.mediaPaths.length > 0) {
-      const imageFlags = await this.moderateImages(input.mediaPaths);
+      const imageFlags = await this.moderateImages(input.mediaPaths, opts.readPhotoBytes);
       if (imageFlags.length > 0) {
         const combinedFlags = [...new Set([...result.flags, ...imageFlags])];
         const { verdict, confidence, moderationReason } = this.verdictFromFlags(combinedFlags);

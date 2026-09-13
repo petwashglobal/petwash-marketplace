@@ -35,9 +35,7 @@ export function pawFinderOwnerMessage(
     case 'post_approved':
       return {
         title: '✅ הפוסט שלך פורסם',
-        body: post.post_type === 'adoption'
-          ? `${name} מופיע/ה עכשיו בעמוד האימוץ`
-          : `הפוסט על ${name} גלוי עכשיו לכל הקהילה`,
+        body: `הפוסט על ${name} גלוי עכשיו לכל הקהילה`,
       };
     case 'post_rejected':
       return {

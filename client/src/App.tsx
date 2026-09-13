@@ -477,6 +477,10 @@ const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
 const ProviderListings = lazy(() => import("@/pages/ProviderListings"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
 const AdoptionMaison = lazy(() => import("@/pages/AdoptionMaison"));
+const AdoptionCreate = lazy(() => import("@/pages/adoption/AdoptionCreate"));
+const AdoptionMyListings = lazy(() => import("@/pages/adoption/AdoptionMyListings"));
+const AdoptionListingPage = lazy(() => import("@/pages/adoption/AdoptionListingPage"));
+const AdoptionAdmin = lazy(() => import("@/pages/admin/AdoptionAdmin"));
 const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
 
 // ⁦PetWash™⁩ 2025 Global Architecture - Octopus Model Routes
@@ -3198,6 +3202,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Deep link to ONE post — shared from a post card / social share (2026-09-12). */}
         <Route path="/paw-finder/:id">{(params) => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} initialPostId={Number(params.id)} /></Layout>}</Route>
         <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
+        {/* Adopt a Pet is its own service (2026-09-13) — never routed through /paw-finder. */}
+        <Route path="/adoption/new">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionCreate /></Layout>}</Route>
+        <Route path="/adoption/my">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionMyListings /></Layout>}</Route>
+        <Route path="/adoption/:id">{(params) => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionListingPage listingId={Number(params.id)} /></Layout>}</Route>
         <Route path="/adoption">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionMaison /></Layout>}</Route>
         {/* The CEO (and marketing) type /adopt — it 404'd (2026-09-12). Alias, never a second page. */}
         <Route path="/adopt">{() => <Redirect to="/adoption" />}</Route>
@@ -3777,6 +3785,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<PageLoader />}>
                 <GeminiFinancialMonitor />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/adoption">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdoptionAdmin />
               </Suspense>
             </AdminRouteGuard>
           )}

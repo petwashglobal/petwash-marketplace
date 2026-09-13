@@ -10,7 +10,9 @@ import { resolve } from 'path';
  *  3. Adoption listings were matched against lost pets.
  *  4. The AI photo scan resolved a URL path from the filesystem root → no photo
  *     was ever scanned.
- *  5. Adoption "Meet" opened the whole board, not the pet.
+ *  5. Adoption "Meet" opened the whole board, not the pet. (Superseded
+ *     2026-09-13: adoption is its own service — see
+ *     adoptionOwnService.regression.test.ts.)
  */
 
 const push = vi.fn(async () => 1);
@@ -85,7 +87,7 @@ describe('2. the owner is told', async () => {
   });
 
   it('copy names the pet and never leaks the internal reject reason', () => {
-    expect(pawFinderOwnerMessage('post_approved', { post_type: 'adoption', pet_name: 'Harley' }).body).toContain('Harley');
+    expect(pawFinderOwnerMessage('post_approved', { post_type: 'found', pet_name: 'Harley' }).body).toContain('Harley');
     expect(pawFinderOwnerMessage('match_found', { post_type: 'lost', pet_name: 'Kenzo' }).title).toContain('מצאנו');
     const rej = pawFinderOwnerMessage('post_rejected', { pet_name: 'X' });
     expect(`${rej.title} ${rej.body}`).not.toMatch(/reason|spam|blocked/i);
@@ -134,7 +136,7 @@ describe('2+3. matching', async () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it('an adoption listing is never matched against lost pets', async () => {
+  it('a legacy adoption row is never matched against lost pets', async () => {
     const pool = matchPool({ ...found, post_type: 'adoption' }, [lost], true);
     await refreshMatchesForPost(pool, 2);
     expect(pool.calls.some(c => c.sql.includes('paw_finder_matches'))).toBe(false);
@@ -145,15 +147,16 @@ describe('4. the AI photo scan reads the real photo', () => {
   it('reads through the photo store by validated name, not path.resolve on a URL path', () => {
     const m = R('server/services/PawFinderModerationService.ts');
     expect(m).toContain('const name = path.basename(String(filePath || \'\'));');
-    expect(m).toContain('if (!isValidPhotoName(name)) {');
-    expect(m).toContain('const photo = await readPhoto(name, PAW_FINDER_UPLOAD_DIR);');
+    expect(m).toContain('if (!readPhotoBytes && !isValidPhotoName(name)) {');
+    expect(m).toContain('await readPhoto(name, PAW_FINDER_UPLOAD_DIR)');
     expect(m).not.toContain('const resolved = path.resolve(filePath);');
   });
 });
 
 describe('5. adoption "Meet" opens the pet', () => {
-  it('links to /paw-finder/:id, and that route exists', () => {
-    expect(R('client/src/pages/AdoptionMaison.tsx')).toContain('<Link href={`/paw-finder/${p.id}`}>');
-    expect(R('client/src/App.tsx')).toContain('<Route path="/paw-finder/:id">');
+  it('links to the adoption pet page — never a PawFinder notice — and that route exists', () => {
+    expect(R('client/src/pages/AdoptionMaison.tsx')).toContain('<Link href={`/adoption/${p.id}`}>');
+    expect(R('client/src/pages/AdoptionMaison.tsx')).not.toContain('/paw-finder');
+    expect(R('client/src/App.tsx')).toContain('<Route path="/adoption/:id">');
   });
 });
