@@ -129,8 +129,8 @@ describe('Issue #153 PR-WHITE-2 — popup luxury responsive polish', () => {
     expect(SRC).toMatch(/setIsHovered\(true\)/);
     expect(SRC).toMatch(/isPublicSafePromoImage/);
     // Asset path: the CEO-approved brand-poster rewrite (#816) swapped the
-    // default creative to /petwash-popup.png. Pin the current default so a
+    // default creative to /petwash-popup.jpg. Pin the current default so a
     // future accidental change to a dev/backend asset is still caught.
-    expect(SRC).toMatch(/imageUrl:\s*['"]\/petwash-popup\.png['"]/);
+    expect(SRC).toMatch(/imageUrl:\s*['"]\/petwash-popup\.jpg['"]/);
   });
 });

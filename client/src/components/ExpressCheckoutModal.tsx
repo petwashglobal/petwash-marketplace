@@ -243,7 +243,7 @@ export function ExpressCheckoutModal({
         <div className="px-5 pt-4 pb-3 border-b border-[#eee] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img 
-              src="/brand/petwash-logo-official.png" 
+              src="/brand/petwash-logo-official-810w.png" 
               alt="⁦PetWash™⁩" 
               className="h-7 w-auto object-contain"
             />

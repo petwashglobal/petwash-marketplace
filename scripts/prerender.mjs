@@ -24,6 +24,7 @@ import { readFile, mkdir, writeFile, stat } from 'node:fs/promises';
 import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { writeAppShell, APP_SHELL_FILE } from './write-app-shell.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist', 'public');
@@ -70,8 +71,10 @@ async function serveDist() {
         if (st.isDirectory()) file = join(file, 'index.html');
         await stat(file);
       } catch {
-        // SPA fallback — mirror of the Firebase rewrite
-        file = join(DIST, 'index.html');
+        // SPA fallback — mirror of the Firebase rewrite (** → /app-shell.html).
+        // NOT index.html: the '/' snapshot is written there first, so every
+        // later route used to boot on top of the homepage's HTML (2026-09-13).
+        file = join(DIST, APP_SHELL_FILE);
       }
       const body = await readFile(file);
       res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream' });
@@ -82,6 +85,16 @@ async function serveDist() {
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   return { server, port: server.address().port };
+}
+
+// The Hosting fallback page. Must exist BEFORE '/' overwrites index.html with
+// the homepage snapshot. postbuild already wrote it; this covers a direct
+// `npm run prerender` after a bare `vite build`.
+try {
+  await stat(join(DIST, APP_SHELL_FILE));
+} catch {
+  await writeAppShell(DIST);
+  console.log('[prerender] wrote app-shell.html (postbuild had not)');
 }
 
 const { server, port } = await serveDist();
