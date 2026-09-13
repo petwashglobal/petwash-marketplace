@@ -11,8 +11,11 @@ import { resolve } from 'path';
 const src = readFileSync(resolve(__dirname, '..', 'SignUpLuxury.tsx'), 'utf8');
 
 describe('login is code-first', () => {
-  it('usePassword defaults to false (code-first)', () => {
-    expect(src).toMatch(/const \[usePassword, setUsePassword\] = useState\(false\)/);
+  // 2026-09-13: CEO 2026-08-08 (#1735) — LOGIN shows email+password by default;
+  // SIGNUP stays code-first. The default is derived from the path.
+  it('usePassword defaults to code-first on signup and password on the login path', () => {
+    expect(src).toMatch(/const \[usePassword, setUsePassword\] = useState\(isLoginPath\)/);
+    expect(src).toMatch(/const isLoginPath = \/\\\/\(signin\|sign-in\|login\)\/\.test\(window\.location\.pathname\)/);
   });
   it('password field only renders when usePassword is on', () => {
     expect(src).toMatch(/\{usePassword && \(/);

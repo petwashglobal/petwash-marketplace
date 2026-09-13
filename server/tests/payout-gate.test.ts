@@ -161,11 +161,22 @@ describe('checkPayoutGates — fail-CLOSED chain', () => {
     expect(r.reason).toContain('SERVICE_NOT_APPROVED_FOR_PAYOUT');
   });
 
-  it('PASSES (shadow) when declarations unsigned but PROVIDER_DECLARATIONS_ENFORCE off (gate h)', async () => {
+  // 2026-09-13: the default flipped to ENFORCE on 2026-09-03 (release blockers:
+  // fail CLOSED). Unset now HOLDS; only an explicit off/false/0 is shadow.
+  it('HOLDS by default (unset) when declarations unsigned (gate h fails closed)', async () => {
     H.decl.result = { ok: false, reason: 'DECLARATIONS_UNSIGNED', missing: ['independent_provider'] };
     delete process.env.PROVIDER_DECLARATIONS_ENFORCE;
     const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain('DECLARATIONS_UNSIGNED');
+  });
+
+  it('PASSES (shadow) only when PROVIDER_DECLARATIONS_ENFORCE is explicitly off (gate h)', async () => {
+    H.decl.result = { ok: false, reason: 'DECLARATIONS_UNSIGNED', missing: ['independent_provider'] };
+    process.env.PROVIDER_DECLARATIONS_ENFORCE = 'off';
+    const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
     expect(r).toMatchObject({ ok: true, reason: 'OK' });
+    delete process.env.PROVIDER_DECLARATIONS_ENFORCE;
   });
 
   it('HOLDS when declarations unsigned and PROVIDER_DECLARATIONS_ENFORCE on (gate h)', async () => {

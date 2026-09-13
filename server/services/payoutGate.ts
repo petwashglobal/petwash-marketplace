@@ -251,8 +251,8 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
     // Gate (h): Provider Protection Book declarations signed (epic #49). The
     // provider must have SIGNED every required protection declaration (core +
     // service-specific) at its current version before money moves. Flag-gated
-    // (PROVIDER_DECLARATIONS_ENFORCE, default off), mirroring the reconfirmation
-    // gate: off = SHADOW (log what it WOULD hold, payout proceeds); on = HOLD.
+    // (PROVIDER_DECLARATIONS_ENFORCE, default ON since 2026-09-03 fail-closed):
+    // explicit off = SHADOW (log what it WOULD hold, payout proceeds); otherwise HOLD.
     // This lets the declaration system run observe-only until counsel approves the
     // wording and DocuSeal is live, then becomes a hard gate by flipping one flag.
     //

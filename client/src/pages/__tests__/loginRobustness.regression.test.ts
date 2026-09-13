@@ -18,7 +18,7 @@ const passkey = readFileSync(resolve(__dirname, '..', '..', 'auth', 'passkey.ts'
 describe('phone/SMS verify never routes into a session-less app', () => {
   const verify = signup.slice(signup.indexOf('async function verify('), signup.indexOf('async function sendEmailCode('));
   it('fails honestly when no customToken comes back (no fall-through to finishAndRoute)', () => {
-    expect(verify).toMatch(/if \(!sd\.customToken\)\s*\{[\s\S]*?fail\([\s\S]*?return;/);
+    expect(verify).toMatch(/if \(!sd\??\.customToken\)\s*\{[\s\S]*?fail\([\s\S]*?return;/); // sd?. since the one-shot proof rework
   });
   it('also fails if the /api/auth/session POST is not ok (no hollow session)', () => {
     expect(verify).toMatch(/if \(!sessionRes\.ok\)/);

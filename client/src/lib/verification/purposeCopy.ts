@@ -254,6 +254,12 @@ const ERRORS: Record<VerificationReasonCode, Record<CopyLanguage, string>> = {
     en: "This isn't available right now. Please try again later.",
     he: 'האפשרות אינה זמינה כרגע. נסו שוב מאוחר יותר.',
   },
+  // A channel/destination mismatch (e.g. an email typed into the phone step).
+  // Server: UnifiedVerificationService DESTINATION_NORMALIZATION_FAILED (2026-09-13).
+  DESTINATION_NORMALIZATION_FAILED: {
+    en: "That doesn't look like the right kind of contact for this step. Check the number or email and try again.",
+    he: 'נראה שהפרט שהוזן לא מתאים לשלב הזה. בדקו את המספר או האימייל ונסו שוב.',
+  },
   CHALLENGE_COOLDOWN: {
     en: 'Give the last code a moment to arrive before asking for another.',
     he: 'תנו לקוד הקודם רגע להגיע לפני בקשת קוד נוסף.',
