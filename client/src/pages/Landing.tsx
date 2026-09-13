@@ -267,7 +267,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
         {/* How-to video (CEO 2026-08-04; repositioned 2026-09-13 per CEO): the
             how-to video + technology / features / organic-promise block now sits
             ABOVE the platforms / "World of PetWash" section, so visitors see what
-            a PetWash™ station is before the platform cards. Content unchanged —
+            a ⁦PetWash™⁩ station is before the platform cards. Content unchanged —
             order only. youtube-nocookie for privacy; ™‎ isolated for RTL. */}
         <section className="py-10 px-4 sm:px-6 lg:px-8 bg-white">
           <div className="max-w-4xl mx-auto">
