@@ -322,7 +322,7 @@ export async function registerPasskey(
 export async function signInWithPasskey(
   uid?: string,
   opts: { purpose?: 'step_up' } = {},
-): Promise<{ success: boolean; error?: string; uid?: string }> {
+): Promise<{ success: boolean; error?: string; errorEn?: string; uid?: string }> {
   try {
     if (!isPasskeySupported()) {
       return { success: false, error: 'Passkeys not supported in this browser' };
@@ -359,7 +359,7 @@ export async function signInWithPasskey(
 
     if (!optionsResponse.ok) {
       const error = await optionsResponse.json();
-      return { success: false, error: error.error || 'Failed to get authentication options' };
+      return { success: false, error: error.error || 'Failed to get authentication options', errorEn: error.error_en };
     }
 
     // challengeId = server-side single-use challenge handle; it must come back on verify.
@@ -389,7 +389,8 @@ export async function signInWithPasskey(
 
     if (!verifyResponse.ok) {
       const error = await verifyResponse.json();
-      return { success: false, error: error.error || 'Authentication verification failed' };
+      // error is localised (e.g. Hebrew) — errorEn is the stable string callers match on.
+      return { success: false, error: error.error || 'Authentication verification failed', errorEn: error.error_en };
     }
 
     const { customToken, user: userData } = await verifyResponse.json();
