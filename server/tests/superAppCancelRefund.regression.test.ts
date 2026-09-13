@@ -13,8 +13,10 @@ describe('super-app cancel/complete consolidation + auth', () => {
   it('exactly one cancel route, and it triggers the escrow refund', () => {
     const cancelRoutes = (SRC.match(/'\/:platformId\/bookings\/:bookingId\/cancel'/g) || []).length;
     expect(cancelRoutes).toBe(1);
-    expect(SRC).toMatch(/cancelEscrowAndRefund\(payout\.id, reason\)/);
-    expect(SRC).toMatch(/paymentStatus: refundPending \? 'refund_pending' : 'cancelled'/);
+    // 2026-09-13: the call now spans lines and passes the policy refund; the status
+    // distinguishes an executed refund from a recorded obligation. Same intent.
+    expect(SRC).toMatch(/cancelEscrowAndRefund\(\s*payout\.id,\s*reason\b/);
+    expect(SRC).toMatch(/paymentStatus: refundExecuted \? 'refunded' : \(refundPending \? 'refund_pending' : 'cancelled'\)/);
   });
   it('no live code compares providerId.toString() to a UID (only in comments)', () => {
     const codeHits = SRC.split('\n').filter(l => /providerId\.toString\(\) === userId/.test(l) && !l.trim().startsWith('//'));

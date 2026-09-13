@@ -67,7 +67,7 @@ export const AUTH_RULEBOOK = {
         { id: 'email.code.ttl', says: 'Email code lives 5 minutes (300s) and allows 5 attempts.', file: 'server/services/UnifiedVerificationService.ts', mustContain: ['ttlSeconds: 300', 'maxAttempts: 5'] },
         { id: 'email.proof.ttl', says: 'The email-verified proof token expires after 5 minutes.', file: 'server/lib/emailVerifiedToken.ts', mustContain: ['5 * 60 * 1000'] },
         { id: 'email.verify.mintsProof', says: '/email/verify returns the signed proof ONLY on a matched code.', file: 'server/routes/auth-email.ts', mustContain: ['mintEmailVerifiedToken', 'sessionToken'] },
-        { id: 'email.session.requiresProof', says: '/email-session NEVER trusts a bare email — it validates the proof first.', file: 'server/routes/publicAuthRoutes.ts', mustContain: ['validateEmailVerifiedToken', '/api/auth/email-session'] },
+        { id: 'email.session.requiresProof', says: '/email-session NEVER trusts a bare email — it validates the proof first.', file: 'server/routes/publicAuthRoutes.ts', mustContain: ['redeemEmailVerifiedToken', '/api/auth/email-session'] } /* 2026-09-13: validate → REDEEM (single-use proof) */,
         { id: 'email.session.csrfExempt', says: 'Pre-session email endpoints are CSRF-exempt or they 403.', file: 'server/index.ts', mustContain: ["'/api/auth/email/start'", "'/api/auth/email/verify'", "'/api/auth/email-session'"] },
       ],
     },
@@ -101,7 +101,7 @@ export const AUTH_RULEBOOK = {
       botGate: 'none',
       status: 'live',
       checks: [
-        { id: 'social.flagsOn', says: 'Google, Apple, Email, Facebook, Instagram are all enabled.', file: 'client/src/lib/authSignupFlags.ts', mustContain: ["googleSignin: on(", "appleSignin: on(", "emailPassword: on(", "facebookSignin: on(", "instagramSignin: on("] },
+        { id: 'social.flagsOn', says: 'Google, Apple and Email are enabled; Facebook/Instagram/TikTok login stay OFF until their apps are approved (CEO 2026-07-31, #1609).', file: 'client/src/lib/authSignupFlags.ts', mustContain: ["googleSignin: on(", "appleSignin: on(", "emailPassword: on(", "facebookSignin: off(", "instagramSignin: off("] },
         { id: 'social.gracefulLux', says: 'The premium screen routes social sign-in through the graceful handler.', file: 'client/src/pages/SignUpLuxury.tsx', mustContain: ["social('apple')", "social('google')"] },
       ],
     },

@@ -113,8 +113,9 @@ describe('canonical SMS auth wrapper (/api/auth/sms)', () => {
     expect(normalizeFlow('weird')).toBe('prestige');
     expect(normalizeFlow(undefined)).toBe('prestige');
     expect(normalizeFlow('provider')).toBe('provider');
-    expect(redirectForFlow('prestige')).toBe('/member/dashboard');
-    expect(redirectForFlow('provider')).toBe('/provider/dashboard');
+    // 2026-09-13: /member/dashboard is not a route any more; the canonical Prestige home is.
+    expect(redirectForFlow('prestige')).toBe('/prestige/home');
+    expect(redirectForFlow('provider')).toBe('/provider-os'); // /provider/dashboard is only a redirect stub (SEV-1 2026-08-20)
     expect(redirectForFlow('guest')).toBe('/egift');
   });
 });

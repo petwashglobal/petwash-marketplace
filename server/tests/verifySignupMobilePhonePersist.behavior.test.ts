@@ -430,7 +430,10 @@ describe('verify-signup-email: the same contract, on the other contact', () => {
     expect(res.status).toBe(200);
     expect(fbUsers[MEMBER].email).toBe(EMAIL);
     expect(emailPersisted()).toBe(true);
-    expect(markEmailVerified).toHaveBeenCalledWith(MEMBER, expect.anything());
+    // 2026-09-13: email proof is NOT a Terms acceptance (consent audit 2026-09-12) —
+    // the call must carry no { acceptTerms } option. The old pin asserted the stamp.
+    expect(markEmailVerified).toHaveBeenCalledWith(MEMBER);
+    expect(markEmailVerified.mock.calls.every((c: any[]) => !c[1]?.acceptTerms)).toBe(true);
   });
 
   it('a failed email write NEVER falls back to keeping the contact without the flag', async () => {
@@ -458,7 +461,10 @@ describe('verify-signup-email: the same contract, on the other contact', () => {
     expect(res.status).toBe(200);
     expect(res.body.code).not.toBe('EMAIL_IN_USE');
     expect(emailPersisted()).toBe(true);
-    expect(markEmailVerified).toHaveBeenCalledWith(MEMBER, expect.anything());
+    // 2026-09-13: email proof is NOT a Terms acceptance (consent audit 2026-09-12) —
+    // the call must carry no { acceptTerms } option. The old pin asserted the stamp.
+    expect(markEmailVerified).toHaveBeenCalledWith(MEMBER);
+    expect(markEmailVerified.mock.calls.every((c: any[]) => !c[1]?.acceptTerms)).toBe(true);
   });
 
   it('an address a DIFFERENT account holds is still refused 409', async () => {

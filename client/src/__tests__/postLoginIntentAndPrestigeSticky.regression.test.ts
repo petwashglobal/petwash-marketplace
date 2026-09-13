@@ -105,11 +105,11 @@ describe('Issue #153 PR-BPV-2 — post-login intent re-honor (V3)', () => {
     const elseIfBody = POST_LOGIN_SRC.slice(elseIfStart, elseIfEnd);
     expect(elseIfBody).toMatch(/staff_request/);
     expect(elseIfBody).toMatch(/createStaffAccessRequest/);
-    // And: the role-assignment updateUser call (with role + signupIntent)
-    // is preserved on this path.
-    expect(elseIfBody).toMatch(
-      /storage\.updateUser\(\s*userId\s*,\s*\{[\s\S]{0,200}role:\s*assignedRole/,
-    );
+    // 2026-09-13 SECURITY: the old pin REQUIRED `role: assignedRole` here — i.e. a
+    // request-body intent choosing the role, the spoof this branch now blocks.
+    // Pin the safe shape: intent is routing only, the role written is 'customer'.
+    expect(elseIfBody).toMatch(/storage\.updateUser\(\s*userId\s*,\s*\{[\s\S]{0,120}role:\s*'customer'/);
+    expect(elseIfBody).not.toMatch(/role:\s*assignedRole/);
   });
 
   it('PROVIDER_DRAFT_FAILED safety-net 500 response is preserved (no regression)', () => {

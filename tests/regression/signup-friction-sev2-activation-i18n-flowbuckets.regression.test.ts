@@ -139,11 +139,11 @@ describe('signup-friction 2026-08-19 SEV-2 fixes', () => {
       // members' route is /prestige/home. See auth-wiring-sev1-five-gaps
       // regression test for the pin against the new value.
       expect(block).toMatch(/prestige:\s*['"]\/prestige\/home['"]/);
-      expect(block).toMatch(/provider:\s*['"]\/provider\/dashboard['"]/);
+      expect(block).toMatch(/provider:\s*['"]\/provider-os['"]/); // 2026-09-13: /provider/dashboard is only a redirect stub
       expect(block).toMatch(/guest:\s*['"]\/egift['"]/);
       expect(block).toMatch(/booking:\s*['"]\/booking['"]/);
       expect(block).toMatch(/activation:\s*['"]\/activate-account['"]/);
-      expect(block).toMatch(/general:\s*['"]\/['"]/);
+      expect(block).toMatch(/general:\s*['"]\/home['"]/); // 2026-09-13: code sends general → /home (routed)
     });
 
     it('normalizeFlow accepts every known flow via a Set membership check (not a hardcoded 3-value OR)', () => {

@@ -73,7 +73,9 @@ describe('PR-AUTH-CONTACTS-3 — client AccountActivation UX', () => {
     // either order — even before mobile, or in parallel from another tab.
     expect(page).not.toMatch(/disabled=\{sendEmailMutation\.isPending \|\| !mobileComplete\}/);
     // Email button disable is now bound only to its own mutation state.
-    expect(page).toMatch(/disabled=\{sendEmailMutation\.isPending\}\s*\n/);
+    // 2026-09-13: a resend cooldown was added — still no mobile dependency.
+    expect(page).toMatch(/disabled=\{sendEmailMutation\.isPending(?: \|\| emailCooldown > 0)?\}\s*\n/);
+    expect(page).not.toMatch(/disabled=\{[^}]*mobileComplete[^}]*\}[^\n]*\n[^\n]*sendEmailMutation/);
   });
 
   it('renders both verify sections as independently addressable (testids present)', () => {

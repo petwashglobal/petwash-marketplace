@@ -20,10 +20,12 @@ const SRC = fs.readFileSync(
   'utf8',
 );
 
+// 2026-09-13: #240 moved these routes to isSuperAdminVerified(req) — the allowlist
+// check PLUS email_verified===true (stricter). Pins updated to the stricter gate.
 describe('/api/admin/approved-provider-recon — auth + read-only', () => {
   it('handler imports isSuperAdmin and rejects before any query', () => {
-    expect(SRC).toMatch(/import\s*\{\s*isSuperAdmin\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/);
-    const gateIdx = SRC.indexOf('isSuperAdmin(callerEmail)');
+    expect(SRC).toMatch(/import\s*\{\s*isSuperAdminVerified\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/);
+    const gateIdx = SRC.indexOf('isSuperAdminVerified(req');
     const queryIdx = SRC.indexOf('pool.query');
     expect(gateIdx).toBeGreaterThan(-1);
     expect(queryIdx).toBeGreaterThan(-1);

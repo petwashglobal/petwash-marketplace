@@ -12,21 +12,19 @@ const SRC = readFileSync(
 // user columns (phone, passwordHash, MFA secrets) into memory when only a
 // tiny subset was ever consumed.
 
-describe('pin-auth.ts users SELECT projection (audit sev 4)', () => {
-  it('does not `db.select().from(users)` (untyped SELECT *)', () => {
-    // Any whitespace/newlines around the dot/paren are fine.
-    expect(SRC).not.toMatch(/db\s*\.\s*select\(\s*\)\s*\.\s*from\(users\)/);
+describe('pin-auth.ts users/customers SELECT projection (audit sev 4, re-applied 2026-09-13)', () => {
+  it('never does an untyped SELECT * on users or customers', () => {
+    expect(SRC).not.toMatch(/db\s*\.\s*select\(\s*\)\s*\.\s*from\((users|customers)\)/);
   });
 
-  it('email-lookup projection is scoped to `id` only', () => {
-    expect(SRC).toMatch(/\.select\(\{\s*id:\s*users\.id\s*\}\)/);
+  it('identity lookups project only id (+ email where compared)', () => {
+    expect(SRC).toMatch(/select\(\{ id: users\.id, email: users\.email \}\)\.from\(users\)\.where\(eq\(users\.id, uid\)\)/);
+    expect(SRC).toMatch(/select\(\{ id: users\.id \}\)\.from\(users\)\.where\(eq\(users\.email, email\)\)/);
   });
 
-  it('id-lookup projection is the explicit 5-field allowlist', () => {
-    expect(SRC).toMatch(/id:\s*users\.id/);
-    expect(SRC).toMatch(/email:\s*users\.email/);
-    expect(SRC).toMatch(/firstName:\s*users\.firstName/);
-    expect(SRC).toMatch(/lastName:\s*users\.lastName/);
-    expect(SRC).toMatch(/loyaltyTier:\s*users\.loyaltyTier/);
+  it('the login response profile is the explicit 5-field allowlist', () => {
+    for (const f of ['id: users.id', 'email: users.email', 'firstName: users.firstName', 'lastName: users.lastName', 'loyaltyTier: users.loyaltyTier']) {
+      expect(SRC).toContain(f);
+    }
   });
 });

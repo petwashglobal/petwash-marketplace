@@ -203,7 +203,10 @@ describe('auth-wiring 2026-08-20 SEV-1 five-gaps fixes', () => {
       // The named constant is the grep anchor + prevents a silent revert to
       // the 3-second race that made a slow-but-successful insert look like
       // a failure.
-      expect(ROUTES_TS).toMatch(/const\s+DB_BOOTSTRAP_TIMEOUT_MS\s*=\s*8000/);
+      // 2026-09-13: raised to 20000 deliberately (cold Neon). Pin: named, and ≥ 8000.
+      const m = ROUTES_TS.match(/const\s+DB_BOOTSTRAP_TIMEOUT_MS\s*=\s*(\d+)/);
+      expect(m).toBeTruthy();
+      expect(Number(m![1])).toBeGreaterThanOrEqual(8000);
       // And the race has to use it — not a fresh magic number.
       expect(ROUTES_TS).toMatch(/setTimeout\(\(\)\s*=>\s*resolve\(null\),\s*DB_BOOTSTRAP_TIMEOUT_MS\)/);
     });

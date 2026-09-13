@@ -25,12 +25,14 @@ const SRC = fs.readFileSync(
   'utf8',
 );
 
+// 2026-09-13: #240 moved these routes to isSuperAdminVerified(req) — the allowlist
+// check PLUS email_verified===true (stricter). Pins updated to the stricter gate.
 describe('/api/admin/legal-reconciliation — auth matrix', () => {
   it('handler imports isSuperAdmin and rejects on it', () => {
-    expect(SRC).toMatch(/import\s*\{\s*isSuperAdmin\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/);
+    expect(SRC).toMatch(/import\s*\{\s*isSuperAdminVerified\s*\}\s*from\s*['"]\.\.\/middleware\/rbac['"]/);
     // The rejection branch must return 403 before ANY pool.query is
     // executed. Grep both.
-    const gateIdx = SRC.indexOf('isSuperAdmin(callerEmail)');
+    const gateIdx = SRC.indexOf('isSuperAdminVerified(req');
     const queryIdx = SRC.indexOf('pool.query');
     expect(gateIdx).toBeGreaterThan(-1);
     expect(queryIdx).toBeGreaterThan(-1);
@@ -41,7 +43,7 @@ describe('/api/admin/legal-reconciliation — auth matrix', () => {
   it('handler does not have any bypass branch that skips the isSuperAdmin gate', () => {
     // Every response path in the handler must be either the 403 above
     // or come AFTER the isSuperAdmin check.
-    const beforeGate = SRC.split('isSuperAdmin(callerEmail)')[0];
+    const beforeGate = SRC.split('isSuperAdminVerified(req')[0];
     // No 200 res.json() before the gate.
     expect(beforeGate).not.toMatch(/res\.json\(\s*\{\s*ok:\s*true/);
     // No pool.query before the gate.

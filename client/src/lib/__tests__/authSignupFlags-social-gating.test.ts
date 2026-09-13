@@ -31,10 +31,12 @@ const signupSrc = fs.readFileSync(path.join(CLIENT, 'pages', 'SignUpLuxury.tsx')
 const authClientSrc = fs.readFileSync(path.join(CLIENT, 'auth', 'client.ts'), 'utf8');
 
 describe('authSignupFlags — all providers ON but flag-controllable', () => {
-  it('facebook/instagram/tiktok use on() (CEO 2026-06-28; force off only via env === "false")', () => {
-    expect(flagsSrc).toMatch(/facebookSignin:\s*on\('VITE_AUTH_SIGNUP_FACEBOOK_SIGNIN_ENABLED'\)/);
-    expect(flagsSrc).toMatch(/instagramSignin:\s*on\('VITE_AUTH_SIGNUP_INSTAGRAM_SIGNIN_ENABLED'\)/);
-    expect(flagsSrc).toMatch(/tiktokSignin:\s*on\('VITE_AUTH_SIGNUP_TIKTOK_SIGNIN_ENABLED'\)/);
+  // 2026-09-13: CEO 2026-07-31 (#1609) — FB/IG/TikTok LOGIN default OFF (dead taps);
+  // signup is Google + Apple only (#1656). Pin the current decision.
+  it('facebook/instagram/tiktok use off() (CEO 2026-07-31; enable only via env === "true")', () => {
+    expect(flagsSrc).toMatch(/facebookSignin:\s*off\('VITE_AUTH_SIGNUP_FACEBOOK_SIGNIN_ENABLED'\)/);
+    expect(flagsSrc).toMatch(/instagramSignin:\s*off\('VITE_AUTH_SIGNUP_INSTAGRAM_SIGNIN_ENABLED'\)/);
+    expect(flagsSrc).toMatch(/tiktokSignin:\s*off\('VITE_AUTH_SIGNUP_TIKTOK_SIGNIN_ENABLED'\)/);
   });
 });
 
@@ -54,9 +56,8 @@ describe('SignUpLuxury (/signup) — dead social buttons are gated', () => {
     expect(signupSrc).toMatch(/import\s*\{\s*signupFlags\s*\}\s*from\s*["']@\/lib\/authSignupFlags["']/);
   });
 
-  it('Facebook + Instagram buttons render only when their flag is on', () => {
-    expect(signupSrc).toMatch(/signupFlags\.facebookSignin\s*&&/);
-    expect(signupSrc).toMatch(/signupFlags\.instagramSignin\s*&&/);
+  it('no Facebook / Instagram login button on the signup screen (Google + Apple only)', () => {
+    expect(signupSrc).not.toMatch(/social\(\s*['"](facebook|instagram)['"]\s*\)/);
   });
 
   it('TikTok goes through the server-mediated OAuth path (not a raw Firebase dead button)', () => {

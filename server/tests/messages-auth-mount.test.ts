@@ -22,6 +22,12 @@ describe('messages route Firebase auth mount', () => {
 
     expect(messages).toContain('const userId = req.firebaseUser?.uid;');
     expect(messages).toContain("return res.status(401).json({ error: 'Unauthorized' });");
-    expect(messages).toContain('if (validated.senderId !== userId)');
+    // 2026-09-13: the old pin asserted a senderId-vs-token COMPARISON. The code
+    // is now stricter — the body cannot carry senderId at all; the sender is
+    // resolved from the verified token. Pin that instead (rotted, not a regression).
+    expect(messages).toMatch(/const sender = await resolveAuthoritativeSender\(req\);\s*if \(!sender\) return res\.status\(401\)/);
+    expect(messages).toContain('senderId: sender.uid,');
+    const schema = messages.slice(messages.indexOf('const sendSchema = z.object({'), messages.indexOf('});', messages.indexOf('const sendSchema = z.object({')));
+    expect(schema).not.toMatch(/sender(Id|Email|Name)\s*:/);
   });
 });

@@ -117,12 +117,13 @@ export async function resolvePinIdentityFromRequest(req: Request): Promise<PinId
   const uid = req.firebaseUser?.uid;
   if (!uid) return null;
 
-  const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+  // Projection, not SELECT * — an auth path must not pull phone/passwordHash/MFA secrets (#1947, re-applied 2026-09-13).
+  const [user] = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, uid)).limit(1);
   if (user) return { id: user.id, type: 'user', email: user.email ?? null };
 
   const tokenEmail = (req.firebaseUser?.email || '').trim().toLowerCase();
   if (tokenEmail) {
-    const [customer] = await db.select().from(customers).where(eq(customers.email, tokenEmail)).limit(1);
+    const [customer] = await db.select({ id: customers.id, email: customers.email }).from(customers).where(eq(customers.email, tokenEmail)).limit(1);
     if (customer) return { id: customer.id.toString(), type: 'customer', email: customer.email ?? null };
   }
 
@@ -143,13 +144,13 @@ function bodyEmailConflictsWithToken(req: Request, bodyEmail?: string): boolean 
 // Helper: Find user by email (check both tables)
 async function findUserByEmail(email: string): Promise<{ id: string; type: 'user' | 'customer' } | null> {
   // Check customers table first
-  const [customer] = await db.select().from(customers).where(eq(customers.email, email)).limit(1);
+  const [customer] = await db.select({ id: customers.id }).from(customers).where(eq(customers.email, email)).limit(1);
   if (customer) {
     return { id: customer.id.toString(), type: 'customer' };
   }
   
   // Check users table
-  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
   if (user) {
     return { id: user.id, type: 'user' };
   }
@@ -199,8 +200,21 @@ router.post('/setup', validateFirebaseToken, async (req: Request, res: Response)
       ))
       .limit(1);
 
+    // CREATE-ONLY for an ACTIVE PIN (#1820, re-applied 2026-09-13). /setup used to
+    // overwrite a live PIN without the current one — a stolen session could
+    // silently replace a PIN that /change protects with currentPin. Settings only
+    // offers "Set PIN" when status.hasPin is false. An inactive (removed) row is
+    // still re-activated below.
+    if (existingPin && existingPin.isActive) {
+      return res.status(409).json({
+        success: false,
+        error: 'A PIN already exists for this account. Use Change PIN.',
+        code: 'PIN_ALREADY_EXISTS',
+      });
+    }
+
     if (existingPin) {
-      // Update existing PIN
+      // Re-activate a removed PIN row with the new PIN
       await db.update(userPins)
         .set({
           pinHash,
@@ -437,7 +451,10 @@ router.post('/verify', async (req: Request, res: Response) => {
     // Get user data for response
     let userData: any = null;
     if (userInfo.type === 'customer') {
-      const [customer] = await db.select().from(customers).where(eq(customers.id, parseInt(userInfo.id)));
+      const [customer] = await db.select({
+        id: customers.id, email: customers.email, firstName: customers.firstName,
+        lastName: customers.lastName, loyaltyTier: customers.loyaltyTier,
+      }).from(customers).where(eq(customers.id, parseInt(userInfo.id)));
       if (customer) {
         userData = {
           id: customer.id,
@@ -448,7 +465,10 @@ router.post('/verify', async (req: Request, res: Response) => {
         };
       }
     } else {
-      const [user] = await db.select().from(users).where(eq(users.id, userInfo.id));
+      const [user] = await db.select({
+        id: users.id, email: users.email, firstName: users.firstName,
+        lastName: users.lastName, loyaltyTier: users.loyaltyTier,
+      }).from(users).where(eq(users.id, userInfo.id));
       if (user) {
         userData = {
           id: user.id,
@@ -1205,7 +1225,7 @@ router.post('/generate-device-trust', async (req: Request, res: Response) => {
       deviceId,
     });
 
-    logger.info('[PIN Auth] Device trust token generated', { userId, email, deviceId });
+    logger.info('[PIN Auth] Device trust token generated', { userId, deviceId }); // PII-free log bag
     return res.json({
       success: true,
       deviceTrustToken: trustToken,

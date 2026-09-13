@@ -93,6 +93,9 @@ describe('PR-BOOKING-CALENDAR-A — calendar created only after payment truth', 
       bookingRequestPaymentWebhook.indexOf("status: 'confirmed'"),
     );
     const calendarSegment = afterConfirm.slice(0, calendarCreateCallIndex(afterConfirm));
-    expect(calendarSegment).toMatch(/setImmediate\(/);
+    // 2026-09-13: deferral moved into runAfterAck() (setImmediate + a persisted
+    // failure alert, silent-lie audit #13). Either form is non-blocking.
+    expect(calendarSegment).toMatch(/setImmediate\(|runAfterAck\(/);
+    if (/runAfterAck\(/.test(calendarSegment)) expect(webhookSrc).toMatch(/function runAfterAck\([\s\S]{0,400}setImmediate\(/);
   });
 });

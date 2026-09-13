@@ -1604,7 +1604,7 @@ router.post('/:requestId/respond', async (req, res) => {
       // ── PROVIDER PROTECTION DECLARATIONS GATE (epic #49) ──────────────────
       // A provider may not ACCEPT a booking (go live serving a job) until every
       // required Protection-Book declaration is signed. Uses the SAME flag as the
-      // payout gate (PROVIDER_DECLARATIONS_ENFORCE, default off = SHADOW) so one
+      // payout gate (PROVIDER_DECLARATIONS_ENFORCE, default ON since 2026-09-03 — only explicit off = SHADOW) so one
       // switch arms the whole epic — you never want acceptance allowed while payout
       // is held, or vice versa. When the flag is flipped on, this blocks ANY
       // provider (incl. legacy) who hasn't signed — which is the intended Protection
