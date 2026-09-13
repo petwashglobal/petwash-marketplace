@@ -53,8 +53,9 @@ export default function LoyaltyTerms() {
 
   const earningMethods = [
     { icon: Gift, title: "Service Bookings", desc: "1 point per ₪1 spent on any service" },
-    { icon: Sparkles, title: "Natural Products", desc: "Bonus points for eco-friendly choices" },
-    { icon: Users, title: "Referrals", desc: "500 points per successful referral" },
+    // Mirrors REFERRAL_CONFIG in server/routes/referral.ts (pinned by
+    // server/tests/menuTruthLoyaltyLegal.regression.test.ts). Was "500 points".
+    { icon: Users, title: "Referrals", desc: "₪25 wallet credit per successful referral (your friend's first payment of ₪20 or more; up to ₪1,000 in total)" },
     { icon: Calendar, title: "Birthday Rewards", desc: "Automatic tier-based bonus points" },
     { icon: TrendingUp, title: "Promotions", desc: "Special challenges and campaigns" },
   ];
@@ -164,28 +165,6 @@ export default function LoyaltyTerms() {
                 </div>
               </div>
             ))}
-          </div>
-
-          {/* Points Calculation Example */}
-          <div className="luxury-glass-minimal p-6 border-l-4 border-[#D4AF37]">
-            <h4 className="font-semibold text-gray-900 dark:text-black mb-4">
-              Example Calculation:
-            </h4>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="luxury-text-body">K9000 Natural Wash</span>
-                <span className="luxury-heading-lg luxury-text-gradient">+150</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="luxury-text-body">Referral Bonus</span>
-                <span className="luxury-heading-lg luxury-text-gradient">+500</span>
-              </div>
-              <div className="luxury-divider my-2"></div>
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-gray-900 dark:text-black">Total Points</span>
-                <span className="luxury-heading-lg luxury-text-gradient">650</span>
-              </div>
-            </div>
           </div>
         </div>
 

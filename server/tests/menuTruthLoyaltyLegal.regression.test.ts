@@ -285,3 +285,25 @@ describe('7. legal menu pages call useSEO with their own copy and a route-derive
     expect(idx).toMatch(/<LegalPage\s+skipSeo/);
   });
 });
+
+describe('loyalty terms referral + earning claims match the system (2026-09-13)', () => {
+  const terms = R('client/src/pages/legal/LoyaltyTerms.tsx');
+  const referral = R('server/routes/referral.ts');
+  const num = (key: string) => Number(referral.match(new RegExp(`${key}:\\s*(\\d+)`))?.[1]);
+
+  it('the referral line states the REFERRAL_CONFIG credit, minimum and lifetime cap', () => {
+    const credit = num('creditPerReferralILS');
+    const min = num('minFirstPaymentILS');
+    const cap = num('lifetimeCapILS');
+    expect([credit, min, cap].every(Number.isFinite)).toBe(true);
+    expect(terms).toContain(`₪${credit} wallet credit per successful referral`);
+    expect(terms).toContain(`first payment of ₪${min} or more`);
+    expect(terms).toContain(`up to ₪${cap.toLocaleString('en-US')} in total`);
+    expect(terms).not.toMatch(/500 points per successful referral/);
+  });
+
+  it('no invented example calculation or unbacked "natural products" bonus', () => {
+    expect(terms).not.toContain('Example Calculation');
+    expect(terms).not.toMatch(/Bonus points for eco-friendly choices/);
+  });
+});
