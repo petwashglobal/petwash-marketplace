@@ -113,6 +113,16 @@ export function buildProfileSeeds(app: SeedableApplication, platformIds: Iterabl
         yearsOfExperience: 0,
         pricePerDayCents: 0,      // set on the rate card; search requires > 0
         verificationLevel: 'bronze', // KYC passed = bronze; badges raise it later
+        // 2026-09-13: this row used to set verificationLevel and NOTHING else,
+        // so verification_status kept its column default 'pending_id'. All
+        // three places that look for a sitter require 'active'
+        // (booking-search.ts, SitterProximitySearch.ts, booking-expiry.ts), so
+        // every sitter approved through this path was invisible: never
+        // returned to a customer searching, and never chosen as a replacement
+        // when a booking expired — that booking was cancelled and refunded
+        // instead. The walker branch above and the trainer branch below always
+        // set their status. This is the sitter half of the same approval.
+        verificationStatus: 'active',
       };
     } else if (platformId === 'academy') {
       if (!email || !phone) {
@@ -159,7 +169,10 @@ export async function seedProviderProfiles(app: SeedableApplication, platformIds
     if (plan.sitter) {
       const [s] = await db.select({ id: sitterProfiles.id }).from(sitterProfiles).where(eq(sitterProfiles.userId, app.userId)).limit(1);
       if (s) {
-        await db.update(sitterProfiles).set({ verificationLevel: 'bronze' } as any).where(eq(sitterProfiles.userId, app.userId));
+        // Same fix as the insert plan above: an already-existing sitter row was
+        // only ever raised to 'bronze' verificationLevel, never to the
+        // verificationStatus that search actually reads.
+        await db.update(sitterProfiles).set({ verificationLevel: 'bronze', verificationStatus: 'active', isActive: true } as any).where(eq(sitterProfiles.userId, app.userId));
         result.existing.push('sitter_suite');
       } else {
         await db.insert(sitterProfiles).values(plan.sitter as any);

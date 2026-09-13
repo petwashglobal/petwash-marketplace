@@ -218,7 +218,7 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
   pass.backFields.push({
     key: 'bookServices',
     label: 'Book Services',
-    value: `${PUBLIC_SITE_URL}/book`,
+    value: `${PUBLIC_SITE_URL}/booking`,
   } as any);
 
   pass.backFields.push({
@@ -301,7 +301,7 @@ export function buildPassJson(visual: PassVisual): Record<string, unknown> {
         ...(visual.primaryPetName ? [{ key: 'primaryPet', label: 'Primary Pet', value: visual.primaryPetName }] : []),
         { key: 'support', label: 'Support', value: CANONICAL_SUPPORT_EMAIL },
         { key: 'website', label: 'PetWash Website', value: PUBLIC_SITE_URL },
-        { key: 'bookServices', label: 'Book Services', value: `${PUBLIC_SITE_URL}/book` },
+        { key: 'bookServices', label: 'Book Services', value: `${PUBLIC_SITE_URL}/booking` },
         { key: 'prestigePortal', label: 'Prestige Member Portal', value: `${PUBLIC_SITE_URL}/prestige-pass` },
         { key: 'walletNotice', label: 'Notice', value: 'Front is for membership identity and QR scan. Details and action links are available on this page.' },
         { key: 'legal', label: 'Terms', value: 'This pass is non-transferable and remains subject to Pet Wash Ltd terms, verification rules, and membership conditions.' },

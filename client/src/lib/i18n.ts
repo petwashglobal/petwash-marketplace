@@ -2551,7 +2551,7 @@ export const translations: TranslationStrings = {
   // Pet Wash Academy — trainer marketplace landing
   '⁦Pet Wash Academy™⁩': { en: '⁦Pet Wash Academy™⁩', he: 'אקדמיית ⁦Pet Wash™⁩' },
   'Professional Pet Trainers': { en: 'Professional Pet Trainers', he: 'מאמני חיות מקצועיים' },
-  'Book certified trainers for obedience, agility, behavioral training, and more. All trainers verified and background-checked.': { en: 'Book professional trainers for obedience, agility, behavioral training, and more.', he: 'הזמינו מאמנים מקצועיים לאילוף ציות, אג׳יליטי, אימון התנהגותי ועוד.' },
+  'Book professional trainers for obedience, agility, behavioral training, and more.': { en: 'Book professional trainers for obedience, agility, behavioral training, and more.', he: 'הזמינו מאמנים מקצועיים לאילוף ציות, אג׳יליטי, אימון התנהגותי ועוד.' },
   'Are you a trainer? Manage your session requests': { en: 'Are you a trainer? Manage your session requests', he: 'אתם מאמנים? נהלו את בקשות האימון שלכם' },
   'Search trainers by name or specialty...': { en: 'Search trainers by name or specialty...', he: 'חיפוש מאמנים לפי שם או התמחות...' },
   'Filters': { en: 'Filters', he: 'סינונים' },
@@ -2568,7 +2568,7 @@ export const translations: TranslationStrings = {
   'Sessions Completed': { en: 'Sessions Completed', he: 'מפגשי אימון שהושלמו' },
   'Average Rating': { en: 'Average Rating', he: 'דירוג ממוצע' },
   'Certified & Verified': { en: 'Certified & Verified', he: 'מוסמכים ומאומתים' },
-  'All trainers background-checked and certified': { en: 'Professional trainers, reviewed and approved', he: 'מאמנים מקצועיים, נבדקים ומאושרים' },
+  'Professional trainers, reviewed and approved': { en: 'Professional trainers, reviewed and approved', he: 'מאמנים מקצועיים, נבדקים ומאושרים' },
   'View Profile': { en: 'View Profile', he: 'צפו בפרופיל' },
   'Verified': { en: 'Verified', he: 'מאומת' },
   'Certified': { en: 'Certified', he: 'מוסמך' },
@@ -2683,6 +2683,8 @@ function fixTrademarkForRTL(text: string, language: Language): string {
 export function t(key: string, language: Language): string {
   const translation = translations[key];
   if (!translation) return key;
+  // Secondary languages arrive as lazy packs in production (see below).
+  if (translation[language] === undefined) ensureLanguagePack(language);
   // Return requested language or fallback to English (global default)
   const result = translation[language] || translation.en || key;
   // Fix trademark positioning for RTL languages
@@ -2696,3 +2698,58 @@ export function isRTL(language: Language): boolean {
 
 // Helper type for components that only support English/Hebrew
 export type BilingualLanguage = Extract<Language, 'en' | 'he'>;
+
+// ── Lazy language packs (2026-09-13) ────────────────────────────────────────
+// In production builds scripts/vite/i18nLanguagePacks.ts strips ar/ru/fr/es out
+// of `translations` (≈410 KB of the main bundle) into one chunk per language and
+// rewrites importLanguagePack below to load it. In dev/tests/server nothing is
+// stripped and importLanguagePack returns null, so this is a no-op there.
+const SECONDARY_LANGUAGES: readonly Language[] = ['ar', 'ru', 'fr', 'es'];
+const packState: Partial<Record<Language, 'loading' | 'ready'>> = {};
+const packListeners = new Set<() => void>();
+let packVersion = 0;
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function importLanguagePack(lang: Language): Promise<Record<string, string> | null> {
+  /*__PW_I18N_PACK_LOADER__*/ return null;
+}
+
+/** Load (once) and merge the strings for a secondary language. Safe to call repeatedly. */
+export function ensureLanguagePack(lang: Language): void {
+  if (!SECONDARY_LANGUAGES.includes(lang) || packState[lang]) return;
+  packState[lang] = 'loading';
+  importLanguagePack(lang)
+    .then((pack) => {
+      packState[lang] = 'ready';
+      if (!pack) return;
+      for (const key of Object.keys(pack)) {
+        const entry = translations[key];
+        if (entry) (entry as Record<string, string>)[lang] = pack[key];
+      }
+      packVersion += 1;
+      packListeners.forEach((fn) => fn());
+    })
+    .catch(() => {
+      // Network blip: allow a retry on the next lookup; English shows meanwhile.
+      packState[lang] = undefined;
+    });
+}
+
+/** For useSyncExternalStore at the app root: re-render once a pack lands. */
+export function subscribeLanguagePacks(listener: () => void): () => void {
+  packListeners.add(listener);
+  return () => { packListeners.delete(listener); };
+}
+export function getLanguagePackVersion(): number {
+  return packVersion;
+}
+
+// Start loading the visitor's pack before first render when it is already known.
+if (typeof window !== 'undefined') {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = (params.get('lang') || params.get('hl') || '').toLowerCase().split(/[-_]/)[0];
+    const saved = fromUrl || window.localStorage.getItem('pw_lang') || window.localStorage.getItem('petwash_lang') || '';
+    if (saved) ensureLanguagePack(saved as Language);
+  } catch { /* storage blocked — the first t() call loads it instead */ }
+}

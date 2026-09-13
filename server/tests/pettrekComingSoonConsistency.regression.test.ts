@@ -20,28 +20,26 @@ const ROOT = resolve(__dirname, '..', '..');
 function read(rel: string): string { return readFileSync(resolve(ROOT, rel), 'utf8'); }
 
 describe('PR-PETTREK-COMING-SOON-CONSISTENCY', () => {
-  it('A1. SystemStatus lists PetTrek as coming_soon (not "operational")', () => {
+  // A1–A3 superseded 2026-09-13 (menu dead-end audit): /status no longer
+  // hard-codes ANY per-service status — it shows only what GET /api/health
+  // measures and labels everything else "not monitored here". The intent of
+  // the original pins (PetTrek must never be shown as live) is kept below.
+  it('A1. SystemStatus never labels PetTrek (or any service) as hard-coded "operational"', () => {
     const src = read('client/src/pages/SystemStatus.tsx');
-    // The one line where PetTrek Transport appears must NOT still say
-    // operational; the new status literal is coming_soon.
-    const line = src.split(/\r?\n/).find(l => l.includes('PetTrek Transport')) || '';
-    expect(line.length).toBeGreaterThan(0);
-    expect(line.includes('status: "coming_soon"')).toBe(true);
-    expect(line.includes('status: "operational"')).toBe(false);
+    expect(src.includes('PetTrek')).toBe(false);
+    expect(/status:\s*["']operational["']/.test(src)).toBe(false);
   });
 
-  it('A2. SystemStatus render loop honors coming_soon (renders "Coming Soon" badge, not just green "Operational")', () => {
+  it('A2. SystemStatus labels unmeasured services as not monitored', () => {
     const src = read('client/src/pages/SystemStatus.tsx');
-    expect(/system\.status\s*===\s*['"]coming_soon['"]/.test(src)).toBe(true);
-    expect(src.includes('Coming Soon')).toBe(true);
+    expect(src.includes("'not_monitored'")).toBe(true);
+    expect(src.includes('Not monitored here')).toBe(true);
   });
 
-  it('A3. SystemStatus summary line no longer claims "All Systems Operational" statically — computed from data', () => {
+  it('A3. SystemStatus summary is computed from measured checks, never a static "All Systems Operational"', () => {
     const src = read('client/src/pages/SystemStatus.tsx');
-    // The summary must gate on `allLive` so it becomes honest as soon
-    // as any service is coming_soon.
-    expect(/const\s+allLive\s*=\s*systems\.every\(/.test(src)).toBe(true);
-    expect(src.includes("{allLive ? 'All Systems Operational'")).toBe(true);
+    expect(src.includes('All Systems Operational')).toBe(false);
+    expect(/const\s+allOk\s*=\s*measured\.every\(/.test(src)).toBe(true);
   });
 
   it('B1. PrivilegeSignup marks PetTrek with comingSoon flag', () => {

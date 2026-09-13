@@ -18,6 +18,7 @@ import { nayaxQrRedemptions, k9000WashEvents } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
+import { isRealSecret } from '../lib/envSwitch';
 
 const router = Router();
 
@@ -538,7 +539,7 @@ const nayaxUsageEventSchema = z.object({
  */
 router.post('/usage-event', async (req, res) => {
   try {
-    const usageSecret = process.env.NAYAX_WEBHOOK_SECRET || '';
+    const usageSecret = isRealSecret(process.env.NAYAX_WEBHOOK_SECRET) ? (process.env.NAYAX_WEBHOOK_SECRET as string) : ''; // placeholder ≠ key (2026-09-13)
     const providedSig = String(req.headers['x-nayax-signature'] || '').replace(/^sha256=/, '');
     if (!usageSecret) {
       if (process.env.NODE_ENV === 'production') {

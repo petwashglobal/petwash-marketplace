@@ -1,6 +1,7 @@
 // Provider Onboarding API Routes (on-demand)
 // Invite codes, KYC verification, and application management for walkers, sitters, station operators
 
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 import { Router, Request, Response } from 'express';
 import { randomBytes, randomInt, createHash } from 'crypto';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
@@ -2210,7 +2211,7 @@ router.get('/admin/applications/pending-review', requireSupport, async (req: Req
 });
 
 // Get single application detail with signed image URLs (Admin only)
-router.get('/admin/applications/:applicationId', requireSupport, async (req: Request, res: Response) => {
+router.get('/admin/applications/:applicationId', reserveLiteralSegments('applicationId', 'queue'), requireSupport, async (req: Request, res: Response) => {
   try {
     const { applicationId } = req.params;
 

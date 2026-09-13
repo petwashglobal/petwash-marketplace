@@ -3,6 +3,7 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./lib/i18next-init";
+import { isChunkLoadError, tryChunkReload } from "./lib/chunkRecovery";
 
 // ── Stale-chunk auto-recovery (CEO 2026-08-04) ───────────────────────────────
 // After a deploy, code-split chunk filenames change (content hashes). A visitor
@@ -15,32 +16,17 @@ import "./lib/i18next-init";
 // Standard fix: on a dynamic-import / preload failure, reload ONCE to pull the
 // fresh index.html + current chunks. A 12s time-guard prevents an infinite loop
 // if a reload doesn't help (then the real error boundary shows).
+//
+// 2026-09-13: this block used to call preventDefault() on `vite:preloadError`.
+// That made the dynamic import RESOLVE to undefined, so React.lazy crashed with
+// "reading 'default'" and the boundary treated it as a render bug (crash card +
+// critical alert, no reload). We now let the real error through to the
+// AppErrorBoundary, which reloads (bounded) — see client/src/lib/chunkRecovery.ts.
+// Do NOT re-add preventDefault here.
 (() => {
-  const RELOAD_KEY = 'pw_chunk_reload_at';
-  // Patterns that mean "a code-split chunk the running bundle expects is gone —
-  // a newer deploy replaced it". Firebase's SPA rewrite answers the missing
-  // /assets/*.js with index.html (text/html), so the failure surfaces as EITHER
-  // a MIME/dynamic-import error OR — when React.lazy receives that HTML-as-module
-  // whose `.default` is undefined — "Cannot read properties of undefined
-  // (reading 'default')". The latter was NOT matched before, so a returning user
-  // on an old tab white-screened + fired a critical boot alert instead of quietly
-  // reloading to the fresh bundle. Adding it makes that case self-heal. The 12s
-  // throttle below bounds this to ~one reload, so a genuine (non-chunk) error
-  // that happens to read '.default' can't loop — it reloads once then falls
-  // through to the visible error boundary. (2026-08-11)
-  const CHUNK_ERR = /valid JavaScript MIME type|dynamically imported module|module script failed|Loading (chunk|CSS chunk)|error loading dynamically imported|Importing a module script failed|reading ['"]default['"]/i;
-  const recover = () => {
-    try {
-      const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
-      if (Date.now() - last > 12000) {
-        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
-        window.location.reload();
-      }
-    } catch { window.location.reload(); }
-  };
-  window.addEventListener('vite:preloadError', (e: any) => { e?.preventDefault?.(); recover(); });
-  window.addEventListener('error', (e: any) => { if (CHUNK_ERR.test(String(e?.message || ''))) recover(); });
-  window.addEventListener('unhandledrejection', (e: any) => { if (CHUNK_ERR.test(String(e?.reason?.message || e?.reason || ''))) recover(); });
+  window.addEventListener('vite:preloadError', () => { tryChunkReload(); });
+  window.addEventListener('error', (e: any) => { if (isChunkLoadError(e?.error ?? e?.message)) tryChunkReload(); });
+  window.addEventListener('unhandledrejection', (e: any) => { if (isChunkLoadError(e?.reason)) tryChunkReload(); });
 })();
 
 // ── REMOVED: the #1110 Node.prototype removeChild/insertBefore monkeypatch ────

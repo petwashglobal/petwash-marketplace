@@ -99,8 +99,43 @@ const EMAIL_VALUE_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
  * So the length match is only a CANDIDATE; `isLuhnValid` decides. Every real
  * card PAN satisfies Luhn by definition (ISO/IEC 7812), so this keeps true
  * detection intact while dropping ~90% of incidental numeric matches.
+ *
+ * 2026-09-13: "~90%" was the whole problem. Luhn is a mod-10 checksum, so a
+ * random 13-digit number satisfies it about one time in ten — and epoch-ms
+ * timestamps are random in their low digits. `1789259928924` (a real Date.now()
+ * from 13 Sep 2026) sums to 70 and was redacted to `****8924`. The repo's own
+ * behaviour test for this asserted on `String(Date.now())`, so roughly one CI
+ * run in ten failed on it, on every branch, looking like a flake.
+ *
+ * The missing gate is the issuer prefix. ISO/IEC 7812 assigns the leading digit
+ * by industry, and no payment network issues under `0`, `1`, `7`, `8` or `9`;
+ * each network also fixes the PAN length. Requiring BOTH a known IIN and that
+ * network's length removes the timestamp collision outright: epoch-ms values are
+ * 13 digits beginning with `1` (and from 2033, `2` — which only Mastercard uses,
+ * and only at 16 digits). Narrowing here can only under-redact things that were
+ * never card numbers.
  */
 const PAN_VALUE_RE = /\b\d{13,19}\b/g;
+
+/**
+ * Known payment-network prefixes with the PAN lengths that network issues.
+ * A candidate must satisfy one of these AND Luhn to be treated as a card.
+ */
+const CARD_NETWORKS: ReadonlyArray<{ prefix: RegExp; lengths: ReadonlySet<number> }> = [
+  { prefix: /^4/, lengths: new Set([13, 16, 19]) },                                    // Visa
+  { prefix: /^5[1-5]/, lengths: new Set([16]) },                                       // Mastercard
+  { prefix: /^2(2[2-9]|[3-6]\d|7[01]|720)/, lengths: new Set([16]) },                  // Mastercard 2-series
+  { prefix: /^3[47]/, lengths: new Set([15]) },                                        // American Express
+  { prefix: /^3(0[0-5]|095|[689])/, lengths: new Set([14, 16, 19]) },                   // Diners Club
+  { prefix: /^35/, lengths: new Set([16, 19]) },                                       // JCB
+  { prefix: /^6(011|4[4-9]|5|22)/, lengths: new Set([16, 19]) },                        // Discover / UnionPay co-brand
+  { prefix: /^62/, lengths: new Set([16, 17, 18, 19]) },                                // UnionPay
+];
+
+/** True when the digit run looks like a PAN a payment network could have issued. */
+function hasCardIssuerPrefix(digits: string): boolean {
+  return CARD_NETWORKS.some((n) => n.lengths.has(digits.length) && n.prefix.test(digits));
+}
 
 /** Luhn (mod-10) check — the checksum every issued card number satisfies. */
 function isLuhnValid(digits: string): boolean {
@@ -131,7 +166,7 @@ export function scrubSensitiveText(input: string): string {
     return input
       .replace(JWT_VALUE_RE, '[jwt]')
       .replace(EMAIL_VALUE_RE, (m) => redactEmail(m))
-      .replace(PAN_VALUE_RE, (m) => (isLuhnValid(m) ? `****${m.slice(-4)}` : m))
+      .replace(PAN_VALUE_RE, (m) => (hasCardIssuerPrefix(m) && isLuhnValid(m) ? `****${m.slice(-4)}` : m))
       .replace(IL_PHONE_VALUE_RE, (m) => `+972***${m.replace(/\D/g, '').slice(-2)}`);
   } catch {
     return '[redacted]';

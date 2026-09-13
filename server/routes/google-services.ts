@@ -32,6 +32,7 @@
  *   - Hold customer PII beyond the request/response lifecycle
  */
 
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 import { Router } from 'express';
 import { logger } from '../lib/logger';
 import { db as firestore } from '../lib/firebase-admin';
@@ -53,7 +54,7 @@ const router = Router();
  * GET /api/google/places/:placeId - Get Google Maps place details with reviews
  * Returns place information including up to 5 most recent reviews and photos
  */
-router.get('/places/:placeId', requireGooglePlacesEnabled, async (req, res) => {
+router.get('/places/:placeId', reserveLiteralSegments('placeId', 'photo'), requireGooglePlacesEnabled, async (req, res) => {
   try {
     const { placeId } = req.params;
     const language = req.query.language as string || 'iw';

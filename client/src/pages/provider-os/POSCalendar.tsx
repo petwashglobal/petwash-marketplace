@@ -32,6 +32,33 @@ const DEFAULT_SCHEDULE: Record<string, { active: boolean; start: string; end: st
   Sat: { active: false, start: '09:00', end: '18:00' },
 };
 
+type UiDay = { active: boolean; start: string; end: string };
+const UI_TO_SERVER_DAY: Record<string, string> = { Sun: 'sun', Mon: 'mon', Tue: 'tue', Wed: 'wed', Thu: 'thu', Fri: 'fri', Sat: 'sat' };
+
+/** UI Sun..Sat {start,end} → server mon..sun {active, from, to}. */
+export function toServerHours(schedule: Record<string, UiDay>): Record<string, { active: boolean; from: string; to: string }> {
+  const out: Record<string, { active: boolean; from: string; to: string }> = {};
+  for (const [ui, key] of Object.entries(UI_TO_SERVER_DAY)) {
+    const d = schedule[ui] ?? DEFAULT_SCHEDULE[ui];
+    out[key] = { active: !!d.active, from: d.start, to: d.end };
+  }
+  return out;
+}
+
+/** Server mon..sun {active, from, to} (or legacy UI keys) → UI Sun..Sat {start,end}. */
+export function fromServerHours(wh: Record<string, any>): Record<string, UiDay> {
+  const out: Record<string, UiDay> = {};
+  for (const [ui, key] of Object.entries(UI_TO_SERVER_DAY)) {
+    const d = wh[key] ?? wh[ui];
+    if (!d || typeof d !== 'object') continue;
+    const base = DEFAULT_SCHEDULE[ui];
+    out[ui] = { active: !!d.active, start: d.from ?? d.start ?? base.start, end: d.to ?? d.end ?? base.end };
+  }
+  return out;
+}
+
+
+
 export default function POSCalendar() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -71,10 +98,11 @@ export default function POSCalendar() {
     else if (Array.isArray(p.blocked_dates)) setBlockedDates(p.blocked_dates);
     if (p.workingHours || p.working_hours) {
       const wh = p.workingHours || p.working_hours;
-      if (typeof wh === 'object' && wh !== null) setSchedule(prev => ({ ...prev, ...wh }));
+      if (typeof wh === 'object' && wh !== null) setSchedule(prev => ({ ...prev, ...fromServerHours(wh) }));
     }
-    if (p.availabilityState === 'vacation' || p.availability_state === 'vacation') setVacationMode(true);
-    if (p.availabilityState === 'paused' || p.availability_state === 'paused') setPauseNewBookings(true);
+    const av = p.availabilityState || p.availability_state;
+    if (av === 'vacation' || av === 'offline') setVacationMode(true);
+    if (av === 'paused' || av === 'busy') setPauseNewBookings(true);
   }, [profileData]);
 
   useEffect(() => {
@@ -140,7 +168,12 @@ export default function POSCalendar() {
   const isSaving = profileMutation.isPending || consoleMutation.isPending;
 
   const handleSave = async () => {
-    const availabilityState = vacationMode ? 'vacation' : pauseNewBookings ? 'paused' : 'active';
+    // Server contract (server/routes/provider-profile.ts, .strict()):
+    // availabilityState ∈ online|available|busy|offline and workingHours keyed
+    // mon..sun with {active, from, to}. This page sent 'vacation'/'paused'/
+    // 'active' and Sun..Sat {start,end} → every save was 400 "Invalid fields"
+    // and blocked dates never persisted (2026-09-13).
+    const availabilityState = vacationMode ? 'offline' : pauseNewBookings ? 'busy' : 'online';
     // 2026-09-05: no try/catch meant a rejected mutateAsync just threw out of
     // this handler (unhandled rejection, silent to the provider) — no error
     // toast, no retry affordance, nothing. Neither mutation had its own
@@ -150,7 +183,7 @@ export default function POSCalendar() {
       await Promise.all([
         profileMutation.mutateAsync({
           blockedDates,
-          workingHours: schedule,
+          workingHours: toServerHours(schedule),
           availabilityState,
         }),
         consoleMutation.mutateAsync({

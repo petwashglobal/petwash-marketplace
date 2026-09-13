@@ -22,6 +22,7 @@
  *   5. Card fallback (shortfall returned to client)
  */
 
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 import { safeEqual } from '../lib/safeEqual';
 import { Router, Request, Response, NextFunction } from 'express';
 import { createHash, createHmac, randomBytes } from 'crypto';
@@ -915,117 +916,10 @@ function traceWalletRedemption(
 router.post('/token/redeem', (_req: Request, res: Response) => {
   res.status(410).json({ ok: false, error: 'GONE', message: 'Kiosk token redemption is retired; redemption happens on the bay rail.' });
 });
-router.post('/token/redeem-retired-2026-09-12', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
-  try {
-    const parsed = redeemSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
-    const { token, stationId, bay, amountCents = 0 } = parsed.data;
-
-    // 1. Verify HMAC signature + expiry
-    const payload = verifyToken(token);
-    if (!payload) {
-      return res.status(401).json({ ok: false, error: 'Invalid or expired token' });
-    }
-
-    const { jti, sub: userId, wid: walletId } = payload;
-    const clientIp  = req.ip ?? req.socket?.remoteAddress ?? null;
-    const clientUa  = (req.headers['user-agent'] as string) ?? null;
-    const idemKey   = (req.headers['x-idempotency-key'] as string) || `jti:${jti}`;
-
-    // 2a. Anti-replay check in PostgreSQL (primary guard — cannot be cleared)
-    const pgJtiUsed = await isJtiConsumed(jti);
-    if (pgJtiUsed) {
-      await logFraudEvent({
-        userId, action: 'jti_replay_postgresql', riskScore: 95, outcome: 'blocked',
-        reason: `JTI ${jti} already consumed in PostgreSQL registry`,
-        ipAddress: clientIp, userAgent: clientUa,
-      });
-      logger.warn('[PrestigePass] Replay blocked (PostgreSQL JTI registry)', { jti, userId });
-      return res.status(409).json({ ok: false, error: 'Token already used (anti-replay)' });
-    }
-
-    // 2b. Anti-replay check in Firestore (secondary layer)
-    const tokenRef = firestoreDb.collection('prestige_qr_tokens').doc(jti);
-    const tokenDoc = await tokenRef.get();
-
-    if (!tokenDoc.exists || tokenDoc.data()?.used === true) {
-      await logFraudEvent({
-        userId, action: 'jti_replay_firestore', riskScore: 95, outcome: 'blocked',
-        reason: `JTI ${jti} already consumed in Firestore`,
-        ipAddress: clientIp, userAgent: clientUa,
-      });
-      logger.warn('[PrestigePass] Replay attack blocked (Firestore)', { jti, userId });
-      return res.status(409).json({ ok: false, error: 'Token already used (anti-replay)' });
-    }
-
-    // 3. Bay validation
-    const requestedBay = bay || payload.bay;
-    const effectiveBay = requestedBay === 'any'
-      ? (stationId?.includes('L') ? 'left' : 'right')
-      : requestedBay;
-
-    // 4. Mark token as used in Firestore (atomic)
-    await tokenRef.update({
-      used:      true,
-      usedAt:    new Date().toISOString(),
-      stationId: stationId || null,
-      bay:       effectiveBay,
-    });
-
-    // 5. Apply smart redemption — threads jti + ip + ua + idempotencyKey into
-    //    WalletLedger for full anti-fraud protection (JTI PG registration happens inside tx)
-    const result = await applySmartRedemption(userId, amountCents, 'k9000', stationId, effectiveBay, {
-      jti,
-      idempotencyKey: idemKey,
-      ipAddress:      clientIp,
-      userAgent:      clientUa,
-      endpoint:       'prestige-pass/token/redeem',
-    });
-
-    logger.info('[PrestigePass] Token redeemed', {
-      jti, userId, stationId, bay: effectiveBay,
-      source: result.source, deducted: result.deductedCents, idempotent: result.idempotent,
-    });
-
-    traceWalletRedemption(req, {
-      route: 'prestige-pass/token/redeem',
-      userId,
-      amountCents: result.deductedCents,
-      redemptionOrderLinked: true, // jti + stationId is the linked K9000 transaction record
-      entityId: jti,
-      newState: {
-        stationId, bay: effectiveBay, source: result.source,
-        deductedCents: result.deductedCents, newCashWalletCents: result.newCashWalletCents,
-        txnId: result.txnId, idempotent: result.idempotent,
-      },
-    });
-
-    // ── Real-time SSE push → EVERY open wallet tab of the token's owner sees
-    //    "Wash started" instantly. Fan-out is keyed by the userId carried in
-    //    the signed QR token, never by anything the caller sent. ──
-    pushSse(userId, {
-      type:            'wash_started',
-      bay:             effectiveBay,
-      stationId:       stationId || null,
-      deductedCents:   result.deductedCents,
-      newBalanceCents: result.newCashWalletCents,
-      source:          result.source,
-      timestamp:       new Date().toISOString(),
-    });
-
-    return res.json({
-      ok:           true,
-      bay:          effectiveBay,
-      stationId:    stationId || null,
-      redemption:   result,
-      action:       result.source === 'card_required' ? 'prompt_card_payment' : 'start_wash',
-      washAuthorized: result.source !== 'card_required',
-    });
-  } catch (err) {
-    logger.error('[PrestigePass] /token/redeem error:', err);
-    return walletErrorResponse(res, err);
-  }
-});
+// The handler that used to live below this 410 seal was RENAMED rather than deleted
+// on 2026-09-12 ('/…-retired-2026-09-12'), which left it fully reachable at the new
+// path — the seal only covered the old one. Deleted 2026-09-13. A retired money
+// endpoint must be removed, never renamed. See server/tests/redeemRailHardening.regression.test.ts.
 
 // ─────────────────────────────────────────────────────────
 // GET /history — last 20 prestige redemptions
@@ -2061,7 +1955,7 @@ router.post('/send-wallet-sms', walletEmailLimiter, async (req: Request, res: Re
     }
 
     const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
-    const link = `${appBaseUrl}/wallet-download`;
+    const link = `${appBaseUrl}/prestige-pass`;
     const body = `PetWash™ — הכרטיס שלך ל-Apple/Google Wallet: ${link}`;
 
     // AUDIT-SMS-5 (#221): prestige wallet-download link is a booking-confirm-shape send.
@@ -18299,7 +18193,7 @@ router.post('/admin/system/e2e/run', async (req, res) => {
   }
 });
 
-router.get('/admin/system/e2e/:id', async (req, res) => {
+router.get('/admin/system/e2e/:id', reserveLiteralSegments('id', 'history'), async (req, res) => {
   try {
     const r = await pool.query(`SELECT * FROM e2e_proof_runs WHERE id = $1`, [parseInt(req.params.id, 10)]);
     if (!r.rows.length) return res.status(404).json({ error: 'Run not found' });

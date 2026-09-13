@@ -17,6 +17,7 @@ import { pets as pgPets } from '@shared/schema';
 import { and, eq } from 'drizzle-orm';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { requireValidFileContent, detectFileKind, KIND_TO_MIME } from '../lib/fileMagicValidation';
+import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
 
 const router = Router();
 
@@ -115,7 +116,7 @@ router.get('/', validateFirebaseToken, async (req, res) => {
 });
 
 // Get single pet
-router.get('/:petId', validateFirebaseToken, async (req, res) => {
+router.get('/:petId', reserveLiteralSegments('petId', 'intake-forms'), validateFirebaseToken, async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { petId } = req.params;

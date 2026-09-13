@@ -17,6 +17,7 @@ import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign, Clock } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhoneInput } from '@/components/PhoneInput';
 import { usePaymentStatus } from '@/hooks/use-payment-status';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import { useSEO, pageSEO } from '@/lib/seo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
@@ -227,6 +228,18 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
     setLoading(true);
     try {
+      // Bot check. /api/egift/guest/start rejects a missing token with BOT_CHECK
+      // whenever TURNSTILE_SECRET_KEY is set — this page never sent one, so every
+      // purchase would have failed the day the till opened. Non-blocking: a widget
+      // failure sends no token and the server decides. (2026-09-13)
+      let turnstileToken: string | undefined;
+      try {
+        const r = await executeTurnstileInvisible('egift_purchase');
+        turnstileToken = r.ok ? r.token : undefined;
+      } catch {
+        turnstileToken = undefined;
+      }
+
       // PUBLIC guest checkout on SUMIT — no signup required. Server owns the price;
       // the gift is issued only after SUMIT verifies the payment (pay-then-issue).
       const response = await fetch(getApiUrl('/api/egift/guest/start'), {
@@ -241,6 +254,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
           recipientPhone: (formData as any).recipientPhone || undefined,
           message: (formData as any).message || undefined,
           amountIls: parseFloat(formData.amount),
+          ...(turnstileToken ? { turnstileToken } : {}),
         }),
       });
 

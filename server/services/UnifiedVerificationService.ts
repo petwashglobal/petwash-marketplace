@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import jwt from "jsonwebtoken";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "../db";
 import { logger } from "../lib/logger";
 import { redactOtpBody } from "../lib/redactOtpBody";
@@ -945,20 +945,63 @@ export class UnifiedVerificationService {
       throw new UnifiedVerificationError("CHALLENGE_EXPIRED", "Verification challenge expired.", 410);
     }
 
-    const candidateHash = hashVerificationCode(challenge.challengeId, input.code);
-    if (!timingSafeHashEqual(candidateHash, challenge.codeHash)) {
-      const nextAttempts = challenge.attempts + 1;
-      const locked = nextAttempts >= challenge.maxAttempts;
-      const [updated] = await db.update(verificationChallenges).set({
-        attempts: nextAttempts,
-        status: locked ? "locked" : "pending",
-        lockedAt: locked ? now : null,
+    // ── Reserve an attempt BEFORE comparing the code (SECURITY 2026-09-13) ──────
+    //
+    // This used to compare first and then write `attempts: challenge.attempts + 1`
+    // computed from the row read at the top of this function. Under concurrency
+    // every request reads the same `attempts`, every one of them gets to compare
+    // the code, and every one writes back the same small number — so a burst of
+    // parallel guesses never reaches the lock and each guess is still a real check
+    // of the code. The per-IP rate limiters are the only thing slowing that down,
+    // and a guesser spread across addresses walks past them.
+    //
+    // Making the INCREMENT atomic is not enough on its own: 1,000 requests that
+    // have all already passed a "not locked yet" read would still all compare.
+    // The attempt has to be RESERVED first, in one conditional statement, and the
+    // code compared only if the reservation succeeded. That bounds the number of
+    // code comparisons for a challenge to maxAttempts, however many arrive at once.
+    const [reserved] = await db.update(verificationChallenges).set({
+      attempts: sql`${verificationChallenges.attempts} + 1`,
+      updatedAt: now,
+    }).where(and(
+      eq(verificationChallenges.challengeId, challenge.challengeId),
+      eq(verificationChallenges.status, "pending"),
+      lt(verificationChallenges.attempts, challenge.maxAttempts),
+    )).returning();
+
+    if (!reserved) {
+      // No attempt left (a concurrent request took the last one), or the challenge
+      // stopped being pending in the meantime. Lock it if it is still pending, and
+      // refuse WITHOUT comparing the code.
+      const [lockedNow] = await db.update(verificationChallenges).set({
+        status: "locked",
+        lockedAt: now,
         updatedAt: now,
       }).where(and(
         eq(verificationChallenges.challengeId, challenge.challengeId),
         eq(verificationChallenges.status, "pending"),
+        gte(verificationChallenges.attempts, challenge.maxAttempts),
       )).returning();
-      await recordOtpEvent(updated ?? challenge, "OTP_FAILED", locked ? "max_attempts" : "invalid_code", nextAttempts);
+      await recordOtpEvent(lockedNow ?? challenge, "OTP_FAILED", "max_attempts", challenge.maxAttempts);
+      throw new UnifiedVerificationError("CHALLENGE_LOCKED", "Verification challenge locked.", 423);
+    }
+
+    const candidateHash = hashVerificationCode(challenge.challengeId, input.code);
+    if (!timingSafeHashEqual(candidateHash, challenge.codeHash)) {
+      const locked = reserved.attempts >= challenge.maxAttempts;
+      let updated = reserved;
+      if (locked) {
+        const [lockedRow] = await db.update(verificationChallenges).set({
+          status: "locked",
+          lockedAt: now,
+          updatedAt: now,
+        }).where(and(
+          eq(verificationChallenges.challengeId, challenge.challengeId),
+          eq(verificationChallenges.status, "pending"),
+        )).returning();
+        updated = lockedRow ?? reserved;
+      }
+      await recordOtpEvent(updated, "OTP_FAILED", locked ? "max_attempts" : "invalid_code", reserved.attempts);
       throw new UnifiedVerificationError(
         locked ? "CHALLENGE_LOCKED" : "INVALID_CODE",
         locked ? "Verification challenge locked." : "Invalid verification code.",

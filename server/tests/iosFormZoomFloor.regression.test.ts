@@ -241,7 +241,10 @@ describe('raw JSX controls may not be styled below the iOS zoom threshold either
     // is admin tooling. This asserts the split holds, so a customer-facing
     // regression can never be absorbed by the ledger.
     const ADMIN = /admin|Admin|Treasury|CaseQueue|Staff|Ops|Optimizer/;
-    const customerFacing = Object.keys(scanTsx()).filter(f => !ADMIN.test(f));
+    // Scan ONCE. This used to call scanTsx() again for every named file below —
+    // ten full passes over 500+ .tsx files — and timed out under a loaded CI run.
+    const scanned = scanTsx();
+    const customerFacing = Object.keys(scanned).filter(f => !ADMIN.test(f));
     expect(customerFacing, `customer/provider screens with sub-16px controls:\n  ${customerFacing.join('\n  ')}`)
       .toEqual([]);
     // and the journeys the CEO actually walks, named so a rename cannot hide them
@@ -257,7 +260,7 @@ describe('raw JSX controls may not be styled below the iOS zoom threshold either
       'client/src/pages/ProviderCompliance.tsx',
     ]) {
       expect(fs.existsSync(path.join(process.cwd(), f)), `${f} moved — re-point this pin`).toBe(true);
-      expect(scanTsx()[f], `${f} has a control back under 16px`).toBeUndefined();
+      expect(scanned[f], `${f} has a control back under 16px`).toBeUndefined();
     }
   });
 

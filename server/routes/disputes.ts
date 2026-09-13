@@ -298,20 +298,40 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
             const refund = typeof refundAmountCents === 'number' ? refundAmountCents : escrow.grossAmountCents;
 
             // Ensure wallet row exists
+            // 2026-09-13: this used to conflict on (wallet_id) while minting the
+            // id as `WALLET-${customerId.slice(0,20)}`. WalletService mints
+            // `WALLET-${nanoid(10)}` and conflicts on (user_id), and user_id
+            // carries its own UNIQUE constraint. So for any customer who
+            // already had a wallet — every customer who has ever opened the
+            // wallet screen — the wallet_id differed, the ON CONFLICT target
+            // did not fire, the insert hit the user_id unique index, and
+            // Postgres aborted the whole transaction. The dispute resolution
+            // 500'd and no money moved at all. Conflict on user_id, which is
+            // the fact we actually mean.
             await client.query(
               `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
                VALUES ($1, $2, 0)
-               ON CONFLICT (wallet_id) DO NOTHING`,
+               ON CONFLICT (user_id) DO NOTHING`,
               [`WALLET-${customerId.slice(0, 20)}`, customerId],
             );
-            // Credit customer
-            await client.query(
+            // Credit customer. RETURNING gives us the wallet id and the
+            // post-credit balance so the ledger row below is written from the
+            // same statement that moved the money, inside the same transaction.
+            const cfCredit = await client.query(
               `UPDATE wallet_accounts
                SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
                    updated_at = NOW()
-               WHERE user_id = $2`,
+               WHERE user_id = $2
+               RETURNING wallet_id, cash_wallet_balance_cents`,
               [refund, customerId],
             );
+            await writeDisputeLedgerRow(client, {
+              row: cfCredit.rows[0],
+              amountCents: refund,
+              disputeId: String(id),
+              bookingId: String(bookingId),
+              resolution: 'customer_favor',
+            });
             // Mark escrow as refunded — CONDITIONAL on it not already being
             // settled. The escrow.status guard at line ~212 is read BEFORE this
             // transaction, so two concurrent resolves both passed it and both
@@ -375,19 +395,37 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
               return res.status(400).json({ error: 'refundAmountCents cannot exceed escrow gross amount' });
             }
 
+            // 2026-09-13: this used to conflict on (wallet_id) while minting the
+            // id as `WALLET-${customerId.slice(0,20)}`. WalletService mints
+            // `WALLET-${nanoid(10)}` and conflicts on (user_id), and user_id
+            // carries its own UNIQUE constraint. So for any customer who
+            // already had a wallet — every customer who has ever opened the
+            // wallet screen — the wallet_id differed, the ON CONFLICT target
+            // did not fire, the insert hit the user_id unique index, and
+            // Postgres aborted the whole transaction. The dispute resolution
+            // 500'd and no money moved at all. Conflict on user_id, which is
+            // the fact we actually mean.
             await client.query(
               `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
                VALUES ($1, $2, 0)
-               ON CONFLICT (wallet_id) DO NOTHING`,
+               ON CONFLICT (user_id) DO NOTHING`,
               [`WALLET-${customerId.slice(0, 20)}`, customerId],
             );
-            await client.query(
+            const splitCredit = await client.query(
               `UPDATE wallet_accounts
                SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
                    updated_at = NOW()
-               WHERE user_id = $2`,
+               WHERE user_id = $2
+               RETURNING wallet_id, cash_wallet_balance_cents`,
               [customerRefund, customerId],
             );
+            await writeDisputeLedgerRow(client, {
+              row: splitCredit.rows[0],
+              amountCents: customerRefund,
+              disputeId: String(id),
+              bookingId: String(bookingId),
+              resolution: 'split',
+            });
             // Settle escrow (split) — CONDITIONAL on not already settled
             // (see customer_favor note above). Guards the customer credit above.
             const splitEscrow = await client.query(
@@ -462,3 +500,58 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
 });
 
 export default router;
+
+/**
+ * Write the credit_transactions row for a dispute refund, inside the caller's
+ * transaction.
+ *
+ * 2026-09-13: both dispute credit paths moved cash_wallet_balance_cents with a
+ * bare UPDATE and wrote no ledger row at all. The balance and the ledger then
+ * disagree by exactly the refunded amount — which is the drift
+ * server/jobs/wallet-ledger-drift-detector.ts exists to find, reported as an
+ * unexplained discrepancy long after the dispute is closed.
+ *
+ * It takes the caller's pg client deliberately: the conditional escrow UPDATE
+ * a few lines below is what makes a second concurrent resolve impossible, and
+ * it only protects writes that roll back with it. A ledger row written outside
+ * this transaction could survive a rollback and record a credit that never
+ * happened.
+ *
+ * transaction_id is derived from the dispute, not random, so a retry that
+ * somehow reached here twice collides on the unique index rather than writing
+ * a second row.
+ */
+async function writeDisputeLedgerRow(
+  client: { query: (sql: string, params?: any[]) => Promise<any> },
+  args: {
+    row: { wallet_id?: string; cash_wallet_balance_cents?: number } | undefined;
+    amountCents: number;
+    disputeId: string;
+    bookingId: string;
+    resolution: 'customer_favor' | 'split';
+  },
+): Promise<void> {
+  const walletId = args.row?.wallet_id;
+  if (!walletId) {
+    // The UPDATE matched no wallet row. Do not paper over it with a ledger
+    // entry — fail the transaction so the escrow is not marked settled.
+    throw new Error(`DISPUTE_REFUND_NO_WALLET: no wallet_accounts row for dispute ${args.disputeId}`);
+  }
+  await client.query(
+    `INSERT INTO credit_transactions
+       (transaction_id, wallet_id, credit_type, transaction_type, amount_cents,
+        balance_after_cents, source_type, source_id, booking_id, description,
+        initiated_by, created_at)
+     VALUES ($1, $2, 'cash_wallet', 'refund', $3, $4, 'dispute_refund', $5, $6, $7, 'system', NOW())
+     ON CONFLICT (transaction_id) DO NOTHING`,
+    [
+      `TXN-DISPUTE-${args.disputeId}`,
+      walletId,
+      args.amountCents,
+      args.row?.cash_wallet_balance_cents ?? null,
+      args.disputeId,
+      args.bookingId,
+      `Dispute ${args.disputeId} resolved ${args.resolution} — refund for booking ${args.bookingId}`,
+    ],
+  );
+}

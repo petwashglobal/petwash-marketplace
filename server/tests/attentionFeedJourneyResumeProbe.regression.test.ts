@@ -53,8 +53,13 @@ describe('attentionFeed — Journey Brain Phase 1 resume probe (Lane C.1)', () =
     expect(SRC).toContain("destination: '/walk-my-pet'");
     expect(SRC).toContain("destination: '/sitter-suite'");
     expect(SRC).toContain("destination: '/marketplace'");
-    expect(SRC).toContain("destination: '/shop/checkout'");
-    expect(SRC).toContain("destination: '/wallet/egift/buy'");
+    // 2026-09-13: these two used to pin '/shop/checkout' and '/wallet/egift/buy'
+    // — neither is a mounted route, so "Resume" landed on NotFound while this
+    // test (titled "no dead taps") stayed green. The real pages:
+    expect(SRC).toContain("destination: '/checkout'");
+    expect(SRC).toContain("destination: '/buy-gift-card'");
+    expect(SRC).not.toContain("'/shop/checkout'");
+    expect(SRC).not.toContain("'/wallet/egift/buy'");
     expect(SRC).toContain("destination: '/provider-onboarding'");
   });
 

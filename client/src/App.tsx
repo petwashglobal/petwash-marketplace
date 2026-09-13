@@ -25,10 +25,14 @@ import { useKeyboardNavigation } from "@/hooks/useKeyboardNavigation";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { initViewportFix } from "@/lib/viewportFix";
-import { useState, useEffect, lazy, Suspense, Component, type ReactNode } from "react";
+import { useState, useEffect, lazy, Suspense, Component, useSyncExternalStore, type ReactNode } from "react";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
-import { isRTL } from "@/lib/i18n";
+import { isRTL, subscribeLanguagePacks, getLanguagePackVersion } from "@/lib/i18n";
 import { crashCardCopy, isHebrewCrashLocale } from "@/lib/crashCardCopy";
+import { isChunkLoadError, tryChunkReload } from "@/lib/chunkRecovery";
+import { ReferralSignupLinker } from "@/components/ReferralSignupLinker";
+import { storeReferralCode } from "@/lib/referralCapture";
+import { inAppPathFromDeepLink } from "@/lib/deepLink";
 import { getApiUrl } from "@/lib/apiConfig";
 import type { Language } from "@/lib/i18n";
 import { getDefaultLanguageByLocation } from "@/lib/geolocation";
@@ -650,14 +654,19 @@ function routeReferenceId(): string {
   }
 }
 
-class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean; referenceId: string }> {
-  state = { hasError: false, referenceId: '' };
+class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: string }, { hasError: boolean; referenceId: string; reloading?: boolean }> {
+  state = { hasError: false, referenceId: '', reloading: false };
 
-  static getDerivedStateFromError() {
-    return { hasError: true, referenceId: routeReferenceId() };
+  static getDerivedStateFromError(error: unknown) {
+    // A failed page chunk is not a render bug: reload (bounded) instead of a
+    // crash card + critical alert. See client/src/lib/chunkRecovery.ts.
+    return { hasError: true, referenceId: routeReferenceId(), reloading: isChunkLoadError(error) };
   }
 
   componentDidCatch(error: Error, errorInfo: { componentStack: string }) {
+    const isChunk = isChunkLoadError(error);
+    if (isChunk && tryChunkReload()) return;
+    if (this.state.reloading) this.setState({ reloading: false });
     const referenceId = this.state.referenceId || routeReferenceId();
     try {
       fetch(getApiUrl('/api/errors/log'), {
@@ -667,7 +676,7 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
         body: JSON.stringify({
           referenceId,
           context: `RouteErrorBoundary:${this.props.routeName}`,
-          errorKind: 'render',
+          errorKind: isChunk ? 'chunk-load' : 'render',
           errorName: error?.name,
           message: error?.message,
           stack: error?.stack,
@@ -684,6 +693,7 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    if (this.state.reloading) return null;
     const copy = crashCardCopy(isHebrewCrashLocale(), false);
     return (
       <div className="min-h-[60dvh] bg-white flex items-center justify-center p-6" dir={copy.dir} data-testid="route-error-boundary">
@@ -826,6 +836,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       .catch(() => { /* web (no Capacitor) — the focus listener covers it */ });
     return () => { window.removeEventListener('focus', refreshLive); removeCap?.(); };
   }, []);
+
+  // UNIVERSAL / DEEP LINKS (2026-09-13): the AASA claims /provider/*, /jobs/*
+  // etc. for the apps, so iOS opens the APP for those links — but nothing
+  // listened for `appUrlOpen`, so every tapped email/SMS/push link landed on the
+  // app's home screen instead of the booking/job it named. Only our own hosts
+  // are honoured; the path+query is routed in-app.
+  useEffect(() => {
+    if (!isNativeApp) return;
+    let remove: (() => void) | undefined;
+    import('@capacitor/app')
+      .then(({ App: CapApp }) =>
+        CapApp.addListener('appUrlOpen', ({ url }: { url: string }) => {
+          const target = inAppPathFromDeepLink(url);
+          if (target) setLocation(target);
+        }).then((h: { remove: () => void }) => { remove = () => h.remove(); }),
+      )
+      .catch(() => { /* no Capacitor App plugin */ });
+    return () => remove?.();
+  }, [isNativeApp, setLocation]);
 
   // APP-FLAVOR ROUTING (2026-06-17): the customer (com.petwash.il) and
   // provider (il.co.petwash.provider) apps ship the SAME web bundle. On a cold
@@ -979,6 +1008,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     <Suspense fallback={<PageLoader />}>
       {/* Google One Tap - shows floating "Continue as …?" card for signed-in Google users */}
       {showOneTap && <GoogleOneTap enabled={true} autoPrompt={true} />}
+      <ReferralSignupLinker />
       
       <Switch>
         {/* Public routes */}
@@ -1379,6 +1409,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <ReferralPage />
             </RequireAuth>
           )}
+        </Route>
+        {/* Referral landing (2026-09-13): the server shares ${base}/ref?code=XXX
+            but no route existed — every invite opened NotFound. Capture the
+            code, then sign-up; ReferralSignupLinker attaches it after login. */}
+        <Route path="/ref">
+          {() => {
+            const code = storeReferralCode(new URLSearchParams(window.location.search).get('code'));
+            return <Redirect to={code ? `/signup?ref=${encodeURIComponent(code)}` : '/signup'} />;
+          }}
         </Route>
         <Route path="/refer">
           {() => (
@@ -4306,6 +4345,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 }
 
 function App() {
+  // Re-render the tree when a lazily loaded language pack (ar/ru/fr/es) lands,
+  // so strings shown in the English fallback switch to the chosen language.
+  useSyncExternalStore(subscribeLanguagePacks, getLanguagePackVersion, getLanguagePackVersion);
   const [location] = useLocation();
   // Default to Hebrew ('he') for Israeli market - PRIMARY language
   const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {

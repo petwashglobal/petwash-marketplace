@@ -887,7 +887,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
       }
 
-      if (role === 'public' || role === 'pet_parent') {
+      // 2026-09-13: 'customer' added. POST /api/mobile-auth/google stamps role
+      // 'customer' for ANY Google account, and this list used to block only
+      // 'public' / 'pet_parent' — so the mobile customer role, which is the same
+      // person as a web pet parent, walked straight into internal routes.
+      if (role === 'public' || role === 'pet_parent' || role === 'customer') {
         logger.warn(`[RBAC Guard] Public user blocked from internal route: ${userEmail} -> ${path}`);
         return res.status(403).json({
           error: 'Access denied',
@@ -895,7 +899,16 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
     } catch (err) {
-      logger.warn('[RBAC Guard] Could not verify role claims, falling through', { err });
+      // 2026-09-13: FAIL CLOSED. This used to log and fall through to next(), so
+      // any error resolving the caller's role (a Firebase Admin outage, a revoked
+      // user, a network blip) granted access to every internal route. Super admins
+      // are resolved by verified email ABOVE this try block, so the CEO keeps access
+      // during an outage; everyone else waits for the role lookup to work again.
+      logger.error('[RBAC Guard] Could not verify role claims — denying internal route', { err, path });
+      return res.status(503).json({
+        error: 'Authorization temporarily unavailable',
+        message: 'Could not verify access for this area. Please try again shortly.',
+      });
     }
 
     next();
@@ -7618,34 +7631,25 @@ self.addEventListener('notificationclick', (event) => {
 
   // Legacy gift card endpoint (redirects to Nayax)
   app.post('/api/express-gift-purchase', async (req, res) => {
-    try {
-      const { packageId, email, recipientName, recipientEmail, personalMessage } = req.body;
-      
-      if (!packageId || !email || !recipientName || !recipientEmail) {
-        return res.status(400).json({ message: "Required fields missing" });
-      }
+    // SEALED 2026-09-13 — unauthenticated gift purchase that re-entered the app
+    // over loopback: it fetched http://127.0.0.1:$PORT/api/nayax-checkout, which
+    // rewrites to /api/nayax/payment. That target is hard-disabled today, so the
+    // endpoint is inert — but it is inert by accident, not by design, and it
+    // becomes a live unauthenticated purchase path the moment Nayax online keys
+    // are configured.
+    // Nothing in client/src calls this path (grep: 0 hits). The live gift rail is
+    // the guest eGift order through SUMIT.
+    // TO REOPEN: call the payment service in-process with a server-derived
+    // amount, never a loopback fetch, and require a session.
+    logger.warn('[Gifts] /api/express-gift-purchase is sealed — unauthenticated loopback purchase path');
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'Gift purchase moved to the paid eGift rail.',
+    });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-      // Redirect to Nayax payment for gift cards
-      const response = await fetch(`http://127.0.0.1:${process.env.PORT || 5000}/api/nayax-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId,
-          customerEmail: email,
-          customerName: recipientName,
-          isGiftCard: true,
-          recipientEmail,
-          personalMessage
-        })
-      });
-
-      const data = await response.json();
-      res.json(data);
-
-    } catch (error) {
-      logger.error('Error processing gift purchase:', error);
-      res.status(500).json({ message: "Failed to process gift purchase" });
-    }
   });
 
   // P0-FIX: Express checkout stub REMOVED — returned {success:true} with no real payment processor,
@@ -7931,102 +7935,45 @@ self.addEventListener('notificationclick', (event) => {
 
   // Validate QR code (for Nayax terminal pre-validation)
   app.post('/api/qr-validate', async (req, res) => {
-    try {
-      const { qrCodeData } = req.body;
-      
-      if (!qrCodeData) {
-        return res.status(400).json({ valid: false, message: "QR code data is required" });
-      }
+    // SEALED 2026-09-13 — unauthenticated voucher-balance oracle.
+    // Any caller could POST a QR payload and learn whether a voucher code is
+    // ACTIVE and how much value remains on it, with no session and no rate
+    // limiter. That turns code guessing into a cheap enumeration loop, and it
+    // pairs with the (now sealed) free mint above.
+    // Nothing in client/src calls this path (grep: 0 hits). Redemption at a bay
+    // goes through POST /api/vouchers/redeem, which requires auth, App Check and
+    // the payment limiter.
+    // TO REOPEN: put it behind requireAuth + paymentLimiter and return only
+    // valid/invalid, never the remaining balance.
+    logger.warn('[Vouchers] /api/qr-validate is sealed — it disclosed voucher balances without auth');
+    return res.status(410).json({
+      valid: false,
+      error: 'ENDPOINT_SEALED',
+      message: 'Voucher validation moved to the authenticated redemption rail.',
+    });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-      const parsedData = QRCodeService.parseQRCodeData(qrCodeData);
-      
-      if (!parsedData) {
-        return res.json({ valid: false, message: "Invalid QR code format" });
-      }
-
-      // Get voucher details for validation (eVoucher schema)
-      const voucher = await VoucherService.getVoucherDetails(parsedData.code);
-      
-      if (!voucher) {
-        return res.json({ valid: false, message: "Voucher not found" });
-      }
-
-      // Check basic validity using eVoucher schema
-      const isValid = voucher.status === 'ACTIVE' && 
-                     parseFloat(voucher.remainingAmount) > 0 && 
-                     (!voucher.expiresAt || new Date() < new Date(voucher.expiresAt));
-
-      res.json({
-        valid: isValid,
-        remainingAmount: voucher.remainingAmount,
-        initialAmount: voucher.initialAmount,
-        currency: voucher.currency,
-        voucherCode: voucher.codeLast4,
-        message: isValid ? "Valid voucher" : "Voucher is expired or inactive"
-      });
-    } catch (error) {
-      logger.error('Error validating QR code:', error);
-      res.status(500).json({ valid: false, message: "Validation failed" });
-    }
   });
 
   // ============================================================================
   // MODERN E-VOUCHER SYSTEM (2025-2026 Standard with UUID, Hashing, Anti-Fraud)
   // ============================================================================
 
-  // Purchase voucher (guest or authenticated)
-  app.post('/api/vouchers/purchase', async (req, res) => {
-    const correlationId = crypto.randomUUID();
-    try {
-      const schema = z.object({
-        type: z.enum(['FIXED', 'STORED_VALUE']),
-        amount: z.number().positive().max(2000).multipleOf(0.01),
-        currency: z.enum(['ILS', 'USD', 'EUR']).default('ILS'),
-        purchaserEmail: z.string().email({ message: "Please enter a valid email address" }),
-        recipientEmail: z.string().email({ message: "Please enter a valid email address" }).optional(),
-        expiresAt: z.string().datetime().optional(),
-        returnPlainForTest: z.boolean().optional()
-      });
-      
-      const data = schema.parse(req.body);
-      const userId = (req as any).user?.claims?.sub;
-      
-      const result = await storage.createVoucher({
-        type: data.type,
-        currency: data.currency,
-        amount: data.amount.toFixed(2),
-        purchaserEmail: data.purchaserEmail,
-        recipientEmail: data.recipientEmail || null,
-        purchaserUid: userId || null,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
-        nayaxTxId: null
-      });
-      
-      const emailRecipient = data.recipientEmail || data.purchaserEmail;
-      await EmailService.sendVoucherPurchaseEmail(
-        emailRecipient,
-        result.codePlain,
-        result.codeLast4,
-        data.amount.toFixed(2),
-        data.currency,
-        data.expiresAt ? new Date(data.expiresAt) : null,
-        'he'
-      );
-      
-      logger.info('Voucher purchased', { correlationId, voucherId: result.voucherId });
-      
-      res.status(201).json({
-        voucherId: result.voucherId,
-        codeLast4: result.codeLast4,
-        ...(data.returnPlainForTest && process.env.NODE_ENV !== 'production' ? { code: result.codePlain } : {})
-      });
-    } catch (error) {
-      logger.error('Voucher purchase failed', error, { correlationId });
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: 'Invalid request', details: error.errors });
-      }
-      res.status(500).json({ error: 'Purchase failed' });
-    }
+  // SEALED 2026-09-13 (P0). POST /api/vouchers/purchase took NO payment and NO
+  // login: it created a real e-voucher for any amount up to ₪2,000, emailed the
+  // plain code to any address (a free SendGrid relay), and /api/vouchers/claim
+  // → /api/gift-cards/activate-wallet then turned that code into spendable
+  // eGift wallet credit. No client page calls it. Paid gifts are issued only by
+  // verified-payment flows (SUMIT /begin → PurchaseActivationService,
+  // /api/egift/guest/*). Never re-open this without a verified payment binding.
+  // Pinned by server/tests/voucherPurchaseSealed.regression.test.ts.
+  app.post('/api/vouchers/purchase', (_req, res) => {
+    res.status(410).json({
+      error: 'This endpoint is retired. Gift cards are sold at /egift.',
+      errorCode: 'VOUCHER_PURCHASE_RETIRED',
+    });
   });
 
   // Claim voucher (requires authentication)
@@ -9019,55 +8966,27 @@ self.addEventListener('notificationclick', (event) => {
 
   // Smart Wash Receipt API routes
   app.post('/api/smart-receipts', async (req, res) => {
-    try {
-      const { 
-        userId, 
-        packageId, 
-        customerEmail, 
-        customerName, 
-        paymentMethod, 
-        originalAmount, 
-        discountApplied, 
-        finalTotal,
-        nayaxTransactionId,
-        locationName,
-        washDuration
-      } = req.body;
+    // SEALED 2026-09-13 — unauthenticated receipt minting with caller-supplied
+    // identity. Every field that matters (userId, customerEmail, customerName,
+    // paymentMethod, originalAmount, finalTotal, nayaxTransactionId) came
+    // straight from req.body with no session and no verification that the
+    // payment it describes ever happened. The response returns
+    // loyaltyPointsEarned, so the handler is also a self-serve way to award
+    // points against any userId.
+    // Nothing in client/src calls this path (grep: 0 hits). Real receipts are
+    // issued from the money rails themselves — IsraeliDigitalReceiptService and
+    // the fiscal outbox — off a settled transaction.
+    // TO REOPEN: derive userId from the session and require a verified payment
+    // reference, never the request body.
+    logger.warn('[Receipts] /api/smart-receipts is sealed — it minted receipts from unverified request bodies');
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'Receipts are issued by the payment rail, not by request.',
+    });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-      if (!packageId || !customerEmail || !paymentMethod || !originalAmount || !finalTotal) {
-        return res.status(400).json({ message: "Required fields missing" });
-      }
-
-      const receiptRequest = {
-        userId,
-        packageId,
-        customerEmail,
-        customerName,
-        paymentMethod,
-        originalAmount,
-        discountApplied: discountApplied || 0,
-        finalTotal,
-        nayaxTransactionId,
-        locationName,
-        washDuration
-      };
-
-      const receipt = await SmartReceiptService.createSmartReceipt(receiptRequest);
-      
-      res.json({
-        success: true,
-        receipt: {
-          transactionId: receipt.transactionId,
-          receiptUrl: receipt.receiptUrl,
-          qrCode: receipt.receiptQrCode,
-          loyaltyPointsEarned: receipt.loyaltyPointsEarned,
-          tierProgress: SmartReceiptService.getTierProgressText(receipt)
-        }
-      });
-    } catch (error) {
-      logger.error('Error creating smart receipt:', error);
-      res.status(500).json({ message: "Failed to create smart receipt" });
-    }
   });
 
   app.get('/api/receipts/:transactionId', async (req, res) => {
@@ -11757,10 +11676,18 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Firebase user sync to HubSpot
-  app.post('/api/hubspot/sync-user', async (req, res) => {
+  // SECURITY 2026-09-13: was unauthenticated and took `uid` and `email` straight
+  // from the body — an open relay that pushed any caller-supplied name, phone and
+  // consent flag into the CRM against any address, and let one person's activity
+  // be written onto another person's contact record. The identity now comes from
+  // the verified session; the body may only carry the optional profile fields.
+  app.post('/api/hubspot/sync-user', requireAuth, async (req, res) => {
     try {
       const { syncUserToHubSpot } = await import('./hubspot');
-      const { uid, email, firstname, lastname, phone, lang, consent } = req.body;
+      const { firstname, lastname, phone, lang, consent } = req.body;
+      const authed = req as any;
+      const uid = authed.user?.uid || authed.firebaseUser?.uid;
+      const email = authed.firebaseUser?.email || authed.user?.email;
       
       if (!email || !uid) {
         return res.status(400).json({ message: "Email and UID required" });
@@ -11791,10 +11718,15 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Track HubSpot event
-  app.post('/api/hubspot/track-event', async (req, res) => {
+  // SECURITY 2026-09-13: was unauthenticated and tracked against a body-supplied
+  // `email`, so anyone could write arbitrary events onto anyone's CRM contact.
+  // The address now comes from the verified session.
+  app.post('/api/hubspot/track-event', requireAuth, async (req, res) => {
     try {
       const { trackHubSpotEvent } = await import('./hubspot');
-      const { email, eventName, properties } = req.body;
+      const { eventName, properties } = req.body;
+      const authed = req as any;
+      const email = authed.firebaseUser?.email || authed.user?.email;
       
       if (!email || !eventName) {
         return res.status(400).json({ message: "Email and event name required" });
@@ -11952,140 +11884,25 @@ self.addEventListener('notificationclick', (event) => {
   // Public loyalty enrollment (no auth required) - for walk-in customers, partner referrals
   // MUST be registered BEFORE the auth-protected /api/loyalty routes
   app.post('/api/loyalty/external-enroll', apiLimiter, async (req, res) => {
-    try {
-      const { z } = await import('zod');
-      const { db } = await import('./db');
-      const { loyaltyProfiles, pointsTransactions } = await import('../shared/schema-loyalty');
-      const { eq } = await import('drizzle-orm');
-      const { logLoyaltyEnrollment } = await import('./services/googleSheetsIntegration');
-      const { sendClubWelcomeEmail } = await import('./email/luxury-email-service');
-      const { logger } = await import('./lib/logger');
+    // SEALED 2026-09-13 — unauthenticated identity creation plus mail
+    // amplification. It inserted a loyaltyProfiles row keyed EXT-<email> from an
+    // attacker-supplied email and phone, then sent a welcome message to that
+    // address. No session, no ownership proof over the contact; apiLimiter was
+    // the only gate.
+    // Nothing in client/src calls this path (grep: 0 hits). Enrolment for real
+    // members happens through the authenticated loyalty routes after signup.
+    // TO REOPEN: require a verified contact (UnifiedVerificationService) before
+    // the insert, so a profile can only be created for an address its owner
+    // proved.
+    logger.warn('[Loyalty] /api/loyalty/external-enroll is sealed — it created profiles for unverified addresses');
+    return res.status(410).json({
+      error: 'ENDPOINT_SEALED',
+      message: 'External enrolment requires a verified contact.',
+    });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-      const externalEnrollSchema = z.object({
-        firstName: z.string().min(1, 'First name is required'),
-        lastName: z.string().min(1, 'Last name is required'),
-        email: z.string().email('Valid email required'),
-        phone: z.string().min(9, 'Valid phone number required'),
-        country: z.string().default('IL'),
-        language: z.enum(['en', 'he', 'ar', 'ru', 'fr', 'es']).default('he'),
-        memberType: z.enum(['pet_parent', 'provider']).default('pet_parent'),
-        referralSource: z.string().optional(),
-        petNames: z.string().optional(),
-        preferredStation: z.string().optional(),
-        birthday: z.string().optional(),
-        referralCode: z.string().optional(),
-      });
-
-      const data = externalEnrollSchema.parse(req.body);
-      const externalId = `EXT-${data.email.toLowerCase()}`;
-
-      const existingByEmail = await db
-        .select()
-        .from(loyaltyProfiles)
-        .where(eq(loyaltyProfiles.userId, externalId))
-        .limit(1);
-
-      if (existingByEmail.length > 0) {
-        return res.json({
-          success: true,
-          enrolled: false,
-          message: 'Already enrolled with this email',
-          profile: existingByEmail[0],
-        });
-      }
-
-      const welcomePoints = 100;
-
-      const [profile] = await db
-        .insert(loyaltyProfiles)
-        .values({
-          userId: externalId,
-          tier: 'bronze',
-          tierSince: new Date(),
-          tierProgress: 0,
-          tierThreshold: 1000,
-          points: welcomePoints,
-          lifetimePoints: welcomePoints,
-          xp: 0,
-          level: 1,
-          totalWashes: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          averageWashInterval: 21,
-          isVip: false,
-          conciergeAccess: false,
-          prioritySupport: false,
-        })
-        .returning();
-
-      try {
-        await db.insert(pointsTransactions).values({
-          userId: externalId,
-          type: 'earned',
-          amount: welcomePoints,
-          balance: welcomePoints,
-          source: 'signup',
-          description: `Welcome bonus - external enrollment as ${data.memberType}`,
-        });
-      } catch (txErr) {
-        logger.warn('[Loyalty] Failed to record external welcome points transaction', { txErr });
-      }
-
-      try {
-        await sendClubWelcomeEmail(data.email, data.firstName, {
-          tier: 'bronze',
-          points: welcomePoints,
-          language: data.language as 'he' | 'en',
-        });
-      } catch (emailErr) {
-        logger.warn('[Loyalty] Failed to send external enrollment email', { emailErr });
-      }
-
-      try {
-        await logLoyaltyEnrollment({
-          memberId: externalId,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          enrollmentSource: data.referralSource || 'external-enrollment',
-          tier: 'bronze',
-          welcomePoints,
-          language: data.language,
-          country: data.country,
-          memberType: data.memberType,
-          petNames: data.petNames || '',
-          preferredStation: data.preferredStation || '',
-          birthday: data.birthday || '',
-          referralCode: data.referralCode || '',
-        });
-      } catch (sheetErr) {
-        logger.warn('[Loyalty] Failed to log external enrollment to Google Sheets', { sheetErr });
-      }
-
-      logger.info('[Loyalty] External member enrolled successfully', {
-        externalId,
-        email: data.email,
-        memberType: data.memberType,
-      });
-
-      res.json({
-        success: true,
-        enrolled: true,
-        memberId: externalId,
-        welcomePoints,
-        tier: 'bronze',
-        profile,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: error.errors,
-        });
-      }
-      res.status(500).json({ error: 'Failed to enroll external member' });
-    }
   });
 
   // HARD-DEPRECATED: POST /api/customer/register
@@ -12345,39 +12162,38 @@ self.addEventListener('notificationclick', (event) => {
   // Handler mirrors server/routes/franchise.ts:26 but is mounted at the
   // public layer so it actually receives the request.
   app.post('/api/franchise/inquiry', apiLimiter, async (req, res) => {
+    // 2026-09-13: a failed store used to be swallowed and answered
+    // {success:true}. Logic lives in server/lib/franchiseInquiry.ts (behaviour-
+    // tested): store failure → 503; stored → notify support via EmailService
+    // (fail-soft), every user field HTML-escaped.
     try {
-      const { fullName, email, phone, country, city, message } = req.body ?? {};
-      if (!fullName || !email || !phone) {
-        return res.status(400).json({ error: 'Name, email, and phone are required' });
-      }
-      const inquiryData = {
-        fullName,
-        email,
-        phone,
-        country: country || '',
-        city: city || '',
-        message: message || '',
-        submittedAt: new Date().toISOString(),
-        status: 'new' as const,
-      };
-      try {
-        const { db: firestore } = await import('./lib/firebase-admin');
-        const inquiriesRef = firestore.collection('franchise_inquiries');
-        await inquiriesRef.add(inquiryData);
-      } catch (firestoreErr) {
-        logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
-      }
-      logger.info('[Franchise/inquiry] received', {
-        emailMasked: email && typeof email === 'string' && email.includes('@')
-          ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
-          : '(invalid)',
-        country,
-        city,
-        hasFullName: !!fullName,
+      const { handleFranchiseInquiry } = await import('./lib/franchiseInquiry');
+      const result = await handleFranchiseInquiry(req.body, {
+        store: async (record) => {
+          const { db: firestore } = await import('./lib/firebase-admin');
+          const ref = await firestore.collection('franchise_inquiries').add(record);
+          return ref.id;
+        },
+        sendEmail: async (params) => {
+          const { EmailService } = await import('./emailService');
+          return EmailService.send(params);
+        },
+        log: logger,
       });
-      return res.json({ success: true, message: 'Inquiry submitted successfully' });
+      if (result.status === 200) {
+        const email = typeof req.body?.email === 'string' ? req.body.email : '';
+        logger.info('[Franchise/inquiry] received', {
+          emailMasked: email.includes('@')
+            ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
+            : '(invalid)',
+          country: req.body?.country,
+          city: req.body?.city,
+          hasFullName: !!req.body?.fullName,
+        });
+      }
+      return res.status(result.status).json(result.body);
     } catch (error) {
-      logger.error('[Franchise/inquiry] handler error', error);
+      logger.error('[Franchise/inquiry] handler error', { error: (error as Error)?.message });
       return res.status(500).json({ error: 'Failed to process inquiry' });
     }
   });
@@ -12483,6 +12299,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Phase 6.12 — winback click-tracking (no auth; JWT-gated internally)
   app.use('/w', winbackTrackingRouter);
+  // Hosting forwards only /api/**, so /w links never reached this router (NotFound,
+  // zero click data). Links are now built under /api/w (2026-09-13).
+  app.use('/api/w', winbackTrackingRouter);
   
   // Control Panel Registry - RBAC (Role-Based Access Control)
   app.use('/api/control-panel/registry', apiLimiter, controlPanelRegistryRoutes);
@@ -13251,7 +13070,14 @@ self.addEventListener('notificationclick', (event) => {
   
   // Gemini AI Watchdog - Real-time monitoring, user struggle detection, auto-fix engine
   const geminiWatchdogRoutes = await import('./routes/gemini-watchdog');
-  app.use('/api/gemini-watchdog', adminLimiter, geminiWatchdogRoutes.default);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/gemini-watchdog', adminLimiter, requireAdmin, geminiWatchdogRoutes.default);
 
   // /api/octopus-brain — DELETED 2026-05-17. Router was mounted with rate-limit
   // only (no validateFirebaseToken, no requireBrainAccess), exposing platform
@@ -13504,7 +13330,14 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)
-  app.use('/api/campaigns', adminLimiter, campaignsRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/campaigns', adminLimiter, requireAdmin, campaignsRoutes);
   
   // Meetings with Attendee Notifications (WhatsApp + Email)
   app.use('/api/meetings', adminLimiter, meetingsRoutes);
@@ -13523,7 +13356,14 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/management', adminLimiter, managementDashboardRoutes);
   
   // Israeli Tax Authority API (Direct OAuth2 Integration - Electronic Invoicing)
-  app.use('/api/ita', adminLimiter, itaApiRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/ita', adminLimiter, requireAdmin, itaApiRoutes);
   
   // Luxury Documents (Invoices, Receipts, Statements)
   // Issue #153 PR-TAX-1 (Israeli tax/invoice/receipt/payout audit): the
@@ -13771,7 +13611,14 @@ self.addEventListener('notificationclick', (event) => {
   
   // Accounting & Finance
   app.use('/api/accounting', adminLimiter, accountingRoutes);
-  app.use('/api/accounting-exports', adminLimiter, accountingExportRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/accounting-exports', adminLimiter, requireAdmin, accountingExportRoutes);
   app.use('/api/bank', adminLimiter, bankRoutes);
   app.use('/api/multi-currency', apiLimiter, multiCurrencyRoutes);
   app.use('/api/pricing', apiLimiter, pricingRoutes);
@@ -17023,6 +16870,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // /api/consent-center + /api/notification-preferences going forward.
   app.get('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const { readNotificationPrefs } = await import('./lib/notificationPrefsCompat');
       res.json(await readNotificationPrefs(req.params.userId));
     } catch (error: any) {
@@ -17033,6 +16884,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.put('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const { writeNotificationPrefs } = await import('./lib/notificationPrefsCompat');
       await writeNotificationPrefs(req.params.userId, req.body, { ip: req.ip, actor: (req as any).user?.uid });
       res.json({ success: true });
@@ -17044,6 +16899,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.post('/api/monitoring/notifications/revoke/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       await notificationConsentManager.revokeAllConsents(req.params.userId);
       res.json({ success: true });
     } catch (error: any) {
@@ -17054,6 +16913,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/notifications/audit/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const audit = await notificationConsentManager.getConsentAuditLog(req.params.userId);
       res.json(audit);
     } catch (error: any) {

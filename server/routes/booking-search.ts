@@ -34,7 +34,7 @@ import {
   type BookingSearchFilters,
   type BookingSearchResult,
 } from '@shared/schema';
-import { eq, and, gte, lte, sql, desc, asc, or, ilike, notInArray, inArray } from 'drizzle-orm';
+import { eq, and, gt, gte, lte, sql, desc, asc, or, ilike, notInArray, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { aliasesForCity } from '@shared/lib/address';
@@ -519,6 +519,11 @@ async function searchSitters(filters: BookingSearchFilters, searchId: string): P
     const conditions = [
       eq(sitterProfiles.isActive, true),
       eq(sitterProfiles.verificationStatus, 'active'),
+      // A sitter with no rate card is not bookable. Without this the row was
+      // still returned and rendered with pricePerNight: null — a listing the
+      // customer can open and cannot book. The seed comment beside
+      // pricePerDayCents already claimed "search requires > 0"; it did not.
+      gt(sitterProfiles.pricePerDayCents, 0),
     ];
 
     // Text-based city/area filter (applied even when coords present, as a secondary constraint).

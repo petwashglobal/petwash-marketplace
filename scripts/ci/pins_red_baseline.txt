@@ -79,8 +79,6 @@ server/tests/providerEarningsBucket.regression.test.ts  # red on main at gate la
 server/tests/providerJourneyOwnershipAndPrivacy.regression.test.ts  # red on main at gate landing
 server/tests/receiptAddressDisplay.regression.test.ts  # red on main at gate landing
 server/tests/routeContractClientDefects.regression.test.ts  # red on main at gate landing
-server/tests/saveCardRedisHandoffDurability.behavior.test.ts  # red on main at gate landing
-server/tests/saveCardReturnUidOwnership.behavior.test.ts  # red on main at gate landing
 server/tests/sendgridInventory.regression.test.ts  # red on main at gate landing
 server/tests/sendgridWebhookAsyncJobs.regression.test.ts  # red on main at gate landing
 server/tests/sessionServiceContract.regression.test.ts  # red on main at gate landing
@@ -94,13 +92,11 @@ server/tests/superAppCancelRefund.regression.test.ts  # red on main at gate land
 server/tests/t4t5Tail.regression.test.ts  # red on main at gate landing
 server/tests/termsCanonPage.regression.test.ts  # red on main at gate landing
 server/tests/turnstileReleaseGateFailsClosed.behavior.test.ts  # red on main at gate landing
-server/tests/unifiedVerificationWireContract.behavior.test.ts  # red on main at gate landing
 server/tests/verifySignupMobilePhonePersist.behavior.test.ts  # red on main at gate landing
 server/tests/waldStationPhoto.regression.test.ts  # red on main at gate landing
 server/tests/walk-my-pet-walks-mine.test.ts  # red on main at gate landing
 server/tests/wash-pack-bleed-stop.test.ts  # red on main at gate landing
 server/tests/whatsappWebhookSignature.regression.test.ts  # red on main at gate landing
-tests/behavior/auth-evil-queue-2026-08-20.test.ts  # red on main at gate landing
 tests/notification-inbox-sweep.regression.test.ts  # red on main at gate landing
 tests/providerProtectionDeclarations.test.ts  # red on main at gate landing
 tests/regression/auth-silent-fail-hunt.regression.test.ts  # red on main at gate landing
