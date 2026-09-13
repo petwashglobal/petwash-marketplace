@@ -23,6 +23,7 @@ const EMPTY = {
   sizeCategory: 'unknown', color: '', description: '', temperament: '', healthNotes: '', specialNeeds: '',
   vaccinated: 'unknown', neutered: 'unknown', microchipped: 'unknown',
   goodWithChildren: 'unknown', goodWithDogs: 'unknown', goodWithCats: 'unknown',
+  apartmentFriendly: 'unknown', lowShedding: 'unknown', ageYears: '',
   city: '', area: '', contactPhone: '',
 };
 type Form = typeof EMPTY;
@@ -140,6 +141,8 @@ export default function AdoptionCreate() {
           petName: form.petName.trim(), description: form.description.trim(), city: form.city.trim(), contactPhone: form.contactPhone.trim(),
           breed: opt(form.breed), color: opt(form.color), temperament: opt(form.temperament), healthNotes: opt(form.healthNotes),
           specialNeeds: opt(form.specialNeeds), area: opt(form.area),
+          ageYears: undefined,
+          ...(form.ageYears.trim() && Number.isFinite(Number(form.ageYears)) ? { ageMonths: Math.round(Number(form.ageYears) * 12) } : {}),
           mediaFiles: photos.map((p, i) => ({ filePath: p.filePath, mediaRole: i === 0 ? 'primary' : 'extra', ...(p.hash ? { hash: p.hash } : {}) })),
         },
       });
@@ -196,6 +199,10 @@ export default function AdoptionCreate() {
             <input value={form.breed} onChange={set('breed')} maxLength={100} className={fieldCls} style={fieldStyle} />
           </div>
           <Select {...sel('ageGroup')} label={isHe ? 'גיל' : 'Age'} options={[['unknown', isHe ? 'לא ידוע' : 'Unknown'], ['baby', isHe ? 'גור' : 'Baby'], ['young', isHe ? 'צעיר/ה' : 'Young'], ['adult', isHe ? 'בוגר/ת' : 'Adult'], ['senior', isHe ? 'מבוגר/ת' : 'Senior']]} />
+          <div>
+            <label className={labelCls}>{isHe ? 'גיל בשנים (רשות)' : 'Age in years (optional)'}</label>
+            <input type="number" inputMode="decimal" min={0} max={30} step={0.5} value={form.ageYears} onChange={set('ageYears')} className={fieldCls} style={fieldStyle} data-testid="input-ageYears" />
+          </div>
           <Select {...sel('sex')} label={isHe ? 'מין' : 'Sex'} options={[['unknown', isHe ? 'לא ידוע' : 'Unknown'], ['male', isHe ? 'זכר' : 'Male'], ['female', isHe ? 'נקבה' : 'Female']]} />
           <Select {...sel('sizeCategory')} label={isHe ? 'גודל' : 'Size'} options={[['unknown', isHe ? 'לא ידוע' : 'Unknown'], ['tiny', isHe ? 'זעיר' : 'Tiny'], ['small', isHe ? 'קטן' : 'Small'], ['medium', isHe ? 'בינוני' : 'Medium'], ['large', isHe ? 'גדול' : 'Large'], ['giant', isHe ? 'ענק' : 'Giant']]} />
           <div>
@@ -221,6 +228,8 @@ export default function AdoptionCreate() {
           <Select {...sel('goodWithChildren')} label={isHe ? 'עם ילדים' : 'Children'} options={yesNo} />
           <Select {...sel('goodWithDogs')} label={isHe ? 'עם כלבים' : 'Dogs'} options={yesNo} />
           <Select {...sel('goodWithCats')} label={isHe ? 'עם חתולים' : 'Cats'} options={yesNo} />
+          <Select {...sel('apartmentFriendly')} label={isHe ? 'מתאים לדירה' : 'Apartment'} options={yesNo} />
+          <Select {...sel('lowShedding')} label={isHe ? 'נשירה נמוכה' : 'Low shedding'} options={yesNo} />
         </div>
         <div>
           <label className={labelCls}>{isHe ? 'הערות בריאות (רשות)' : 'Health notes (optional)'}</label>

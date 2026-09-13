@@ -1,0 +1,8 @@
+# Migrations CONFIRMED applied to production after the schema snapshot
+# docs/recovery/2026-07-03-db-migration-recovery/prod-schema-2026-07-03.sql was taken,
+# that a newer migration depends on. .github/workflows/migration-test.yml replays these
+# (strictly) onto the snapshot before testing a PR's NEW migrations, so a migration that
+# alters a table created after July is tested against the real current shape.
+# Add a file here only after its deploy log shows it applied (e.g. "✅ Applied <file>").
+# One filename per line; '#' comments allowed.
+0155_adoption_own_service.sql   # prod deploy 2026-09-13 06:59 "✅ Applied 0155_adoption_own_service.sql"

@@ -71,8 +71,15 @@ jobs:
           set -e
           NEW=""
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin "${{ github.base_ref }}" --depth=1 --quiet || true
-            NEW=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'migrations/*.sql' | sort || true)
+            # No --depth=1: fetching the base shallow into this full clone cut the
+            # history, the three-dot diff found no merge base, the error was
+            # swallowed and the gate PASSED WITHOUT TESTING anything (2026-09-13, #2489).
+            git fetch origin "${{ github.base_ref }}" --quiet
+            if ! DIFF=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'migrations/*.sql'); then
+              echo "::error::Could not diff this PR against origin/${{ github.base_ref }} — refusing to pass without testing."
+              exit 1
+            fi
+            NEW=$(echo "$DIFF" | sed '/^$/d' | sort)
           fi
           {
             echo "new<<EOF"
@@ -84,6 +91,22 @@ jobs:
           else
             echo "New migrations to test against prod shape:"; echo "$NEW"
           fi
+
+      - name: Replay prod-applied migrations newer than the baseline (STRICT)
+        if: steps.newmig.outputs.new != ''
+        run: |
+          set -e
+          # The snapshot is from 2026-07-03. Tables created in prod since then
+          # (e.g. adoption_listings, 0155) are missing from it, so a NEW migration
+          # that alters them failed here although prod has them. Replay the
+          # migrations confirmed applied in prod first — never the PR's own files.
+          grep -vE '^\s*(#|$)' migrations/.post-baseline-applied.txt | sed 's/#.*//' | tr -d ' ' | while read -r name; do
+            [ -z "$name" ] && continue
+            if echo "${{ steps.newmig.outputs.new }}" | grep -qx "migrations/$name"; then continue; fi
+            echo "── replaying prod-applied migrations/$name ──"
+            docker run --rm --network=host -e PGPASSWORD=postgres -v "$PWD:/repo" postgres:18 \
+              psql -h localhost -U postgres -d petwash_baseline -v ON_ERROR_STOP=1 -f "/repo/migrations/$name"
+          done
 
       - name: Apply NEW migrations against prod baseline (STRICT)
         if: steps.newmig.outputs.new != ''

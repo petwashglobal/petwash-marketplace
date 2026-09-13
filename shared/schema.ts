@@ -16,7 +16,8 @@ import {
   serial,
   date,
   real,
-  unique
+  unique,
+  primaryKey
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -16356,6 +16357,9 @@ export const adoptionListings = pgTable("adoption_listings", {
   goodWithChildren: varchar("good_with_children", { length: 8 }).notNull().default("unknown"),
   goodWithDogs: varchar("good_with_dogs", { length: 8 }).notNull().default("unknown"),
   goodWithCats: varchar("good_with_cats", { length: 8 }).notNull().default("unknown"),
+  apartmentFriendly: varchar("apartment_friendly", { length: 8 }).notNull().default("unknown"),
+  lowShedding: varchar("low_shedding", { length: 8 }).notNull().default("unknown"),
+  ageMonths: integer("age_months"),
   city: varchar("city", { length: 100 }).notNull(),
   area: varchar("area", { length: 100 }),
   contactPhone: varchar("contact_phone", { length: 32 }),
@@ -16410,6 +16414,25 @@ export const adoptionNotifications = pgTable("adoption_notifications", {
   read: boolean("read").notNull().default(false),
   payload: jsonb("payload").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const adoptionFavorites = pgTable("adoption_favorites", {
+  userId: varchar("user_id", { length: 128 }).notNull(),
+  listingId: integer("listing_id").notNull().references(() => adoptionListings.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({ pk: primaryKey({ columns: [t.userId, t.listingId] }) }));
+
+export const adoptionAdopterProfiles = pgTable("adoption_adopter_profiles", {
+  userId: varchar("user_id", { length: 128 }).primaryKey(),
+  homeType: varchar("home_type", { length: 24 }).notNull().default("unspecified"),
+  hasChildren: varchar("has_children", { length: 8 }).notNull().default("unknown"),
+  hasDogs: varchar("has_dogs", { length: 8 }).notNull().default("unknown"),
+  hasCats: varchar("has_cats", { length: 8 }).notNull().default("unknown"),
+  wantsLowShedding: varchar("wants_low_shedding", { length: 8 }).notNull().default("unknown"),
+  preferredSpecies: varchar("preferred_species", { length: 16 }).notNull().default("any"),
+  city: varchar("city", { length: 100 }),
+  about: text("about"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const adoptionEvents = pgTable("adoption_events", {
