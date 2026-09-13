@@ -3335,6 +3335,26 @@ export default function MyAccount() {
 
             <TabsContent value="security" className="mt-6 space-y-5">
 
+              {/* ── Sign-in methods & devices (step-up protected) ──
+                  /account/security is the only screen where removing a sign-in
+                  method or signing out every device asks for Face ID / passkey
+                  (or password) confirmation first. It was routed but linked from
+                  nowhere, so that protection was unreachable (2026-09-13). */}
+              <Link href="/account/security" data-testid="link-account-security">
+                <div className="pw-section-card flex items-center justify-between gap-3 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center">
+                      <span className="text-lg">🛡️</span>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'שיטות התחברות ומכשירים' : 'Sign-in methods & devices'}</h3>
+                      <p className="text-xs text-gray-400">{isHebrew ? 'הסרת שיטת התחברות או ניתוק כל המכשירים — באישור Face ID' : 'Remove a sign-in method or sign out everywhere — confirmed with Face ID'}</p>
+                    </div>
+                  </div>
+                  <span aria-hidden="true" className="text-gray-400">{isHebrew ? '‹' : '›'}</span>
+                </div>
+              </Link>
+
               {/* ── Face ID / Passkeys ── */}
               <div className="pw-section-card">
                 <div className="flex items-center gap-3 mb-5">
