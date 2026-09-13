@@ -25,7 +25,7 @@ describe('phone/SMS verify never routes into a session-less app', () => {
   });
 });
 
-describe('Face ID button — device-local hint only, server is authority', () => {
+describe('Passkey button — shown on every capable device, the Apple way; server is authority', () => {
   // The signed-out login screen cannot query the server for a per-user
   // credential without leaking whether the account exists, so the button
   // uses a device-local hint (petwash_passkey_email) as a DISCOVERY signal
@@ -33,26 +33,30 @@ describe('Face ID button — device-local hint only, server is authority', () =>
   // record lives server-side and is read by Settings via
   // getServerPasskeyStatus(). The hint is written on successful register /
   // passkey login on this device, and cleared on a stale-hint failure.
-  it('login screen uses the device-local hint for BUTTON VISIBILITY only', () => {
-    expect(signup).toMatch(/localStorage\.getItem\('petwash_passkey_email'\)/);
-    expect(signup).toMatch(/setBioAvailable\(avail && passkeyHintOnDevice\)/);
+  // 2026-09-13 CEO: "Face ID not there at all — Safari and Chrome". The hint
+  // gate (written only after a passkey login that never worked in prod, and
+  // deleted on the first cancel; separate storage per browser) hid the button
+  // for everyone. Apple's guidance: offer passkey sign-in whenever the device
+  // can do it and let the system sheet list the passkeys.
+  it('the passkey button shows on every capable device — never gated on a device-local hint', () => {
+    expect(signup).toMatch(/setBioAvailable\(avail\);/);
+    expect(signup).not.toMatch(/setBioAvailable\(avail && /);
+    expect(signup).not.toContain('passkeyHintOnDevice');
   });
-  it('the button is explicitly renamed to make the hint nature obvious', () => {
-    // The old `hasRegisteredPasskey` name read like server-authority. New
-    // name says "hint on device" so no future reader mistakes it for the
-    // real enrollment status.
-    expect(signup).toContain('passkeyHintOnDevice');
-    expect(signup).not.toContain('const hasRegisteredPasskey');
+  it('a cancelled or failed passkey tap keeps the button and says where to add a passkey', () => {
+    expect(signup).not.toMatch(/localStorage\.removeItem\('petwash_passkey_email'\)/);
+    expect(signup).not.toMatch(/setBioAvailable\(false\)/);
+    expect(signup).toContain('Passkey sign-in did not complete');
+    expect(signup).toContain('Account → Security');
   });
-  it('a failed passkey tap clears the stale hint (so the button stops misleading)', () => {
-    // If the device hint says "you have a passkey" but the server has none
-    // (user cleared their credentials, switched devices, or the hint
-    // predates a reset), the tap fails. The handler recognises the
-    // no-credential errors, clears the hint, and shows an honest fallback
-    // message instead of "Face ID sign-in failed" (which reads as a
-    // system fault when the real cause is "no matching passkey").
-    expect(signup).toMatch(/localStorage\.removeItem\('petwash_passkey_email'\)/);
-    expect(signup).toMatch(/No passkey found on this device/);
+  it('uses Apple\'s word: "passkey", unlocked with Face ID / Touch ID', () => {
+    expect(signup).toContain('Sign in with a passkey (${bioName})');
+    expect(signup).toContain('התחברות עם Passkey (${bioName})');
+  });
+  it('signed-out passkey sign-in is discoverable — no typed or stored email is sent', () => {
+    const fn = passkey.slice(passkey.indexOf('export async function signInWithPasskey('), passkey.indexOf('export async function isConditionalMediationAvailable'));
+    expect(fn).not.toMatch(/localStorage\.getItem\('petwash_passkey_email'\)/);
+    expect(fn).toMatch(/let email = '';\s*if \(uid\) \{/);
   });
   it('register + login write the UI hint via the explicit hint helper', () => {
     // Register + login MUST use rememberPasskeyEmailHint (renamed from
@@ -61,7 +65,8 @@ describe('Face ID button — device-local hint only, server is authority', () =>
     // a "record that this account is enrolled" API.
     expect(passkey).toMatch(/function rememberPasskeyEmailHint/);
     expect(passkey).toMatch(/localStorage\.setItem\('petwash_passkey_email', email\)/);
-    expect((passkey.match(/rememberPasskeyEmailHint\(/g) || []).length).toBeGreaterThanOrEqual(3);
+    // register + explicit login + autofill (conditional) login
+    expect((passkey.match(/rememberPasskeyEmailHint\(/g) || []).length).toBeGreaterThanOrEqual(4);
     // The old un-hinted name must be gone — a lingering reference would
     // leave "authority-sounding" callers alive.
     expect(passkey).not.toMatch(/rememberPasskeyEmail\(/);

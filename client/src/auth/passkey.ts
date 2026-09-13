@@ -308,18 +308,22 @@ export async function signInWithPasskey(
       return { success: false, error: 'Passkeys not supported in this browser' };
     }
 
-    const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
-    let email = emailInput?.value?.trim() || '';
-    
-    if (!email && !uid) {
-      try {
-        const storedEmail = localStorage.getItem('petwash_passkey_email');
-        if (storedEmail) {
-          email = storedEmail;
-        }
-      } catch {}
+    // Signed-out "Sign in with a passkey" (no uid): ALWAYS the discoverable
+    // flow — the Apple way (2026-09-13). The iOS/macOS sheet lists the passkeys
+    // this device (iCloud Keychain / Google Password Manager) holds for
+    // petwash.co.il and the user picks one. It used to send the email typed on
+    // the page or a device-local hint instead, which (a) failed outright when
+    // the hint was missing or different — Chrome and Safari on the same iPhone
+    // keep separate localStorage — and (b) asked the server "does this email
+    // have a passkey?", a question whose answer leaks account existence.
+    // Callers that pass a uid (step-up re-auth, ReturnLogin) keep their
+    // previous behaviour byte-for-byte: email only from a visible email field.
+    let email = '';
+    if (uid) {
+      const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
+      email = emailInput?.value?.trim() || '';
     }
-    
+
     if (email && !email.includes('@')) {
       return { success: false, error: 'Please enter a valid email address' };
     }
@@ -487,10 +491,12 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
       return false;
     }
 
-    const { customToken } = await verifyResponse.json();
+    const { customToken, user: userData } = await verifyResponse.json();
 
     // Sign in to Firebase with custom token
     const userCredential = await signInWithCustomToken(auth, customToken);
+    // Autofill sign-in is a real passkey login too — refresh the UI hint.
+    rememberPasskeyEmailHint(userData?.email || userCredential.user?.email);
     
     // Session cookie is already set by the server
     console.log('Conditional UI: Face ID login successful');

@@ -32,6 +32,7 @@ import { redis } from './services/redis';
 
 export class BackgroundJobProcessor {
   private pawFinderSlaLastAlertAt = 0;
+  private adoptionSlaLastAlertAt = 0;
 
   private static jobLocks = new Map<string, boolean>(); // Per-task locking
   private static retryDelays = [1000, 5000, 15000, 60000]; // 1s, 5s, 15s, 1m
@@ -246,7 +247,8 @@ export class BackgroundJobProcessor {
           const { rows } = await pool.query(
             `SELECT COUNT(*)::int AS n, MIN(created_at) AS oldest
                FROM paw_finder_posts
-              WHERE status = 'pending_review' AND created_at < NOW() - INTERVAL '30 minutes'`,
+              WHERE status = 'pending_review' AND post_type IN ('lost','found')
+                AND created_at < NOW() - INTERVAL '30 minutes'`,
           );
           const n = Number(rows?.[0]?.n || 0);
           if (n > 0) {
@@ -256,7 +258,7 @@ export class BackgroundJobProcessor {
               const { sendSecurityAlert } = await import('./services/alerts');
               await sendSecurityAlert(
                 `PawFinder: ${n} post(s) waiting for approval > 30 min`,
-                `<p>${n} lost/found/adoption post(s) are in the review queue for more than 30 minutes (oldest: ${rows[0].oldest}).</p><p>Approve them at <a href="https://petwash.co.il/admin/paw-finder">/admin/paw-finder</a>. A lost pet is invisible until approved.</p>`,
+                `<p>${n} lost/found post(s) are in the review queue for more than 30 minutes (oldest: ${rows[0].oldest}).</p><p>Approve them at <a href="https://petwash.co.il/admin/paw-finder">/admin/paw-finder</a>. A lost pet is invisible until approved.</p>`,
               );
               logger.warn('[PawFinder] review SLA breached', { pending: n, oldest: rows[0].oldest });
             }
@@ -265,6 +267,35 @@ export class BackgroundJobProcessor {
           logger.error('[PawFinder] review SLA check failed', { error: e?.message });
         } finally {
           this.releaseLock('pawFinderReviewSla');
+        }
+      }
+    });
+
+    // Adopt a Pet review SLA — its own queue since adoption left PawFinder
+    // (2026-09-13). Same cadence: alert at most hourly while a listing waits > 2h.
+    cron.schedule('*/15 * * * *', async () => {
+      if (await this.acquireLock('adoptionReviewSla')) {
+        try {
+          const { rows } = await pool.query(
+            `SELECT COUNT(*)::int AS n, MIN(created_at) AS oldest
+               FROM adoption_listings
+              WHERE status = 'pending_review' AND created_at < NOW() - INTERVAL '2 hours'`,
+          );
+          const n = Number(rows?.[0]?.n || 0);
+          const now = Date.now();
+          if (n > 0 && (!this.adoptionSlaLastAlertAt || now - this.adoptionSlaLastAlertAt > 60 * 60 * 1000)) {
+            this.adoptionSlaLastAlertAt = now;
+            const { sendSecurityAlert } = await import('./services/alerts');
+            await sendSecurityAlert(
+              `Adopt a Pet: ${n} listing(s) waiting for approval > 2h`,
+              `<p>${n} adoption listing(s) are in the review queue for more than 2 hours (oldest: ${rows[0].oldest}).</p><p>Review them at <a href="https://petwash.co.il/admin/adoption">/admin/adoption</a>.</p>`,
+            );
+          }
+        } catch (e: any) {
+          // 42P01 until migration 0155 is applied — not an outage.
+          if (e?.code !== '42P01') logger.error('[Adoption] review SLA check failed', { error: e?.message });
+        } finally {
+          this.releaseLock('adoptionReviewSla');
         }
       }
     });

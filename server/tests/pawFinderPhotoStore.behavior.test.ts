@@ -51,7 +51,7 @@ describe('wiring pins', () => {
   it('the review-queue SLA alert is scheduled and throttled', () => {
     const b = R('server/backgroundJobs.ts');
     expect(b).toContain("this.acquireLock('pawFinderReviewSla')");
-    expect(b).toContain("WHERE status = 'pending_review' AND created_at < NOW() - INTERVAL '30 minutes'");
+    expect(b).toContain("WHERE status = 'pending_review' AND post_type IN ('lost','found')\n                AND created_at < NOW() - INTERVAL '30 minutes'");
     expect(b).toContain('private pawFinderSlaLastAlertAt = 0;');
     expect(b).toContain("PawFinder: ${n} post(s) waiting for approval > 30 min");
   });

@@ -72,9 +72,9 @@ export async function refreshMatchesForPost(pool: any, postId: number): Promise<
     const post = postRes.rows[0];
     if (!post) return;
     if (!['published', 'matched'].includes(post.status)) return;
-    // Only lost ↔ found pair up. An adoption listing used to fall into the
-    // "not lost → look for lost" branch and be matched against lost pets
-    // (2026-09-13).
+    // Only lost ↔ found pair up. A legacy adoption row (from before Adopt a Pet
+    // became its own service, 2026-09-13) used to fall into the "not lost →
+    // look for lost" branch and be matched against lost pets.
     if (post.post_type !== 'lost' && post.post_type !== 'found') return;
 
     const targetType = post.post_type === 'lost' ? 'found' : 'lost';
