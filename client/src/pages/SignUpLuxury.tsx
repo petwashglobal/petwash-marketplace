@@ -2372,8 +2372,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           toast({
                             title: he ? 'איפוס סיסמה נשלח' : 'Password reset sent',
                             description: he
-                              ? `אם קיים חשבון עבור ${email}, הודעת איפוס בדרך.`
-                              : `If an account exists for ${email}, a reset email is on its way.`,
+                              ? 'אם קיים חשבון לכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדוק את תיבת הדואר.'
+                              : 'If an account exists for that address, a password reset email has been sent. Please check your inbox.',
                           });
                         }}
                         data-testid="button-forgot-password"

@@ -71,9 +71,15 @@ describe('auth silent-fail evil-hunt pins', () => {
     const src = root('client/src/auth/AuthProvider.tsx');
 
     it('/api/auth/signout call includes an Authorization: Bearer header', () => {
-      // Find the actual fetch call for /api/auth/signout (skip past comments).
-      const fetchCall = src.match(/fetch\(getApiUrl\(['"]\/api\/auth\/signout['"]\)[\s\S]*?\}\s*\)/)?.[0] ?? '';
-      expect(fetchCall).toMatch(/Authorization:\s*`Bearer\s*\$\{idToken\}`/);
+      // 2026-09-13: the POST moved into client/src/auth/serverSignOut.ts. Pin the
+      // chain: AuthProvider hands the helper a live getIdToken and the signout
+      // endpoint; the helper sends it as Authorization: Bearer.
+      const call = src.slice(src.lastIndexOf('getIdToken: async () =>'), src.indexOf("endpoint: getApiUrl('/api/auth/signout')", src.lastIndexOf('getIdToken: async () =>')) + 60);
+      expect(call).toMatch(/auth\.currentUser\?\.getIdToken\(\)/);
+      expect(call).toContain("endpoint: getApiUrl('/api/auth/signout')");
+      const helper = root('client/src/auth/serverSignOut.ts');
+      expect(helper).toMatch(/Authorization:\s*`Bearer \$\{token\}`/);
+      expect(helper).toMatch(/headers:\s*buildHeaders\(token\)/);
     });
   });
 });

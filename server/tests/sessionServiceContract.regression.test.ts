@@ -39,7 +39,9 @@ describe('SessionService · Phase 3 contract regression pin', () => {
     // a bare rawSessionId.
     expect(SRC).toMatch(/sessionIdHash:\s*hashSessionId\(rawSessionId\)|sessionIdHash,/);
     // No column named session_id exists (only session_id_hash).
-    expect(SRC).not.toMatch(/session_id\b(?!_hash)/);
+    // Code only — a doc comment naming the `pw_session_id` COOKIE is not a column (2026-09-13).
+    const code = SRC.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    expect(code).not.toMatch(/session_id\b(?!_hash)/);
   });
 
   it('rawSessionId is NEVER passed to the logger', () => {

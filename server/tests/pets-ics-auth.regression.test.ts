@@ -95,8 +95,18 @@ describe('Issue #153 Mission-3 PR-2 — ICS endpoint auth (server)', () => {
       `router.post('/:petId/health-events', validateFirebaseToken`,
       `router.delete('/:petId/health-events/:eventId', validateFirebaseToken`,
     ];
+    // 2026-09-13: match the auth middleware ANYWHERE in the handler's middleware
+    // list — '/:petId' gained reserveLiteralSegments(...) before it, which broke
+    // the literal pin while the route stayed fully gated.
     for (const sig of expected) {
-      expect(PETS_SRC).toContain(sig);
+      const [head, ...mw] = sig.split(', ');
+      const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rx = new RegExp(esc(head) + ',(?:[^\\n]*?,)?\\s*' + mw.map(esc).join('\\s*,\\s*'));
+      expect(PETS_SRC, sig).toMatch(rx);
+    }
+    // And NO pets handler may be registered without validateFirebaseToken.
+    for (const line of PETS_SRC.split('\n').filter((l) => /^router\.(get|post|patch|put|delete)\(/.test(l))) {
+      expect(line, 'unauthenticated pets route').toContain('validateFirebaseToken');
     }
   });
 });
@@ -114,11 +124,10 @@ describe('Issue #153 Mission-3 PR-2 — ICS endpoint auth (client)', () => {
     // The new pattern fetches the URL with a Bearer header, gets a blob,
     // builds a blob URL, and triggers a synthetic anchor click. Pin the
     // critical lines so a future PR cannot regress to a bare <a href>.
+    // 2026-09-13: the download now goes through apiRequest, which attaches the
+    // Firebase Bearer itself (client/src/lib/queryClient.ts). Pin that call.
     expect(CLIENT_SRC).toMatch(
-      /fetch\(\s*[`'"][^`'"]*\/api\/pets\/\$\{petId\}\/health-events\/\$\{ev\.id\}\/ics[`'"]/,
-    );
-    expect(CLIENT_SRC).toMatch(
-      /Authorization:\s*`Bearer \$\{authToken\}`/,
+      /apiRequest\(\s*'GET'\s*,\s*`\/api\/pets\/\$\{petId\}\/health-events\/\$\{ev\.id\}\/ics`\s*\)/,
     );
     expect(CLIENT_SRC).toMatch(/URL\.createObjectURL\(blob\)/);
     expect(CLIENT_SRC).toMatch(/URL\.revokeObjectURL\(blobUrl\)/);
