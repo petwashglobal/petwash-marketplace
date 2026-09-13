@@ -7646,35 +7646,10 @@ self.addEventListener('notificationclick', (event) => {
       error: 'ENDPOINT_SEALED',
       message: 'Gift purchase moved to the paid eGift rail.',
     });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-    try {
-      const { packageId, email, recipientName, recipientEmail, personalMessage } = req.body;
-      
-      if (!packageId || !email || !recipientName || !recipientEmail) {
-        return res.status(400).json({ message: "Required fields missing" });
-      }
-
-      // Redirect to Nayax payment for gift cards
-      const response = await fetch(`http://127.0.0.1:${process.env.PORT || 5000}/api/nayax-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId,
-          customerEmail: email,
-          customerName: recipientName,
-          isGiftCard: true,
-          recipientEmail,
-          personalMessage
-        })
-      });
-
-      const data = await response.json();
-      res.json(data);
-
-    } catch (error) {
-      logger.error('Error processing gift purchase:', error);
-      res.status(500).json({ message: "Failed to process gift purchase" });
-    }
   });
 
   // P0-FIX: Express checkout stub REMOVED — returned {success:true} with no real payment processor,
@@ -7976,44 +7951,10 @@ self.addEventListener('notificationclick', (event) => {
       error: 'ENDPOINT_SEALED',
       message: 'Voucher validation moved to the authenticated redemption rail.',
     });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-    try {
-      const { qrCodeData } = req.body;
-      
-      if (!qrCodeData) {
-        return res.status(400).json({ valid: false, message: "QR code data is required" });
-      }
-
-      const parsedData = QRCodeService.parseQRCodeData(qrCodeData);
-      
-      if (!parsedData) {
-        return res.json({ valid: false, message: "Invalid QR code format" });
-      }
-
-      // Get voucher details for validation (eVoucher schema)
-      const voucher = await VoucherService.getVoucherDetails(parsedData.code);
-      
-      if (!voucher) {
-        return res.json({ valid: false, message: "Voucher not found" });
-      }
-
-      // Check basic validity using eVoucher schema
-      const isValid = voucher.status === 'ACTIVE' && 
-                     parseFloat(voucher.remainingAmount) > 0 && 
-                     (!voucher.expiresAt || new Date() < new Date(voucher.expiresAt));
-
-      res.json({
-        valid: isValid,
-        remainingAmount: voucher.remainingAmount,
-        initialAmount: voucher.initialAmount,
-        currency: voucher.currency,
-        voucherCode: voucher.codeLast4,
-        message: isValid ? "Valid voucher" : "Voucher is expired or inactive"
-      });
-    } catch (error) {
-      logger.error('Error validating QR code:', error);
-      res.status(500).json({ valid: false, message: "Validation failed" });
-    }
   });
 
   // ============================================================================
@@ -9082,56 +9023,10 @@ self.addEventListener('notificationclick', (event) => {
       error: 'ENDPOINT_SEALED',
       message: 'Receipts are issued by the payment rail, not by request.',
     });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-    try {
-      const { 
-        userId, 
-        packageId, 
-        customerEmail, 
-        customerName, 
-        paymentMethod, 
-        originalAmount, 
-        discountApplied, 
-        finalTotal,
-        nayaxTransactionId,
-        locationName,
-        washDuration
-      } = req.body;
-
-      if (!packageId || !customerEmail || !paymentMethod || !originalAmount || !finalTotal) {
-        return res.status(400).json({ message: "Required fields missing" });
-      }
-
-      const receiptRequest = {
-        userId,
-        packageId,
-        customerEmail,
-        customerName,
-        paymentMethod,
-        originalAmount,
-        discountApplied: discountApplied || 0,
-        finalTotal,
-        nayaxTransactionId,
-        locationName,
-        washDuration
-      };
-
-      const receipt = await SmartReceiptService.createSmartReceipt(receiptRequest);
-      
-      res.json({
-        success: true,
-        receipt: {
-          transactionId: receipt.transactionId,
-          receiptUrl: receipt.receiptUrl,
-          qrCode: receipt.receiptQrCode,
-          loyaltyPointsEarned: receipt.loyaltyPointsEarned,
-          tierProgress: SmartReceiptService.getTierProgressText(receipt)
-        }
-      });
-    } catch (error) {
-      logger.error('Error creating smart receipt:', error);
-      res.status(500).json({ message: "Failed to create smart receipt" });
-    }
   });
 
   app.get('/api/receipts/:transactionId', async (req, res) => {
@@ -12044,141 +11939,10 @@ self.addEventListener('notificationclick', (event) => {
       error: 'ENDPOINT_SEALED',
       message: 'External enrolment requires a verified contact.',
     });
+    // The original handler body was removed rather than left unreachable
+    // below the return (unreachable code also loses null-narrowing and adds
+    // type errors). It is in git history before 2026-09-13.
 
-    try {
-      const { z } = await import('zod');
-      const { db } = await import('./db');
-      const { loyaltyProfiles, pointsTransactions } = await import('../shared/schema-loyalty');
-      const { eq } = await import('drizzle-orm');
-      const { logLoyaltyEnrollment } = await import('./services/googleSheetsIntegration');
-      const { sendClubWelcomeEmail } = await import('./email/luxury-email-service');
-      const { logger } = await import('./lib/logger');
-
-      const externalEnrollSchema = z.object({
-        firstName: z.string().min(1, 'First name is required'),
-        lastName: z.string().min(1, 'Last name is required'),
-        email: z.string().email('Valid email required'),
-        phone: z.string().min(9, 'Valid phone number required'),
-        country: z.string().default('IL'),
-        language: z.enum(['en', 'he', 'ar', 'ru', 'fr', 'es']).default('he'),
-        memberType: z.enum(['pet_parent', 'provider']).default('pet_parent'),
-        referralSource: z.string().optional(),
-        petNames: z.string().optional(),
-        preferredStation: z.string().optional(),
-        birthday: z.string().optional(),
-        referralCode: z.string().optional(),
-      });
-
-      const data = externalEnrollSchema.parse(req.body);
-      const externalId = `EXT-${data.email.toLowerCase()}`;
-
-      const existingByEmail = await db
-        .select()
-        .from(loyaltyProfiles)
-        .where(eq(loyaltyProfiles.userId, externalId))
-        .limit(1);
-
-      if (existingByEmail.length > 0) {
-        return res.json({
-          success: true,
-          enrolled: false,
-          message: 'Already enrolled with this email',
-          profile: existingByEmail[0],
-        });
-      }
-
-      const welcomePoints = 100;
-
-      const [profile] = await db
-        .insert(loyaltyProfiles)
-        .values({
-          userId: externalId,
-          tier: 'bronze',
-          tierSince: new Date(),
-          tierProgress: 0,
-          tierThreshold: 1000,
-          points: welcomePoints,
-          lifetimePoints: welcomePoints,
-          xp: 0,
-          level: 1,
-          totalWashes: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          averageWashInterval: 21,
-          isVip: false,
-          conciergeAccess: false,
-          prioritySupport: false,
-        })
-        .returning();
-
-      try {
-        await db.insert(pointsTransactions).values({
-          userId: externalId,
-          type: 'earned',
-          amount: welcomePoints,
-          balance: welcomePoints,
-          source: 'signup',
-          description: `Welcome bonus - external enrollment as ${data.memberType}`,
-        });
-      } catch (txErr) {
-        logger.warn('[Loyalty] Failed to record external welcome points transaction', { txErr });
-      }
-
-      try {
-        await sendClubWelcomeEmail(data.email, data.firstName, {
-          tier: 'bronze',
-          points: welcomePoints,
-          language: data.language as 'he' | 'en',
-        });
-      } catch (emailErr) {
-        logger.warn('[Loyalty] Failed to send external enrollment email', { emailErr });
-      }
-
-      try {
-        await logLoyaltyEnrollment({
-          memberId: externalId,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          enrollmentSource: data.referralSource || 'external-enrollment',
-          tier: 'bronze',
-          welcomePoints,
-          language: data.language,
-          country: data.country,
-          memberType: data.memberType,
-          petNames: data.petNames || '',
-          preferredStation: data.preferredStation || '',
-          birthday: data.birthday || '',
-          referralCode: data.referralCode || '',
-        });
-      } catch (sheetErr) {
-        logger.warn('[Loyalty] Failed to log external enrollment to Google Sheets', { sheetErr });
-      }
-
-      logger.info('[Loyalty] External member enrolled successfully', {
-        externalId,
-        email: data.email,
-        memberType: data.memberType,
-      });
-
-      res.json({
-        success: true,
-        enrolled: true,
-        memberId: externalId,
-        welcomePoints,
-        tier: 'bronze',
-        profile,
-      });
-    } catch (error: any) {
-      if (error.name === 'ZodError') {
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: error.errors,
-        });
-      }
-      res.status(500).json({ error: 'Failed to enroll external member' });
-    }
   });
 
   // HARD-DEPRECATED: POST /api/customer/register
