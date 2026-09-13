@@ -3,7 +3,7 @@
  * PostgreSQL-backed | Gemini-moderated | Loyalty-gated posting
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +19,11 @@ import {
   Gift, Loader2, Plus, ChevronRight, Phone, MessageSquare,
   Dog, Cat, Bird, Footprints, Star, Clock, Eye,
   Upload, Camera, Bell, BellDot, X, Filter,
+  Share2, Palette, ChevronLeft, ChevronDown, Map as MapIcon, PawPrint, User as UserIcon, Users, ClipboardList, Home as HomeIcon,
 } from 'lucide-react';
+import {
+  EditorialHeader, PillarRow, StepsBand, ClosingBand, SideNav, Chip, GOLD, GOLD_INK, HAIRLINE, PAPER, SERIF, INK,
+} from '@/components/pet-community/Editorial';
 import { apiRequest, getFirebaseBearerToken } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
 import { PetWashIcon } from '@/components/PetWashIcon';
@@ -60,113 +64,6 @@ interface PawFinderProps {
   language: Language;
   /** Deep link /paw-finder/:id — opens that post's detail on load (2026-09-12). */
   initialPostId?: number;
-}
-
-/* -------------------------------------------------------------------------
-   FEATURED PET CARD — large visual card for pinned/demo posts
-------------------------------------------------------------------------- */
-
-function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?: () => void; user: any }) {
-  const petIcon: Record<string, string> = { dog: 'animal_dog', cat: 'animal_cat', bird: 'animal_bird', other: 'brand_paw' };
-  const rewardNum = post.reward_amount ? Number(post.reward_amount) : 0;
-  const [imageFailed, setImageFailed] = useState(false);
-  const mediaUrl = sanitizeUrl(post.primary_media);
-
-  return (
-    <div className="group relative overflow-hidden rounded-3xl border border-rose-100 bg-white shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col">
-      {/* Photo */}
-      <div className="relative h-52 overflow-hidden bg-slate-100">
-        {mediaUrl && !imageFailed ? (
-          <img
-            src={mediaUrl}
-            alt={post.pet_name || ''}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setImageFailed(true)}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center bg-rose-50">
-            <PetWashIcon name={petIcon[post.pet_type] ?? 'brand_paw'} size={64} label={post.pet_name || ''} />
-          </div>
-        )}
-        {/* Status badge over photo */}
-        <div className="absolute top-3 right-3">
-          <span className="bg-rose-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow flex items-center gap-1">
-            🔴 אבוד
-          </span>
-        </div>
-        {/* Reward badge */}
-        {rewardNum > 0 && (
-          <div className="absolute bottom-3 left-3">
-            <span className="bg-amber-400 text-amber-900 text-xs font-extrabold px-3 py-1.5 rounded-full shadow flex items-center gap-1">
-              🏆 גמול ₪{rewardNum.toLocaleString('he-IL')}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="p-4 flex flex-col flex-1">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <div>
-            <h3 className="text-lg font-extrabold text-slate-900 leading-tight flex items-center gap-2">
-              <PetWashIcon name={petIcon[post.pet_type] ?? 'brand_paw'} size={20} label="" /> {post.pet_name}
-            </h3>
-            {post.breed && (
-              <p className="text-sm text-slate-500 font-medium">{post.breed}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 text-sm text-slate-500 mt-1 mb-3">
-          <MapPin className="w-3.5 h-3.5 flex-shrink-0 text-rose-400" />
-          <span className="font-medium text-slate-700">{post.city}</span>
-          {post.area && <span>· {post.area}</span>}
-          <span className="mx-1 text-slate-200">·</span>
-          <Clock className="w-3 h-3 flex-shrink-0" />
-          <span>{formatDate(post.event_date)}</span>
-        </div>
-
-        <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 flex-1">
-          {post.description}
-        </p>
-
-        <div className="mt-4 space-y-2">
-          {/* Owner opted into public phone → ANYONE can ring directly, no login. */}
-          {post.public_phone && (
-            <a
-              href={`tel:${post.public_phone}`}
-              className="w-full py-2.5 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
-              dir="ltr"
-            >
-              <Phone className="w-3.5 h-3.5" /> {post.public_phone}
-            </a>
-          )}
-          {user ? (
-            <button
-              onClick={onContact}
-              className="w-full py-2.5 rounded-2xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
-            >
-              <Phone className="w-3.5 h-3.5" /> צור קשר עם הבעלים
-            </button>
-          ) : !post.public_phone ? (
-            <button
-              onClick={() => window.location.href = '/sign-in?redirect=/paw-finder'}
-              className="w-full py-2.5 rounded-2xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
-            >
-              <AlertCircle className="w-3.5 h-3.5" /> התחבר כדי ליצור קשר
-            </button>
-          ) : null}
-          {/* Spread the alert — every share helps a lost pet get home (viral loop). */}
-          <SocialShare
-            url={`${typeof window !== 'undefined' ? window.location.origin : 'https://petwash.co.il'}/paw-finder/${post.id}`}
-            title={`עזרו למצוא את ${post.pet_name || 'החיה האבודה'} | PawFinder™‎`}
-            description={post.description || ''}
-            showLabels={false}
-          />
-        </div>
-      </div>
-    </div>
-  );
 }
 
 /* -------------------------------------------------------------------------
@@ -213,6 +110,9 @@ function PawFinderMap({ posts, onSelect }: { posts: PawPost[]; onSelect: (id: nu
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  // The map loads asynchronously; posts usually arrive first. Without this the
+  // marker effect bailed out on first render and the map opened with NO pins.
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let L: any;
@@ -234,6 +134,7 @@ function PawFinderMap({ posts, onSelect }: { posts: PawPost[]; onSelect: (id: nu
         attribution: '© OpenStreetMap contributors',
       }).addTo(map);
       leafletRef.current = map;
+      setReady(true);
     });
 
     return () => {
@@ -243,7 +144,7 @@ function PawFinderMap({ posts, onSelect }: { posts: PawPost[]; onSelect: (id: nu
   }, []);
 
   useEffect(() => {
-    if (!leafletRef.current) return;
+    if (!ready || !leafletRef.current) return;
     import('leaflet').then(mod => {
       const L = mod.default;
       markersRef.current.forEach(m => m.remove());
@@ -256,7 +157,7 @@ function PawFinderMap({ posts, onSelect }: { posts: PawPost[]; onSelect: (id: nu
         const lng = Number(post.longitude);
         if (isNaN(lat) || isNaN(lng)) return;
 
-        const color = post.post_type === 'lost' ? '#e11d48' : '#059669';
+        const color = post.post_type === 'lost' ? '#D64545' : '#2E8B57';
         const icon = L.divIcon({
           html: `<div style="
             width:28px;height:28px;border-radius:50% 50% 50% 0;
@@ -285,7 +186,7 @@ function PawFinderMap({ posts, onSelect }: { posts: PawPost[]; onSelect: (id: nu
         leafletRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
       }
     });
-  }, [posts, onSelect]);
+  }, [posts, onSelect, ready]);
 
   return (
     <div className="relative w-full h-full rounded-2xl overflow-hidden bg-slate-100">
@@ -1042,7 +943,6 @@ function MyPosts() {
    MAIN PAGE
 ------------------------------------------------------------------------- */
 
-type Tab = 'browse' | 'report' | 'my';
 
 function NotificationsTab({ user }: { user: any }) {
   const qc = useQueryClient();
@@ -1198,48 +1098,307 @@ function ContactsTab({ user }: { user: any }) {
   );
 }
 
+/* -------------------------------------------------------------------------
+   CANONICAL BOARD (CEO mockup 2026-09-13) — Live Map · alerts · matches
+------------------------------------------------------------------------- */
+
+type BoardView = 'map' | 'lost' | 'found' | 'matches' | 'alerts' | 'messages' | 'profile' | 'report';
+type TimeWindow = 'any' | '24h' | '3d' | '7d' | '30d';
+
+const WINDOW_MS: Record<TimeWindow, number> = { any: 0, '24h': 864e5, '3d': 3 * 864e5, '7d': 7 * 864e5, '30d': 30 * 864e5 };
+
+const SIZE_LABEL: Record<string, [string, string]> = {
+  tiny: ['זעיר', 'Tiny'], small: ['קטן', 'Small'], medium: ['בינוני', 'Medium'], large: ['גדול', 'Large'], giant: ['ענק', 'Giant'],
+};
+
+function kmBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const R = 6371, dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+/** "Last seen today / 3 days ago" from the event date (date only), honest about precision. */
+function seenAgo(isHe: boolean, post: PawPost): string {
+  const d = new Date(`${post.event_date}T12:00:00`);
+  if (isNaN(d.getTime())) return '';
+  const days = Math.max(0, Math.round((Date.now() - d.getTime()) / 864e5));
+  const lost = post.post_type === 'lost';
+  if (isHe) {
+    const when = days === 0 ? 'היום' : days === 1 ? 'אתמול' : `לפני ${days} ימים`;
+    return `${lost ? 'נראה לאחרונה' : 'נמצא'} ${when}`;
+  }
+  const when = days === 0 ? 'today' : days === 1 ? 'yesterday' : `${days} days ago`;
+  return `${lost ? 'Last seen' : 'Found'} ${when}`;
+}
+
+const SAVED_KEY = 'pw_pawfinder_saved_alerts';
+function readSaved(): number[] {
+  try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch { return []; }
+}
+
+async function shareAlert(post: PawPost, isHe: boolean, toast: (t: any) => void) {
+  const url = `${window.location.origin}/paw-finder/${post.id}`;
+  const title = post.post_type === 'lost'
+    ? (isHe ? `עזרו למצוא את ${post.pet_name || 'החיה האבודה'} | PawFinder™‎` : `Help find ${post.pet_name || 'this lost pet'} | PawFinder™‎`)
+    : (isHe ? `נמצאה חיה ב${post.city} — מכירים? | PawFinder™‎` : `Pet found in ${post.city} — know them? | PawFinder™‎`);
+  try {
+    if (navigator.share) { await navigator.share({ title, url }); return; }
+    await navigator.clipboard.writeText(url);
+    toast({ title: isHe ? 'הקישור הועתק' : 'Link copied', description: isHe ? 'הדביקו בוואטסאפ או ברשתות.' : 'Paste it in WhatsApp or social.' });
+  } catch { /* share sheet dismissed */ }
+}
+
+function TypePill({ isHe, type }: { isHe: boolean; type: string }) {
+  const lost = type === 'lost';
+  return (
+    <span className="rounded-md px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white" style={{ background: lost ? '#D64545' : '#2E8B57' }}>
+      {lost ? (isHe ? 'אבד' : 'LOST') : (isHe ? 'נמצא' : 'FOUND')}
+    </span>
+  );
+}
+
+function RewardPill({ post }: { post: PawPost }) {
+  const n = post.reward_amount ? Number(post.reward_amount) : 0;
+  if (!n) return null;
+  return (
+    <span className="rounded-md px-2 py-0.5 text-[12px] font-semibold" style={{ background: '#F4E7C3', color: '#7A5B12' }}>
+      ₪{n.toLocaleString('he-IL')} {''}
+    </span>
+  );
+}
+
+function AlertActions({ post, isHe, user, onContact, toast, big = false }: {
+  post: PawPost; isHe: boolean; user: any; onContact: () => void; toast: (t: any) => void; big?: boolean;
+}) {
+  const cls = big ? 'py-3 text-sm' : 'py-2 text-[12px]';
+  const primary = post.public_phone ? (
+    <a href={`tel:${post.public_phone}`} className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-black font-medium text-white ${cls}`} data-testid={`alert-call-${post.id}`}>
+      <Phone className="h-3.5 w-3.5" /> {isHe ? (big ? 'התקשרו עכשיו' : 'התקשרו') : 'Call Now'}
+    </a>
+  ) : (
+    <button
+      type="button"
+      onClick={() => (user ? onContact() : (window.location.href = `/sign-in?redirect=${encodeURIComponent(`/paw-finder/${post.id}`)}`))}
+      className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-black font-medium text-white ${cls}`}
+      data-testid={`alert-message-${post.id}`}
+    >
+      <MessageSquare className="h-3.5 w-3.5" /> {isHe ? (big ? 'שליחת הודעה' : 'הודעה') : 'Message'}
+    </button>
+  );
+  return (
+    <div className={`flex gap-2 ${big ? 'flex-col' : ''}`}>
+      {primary}
+      <button
+        type="button"
+        onClick={() => shareAlert(post, isHe, toast)}
+        className={`flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-white font-medium text-black ${cls}`}
+        style={{ border: `1px solid ${INK}` }}
+        data-testid={`alert-share-${post.id}`}
+      >
+        <Share2 className="h-3.5 w-3.5" /> {isHe ? (big ? 'שיתוף ההתראה' : 'שיתוף') : 'Share Alert'}
+      </button>
+    </div>
+  );
+}
+
+function AlertCard({ post, isHe, user, saved, onToggleSave, onOpen, onContact, toast }: {
+  post: PawPost; isHe: boolean; user: any; saved: boolean; onToggleSave: () => void; onOpen: () => void; onContact: () => void; toast: (t: any) => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  const img = sanitizeUrl(post.primary_media);
+  const size = post.size_category && SIZE_LABEL[post.size_category] ? SIZE_LABEL[post.size_category][isHe ? 0 : 1] : '';
+  return (
+    <article className="flex flex-col overflow-hidden rounded-2xl bg-white" style={{ border: `1px solid ${HAIRLINE}` }} data-testid={`alert-card-${post.id}`}>
+      <div className="relative aspect-[4/3.4] overflow-hidden" style={{ background: PAPER }}>
+        <button type="button" onClick={onOpen} className="absolute inset-0 block" aria-label={post.pet_name || (isHe ? 'לפרטים' : 'Details')}>
+          {img && !failed
+            ? <img src={img} alt={post.pet_name || ''} className="h-full w-full object-cover" onError={() => setFailed(true)} loading="lazy" />
+            : <span className="flex h-full items-center justify-center"><PetIcon type={post.pet_type} className="h-10 w-10 text-black/25" /></span>}
+        </button>
+        <span className="pointer-events-none absolute top-2.5" style={{ insetInlineStart: 10 }}><TypePill isHe={isHe} type={post.post_type} /></span>
+        <button
+          type="button"
+          onClick={onToggleSave}
+          aria-pressed={saved}
+          aria-label={isHe ? 'שמירה' : 'Save'}
+          data-testid={`alert-save-${post.id}`}
+          className="absolute top-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-white/85"
+          style={{ insetInlineEnd: 10 }}
+        >
+          <Heart className="h-[18px] w-[18px]" style={{ color: saved ? '#C0392B' : INK }} fill={saved ? '#C0392B' : 'none'} />
+        </button>
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <div className="flex items-center justify-between gap-2">
+          <button type="button" onClick={onOpen} className="truncate text-[20px] leading-tight text-black" style={{ fontFamily: SERIF }}>
+            {post.pet_name || (post.post_type === 'found' ? (isHe ? 'חיה שנמצאה' : 'Found pet') : (isHe ? 'ללא שם' : 'No name'))}
+          </button>
+          <RewardPill post={post} />
+        </div>
+        <div className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-black/60"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{post.area ? `${post.area}, ${post.city}` : post.city}</span></div>
+        <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-black/60"><Clock className="h-3.5 w-3.5 shrink-0" />{seenAgo(isHe, post)}</div>
+        {post.breed && <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-black/60"><Footprints className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{post.breed}</span></div>}
+        {(post.color_primary || size) && (
+          <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-black/60"><Palette className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{[post.color_primary, size].filter(Boolean).join(' | ')}</span></div>
+        )}
+        <div className="mt-auto pt-3">
+          <AlertActions post={post} isHe={isHe} user={user} onContact={onContact} toast={toast} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/** Detail sheet — the mockup's phone view, for one alert. */
+function AlertDetail({ post, isHe, user, onClose, onContact, toast }: {
+  post: PawPost; isHe: boolean; user: any; onClose: () => void; onContact: () => void; toast: (t: any) => void;
+}) {
+  const img = sanitizeUrl(post.primary_media);
+  const size = post.size_category && SIZE_LABEL[post.size_category] ? SIZE_LABEL[post.size_category][isHe ? 0 : 1] : '';
+  const Back = isHe ? ChevronRight : ChevronLeft;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6" onClick={onClose} data-testid={`alert-detail-${post.id}`}>
+      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white sm:rounded-3xl" onClick={(e) => e.stopPropagation()} dir={isHe ? 'rtl' : 'ltr'}>
+        <div className="flex items-center justify-between px-4 py-3">
+          <button type="button" onClick={onClose} className="flex items-center gap-1 text-lg" style={{ fontFamily: SERIF }}>
+            <Back className="h-5 w-5" /> PawFinder™‎
+          </button>
+          <button type="button" onClick={() => shareAlert(post, isHe, toast)} aria-label={isHe ? 'שיתוף' : 'Share'}><Share2 className="h-5 w-5" /></button>
+        </div>
+        <div className="relative mx-4 aspect-[4/3.2] overflow-hidden rounded-2xl" style={{ background: PAPER }}>
+          {img ? <img src={img} alt={post.pet_name || ''} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center"><PetIcon type={post.pet_type} className="h-12 w-12 text-black/25" /></span>}
+          <span className="absolute top-3" style={{ insetInlineStart: 12 }}><TypePill isHe={isHe} type={post.post_type} /></span>
+        </div>
+        <div className="px-5 pb-6 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-3xl" style={{ fontFamily: SERIF }}>{post.pet_name || (isHe ? 'ללא שם' : 'No name')}</h2>
+            <RewardPill post={post} />
+          </div>
+          <div className="mt-3 space-y-2 text-sm text-black/70">
+            <div className="flex items-center gap-2"><MapPin className="h-4 w-4" />{post.area ? `${post.area}, ${post.city}` : post.city}</div>
+            <div className="flex items-center gap-2"><Clock className="h-4 w-4" />{seenAgo(isHe, post)} · {formatDate(post.event_date)}</div>
+            {post.breed && <div className="flex items-center gap-2"><Footprints className="h-4 w-4" />{post.breed}</div>}
+            {(post.color_primary || size) && <div className="flex items-center gap-2"><Palette className="h-4 w-4" />{[post.color_primary, size].filter(Boolean).join(' | ')}</div>}
+          </div>
+          <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-black/75">{post.description}</p>
+          {post.latitude && post.longitude && (
+            <div className="mt-4 h-40 overflow-hidden rounded-2xl" style={{ border: `1px solid ${HAIRLINE}` }}>
+              <PawFinderMap posts={[post]} onSelect={() => {}} />
+            </div>
+          )}
+          {post.matched_post_count > 0 && (
+            <div className="mt-4 rounded-xl px-4 py-2.5 text-sm" style={{ border: `1px solid ${GOLD}`, color: GOLD_INK }}>
+              {isHe ? `✨ ${post.matched_post_count} התאמות אפשריות` : `✨ ${post.matched_post_count} possible matches`}
+            </div>
+          )}
+          <div className="mt-5"><AlertActions post={post} isHe={isHe} user={user} onContact={onContact} toast={toast} big /></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface MatchRow {
+  id: number; similarity_score: number; distance_km: string | null; date_gap_days: number | null;
+  lost_id: number; lost_pet_name: string | null; lost_city: string; lost_date: string;
+  found_id: number; found_pet_name: string | null; found_city: string; found_date: string;
+}
+
+/** Possible Matches — every suggested lost↔found pair on the member's own notices. */
+function PossibleMatches({ isHe, onOpen }: { isHe: boolean; onOpen: (id: number) => void }) {
+  const mine = useQuery<{ rows: PawPost[] }>({
+    queryKey: ['/api/paw-finder/my/posts'],
+    queryFn: async () => { const r = await apiRequest('/api/paw-finder/my/posts'); if (!r.ok) throw new Error(String(r.status)); return r.json(); },
+  });
+  const ids = (mine.data?.rows ?? []).filter((p) => ['published', 'matched'].includes(p.status)).map((p) => p.id);
+  const details = useQuery<{ own: number; matches: MatchRow[] }[]>({
+    queryKey: ['/api/paw-finder/my/matches', ids.join(',')],
+    enabled: ids.length > 0,
+    queryFn: async () => Promise.all(ids.map(async (id) => {
+      const r = await apiRequest(`/api/paw-finder/posts/${id}`);
+      const j = r.ok ? await r.json() : { matches: [] };
+      return { own: id, matches: j.matches ?? [] };
+    })),
+  });
+  const rows = (details.data ?? []).flatMap((d) => d.matches.map((m) => ({ ...m, own: d.own })));
+  if (mine.isLoading || details.isLoading) return <div className="py-16 text-sm text-black/45" style={{ textAlign: 'center' }}>{isHe ? 'טוען…' : 'Loading…'}</div>;
+  if (!rows.length) {
+    return (
+      <div className="py-16 text-sm text-black/60" style={{ textAlign: 'center' }}>
+        {isHe ? 'אין כרגע התאמות אפשריות לדיווחים שלכם. נודיע ברגע שתופיע התאמה.' : 'No possible matches for your notices yet. We will alert you the moment one appears.'}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {rows.map((m) => {
+        const otherId = m.own === m.lost_id ? m.found_id : m.lost_id;
+        return (
+          <div key={`${m.own}-${m.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4" style={{ border: `1px solid ${HAIRLINE}` }} data-testid={`match-${m.id}`}>
+            <div>
+              <div className="text-lg" style={{ fontFamily: SERIF }}>
+                {isHe ? 'התאמה אפשרית' : 'Possible match'} — {m.lost_pet_name || (isHe ? 'אבוד' : 'Lost')} ↔ {m.found_pet_name || (isHe ? 'נמצא' : 'Found')}
+              </div>
+              <div className="mt-1 text-[13px] text-black/60">
+                {[
+                  m.distance_km != null ? (isHe ? `${Number(m.distance_km).toFixed(1)} ק״מ` : `${Number(m.distance_km).toFixed(1)} km away`) : null,
+                  m.date_gap_days != null ? (isHe ? `הפרש ${m.date_gap_days} ימים` : `${m.date_gap_days} days apart`) : null,
+                  `${m.lost_city} / ${m.found_city}`,
+                ].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => onOpen(m.lost_id)} className="rounded-full px-3 py-1.5 text-[12px]" style={{ border: `1px solid ${HAIRLINE}` }}>{isHe ? 'הדיווח האבוד' : 'Lost notice'}</button>
+              <button type="button" onClick={() => onOpen(otherId === m.lost_id ? m.found_id : otherId)} className="rounded-full bg-black px-3 py-1.5 text-[12px] text-white">{isHe ? 'לצפייה בהתאמה' : 'View match'}</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function PawFinder({ language, initialPostId }: PawFinderProps) {
   useSEO(pageSEO.pawFinder);
   const isHe = language === 'he';
+  const L = (he: string, en: string) => (isHe ? he : en);
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [tab, setTab] = useState<Tab>(() => {
+  const [view, setView] = useState<BoardView>(() => {
     const p = new URLSearchParams(window.location.search).get('tab');
     if (p === 'report' || p === 'post' || p === 'new' || p === 'ad') return 'report';
-    if (p === 'my') return 'my';
-    return 'browse';
+    if (p === 'my') return 'profile';
+    return 'map';
   });
-  const [filterType, setFilterType] = useState<'all' | 'lost' | 'found'>('all');
-  const [filterCity, setFilterCity] = useState('');
-  const [filterPet, setFilterPet] = useState('');
-  const [filterBreed, setFilterBreed] = useState('');
-  const [filterReward, setFilterReward] = useState(false);
+  const [typeChip, setTypeChip] = useState<'all' | 'lost' | 'found'>('all');
+  const [petChip, setPetChip] = useState<'' | 'dog' | 'cat'>('');
+  const [search, setSearch] = useState('');
+  const [city, setCity] = useState('');
+  const [rewardOnly, setRewardOnly] = useState(false);
+  const [windowSel, setWindowSel] = useState<TimeWindow>('any');
+  const [nearbyKm, setNearbyKm] = useState(0);
+  const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
   const [contactPost, setContactPost] = useState<PawPost | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [mySubTab, setMySubTab] = useState<'posts' | 'contacts' | 'notifications'>('posts');
+  const [saved, setSaved] = useState<number[]>(() => readSaved());
 
-  // Client-audit MED (2026-08-24): was bare fetch with no credentials; race
-  // condition when refetch fired before Firebase auth was ready would cache
-  // a 401 for authenticated views. Route through apiRequest so both public
-  // and signed-in reads carry the right auth state.
-  const { data, isLoading, isFetching } = useQuery<{ rows: PawPost[] }>({
-    queryKey: ['/api/paw-finder/posts', filterType, filterCity, filterPet, filterBreed, filterReward],
+  const effectiveType = view === 'lost' ? 'lost' : view === 'found' ? 'found' : typeChip;
+
+  const { data, isLoading } = useQuery<{ rows: PawPost[] }>({
+    queryKey: ['/api/paw-finder/posts', effectiveType, petChip, rewardOnly],
     queryFn: async () => {
       const q = new URLSearchParams();
-      if (filterType !== 'all') q.set('postType', filterType);
-      if (filterCity.trim()) q.set('city', filterCity.trim());
-      if (filterPet) q.set('petType', filterPet);
-      if (filterBreed.trim()) q.set('breed', filterBreed.trim());
-      if (filterReward) q.set('hasReward', 'true');
+      if (effectiveType !== 'all') q.set('postType', effectiveType);
+      if (petChip) q.set('petType', petChip);
+      if (rewardOnly) q.set('hasReward', 'true');
       const r = await apiRequest(`/api/paw-finder/posts?${q}`);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     },
   });
 
-  // Notification count badge
   const notifQ = useQuery<{ unreadCount: number }>({
     queryKey: ['/api/paw-finder/my/notifications'],
     enabled: !!user,
@@ -1248,15 +1407,30 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
   });
   const unreadCount = notifQ.data?.unreadCount ?? 0;
 
-  const posts: PawPost[] = data?.rows ?? [];
+  const allPosts: PawPost[] = data?.rows ?? [];
+  const cities = useMemo(() => Array.from(new Set(allPosts.map((p) => p.city).filter(Boolean))).sort(), [allPosts]);
+  const posts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const since = WINDOW_MS[windowSel] ? Date.now() - WINDOW_MS[windowSel] : 0;
+    return allPosts.filter((p) => {
+      if (city && p.city !== city) return false;
+      if (q && ![p.pet_name, p.breed, p.area, p.city, p.color_primary].some((v) => String(v || '').toLowerCase().includes(q))) return false;
+      if (since && new Date(p.published_at || `${p.event_date}T12:00:00`).getTime() < since) return false;
+      if (nearbyKm && here) {
+        if (!p.latitude || !p.longitude) return false;
+        if (kmBetween(here, { lat: Number(p.latitude), lng: Number(p.longitude) }) > nearbyKm) return false;
+      }
+      return true;
+    });
+  }, [allPosts, search, city, windowSel, nearbyKm, here]);
 
   // Deep link (2026-09-12): /paw-finder/:id selects that post once the list
   // is in; a post outside the current filter is fetched on its own.
   useEffect(() => {
     if (initialPostId && Number.isFinite(initialPostId)) setSelectedId(initialPostId);
   }, [initialPostId]);
-  const deepLinkedMissing = !!selectedId && !isLoading && !posts.some(p => p.id === selectedId) && selectedId === initialPostId;
-  const singleQ = useQuery<{ post: PawPost }>({
+  const deepLinkedMissing = !!selectedId && !isLoading && !allPosts.some(p => p.id === selectedId);
+  const singleQ = useQuery<{ post: PawPost; media?: { file_path: string }[] }>({
     queryKey: ['/api/paw-finder/posts', 'single', selectedId],
     queryFn: async () => {
       const r = await apiRequest(`/api/paw-finder/posts/${selectedId}`);
@@ -1267,422 +1441,265 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
     retry: false,
   });
   const selectedPost = selectedId
-    ? (posts.find(p => p.id === selectedId) ?? (singleQ.data?.post?.id === selectedId ? singleQ.data.post : null))
+    ? (allPosts.find(p => p.id === selectedId)
+      ?? (singleQ.data?.post?.id === selectedId ? { ...singleQ.data.post, primary_media: singleQ.data.media?.[0]?.file_path } as PawPost : null))
     : null;
 
   const handleMapSelect = useCallback((id: number) => setSelectedId(id), []);
 
-  const TAB_ITEMS: { key: Tab; label: string; icon: any }[] = [
-    { key: 'browse', label: 'גלה פוסטים', icon: Search },
-    { key: 'report', label: 'הגשת פוסט', icon: Plus },
-    { key: 'my',     label: 'האזור שלי', icon: Star },
+  const toggleSave = (id: number) => {
+    const next = saved.includes(id) ? saved.filter((x) => x !== id) : [...saved, id];
+    setSaved(next);
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)); } catch { /* storage blocked */ }
+  };
+
+  const requireMember = () => {
+    if (user) return true;
+    window.location.href = `/sign-in?redirect=${encodeURIComponent('/paw-finder')}`;
+    return false;
+  };
+
+  const selectView = (k: string) => {
+    if (['matches', 'alerts', 'messages', 'profile', 'report'].includes(k) && !requireMember()) return;
+    setView(k as BoardView);
+  };
+
+  const askLocation = (km: number) => {
+    if (!km) { setNearbyKm(0); return; }
+    if (here) { setNearbyKm(km); return; }
+    if (!navigator.geolocation) { toast({ variant: 'destructive', title: L('המיקום לא זמין', 'Location unavailable') }); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { setHere({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setNearbyKm(km); },
+      () => toast({ variant: 'destructive', title: L('לא אישרתם מיקום', 'Location not allowed'), description: L('בחרו עיר במקום.', 'Pick a city instead.') }),
+      { timeout: 8000, maximumAge: 60_000 },
+    );
+  };
+
+  const navItems = [
+    { key: 'map', label: L('מפה חיה', 'Live Map'), icon: <MapIcon className="h-4 w-4" /> },
+    { key: 'lost', label: L('חיות אבודות', 'Lost Pets'), icon: <Search className="h-4 w-4" /> },
+    { key: 'found', label: L('חיות שנמצאו', 'Found Pets'), icon: <PawPrint className="h-4 w-4" /> },
+    { key: 'matches', label: L('התאמות אפשריות', 'Possible Matches'), icon: <Heart className="h-4 w-4" /> },
+    { key: 'alerts', label: L('ההתראות שלי', 'My Alerts'), icon: unreadCount > 0 ? <BellDot className="h-4 w-4" /> : <Bell className="h-4 w-4" />, badge: unreadCount || undefined },
+    { key: 'messages', label: L('הודעות', 'Messages'), icon: <MessageSquare className="h-4 w-4" /> },
+    { key: 'profile', label: L('הפרופיל שלי', 'My Profile'), icon: <UserIcon className="h-4 w-4" /> },
   ];
 
+  const showBoard = view === 'map' || view === 'lost' || view === 'found';
+  const recent = view === 'map' ? posts.slice(0, 8) : posts;
+
   return (
-    <div className="min-h-screen bg-slate-50" dir={isHe ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-white text-black" dir={isHe ? 'rtl' : 'ltr'}>
       {contactPost && <ContactModal post={contactPost} onClose={() => setContactPost(null)} />}
+      {selectedPost && (
+        <AlertDetail
+          post={selectedPost}
+          isHe={isHe}
+          user={user}
+          toast={toast}
+          onClose={() => setSelectedId(null)}
+          onContact={() => { setContactPost(selectedPost); setSelectedId(null); }}
+        />
+      )}
 
-      {/* ===================== HERO ===================== */}
-        <div
-          className="relative overflow-hidden"
-          style={{ background: 'linear-gradient(135deg, #334155 0%, #6366f1 45%, #0ea5e9 100%)' }}
-        >
-        {/* decorative paw prints */}
-        <div className="absolute inset-0 opacity-10 select-none pointer-events-none overflow-hidden" aria-hidden>
-          {[{ pos: 'top-4 left-8 rotate-12', size: 96 },{ pos: 'bottom-6 right-12 -rotate-12', size: 112 },
-            { pos: 'top-1/2 left-1/4 rotate-6', size: 80 },{ pos: 'top-8 right-1/3 -rotate-6', size: 64 },
-            { pos: 'bottom-4 left-1/2 rotate-3', size: 128 }].map(({ pos, size }, i) => (
-            <span key={i} className={`absolute ${pos}`}><PetWashIcon name="brand_paw" size={size} label="" /></span>
-          ))}
-        </div>
+      <EditorialHeader
+        isHe={isHe}
+        cornerStart={isHe ? ['מפה חיה', 'התראות חכמות', 'כוח הקהילה'] : ['Live map', 'Smart alerts', 'Community-powered']}
+        cornerEnd={isHe ? ['אנשים', 'חיות', 'קהילות', 'טובות יותר'] : ['People', 'Pets', 'Kinder', 'Communities']}
+        title="PawFinder"
+        titleMark="™‎"
+        subtitle={L('שירות ללא עלות לחברי PetWash — חיות שאבדו ונמצאו.', 'A free members service for lost & found pets.')}
+        italic={L('מוצאים מהר יותר. חוזרים הביתה מוקדם יותר.', 'Find faster. Reunite sooner.')}
+      />
 
-        <div className="relative max-w-7xl mx-auto px-4 pt-10 pb-8">
-          {/* Top label */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{isHe ? 'PetWash™‎ · פורטל חיפוש חברתי ללא עלות' : 'PetWash™‎ · Community Search Portal · No Cost'}</span>
+      <main className="mx-auto max-w-6xl px-3 sm:px-5">
+        <div className="rounded-[28px] bg-white p-4 sm:p-6" style={{ border: `1px solid ${HAIRLINE}`, boxShadow: '0 30px 60px -40px rgba(0,0,0,0.25)' }}>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b pb-4" style={{ borderColor: HAIRLINE }}>
+            <div className="text-[13px] tracking-[0.2em] uppercase text-black/60">PawFinder™‎</div>
+            <button
+              type="button"
+              onClick={() => selectView('report')}
+              className="rounded-full px-5 py-2 text-sm font-medium text-white"
+              style={{ background: GOLD_INK }}
+              data-testid="button-report-pet"
+            >
+              {L('דיווח על חיה', 'Report a Pet')}
+            </button>
           </div>
 
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            {/* Headline block */}
-            <div className="flex-1">
-              <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight drop-shadow-sm flex items-center gap-3">
-                <PetWashIcon name="brand_paw" size={52} label="" /> PawFinder
-              </h1>
-              <p className="text-white/90 text-xl md:text-2xl font-semibold mt-2 leading-snug">
-                {isHe ? 'לכל החיות האבודות מגיע לחזור הביתה.' : 'Every lost pet deserves to come home.'}
-              </p>
-              <p className="text-white/75 text-base mt-2 max-w-xl leading-relaxed">
-                {isHe
-                  ? 'אנחנו פה בשביל זה. פורטל חיפוש חברתי ללא עלות — פרסמו, גלו, ועזרו לחיות אבודות למצוא את הדרך הביתה. אפשר גם להציע פרס כלשהו למוצא.'
-                  : "We're here for that. A community search portal at no cost — post, discover, and help lost pets find their way home. You can even offer a reward to the finder."}
-              </p>
-              <p className="text-white/60 text-sm mt-1">
-                {isHe ? 'שירות קהילתי ללא עלות · תל אביב, רמת גן וכל ישראל · מבית PetWash™‎' : 'Free community service · Tel Aviv, Ramat Gan & all Israel · Powered by PetWash™‎'}
-              </p>
+          <div className="flex gap-6">
+            <SideNav
+              icon={<MapPin className="h-6 w-6" />}
+              title={<>PawFinder<sup style={{ fontSize: '0.45em' }}>™‎</sup></>}
+              subtitle={L('אבדו ונמצאו', 'Lost & Found')}
+              items={navItems}
+              active={view}
+              onSelect={selectView}
+              note={isHe ? ['קהילות חזקות', 'חיות מאושרות', 'מחר טוב יותר'] : ['Stronger', 'Communities', 'Happier Pets', 'Brighter', 'Tomorrows']}
+            />
 
-              {/* Live stats */}
-              <div className="flex items-center gap-4 mt-5 flex-wrap">
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
-                  <Heart className="w-4 h-4 text-white" />
-                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'lost').length} {isHe ? 'חיות אבודות' : 'lost'}</span>
-                </div>
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
-                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'found').length} {isHe ? 'נמצאו' : 'found'}</span>
-                </div>
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
-                  <MapPin className="w-4 h-4 text-white" />
-                  <span className="text-white font-semibold text-sm">{isHe ? 'תל אביב, רמת גן וסביבה' : 'Tel Aviv, Ramat Gan & nearby'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* CTA card */}
-            <div className="flex-shrink-0 bg-white/95 backdrop-blur-sm rounded-3xl p-6 shadow-2xl w-full lg:w-80">
-              <div className="text-center mb-4">
-                <div className="text-3xl mb-1">🆓</div>
-                <div className="font-bold text-slate-900 text-lg leading-tight">{isHe ? 'פרסום מודעה — ללא עלות' : 'Post a notice — no cost'}</div>
-                <p className="text-slate-500 text-sm mt-1 leading-relaxed">
-                  {isHe
-                    ? 'לחברי PetWash מחוברים. התחבר, פרסם תוך דקה — וכל פוסט עובר בדיקת בטיחות ואישור לפני פרסום.'
-                    : 'For signed-in PetWash members. Sign in, post in a minute — every post is safety-checked and approved before it goes live.'}
-                </p>
-              </div>
-              <button
-                onClick={() => setTab('report')}
-                className="w-full py-3 rounded-2xl font-bold text-white text-base shadow-lg hover:opacity-90 active:scale-95 transition-all"
-                style={{ background: 'linear-gradient(135deg, #6366f1, #0ea5e9)' }}
-              >
-                {isHe ? '📢 פרסם מודעה עכשיו' : '📢 Post a notice now'}
-              </button>
-              <button
-                onClick={() => setTab('browse')}
-                className="w-full py-3 rounded-2xl font-semibold text-slate-700 text-sm mt-2 bg-slate-100 hover:bg-slate-200 transition-colors"
-              >
-                {isHe ? '🗺️ חפש בפוסטים הפעילים' : '🗺️ Browse active posts'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* How it works strip */}
-        <div className="relative bg-white/10 backdrop-blur-sm border-t border-white/20">
-          <div className="max-w-7xl mx-auto px-4 py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {(isHe ? [
-                { icon: '🆓', title: 'פרסום ללא עלות', desc: 'חברי PetWash מחוברים מפרסמים חיה אבודה או שנמצאה — בחינם, תוך דקה.' },
-                { icon: '🛡️', title: 'בטוח ומאושר', desc: 'הפרסום פתוח לחברים מחוברים בלבד, וכל פוסט עובר סריקת בטיחות ואישור אנושי לפני שעולה לאוויר.' },
-                { icon: '🤝', title: 'התאמה קהילתית + פרס', desc: 'המערכת מתאימה אוטומטית בין "אבוד" ל"נמצא" ומחברת בין האנשים הנכונים. אפשר גם להציע פרס למוצא.' },
-              ] : [
-                { icon: '🆓', title: 'Post at no cost', desc: 'Signed-in PetWash members post a lost or found pet — free, in under a minute.' },
-                { icon: '🛡️', title: 'Safe & approved', desc: 'Posting is for signed-in members only, and every post passes a safety scan and a human approval before it goes live.' },
-                { icon: '🤝', title: 'Community matching + reward', desc: 'We auto-match “lost” and “found” and connect the right people. You can also offer a reward to the finder.' },
-              ]).map(({ icon, title, desc }) => (
-                <div key={title} className="flex items-start gap-3 text-white">
-                  <span className="text-2xl flex-shrink-0">{icon}</span>
-                  <div>
-                    <div className="font-bold text-sm">{title}</div>
-                    <div className="text-white/70 text-xs mt-0.5 leading-relaxed">{desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ===================== TABS BAR ===================== */}
-      <div className="bg-white border-b border-slate-100 sticky top-20 md:top-24 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto">
-            {TAB_ITEMS.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`flex items-center gap-1.5 px-5 py-3.5 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
-                  tab === key
-                    ? 'border-rose-500 text-rose-600'
-                    : 'border-transparent text-slate-400 hover:text-slate-700'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-
-        {/* -------- BROWSE TAB -------- */}
-        {tab === 'browse' && (
-          <>
-            {/* ═══ FEATURED MISSING PETS ═══ */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                    🚨 חיות אבודות — דרושה עזרה!
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-0.5">
-                    דיווחים על חיות מחמד שאבדו לאחרונה — כל מידע יכול לעזור להחזיר אותן הביתה
-                  </p>
-                </div>
-                <span className="hidden sm:flex items-center gap-1 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-full px-3 py-1.5">
-                  🆓 פרסום חינמי
-                </span>
-              </div>
-              {/* PR-FAKE (2026-06-13): removed DEMO_PETS — these were FABRICATED
-                  lost-pet listings (fake rewards + a contact button) rendered as
-                  if real. Showing invented missing pets is dangerous and a legal
-                  exposure. Honest empty state until real reports exist. */}
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
-                אין כרגע דיווחים פעילים על חיות אבודות. אם איבדת חיית מחמד — פרסם דיווח חינם ונעזור להפיץ.
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="flex-1 h-px bg-slate-200" />
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest whitespace-nowrap">
-                כל הפוסטים הפעילים בקהילה
-              </span>
-              <div className="flex-1 h-px bg-slate-200" />
-            </div>
-
-            {/* Filters */}
-            <div className="flex flex-wrap gap-3 mb-5">
-              <div className="flex rounded-2xl border border-slate-200 bg-white overflow-hidden">
-                {(['all', 'lost', 'found'] as const).map(t => (
-                  <button
-                    key={t}
-                    onClick={() => setFilterType(t)}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${
-                      filterType === t ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {t === 'all' ? 'הכל' : t === 'lost' ? '🔴 אבודים' : '🟢 נמצאו'}
-                  </button>
-                ))}
+            <div className="min-w-0 flex-1">
+              <div className="mb-4 flex gap-2 overflow-x-auto lg:hidden">
+                {navItems.map((it) => <Chip key={it.key} active={view === it.key} onClick={() => selectView(it.key)}>{it.label}{it.badge ? ` · ${it.badge}` : ''}</Chip>)}
               </div>
 
-              <div className="flex items-center gap-2 flex-1 min-w-[180px] max-w-xs bg-white border border-slate-200 rounded-2xl px-3">
-                <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <input
-                  value={filterCity}
-                  onChange={e => setFilterCity(e.target.value)}
-                  placeholder="סנן לפי עיר..."
-                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 min-w-[150px] bg-white border border-slate-200 rounded-2xl px-3">
-                <Footprints className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <select
-                  value={filterPet}
-                  onChange={e => setFilterPet(e.target.value)}
-                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
-                >
-                  <option value="">כל החיות</option>
-                  <option value="dog">🐕 כלב</option>
-                  <option value="cat">🐈 חתול</option>
-                  <option value="bird">🐦 ציפור</option>
-                  <option value="other">🐾 אחר</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2 min-w-[140px] bg-white border border-slate-200 rounded-2xl px-3">
-                <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                <input
-                  value={filterBreed}
-                  onChange={e => setFilterBreed(e.target.value)}
-                  placeholder="גזע..."
-                  className="flex-1 py-2 text-[16px] outline-none bg-transparent"
-                />
-              </div>
-
-              <button
-                onClick={() => setFilterReward(!filterReward)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-sm font-medium transition-colors ${
-                  filterReward
-                    ? 'bg-amber-50 border-amber-300 text-amber-700'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <Gift className="w-3.5 h-3.5" /> עם גמול
-              </button>
-
-              {isFetching && <Loader2 className="w-4 h-4 animate-spin text-slate-400 self-center" />}
-            </div>
-
-            {/* Map + List */}
-            <div className="grid gap-5 lg:grid-cols-[1.1fr_1fr]">
-              {/* Map */}
-              <div className="h-[520px] rounded-3xl overflow-hidden border border-slate-200 bg-slate-100">
-                <PawFinderMap posts={posts} onSelect={handleMapSelect} />
-              </div>
-
-              {/* List */}
-              <div className="overflow-y-auto max-h-[520px] space-y-3 pr-1">
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-20 text-slate-400">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" /> טוען...
-                  </div>
-                ) : posts.length === 0 ? (
-                  <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-400">
-                    <Footprints className="w-8 h-8 mx-auto mb-3 opacity-30" />
-                    <p className="font-medium">לא נמצאו פוסטים</p>
-                    <p className="text-sm mt-1">נסה לשנות את הפילטרים.</p>
-                  </div>
-                ) : (
-                  posts.map(post => (
-                    <div
-                      key={post.id}
-                      id={`post-${post.id}`}
-                      className={`transition-all ${selectedId === post.id ? 'ring-2 ring-slate-900 rounded-2xl' : ''}`}
-                      onClick={() => setSelectedId(post.id === selectedId ? null : post.id)}
-                    >
-                      <PostCard
-                        post={post}
-                        onContact={user ? () => setContactPost(post) : undefined}
-                      />
+              {showBoard && (
+                <>
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h2 className="text-[30px] leading-tight" style={{ fontFamily: SERIF }}>
+                        {view === 'found' ? L('חיות שנמצאו', 'Found Pets Near You') : view === 'lost' ? L('חיות אבודות', 'Lost Pets Near You') : L('חיות אבודות בסביבתך', 'Find Lost Pets Near You')}
+                      </h2>
+                      <p className="text-[13px] text-black/55">{L('אנשים אמיתיים. התראות אמיתיות. איחודים אמיתיים.', 'Real people. Real alerts. Real reunions.')}</p>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
+                    <div className="flex flex-1 flex-col gap-2 sm:flex-row md:max-w-md">
+                      <label className="flex flex-1 items-center gap-2 rounded-xl bg-white px-3" style={{ border: `1px solid ${HAIRLINE}` }}>
+                        <Search className="h-4 w-4 text-black/45" />
+                        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={L('חיפוש לפי שם, גזע, שכונה…', 'Search by name, breed, suburb…')} className="w-full bg-transparent py-2.5 text-base outline-none" data-testid="input-pawfinder-search" />
+                      </label>
+                      <label className="flex items-center gap-2 rounded-xl bg-white px-3 sm:w-44" style={{ border: `1px solid ${HAIRLINE}` }}>
+                        <MapPin className="h-4 w-4 text-black/45" />
+                        <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full bg-transparent py-2.5 text-base outline-none" data-testid="select-pawfinder-city">
+                          <option value="">{L('כל הערים', 'All cities')}</option>
+                          {cities.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
 
-            {/* Selected Post Detail */}
-            {selectedPost && (
-              <div className="mt-5 rounded-3xl border border-slate-200 bg-white p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-sm font-semibold px-2.5 py-1 rounded-full ${selectedPost.post_type === 'lost' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {selectedPost.post_type === 'lost' ? '🔴 אבוד' : '🟢 נמצא'}
-                      </span>
-                      {selectedPost.status !== 'published' && (
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${STATUS_COLORS[selectedPost.status] || ''}`}>
-                          {STATUS_LABELS[selectedPost.status] || selectedPost.status}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-lg font-bold">{selectedPost.pet_name || 'ללא שם'}</h3>
-                    <div className="text-sm text-slate-500 mt-0.5">
-                      {selectedPost.city}{selectedPost.area ? `, ${selectedPost.area}` : ''} · {formatDate(selectedPost.event_date)}
-                    </div>
-                    <p className="text-sm text-slate-700 mt-3 leading-relaxed">{selectedPost.description}</p>
-                    {selectedPost.matched_post_count > 0 && (
-                      <div className="mt-3 rounded-xl bg-[#D4AF37] border border-[#D4AF37] px-4 py-2 text-sm text-[#B8932F] font-medium">
-                        ✨ נמצאו {selectedPost.matched_post_count} התאמות אפשריות לפוסט זה
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {view === 'map' && <>
+                      <Chip active={typeChip === 'lost'} onClick={() => setTypeChip(typeChip === 'lost' ? 'all' : 'lost')} testId="chip-lost">{L('אבודים', 'Lost')}</Chip>
+                      <Chip active={typeChip === 'found'} onClick={() => setTypeChip(typeChip === 'found' ? 'all' : 'found')} testId="chip-found">{L('נמצאו', 'Found')}</Chip>
+                    </>}
+                    <Chip active={petChip === 'dog'} onClick={() => setPetChip(petChip === 'dog' ? '' : 'dog')} testId="chip-dogs">{L('כלבים', 'Dogs')}</Chip>
+                    <Chip active={petChip === 'cat'} onClick={() => setPetChip(petChip === 'cat' ? '' : 'cat')} testId="chip-cats">{L('חתולים', 'Cats')}</Chip>
+                    <span className="relative inline-flex items-center"><select value={nearbyKm} onChange={(e) => askLocation(Number(e.target.value))} className="appearance-none rounded-full bg-white py-1.5 text-[13px]"  style={{ paddingInlineStart: 12, paddingInlineEnd: 28, border: `1px solid ${nearbyKm ? INK : HAIRLINE}` }} data-testid="select-nearby">
+                      <option value={0}>{L('בקרבתי', 'Nearby')}</option>
+                      {[2, 5, 10, 25].map((k) => <option key={k} value={k}>{L(`עד ${k} ק״מ`, `Within ${k} km`)}</option>)}
+                    </select><ChevronDown aria-hidden className="pointer-events-none absolute h-3.5 w-3.5 text-black/55" style={{ insetInlineEnd: 10 }} /></span>
+                    <span className="relative inline-flex items-center"><select value={windowSel} onChange={(e) => setWindowSel(e.target.value as TimeWindow)} className="appearance-none rounded-full bg-white py-1.5 text-[13px]"  style={{ paddingInlineStart: 12, paddingInlineEnd: 28, border: `1px solid ${windowSel !== 'any' ? INK : HAIRLINE}` }} data-testid="select-window">
+                      <option value="any">{L('כל הזמנים', 'Any time')}</option>
+                      <option value="24h">{L('24 השעות האחרונות', 'Last 24 Hours')}</option>
+                      <option value="3d">{L('3 ימים', 'Last 3 days')}</option>
+                      <option value="7d">{L('שבוע', 'Last 7 days')}</option>
+                      <option value="30d">{L('חודש', 'Last 30 days')}</option>
+                    </select><ChevronDown aria-hidden className="pointer-events-none absolute h-3.5 w-3.5 text-black/55" style={{ insetInlineEnd: 10 }} /></span>
+                    <Chip active={rewardOnly} onClick={() => setRewardOnly(!rewardOnly)} testId="chip-reward">{L('עם גמול', 'Reward')}</Chip>
+                  </div>
+
+                  {view === 'map' && (
+                    <div className="relative mt-4 h-[340px] overflow-hidden rounded-2xl sm:h-[420px]" style={{ border: `1px solid ${HAIRLINE}` }}>
+                      <PawFinderMap posts={posts} onSelect={handleMapSelect} />
+                      <div className="pointer-events-none absolute bottom-3 z-[400] flex items-center gap-3 rounded-full bg-white px-3 py-1.5 text-[12px] shadow" style={{ insetInlineStart: 12 }}>
+                        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: '#D64545' }} />{L('אבד', 'Lost')}</span>
+                        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: '#2E8B57' }} />{L('נמצא', 'Found')}</span>
                       </div>
+                      <div className="pointer-events-none absolute bottom-3 z-[400] rounded-xl bg-white px-3 py-1.5 text-[12px] shadow" style={{ insetInlineEnd: 12 }} data-testid="alerts-nearby-count">
+                        <MapPin className="inline h-3.5 w-3.5" style={{ color: '#2E8B57' }} /> {L(`${posts.length} התראות`, `${posts.length} alerts`)}{city ? ` · ${city}` : ''}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex items-center justify-between">
+                    <h3 className="text-2xl" style={{ fontFamily: SERIF }}>{view === 'map' ? L('התראות אחרונות', 'Recent Alerts') : L(`${posts.length} התראות`, `${posts.length} alerts`)}</h3>
+                    {view === 'map' && posts.length > recent.length && (
+                      <button type="button" onClick={() => setView(typeChip === 'found' ? 'found' : 'lost')} className="text-[13px] underline">{L('לכל ההתראות', 'View All')}</button>
                     )}
                   </div>
-                  {selectedPost.primary_media && (
-                    <img src={selectedPost.primary_media} alt="" className="w-28 h-28 object-cover rounded-2xl flex-shrink-0" />
-                  )}
-                </div>
-                <div className="mt-4 flex gap-3">
-                  {user && selectedPost.status !== 'resolved' && (
-                    <button
-                      onClick={() => setContactPost(selectedPost)}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition-colors"
-                    >
-                      <MessageSquare className="w-4 h-4" /> צור קשר עם הבעלים
-                    </button>
-                  )}
-                  {!user && (
-                    <div className="text-sm text-slate-500 flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5 border border-slate-200">
-                      <AlertCircle className="w-4 h-4" /> עליך להתחבר כדי ליצור קשר
+
+                  {isLoading ? (
+                    <div className="py-16 text-sm text-black/45" style={{ textAlign: 'center' }}><Loader2 className="inline h-4 w-4 animate-spin" /> {L('טוען…', 'Loading…')}</div>
+                  ) : recent.length === 0 ? (
+                    <div className="py-14 text-sm text-black/60" style={{ textAlign: 'center' }}>
+                      {L('אין כרגע התראות תואמות. איבדתם או מצאתם חיה? דווחו — ללא עלות.', 'No matching alerts right now. Lost or found a pet? Report it — free.')}
+                    </div>
+                  ) : (
+                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                      {recent.map((post) => (
+                        <AlertCard
+                          key={post.id}
+                          post={post}
+                          isHe={isHe}
+                          user={user}
+                          toast={toast}
+                          saved={saved.includes(post.id)}
+                          onToggleSave={() => toggleSave(post.id)}
+                          onOpen={() => setSelectedId(post.id)}
+                          onContact={() => setContactPost(post)}
+                        />
+                      ))}
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-          </>
-        )}
+                </>
+              )}
 
-        {/* -------- REPORT TAB -------- */}
-        {tab === 'report' && (
-          <div className="max-w-2xl mx-auto">
-            {!user ? (
-              <AuthGateCard
-                language={language}
-                message={isHe
-                  ? 'התחברו או הצטרפו ל-PetWash כדי לפרסם דיווח ב-Paw Finder ולעזור להחזיר חיות אבודות הביתה — תחזרו לכאן מיד אחרי ההתחברות.'
-                  : 'Sign in or join PetWash to post on Paw Finder and help reunite lost pets — you’ll come right back here.'}
-              />
-            ) : (
-              <div>
-                <div className="mb-6">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 mb-1">פוסט חדש</div>
-                  <h2 className="text-2xl font-bold">הגשת דיווח</h2>
-                  <p className="text-slate-500 text-sm mt-1">
-                    זמין לחברי PetWash™‎ מחוברים. כל פוסט עובר בדיקה אוטומטית ואישור לפני פרסום.
-                  </p>
+              {view === 'matches' && user && <><h2 className="mb-4 text-[30px]" style={{ fontFamily: SERIF }}>{L('התאמות אפשריות', 'Possible Matches')}</h2><PossibleMatches isHe={isHe} onOpen={(id) => setSelectedId(id)} /></>}
+              {view === 'alerts' && user && <><h2 className="mb-4 text-[30px]" style={{ fontFamily: SERIF }}>{L('ההתראות שלי', 'My Alerts')}</h2><NotificationsTab user={user} /></>}
+              {view === 'messages' && user && <><h2 className="mb-4 text-[30px]" style={{ fontFamily: SERIF }}>{L('הודעות', 'Messages')}</h2><ContactsTab user={user} /></>}
+              {view === 'profile' && user && <><h2 className="mb-4 text-[30px]" style={{ fontFamily: SERIF }}>{L('הדיווחים שלי', 'My Notices')}</h2><MyPosts /></>}
+
+              {view === 'report' && (
+                <div className="mx-auto max-w-2xl">
+                  {!user ? (
+                    <AuthGateCard
+                      language={language}
+                      message={isHe
+                        ? 'התחברו או הצטרפו ל-PetWash כדי לפרסם דיווח ב-PawFinder ולעזור להחזיר חיות אבודות הביתה — תחזרו לכאן מיד אחרי ההתחברות.'
+                        : 'Sign in or join PetWash to post on PawFinder and help reunite lost pets — you’ll come right back here.'}
+                    />
+                  ) : (
+                    <>
+                      <h2 className="text-[30px]" style={{ fontFamily: SERIF }}>{L('דיווח על חיה שאבדה או נמצאה', 'Report a lost or found pet')}</h2>
+                      <p className="mt-1 text-sm text-black/60">
+                        {isHe
+                          ? 'בטוח ומאושר — לחברי PetWash מחוברים. כל דיווח עובר סריקת בטיחות ואישור אנושי לפני פרסום.'
+                          : 'Safe & approved — For signed-in PetWash members. Every notice passes a safety scan and a human approval before it goes live.'}
+                      </p>
+                      <div className="mt-5 rounded-3xl bg-white p-6" style={{ border: `1px solid ${HAIRLINE}` }}>
+                        <ReportForm onSuccess={() => {
+                          qc.invalidateQueries({ queryKey: ['/api/paw-finder/posts'] });
+                          qc.invalidateQueries({ queryKey: ['/api/paw-finder/my/posts'] });
+                          setView('profile');
+                        }} />
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="bg-white rounded-3xl border border-slate-200 p-6">
-                  <ReportForm onSuccess={() => {
-                    qc.invalidateQueries({ queryKey: ['/api/paw-finder/posts'] });
-                    setTab('my');
-                  }} />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        )}
+        </div>
+      </main>
 
-        {/* -------- MY TAB -------- */}
-        {tab === 'my' && (
-          <div className="max-w-3xl mx-auto">
-            {!user ? (
-              <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-400">
-                <AlertCircle className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                <p className="font-medium">עליך להתחבר כדי לצפות באזור האישי שלך.</p>
-              </div>
-            ) : (
-              <>
-                <div className="mb-5">
-                  <h2 className="text-2xl font-bold">האזור שלי</h2>
-                </div>
+      <PillarRow pillars={[
+        { icon: <MapPin className="h-6 w-6" />, title: L('מפה חיה', 'Live Map'), body: L('רואים בזמן אמת התראות על חיות שאבדו ונמצאו בסביבה.', 'See real-time lost and found pet alerts near you.') },
+        { icon: <Bell className="h-6 w-6" />, title: L('התראות מיידיות', 'Instant Alerts'), body: L('מקבלים התראה על דיווחים חדשים ועל התאמות.', 'Get notified about new alerts in your area.') },
+        { icon: <Heart className="h-6 w-6" />, title: L('התאמות אפשריות', 'Possible Matches'), body: L('ההתאמה החכמה שלנו מקרבת איחוד מהיר יותר.', 'Our smart matching helps reunite pets faster.') },
+        { icon: <Users className="h-6 w-6" />, title: L('קשר ישיר', 'Direct Contact'), body: L('שולחים הודעה או מתקשרים ישירות למוצאים ולבעלים.', 'Message or call pet finders and owners directly.') },
+      ]} />
 
-                {/* Sub-tabs */}
-                <div className="flex gap-1 mb-5 border-b border-slate-100">
-                  {([ 
-                    { key: 'posts' as const, label: 'הפוסטים שלי', icon: Star },
-                    { key: 'contacts' as const, label: 'בקשות קשר', icon: MessageSquare },
-                    { key: 'notifications' as const, label: 'התראות', icon: unreadCount > 0 ? BellDot : Bell, badge: unreadCount },
-                  ]).map(({ key, label, icon: Icon, badge }) => (
-                    <button
-                      key={key}
-                      onClick={() => setMySubTab(key)}
-                      className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                        mySubTab === key
-                          ? 'border-slate-900 text-slate-900'
-                          : 'border-transparent text-slate-400 hover:text-slate-700'
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 ${key === 'notifications' && unreadCount > 0 ? 'text-amber-500' : ''}`} />
-                      {label}
-                      {badge ? (
-                        <span className="ml-1 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                          {badge}
-                        </span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
+      <StepsBand
+        isHe={isHe}
+        lead={L('דרך מהירה יותר הביתה.', 'A faster path home.')}
+        steps={[
+          { icon: <ClipboardList className="h-5 w-5" />, title: L('מדווחים', 'Report'), body: L('על חיה שאבדה או נמצאה.', 'Report a lost or found pet.') },
+          { icon: <MapIcon className="h-5 w-5" />, title: L('על המפה', 'Map'), body: L('ההתראה מופיעה במפה החיה.', 'Your alert appears on the live map.') },
+          { icon: <Heart className="h-5 w-5" />, title: L('התאמה', 'Match'), body: L('מקבלים התראה על התאמות.', 'Get notified of possible matches.') },
+          { icon: <MessageSquare className="h-5 w-5" />, title: L('יוצרים קשר', 'Contact'), body: L('מדברים ישירות ומשתפים פרטים.', 'Speak directly and share details.') },
+          { icon: <HomeIcon className="h-5 w-5" />, title: L('חוזרים הביתה', 'Reunite'), body: L('חיות מאושרות. משפחות מאושרות.', 'Happy pets. Happier families.') },
+        ]}
+      />
 
-                {mySubTab === 'posts' && <MyPosts />}
-                {mySubTab === 'contacts' && <ContactsTab user={user} />}
-                {mySubTab === 'notifications' && <NotificationsTab user={user} />}
-              </>
-            )}
-          </div>
-        )}
-      </div>
+      <ClosingBand
+        isHe={isHe}
+        image="/community/closing-cat.jpg"
+        imageAlt=""
+        heading={isHe ? ['אותן קהילות.', 'חזקות יותר ביחד.'] : ['Same communities.', 'Stronger together.']}
+        caption={isHe ? ['PawFinder עוזר להחזיר', 'חיות אבודות', 'למשפחות שלהן.'] : ['PawFinder helps reunite', 'lost pets with their', 'existing families.']}
+        seal={isHe ? ['אבדו ונמצאו', 'נפרד', 'מאימוץ.'] : ['Lost & found', 'is separate', 'from', 'adoption.']}
+        footer={<>PawFinder™‎ {L('עוזר להחזיר חיות אבודות למשפחות שלהן.', 'helps reunite lost pets with their existing families.')}</>}
+      />
     </div>
   );
 }
