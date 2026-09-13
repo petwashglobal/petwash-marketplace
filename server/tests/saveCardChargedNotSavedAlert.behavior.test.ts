@@ -47,6 +47,17 @@ vi.mock('../services/redis', () => ({
 vi.mock('../services/SumitClient', () => ({
   sumitClient: { getTransaction: (...a: any[]) => getTransaction(...a) },
 }));
+vi.mock('../lib/sumitPaymentReturn', async (importOriginal: any) => ({
+  ...(await importOriginal()),
+  // One payment → one order: a durable DB claim in production. These tests pin
+  // the Redis handoff, so the claim is an in-memory stand-in with the same rule.
+  claimSumitPayment: async (paymentId: string, orderRef: string, surface: string) => {
+    const prev = (globalThis as any).__sumitClaims?.get(paymentId);
+    (globalThis as any).__sumitClaims ??= new Map();
+    if (!prev) { (globalThis as any).__sumitClaims.set(paymentId, `${surface}:${orderRef}`); return 'claimed'; }
+    return prev === `${surface}:${orderRef}` ? 'same_order' : 'other_order';
+  },
+}));
 vi.mock('../services/SumitCardVault', () => ({
   SumitCardVault: { saveCard: (...a: any[]) => vaultSave(...a) },
   isCardVaultEnabled: () => true,
@@ -62,7 +73,7 @@ const routes = await import('../routes/save-card');
 
 const EXT = 'savecard_deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef';
 const KEY = `savecard:pending:${EXT}`;
-const TXN = 'txn-999';
+const TXN = '999';
 
 function app() {
   const a = express();
@@ -83,6 +94,7 @@ function confirmedTxn() {
 const moneyAlerts = () => alerts.filter((a) => /CONFIRMED/i.test(a.message ?? ''));
 
 beforeEach(() => {
+  (globalThis as any).__sumitClaims = new Map();
   alerts.length = 0; store.clear();
   vaultSave.mockReset(); getTransaction.mockReset();
   store.set(KEY, JSON.stringify({ uid: 'u1', createdAt: Date.now() }));
@@ -96,13 +108,13 @@ describe('no payment evidence → no money alert', () => {
 
   it('an unknown/expired handoff does NOT claim a charge', async () => {
     store.clear();
-    await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
     expect(moneyAlerts()).toHaveLength(0);
   });
 
   it('a SUMIT verification failure does NOT claim a charge', async () => {
     getTransaction.mockResolvedValue({ wired: true, valid: false, reason: 'declined' });
-    await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
     expect(moneyAlerts()).toHaveLength(0);
     expect(vaultSave).not.toHaveBeenCalled();
   });
@@ -118,7 +130,7 @@ describe('THE MISSED CASE: confirmed charge but the vault write fails', () => {
     getTransaction.mockResolvedValue(confirmedTxn());
     vaultSave.mockResolvedValue({ saved: false, reason: 'db_write_failed' });
 
-    const res = await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    const res = await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
 
     const money = moneyAlerts();
     expect(money, 'a confirmed charge with no saved card must alert').toHaveLength(1);
@@ -131,7 +143,7 @@ describe('THE MISSED CASE: confirmed charge but the vault write fails', () => {
     getTransaction.mockResolvedValue(confirmedTxn());
     vaultSave.mockRejectedValue(new Error('connection reset'));
 
-    const res = await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    const res = await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
 
     const money = moneyAlerts();
     expect(money).toHaveLength(1);
@@ -146,7 +158,7 @@ describe('THE MISSED CASE: confirmed charge but the vault write fails', () => {
     getTransaction.mockResolvedValue(confirmedTxn());
     vaultSave.mockResolvedValue({ saved: false });
 
-    await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
 
     const body = JSON.stringify(moneyAlerts()[0]);
     expect(body).toContain(TXN);
@@ -160,7 +172,7 @@ describe('THE MISSED CASE: confirmed charge but the vault write fails', () => {
   it('a failed save does not attempt a second vault write', async () => {
     getTransaction.mockResolvedValue(confirmedTxn());
     vaultSave.mockResolvedValue({ saved: false });
-    await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
     expect(vaultSave).toHaveBeenCalledTimes(1);
   });
 });
@@ -170,7 +182,7 @@ describe('the success path stays quiet', () => {
     getTransaction.mockResolvedValue(confirmedTxn());
     vaultSave.mockResolvedValue({ saved: true });
 
-    const res = await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    const res = await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
 
     expect(res.headers.location).toContain('card=saved');
     expect(moneyAlerts()).toHaveLength(0);
@@ -179,9 +191,9 @@ describe('the success path stays quiet', () => {
   it('a replayed handoff raises no money alert — no second charge occurred', async () => {
     getTransaction.mockResolvedValue(confirmedTxn());
     vaultSave.mockResolvedValue({ saved: true });
-    await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`); // consumes
+    await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`); // consumes
     alerts.length = 0;
-    const res = await request(app()).get(`/api/payments/save-card/return?ID=${TXN}&ext=${EXT}`);
+    const res = await request(app()).get(`/api/payments/save-card/return?OG-PaymentID=${TXN}&ext=${EXT}`);
     expect(moneyAlerts()).toHaveLength(0);
     expect(res.headers.location).toContain('card=failed');
   });
