@@ -20,6 +20,7 @@ import { db } from '../db';
 import { walkerProfiles, sitterProfiles, trainers } from '@shared/schema';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
+import { validateProviderRates, getProviderMinPriceCents, getProviderMaxPriceCents } from '@shared/providerMinPrices';
 
 const router = Router();
 
@@ -31,6 +32,43 @@ export const rateCardSchema = z.object({
   available: z.boolean().optional().default(true),
 });
 export type RateCardInput = z.infer<typeof rateCardSchema>;
+
+/**
+ * The platform price floor / ceiling (shared/providerMinPrices.ts — the CEO's
+ * Rover/MadPaws rule: each provider sets their own rate, never below the
+ * per-service minimum). This screen is the one that makes a profile BOOKABLE,
+ * and until 2026-09-13 it accepted any positive number: a ₪1 walk went live.
+ * A 0 still means "not offering this" and is allowed.
+ *
+ * The sitter HOURLY rate has no floor in the price table (the ₪99 floor is per
+ * visit / night), so only its ceiling applies here.
+ */
+export function rateCardPriceViolations(input: RateCardInput): Array<{
+  field: 'walkerHourlyIls' | 'sitterDayIls' | 'trainerHourlyIls';
+  platform: string;
+  reason: 'too_low' | 'too_high';
+  minIls: number;
+  maxIls: number;
+}> {
+  const checks: Array<[ 'walkerHourlyIls' | 'sitterDayIls' | 'trainerHourlyIls', string, number | undefined ]> = [
+    ['walkerHourlyIls', 'walk_my_pet', input.walkerHourlyIls],
+    ['sitterDayIls', 'sitter_suite', input.sitterDayIls],
+    ['trainerHourlyIls', 'academy', input.trainerHourlyIls],
+  ];
+  const out: ReturnType<typeof rateCardPriceViolations> = [];
+  for (const [field, platform, ils] of checks) {
+    if (ils === undefined || ils <= 0) continue;
+    const verdict = validateProviderRates(platform, [ils * 100]);
+    if (!verdict.ok) {
+      out.push({
+        field, platform, reason: verdict.reason,
+        minIls: Math.round(getProviderMinPriceCents(platform) / 100),
+        maxIls: Math.round(getProviderMaxPriceCents(platform) / 100),
+      });
+    }
+  }
+  return out;
+}
 
 /** Pure: what each table gets. Exported for tests. */
 export function rateCardUpdates(input: RateCardInput) {
@@ -90,6 +128,18 @@ router.put('/rate-card', requireAuth, async (req: Request, res: Response) => {
   if (!uid) return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
   const parsed = rateCardSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ ok: false, error: 'INVALID_INPUT', details: parsed.error.flatten() });
+  const violations = rateCardPriceViolations(parsed.data);
+  if (violations.length > 0) {
+    const v = violations[0];
+    return res.status(400).json({
+      ok: false,
+      error: 'PRICE_OUT_OF_RANGE',
+      violations,
+      message: v.reason === 'too_low'
+        ? `Price is too low. Minimum allowed price for this service is ₪${v.minIls}.`
+        : `Price is too high. Maximum allowed price for this service is ₪${v.maxIls}.`,
+    });
+  }
   const updates = rateCardUpdates(parsed.data);
   const applied: string[] = [];
   try {

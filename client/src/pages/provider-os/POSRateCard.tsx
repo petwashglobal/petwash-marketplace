@@ -5,6 +5,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { getProviderMinPriceCents } from '@shared/providerMinPrices';
+
+// Platform floors (the server enforces the same table — shared/providerMinPrices.ts).
+const MIN_WALK_ILS = getProviderMinPriceCents('walk_my_pet') / 100;
+const MIN_SITTER_DAY_ILS = getProviderMinPriceCents('sitter_suite') / 100;
+const MIN_TRAINER_ILS = getProviderMinPriceCents('academy') / 100;
 
 /**
  * Rate card — the screen that makes an approved provider BOOKABLE.
@@ -63,14 +69,28 @@ export default function POSRateCard() {
         toast({ variant: 'destructive', title: he ? 'לא נמצא פרופיל ספק' : 'No provider profile found', description: he ? 'האישור שלך עדיין לא יצר פרופיל. פנו לתמיכה.' : 'Your approval has not created a profile yet. Contact support.' });
       }
     },
-    onError: () => toast({ variant: 'destructive', title: he ? 'השמירה נכשלה' : 'Save failed' }),
+    onError: (err: any) => {
+      const v = err?.body?.error === 'PRICE_OUT_OF_RANGE' ? err.body.violations?.[0] : null;
+      if (v) {
+        const name = v.platform === 'walk_my_pet' ? 'Walk My Pet' : v.platform === 'sitter_suite' ? 'Pet Sitter Suite' : 'PetWash Academy';
+        toast({
+          variant: 'destructive',
+          title: he ? 'המחיר מחוץ לטווח המותר' : 'Price outside the allowed range',
+          description: v.reason === 'too_low'
+            ? (he ? `${name}: המחיר המינימלי הוא ₪${v.minIls}.` : `${name}: the minimum price is ₪${v.minIls}.`)
+            : (he ? `${name}: המחיר המקסימלי הוא ₪${v.maxIls}.` : `${name}: the maximum price is ₪${v.maxIls}.`),
+        });
+        return;
+      }
+      toast({ variant: 'destructive', title: he ? 'השמירה נכשלה' : 'Save failed' });
+    },
   });
 
   if (isLoading) return <div className="p-6 text-gray-500">{he ? 'טוען…' : 'Loading…'}</div>;
   const p = data?.platforms;
   const none = !p || (!p.walk_my_pet && !p.sitter_suite && !p.academy);
 
-  const field = (label: string, value: number, set: (n: number) => void, testid: string, unit: string) => (
+  const field = (label: string, value: number, set: (n: number) => void, testid: string, unit: string, minIls?: number) => (
     <label className="block">
       <span className="text-sm text-gray-700">{label}</span>
       <div className="mt-1 flex items-center gap-2">
@@ -79,6 +99,11 @@ export default function POSRateCard() {
           className="w-32 rounded-xl border border-gray-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/40" dir="ltr" data-testid={testid} />
         <span className="text-xs text-gray-500">{unit}</span>
       </div>
+      {minIls ? (
+        <span className={`mt-1 block text-xs ${value > 0 && value < minIls ? 'text-red-600' : 'text-gray-500'}`} data-testid={`${testid}-min`}>
+          {he ? `מינימום ₪${minIls}` : `Minimum ₪${minIls}`}
+        </span>
+      ) : null}
     </label>
   );
 
@@ -98,14 +123,14 @@ export default function POSRateCard() {
           {p!.walk_my_pet && (
             <section className="rounded-2xl border border-gray-100 p-4" data-testid="pos-rate-card-walker">
               <h3 className="font-medium text-gray-900">Walk My Pet</h3>
-              <div className="mt-3">{field(he ? 'מחיר לשעת הליכה' : 'Price per walk hour', walker, setWalker, 'rate-walker-hourly', he ? 'לשעה' : '/ hour')}</div>
+              <div className="mt-3">{field(he ? 'מחיר לשעת הליכה' : 'Price per walk hour', walker, setWalker, 'rate-walker-hourly', he ? 'לשעה' : '/ hour', MIN_WALK_ILS)}</div>
             </section>
           )}
           {p!.sitter_suite && (
             <section className="rounded-2xl border border-gray-100 p-4" data-testid="pos-rate-card-sitter">
               <h3 className="font-medium text-gray-900">Pet Sitter Suite</h3>
               <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {field(he ? 'מחיר ליום (24 שעות)' : 'Price per day (24h)', sitterDay, setSitterDay, 'rate-sitter-day', he ? 'ליום' : '/ day')}
+                {field(he ? 'מחיר ליום (24 שעות)' : 'Price per day (24h)', sitterDay, setSitterDay, 'rate-sitter-day', he ? 'ליום' : '/ day', MIN_SITTER_DAY_ILS)}
                 {field(he ? 'מחיר לשעה (אופציונלי)' : 'Price per hour (optional)', sitterHour, setSitterHour, 'rate-sitter-hour', he ? 'לשעה' : '/ hour')}
               </div>
             </section>
@@ -113,7 +138,7 @@ export default function POSRateCard() {
           {p!.academy && (
             <section className="rounded-2xl border border-gray-100 p-4" data-testid="pos-rate-card-trainer">
               <h3 className="font-medium text-gray-900">PetWash Academy</h3>
-              <div className="mt-3">{field(he ? 'מחיר לשעת אימון' : 'Price per training hour', trainer, setTrainer, 'rate-trainer-hourly', he ? 'לשעה' : '/ hour')}</div>
+              <div className="mt-3">{field(he ? 'מחיר לשעת אימון' : 'Price per training hour', trainer, setTrainer, 'rate-trainer-hourly', he ? 'לשעה' : '/ hour', MIN_TRAINER_ILS)}</div>
             </section>
           )}
 
