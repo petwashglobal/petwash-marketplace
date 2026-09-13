@@ -1,3 +1,5 @@
+import path from 'path';
+import fs from 'fs';
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -57,9 +59,38 @@ describe('4. unauthenticated debit endpoints are sealed', () => {
   it('/api/pass/redeem and /api/prestige-pass/token/redeem answer 410 first', () => {
     expect(PR).toMatch(/router\.post\('\/redeem', \(_req: Request, res: Response\) => \{\s*res\.status\(410\)/);
     expect(PP).toMatch(/router\.post\('\/token\/redeem', \(_req: Request, res: Response\) => \{\s*res\.status\(410\)/);
-    // the sealing routes are registered BEFORE the retired handlers
-    expect(PR.indexOf("router.post('/redeem', (_req")).toBeLessThan(PR.indexOf("router.post('/redeem-retired-2026-09-12'"));
-    expect(PP.indexOf("router.post('/token/redeem', (_req")).toBeLessThan(PP.indexOf("router.post('/token/redeem-retired-2026-09-12'"));
+  });
+
+  // 2026-09-13. The previous version of this block asserted that the 410 seal was
+  // registered BEFORE a handler at '/redeem-retired-2026-09-12' — i.e. it REQUIRED
+  // the old debit handler to still exist. The 2026-09-12 retirement had renamed the
+  // handlers instead of deleting them, so they stayed fully reachable at the new
+  // paths: POST /api/pass/redeem-retired-2026-09-12 debited a member's pass by up to
+  // ₪200 with no kiosk auth. The seal only covered the old path. This test was also
+  // never in test:money, so it guarded nothing. It now forbids the pattern outright.
+  it('no retired money handler survives under a renamed path, in ANY route file', () => {
+    const dir = path.join(process.cwd(), 'server', 'routes');
+    const offenders: string[] = [];
+    for (const f of fs.readdirSync(dir).filter(n => n.endsWith('.ts'))) {
+      const src = fs.readFileSync(path.join(dir, f), 'utf8');
+      // A route whose PATH says it is retired/deprecated must be a stub, not a real
+      // handler. ('legacy' is deliberately NOT matched — /wallet/legacy-balance-report
+      // is a real admin report about legacy balances, not a retired endpoint.)
+      // not a real handler: it may not be async and may not touch the ledger/db.
+      const re = /(?:router|app)\.(?:get|post|put|patch|delete)\(\s*['"`]([^'"`]*(?:retired|deprecated)[^'"`]*)['"`]([\s\S]*?)\n\}\);/gi;
+      for (const m of src.matchAll(re)) {
+        const body = m[2];
+        if (/async\s*\(|atomicLedgerEntry|applySmartRedemption|db\.(insert|update|delete)|debit/i.test(body)) {
+          offenders.push(`${f}: ${m[1]}`);
+        }
+      }
+    }
+    expect(offenders, `live handler(s) behind a "retired" path:\n  ${offenders.join('\n  ')}`).toEqual([]);
+  });
+
+  it('the two specific renamed handlers are gone', () => {
+    expect(PR).not.toContain("router.post('/redeem-retired-2026-09-12'");
+    expect(PP).not.toContain("router.post('/token/redeem-retired-2026-09-12'");
   });
 });
 

@@ -17,6 +17,7 @@ import {
 } from '../services/ActivationService';
 import { buildActivationEmail } from '../lib/luxuryActivationEmail';
 import { redis } from '../services/redis';
+import { reserveOtpAttempt } from '../lib/otpAttemptReservation';
 import { consumeOneShotProof } from '../lib/oneShotProof';
 
 /**
@@ -73,6 +74,7 @@ async function resolveActivationUid(req: Request): Promise<string | null> {
 const K_EMAIL_CODE    = (e: string) => `email:verify:code:${e}`;
 const K_LINK_TOKEN    = (t: string) => `email:verify:link:${t}`;
 const K_EMAIL_LOCKOUT = (e: string) => `email:verify:lockout:${e}`;
+const K_EMAIL_ATTEMPTS = (e: string) => `email:verify:attempts:${e}`;
 const K_PHONE_RATE    = (p: string) => `sms:rate:${p}`;
 
 // ── In-memory fallback Maps — used only when Redis is unavailable ─────────────
@@ -169,6 +171,8 @@ async function setEmailCode(email: string, entry: EmailVerificationCode): Promis
 }
 
 async function deleteEmailCode(email: string, linkToken?: string): Promise<void> {
+  // The attempt counter dies with the code it was counting (see reserveOtpAttempt).
+  await redis.del(K_EMAIL_ATTEMPTS(email)).catch(() => {});
   await redis.del(K_EMAIL_CODE(email)).catch((err) => {
     logger.warn('[Verification] Redis del email code failed', { email: email.slice(0, 3) + '***', error: String(err) });
   });
@@ -344,6 +348,8 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
       linkToken,
       linkVerified: false,
     });
+    // A new code starts with a clean attempt budget (see reserveOtpAttempt).
+    await redis.del(K_EMAIL_ATTEMPTS(normalizedEmail)).catch(() => {});
 
     await setLinkToken(linkToken, normalizedEmail, ttlSec);
 
@@ -547,10 +553,39 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
       });
     }
 
+    // SECURITY 2026-09-13: reserve the attempt atomically BEFORE comparing. The
+    // blob's `attempts` is read-then-written and cannot bound parallel guesses.
+    // Only when Redis is connected — with no Redis the code lives in this process's
+    // memory fallback, which is single-instance by definition.
+    let reservedAttempt: number | null = null;
+    if (redis.isConnected()) {
+      const ttlSec = Math.max(1, Math.ceil((stored.expiresAt.getTime() - Date.now()) / 1000));
+      const reservation = await reserveOtpAttempt(redis, K_EMAIL_ATTEMPTS(normalizedEmail), MAX_EMAIL_ATTEMPTS, ttlSec);
+      if (!reservation.ok) {
+        if (reservation.reason === 'exhausted') {
+          await deleteEmailCode(normalizedEmail, stored.linkToken);
+          await setEmailLockout(normalizedEmail);
+          logger.warn('[Verification] Email attempt budget exhausted, locking for 15min', { email: normalizedEmail.slice(0, 3) + '***' });
+          return res.status(429).json({
+            success: false,
+            message: isHebrew ? 'חרגתם ממספר הניסיונות. נעול ל-15 דקות.' : 'Too many attempts. Locked for 15 minutes.',
+            lockedUntil: Date.now() + EMAIL_LOCKOUT_DURATION_MS,
+          });
+        }
+        // Could not reserve → fail CLOSED, never compare a code we cannot count.
+        logger.error('[Verification] Could not reserve an email-code attempt — refusing to compare', { email: normalizedEmail.slice(0, 3) + '***' });
+        return res.status(503).json({
+          success: false,
+          message: isHebrew ? 'לא ניתן לאמת כרגע. נסו שוב בעוד רגע.' : 'Could not verify right now. Please try again in a moment.',
+        });
+      }
+      reservedAttempt = reservation.attempt;
+    }
+
     const codeMatch = stored.code.length === code.length &&
       crypto.timingSafeEqual(Buffer.from(stored.code), Buffer.from(code));
     if (!codeMatch) {
-      stored.attempts++;
+      stored.attempts = reservedAttempt !== null ? Math.max(stored.attempts + 1, reservedAttempt) : stored.attempts + 1;
       await setEmailCode(normalizedEmail, stored);
       const remaining = MAX_EMAIL_ATTEMPTS - stored.attempts;
       return res.status(400).json({

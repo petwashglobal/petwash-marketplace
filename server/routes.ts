@@ -885,7 +885,11 @@ export async function registerRoutes(app: Express): Promise<void> {
         }
       }
 
-      if (role === 'public' || role === 'pet_parent') {
+      // 2026-09-13: 'customer' added. POST /api/mobile-auth/google stamps role
+      // 'customer' for ANY Google account, and this list used to block only
+      // 'public' / 'pet_parent' — so the mobile customer role, which is the same
+      // person as a web pet parent, walked straight into internal routes.
+      if (role === 'public' || role === 'pet_parent' || role === 'customer') {
         logger.warn(`[RBAC Guard] Public user blocked from internal route: ${userEmail} -> ${path}`);
         return res.status(403).json({
           error: 'Access denied',
@@ -893,7 +897,16 @@ export async function registerRoutes(app: Express): Promise<void> {
         });
       }
     } catch (err) {
-      logger.warn('[RBAC Guard] Could not verify role claims, falling through', { err });
+      // 2026-09-13: FAIL CLOSED. This used to log and fall through to next(), so
+      // any error resolving the caller's role (a Firebase Admin outage, a revoked
+      // user, a network blip) granted access to every internal route. Super admins
+      // are resolved by verified email ABOVE this try block, so the CEO keeps access
+      // during an outage; everyone else waits for the role lookup to work again.
+      logger.error('[RBAC Guard] Could not verify role claims — denying internal route', { err, path });
+      return res.status(503).json({
+        error: 'Authorization temporarily unavailable',
+        message: 'Could not verify access for this area. Please try again shortly.',
+      });
     }
 
     next();
@@ -13230,7 +13243,14 @@ self.addEventListener('notificationclick', (event) => {
   
   // Gemini AI Watchdog - Real-time monitoring, user struggle detection, auto-fix engine
   const geminiWatchdogRoutes = await import('./routes/gemini-watchdog');
-  app.use('/api/gemini-watchdog', adminLimiter, geminiWatchdogRoutes.default);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/gemini-watchdog', adminLimiter, requireAdmin, geminiWatchdogRoutes.default);
 
   // /api/octopus-brain — DELETED 2026-05-17. Router was mounted with rate-limit
   // only (no validateFirebaseToken, no requireBrainAccess), exposing platform
@@ -13483,7 +13503,14 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/v2/vouchers', apiLimiter, unifiedVouchersRoutes);
   
   // Email/SMS Campaigns (Marketing - Template Personalization)
-  app.use('/api/campaigns', adminLimiter, campaignsRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/campaigns', adminLimiter, requireAdmin, campaignsRoutes);
   
   // Meetings with Attendee Notifications (WhatsApp + Email)
   app.use('/api/meetings', adminLimiter, meetingsRoutes);
@@ -13502,7 +13529,14 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/management', adminLimiter, managementDashboardRoutes);
   
   // Israeli Tax Authority API (Direct OAuth2 Integration - Electronic Invoicing)
-  app.use('/api/ita', adminLimiter, itaApiRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/ita', adminLimiter, requireAdmin, itaApiRoutes);
   
   // Luxury Documents (Invoices, Receipts, Statements)
   // Issue #153 PR-TAX-1 (Israeli tax/invoice/receipt/payout audit): the
@@ -13750,7 +13784,14 @@ self.addEventListener('notificationclick', (event) => {
   
   // Accounting & Finance
   app.use('/api/accounting', adminLimiter, accountingRoutes);
-  app.use('/api/accounting-exports', adminLimiter, accountingExportRoutes);
+  // SECURITY 2026-09-13: requireAdmin added at the mount. These four routers had no
+  // admin check of their own and relied on the internal-route guard, which is a
+  // DENYLIST (blocks only public/pet_parent). Any Google account could get role
+  // 'customer' from POST /api/mobile-auth/google and read every electronic invoice
+  // (names, tax IDs, emails, phones, addresses), company revenue/VAT, trigger paid
+  // AI exports and send bulk campaigns. Approved providers could too. Pinned by
+  // server/tests/financeRoutersRequireAdmin.regression.test.ts.
+  app.use('/api/accounting-exports', adminLimiter, requireAdmin, accountingExportRoutes);
   app.use('/api/bank', adminLimiter, bankRoutes);
   app.use('/api/multi-currency', apiLimiter, multiCurrencyRoutes);
   app.use('/api/pricing', apiLimiter, pricingRoutes);
@@ -16996,6 +17037,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // /api/consent-center + /api/notification-preferences going forward.
   app.get('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const { readNotificationPrefs } = await import('./lib/notificationPrefsCompat');
       res.json(await readNotificationPrefs(req.params.userId));
     } catch (error: any) {
@@ -17006,6 +17051,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.put('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const { writeNotificationPrefs } = await import('./lib/notificationPrefsCompat');
       await writeNotificationPrefs(req.params.userId, req.body, { ip: req.ip, actor: (req as any).user?.uid });
       res.json({ success: true });
@@ -17017,6 +17066,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.post('/api/monitoring/notifications/revoke/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       await notificationConsentManager.revokeAllConsents(req.params.userId);
       res.json({ success: true });
     } catch (error: any) {
@@ -17027,6 +17080,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/notifications/audit/:userId', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-09-13: self-only. Without this any logged-in user could turn another
+      // user's marketing consent ON (stamping a consent timestamp), wipe it, or read its
+      // history. The sibling /api/monitoring routes already had exactly this check.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const audit = await notificationConsentManager.getConsentAuditLog(req.params.userId);
       res.json(audit);
     } catch (error: any) {
