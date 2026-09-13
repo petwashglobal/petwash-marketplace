@@ -75,7 +75,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
 
             <Link href="/" className="pw-logo-link shrink-0" aria-label="PetWash home">
               <img
-                src="/brand/petwash-logo-official.png"
+                src="/brand/petwash-logo-official-810w.png"
                 alt="PetWash"
                 className="h-10 w-auto object-contain"
               />

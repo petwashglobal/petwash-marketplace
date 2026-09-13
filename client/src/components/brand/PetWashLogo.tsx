@@ -17,7 +17,10 @@ export type PetWashLogoVariant = 'default' | 'white' | 'black';
 
 // The official IP assets — the ONLY files the app may use for the logo.
 const SRC: Record<PetWashLogoVariant, string> = {
-  default: '/brand/petwash-logo-official.png',
+  // Same official artwork, downscaled 3072→810px wide (2026-09-13): the original
+  // is 854 KB and this renders at ≤44px tall. The full-size file stays for
+  // print, wallet passes and structured data.
+  default: '/brand/petwash-logo-official-810w.png',
   white:   '/brand/petwash-logo-white.png',      // transparent white mark for dark/gold/green bgs
   black:   '/brand/petwash-logo-black-bg.png',
 };

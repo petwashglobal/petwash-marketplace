@@ -138,6 +138,16 @@ export default function PersonalInbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/messages/inbox'] });
     },
+    // 2026-09-13: had no onError, so a failed star threw into react-query and
+    // died there — the icon simply did not fill and nothing said why. The send
+    // and delete mutations in this same file always had one.
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'לא ניתן לסמן בכוכב' : 'Could not star the message',
+        description: error.message,
+      });
+    },
   });
 
   const markReadMutation = useMutation({
@@ -147,6 +157,16 @@ export default function PersonalInbox() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/messages/inbox'] });
       queryClient.invalidateQueries({ queryKey: ['/api/messages/unread/count'] });
+    },
+    // 2026-09-13: had no onError. On failure the message opened but stayed
+    // bold and the unread badge never cleared, with no explanation — and it
+    // came back unread on the next visit.
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'לא ניתן לסמן כנקרא' : 'Could not mark as read',
+        description: error.message,
+      });
     },
   });
 
@@ -161,6 +181,16 @@ export default function PersonalInbox() {
       toast({
         title: isHebrew ? 'ההודעה נמחקה' : 'Message Deleted',
         description: isHebrew ? 'ההודעה הועברה לפח' : 'The message has been moved to trash.',
+      });
+    },
+    // 2026-09-13: had a success toast and no onError, so a failed delete was
+    // completely silent — no toast, and the message simply stayed in the list
+    // with nothing to distinguish "it did not delete" from "you misclicked".
+    onError: (error: Error) => {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'המחיקה נכשלה' : 'Delete failed',
+        description: error.message,
       });
     },
   });

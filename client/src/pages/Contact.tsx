@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import { t, type Language } from '@/lib/i18n';
 import { ArrowLeft, Phone, Mail, MapPin, MessageCircle, Loader2, Navigation } from 'lucide-react';
 import { Link } from 'wouter';
-import { createHubSpotForm } from '@/lib/utils';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import { logger } from "@/lib/logger";
 import { useToast } from '@/hooks/use-toast';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -25,7 +25,6 @@ export default function Contact({ language }: ContactProps) {
   const { toast } = useToast();
   const [currentLanguage, setCurrentLanguage] = useState<Language>(language);
   const [submitting, setSubmitting] = useState(false);
-  const [hubspotLoaded, setHubspotLoaded] = useState(false);
   const [formData, setFormData] = useState(() => {
     // PR-NAV-4: /support hands a question off here as ?message=… so the topic
     // buttons and the help box lead somewhere real instead of nowhere. Read it
@@ -50,22 +49,6 @@ export default function Contact({ language }: ContactProps) {
     setCurrentLanguage(newLanguage);
   };
 
-  // Load HubSpot form when component mounts with fallback detection
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      createHubSpotForm('hubspot-contact-form');
-      // Check if HubSpot form loaded after another delay
-      const checkTimer = setTimeout(() => {
-        const container = document.getElementById('hubspot-contact-form');
-        if (container && container.querySelector('form')) {
-          setHubspotLoaded(true);
-        }
-      }, 2000);
-      return () => clearTimeout(checkTimer);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const validateForm = () => {
     // Validate name
@@ -131,6 +114,11 @@ export default function Contact({ language }: ContactProps) {
     logger.debug('Contact form submitted', { formData });
     
     try {
+      // Bot check (the endpoint is public and sends email). When the site key
+      // is not configured the server skips the check too, so no token is fine.
+      const bot = await executeTurnstileInvisible('contact_form').catch(() => null);
+      const turnstileToken = bot && bot.ok ? bot.token : undefined;
+
       // Send to backend API
       const response = await fetch(getApiUrl('/api/contact'), {
         method: 'POST',
@@ -139,7 +127,8 @@ export default function Contact({ language }: ContactProps) {
         },
         body: JSON.stringify({
           ...formData,
-          language: currentLanguage
+          language: currentLanguage,
+          ...(turnstileToken ? { turnstileToken } : {}),
         })
       });
 
@@ -279,11 +268,8 @@ export default function Contact({ language }: ContactProps) {
                 language={currentLanguage}
                 fallback={
                   <>
-                    {/* HubSpot Form Container - hidden if not loaded */}
-                    <div id="hubspot-contact-form" className={hubspotLoaded ? 'min-h-[400px]' : 'hidden'} data-testid="hubspot-form"></div>
-                    
-                    {/* Native Fallback Contact Form - shown when HubSpot doesn't load */}
-                    {!hubspotLoaded && (
+                    {/* Native contact form. The HubSpot embed that used to sit here
+                        retried every 500 ms forever — the portal answers 410 Gone. */}
                       <form onSubmit={handleSubmit} className="space-y-4" data-testid="contact-form">
                         <div>
                           <label className="block luxury-text-small mb-1">
@@ -377,7 +363,6 @@ export default function Contact({ language }: ContactProps) {
                           )}
                         </Button>
                       </form>
-                    )}
                   </>
                 }
               />
