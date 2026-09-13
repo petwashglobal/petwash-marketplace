@@ -89,7 +89,9 @@ function extractDocumentId(body: unknown): string | undefined {
   // lookup only read the TOP level — so every document SUMIT really created came
   // back "without an id". DocumentNumber is deliberately NOT a fallback: it is
   // not the id, and an id feeds OriginalDocumentID on credit notes.
-  const id = (body as { Data?: { DocumentID?: unknown } } | null)?.Data?.DocumentID;
+  const b = body as { Status?: unknown; DocumentID?: unknown; Data?: { DocumentID?: unknown } } | null;
+  // Flat success (no Status) — see readSumitEnvelope.
+  const id = b?.Data?.DocumentID ?? (b && b.Status === undefined ? b.DocumentID : undefined);
   if (typeof id === 'number' && Number.isSafeInteger(id) && id > 0) return String(id);
   return undefined;
 }
@@ -103,9 +105,18 @@ function extractDocumentId(body: unknown): string | undefined {
 export function readSumitEnvelope(parsed: unknown):
   | { ok: true; data: Record<string, any> }
   | { ok: false; reason: string } {
-  const e = parsed as { Status?: unknown; UserErrorMessage?: unknown; Data?: unknown } | null;
+  const e = parsed as { Status?: unknown; UserErrorMessage?: unknown; Data?: unknown; DocumentID?: unknown } | null;
   if (!e || typeof e !== 'object') return { ok: false, reason: 'SUMIT returned no JSON envelope' };
-  if (e.Status !== 0) {
+  // SUMIT's own API log (call #44541301, 10/07/2026) showed an ACCEPTED
+  // documents/create answered FLAT — { DocumentID, DocumentNumber, CustomerID }
+  // with no envelope. A refusal always carries Status, so a Status-less body
+  // with a real DocumentID is a success, read as its own data.
+  if (e.Status === undefined && typeof e.DocumentID === 'number' && Number.isSafeInteger(e.DocumentID) && e.DocumentID > 0) {
+    return { ok: true, data: e as Record<string, any> };
+  }
+  // Schema types Status as a string enum ("Success (0)"); the live API returns 0.
+  const statusOk = e.Status === 0 || e.Status === '0' || (typeof e.Status === 'string' && /^Success\b/i.test(e.Status));
+  if (!statusOk) {
     return { ok: false, reason: `SUMIT Status ${String(e.Status)}: ${String(e.UserErrorMessage ?? '').slice(0, 160)}` };
   }
   const data = e.Data && typeof e.Data === 'object' ? (e.Data as Record<string, any>) : {};
@@ -517,16 +528,24 @@ export class SumitClient {
                 SearchMode: 'ExternalIdentifier',
               },
               Quantity: 1,
-              UnitPrice: input.amountBeforeVat,
+              UnitPrice: input.totalAmount,
               Description: input.lineDescription || input.description,
             }
           : {
               Item: { Name: input.description },
               Quantity: 1,
-              UnitPrice: input.amountBeforeVat,
+              UnitPrice: input.totalAmount,
             },
       ];
-      body.VATIncluded = false;
+      // VAT-INCLUSIVE ENTRY (2026-09-13). The paid gross goes in, SUMIT extracts
+      // the VAT. This is the bookkeeper's instruction (Michal: "₪48 paid → ₪48
+      // document total"), SUMIT's organisation default ("הזנת מחירים בחשבוניות
+      // אחרי מע״מ"), and exactly what the Nayax→SUMIT bridge sent for the 508
+      // real K9000 invoices. The old net line (total/1.18 rounded, VATIncluded
+      // false) made SUMIT re-add 18% and round again: for ~15% of prices the
+      // document total drifted 1 agora from the money received — a ₪49 walk
+      // became a ₪49.01 invoice against a ₪49.00 payment, ₪10 became ₪9.99.
+      body.VATIncluded = true;
     }
 
     const url = `${env.baseUrl}/accounting/documents/create/`;
@@ -632,9 +651,11 @@ export class SumitClient {
           ? { Date: israeliFiscalDate(input.documentDate) }
           : {}),
       },
-      Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountBeforeVat }],
+      // VAT-inclusive entry — same reason as createCustomerReceipt: the credited
+      // gross must equal the refunded money to the agora.
+      Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.totalAmount }],
       Payments: [{ Amount: input.totalAmount, Type: 'CreditCard', Details_CreditCard: {} }],
-      VATIncluded: false,
+      VATIncluded: true,
       ...(originalId ? { OriginalDocumentID: originalId } : {}),
     };
     const url = `${env.baseUrl}/accounting/documents/create/`;

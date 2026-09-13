@@ -59,9 +59,12 @@ describe('readSumitEnvelope', () => {
   it('Status 0 is the only success', () => {
     expect(readSumitEnvelope({ Status: 0, Data: { X: 1 } })).toEqual({ ok: true, data: { X: 1 } });
     expect(readSumitEnvelope(REFUSED)).toMatchObject({ ok: false });
-    expect(readSumitEnvelope({ Status: '0' })).toMatchObject({ ok: false });
+    expect(readSumitEnvelope({ Status: 'Success (0)', Data: {} })).toMatchObject({ ok: true }); // schema's string enum
+    expect(readSumitEnvelope({ Status: 'BusinessError (1)', UserErrorMessage: 'x' })).toMatchObject({ ok: false });
     expect(readSumitEnvelope(null)).toMatchObject({ ok: false });
-    expect(readSumitEnvelope({ DocumentID: 5 })).toMatchObject({ ok: false });
+    // Flat accepted create seen in SUMIT's own API log (no Status, real DocumentID).
+    expect(readSumitEnvelope({ DocumentID: 5, DocumentNumber: 10001 })).toMatchObject({ ok: true });
+    expect(readSumitEnvelope({ DocumentID: 'E' })).toMatchObject({ ok: false });
   });
 });
 
@@ -258,7 +261,8 @@ describe('stored-value eGift sold through the Nayax till follows the CPA mapping
     });
     const body = sentBody();
     expect(body.Details.Type).toBe('InvoiceAndReceipt');
-    expect(body.Items[0].UnitPrice).toBeCloseTo(40.68, 2);
+    expect(body.Items[0].UnitPrice).toBe(48); // VAT-inclusive entry — SUMIT extracts the VAT
+    expect(body.VATIncluded).toBe(true);
   });
 
   it('the Nayax eGift approval passes EGIFT_PURCHASE', () => {
