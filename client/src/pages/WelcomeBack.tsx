@@ -5,6 +5,9 @@ import { useLanguage } from '@/lib/languageStore';
 import { getApiUrl } from '@/lib/apiConfig';
 import { readReturnTo } from '@/auth/returnTo';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
+import { BrandMoment } from '@/components/auth/BrandMoment';
+import type { GreetLang } from '@/lib/smartGreeting';
+import { welcomeBackCelebration } from '@/lib/welcomeBack';
 // The founder's own brand photo (client/public/brand/hero-dog-lux.jpg): the
 // PetWash bandana dog. Served from /brand like the logo, no bundling needed.
 const WELCOME_HERO = '/brand/hero-dog-lux.jpg';
@@ -23,6 +26,12 @@ const WELCOME_HERO = '/brand/hero-dog-lux.jpg';
  * dead under html[lang="he"] (see OtpCodeInput).
  */
 const AUTO_CONTINUE_MS = 2800;
+/**
+ * Screen 6 ("The PetWash Experience") — how long the green brand beat stays
+ * before the member lands on their home. Short on purpose; a tap skips it.
+ */
+const BRAND_MOMENT_MS = 1400;
+
 
 export default function WelcomeBack() {
   const [, navigate] = useLocation();
@@ -32,7 +41,11 @@ export default function WelcomeBack() {
   // readReturnTo — the canonical `returnTo` key written by SignUpLuxury.
   const next = readReturnTo(search) || '/pet-parent/home';
   const [firstName, setFirstName] = useState<string>('');
+  const [celebration, setCelebration] = useState<string | null>(null);
+  const [brandMoment, setBrandMoment] = useState(false);
   const timer = useRef<number | null>(null);
+  const brandTimer = useRef<number | null>(null);
+  const left = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,17 +64,58 @@ export default function WelcomeBack() {
     return () => { cancelled = true; };
   }, []);
 
+  // Birthday / pet birthday / holiday. Two independent, fault-tolerant reads:
+  // the greeting context (birthdays) and the Hebrew calendar, lazy-loaded so
+  // @hebcal/core stays out of the main bundle (same reason as Landing.tsx).
+  // Any failure just means no celebration line — never a broken screen.
   useEffect(() => {
-    timer.current = window.setTimeout(() => navigate(next), AUTO_CONTINUE_MS);
-    return () => { if (timer.current) window.clearTimeout(timer.current); };
-  }, [next, navigate]);
+    let cancelled = false;
+    const lang = (language || 'he') as GreetLang;
+    (async () => {
+      const [ctx, occasion] = await Promise.all([
+        fetch(getApiUrl('/api/me/greeting-context'), { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
+        import('@/lib/israelOccasions')
+          .then(({ israelOccasion }) => israelOccasion(lang))
+          .catch(() => null),
+      ]);
+      if (!cancelled) setCelebration(welcomeBackCelebration(lang, ctx, occasion));
+    })();
+    return () => { cancelled = true; };
+  }, [language]);
 
-  const go = () => { if (timer.current) window.clearTimeout(timer.current); navigate(next); };
+  // Welcome Back → screen 6 brand beat → home. `left` makes every path (auto
+  // timer, Continue, tapping the brand beat) navigate exactly once.
+  const finish = () => {
+    if (left.current) return;
+    left.current = true;
+    if (timer.current) window.clearTimeout(timer.current);
+    if (brandTimer.current) window.clearTimeout(brandTimer.current);
+    navigate(next);
+  };
+  const go = () => {
+    if (left.current || brandMoment) return;
+    if (timer.current) window.clearTimeout(timer.current);
+    setBrandMoment(true);
+    brandTimer.current = window.setTimeout(finish, BRAND_MOMENT_MS);
+  };
+
+  useEffect(() => {
+    timer.current = window.setTimeout(go, AUTO_CONTINUE_MS);
+    return () => {
+      if (timer.current) window.clearTimeout(timer.current);
+      if (brandTimer.current) window.clearTimeout(brandTimer.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [next]);
   // "Not you?" — a REAL sign-out (server session + Firebase), then the door.
   // The AuthProvider's logout() hard-redirects to "/", so this mirrors its
   // steps with the same canonical helper and lands on /signin instead.
   const notYou = async () => {
+    left.current = true;
     if (timer.current) window.clearTimeout(timer.current);
+    if (brandTimer.current) window.clearTimeout(brandTimer.current);
     try {
       const [{ auth }, { signOut }, { performServerSignOut }, { invalidatePostLoginCache }, { getApiUrl: apiUrl }] =
         await Promise.all([
@@ -90,6 +144,7 @@ export default function WelcomeBack() {
 
   return (
     <div dir={he ? 'rtl' : 'ltr'} className="min-h-screen bg-white flex flex-col" data-testid="welcome-back">
+      {brandMoment && <BrandMoment he={he} onSkip={finish} />}
       <header className="flex items-center justify-between px-5 pt-5">
         <PetWashLogo className="h-9" />
         {firstName && (
@@ -104,6 +159,15 @@ export default function WelcomeBack() {
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-10">
+        {celebration && (
+          <div
+            className="mt-4 rounded-full px-4 py-1.5 text-[15px] font-medium"
+            style={{ textAlign: 'center', background: 'rgba(212,175,55,0.14)', color: '#8a6d12' }}
+            data-testid="welcome-back-celebration"
+          >
+            {celebration}
+          </div>
+        )}
         <h1
           className="text-[32px] leading-tight font-semibold text-gray-900 mt-6"
           style={{ textAlign: 'center' }}

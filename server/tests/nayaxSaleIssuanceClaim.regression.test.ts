@@ -52,7 +52,9 @@ function makeStore() {
       const k = key(String(s.machineId), String(s.transactionId));
       const existing = rows.get(k);
       if (existing && (existing.state === SALE_ISSUANCE_STATE.CLAIMED
-                    || existing.state === SALE_ISSUANCE_STATE.ISSUED)) {
+                    || existing.state === SALE_ISSUANCE_STATE.ISSUED
+                    || existing.state === SALE_ISSUANCE_STATE.PENDING_LOOKUP
+                    || existing.state === SALE_ISSUANCE_STATE.NEEDS_RECONCILIATION)) {
         return null; // the guarded DO UPDATE matched nothing
       }
       const next: SaleClaim = {
@@ -261,12 +263,67 @@ describe('recovery reads SUMIT rather than recreating blindly', () => {
 
   it('ABSENT with the budget exhausted → NEEDS_RECONCILIATION, creates nothing', async () => {
     const { store, s } = await parked();
-    // A second failed pass: attemptCount now exceeds the budget of one.
+    // A second failed pass (recovery → READY → claim again): attemptCount now exceeds the budget of one.
+    await store.settle('182443', '2206704842', { state: SALE_ISSUANCE_STATE.READY });
     await store.claim(s, ATTEMPT);
     await store.settle('182443', '2206704842', { state: SALE_ISSUANCE_STATE.PENDING_LOOKUP });
     const { sumit, calls } = makeSumit();
     const out = await recoverSaleClaim({ store, sumit }, s);
     expect(out).toMatchObject({ state: SALE_ISSUANCE_STATE.NEEDS_RECONCILIATION });
     expect(calls.create).toBe(0);
+  });
+});
+
+describe('THE 2026-09-13 TRAP — SUMIT created the document but we could not read its id', () => {
+  // SUMIT returns the id at Data.DocumentID; the client read only the top level,
+  // so every REAL document came back id-less → PENDING_LOOKUP. The claim then
+  // allowed PENDING_LOOKUP to be re-claimed and sent straight back to CREATE:
+  // one more legal tax invoice per wash, per hourly run.
+  function idLessSumit() {
+    const calls = { create: 0, lookup: 0 };
+    const sumit: SaleSumitPort = {
+      async createCustomerReceipt() {
+        calls.create += 1;
+        return { wired: true, sumitDocumentId: undefined }; // created in SUMIT, id not read
+      },
+      async findDocumentByExternalReference() {
+        calls.lookup += 1;
+        return { outcome: 'FOUND' as const, documentId: '777001', documentNumber: '10501' };
+      },
+    };
+    return { sumit, calls };
+  }
+
+  it('twelve runs over a sale whose create came back id-less → ONE create, then it is found', async () => {
+    const { store, links } = makeStore();
+    const { sumit, calls } = idLessSumit();
+    const s = sale();
+    const outs = [];
+    for (let i = 0; i < 12; i++) outs.push(await issueSaleWithClaim({ store, sumit }, s));
+    expect(calls.create).toBe(1);
+    expect(outs[1]).toMatchObject({ issued: true, documentId: '777001', recovered: true });
+    expect(links).toHaveLength(1);
+  });
+
+  it('a PENDING_LOOKUP sale whose lookup is inconclusive is never re-created', async () => {
+    const { store } = makeStore();
+    const calls = { create: 0 };
+    const sumit: SaleSumitPort = {
+      async createCustomerReceipt() { calls.create += 1; return { wired: true, sumitDocumentId: undefined }; },
+      async findDocumentByExternalReference() { return { outcome: 'INCONCLUSIVE' as const, reason: 'sumit_down' }; },
+    };
+    const s = sale();
+    for (let i = 0; i < 6; i++) await issueSaleWithClaim({ store, sumit }, s);
+    expect(calls.create).toBe(1);
+  });
+
+  it('the SQL claim refuses PENDING_LOOKUP and NEEDS_RECONCILIATION', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const src = readFileSync(join(__dirname, '../services/nayaxSaleIssuance.ts'), 'utf8');
+    expect(src).toMatch(/state NOT IN \(\$6, \$9, \$10, \$11\)/);
+    const params = src.slice(src.indexOf('state NOT IN ($6, $9, $10, $11)'));
+    expect(params.indexOf('SALE_ISSUANCE_STATE.PENDING_LOOKUP')).toBeGreaterThan(0);
+    expect(params.indexOf('SALE_ISSUANCE_STATE.NEEDS_RECONCILIATION')).toBeGreaterThan(0);
   });
 });

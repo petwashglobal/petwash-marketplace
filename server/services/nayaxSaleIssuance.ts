@@ -130,6 +130,7 @@ export type SaleIssuanceOutcome =
 export async function issueSaleWithClaim(
   deps: { store: SaleIssuanceStore; sumit: SaleSumitPort; now?: () => Date },
   sale: DocumentableSale,
+  opts: { fromRecovery?: boolean } = {},
 ): Promise<SaleIssuanceOutcome> {
   const now = deps.now ?? (() => new Date());
   const machineId = String(sale.machineId ?? '');
@@ -143,6 +144,10 @@ export async function issueSaleWithClaim(
     const existing = await deps.store.get(machineId, txId);
     if (existing?.state === SALE_ISSUANCE_STATE.ISSUED && existing.sumitDocumentId) {
       return { issued: true, transactionId: txId, documentId: existing.sumitDocumentId };
+    }
+    // Outcome unknown from an earlier run → READ SUMIT before anything else.
+    if (existing?.state === SALE_ISSUANCE_STATE.PENDING_LOOKUP && !opts.fromRecovery) {
+      return recoverSaleClaim(deps, sale);
     }
     return {
       issued: false, transactionId: txId,
@@ -260,7 +265,7 @@ export async function recoverSaleClaim(
 
   // Definitively ABSENT and inside the budget: exactly one more attempt.
   await deps.store.settle(machineId, txId, { state: SALE_ISSUANCE_STATE.READY });
-  return issueSaleWithClaim(deps, sale);
+  return issueSaleWithClaim(deps, sale, { fromRecovery: true });
 }
 
 /**
@@ -338,7 +343,7 @@ export function pgSaleIssuanceStore(pool: QueryablePool): SaleIssuanceStore {
                 last_attempt_at         = EXCLUDED.last_attempt_at,
                 attempt_count           = nayax_sale_issuance_attempts.attempt_count + 1,
                 updated_at              = NOW()
-          WHERE nayax_sale_issuance_attempts.state NOT IN ($6, $9)
+          WHERE nayax_sale_issuance_attempts.state NOT IN ($6, $9, $10, $11)
          RETURNING state, external_reference, first_create_attempt_at,
                    attempt_count, sumit_document_id`,
         [
@@ -350,6 +355,12 @@ export function pgSaleIssuanceStore(pool: QueryablePool): SaleIssuanceStore {
           idempotencyKeyFor(machineId, txId),
           now,
           SALE_ISSUANCE_STATE.ISSUED,
+          // A PENDING_LOOKUP sale may already have a real document in SUMIT (the
+          // create succeeded, only its id was not read). Re-claiming it here sent
+          // it straight back to CREATE — a second tax invoice per run. It is only
+          // reachable again through recoverSaleClaim, which reads SUMIT first.
+          SALE_ISSUANCE_STATE.PENDING_LOOKUP,
+          SALE_ISSUANCE_STATE.NEEDS_RECONCILIATION,
         ],
       );
       return rows[0] ? mapClaim(rows[0]) : null;

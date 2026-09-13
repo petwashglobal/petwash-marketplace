@@ -5,7 +5,7 @@
 
 import { db } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import type {
   WebAuthnCredential,
   DeviceTrustFactors,
@@ -206,13 +206,18 @@ export async function registerDevice(
     .doc(credential.credId)
     .set(credential);
   
-  // Update user status
-  await db.collection(collectionPath).doc(uid).update({
+  // Update user status.
+  // FIX 2026-09-13: was `db.FieldValue.increment(1)` — a Firestore instance has
+  // no FieldValue property, so this threw a TypeError AFTER the credential doc
+  // was written: every enrolment answered "registration failed" while silently
+  // storing the passkey. It was also `.update()`, which throws NOT_FOUND when the
+  // profile doc does not exist yet; merge-set cannot.
+  await db.collection(collectionPath).doc(uid).set({
     hasPasskey: true,
     passkeyCreatedAt: now,
     lastPasskeyUsedAt: now,
-    totalDevices: db.FieldValue.increment(1)
-  });
+    totalDevices: FieldValue.increment(1)
+  }, { merge: true });
   
   // Log analytics event
   await logAuthEvent({
@@ -289,16 +294,16 @@ export async function updateDeviceOnAuth(
     lastUsedAt: now,
     updatedAt: now,
     lastAuthSuccess: now,
-    usageCount: db.FieldValue.increment(1),
+    usageCount: FieldValue.increment(1), // was db.FieldValue (undefined) — every successful passkey login threw here
     consecutiveFailures: 0,
     trustScore: newTrustScore,
     riskLevel: getRiskLevel(newTrustScore)
   });
   
-  // Update user
-  await db.collection(collectionPath).doc(uid).update({
+  // Update user (merge: never throw NOT_FOUND after a successful verification)
+  await db.collection(collectionPath).doc(uid).set({
     lastPasskeyUsedAt: now
-  });
+  }, { merge: true });
   
   logger.info('[DeviceRegistry] Device updated after auth', {
     uid,
