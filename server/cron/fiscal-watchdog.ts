@@ -25,6 +25,16 @@ const FIRST_RUN_MS = 5 * 60 * 1000;   // 5 min after boot — never during start
 
 let started = false;
 
+/**
+ * One run. Exported for the PRODUCTION scheduler (BackgroundJobProcessor, under a
+ * Redis leader lock so exactly one Cloud Run instance runs it). Until 2026-09-13
+ * startFiscalWatchdog() was only called in the development boot branch of
+ * server/index.ts — production never ran the watchdog at all.
+ */
+export async function runFiscalWatchdogTick(kind: 'daily' | 'monthly'): Promise<void> {
+  return tick(kind);
+}
+
 async function tick(kind: 'daily' | 'monthly'): Promise<void> {
   try {
     // A monthly run reconciles the month that has just ENDED, not the current
