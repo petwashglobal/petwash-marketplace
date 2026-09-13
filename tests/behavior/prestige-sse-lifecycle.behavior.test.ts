@@ -191,8 +191,16 @@ describe('SSE · source invariants', () => {
     expect(handler).not.toMatch(/clearInterval\(ping\);\s*sseClients\.delete\(userId\);/);
   });
 
-  it('the wash_started fan-out goes through pushSse, keyed by the token-derived uid', () => {
+  it('pushSse stays keyed by uid, and no caller may key it by anything the client sends', () => {
     expect(src).toMatch(/function pushSse\(userId: string/);
-    expect(src).toMatch(/pushSse\(userId,\s*\{\s*\n\s*type:\s*'wash_started'/);
+    // 2026-09-13: this pin used to require `pushSse(userId, { type: 'wash_started' ...`
+    // to exist. The ONLY such call lived inside POST /api/prestige-pass/token/redeem-
+    // retired-2026-09-12 — a debit handler that had been renamed instead of deleted and
+    // stayed reachable with no kiosk auth. It was deleted, so the pin was protecting
+    // unreachable code. Known gap, not a regression: the real bay rail
+    // (server/routes/nayax-cortina.ts, dark until Nayax onboarding) does not push
+    // wash_started yet. When it does, it must key by the uid from the verified token —
+    // which is what this assertion now guards for any caller.
+    expect(src, 'pushSse keyed by a client-supplied id').not.toMatch(/pushSse\(\s*req\.(body|query|params|headers)/);
   });
 });

@@ -4,6 +4,7 @@ import { logger } from '../lib/logger';
 import crypto from 'crypto';
 import { smsAbuseDetector } from './SmsAbuseDetector';
 import { redis } from './redis';
+import { reserveOtpAttempt } from '../lib/otpAttemptReservation';
 import { checkAndBumpUidSmsBudget } from '../lib/perUidSmsBudget';
 import { consumeOneShotProof, type OneShotResult } from '../lib/oneShotProof';
 
@@ -494,6 +495,8 @@ class TwilioSMSService {
       if (!stored) {
         return { success: false, message: this.t('sendFailed', language), code: 'SMS_OTP_STORE_ERROR', retryable: true, status: 503 };
       }
+      // A new code starts with a clean attempt budget (see reserveOtpAttempt).
+      await redis.del(`otp:login:attempts:${formattedPhone}`).catch(() => {});
     } else {
       // Redis not configured — single-instance in-memory fallback.
       // This is only safe in single-process dev environments.
@@ -716,13 +719,41 @@ class TwilioSMSService {
         return { success: false, message: lockMsgs[language] || lockMsgs.en, lockedUntil: Date.now() + LOCKOUT_DURATION_MS };
       }
 
+      // SECURITY 2026-09-13: reserve the attempt atomically BEFORE comparing. The
+      // blob's own `attempts` below is read-then-written and cannot bound parallel
+      // guesses; this counter can. See server/lib/otpAttemptReservation.ts.
+      const attemptTtl = Math.max(1, Math.ceil((redisEntry.expiresAtMs - Date.now()) / 1000));
+      const reservation = await reserveOtpAttempt(redis, `otp:login:attempts:${formattedPhone}`, MAX_VERIFICATION_ATTEMPTS, attemptTtl);
+      if (!reservation.ok) {
+        if (reservation.reason === 'exhausted') {
+          await redis.del(`otp:login:code:${formattedPhone}`).catch(() => {});
+          verificationCodes.delete(formattedPhone);
+          await redis.setRaw(`otp:login:lockout:${formattedPhone}`, '1', LOCKOUT_TTL).catch(() => {});
+          phoneLockouts.set(formattedPhone, Date.now() + LOCKOUT_DURATION_MS);
+          logger.warn('[TwilioSMS] Attempt budget exhausted — phone locked 15 min', { phone: formattedPhone.slice(0, 6) + '****' });
+          const lockMsgs: Record<string, string> = {
+            en: 'Too many attempts. Locked for 15 minutes.',
+            he: 'חרגתם ממספר הניסיונות. נעול ל-15 דקות.',
+            ar: 'محاولات كثيرة. مقفل لمدة 15 دقيقة.',
+            es: 'Demasiados intentos. Bloqueado por 15 minutos.',
+            fr: 'Trop de tentatives. Verrouillé pour 15 minutes.',
+            ru: 'Слишком много попыток. Заблокировано на 15 минут.',
+          };
+          return { success: false, message: lockMsgs[language] || lockMsgs.en, lockedUntil: Date.now() + LOCKOUT_DURATION_MS };
+        }
+        // Could not reserve (Redis error mid-request). Fail CLOSED — never compare
+        // a code we cannot count.
+        logger.error('[TwilioSMS] Could not reserve an OTP attempt — refusing to compare', { phone: formattedPhone.slice(0, 6) + '****' });
+        return { success: false, message: this.t('sendFailed', language) };
+      }
+
       const inputHmac = crypto.createHmac('sha256', hmacSecret).update(code).digest('hex');
       const hmacA = Buffer.from(redisEntry.codeHmac, 'hex');
       const hmacB = Buffer.from(inputHmac, 'hex');
       const codeMatch = hmacA.length === hmacB.length && crypto.timingSafeEqual(hmacA, hmacB);
 
       if (!codeMatch) {
-        redisEntry.attempts++;
+        redisEntry.attempts = Math.max(redisEntry.attempts + 1, reservation.attempt);
         await redis.set(
           `otp:login:code:${formattedPhone}`,
           redisEntry,
@@ -736,6 +767,7 @@ class TwilioSMSService {
 
       // Correct code — delete from both stores
       await redis.del(`otp:login:code:${formattedPhone}`).catch(() => {});
+      await redis.del(`otp:login:attempts:${formattedPhone}`).catch(() => {});
       verificationCodes.delete(formattedPhone);
 
     } else {
