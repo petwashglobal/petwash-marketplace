@@ -19,6 +19,7 @@ import {
   LayoutDashboard, BarChart3, Wallet, Users, Banknote, Building2, Bot,
   Truck, Briefcase, Star, ClipboardList, ShieldCheck, Handshake, MapPin,
   Package, FileText, Crown, Gift, Receipt, Activity, ShieldAlert, CreditCard, Wrench,
+  Heart, PawPrint, Search, Coins, Boxes, Settings, MessageSquare, Megaphone, FileSpreadsheet, Landmark,
 } from 'lucide-react';
 
 export type DashRole = 'admin' | 'ceo';
@@ -97,6 +98,9 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Performance Reviews', labelHe: 'הערכות עובדים', path: '/admin/performance-reviews', icon: Star, roles: ['admin', 'ceo'], hint: 'Employee reviews', hintHe: 'הערכות ביצועים לעובדים' },
       { label: 'Retention & Reviews', labelHe: 'שימור וביקורות', path: '/admin/retention', icon: Users, roles: ['admin', 'ceo'], hint: 'Winback segments & review funnel', hintHe: 'פלחי שימור ומשפך ביקורות' },
       { label: 'Staff & Academy', labelHe: 'עובדים ואקדמיה', path: '/admin/staff-academy', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Staff performance + training academy (read-only)', hintHe: 'ביצועי עובדים + אקדמיית הדרכה (לקריאה בלבד)' },
+      { label: 'Customers', labelHe: 'לקוחות', path: '/admin/customers', icon: Users, roles: ['admin', 'ceo'], hint: 'Member lookup & account detail', hintHe: 'איתור חבר ופרטי חשבון' },
+      { label: 'Staff', labelHe: 'צוות', path: '/admin/staff', icon: Users, roles: ['admin', 'ceo'], hint: 'Staff accounts & roles', hintHe: 'חשבונות צוות והרשאות' },
+      { label: 'Applications', labelHe: 'מועמדויות', path: '/admin/applications', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Careers & provider applications', hintHe: 'מועמדויות קריירה ונותני שירות' },
     ],
   },
   {
@@ -117,6 +121,26 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Bay Control', labelHe: 'בקרת תאים', path: '/admin/bays', icon: Wrench, roles: ['admin', 'ceo'], hint: 'Enable/disable bays, faults, Nayax link', hintHe: 'השבתה/הפעלה של תאים, תקלות וקישור Nayax' },
       { label: 'Expansion & Marketing', labelHe: 'התרחבות ושיווק', path: '/admin/expansion-marketing', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Location scoring model + local marketing', hintHe: 'מודל ניקוד מיקומים + שיווק מקומי' },
       { label: 'Stock & Reports', labelHe: 'מלאי ודוחות', path: '/admin/stock-reports', icon: Package, roles: ['admin', 'ceo'], hint: 'Smart stock prediction + report digest', hintHe: 'חיזוי מלאי חכם + תקציר דוחות' },
+      { label: 'Wash Packages', labelHe: 'חבילות שטיפה', path: '/admin/wash-packages', icon: Package, roles: ['admin', 'ceo'], hint: 'The prepaid packages the shop sells', hintHe: 'החבילות שנמכרות בחנות' },
+      { label: 'Shop Products', labelHe: 'מוצרי חנות', path: '/admin/shop-products', icon: Boxes, roles: ['admin', 'ceo'], hint: 'Catalogue, prices, stock', hintHe: 'קטלוג, מחירים ומלאי' },
+      { label: 'Inventory', labelHe: 'מלאי', path: '/admin/inventory', icon: Boxes, roles: ['admin', 'ceo'], hint: 'Consumables per station', hintHe: 'מתכלים לפי עמדה' },
+      { label: 'Spare Parts', labelHe: 'חלקי חילוף', path: '/admin/spare-parts', icon: Wrench, roles: ['admin', 'ceo'], hint: 'Parts stock for repairs', hintHe: 'מלאי חלקים לתיקונים' },
+      { label: 'K9000 Documents', labelHe: 'מסמכי K9000', path: '/admin/k9000-documents', icon: FileText, roles: ['admin', 'ceo'], hint: 'Machine manuals, certificates, warranties', hintHe: 'מדריכים, תעודות ואחריות' },
+      { label: 'Live Events', labelHe: 'אירועים חיים', path: '/admin/live-events', icon: Activity, roles: ['admin', 'ceo'], hint: 'Event stream across the platform', hintHe: 'זרם אירועים בפלטפורמה' },
+    ],
+  },
+  {
+    // 2026-09-17: 103 admin screens existed, 42 were in this menu. The two free
+    // member services shipped with review queues that were reachable ONLY by
+    // typing the URL — including the queue that decides whether a lost-pet
+    // notice goes live. A screen nobody can find is a screen nobody uses.
+    group: 'Community',
+    groupHe: 'קהילה',
+    items: [
+      { label: 'Adopt a Pet — review', labelHe: 'אימוץ — בדיקת מודעות', path: '/admin/adoption', icon: Heart, roles: ['admin', 'ceo'], hint: 'Approve adoption listings before they are public', hintHe: 'אישור מודעות אימוץ לפני פרסום' },
+      { label: 'PawFinder — review', labelHe: 'PawFinder — בדיקת דיווחים', path: '/admin/paw-finder', icon: PawPrint, roles: ['admin', 'ceo'], hint: 'Approve lost & found notices; a lost pet is invisible until approved', hintHe: 'אישור דיווחי אבודים/נמצאו — חיה אבודה אינה גלויה עד לאישור' },
+      { label: 'Chat Risk', labelHe: 'סיכוני צ׳אט', path: '/admin/chat-risk', icon: MessageSquare, roles: ['admin', 'ceo'], hint: 'Flagged conversations (off-platform, scam patterns)', hintHe: 'שיחות מסומנות (מחוץ לפלטפורמה, דפוסי הונאה)' },
+      { label: 'Social', labelHe: 'רשתות חברתיות', path: '/admin/social', icon: Megaphone, roles: ['admin', 'ceo'], hint: 'Social posts & campaigns', hintHe: 'פוסטים וקמפיינים' },
     ],
   },
   {
@@ -131,8 +155,21 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Franchise', labelHe: 'זכיינות', path: '/admin/franchise', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Franchise operations', hintHe: 'תפעול זכיינות' },
       { label: 'JV Partners', labelHe: 'שותפי מיזם', path: '/admin/jv-partners', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Joint-venture management', hintHe: 'ניהול מיזמים משותפים' },
       { label: 'Vouchers', labelHe: 'שוברים', path: '/admin/vouchers', icon: Gift, roles: ['admin', 'ceo'], hint: 'Gift cards & coupons', hintHe: 'כרטיסי מתנה וקופונים' },
+      { label: 'Coupons', labelHe: 'קופונים', path: '/admin/coupons', icon: Gift, roles: ['admin', 'ceo'], hint: 'Discount codes', hintHe: 'קודי הנחה' },
+      { label: 'Member Discounts', labelHe: 'הנחות חברים', path: '/admin/member-discounts', icon: Crown, roles: ['admin', 'ceo'], hint: 'Tier discount ladder', hintHe: 'סולם הנחות לפי דרגה' },
+      { label: 'Membership Cards', labelHe: 'כרטיסי חבר', path: '/admin/membership-cards', icon: CreditCard, roles: ['admin', 'ceo'], hint: 'Find a member, freeze / regenerate a card', hintHe: 'איתור חבר, הקפאה/הנפקה מחדש של כרטיס' },
+      { label: 'Loyalty', labelHe: 'נאמנות', path: '/admin/loyalty', icon: Star, roles: ['admin', 'ceo'], hint: 'Points, tiers, rewards', hintHe: 'נקודות, דרגות והטבות' },
+      { label: 'Treasury', labelHe: 'גזברות', path: '/admin/treasury', icon: Landmark, roles: ['ceo'], hint: 'Cash positions & transfers', hintHe: 'יתרות והעברות' },
+      { label: 'Bookkeeping', labelHe: 'הנהלת חשבונות', path: '/admin/bookkeeping', icon: FileSpreadsheet, roles: ['admin', 'ceo'], hint: 'Ledger exports for the bookkeeper', hintHe: 'ייצוא ספרים לרו״ח' },
+      { label: 'Nayax Events', labelHe: 'אירועי Nayax', path: '/admin/nayax-events', icon: Receipt, roles: ['admin', 'ceo'], hint: 'Machine sales feed + reconciliation', hintHe: 'פיד מכירות ממכונות והתאמות' },
       { label: 'Support & Incidents', labelHe: 'תמיכה ואירועים', path: '/admin/support-incident', icon: Activity, roles: ['admin', 'ceo'], hint: 'Support scripts + incident mode (read-only)', hintHe: 'תסריטי תמיכה ומצב אירוע (לקריאה בלבד)' },
       { label: 'Buildings & Partner Reports', labelHe: 'בניינים ודוחות שותפים', path: '/admin/buildings-partners', icon: Building2, roles: ['admin', 'ceo'], hint: 'Building/resident program + partner reports', hintHe: 'תוכנית בניינים/דיירים ודוחות שותפים' },
+      { label: 'Compliance Control Tower', labelHe: 'מגדל בקרת ציות', path: '/admin/compliance-control-tower', icon: ShieldAlert, roles: ['admin', 'ceo'], hint: 'Every compliance obligation in one board', hintHe: 'כל חובות הציות בלוח אחד' },
+      { label: 'Entity Management', labelHe: 'ניהול ישות', path: '/admin/entity-management', icon: Building2, roles: ['ceo'], hint: 'Company registration, filings, officers', hintHe: 'רישום החברה, דיווחים ונושאי משרה' },
+      { label: 'System Config', labelHe: 'הגדרות מערכת', path: '/admin/system-config', icon: Settings, roles: ['ceo'], hint: 'Feature switches & platform settings', hintHe: 'מתגי פיצ׳רים והגדרות פלטפורמה' },
+      { label: 'Google Forms', labelHe: 'טפסי Google', path: '/admin/google-forms', icon: FileSpreadsheet, roles: ['admin', 'ceo'], hint: 'The forms embedded on Careers / Contact', hintHe: 'הטפסים המוטמעים בקריירה/צור קשר' },
+      { label: 'Security Monitoring', labelHe: 'ניטור אבטחה', path: '/admin/security-monitoring', icon: ShieldAlert, roles: ['admin', 'ceo'], hint: 'Auth anomalies & blocked attempts', hintHe: 'חריגות התחברות וניסיונות חסומים' },
+      { label: 'Fraud Dashboard', labelHe: 'לוח הונאות', path: '/admin/fraud-dashboard', icon: ShieldAlert, roles: ['admin', 'ceo'], hint: 'Suspicious accounts, cards and refunds', hintHe: 'חשבונות, כרטיסים וזיכויים חשודים' },
     ],
   },
 ];

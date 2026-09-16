@@ -1,0 +1,47 @@
+# Admin routes deliberately NOT in the back-office menu (executive-nav.ts).
+# Everything else under /admin must be in the menu — see the pin in
+# server/tests/adminNavCoversEveryAdminScreen.regression.test.ts.
+#
+# 2026-09-17: 103 admin screens existed and 42 were in the menu. 61 real screens
+# — including the queue that decides whether a lost-pet notice goes live — were
+# reachable only by typing the URL. A screen nobody can find is a screen nobody
+# uses. To hide a screen from the menu, add it here WITH A REASON.
+
+/admin                      # redirect to /admin/octopus
+/admin/access-denied        # error screen, reached by the guard
+/admin/login                # sign-in page
+/admin/login-v2             # sign-in page
+/admin/backend              # developer console, not a business screen
+/admin/guide                # in-app help, opened from the ? button
+/admin/help                 # in-app help, opened from the ? button
+/admin/octopus              # the dashboard itself — this menu lives on it
+/admin/egift-reservation-sandbox  # test harness, never for real money
+/admin/reminder-preview     # preview tool opened from the reminder screens
+/admin/maya                 # AI assistant workspace, opened from Brain
+/admin/maya/audit           # sub-screen of the assistant workspace
+/admin/maya/booking-drafts  # sub-screen of the assistant workspace
+/admin/maya/provider-drafts # sub-screen of the assistant workspace
+/admin/maya/tasks           # sub-screen of the assistant workspace
+/admin/maya/inbox           # sub-screen of the assistant workspace
+/admin/maya/leads           # sub-screen of the assistant workspace
+/admin/maya/escalations     # sub-screen of the assistant workspace
+/admin/providers/analytics  # tab inside Provider Control
+/admin/jobs                 # tab inside Operations
+/admin/inbox                # opened from the header bell
+/admin/team                 # duplicate of /admin/staff
+/admin/users                # duplicate of /admin/customers
+/admin/financial            # duplicate of /admin/finance
+/admin/financial-monitor    # duplicate of /admin/no-lost-money
+/admin/money-flow           # duplicate of /admin/no-lost-money
+/admin/accountant           # duplicate of /admin/bookkeeping
+/admin/hr-erp               # duplicate of /admin/hr
+/admin/suppliers-erp        # duplicate of /admin/suppliers
+/admin/ops-monitor          # duplicate of /admin/operations
+/admin/status-monitor       # duplicate of /admin/system-logs
+/admin/performance-monitoring # engineering telemetry, not a business screen
+/admin/system-logs          # engineering telemetry, not a business screen
+/admin/gemini-watchdog      # engineering telemetry, not a business screen
+/admin/bridge               # engineering tool (data bridge)
+/admin/compensation         # opened from a provider's page
+/admin/staff-onboarding     # opened from Staff
+/admin/dashboard            # legacy overview, kept for old bookmarks
