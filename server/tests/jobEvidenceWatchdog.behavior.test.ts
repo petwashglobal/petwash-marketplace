@@ -39,14 +39,14 @@ beforeAll(async () => {
     INSERT INTO walker_profiles VALUES ('WALKER-1', 'walker-uid');
 
     -- honest walk (today)
-    INSERT INTO walk_bookings VALUES ('WALK-OK', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
+    INSERT INTO walk_bookings VALUES ('WALK-OK', 'owner-uid', 'WALKER-1', 'completed', ((now() AT TIME ZONE 'Asia/Jerusalem') - interval '2 hours')::date, to_char((now() AT TIME ZONE 'Asia/Jerusalem') - interval '2 hours', 'HH24:MI'), 60,
       32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '1 hour', 60, 2000, null, 'INV-1');
     INSERT INTO walk_gps_tracking (booking_id, latitude, longitude, recorded_at)
       SELECT 'WALK-OK', 32.1782 + LEAST(g, 60 - g) * 0.00035, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours' + g * interval '1 minute'
         FROM generate_series(0, 60, 5) g;
 
     -- 10-minute "walk" of a 60-minute booking, no GPS
-    INSERT INTO walk_bookings VALUES ('WALK-LIE', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
+    INSERT INTO walk_bookings VALUES ('WALK-LIE', 'owner-uid', 'WALKER-1', 'completed', ((now() AT TIME ZONE 'Asia/Jerusalem') - interval '2 hours')::date, to_char((now() AT TIME ZONE 'Asia/Jerusalem') - interval '2 hours', 'HH24:MI'), 60,
       32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '110 minutes', 60, 3000, null, null);
 
     -- sitter stay the customer confirmed
@@ -61,6 +61,11 @@ beforeAll(async () => {
   `);
 });
 
+// FIXTURE TIME BUG (2026-09-17): the booked start was composed from TODAY's
+// Israel date plus a time two hours ago. Between 00:00 and 02:00 Israel those
+// are different days, so the honest walk looked "COMPLETED_BEFORE_START" and
+// this file went red for every PR (CI ran 21:16Z = 00:16 Israel). Both parts
+// now come from the same instant.
 describe('job watchdog', () => {
   it('alerts on the lying walk only; resolves cleared alerts', async () => {
     const r = await runJobEvidenceWatchdog();
