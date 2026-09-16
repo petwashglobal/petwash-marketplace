@@ -300,7 +300,7 @@ export default function WalkerDashboard() {
                 Your Invoices / החשבוניות שלך
               </h2>
               <p className="luxury-text-small mb-4">
-                אתם מוציאים ללקוח חשבונית על מלוא הסכום; Pet Wash™ מוציאה חשבונית על העמלה בלבד.
+                אתם מוציאים ללקוח חשבונית על מלוא הסכום; Pet Wash™‎ מוציאה חשבונית על העמלה בלבד.
               </p>
               <div className="grid gap-4">
                 {[...awaitingInvoice, ...completedBookings.filter((b) => b.providerInvoiceNumber)]
