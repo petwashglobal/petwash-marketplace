@@ -30,6 +30,7 @@
  * allowlist, fail-closed when the challenge store is down, and no response ever
  * says whether an account or credential exists.
  */
+import { PASSKEY_CONSENT_VERSION, isValidPasskeyConsent } from '@shared/lib/passkeyConsent';
 import type { Express, Request, Response } from 'express';
 import { auth as adminAuth, db as firestoreDb } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
@@ -123,6 +124,23 @@ export function publicCredentialView(c: any) {
 
 async function registerOptionsHandler(req: Request, res: Response) {
   const uid = req.firebaseUser!.uid;
+  // Explicit, versioned consent BEFORE any passkey is created (2026-09-14):
+  // the client shows shared/lib/passkeyConsent.ts and only sends this version
+  // after the member presses the confirm button. No consent → no ceremony.
+  const consent = req.body?.consent;
+  if (!isValidPasskeyConsent(consent)) {
+    await record(req, uid, 'PASSKEY_ENROLL_FAILED', {
+      reason: 'consent_missing',
+      meta: { stage: 'options', sentVersion: typeof consent === 'string' ? consent.slice(0, 64) : null },
+    });
+    return res.status(428).json({
+      error: 'PASSKEY_CONSENT_REQUIRED',
+      error_en: 'Please confirm passkey creation first.',
+      error_he: 'יש לאשר את יצירת ה-Passkey קודם.',
+      consentVersion: PASSKEY_CONSENT_VERSION,
+    });
+  }
+  await record(req, uid, 'PASSKEY_CONSENT_ACCEPTED', { meta: { consentVersion: PASSKEY_CONSENT_VERSION } });
   try {
     const isAdmin = await isEmployee(uid);
     const result = await generateRegistrationOptionsForUser(uid, accountLabel(req), isAdmin, req);
@@ -175,7 +193,12 @@ async function registerVerifyHandler(req: Request, res: Response) {
 
     await record(req, uid, 'PASSKEY_ENROLL_SUCCESS', {
       credentialId,
-      meta: { isAdmin, city, deviceName: result.credential?.deviceName || null },
+      meta: {
+        isAdmin,
+        city,
+        deviceName: result.credential?.deviceName || null,
+        consentVersion: isValidPasskeyConsent(req.body?.consent) ? PASSKEY_CONSENT_VERSION : null,
+      },
     });
 
     await alertNewDeviceIfUnusual(uid, ip, email, city);

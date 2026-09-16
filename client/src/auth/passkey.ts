@@ -228,8 +228,10 @@ export async function getServerPasskeyStatus(): Promise<{ enrolled: boolean; cou
 
 export async function registerPasskey(
   firebaseToken: string,
-  deviceName?: string
-): Promise<{ success: boolean; error?: string }> {
+  deviceName?: string,
+  /** PASSKEY_CONSENT_VERSION — only after the member pressed the confirm button. */
+  consentVersion?: string,
+): Promise<{ success: boolean; error?: string; cancelled?: boolean }> {
   try {
     if (!isPasskeySupported()) {
       return { success: false, error: 'Passkeys not supported in this browser' };
@@ -247,6 +249,7 @@ export async function registerPasskey(
         'Content-Type': 'application/json',
         ...bearer,
       },
+      body: JSON.stringify({ consent: consentVersion }),
     });
 
     if (!optionsResponse.ok) {
@@ -285,6 +288,7 @@ export async function registerPasskey(
       body: JSON.stringify({
         challengeId,
         response: credential,
+        consent: consentVersion,
       }),
     });
 
@@ -303,8 +307,9 @@ export async function registerPasskey(
     // Log failure to audit ledger (Protocol 3 compliance)
     await logBiometricFailure(error, getBiometricMethodName() as any);
     
-    if (error.name === 'NotAllowedError') {
-      return { success: false, error: 'Permission denied. Please try again.' };
+    if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
+      // The member closed the Face ID / fingerprint sheet — not a failure to report.
+      return { success: false, cancelled: true, error: 'Cancelled.' };
     } else if (error.name === 'SecurityError') {
       return { success: false, error: 'Security error. Please use HTTPS.' };
     } else if (error.name === 'InvalidStateError') {

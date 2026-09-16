@@ -1,3 +1,4 @@
+import { PasskeyCreateFlow } from '@/components/PasskeyCreateFlow';
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Shield, Smartphone, Trash2, Edit2, Check, X } from 'lucide-react';
@@ -87,47 +88,11 @@ export default function SecuritySettings() {
   const hasPasskey = passkeyStatusKnown && passkeys.length > 0;
   const passkeyRequired = (roleInfo?.level || 0) >= 8;
 
-  // Create passkey mutation
-  const createPasskeyMutation = useMutation({
-    mutationFn: async () => {
-      // Step 1: Get registration options
-      // apiRequest attaches the Firebase ID token; the bare cookie-only fetch left
-      // token-only sessions unable to enrol (401). Same fix MyAccount already has.
-      const optionsRes = await apiRequest('POST', '/api/webauthn/register/options');
-
-      if (!optionsRes.ok) {
-        throw new Error('Failed to get registration options');
-      }
-
-      const { options, challengeId } = await optionsRes.json();
-
-      // Step 2: Create passkey with browser
-      const { startRegistration } = await import('@simplewebauthn/browser');
-      const attResp = await startRegistration(options);
-
-      // Step 3: Verify and store
-      const verifyRes = await apiRequest('POST', '/api/webauthn/register/verify', {
-        response: attResp,
-        challengeId,
-      });
-
-      return verifyRes;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });
-      toast({
-        title: t('security.passkeyCreated'),
-        description: t('security.passkeyCreatedDesc'),
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: 'destructive',
-        title: t('security.passkeyFailed'),
-        description: error instanceof Error ? error.message : t('security.passkeyFailedDesc'),
-      });
-    },
-  });
+  // Creating a passkey: consent screen → member presses confirm → Face ID sheet
+  // → success (PasskeyCreateFlow, 2026-09-14). The server refuses enrolment
+  // without the consent version.
+  const [passkeyFlowOpen, setPasskeyFlowOpen] = useState(false);
+  const createPasskeyMutation = { mutate: () => setPasskeyFlowOpen(true), isPending: passkeyFlowOpen };
 
   // Rename passkey mutation
   const renameMutation = useMutation({
@@ -205,6 +170,16 @@ export default function SecuritySettings() {
   };
 
   return (
+    <>
+      <PasskeyCreateFlow
+        open={passkeyFlowOpen}
+        onOpenChange={setPasskeyFlowOpen}
+        language={language}
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });
+          toast({ title: t('security.passkeyCreated'), description: t('security.passkeyCreatedDesc') });
+        }}
+      />
     <Layout language={language} onLanguageChange={setLanguage}>
       <div className="min-h-screen luxury-bg-mesh">
         <main className="container mx-auto px-4 py-8 max-w-4xl">
@@ -427,5 +402,6 @@ export default function SecuritySettings() {
       </main>
       </div>
     </Layout>
+    </>
   );
 }

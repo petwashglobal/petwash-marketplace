@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { PasskeyCreateFlow } from '@/components/PasskeyCreateFlow';
+import { PASSKEY_CONSENT_TEXT } from '@shared/lib/passkeyConsent';
 import sanitizeHtml from 'sanitize-html';
 import { SPECIES_VALUES, SPECIES_LABELS, normalizeLegacySpecies, type PetSpecies } from '@shared/lib/petSpecies';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -1295,29 +1297,10 @@ export default function MyAccount() {
   });
   const passkeys = passkeysData?.credentials || [];
 
-  const registerPasskeyMutation = useMutation({
-    mutationFn: async () => {
-      // Was bare fetch() with `credentials: 'include'` and NO Bearer
-      // at all — Firebase-only users (no pw_session cookie) could
-      // never enrol a passkey because the server can't identify them
-      // from cookies alone. The verify call one line down already
-      // used apiRequest correctly; the options call drifted.
-      const optionsRes = await apiRequest('POST', '/api/webauthn/register/options');
-      if (!optionsRes.ok) throw new Error('Failed to get registration options');
-      const { options, challengeId } = await optionsRes.json();
-      const { startRegistration } = await import('@simplewebauthn/browser');
-      const attResp = await startRegistration(options);
-      return apiRequest('POST', '/api/webauthn/register/verify', { response: attResp, challengeId });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });
-      toast({ title: isHebrew ? '✅ Face ID / Passkey נרשם בהצלחה!' : '✅ Passkey registered successfully!' });
-    },
-    onError: (e: any) => {
-      if (e?.name === 'NotAllowedError' || e?.message?.includes('cancelled')) return;
-      toast({ title: isHebrew ? 'הרישום נכשל' : 'Registration failed', variant: 'destructive' });
-    },
-  });
+  // Creating a passkey: consent screen → member presses confirm → Face ID sheet
+  // → success (PasskeyCreateFlow, 2026-09-14). Removing one asks to confirm.
+  const [passkeyFlowOpen, setPasskeyFlowOpen] = useState(false);
+  const [passkeyToRemove, setPasskeyToRemove] = useState<string | null>(null);
 
   const revokePasskeyMutation = useMutation({
     mutationFn: (id: string) => apiRequest('DELETE', `/api/webauthn/credentials/${id}`),
@@ -3421,7 +3404,7 @@ export default function MyAccount() {
                             </span>
                           )}
                           <button
-                            onClick={() => revokePasskeyMutation.mutate(pk.id)}
+                            onClick={() => setPasskeyToRemove(pk.id)}
                             disabled={revokePasskeyMutation.isPending}
                             className="p-1.5 rounded-lg text-red-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title={isHebrew ? 'הסר מכשיר' : 'Remove device'}
@@ -3434,18 +3417,44 @@ export default function MyAccount() {
                   </div>
                 )}
 
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => registerPasskeyMutation.mutate()}
-                  onKeyDown={e => e.key === 'Enter' && registerPasskeyMutation.mutate()}
-                  style={{ background: registerPasskeyMutation.isPending ? '#6b7280' : '#000000', cursor: 'pointer' }}
-                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-white font-semibold text-sm transition-all"
+                <button
+                  type="button"
+                  onClick={() => setPasskeyFlowOpen(true)}
+                  style={{ background: '#000000', cursor: 'pointer', fontSize: 16 }}
+                  className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl text-white font-semibold transition-all"
+                  data-testid="button-create-passkey"
                 >
-                  {registerPasskeyMutation.isPending
-                    ? <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'ממתין לאישור...' : 'Waiting for approval...'}</>
-                    : <><span className="text-base">🔐</span> {isHebrew ? 'רשום Face ID / טביעת אצבע למכשיר זה' : 'Register Face ID / Fingerprint for this device'}</>}
-                </div>
+                  <span className="text-base" aria-hidden>🔐</span> {isHebrew ? 'יצירת Passkey (Face ID / טביעת אצבע)' : 'Create a passkey (Face ID / fingerprint)'}
+                </button>
+                <PasskeyCreateFlow
+                  open={passkeyFlowOpen}
+                  onOpenChange={setPasskeyFlowOpen}
+                  language={isHebrew ? 'he' : 'en'}
+                  onCreated={() => queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] })}
+                />
+                <AlertDialog open={!!passkeyToRemove} onOpenChange={(o) => { if (!o) setPasskeyToRemove(null); }}>
+                  <AlertDialogContent dir={isHebrew ? 'rtl' : 'ltr'} className="max-w-md rounded-3xl">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle style={{ textAlign: 'center' }}>{PASSKEY_CONSENT_TEXT[isHebrew ? 'he' : 'en'].removeTitle}</AlertDialogTitle>
+                      <AlertDialogDescription style={{ textAlign: 'center' }}>{PASSKEY_CONSENT_TEXT[isHebrew ? 'he' : 'en'].removeBody}</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+                      <button
+                        type="button"
+                        className="w-full rounded-full bg-red-600 py-3 font-semibold text-white"
+                        style={{ fontSize: 16 }}
+                        data-testid="passkey-remove-confirm"
+                        disabled={revokePasskeyMutation.isPending}
+                        onClick={() => { if (passkeyToRemove) revokePasskeyMutation.mutate(passkeyToRemove); setPasskeyToRemove(null); }}
+                      >
+                        {PASSKEY_CONSENT_TEXT[isHebrew ? 'he' : 'en'].removeConfirm}
+                      </button>
+                      <AlertDialogCancel className="w-full rounded-full" style={{ fontSize: 16 }}>
+                        {PASSKEY_CONSENT_TEXT[isHebrew ? 'he' : 'en'].cancel}
+                      </AlertDialogCancel>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 {passkeys.length > 0 && (
                   <p className="text-center text-xs text-green-600 font-medium mt-2.5 flex items-center justify-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
