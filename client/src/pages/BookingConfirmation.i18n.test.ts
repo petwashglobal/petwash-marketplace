@@ -25,7 +25,9 @@ function labelValues(tag: 'he' | 'en' | 'ar' | 'ru'): Record<string, string> {
   const start = all.indexOf(`  ${tag}: {`);
   const block = all.slice(start, all.indexOf('\n  },', start));
   const out: Record<string, string> = {};
-  for (const m of block.matchAll(/^\s{4}(\w+):\s*'((?:\\.|[^'])*)',\s*$/gm)) out[m[1]] = m[2];
+  // [^'\\] excludes the backslash so the two alternatives cannot match the same
+  // text — an ambiguous alternation here is catastrophic backtracking (js/redos).
+  for (const m of block.matchAll(/^\s{4}(\w+):\s*'((?:\\.|[^'\\])*)',\s*$/gm)) out[m[1]] = m[2];
   return out;
 }
 
