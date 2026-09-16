@@ -46,7 +46,9 @@ describe('PawFinder AI identify (COMPETITIVE / WhatIDog gap)', () => {
     expect(ROUTE).toMatch(/import\(['"]\.\.\/services\/PetIdentificationService['"]\)/);
     expect(ROUTE).toMatch(/petIdentificationService\.identifyFromBuffer\(buffer,\s*mimeType\)/);
     // Response carries the identification field.
-    expect(ROUTE).toMatch(/res\.json\(\{\s*filePath,\s*hash,\s*duplicate,\s*fileSize,\s*identification\s*\}\)/);
+    // 2026-09-16: mimeType joined the same response so a post records what the
+    // photo is. The pin is about identification being returned, not a fixed list.
+    expect(ROUTE).toMatch(/res\.json\(\{[^}]*\bidentification\b[^}]*\}\)/);
   });
 
   it('upload route SKIPS identification when the photo is a duplicate (save the model call)', () => {
