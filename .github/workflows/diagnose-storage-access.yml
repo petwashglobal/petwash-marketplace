@@ -1,0 +1,126 @@
+name: Diagnose storage access (read-only)
+
+# WHY THIS EXISTS (2026-09-17)
+#   Photo upload, KYC documents and biometric selfies all live in one GCS
+#   bucket, and the only way to know whether the live server may read, write or
+#   delete there is to ask Google. A laptop's gcloud session expires and cannot
+#   re-authenticate inside an automated shell, so the check lives here where CI
+#   already holds a service-account key.
+#
+# WHAT IT DOES — READ ONLY. Every command is a describe/get/read:
+#   1. which service account the Cloud Run service actually runs as
+#   2. the bucket's IAM policy (who may create / view / delete objects)
+#   3. whether that account is missing objects.delete (testIamPermissions)
+#   4. recent production log lines for storage denials and for the two jobs
+#      that delete objects (BiometricStorage, KycDeletionJob)
+# It never grants, changes, uploads or deletes anything.
+on:
+  workflow_dispatch:
+    inputs:
+      bucket:
+        description: "Bucket to inspect (no gs:// prefix)"
+        required: false
+        default: "signinpetwash.firebasestorage.app"
+        type: string
+      freshness:
+        description: "How far back to read logs (e.g. 7d, 24h)"
+        required: false
+        default: "7d"
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_ID: signinpetwash
+  SERVICE: petwash-api
+  REGION: me-west1
+
+jobs:
+  diagnose:
+    name: Read storage access facts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+
+      - name: Which service account does the live service run as
+        id: sa
+        run: |
+          set -uo pipefail
+          SA="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" \
+                --format='value(spec.template.spec.serviceAccountName)' 2>/dev/null || true)"
+          if [ -z "$SA" ]; then
+            # Cloud Run leaves this empty when the service uses the project's
+            # DEFAULT compute service account.
+            NUM="$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)' 2>/dev/null || true)"
+            SA="${NUM}-compute@developer.gserviceaccount.com"
+            echo "runtime service account (project default): $SA"
+          else
+            echo "runtime service account (explicit): $SA"
+          fi
+          echo "sa=$SA" >> "$GITHUB_OUTPUT"
+          { echo "## Runtime service account"; echo '```'; echo "$SA"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Bucket IAM — who may create, view, delete
+        env:
+          BUCKET: ${{ inputs.bucket }}
+          SA: ${{ steps.sa.outputs.sa }}
+        run: |
+          set -uo pipefail
+          echo "== IAM policy on gs://$BUCKET =="
+          gcloud storage buckets get-iam-policy "gs://$BUCKET" --format=json 2>/dev/null \
+            | jq -r '.bindings[] | "\(.role)\n  " + (.members | join("\n  "))' || echo "could not read IAM policy"
+          echo
+          echo "== Roles held by the runtime account on this bucket =="
+          gcloud storage buckets get-iam-policy "gs://$BUCKET" --format=json 2>/dev/null \
+            | jq -r --arg sa "serviceAccount:$SA" '[.bindings[] | select(.members[]? == $sa) | .role] | if length == 0 then "NONE" else .[] end' \
+            || echo "could not read IAM policy"
+
+      - name: Does the runtime account actually have create / read / delete
+        env:
+          BUCKET: ${{ inputs.bucket }}
+          SA: ${{ steps.sa.outputs.sa }}
+        run: |
+          set -uo pipefail
+          # testIamPermissions answers for the CALLER, so ask as the runtime
+          # account via impersonation. If impersonation is not permitted the
+          # step says so rather than guessing.
+          RES="$(curl -s -o /tmp/perm.json -w '%{http_code}' \
+            -H "Authorization: Bearer $(gcloud auth print-access-token --impersonate-service-account=$SA 2>/dev/null)" \
+            "https://storage.googleapis.com/storage/v1/b/${BUCKET}/iam/testPermissions?permissions=storage.objects.create&permissions=storage.objects.get&permissions=storage.objects.delete&permissions=storage.objects.list" 2>/dev/null || true)"
+          if [ "$RES" = "200" ]; then
+            echo "Permissions the RUNTIME account holds on gs://$BUCKET:"
+            jq -r '.permissions[]?' /tmp/perm.json || true
+            MISSING=""
+            for P in storage.objects.create storage.objects.get storage.objects.delete storage.objects.list; do
+              jq -e --arg p "$P" '.permissions[]? | select(. == $p)' /tmp/perm.json >/dev/null 2>&1 || MISSING="$MISSING $P"
+            done
+            echo "MISSING:${MISSING:- none}"
+            { echo "## Runtime account permissions"; echo '```'; jq -r '.permissions[]?' /tmp/perm.json; echo "MISSING:${MISSING:- none}"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Could not test as the runtime account (impersonation not permitted for the CI key; HTTP $RES)."
+            echo "The IAM policy printed in the previous step is still authoritative for which roles are bound."
+          fi
+
+      - name: Recent production logs — storage denials and the two deleting jobs
+        env:
+          FRESHNESS: ${{ inputs.freshness }}
+        run: |
+          set -uo pipefail
+          echo "== storage permission denials (last $FRESHNESS) =="
+          gcloud logging read \
+            'resource.type="cloud_run_revision" AND resource.labels.service_name="petwash-api" AND (textPayload:"storage.objects" OR textPayload:"does not have storage" OR textPayload:"Permission denied" OR textPayload:"403")' \
+            --project "$PROJECT_ID" --freshness="$FRESHNESS" --limit=25 \
+            --format='value(timestamp,textPayload)' 2>/dev/null | head -40 || echo "(log read failed)"
+          echo
+          echo "== BiometricStorage / KycDeletionJob lines (last $FRESHNESS) =="
+          gcloud logging read \
+            'resource.type="cloud_run_revision" AND resource.labels.service_name="petwash-api" AND (textPayload:"BiometricStorage" OR textPayload:"KycDeletionJob")' \
+            --project "$PROJECT_ID" --freshness="$FRESHNESS" --limit=25 \
+            --format='value(timestamp,textPayload)' 2>/dev/null | head -40 || echo "(log read failed)"
