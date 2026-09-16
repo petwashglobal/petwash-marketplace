@@ -20,6 +20,14 @@ import { logger } from '../lib/logger';
 import { escapeLike } from '../lib/sqlLike';
 import { requireValidFileContentDisk } from '../lib/fileMagicValidation';
 import { uploadPhotoToGcs, readPhoto, photoPublicPath, isValidPhotoName, contentTypeFor, PAW_FINDER_MEDIA_PATH_RE } from '../lib/pawFinderPhotoStore';
+import { pawFinderEditSchema, sightingSchema, canEdit } from '../lib/communityEdits';
+import { applyCommunityEdit, readEditTrail, CommunityEditError } from '../services/CommunityEditService';
+
+/** A photo added to a notice after posting — same address shape /upload returns. */
+const addPawPhotoSchema = z.object({
+  filePath: z.string().regex(PAW_FINDER_MEDIA_PATH_RE, { message: 'filePath must be a paw-finder upload path' }),
+  mimeType: z.string().max(64).optional(),
+}).strict();
 
 /** The only two things a PawFinder notice can be. Legacy adoption rows are excluded from every read. */
 export const PAW_FINDER_POST_TYPES = ['lost', 'found'] as const;
@@ -669,6 +677,165 @@ router.post('/my/posts/:id/resolve', requireAuth, async (req, res) => {
       err.message === 'ALREADY_RESOLVED'    ? 409 :
       err.message === 'POST_NOT_RESOLVABLE' ? 422 : 500;
     res.status(status).json({ error: 'resolve_failed', code: 'PAWFINDER_RESOLVE_ERR' });
+  }
+});
+
+/**
+ * PATCH /api/paw-finder/my/posts/:id — fix or update a notice after posting.
+ * A wrong phone, a corrected reward or a better last-seen date applies at once;
+ * any change to the words, the pet's description or the place goes back through
+ * the safety scan + support approval (communityEdits).
+ */
+router.patch('/my/posts/:id', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  const parsed = pawFinderEditSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
+  try {
+    const result = await applyCommunityEdit(pool, {
+      surface: 'paw_finder', itemId: Number(req.params.id), userId, changes: parsed.data as Record<string, unknown>,
+    });
+    return res.json(result);
+  } catch (err: any) {
+    if (err instanceof CommunityEditError) return res.status(err.httpStatus).json({ error: err.code });
+    logger.error('[PawFinder] PATCH /my/posts/:id failed', { error: err?.message });
+    return res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/** GET /api/paw-finder/my/posts/:id/history — every edit, before → after. */
+router.get('/my/posts/:id/history', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  try {
+    const id = Number(req.params.id);
+    const { rows } = await pool.query(`SELECT user_id FROM paw_finder_posts WHERE id = $1`, [id]);
+    if (!rows[0]) return res.status(404).json({ error: 'not_found' });
+    if (rows[0].user_id !== userId) return res.status(403).json({ error: 'not_owner' });
+    return res.json({ rows: await readEditTrail(pool, 'paw_finder', id) });
+  } catch (err: any) {
+    logger.error('[PawFinder] GET history failed', { error: err?.message });
+    return res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/** POST /api/paw-finder/my/posts/:id/photos — add a photo to your own notice (max 8). */
+router.post('/my/posts/:id/photos', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  const parsed = addPawPhotoSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
+  try {
+    const id = Number(req.params.id);
+    const { rows } = await pool.query(`SELECT user_id, status FROM paw_finder_posts WHERE id = $1 AND post_type IN ('lost','found')`, [id]);
+    if (!rows[0]) return res.status(404).json({ error: 'not_found' });
+    if (rows[0].user_id !== userId) return res.status(403).json({ error: 'not_owner' });
+    if (!canEdit('paw_finder', rows[0].status)) return res.status(409).json({ error: `NOT_EDITABLE_IN_STATUS:${rows[0].status}` });
+    const { rows: count } = await pool.query(`SELECT COUNT(*)::int AS n FROM paw_finder_media WHERE post_id = $1`, [id]);
+    if ((count[0]?.n ?? 0) >= 8) return res.status(409).json({ error: 'PHOTO_LIMIT_REACHED' });
+    await pool.query(
+      `INSERT INTO paw_finder_media (post_id, media_role, file_path, mime_type) VALUES ($1,'extra',$2,$3)`,
+      [id, parsed.data.filePath, parsed.data.mimeType ?? null],
+    );
+    await pool.query(
+      `UPDATE paw_finder_posts SET status = 'pending_review', moderation_status = 'pending',
+              last_edited_at = NOW(), edit_count = COALESCE(edit_count,0) + 1, updated_at = NOW()
+        WHERE id = $1`,
+      [id],
+    );
+    await pool.query(
+      `INSERT INTO community_edit_events (surface, item_id, actor_user_id, field, old_value, new_value, re_review)
+       VALUES ('paw_finder',$1,$2,'photo',NULL,$3,TRUE)`,
+      [id, userId, parsed.data.filePath],
+    ).catch(() => {});
+    return res.status(201).json({ ok: true, status: 'pending_review' });
+  } catch (err: any) {
+    logger.error('[PawFinder] add photo failed', { error: err?.message });
+    return res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/* -----------------------------------------------------------------------
+   SIGHTINGS — "I saw this dog this morning near the park"
+----------------------------------------------------------------------- */
+
+/** Public: the sighting trail on a live notice. */
+router.get('/posts/:id/sightings', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'invalid_id' });
+    const { rows } = await pool.query(
+      `SELECT s.id, s.seen_at, s.seen_time, s.city, s.area, s.note, s.status, s.created_at,
+              ROUND(s.latitude::numeric, 2) AS latitude, ROUND(s.longitude::numeric, 2) AS longitude
+         FROM paw_finder_sightings s
+         JOIN paw_finder_posts p ON p.id = s.post_id AND p.post_type IN ('lost','found')
+        WHERE s.post_id = $1 AND s.status <> 'dismissed'
+        ORDER BY s.seen_at DESC, s.created_at DESC LIMIT 100`,
+      [id],
+    );
+    return res.json({ rows, count: rows.length });
+  } catch (err: any) {
+    logger.error('[PawFinder] GET sightings failed', { error: err?.message });
+    return res.status(500).json({ error: 'internal_error' });
+  }
+});
+
+/**
+ * Members add a sighting to someone else's lost notice. The owner is alerted at
+ * once — a sighting is the single most useful thing a stranger can give them.
+ * Rate-limited like contact requests so the trail cannot be spammed.
+ */
+router.post('/posts/:id/sightings', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  const parsed = sightingSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
+  try {
+    const id = Number(req.params.id);
+    const { rows } = await pool.query(
+      `SELECT user_id, status, pet_name, post_type FROM paw_finder_posts
+        WHERE id = $1 AND post_type IN ('lost','found') LIMIT 1`,
+      [id],
+    );
+    const post = rows[0];
+    if (!post) return res.status(404).json({ error: 'not_found' });
+    if (!['published', 'matched'].includes(post.status)) return res.status(409).json({ error: 'POST_NOT_OPEN' });
+
+    const { rows: daily } = await pool.query(
+      `SELECT COUNT(*)::int AS cnt FROM paw_finder_sightings
+        WHERE reporter_user_id = $1 AND created_at > NOW() - INTERVAL '24 hours'`,
+      [userId],
+    );
+    if ((daily[0]?.cnt ?? 0) >= 20) return res.status(429).json({ error: 'SIGHTING_RATE_LIMIT' });
+
+    const d = parsed.data;
+    const { rows: created } = await pool.query(
+      `INSERT INTO paw_finder_sightings (post_id, reporter_user_id, seen_at, seen_time, city, area, latitude, longitude, note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
+      [id, userId, d.seenAt, d.seenTime ?? null, d.city, d.area ?? null, d.latitude ?? null, d.longitude ?? null, d.note],
+    );
+
+    await pushNotification(
+      post.user_id, id, 'sighting_reported',
+      '👀 דיווח על צפייה בחיה שלך',
+      `מישהו ראה את ${post.pet_name || 'החיה'} ב${d.area ? `${d.area}, ${d.city}` : d.city} בתאריך ${d.seenAt}`,
+      { sightingId: created[0].id },
+    );
+    try {
+      const { sendPushToUser } = await import('../lib/fcm-push');
+      await sendPushToUser(post.user_id, {
+        title: '👀 דיווח על צפייה בחיה שלך',
+        body: `${d.area ? `${d.area}, ${d.city}` : d.city} · ${d.seenAt}${d.seenTime ? ` ${d.seenTime}` : ''}`,
+        data: { deepLink: `/paw-finder/${id}`, type: 'paw_finder_sighting', postId: String(id) },
+      });
+    } catch (err: any) {
+      logger.warn('[PawFinder] sighting push failed', { postId: id, error: err?.message });
+    }
+
+    return res.status(201).json({ ok: true, sightingId: created[0].id });
+  } catch (err: any) {
+    logger.error('[PawFinder] POST sighting failed', { error: err?.message });
+    return res.status(500).json({ error: 'internal_error' });
   }
 });
 

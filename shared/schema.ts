@@ -16259,6 +16259,8 @@ export const pawFinderPosts = pgTable("paw_finder_posts", {
   // Duplicate-photo detection (/api/paw-finder/upload + /posts). Missing from prod until 0157.
   imageHash: varchar("image_hash", { length: 64 }),
   matchedPostCount: integer("matched_post_count").default(0),
+  lastEditedAt: timestamp("last_edited_at"),
+  editCount: integer("edit_count").notNull().default(0),
   finalPublishCheckedAt: timestamp("final_publish_checked_at"),
   publishedAt: timestamp("published_at"),
   resolvedAt: timestamp("resolved_at"),
@@ -16268,6 +16270,34 @@ export const pawFinderPosts = pgTable("paw_finder_posts", {
 });
 
 export type PawFinderPost = typeof pawFinderPosts.$inferSelect;
+
+export const pawFinderSightings = pgTable("paw_finder_sightings", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => pawFinderPosts.id, { onDelete: "cascade" }),
+  reporterUserId: varchar("reporter_user_id", { length: 128 }).notNull(),
+  seenAt: varchar("seen_at", { length: 16 }).notNull(),
+  seenTime: varchar("seen_time", { length: 5 }),
+  city: varchar("city", { length: 100 }).notNull(),
+  area: varchar("area", { length: 100 }),
+  latitude: numeric("latitude", { precision: 10, scale: 7 }),
+  longitude: numeric("longitude", { precision: 10, scale: 7 }),
+  note: text("note").notNull(),
+  status: varchar("status", { length: 16 }).notNull().default("reported"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Every member edit on either community product, before → after. Never deleted. */
+export const communityEditEvents = pgTable("community_edit_events", {
+  id: serial("id").primaryKey(),
+  surface: varchar("surface", { length: 16 }).notNull(),
+  itemId: integer("item_id").notNull(),
+  actorUserId: varchar("actor_user_id", { length: 128 }).notNull(),
+  field: varchar("field", { length: 48 }).notNull(),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  reReview: boolean("re_review").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const pawFinderMedia = pgTable("paw_finder_media", {
   id: serial("id").primaryKey(),
@@ -16374,6 +16404,8 @@ export const adoptionListings = pgTable("adoption_listings", {
   moderationReason: text("moderation_reason"),
   moderationConfidence: integer("moderation_confidence"),
   imageHash: varchar("image_hash", { length: 64 }),
+  lastEditedAt: timestamp("last_edited_at", { withTimezone: true }),
+  editCount: integer("edit_count").notNull().default(0),
   legacyPawFinderPostId: integer("legacy_paw_finder_post_id").unique(),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   adoptedAt: timestamp("adopted_at", { withTimezone: true }),

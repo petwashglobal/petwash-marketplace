@@ -70,7 +70,7 @@ export type BookingService =
 
                                                                                               const t = {
                                                                                                   subject: isHe
-                                                                                                        ? (isProvider ? `⁦PetWash™⁩ — הזמנה חדשה 🐾 ${p.bookingRef}` : `ניר הזמנה ⁦PetWash™⁩ — ${p.bookingRef}`)
+                                                                                                        ? (isProvider ? `⁦PetWash™⁩ — הזמנה חדשה 🐾 ${p.bookingRef}` : `אישור הזמנה ⁦PetWash™⁩ — ${p.bookingRef}`)
                                                                                                               : (isProvider ? `New Booking Alert — ${p.bookingRef}` : `Booking Confirmed — ${p.bookingRef}`),
                                                                                                                   headline: isHe
                                                                                                                         ? (isProvider ? 'הזמנה חדשה!' : 'הזמנתך אושררה!')

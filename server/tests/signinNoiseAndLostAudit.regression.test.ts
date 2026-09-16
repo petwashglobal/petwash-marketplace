@@ -39,7 +39,7 @@ describe('an unconfigured Google Form is a normal answer, not a 404', () => {
   const handler = route.slice(route.indexOf("router.get('/api/google-forms/config/:formType'"), route.indexOf("router.get('/api/google-forms/config'"));
 
   it('returns 200 { enabled: false } instead of 404', () => {
-    expect(handler).toContain('return res.json({ formType, enabled: false });');
+    expect(handler).toMatch(/return res\.json\(\{ formType, enabled: false/);
     expect(handler).not.toContain("res.status(404).json({ error: 'Form not configured or disabled' })");
   });
 

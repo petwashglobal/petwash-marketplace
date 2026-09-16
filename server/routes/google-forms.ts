@@ -22,12 +22,14 @@ router.get('/api/google-forms/config/:formType', async (req: Request, res: Respo
     const { formType } = req.params;
     const [config] = await db.select().from(googleFormsConfig).where(eq(googleFormsConfig.formType, formType)).limit(1);
 
+    // "No form configured" is a normal state, not a failure: Careers and Contact
+    // both ask for a form that an admin may never have set up, and the page has
+    // its own fallback. Answering 404 painted a red [API Error] in every
+    // visitor's console (seen live 2026-09-17 on /careers and /contact) and made
+    // an ordinary page look broken. Answer 200 with enabled:false — the embed
+    // component already renders the fallback for exactly that.
     if (!config || !config.enabled) {
-      // "No Google Form is configured" is a NORMAL answer, not an error: the
-      // client renders its own form instead. Answering 404 made /contact and
-      // /careers log "[API Error] 404" in every visitor's console (live
-      // 2026-09-17) and hid real failures in the noise.
-      return res.json({ formType, enabled: false });
+      return res.json({ formType, enabled: false, formUrl: null, formTitle: null, formTitleHe: null, height: null });
     }
 
     res.json(config);

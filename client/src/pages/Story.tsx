@@ -1,18 +1,27 @@
 import { Heart, Lightbulb, Globe, Users } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
+import { useLanguage } from '@/lib/languageStore';
 
+/**
+ * Our Story — the company page. It was English-only on a Hebrew-first site
+ * (live sweep 2026-09-17): an Israeli visitor reading the whole site in Hebrew
+ * hit an English wall here. Same content, both languages, RTL when Hebrew.
+ */
 export default function Story() {
   useSEO(pageSEO.story);
+  const { language } = useLanguage();
+  const isHe = language === 'he';
+  const L = (he: string, en: string) => (isHe ? he : en);
   return (
-    <div className="min-h-screen luxury-bg-mesh">
+    <div className="min-h-screen luxury-bg-mesh" dir={isHe ? 'rtl' : 'ltr'}>
       <div className="container max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-20 luxury-fade-in">
           <div className="inline-block p-4 rounded-full luxury-glass-minimal mb-6 luxury-scale-in">
             <Heart className="w-16 h-16 luxury-gradient-icon" />
           </div>
-          <h1 className="luxury-heading-xl mb-6">Our Story & Mission</h1>
+          <h1 className="luxury-heading-xl mb-6">{L('הסיפור והייעוד שלנו', 'Our Story & Mission')}</h1>
           <p className="luxury-subtitle-lg">
-            Revolutionizing pet care through innovation, technology, and love
+            {L('מהפכה בטיפוח חיות מחמד — חדשנות, טכנולוגיה ואהבה', 'Revolutionizing pet care through innovation, technology, and love')}
           </p>
         </div>
 
@@ -22,12 +31,13 @@ export default function Story() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-[#D4AF37] flex items-center justify-center luxury-pulse-glow">
                 <Lightbulb className="w-6 h-6 text-white" />
               </div>
-              <span className="luxury-gradient-text">The Vision</span>
+              <span className="luxury-gradient-text">{L('החזון', 'The Vision')}</span>
             </h2>
             <p className="luxury-text-body leading-relaxed text-lg">
-              ⁦PetWash™⁩ was born from a simple idea: every pet deserves access to premium care,
-              and every pet owner deserves convenience. We're building one connected pet care
-              experience, bringing wash stations, pet services and membership together in one place.
+              {L(
+                '⁦PetWash™⁩ נולד מרעיון פשוט: לכל חיה מגיע טיפוח ברמה הגבוהה ביותר, ולכל בעל חיה מגיעה נוחות אמיתית. אנחנו בונים חוויית טיפוח אחת ומחוברת — עמדות שטיפה, שירותי חיות מחמד וחברות מועדון, במקום אחד.',
+                "⁦PetWash™⁩ was born from a simple idea: every pet deserves access to premium care, and every pet owner deserves convenience. We're building one connected pet care experience, bringing wash stations, pet services and membership together in one place.",
+              )}
             </p>
           </div>
 
@@ -36,12 +46,13 @@ export default function Story() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center luxury-pulse-glow">
                 <Globe className="w-6 h-6 text-white" />
               </div>
-              <span className="luxury-gradient-text">Global Expansion</span>
+              <span className="luxury-gradient-text">{L('התרחבות עולמית', 'Global Expansion')}</span>
             </h2>
             <p className="luxury-text-body leading-relaxed text-lg">
-              From our roots in Israel and Australia, we're expanding to create a global network
-              of premium pet care services. Our Octopus model connects stations, sitters, walkers,
-              transport, training, and more - all accessible through one account.
+              {L(
+                'מהשורשים שלנו בישראל ובאוסטרליה אנחנו מרחיבים רשת עולמית של שירותי טיפוח פרימיום. מודל התמנון שלנו מחבר עמדות, שמרטפים, מוליכי כלבים, הסעות, אילוף ועוד — הכול מחשבון אחד.',
+                "From our roots in Israel and Australia, we're expanding to create a global network of premium pet care services. Our Octopus model connects stations, sitters, walkers, transport, training, and more — all accessible through one account.",
+              )}
             </p>
           </div>
 
@@ -50,12 +61,13 @@ export default function Story() {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center luxury-pulse-glow">
                 <Users className="w-6 h-6 text-white" />
               </div>
-              <span className="luxury-gradient-text">Our Community</span>
+              <span className="luxury-gradient-text">{L('הקהילה שלנו', 'Our Community')}</span>
             </h2>
             <p className="luxury-text-body leading-relaxed text-lg">
-              We're building more than a business - we're creating a community of pet lovers,
-              dedicated professionals, and innovative partners. Our 7-star loyalty program and
-              VIP Club ensure that every member feels valued and supported.
+              {L(
+                'אנחנו בונים יותר מעסק — קהילה של אוהבי חיות, אנשי מקצוע מסורים ושותפים חדשניים. תוכנית הנאמנות ומועדון ה-VIP שלנו נועדו כדי שכל חבר וחברה ירגישו מוערכים ונתמכים.',
+                "We're building more than a business — we're creating a community of pet lovers, dedicated professionals, and innovative partners. Our 7-star loyalty program and VIP Club ensure that every member feels valued and supported.",
+              )}
             </p>
           </div>
 
@@ -67,9 +79,12 @@ export default function Story() {
               border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            <h2 className="text-3xl font-bold mb-4" style={{ color: '#ffffff' }}>Join Our Journey</h2>
+            <h2 className="text-3xl font-bold mb-4" style={{ color: '#ffffff' }}>{L('הצטרפו למסע', 'Join Our Journey')}</h2>
             <p className="text-lg leading-relaxed" style={{ color: 'rgba(255,255,255,0.85)' }}>
-              Be part of the pet care revolution. Together, we're making the world a better place for pets and their families.
+              {L(
+                'היו חלק מהמהפכה בטיפוח חיות מחמד. יחד אנחנו הופכים את העולם למקום טוב יותר עבור החיות והמשפחות שלהן.',
+                "Be part of the pet care revolution. Together, we're making the world a better place for pets and their families.",
+              )}
             </p>
           </div>
         </div>

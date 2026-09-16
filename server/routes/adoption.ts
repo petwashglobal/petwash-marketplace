@@ -34,8 +34,18 @@ import {
   adoptionEnquirySchema,
   createAdoptionListingSchema,
   ownerStatusSchema,
+  ADOPTION_MEDIA_PATH_RE,
   PUBLIC_ADOPTION_STATUSES,
 } from '../lib/adoptionRules';
+import { z } from 'zod';
+import { adoptionEditSchema, canEdit } from '../lib/communityEdits';
+import { applyCommunityEdit, readEditTrail, CommunityEditError } from '../services/CommunityEditService';
+
+/** A photo added after posting — same address shape the upload returns. */
+const addPhotoSchema = z.object({
+  filePath: z.string().regex(ADOPTION_MEDIA_PATH_RE, { message: 'filePath must be an adoption upload path' }),
+  mimeType: z.string().max(64).optional(),
+}).strict();
 import {
   AdoptionError,
   createAdoptionEnquiry,
@@ -342,6 +352,80 @@ router.post('/my/notifications/read-all', requireAuth, async (req, res) => {
     return res.json({ ok: true });
   } catch (err: any) {
     return sendError(res, err, 'POST /my/notifications/read-all');
+  }
+});
+
+/* ── Editing your own listing ───────────────────────────────────────────── */
+
+/**
+ * PATCH /api/adoption/my/listings/:id — fix or update a listing after posting.
+ * Structured answers and the phone apply at once; any change to the words or the
+ * place goes back through the safety scan + support approval (communityEdits).
+ */
+router.patch('/my/listings/:id', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  const parsed = adoptionEditSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
+  try {
+    const result = await applyCommunityEdit(pool, {
+      surface: 'adoption', itemId: Number(req.params.id), userId, changes: parsed.data as Record<string, unknown>,
+    });
+    return res.json(result);
+  } catch (err: any) {
+    if (err instanceof CommunityEditError) return res.status(err.httpStatus).json({ error: err.code });
+    return sendError(res, err, 'PATCH /my/listings/:id');
+  }
+});
+
+/** GET /api/adoption/my/listings/:id/history — every edit, before → after. */
+router.get('/my/listings/:id/history', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  try {
+    const id = Number(req.params.id);
+    const { rows } = await pool.query(`SELECT user_id FROM adoption_listings WHERE id = $1`, [id]);
+    if (!rows[0]) return res.status(404).json({ error: 'not_found' });
+    if (rows[0].user_id !== userId) return res.status(403).json({ error: 'not_owner' });
+    return res.json({ rows: await readEditTrail(pool, 'adoption', id) });
+  } catch (err: any) {
+    return sendError(res, err, 'GET /my/listings/:id/history');
+  }
+});
+
+/** POST /api/adoption/my/listings/:id/photos — add a photo to a listing (max 6). */
+router.post('/my/listings/:id/photos', requireAuth, async (req, res) => {
+  const userId = uid(req);
+  if (!userId) return res.status(401).json({ error: 'not_authenticated' });
+  const parsed = addPhotoSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
+  try {
+    const id = Number(req.params.id);
+    const { rows } = await pool.query(`SELECT user_id, status FROM adoption_listings WHERE id = $1`, [id]);
+    if (!rows[0]) return res.status(404).json({ error: 'not_found' });
+    if (rows[0].user_id !== userId) return res.status(403).json({ error: 'not_owner' });
+    if (!canEdit('adoption', rows[0].status)) return res.status(409).json({ error: `NOT_EDITABLE_IN_STATUS:${rows[0].status}` });
+    const { rows: count } = await pool.query(`SELECT COUNT(*)::int AS n FROM adoption_listing_media WHERE listing_id = $1`, [id]);
+    if ((count[0]?.n ?? 0) >= 6) return res.status(409).json({ error: 'PHOTO_LIMIT_REACHED' });
+    await pool.query(
+      `INSERT INTO adoption_listing_media (listing_id, media_role, file_path, mime_type) VALUES ($1,'extra',$2,$3)`,
+      [id, parsed.data.filePath, parsed.data.mimeType ?? null],
+    );
+    // A new picture is something the public sees: back to review, like new text.
+    await pool.query(
+      `UPDATE adoption_listings SET status = 'pending_review', moderation_status = 'pending',
+              last_edited_at = NOW(), edit_count = COALESCE(edit_count,0) + 1, updated_at = NOW()
+        WHERE id = $1`,
+      [id],
+    );
+    await pool.query(
+      `INSERT INTO community_edit_events (surface, item_id, actor_user_id, field, old_value, new_value, re_review)
+       VALUES ('adoption',$1,$2,'photo',NULL,$3,TRUE)`,
+      [id, userId, parsed.data.filePath],
+    ).catch(() => {});
+    return res.status(201).json({ ok: true, status: 'pending_review' });
+  } catch (err: any) {
+    return sendError(res, err, 'POST /my/listings/:id/photos');
   }
 });
 

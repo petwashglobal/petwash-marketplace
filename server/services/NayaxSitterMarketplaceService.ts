@@ -50,6 +50,12 @@ interface SitterPayoutParams {
   sitterId: number;
   sitterPayoutCents: number;
   sitterBankAccount: string; // Or payment method identifier
+  /**
+   * The Pet Wash admin who approved this payout. Absent (or a "system" actor)
+   * means nobody has said yes yet — the money may be OWED but must not MOVE.
+   * See server/lib/payoutHumanApproval.ts (CEO rule 2026-09-13).
+   */
+  approvedByUid?: string | null;
 }
 
 // ==================== NAYAX SITTER MARKETPLACE SERVICE ====================
@@ -144,9 +150,11 @@ export class NayaxSitterMarketplaceService {
   
   /**
    * Process sitter payout after booking completion (via Nayax Transfer)
-   * 
-   * Sitter receives: 95% of base price
-   * Platform keeps: 5% broker fee (already captured)
+   *
+   * Sitter receives: 85% of the rate. Platform keeps 15% out of it —
+   * SitterAdvancedBookingEngine.calculatePrice and PLATFORM_COMMISSION_RATE are
+   * the two places that decide it, and they agree. (This comment said 95/5 and
+   * matched neither — corrected 2026-09-17.)
    */
   static async processSitterPayout(params: SitterPayoutParams): Promise<{
     success: boolean;
@@ -160,6 +168,14 @@ export class NayaxSitterMarketplaceService {
         payoutCents: params.sitterPayoutCents,
       });
       
+      // HUMAN APPROVAL (CEO rule 2026-09-13). Sitter Suite has its own table
+      // (sitter_bookings) and its own completion path, so it never passed
+      // through EscrowService / ProviderPayoutService — the two places #2491
+      // gated. Nothing leaks TODAY because there is no rail below, but whoever
+      // wires one must hit the gate instead of shipping money on a timer.
+      const { isSystemPayoutActor, flagPayoutForAdminReview } = await import('../lib/payoutHumanApproval');
+      const approvedByHuman = !isSystemPayoutActor(params.approvedByUid);
+
       // NO automated sitter payout rail yet (real Nayax/bank transfer = TODO). This
       // returns success:true meaning "accepted for MANUAL processing" — the caller
       // (sitter-suite complete) then sets payoutStatus:'pending' (owed, NOT paid),
@@ -170,8 +186,24 @@ export class NayaxSitterMarketplaceService {
         bookingId: params.bookingId,
         sitterId: params.sitterId,
         amountILS: (params.sitterPayoutCents / 100).toFixed(2),
+        approvedByHuman,
         bankAccountLast4: params.sitterBankAccount ? '****' + String(params.sitterBankAccount).slice(-4) : null,
       });
+
+      // Unapproved money owed to a provider is not a log line — it is a queue an
+      // admin has to work. Raise it the same way every other held payout is
+      // raised, so the sitter is not invisible next to walkers and sitters in
+      // the marketplace flow. (Never throws.)
+      if (!approvedByHuman) {
+        await flagPayoutForAdminReview({
+          kind: 'booking',
+          id: params.bookingId,
+          bookingId: params.bookingId,
+          providerId: params.sitterId,
+          amountIls: params.sitterPayoutCents / 100,
+          reason: 'Sitter Suite stay completed — payout owed, waiting for a Pet Wash admin to approve it',
+        });
+      }
 
       return {
         success: true,
