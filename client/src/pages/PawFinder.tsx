@@ -22,7 +22,7 @@ import {
   Share2, Palette, ChevronLeft, ChevronDown, Map as MapIcon, PawPrint, User as UserIcon, Users, ClipboardList, Home as HomeIcon,
 } from 'lucide-react';
 import {
-  EditorialHeader, PillarRow, StepsBand, ClosingBand, SideNav, Chip, GOLD, GOLD_INK, HAIRLINE, PAPER, SERIF, INK,
+  EditorialHeader, PillarRow, StepsBand, ClosingBand, SideNav, Chip, placeLine, GOLD, GOLD_INK, HAIRLINE, PAPER, SERIF, INK,
 } from '@/components/pet-community/Editorial';
 import { apiRequest, getFirebaseBearerToken } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
@@ -418,6 +418,9 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
   // may not be the same as the /upload container, so a disk-only lookup
   // silently no-ops). Kept in sync with uploadedFilePath.
   const [uploadedHash, setUploadedHash] = useState('');
+  // Record what the photo actually is: adoption/paw_finder media.mime_type was
+  // NULL on every live post because the client had nothing to send (2026-09-16).
+  const [uploadedMime, setUploadedMime] = useState('');
   const [uploadPreviewUrl, setUploadPreviewUrl] = useState('');
   const [uploadProgress, setUploadProgress] = useState<'idle' | 'uploading' | 'done' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -475,6 +478,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
 
       setUploadedFilePath(j.filePath);
       setUploadedHash(j.hash || '');
+      setUploadedMime(j.mimeType || '');
       setUploadProgress('done');
       toast({ title: '✅ תמונה הועלתה בהצלחה' });
 
@@ -576,6 +580,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
         mediaFiles: [{
           filePath: uploadedFilePath,
           mediaRole: 'primary',
+          ...(uploadedMime ? { mimeType: uploadedMime } : {}),
           ...(uploadedHash ? { hash: uploadedHash } : {}),
         }],
       };
@@ -618,7 +623,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       }
 
       setForm(EMPTY_FORM);
-      setUploadedFilePath(''); setUploadedHash('');
+      setUploadedFilePath(''); setUploadedHash(''); setUploadedMime('');
       setUploadPreviewUrl('');
       setUploadProgress('idle');
       onSuccess();
@@ -801,7 +806,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
                 <button
                   type="button"
                   onClick={() => {
-                    setUploadedFilePath(''); setUploadedHash('');
+                    setUploadedFilePath(''); setUploadedHash(''); setUploadedMime('');
                     setUploadPreviewUrl('');
                     setUploadProgress('idle');
                     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -1235,7 +1240,7 @@ function AlertCard({ post, isHe, user, saved, onToggleSave, onOpen, onContact, t
           </button>
           <RewardPill post={post} />
         </div>
-        <div className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-black/60"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{post.area ? `${post.area}, ${post.city}` : post.city}</span></div>
+        <div className="mt-1.5 flex items-center gap-1.5 text-[12.5px] text-black/60"><MapPin className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{placeLine(post.city, post.area)}</span></div>
         <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-black/60"><Clock className="h-3.5 w-3.5 shrink-0" />{seenAgo(isHe, post)}</div>
         {post.breed && <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-black/60"><Footprints className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{post.breed}</span></div>}
         {(post.color_primary || size) && (
@@ -1275,7 +1280,7 @@ function AlertDetail({ post, isHe, user, onClose, onContact, toast }: {
             <RewardPill post={post} />
           </div>
           <div className="mt-3 space-y-2 text-sm text-black/70">
-            <div className="flex items-center gap-2"><MapPin className="h-4 w-4" />{post.area ? `${post.area}, ${post.city}` : post.city}</div>
+            <div className="flex items-center gap-2"><MapPin className="h-4 w-4" />{placeLine(post.city, post.area)}</div>
             <div className="flex items-center gap-2"><Clock className="h-4 w-4" />{seenAgo(isHe, post)} · {formatDate(post.event_date)}</div>
             {post.breed && <div className="flex items-center gap-2"><Footprints className="h-4 w-4" />{post.breed}</div>}
             {(post.color_primary || size) && <div className="flex items-center gap-2"><Palette className="h-4 w-4" />{[post.color_primary, size].filter(Boolean).join(' | ')}</div>}

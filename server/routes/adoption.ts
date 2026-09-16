@@ -23,6 +23,7 @@ import { logger } from '../lib/logger';
 import { requireValidFileContentDisk } from '../lib/fileMagicValidation';
 import {
   adoptionPhotoPublicPath,
+  contentTypeFor,
   isValidAdoptionPhotoName,
   readAdoptionPhoto,
   uploadAdoptionPhoto,
@@ -135,7 +136,9 @@ router.post(
         identification = { ok: true, degraded: true, errorCode: 'gemini_error' };
       }
 
-      return res.json({ filePath: adoptionPhotoPublicPath(req.file.filename), hash, identification });
+      // mimeType so the listing records what the photo actually is (adoption_listing_media.mime_type
+      // was NULL on every live listing — the client had nothing to send).
+      return res.json({ filePath: adoptionPhotoPublicPath(req.file.filename), hash, mimeType: contentTypeFor(req.file.filename), identification });
     } catch (err: any) {
       return sendError(res, err, 'upload');
     } finally {

@@ -16,7 +16,7 @@ import {
   adoptionApi, errorText, fieldCls, fieldStyle, labelCls,
 } from './adoptionUi';
 
-type Photo = { filePath: string; hash?: string; preview: string };
+type Photo = { filePath: string; hash?: string; mimeType?: string; preview: string };
 
 const EMPTY = {
   listerType: 'private', petType: 'dog', petName: '', breed: '', sex: 'unknown', ageGroup: 'unknown',
@@ -102,8 +102,8 @@ export default function AdoptionCreate() {
     try {
       const fd = new FormData();
       fd.append('photo', file);
-      const j = await adoptionApi<{ filePath: string; hash?: string; identification?: any }>('/api/adoption/upload', { form: fd });
-      setPhotos((p) => [...p, { filePath: j.filePath, hash: j.hash, preview: URL.createObjectURL(file) }]);
+      const j = await adoptionApi<{ filePath: string; hash?: string; mimeType?: string; identification?: any }>('/api/adoption/upload', { form: fd });
+      setPhotos((p) => [...p, { filePath: j.filePath, hash: j.hash, mimeType: j.mimeType, preview: URL.createObjectURL(file) }]);
       const ident = j.identification;
       if (photos.length === 0 && ident && !ident.degraded && (ident.confidence ?? 0) >= 0.35) {
         setForm((f) => ({
@@ -143,7 +143,7 @@ export default function AdoptionCreate() {
           specialNeeds: opt(form.specialNeeds), area: opt(form.area),
           ageYears: undefined,
           ...(form.ageYears.trim() && Number.isFinite(Number(form.ageYears)) ? { ageMonths: Math.round(Number(form.ageYears) * 12) } : {}),
-          mediaFiles: photos.map((p, i) => ({ filePath: p.filePath, mediaRole: i === 0 ? 'primary' : 'extra', ...(p.hash ? { hash: p.hash } : {}) })),
+          mediaFiles: photos.map((p, i) => ({ filePath: p.filePath, mediaRole: i === 0 ? 'primary' : 'extra', ...(p.mimeType ? { mimeType: p.mimeType } : {}), ...(p.hash ? { hash: p.hash } : {}) })),
         },
       });
       toast({

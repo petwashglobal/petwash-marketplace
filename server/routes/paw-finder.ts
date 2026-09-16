@@ -19,7 +19,7 @@ import {
 import { logger } from '../lib/logger';
 import { escapeLike } from '../lib/sqlLike';
 import { requireValidFileContentDisk } from '../lib/fileMagicValidation';
-import { uploadPhotoToGcs, readPhoto, photoPublicPath, isValidPhotoName, PAW_FINDER_MEDIA_PATH_RE } from '../lib/pawFinderPhotoStore';
+import { uploadPhotoToGcs, readPhoto, photoPublicPath, isValidPhotoName, contentTypeFor, PAW_FINDER_MEDIA_PATH_RE } from '../lib/pawFinderPhotoStore';
 
 /** The only two things a PawFinder notice can be. Legacy adoption rows are excluded from every read. */
 export const PAW_FINDER_POST_TYPES = ['lost', 'found'] as const;
@@ -312,7 +312,7 @@ router.post(
       }
     }
 
-      res.json({ filePath, hash, duplicate, fileSize, identification });
+      res.json({ filePath, hash, duplicate, fileSize, mimeType: contentTypeFor(req.file.filename), identification });
     } catch (err: any) {
       logger.error('[PawFinder] upload failed', { error: err.message });
       res.status(500).json({ error: 'upload_failed' });

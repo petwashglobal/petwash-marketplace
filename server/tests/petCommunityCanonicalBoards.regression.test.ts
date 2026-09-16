@@ -67,3 +67,34 @@ describe('adoption fit is honest', async () => {
     expect(f).toEqual({ greatFit: false, conflicts: [], confirmed: [] });
   });
 });
+
+describe('live-test findings 2026-09-16', () => {
+  it('a photo records what it is — mime_type was NULL on every live post', () => {
+    expect(R('server/routes/adoption.ts')).toContain('mimeType: contentTypeFor(req.file.filename)');
+    expect(R('server/routes/paw-finder.ts')).toContain('mimeType: contentTypeFor(req.file.filename)');
+    expect(R('client/src/pages/adoption/AdoptionCreate.tsx')).toContain('...(p.mimeType ? { mimeType: p.mimeType } : {})');
+    expect(R('client/src/pages/PawFinder.tsx')).toContain('...(uploadedMime ? { mimeType: uploadedMime } : {})');
+  });
+
+  it('a pet page never prints an answer the lister never gave', () => {
+    const s = R('client/src/pages/adoption/AdoptionListingPage.tsx');
+    expect(s).toContain("if (!value || answer === 'unknown' || answer === null) return null;");
+    expect(s).not.toMatch(/<Fact label=\{[^}]+\} value=\{yesNoLabel\(isHe, [^)]+\)\} \/>/);
+  });
+});
+
+describe('placeLine', async () => {
+  const { placeLine } = await import('@shared/lib/placeLine');
+  it('never repeats the city inside the area', () => {
+    expect(placeLine('כפר סבא', 'פארק כפר סבא')).toBe('פארק כפר סבא');
+    expect(placeLine('Kfar Saba', 'Kfar Saba')).toBe('Kfar Saba');
+  });
+  it('keeps a real area', () => {
+    expect(placeLine('כפר סבא', 'רחוב ויצמן')).toBe('רחוב ויצמן, כפר סבא');
+  });
+  it('survives a missing half', () => {
+    expect(placeLine('כפר סבא', null)).toBe('כפר סבא');
+    expect(placeLine(null, 'רחוב ויצמן')).toBe('רחוב ויצמן');
+    expect(placeLine(null, null)).toBe('');
+  });
+});
