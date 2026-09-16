@@ -5,8 +5,10 @@ import { describe, it, expect } from 'vitest';
 const SRC = fs.readFileSync(path.resolve(__dirname, 'SignUpLuxury.tsx'), 'utf8');
 describe('SignUpLuxury — busy labels', () => {
   it('the SMS button and the Continue CTA name the action while busy', () => {
-    expect(SRC).toContain("busy ? (he ? 'שולח קוד…' : 'Sending code…')");
-    expect(SRC).toContain("busy ? (he ? 'שולח…' : 'Sending…')");
-    expect(SRC).not.toMatch(/busy \? '…' : \(he \? '(המשך|שלחו לי קוד ב-SMS)'/);
+    // 2026-09-14: text goes through L(hebrew, english) so Arabic and Russian
+    // visitors get their language (signupLuxury.i18n.ts). Same labels.
+    expect(SRC).toContain("busy ? (L('שולח קוד…', 'Sending code…'))");
+    expect(SRC).toContain("busy ? (L('שולח…', 'Sending…'))");
+    expect(SRC).not.toMatch(/busy \? '…' : \(L\('(המשך|שלחו לי קוד ב-SMS)'/);
   });
 });
