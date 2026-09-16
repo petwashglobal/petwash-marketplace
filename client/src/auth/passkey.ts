@@ -23,19 +23,25 @@ import { getApiUrl } from '@/lib/apiConfig';
 async function logBiometricFailure(
   error: any,
   authMethod: 'passkey' | 'face_id' | 'touch_id' | 'windows_hello' | 'biometric' = 'passkey',
-  deviceId?: string
+  deviceId?: string,
+  /** The silent autofill probe: a cancel there is "no passkey on this device", not a failure. */
+  opts: { silent?: boolean } = {},
 ): Promise<void> {
   try {
     const errorType = error.name || 'UnknownWebAuthnError';
     const isCanceled = errorType === 'NotAllowedError' || errorType === 'AbortError';
-    
-    await fetch(getApiUrl('/api/audit/record-biometric-failure'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+
+    // The conditional-mediation probe runs on EVERY signed-out page load. Its
+    // cancel/abort is the normal "this device has no PetWash passkey" outcome —
+    // reporting it filled the ledger request with noise on every visit
+    // (observed live 2026-09-17). Real taps and real errors still report.
+    if (opts.silent && isCanceled) return;
+
+    // apiRequest carries the CSRF token. The bare fetch() that used to be here
+    // was rejected 403 "invalid csrf token" EVERY time, so not one biometric
+    // failure was ever recorded — including the CEO's own failed attempt.
+    const { apiRequest } = await import('@/lib/queryClient');
+    await apiRequest('POST', '/api/audit/record-biometric-failure', {
         errorType,
         errorMessage: error.message || 'N/A',
         deviceId,
@@ -46,7 +52,6 @@ async function logBiometricFailure(
           platform: navigator.platform,
           timestamp: new Date().toISOString(),
         },
-      }),
     });
     
     console.log('[Biometric Audit] Failure logged to immutable ledger', {
@@ -534,9 +539,10 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
     return true;
 
   } catch (error: any) {
-    // Log failure to audit ledger (Protocol 3 compliance)
-    await logBiometricFailure(error, getBiometricMethodName() as any);
-    
+    // Log failure to audit ledger (Protocol 3 compliance) — silent for the
+    // autofill probe's normal "no passkey here" cancel.
+    await logBiometricFailure(error, getBiometricMethodName() as any, undefined, { silent: true });
+
     // Silently ignore NotAllowedError in conditional mode (just means no passkey)
     if (error.name === 'NotAllowedError' || error.name === 'AbortError') {
       console.log('Conditional UI: No passkey available or user cancelled');
