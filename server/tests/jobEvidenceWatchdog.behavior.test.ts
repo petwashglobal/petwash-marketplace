@@ -1,6 +1,15 @@
 /**
  * Hourly job watchdog: cross-examines recently completed provider jobs and puts
  * suspicious ones into the admin alert center. Read-only. Real Postgres (pglite).
+ *
+ * FIXTURE NOTE (2026-09-17): a walk's scheduled start is rebuilt from two
+ * columns — scheduled_date plus "HH:MM" — so BOTH must come from the same
+ * instant. They used to be taken from `now()` and from `now() - 2 hours`
+ * separately, which agree all day and disagree between 00:00 and 02:00 Israel
+ * time: the date said today while the time-of-day belonged to yesterday
+ * evening. In that window the honest walk looked like it finished ~23 hours
+ * BEFORE it started (COMPLETED_BEFORE_START) and the suite went red for
+ * reasons that had nothing to do with the code under test.
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
@@ -39,14 +48,14 @@ beforeAll(async () => {
     INSERT INTO walker_profiles VALUES ('WALKER-1', 'walker-uid');
 
     -- honest walk (today)
-    INSERT INTO walk_bookings VALUES ('WALK-OK', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
+    INSERT INTO walk_bookings VALUES ('WALK-OK', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
       32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '1 hour', 60, 2000, null, 'INV-1');
     INSERT INTO walk_gps_tracking (booking_id, latitude, longitude, recorded_at)
       SELECT 'WALK-OK', 32.1782 + LEAST(g, 60 - g) * 0.00035, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours' + g * interval '1 minute'
         FROM generate_series(0, 60, 5) g;
 
     -- 10-minute "walk" of a 60-minute booking, no GPS
-    INSERT INTO walk_bookings VALUES ('WALK-LIE', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
+    INSERT INTO walk_bookings VALUES ('WALK-LIE', 'owner-uid', 'WALKER-1', 'completed', (now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours')::date, to_char(now() AT TIME ZONE 'Asia/Jerusalem' - interval '2 hours', 'HH24:MI'), 60,
       32.1782, 34.9076, now() AT TIME ZONE 'UTC' - interval '2 hours', now() AT TIME ZONE 'UTC' - interval '110 minutes', 60, 3000, null, null);
 
     -- sitter stay the customer confirmed
