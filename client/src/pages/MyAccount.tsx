@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { PasskeyCreateFlow } from '@/components/PasskeyCreateFlow';
 import { PASSKEY_CONSENT_TEXT } from '@shared/lib/passkeyConsent';
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import sanitizeHtml from 'sanitize-html';
 import { SPECIES_VALUES, SPECIES_LABELS, normalizeLegacySpecies, type PetSpecies } from '@shared/lib/petSpecies';
 import { useQuery, useMutation } from '@tanstack/react-query';
