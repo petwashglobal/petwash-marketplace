@@ -13,7 +13,7 @@ interface AdminRouteGuardProps {
 
 export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
   const { user: firebaseUser, loading: firebaseLoading } = useFirebaseAuth();
-  const { admin, isLoading: adminLoading, isError } = useAdminAuth();
+  const { admin, isLoading: adminLoading, isError, sessionExpired } = useAdminAuth();
   const { whoami, isLoading: whoamiLoading, isSuperAdmin, role: whoamiRole } = useWhoami();
   const [, setLocation] = useLocation();
   const { language } = useLanguage();
@@ -43,6 +43,14 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
       return;
     }
 
+    // The 4h admin session lapsed. That is "sign in again", not "you have no
+    // access" — the CEO hit the access-denied wall on his own signed-in Chrome
+    // (2026-09-17) simply because the session was older than four hours.
+    if (sessionExpired) {
+      setLocation(`/admin/login?expired=1&next=${encodeURIComponent(window.location.pathname)}`);
+      return;
+    }
+
     if (isSuperAdmin) return;
 
     const whoamiHasAccess = whoami && isAdminRole(whoamiRole);
@@ -53,7 +61,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     // Logged in but NOT an admin → do NOT bounce to /admin/login (that loops a
     // signed-in non-admin). Fall through to render the friendly access-denied
     // screen below (spec §21). Only the not-logged-in case redirects to login.
-  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading]);
+  }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading, sessionExpired]);
 
   if (allLoading) {
     return (

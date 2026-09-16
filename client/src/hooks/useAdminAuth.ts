@@ -42,7 +42,14 @@ export function useAdminAuth() {
       const res = await fetch(getApiUrl('/api/admin/auth/me'), { credentials: 'include', headers });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Authentication failed');
+        // An admin session lasts 4h. When it lapses the server answers 401 with
+        // sessionExpired — that means "sign in again", NOT "you are not an
+        // admin". The guard used to show the CEO the access-denied screen for
+        // this (seen on his own Chrome, 2026-09-17). Carry the flag through.
+        const err = new Error(errorData.message || errorData.error || 'Authentication failed');
+        (err as Error & { sessionExpired?: boolean }).sessionExpired =
+          res.status === 401 && errorData.sessionExpired === true;
+        throw err;
       }
       return res.json();
     }
@@ -56,6 +63,8 @@ export function useAdminAuth() {
     isLoading,
     error,
     isError,
+    /** The 4h admin session lapsed: re-authenticate, don't accuse the user. */
+    sessionExpired: Boolean((error as (Error & { sessionExpired?: boolean }) | null)?.sessionExpired),
     isAuthenticated: !!admin && admin.isActive && hasAdminRole,
     isAdmin: hasAdminRole,
     role: admin?.role,
