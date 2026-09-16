@@ -216,16 +216,40 @@ export async function signInWithGoogle(): Promise<void> {
 /**
  * Force-refresh ID token to get latest custom claims (admin status, etc.)
  */
+/**
+ * THE SERVER DECIDES WHO IS AN ADMIN (2026-09-17).
+ *
+ * This used to answer from the ID token's `admin` custom claim OR a build-time
+ * email list (VITE_ADMIN_EMAILS). Production sets neither: the server grants
+ * admin from the super-admin allowlist + verified email + the admin_users row,
+ * and deliberately does NOT write an `admin` custom claim (that claim was
+ * removed as a privilege-escalation surface, #2353). So every real admin —
+ * including the CEO — signed in successfully and was then told on screen
+ * "your account has no admin access yet", while every admin API answered 200.
+ *
+ * Now the single source of truth is /api/session/whoami, the same surface
+ * AdminRouteGuard uses. A guess that contradicts the server is worse than no
+ * guess at all.
+ */
+async function serverSaysAdmin(): Promise<boolean | null> {
+  try {
+    const r = await fetch('/api/session/whoami', { credentials: 'include' });
+    if (!r.ok) return null;                       // not signed in / session expired
+    const who = await r.json();
+    return Boolean(who?.isSuperAdmin) || (who?.dashboardsAllowed ?? []).includes('admin');
+  } catch {
+    return null;                                  // offline: never accuse the user
+  }
+}
+
 async function refreshClaims(): Promise<void> {
   try {
     const user = auth.currentUser;
     if (!user) return;
     
-    const tokenResult = await user.getIdTokenResult(true);
-    const isAdmin = Boolean(
-      tokenResult.claims?.admin || 
-      EXPECTED.adminEmails.includes(user.email || '')
-    );
+    await user.getIdTokenResult(true);
+    const verdict = await serverSaysAdmin();
+    const isAdmin = verdict === true;
     
     // Store admin status globally for easy access
     (window as any).__PW_IS_ADMIN__ = isAdmin;
@@ -233,9 +257,10 @@ async function refreshClaims(): Promise<void> {
     beacon('auth.token_refreshed', { uid: user.uid, isAdmin });
     logger.info('[Auth Guardian] Token refreshed', { uid: user.uid, isAdmin });
     
-    // Warn if user on admin page without admin claims
+    // Only the server's own "no" is worth showing. A network error (null) is not
+    // an answer, and must never be shown to a real admin as a refusal.
     const path = location.pathname.toLowerCase();
-    if (path.includes('/admin') && !isAdmin) {
+    if (path.includes('/admin') && verdict === false) {
       banner.show(
         'Login succeeded, but your account has no admin access yet. ' +
         'Ask an administrator to grant access, then sign out and back in.'
@@ -266,11 +291,11 @@ export async function routeGuard(opts: {
   }
   
   if (opts.adminOnly) {
-    const tokenResult = await user.getIdTokenResult(true);
-    const isAdmin = Boolean(
-      tokenResult.claims?.admin || 
-      EXPECTED.adminEmails.includes(user.email || '')
-    );
+    // Same rule as refreshClaims: the SERVER decides. The old claim-or-email
+    // test locked real admins (incl. the CEO) out of /ceo and every page using
+    // this guard, because production writes neither signal.
+    await user.getIdTokenResult(true);
+    const isAdmin = (await serverSaysAdmin()) === true;
     
     if (!isAdmin) {
       banner.show('This section is restricted to administrators.');
