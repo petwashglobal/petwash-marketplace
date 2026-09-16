@@ -113,6 +113,7 @@ import {
   signInWithPasskeyConditional,
 } from '@/auth/passkey';
 import EnableFaceIDCard from '@/components/EnableFaceIDCard';
+import { SIGNUP_AR_RU } from './signupLuxury.i18n';
 import {
   FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock, FaMobileAlt,
   FaShieldAlt,
@@ -194,6 +195,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const he = language === 'he';
+  // Arabic is right-to-left like Hebrew: layout (dir, alignment, the CSS block)
+  // follows `rtl`, not `he`. 2026-09-14.
+  const rtl = he || language === 'ar';
+  // Text: Hebrew and English unchanged; Arabic and Russian from SIGNUP_AR_RU,
+  // falling back to English for any string not yet translated.
+  const L = (heText: string, enText: string): string =>
+    he ? heText : ((language === 'ar' || language === 'ru') ? (SIGNUP_AR_RU[enText]?.[language] ?? enText) : enText);
 
   // Consent state — three independent axes so the audit trail is unambiguous:
   //   ageConfirmed18Plus  — explicit "I am 18+" checkbox (mandatory).
@@ -564,7 +572,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // OTHER error (rate-limit, unknown, network) becomes the generic
     // anti-enumeration toast — never leaks account existence.
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      setInlineError(he ? 'הזן כתובת אימייל תקינה' : 'Please enter a valid email address');
+      setInlineError(L('הזן כתובת אימייל תקינה', 'Please enter a valid email address'));
       return;
     }
     setForgotBusy(true);
@@ -646,15 +654,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // Cancelled, timed out, or no PetWash passkey on this device. Keep the
           // button: a cancel is not "no passkey", and hiding it is what made it
           // vanish for good. Point to where a passkey is added.
-          setPasskeyError(he
-            ? 'לא הושלמה התחברות עם Passkey. אין עדיין Passkey במכשיר? התחברו בדרך אחרת והוסיפו אחד בחשבון ← אבטחה.'
-            : 'Passkey sign-in did not complete. No passkey on this device yet? Sign in another way, then add one in Account → Security.');
+          setPasskeyError(L('לא הושלמה התחברות עם Passkey. אין עדיין Passkey במכשיר? התחברו בדרך אחרת והוסיפו אחד בחשבון ← אבטחה.', 'Passkey sign-in did not complete. No passkey on this device yet? Sign in another way, then add one in Account → Security.'));
         } else {
-          setPasskeyError(r.error || (he ? 'התחברות עם Passkey נכשלה. נסו שוב או התחברו בדרך אחרת.' : 'Passkey sign-in failed. Try again or sign in another way.'));
+          setPasskeyError(r.error || (L('התחברות עם Passkey נכשלה. נסו שוב או התחברו בדרך אחרת.', 'Passkey sign-in failed. Try again or sign in another way.')));
         }
       }
     } catch (e: any) {
-      setPasskeyError(e?.message || (he ? 'התחברות עם Passkey נכשלה. נסו שוב או התחברו בדרך אחרת.' : 'Passkey sign-in failed. Try again or sign in another way.'));
+      setPasskeyError(e?.message || (L('התחברות עם Passkey נכשלה. נסו שוב או התחברו בדרך אחרת.', 'Passkey sign-in failed. Try again or sign in another way.')));
     } finally {
       setBusy(false);
     }
@@ -684,15 +690,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // on the /session handler; the server independently calculates age from
     // the DOB and never trusts the ageConfirmed checkbox on its own.
     if (!dobValid || !isAdult) {
-      fail(he ? 'יש להזין תאריך לידה — גיל 18 ומעלה' : 'Please enter your date of birth — you must be 18 or older.');
+      fail(L('יש להזין תאריך לידה — גיל 18 ומעלה', 'Please enter your date of birth — you must be 18 or older.'));
       return false;
     }
     if (!ageConfirmed18Plus) {
-      fail(he ? 'יש לאשר שאתם בני 18 ומעלה' : 'Please confirm that you are 18 years of age or older.');
+      fail(L('יש לאשר שאתם בני 18 ומעלה', 'Please confirm that you are 18 years of age or older.'));
       return false;
     }
     if (!agreedTerms) {
-      fail(he ? 'יש לאשר את תנאי השימוש והפרטיות' : 'Please accept the Terms of Service and Privacy Notice.');
+      fail(L('יש לאשר את תנאי השימוש והפרטיות', 'Please accept the Terms of Service and Privacy Notice.'));
       return false;
     }
     return true;
@@ -773,17 +779,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function sendCode() {
-    if (!phone) { fail(he ? 'הזן מספר טלפון' : 'Enter your mobile number'); return; }
+    if (!phone) { fail(L('הזן מספר טלפון', 'Enter your mobile number')); return; }
     // Real 18+ birthday required for signup (login never needs DOB). The mobileStep
     // (adding a phone onto an already-verified social/email account) skips the DOB +
     // terms gates — both were satisfied at the first step.
-    if (authMode !== 'login' && !mobileStep && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
+    if (authMode !== 'login' && !mobileStep && !isAdult) { fail(L('בחרו תאריך לידה — גיל 18 ומעלה', 'Please set your date of birth — you must be 18 or older.')); return; }
     // Names required on signup (never on login or when attaching a phone to an
     // already-verified account). Post-login MEMBER_REQUIRED_FIELDS rejects
     // rows without firstName/lastName; collecting them here keeps the user out
     // of the /complete-profile loop.
     if (authMode !== 'login' && !mobileStep && !namesValid) {
-      fail(he ? 'יש להזין שם פרטי ושם משפחה (לפחות 2 תווים כל אחד)' : 'Please enter first name and last name (at least 2 characters each)');
+      fail(L('יש להזין שם פרטי ושם משפחה (לפחות 2 תווים כל אחד)', 'Please enter first name and last name (at least 2 characters each)'));
       return;
     }
     if (!mobileStep && !requireTerms()) return;
@@ -815,7 +821,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           setSmsProviderHealthy(false);
           if (signupFlags.emailPassword) {
             setMethod('email');
-            fail(d.message || (he ? 'SMS אינו זמין כעת — המשך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'));
+            fail(d.message || (L('SMS אינו זמין כעת — המשך עם אימייל.', 'SMS is temporarily unavailable — continue with email.')));
             return;
           }
           // Email is disabled too — never leave the user stuck on a dead SMS tab;
@@ -825,15 +831,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // so telling users to "continue with Apple" is a fake CTA on
           // any surface where the button isn't actually visible. Point
           // them at Google only until Apple is genuinely configured.
-          fail(he ? 'SMS אינו זמין כעת — המשך עם Google.' : 'SMS is temporarily unavailable — continue with Google.');
+          fail(L('SMS אינו זמין כעת — המשך עם Google.', 'SMS is temporarily unavailable — continue with Google.'));
           return;
         }
-        fail(d.message || (he ? 'SMS אינו זמין כעת — המשך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'));
+        fail(d.message || (L('SMS אינו זמין כעת — המשך עם אימייל.', 'SMS is temporarily unavailable — continue with email.')));
         return;
       }
       setSent(true);
-      toast({ title: he ? 'קוד נשלח 📲' : 'Code sent 📲' });
-    } catch (e) { logger.error('[signup] sendCode', e); fail(he ? 'שגיאת רשת' : 'Network error'); }
+      toast({ title: L('קוד נשלח 📲', 'Code sent 📲') });
+    } catch (e) { logger.error('[signup] sendCode', e); fail(L('שגיאת רשת', 'Network error')); }
     finally { setBusy(false); }
   }
 
@@ -859,12 +865,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           });
         } catch (netErr) {
           logger.error('[signup] sms/verify network', netErr);
-          fail(he ? 'תקלת רשת. בדוק חיבור אינטרנט ונסה שוב.' : 'Network error. Check your connection and try again.');
+          fail(L('תקלת רשת. בדוק חיבור אינטרנט ונסה שוב.', 'Network error. Check your connection and try again.'));
           return;
         }
         const vd = await v.json().catch(() => ({} as any));
         if (!vd.ok || !vd.verificationToken) {
-          fail(vd.message || vd.error || (he ? 'קוד שגוי או פג תוקף' : 'Wrong or expired code'));
+          fail(vd.message || vd.error || (L('קוד שגוי או פג תוקף', 'Wrong or expired code')));
           return;
         }
         verificationToken = vd.verificationToken;
@@ -884,7 +890,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           });
         } catch (netErr) {
           logger.error('[signup] verify-signup-mobile network', netErr);
-          fail(he ? 'תקלת רשת בשמירת הנייד. נסה שוב.' : 'Network error saving your mobile. Try again.');
+          fail(L('תקלת רשת בשמירת הנייד. נסה שוב.', 'Network error saving your mobile. Try again.'));
           return;
         }
         const ad = await a.json().catch(() => ({} as any));
@@ -903,7 +909,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') {
             setCachedPhoneVerificationToken(null);
           }
-          fail(ad.error || ad.message || (he ? 'שמירת הנייד נכשלה. נסה שוב.' : 'Mobile attach failed. Try again.'));
+          fail(ad.error || ad.message || (L('שמירת הנייד נכשלה. נסה שוב.', 'Mobile attach failed. Try again.')));
           return;
         }
         setCachedPhoneVerificationToken(null);
@@ -931,7 +937,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // server and burn, the retry converges one tap later — the burn
         // answers VERIFICATION_ALREADY_USED and the branch below clears.
         // What we can no longer claim is that the code is definitely valid.
-        fail(he ? 'תקלת רשת. לחץ אמת שוב — ייתכן שיידרש קוד חדש.' : 'Network error. Press verify again — you may need a new code.');
+        fail(L('תקלת רשת. לחץ אמת שוב — ייתכן שיידרש קוד חדש.', 'Network error. Press verify again — you may need a new code.'));
         return;
       }
       const sd = await s.json().catch(() => ({} as any));
@@ -952,9 +958,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         setMethod('email');
         setSent(false);
         fail(
-          he
-            ? `כתובת האימייל ${conflictingEmail} כבר רשומה — התחברו כאן להוסיף את מספר הנייד.`
-            : `The email ${conflictingEmail} is already registered — sign in here to add your mobile number.`
+          he ? `כתובת האימייל ${conflictingEmail} כבר רשומה — התחברו כאן להוסיף את מספר הנייד.` : language === 'ar' ? `البريد الإلكتروني ${conflictingEmail} مسجّل بالفعل — سجّل الدخول هنا لإضافة رقم هاتفك.` : language === 'ru' ? `Email ${conflictingEmail} уже зарегистрирован — войдите здесь, чтобы добавить номер телефона.` : `The email ${conflictingEmail} is already registered — sign in here to add your mobile number.`
         );
         return;
       }
@@ -973,7 +977,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         if (sd?.proofSpent === true || sd?.code === 'VERIFICATION_ALREADY_USED') {
           setCachedPhoneVerificationToken(null);
         }
-        fail(sd?.message || sd?.error || (he ? 'הפעלת החשבון נכשלה. נסה שוב.' : 'Account activation failed. Try again.'));
+        fail(sd?.message || sd?.error || (L('הפעלת החשבון נכשלה. נסה שוב.', 'Account activation failed. Try again.')));
         return;
       }
 
@@ -987,7 +991,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // a customToken only after the burn. The cached proof is gone for
         // certain, so keeping it would guarantee a dead retry.
         setCachedPhoneVerificationToken(null);
-        fail(he ? 'ההתחברות ל-Firebase נכשלה. בקש קוד חדש ונסה שוב.' : 'Firebase sign-in failed. Please request a new code and try again.');
+        fail(L('ההתחברות ל-Firebase נכשלה. בקש קוד חדש ונסה שוב.', 'Firebase sign-in failed. Please request a new code and try again.'));
         return;
       }
       const idToken = await cred.user.getIdToken(true);
@@ -1006,7 +1010,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // already exists; a retry with a fresh code is cheap, a retry with the
         // cached one is guaranteed to die at the burn.
         setCachedPhoneVerificationToken(null);
-        fail(he ? 'שמירת הכניסה נכשלה. בקש קוד חדש ונסה שוב.' : 'Session save failed. Please request a new code and try again.');
+        fail(L('שמירת הכניסה נכשלה. בקש קוד חדש ונסה שוב.', 'Session save failed. Please request a new code and try again.'));
         return;
       }
       if (!sessionRes.ok) {
@@ -1016,9 +1020,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // burn that could only answer already_used.
         setCachedPhoneVerificationToken(null);
         if (sessionRes.status === 502) {
-          fail(he ? 'השרת מתעורר. חכה כמה שניות, בקש קוד חדש ונסה שוב.' : 'Server is warming up. Wait a few seconds, request a new code and try again.');
+          fail(L('השרת מתעורר. חכה כמה שניות, בקש קוד חדש ונסה שוב.', 'Server is warming up. Wait a few seconds, request a new code and try again.'));
         } else {
-          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessionRes.status}). בקש קוד חדש ונסה שוב.` : `Session save failed (${sessionRes.status}). Request a new code and try again.`));
+          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessionRes.status}). בקש קוד חדש ונסה שוב.` : language === 'ar' ? `فشل حفظ الجلسة (${sessionRes.status}). اطلب رمزًا جديدًا وحاول مرة أخرى.` : language === 'ru' ? `Не удалось сохранить сеанс (${sessionRes.status}). Запросите новый код и попробуйте снова.` : `Session save failed (${sessionRes.status}). Request a new code and try again.`));
         }
         return;
       }
@@ -1048,7 +1052,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             // THIS challenge, not open its own.
             const step2Body = await step2Res.json().catch(() => null);
             if (step2Body?.challenge) setEmailChallenge(step2Body.challenge as PublicChallenge);
-            toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
+            toast({ title: L('קוד נשלח לאימייל 📧', 'Code sent to your email 📧') });
           }
         } catch { /* the email OTP screen has a resend */ }
         return;
@@ -1056,7 +1060,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       await finishAndRoute();
     } catch (e) {
       logger.error('[signup] verify unexpected', e);
-      fail(he ? 'שגיאה לא צפויה באימות. נסה שוב.' : 'Unexpected verification error. Try again.');
+      fail(L('שגיאה לא צפויה באימות. נסה שוב.', 'Unexpected verification error. Try again.'));
     } finally {
       setBusy(false);
     }
@@ -1064,14 +1068,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   // ── Passwordless EMAIL 6-digit code (mirror of the mobile OTP flow) ──────────
   async function sendEmailCode() {
-    if (!email) { fail(he ? 'הזן כתובת אימייל' : 'Enter your email'); return; }
+    if (!email) { fail(L('הזן כתובת אימייל', 'Enter your email')); return; }
     if (!fieldSchemas(language).email.safeParse(email.trim()).success) { fail(vmsg('validation.email.invalid', language)); return; }
     // Real 18+ birthday required for signup (login never needs DOB).
-    if (authMode !== 'login' && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
+    if (authMode !== 'login' && !isAdult) { fail(L('בחרו תאריך לידה — גיל 18 ומעלה', 'Please set your date of birth — you must be 18 or older.')); return; }
     // Names required on signup — mirror the phone path (post-login
     // MEMBER_REQUIRED_FIELDS gate).
     if (authMode !== 'login' && !namesValid) {
-      fail(he ? 'יש להזין שם פרטי ושם משפחה (לפחות 2 תווים כל אחד)' : 'Please enter first name and last name (at least 2 characters each)');
+      fail(L('יש להזין שם פרטי ושם משפחה (לפחות 2 תווים כל אחד)', 'Please enter first name and last name (at least 2 characters each)'));
       return;
     }
     if (!requireTerms()) return;
@@ -1098,12 +1102,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         body: JSON.stringify({ email, purpose: emailPurpose, language, turnstileToken: emailTurnstileToken }),
       });
       const d = await r.json();
-      if (!d.ok) { fail(d.message || (he ? 'לא ניתן לשלוח קוד כעת' : 'Could not send the code right now')); return; }
+      if (!d.ok) { fail(d.message || (L('לא ניתן לשלוח קוד כעת', 'Could not send the code right now'))); return; }
       // /start now returns the masked challenge; the shared flow adopts it.
       if (d.challenge) setEmailChallenge(d.challenge as PublicChallenge);
       setSent(true);
-      toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
-    } catch (e) { logger.error('[signup] sendEmailCode', e); fail(he ? 'שגיאת רשת' : 'Network error'); }
+      toast({ title: L('קוד נשלח לאימייל 📧', 'Code sent to your email 📧') });
+    } catch (e) { logger.error('[signup] sendEmailCode', e); fail(L('שגיאת רשת', 'Network error')); }
     finally { setBusy(false); }
   }
 
@@ -1140,12 +1144,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           });
         } catch (netErr) {
           logger.error('[signup] verifyEmailCode stage1 network', netErr);
-          fail(he ? 'תקלת רשת. בדוק חיבור אינטרנט ונסה שוב.' : 'Network error. Check your connection and try again.');
+          fail(L('תקלת רשת. בדוק חיבור אינטרנט ונסה שוב.', 'Network error. Check your connection and try again.'));
           return;
         }
         const vd = await v.json().catch(() => ({} as any));
         if (!vd.ok || !vd.sessionToken) {
-          fail(vd.message || vd.error || (he ? 'קוד שגוי או פג תוקף' : 'Wrong or expired code'));
+          fail(vd.message || vd.error || (L('קוד שגוי או פג תוקף', 'Wrong or expired code')));
           return;
         }
         sessionToken = vd.sessionToken;
@@ -1165,7 +1169,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           });
         } catch (netErr) {
           logger.error('[signup] verify-signup-email network', netErr);
-          fail(he ? 'תקלת רשת בשמירת האימייל. נסה שוב.' : 'Network error saving your email. Try again.');
+          fail(L('תקלת רשת בשמירת האימייל. נסה שוב.', 'Network error saving your email. Try again.'));
           return;
         }
         const ad = await a.json().catch(() => ({} as any));
@@ -1184,9 +1188,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             setMethod('email');
             setSent(false);
             fail(
-              he
-                ? `כתובת האימייל ${conflictingEmail} כבר קשורה לחשבון קיים — התחברו כאן.`
-                : `The email ${conflictingEmail} is already linked to an existing account — sign in here.`
+              he ? `כתובת האימייל ${conflictingEmail} כבר קשורה לחשבון קיים — התחברו כאן.` : language === 'ar' ? `البريد الإلكتروني ${conflictingEmail} مرتبط بالفعل بحساب قائم — سجّل الدخول هنا.` : language === 'ru' ? `Email ${conflictingEmail} уже привязан к существующему аккаунту — войдите здесь.` : `The email ${conflictingEmail} is already linked to an existing account — sign in here.`
             );
             return;
           }
@@ -1199,7 +1201,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // VERIFICATION_ALREADY_USED stays for the case where the response to
           // a successful burn was lost and we retried blind.
           if (ad.proofSpent === true || ad.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
-          fail(ad.error || ad.message || (he ? 'שמירת האימייל נכשלה. נסה שוב.' : 'Email attach failed. Try again.'));
+          fail(ad.error || ad.message || (L('שמירת האימייל נכשלה. נסה שוב.', 'Email attach failed. Try again.')));
           return;
         }
         setCachedEmailSessionToken(null);
@@ -1223,7 +1225,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         });
       } catch (netErr) {
         logger.error('[signup] email-session network', netErr);
-        fail(he ? 'תקלת רשת. הקוד עדיין תקף — לחץ אמת שוב.' : 'Network error. Your code is still valid — press verify again.');
+        fail(L('תקלת רשת. הקוד עדיין תקף — לחץ אמת שוב.', 'Network error. Your code is still valid — press verify again.'));
         return;
       }
       const sd = await s.json().catch(() => ({} as any));
@@ -1231,7 +1233,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // Same reason as the attach path above: a spent one-use proof is dead,
         // so clear it rather than leave the retry pointing at it.
         if (sd?.code === 'VERIFICATION_ALREADY_USED') setCachedEmailSessionToken(null);
-        fail(sd?.error || (he ? 'הפעלת החשבון נכשלה. נסה שוב.' : 'Account activation failed. Try again.'));
+        fail(sd?.error || (L('הפעלת החשבון נכשלה. נסה שוב.', 'Account activation failed. Try again.')));
         return;
       }
 
@@ -1241,7 +1243,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         cred = await signInWithCustomToken(auth, sd.customToken);
       } catch (fbErr: any) {
         logger.error('[signup] signInWithCustomToken failed', fbErr);
-        fail(he ? 'ההתחברות ל-Firebase נכשלה. הקוד עדיין תקף — לחץ אמת שוב.' : 'Firebase sign-in failed. Your code is still valid — press verify again.');
+        fail(L('ההתחברות ל-Firebase נכשלה. הקוד עדיין תקף — לחץ אמת שוב.', 'Firebase sign-in failed. Your code is still valid — press verify again.'));
         return;
       }
       const idToken = await cred.user.getIdToken(true);
@@ -1261,7 +1263,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         });
       } catch (netErr) {
         logger.error('[signup] /session network', netErr);
-        fail(he ? 'שמירת הכניסה נכשלה. נסה שוב.' : 'Session save failed. Try again.');
+        fail(L('שמירת הכניסה נכשלה. נסה שוב.', 'Session save failed. Try again.'));
         return;
       }
       if (!sessRes.ok) {
@@ -1269,9 +1271,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // 502 DB_UNAVAILABLE means the server is warming up. Encourage retry
         // rather than dumping a technical code on the user.
         if (sessRes.status === 502) {
-          fail(he ? 'השרת מתעורר. חכה כמה שניות ולחץ אמת שוב.' : 'Server is warming up. Wait a few seconds and press verify again.');
+          fail(L('השרת מתעורר. חכה כמה שניות ולחץ אמת שוב.', 'Server is warming up. Wait a few seconds and press verify again.'));
         } else {
-          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessRes.status}). נסה שוב.` : `Session save failed (${sessRes.status}). Try again.`));
+          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessRes.status}). נסה שוב.` : language === 'ar' ? `فشل حفظ الجلسة (${sessRes.status}). حاول مرة أخرى.` : language === 'ru' ? `Не удалось сохранить сеанс (${sessRes.status}). Попробуйте ещё раз.` : `Session save failed (${sessRes.status}). Try again.`));
         }
         return;
       }
@@ -1283,13 +1285,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // NEW email signup → also collect + verify mobile (both-contacts rule).
       if (authMode === 'join' && sessData?.isNewUser) {
         setPhone(''); setSent(false); setMethod('mobile'); setMobileStep(true);
-        toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
+        toast({ title: L('שלב אחרון — אימות מספר הנייד', 'One last step — verify your mobile') });
         return;
       }
       await finishAndRoute();
     } catch (e) {
       logger.error('[signup] verifyEmailCode unexpected', e);
-      fail(he ? 'שגיאה לא צפויה באימות. נסה שוב.' : 'Unexpected verification error. Try again.');
+      fail(L('שגיאה לא צפויה באימות. נסה שוב.', 'Unexpected verification error. Try again.'));
     } finally {
       setBusy(false);
     }
@@ -1315,9 +1317,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // Inside the app the web redirect dead-ends (returns to petwash.co.il,
       // never back to the app) — fail honestly instead of stranding the user.
       if (isNativePlatform() && which === 'facebook') {
-        fail(he
-          ? 'התחברות Facebook עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל'
-          : 'Facebook sign-in is not available in the app yet — please use Google, Apple, mobile or email.');
+        fail(L('התחברות Facebook עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל', 'Facebook sign-in is not available in the app yet — please use Google, Apple, mobile or email.'));
         return;
       }
       if (isNativePlatform() && (which === 'google' || which === 'apple')) {
@@ -1335,7 +1335,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         });
         if (!sessionRes.ok) {
           const label = which === 'google' ? 'Google' : 'Apple';
-          fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
+          fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : language === 'ar' ? `تعذّر إكمال تسجيل الدخول عبر ${label}. حاول مرة أخرى.` : language === 'ru' ? `Не удалось завершить вход через ${label}. Попробуйте ещё раз.` : `${label} sign-in could not be completed. Please try again.`);
           return;
         }
         // NEW native social user → collect + verify mobile so the account confirms BOTH
@@ -1346,7 +1346,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           setSent(false);
           setMethod('mobile');
           setMobileStep(true);
-          toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
+          toast({ title: L('שלב אחרון — אימות מספר הנייד', 'One last step — verify your mobile') });
           return;
         }
         await finishAndRoute();
@@ -1380,7 +1380,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!sessionRes.ok) {
         // Don't route into the app on a hollow session (guards would 401-bounce).
         const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
-        fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
+        fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : language === 'ar' ? `تعذّر إكمال تسجيل الدخول عبر ${label}. حاول مرة أخرى.` : language === 'ru' ? `Не удалось завершить вход через ${label}. Попробуйте ещё раз.` : `${label} sign-in could not be completed. Please try again.`);
         return;
       }
       // NEW social user: Google/Apple gave us a verified email but no phone. Ask them to
@@ -1392,7 +1392,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         setSent(false);
         setMethod('mobile');
         setMobileStep(true);
-        toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
+        toast({ title: L('שלב אחרון — אימות מספר הנייד', 'One last step — verify your mobile') });
         return;
       }
       await finishAndRoute();
@@ -1462,9 +1462,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       }
       const reason = humanizeAuthError(code, he ? 'he' : 'en');
       try { (window as any).PW_track?.('auth.social_error', { provider: which, code }); } catch { /* noop */ }
-      fail(he
-        ? `התחברות ${label}: ${reason}`
-        : `${label} sign-in: ${reason}`);
+      fail(he ? `התחברות ${label}: ${reason}` : language === 'ar' ? `تسجيل الدخول عبر ${label}: ${reason}` : language === 'ru' ? `Вход через ${label}: ${reason}` : `${label} sign-in: ${reason}`);
     } finally { setBusy(false); }
   }
 
@@ -1484,14 +1482,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
-      if (!sessionRes.ok) { fail(he ? 'החיבור נכשל — נסו שוב' : 'Linking failed — please try again.'); return; }
+      if (!sessionRes.ok) { fail(L('החיבור נכשל — נסו שוב', 'Linking failed — please try again.')); return; }
       setLinkState(null); setLinkPassword('');
       await finishAndRoute();
     } catch (err: any) {
       const c = String(err?.code || err?.message || '').toLowerCase();
-      if (c.includes('wrong-password') || c.includes('invalid-credential')) fail(he ? 'סיסמה שגויה' : 'Incorrect password.');
+      if (c.includes('wrong-password') || c.includes('invalid-credential')) fail(L('סיסמה שגויה', 'Incorrect password.'));
       else if (c.includes('popup-closed') || c.includes('cancel')) { /* user cancelled the re-auth */ }
-      else { logger.error('[signup] link', err); fail(he ? 'החיבור נכשל — נסו שוב' : 'Linking failed — please try again.'); }
+      else { logger.error('[signup] link', err); fail(L('החיבור נכשל — נסו שוב', 'Linking failed — please try again.')); }
     } finally { setBusy(false); }
   }
   function linkViaPassword() {
@@ -1521,27 +1519,25 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // can't return to the webview. Honest message until a native flow exists.
       if (isNativePlatform()) {
         const nativeLabel = which === 'instagram' ? 'Instagram' : 'TikTok';
-        fail(he
-          ? `התחברות ${nativeLabel} עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל`
-          : `${nativeLabel} sign-in is not available in the app yet — please use Google, Apple, mobile or email.`);
+        fail(he ? `התחברות ${nativeLabel} עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל` : language === 'ar' ? `تسجيل الدخول عبر ${nativeLabel} غير متاح في التطبيق بعد — استخدم Google أو Apple أو الهاتف أو البريد.` : language === 'ru' ? `Вход через ${nativeLabel} в приложении пока недоступен — используйте Google, Apple, телефон или email.` : `${nativeLabel} sign-in is not available in the app yet — please use Google, Apple, mobile or email.`);
         return;
       }
       const r = await fetch(getApiUrl(`/api/auth/social/${which}/authorize`), { credentials: 'include' });
       const d = await r.json().catch(() => ({}));
       if (d?.authUrl) { window.location.href = d.authUrl; return; }
       const label = which === 'instagram' ? 'Instagram' : 'TikTok';
-      fail(he ? `${label} עדיין לא פעיל — נסה Google, נייד או אימייל` : `${label} sign-in is not active yet — please try Google, mobile or email.`);
+      fail(he ? `${label} עדיין לא פעיל — נסה Google, נייד או אימייל` : language === 'ar' ? `تسجيل الدخول عبر ${label} غير مفعّل بعد — جرّب Google أو الهاتف أو البريد.` : language === 'ru' ? `Вход через ${label} пока не работает — попробуйте Google, телефон или email.` : `${label} sign-in is not active yet — please try Google, mobile or email.`);
     } catch (e) {
       logger.error('[signup] socialExternal', e);
-      fail(he ? 'שגיאת רשת' : 'Network error');
+      fail(L('שגיאת רשת', 'Network error'));
     } finally { setBusy(false); }
   }
 
   async function emailSubmit() {
-    if (!email || !password) { fail(he ? 'הזן אימייל וסיסמה' : 'Enter your email and password'); return; }
+    if (!email || !password) { fail(L('הזן אימייל וסיסמה', 'Enter your email and password')); return; }
     if (!fieldSchemas(language).email.safeParse(email.trim()).success) { fail(vmsg('validation.email.invalid', language)); return; }
     // Real 18+ birthday required for signup (login never needs DOB).
-    if (authMode !== 'login' && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
+    if (authMode !== 'login' && !isAdult) { fail(L('בחרו תאריך לידה — גיל 18 ומעלה', 'Please set your date of birth — you must be 18 or older.')); return; }
     if (!requireTerms()) return;
     setInlineError(null);
     setBusy(true);
@@ -1559,14 +1555,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             // Enumeration-safe: an existing account whose password didn't match
             // gets the SAME generic message as a wrong password — never confirm
             // whether an email is registered.
-            if (ce?.code === 'auth/email-already-in-use') { fail(he ? 'אימייל או סיסמה שגויים' : 'Email or password is incorrect.'); return; }
-            if (ce?.code === 'auth/weak-password') { fail(he ? 'סיסמה חלשה מדי (6 תווים לפחות)' : 'Password too weak (min 6 characters).'); return; }
+            if (ce?.code === 'auth/email-already-in-use') { fail(L('אימייל או סיסמה שגויים', 'Email or password is incorrect.')); return; }
+            if (ce?.code === 'auth/weak-password') { fail(L('סיסמה חלשה מדי (6 תווים לפחות)', 'Password too weak (min 6 characters).')); return; }
             throw ce;
           }
         } else if (e?.code === 'auth/wrong-password') {
-          fail(he ? 'אימייל או סיסמה שגויים' : 'Email or password is incorrect.'); return;
+          fail(L('אימייל או סיסמה שגויים', 'Email or password is incorrect.')); return;
         } else if (e?.code === 'auth/invalid-email') {
-          fail(he ? 'כתובת אימייל לא תקינה' : 'Invalid email address.'); return;
+          fail(L('כתובת אימייל לא תקינה', 'Invalid email address.')); return;
         } else { throw e; }
       }
       const idToken = await cred.user.getIdToken(true);
@@ -1589,7 +1585,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!sessionRes.ok) {
         // Surface the real failure instead of dropping the user into the app on a
         // session that will immediately 401-bounce them back here.
-        fail(he ? 'יצירת ההתחברות נכשלה — נסה שוב' : 'Could not establish your session. Please try again.');
+        fail(L('יצירת ההתחברות נכשלה — נסה שוב', 'Could not establish your session. Please try again.'));
         return;
       }
       // NEW email+password signup → also collect + verify the mobile so the account
@@ -1597,11 +1593,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       const sd2 = await sessionRes.json().catch(() => ({} as any));
       if (authMode === 'join' && sd2?.isNewUser) {
         setPhone(''); setSent(false); setMethod('mobile'); setMobileStep(true);
-        toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
+        toast({ title: L('שלב אחרון — אימות מספר הנייד', 'One last step — verify your mobile') });
         return;
       }
       await finishAndRoute();
-    } catch (e) { logger.error('[signup] email', e); fail(he ? 'ההתחברות נכשלה' : 'Sign-in failed'); }
+    } catch (e) { logger.error('[signup] email', e); fail(L('ההתחברות נכשלה', 'Sign-in failed')); }
     finally { setBusy(false); }
   }
 
@@ -1662,7 +1658,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // the "use a one-time code" link; social + passkey remain on both modes.
   const loginReady = !busy && emailValid && password.length >= 1;
 
-  const ctaLabel = busy ? (he ? 'שולח…' : 'Sending…') : (he ? 'המשך' : 'Continue');
+  const ctaLabel = busy ? (L('שולח…', 'Sending…')) : (L('המשך', 'Continue'));
 
   function startSignup() {
     if (phoneValid) { setMethod('mobile'); void sendCode(); }
@@ -1675,9 +1671,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // contacts are verified (verifyEmailCode → verify-signup-email). Name + address
   // are collected right after, in the profile step (complete-profile).
   function startJoin() {
-    if (!bothContacts) { fail(he ? 'צריך גם מספר נייד וגם אימייל' : 'A mobile number AND an email are both required'); return; }
-    if (!passwordValid) { fail(he ? 'הסיסמה חייבת להיות באורך 8 תווים לפחות' : 'Password must be at least 8 characters'); return; }
-    if (!isAdult) { fail(he ? 'יש להיות בגיל 18 ומעלה' : 'You must be 18 or older'); return; }
+    if (!bothContacts) { fail(L('צריך גם מספר נייד וגם אימייל', 'A mobile number AND an email are both required')); return; }
+    if (!passwordValid) { fail(L('הסיסמה חייבת להיות באורך 8 תווים לפחות', 'Password must be at least 8 characters')); return; }
+    if (!isAdult) { fail(L('יש להיות בגיל 18 ומעלה', 'You must be 18 or older')); return; }
     setInlineError(null);
     setMethod('mobile');
     void sendCode();
@@ -1698,17 +1694,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // this one.) Never name a step here without confirming a member can take it.
   function showNoSecondFactor() {
     setUsePassword(false);
-    fail(he
-      ? 'כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל, ואז הוסיפו מספר נייד ב"החשבון שלי" תחת "מספר טלפון".'
-      : 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below, then add a mobile number under Phone Number in My Account.');
+    fail(L('כניסה דו-שלבית פעילה בחשבון הזה, אבל אין מספר נייד לשליחת קוד. התחברו עם קוד חד-פעמי לאימייל, ואז הוסיפו מספר נייד ב"החשבון שלי" תחת "מספר טלפון".', 'Two-step login is on for this account, but there is no mobile number to send a code to. Sign in with a one-time code below, then add a mobile number under Phone Number in My Account.'));
   }
 
   // LOGIN (CEO 2026-07-31): returning member signs in with email + password (the
   // Firebase email/password credential set at join). Clear message on bad creds,
   // and a nudge to the code path / join for accounts without a password yet.
   async function loginWithPassword() {
-    if (!emailValid) { fail(he ? 'הזן כתובת אימייל תקינה' : 'Enter a valid email'); return; }
-    if (!password) { fail(he ? 'הזן סיסמה' : 'Enter your password'); return; }
+    if (!emailValid) { fail(L('הזן כתובת אימייל תקינה', 'Enter a valid email')); return; }
+    if (!password) { fail(L('הזן סיסמה', 'Enter your password')); return; }
     setInlineError(null);
     setBusy(true);
     // Block the auth-state auto-navigate for the whole login (Firebase sign-in
@@ -1738,14 +1732,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const sd = await s.json().catch(() => ({} as any));
         if (sd?.needed) {
           setMfaChallenge({ idToken, phoneHint: sd.phoneHint || '' });
-          toast({ title: he ? 'קוד נשלח לנייד 📲' : 'Code sent to your phone 📲' });
+          toast({ title: L('קוד נשלח לנייד 📲', 'Code sent to your phone 📲') });
           return;
         }
         mfaLoginInFlight.current = false;
         // The gate and this route now share one verdict, so a 428 followed by
         // MFA_NO_FACTOR means the account lost its number between the two calls.
         if (sd?.code === 'MFA_NO_FACTOR') { showNoSecondFactor(); return; }
-        fail(he ? 'לא ניתן להתחיל אימות דו-שלבי — נסו שוב' : 'Could not start two-step verification — please try again');
+        fail(L('לא ניתן להתחיל אימות דו-שלבי — נסו שוב', 'Could not start two-step verification — please try again'));
         return;
       }
       if (r.status === 403) {
@@ -1756,16 +1750,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const d = await r.json().catch(() => ({} as any));
         if (d?.errorCode === 'MFA_NO_FACTOR') { mfaLoginInFlight.current = false; showNoSecondFactor(); return; }
       }
-      if (!r.ok) { mfaLoginInFlight.current = false; fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
+      if (!r.ok) { mfaLoginInFlight.current = false; fail(L('ההתחברות נכשלה — נסה שוב', 'Sign-in failed — please try again')); return; }
       mfaLoginInFlight.current = false;
       await finishAndRoute();
     } catch (e: any) {
       mfaLoginInFlight.current = false;
       const code = e?.code || '';
       if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-        fail(he ? 'אימייל או סיסמה שגויים. אין עדיין חשבון? הצטרפו, או התחברו עם קוד חד-פעמי.' : 'Wrong email or password. No account yet? Create one, or use a one-time code.');
+        fail(L('אימייל או סיסמה שגויים. אין עדיין חשבון? הצטרפו, או התחברו עם קוד חד-פעמי.', 'Wrong email or password. No account yet? Create one, or use a one-time code.'));
       } else if (code === 'auth/too-many-requests') {
-        fail(he ? 'יותר מדי ניסיונות — נסו שוב בעוד רגע' : 'Too many attempts — please try again shortly');
+        fail(L('יותר מדי ניסיונות — נסו שוב בעוד רגע', 'Too many attempts — please try again shortly'));
       } else {
         fail(humanizeAuthError(code, he ? 'he' : 'en'));
       }
@@ -1784,34 +1778,34 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         body: JSON.stringify({ idToken: mfaChallenge.idToken, code, language }),
       });
       const vd = await v.json().catch(() => ({} as any));
-      if (!vd.ok || !vd.mfaToken) { fail(vd.error || (he ? 'קוד שגוי' : 'Invalid code')); return; }
+      if (!vd.ok || !vd.mfaToken) { fail(vd.error || (L('קוד שגוי', 'Invalid code'))); return; }
       const r = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken: mfaChallenge.idToken, mfaToken: vd.mfaToken }),
       });
-      if (!r.ok) { fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
+      if (!r.ok) { fail(L('ההתחברות נכשלה — נסה שוב', 'Sign-in failed — please try again')); return; }
       mfaLoginInFlight.current = false;
       setMfaChallenge(null);
       await finishAndRoute();
-    } catch (e) { logger.error('[signup] verifyLoginMfa', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
+    } catch (e) { logger.error('[signup] verifyLoginMfa', e); fail(L('האימות נכשל', 'Verification failed')); }
     finally { setBusy(false); }
   }
 
   const t = {
-    eyebrow: he ? 'אקוסיסטם חכם לטיפול בחיות מחמד' : 'INTELLIGENT PET-CARE ECOSYSTEM',
-    h1a: he ? 'העתיד של' : 'The Future of',
-    h1b: he ? 'חיי חיות המחמד' : 'Pet Lifestyle',
-    sub1: he ? 'שמונה פלטפורמות מהפכניות.' : 'Eight Revolutionary Platforms.',
-    sub2: he ? 'אקוסיסטם חכם אחד לטיפול בחיות מחמד.' : 'One Intelligent Pet-Care Ecosystem.',
-    premium: he ? 'חוויית פרמיום' : 'PREMIUM EXPERIENCE',
-    premiumSub: he ? 'חכם. מאובטח. חלק.' : 'Intelligent. Secure. Seamless.',
+    eyebrow: L('אקוסיסטם חכם לטיפול בחיות מחמד', 'INTELLIGENT PET-CARE ECOSYSTEM'),
+    h1a: L('העתיד של', 'The Future of'),
+    h1b: L('חיי חיות המחמד', 'Pet Lifestyle'),
+    sub1: L('שמונה פלטפורמות מהפכניות.', 'Eight Revolutionary Platforms.'),
+    sub2: L('אקוסיסטם חכם אחד לטיפול בחיות מחמד.', 'One Intelligent Pet-Care Ecosystem.'),
+    premium: L('חוויית פרמיום', 'PREMIUM EXPERIENCE'),
+    premiumSub: L('חכם. מאובטח. חלק.', 'Intelligent. Secure. Seamless.'),
     badges: he
       ? [{ t: 'טיפול חכם בכוח AI', I: FaCog }, { t: 'תגמולי VIP', I: FaGift }, { t: 'הזמנה חכמה', I: FaCalendarAlt }, { t: 'מעקב בריאות', I: FaHeartbeat }]
       : [{ t: 'AI Powered Pet Care', I: FaCog }, { t: 'VIP Rewards', I: FaGift }, { t: 'Smart Booking', I: FaCalendarAlt }, { t: 'Health Tracking', I: FaHeartbeat }],
-    trusted: he ? 'פתוחים עכשיו בכפר סבא' : 'Now open in Kfar Saba',
-    rating: he ? 'טיפול טבעי פרימיום · מותג ישראלי' : 'Premium natural care · Israeli brand',
-    secure: he ? 'מאובטח · פרטי · מוצפן' : 'SECURE · PRIVATE · ENCRYPTED',
-    secureSub: he ? 'הנתונים שלך מוגנים ומוצפנים.' : 'Your data is protected and encrypted.',
+    trusted: L('פתוחים עכשיו בכפר סבא', 'Now open in Kfar Saba'),
+    rating: L('טיפול טבעי פרימיום · מותג ישראלי', 'Premium natural care · Israeli brand'),
+    secure: L('מאובטח · פרטי · מוצפן', 'SECURE · PRIVATE · ENCRYPTED'),
+    secureSub: L('הנתונים שלך מוגנים ומוצפנים.', 'Your data is protected and encrypted.'),
 
     /* One door for everyone (CEO 2026-07-02): returning members sign in HERE —
        same phone/email code, Google, Apple or Face ID — no separate login page.
@@ -1819,42 +1813,38 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
        the provider app this screen is PROVIDER signup — work-oriented copy,
        zero Prestige/rewards language. */
     create: nativeFlavor === 'provider'
-      ? (he ? 'התחברות או יצירת חשבון ספק PetWash' : 'Sign in or create your PetWash provider account')
-      : (he ? 'התחברות או יצירת חשבון PetWash' : 'Sign in or create your PetWash account'),
+      ? (L('התחברות או יצירת חשבון ספק PetWash', 'Sign in or create your PetWash provider account'))
+      : (L('התחברות או יצירת חשבון PetWash', 'Sign in or create your PetWash account')),
     helper: nativeFlavor === 'provider'
-      ? (he
-          ? 'עבודות, יומן, הכנסות ותאימות — אפליקציית העבודה שלך ב־PetWash.'
-          : 'Jobs, calendar, earnings and compliance — your PetWash work app.')
-      : (he
-          ? 'הצטרף ל־PetWash Prestige וקבל 5% תגמול על כל רחיצה זכאית במכונת K9000.'
-          : 'Join PetWash Prestige and earn 5% rewards on every eligible K9000 wash.'),
-    cwGoogle: he ? 'המשך עם Google' : 'Continue with Google',
-    cwApple: he ? 'המשך עם Apple' : 'Continue with Apple',
-    cwFb: he ? 'המשך עם Facebook' : 'Continue with Facebook',
-    cwIg: he ? 'המשך עם Instagram' : 'Continue with Instagram',
-    cwTt: he ? 'המשך עם TikTok' : 'Continue with TikTok',
-    soon: he ? 'בקרוב' : 'SOON',
-    or: he ? 'או הירשם עם' : 'or sign up with',
-    tabMobile: he ? 'נייד' : 'Mobile',
-    tabEmail: he ? 'אימייל' : 'Email',
-    tabOther: he ? 'אימייל אחר' : 'Other Email',
-    phoneLabel: he ? 'מספר נייד' : 'Mobile Number',
-    phonePh: he ? 'הזן את מספר הנייד' : 'Enter your mobile number',
+      ? (L('עבודות, יומן, הכנסות ותאימות — אפליקציית העבודה שלך ב־PetWash.', 'Jobs, calendar, earnings and compliance — your PetWash work app.'))
+      : (L('הצטרף ל־PetWash Prestige וקבל 5% תגמול על כל רחיצה זכאית במכונת K9000.', 'Join PetWash Prestige and earn 5% rewards on every eligible K9000 wash.')),
+    cwGoogle: L('המשך עם Google', 'Continue with Google'),
+    cwApple: L('המשך עם Apple', 'Continue with Apple'),
+    cwFb: L('המשך עם Facebook', 'Continue with Facebook'),
+    cwIg: L('המשך עם Instagram', 'Continue with Instagram'),
+    cwTt: L('המשך עם TikTok', 'Continue with TikTok'),
+    soon: L('בקרוב', 'SOON'),
+    or: L('או הירשם עם', 'or sign up with'),
+    tabMobile: L('נייד', 'Mobile'),
+    tabEmail: L('אימייל', 'Email'),
+    tabOther: L('אימייל אחר', 'Other Email'),
+    phoneLabel: L('מספר נייד', 'Mobile Number'),
+    phonePh: L('הזן את מספר הנייד', 'Enter your mobile number'),
     emailPh: 'name@email.com',
-    emailLabel: he ? 'אימייל' : 'Email',
-    pwd: he ? 'סיסמה' : 'Password',
-    pwd2: he ? 'אישור סיסמה (לחשבון חדש)' : 'Confirm password (new account)',
+    emailLabel: L('אימייל', 'Email'),
+    pwd: L('סיסמה', 'Password'),
+    pwd2: L('אישור סיסמה (לחשבון חדש)', 'Confirm password (new account)'),
 
-    iAgree: he ? 'אני מסכים/ה ל' : 'I agree to the ',
-    termsLink: he ? 'תנאי השימוש' : 'Terms of Service',
-    andTo: he ? ' ול' : ' and ',
-    privLink: he ? 'מדיניות הפרטיות' : 'Privacy Policy',
+    iAgree: L('אני מסכים/ה ל', 'I agree to the '),
+    termsLink: L('תנאי השימוש', 'Terms of Service'),
+    andTo: L(' ול', ' and '),
+    privLink: L('מדיניות הפרטיות', 'Privacy Policy'),
 
-    cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
-    completeFields: he ? 'להמשך: הזינו נייד או אימייל ותאריך לידה (גיל 18 ומעלה).' : 'To continue: enter your mobile or email and your date of birth (18+).',
-    bank: he ? 'מאובטח ומוצפן' : 'Secure & encrypted',
-    enc: he ? 'הצפנת 256-bit' : '256-bit encryption',
-    safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
+    cta: L('צור חשבון מאובטח', 'Create Secure Account'),
+    completeFields: L('להמשך: הזינו נייד או אימייל ותאריך לידה (גיל 18 ומעלה).', 'To continue: enter your mobile or email and your date of birth (18+).'),
+    bank: L('מאובטח ומוצפן', 'Secure & encrypted'),
+    enc: L('הצפנת 256-bit', '256-bit encryption'),
+    safe: L('הנתונים שלך בטוחים', 'Your data is safe'),
 
   };
 
@@ -1863,8 +1853,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   return (
-    <div id="petwash-signup-page" className="sl-shell" dir={he ? 'rtl' : 'ltr'}>
-      <style>{styles(he)}</style>
+    <div id="petwash-signup-page" className="sl-shell" dir={rtl ? 'rtl' : 'ltr'}>
+      <style>{styles(rtl)}</style>
 
       {/* Centered max-width frame so 27" iMacs don't stretch */}
       <div className="sl-frame">
@@ -1955,14 +1945,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           {mobileStep && !sent && (
             <>
               <p className="sl-helper sl-center">
-                {he ? 'כמעט סיימנו — אמתו את מספר הנייד. חשבון חדש מאמת אימייל + נייד.' : 'Almost there — verify your mobile. A new account confirms email + mobile.'}
+                {L('כמעט סיימנו — אמתו את מספר הנייד. חשבון חדש מאמת אימייל + נייד.', 'Almost there — verify your mobile. A new account confirms email + mobile.')}
               </p>
               <div className="sl-field">
                 <label className="sl-label">{t.phoneLabel}</label>
                 <PhoneInput value={phone} onChange={(v) => { setPhone(v); setCachedPhoneVerificationToken(null); }} language={language} defaultCountry="IL" />
               </div>
               <button className="sl-cta" disabled={busy || !phoneValid} onClick={() => { void sendCode(); }}>
-                <FaMobileAlt aria-hidden /> {busy ? (he ? 'שולח קוד…' : 'Sending code…') : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
+                <FaMobileAlt aria-hidden /> {busy ? (L('שולח קוד…', 'Sending code…')) : (L('שלחו לי קוד ב-SMS', 'Text me a one-time code'))}
               </button>
             </>
           )}
@@ -1995,7 +1985,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                      timestamps.
                   Hidden on returning-user LOGIN (consented at join). */}
               {authMode !== 'login' && (
-                <div className="sl-consentBox" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 10px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: '13px', lineHeight: 1.45 }}>
+                <div className="sl-consentBox" dir={rtl ? 'rtl' : 'ltr'} style={{ margin: '14px 0 10px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: '13px', lineHeight: 1.45 }}>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
                     <input
                       type="checkbox"
@@ -2007,9 +1997,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       style={{ marginTop: 3, flexShrink: 0 }}
                     />
                     <span>
-                      {he
-                        ? 'אני מאשר/ת שאני בן/בת 18 ומעלה (חובה).'
-                        : 'I confirm that I am 18 years of age or older (required).'}
+                      {L('אני מאשר/ת שאני בן/בת 18 ומעלה (חובה).', 'I confirm that I am 18 years of age or older (required).')}
                     </span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
@@ -2023,11 +2011,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       style={{ marginTop: 3, flexShrink: 0 }}
                     />
                     <span>
-                      {he ? 'קראתי ואני מסכים/ה ל' : 'I have read and agree to the '}
-                      <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
-                      {he ? ' ול' : ' and '}
-                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'הודעת הפרטיות' : 'Privacy Notice'}</a>
-                      {he ? ' (חובה).' : ' (required).'}
+                      {L('קראתי ואני מסכים/ה ל', 'I have read and agree to the ')}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{L('תנאי השימוש', 'Terms of Service')}</a>
+                      {L(' ול', ' and ')}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{L('הודעת הפרטיות', 'Privacy Notice')}</a>
+                      {L(' (חובה).', ' (required).')}
                     </span>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
@@ -2039,9 +2027,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       style={{ marginTop: 3, flexShrink: 0 }}
                     />
                     <span style={{ opacity: 0.85 }}>
-                      {he
-                        ? 'שלחו לי חדשות ומבצעים של PetWash בדוא"ל / SMS (אופציונלי — ניתן לבטל בכל עת).'
-                        : 'Send me PetWash news and offers by email/SMS (optional — you can unsubscribe anytime).'}
+                      {L('שלחו לי חדשות ומבצעים של PetWash בדוא"ל / SMS (אופציונלי — ניתן לבטל בכל עת).', 'Send me PetWash news and offers by email/SMS (optional — you can unsubscribe anytime).')}
                     </span>
                   </label>
                 </div>
@@ -2052,7 +2038,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   when the user tapped Google, so it read as "Gmail gives nothing".
                   (2026-07-27) */}
               {inlineError && (
-                <p className="sl-inlineError" role="alert" data-testid="signup-consent-error" style={{ margin: '2px 0 8px', textAlign: he ? 'right' : 'left' }}>{inlineError}</p>
+                <p className="sl-inlineError" role="alert" data-testid="signup-consent-error" style={{ margin: '2px 0 8px', textAlign: rtl ? 'right' : 'left' }}>{inlineError}</p>
               )}
 
               {/* DIRECT sign-in = Google + Apple ONLY (CEO 2026-08-01). Everyone else
@@ -2086,7 +2072,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 )}
               </div>
 
-              <div className="sl-div">{he ? 'או' : 'or'}</div>
+              <div className="sl-div">{L('או', 'or')}</div>
 
               {/* JOIN step 1 = a CHOICE of FOUR first-class methods (CEO 2026-08-01:
                   "email must be first-class — do not assume Gmail or Apple"). Apple +
@@ -2100,17 +2086,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     onClick={() => { emitCtaEvent('AUTH_PHONE_OTP'); setManualMode(true); setMethod('mobile'); setSent(false); setInlineError(null); }}
                     data-action-id="AUTH_PHONE_OTP"
                     data-testid="button-continue-mobile">
-                    <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
+                    <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{L('המשך עם מספר נייד', 'Continue with mobile number')}</span>
                   </button>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
                     onClick={() => { emitCtaEvent('AUTH_EMAIL_PASSWORD'); setManualMode(true); setMethod('email'); setSent(false); setInlineError(null); }}
                     data-action-id="AUTH_EMAIL_PASSWORD"
                     data-testid="button-continue-email">
-                    <FaEnvelope aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם אימייל' : 'Continue with email'}</span>
+                    <FaEnvelope aria-hidden /> <span className="sl-socLabel">{L('המשך עם אימייל', 'Continue with email')}</span>
                   </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13.5px', cursor: 'pointer', padding: '12px 0 4px', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {he ? 'כבר יש לך חשבון? התחברות' : 'Already have an account? Sign in'}
+                    {L('כבר יש לך חשבון? התחברות', 'Already have an account? Sign in')}
                   </button>
                 </>
               )}
@@ -2125,8 +2111,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <>
                   {/* Back to the method choice (Apple / Google / mobile). */}
                   <button type="button" className="sl-switchLink" onClick={() => { setManualMode(false); setInlineError(null); }}
-                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '13px', cursor: 'pointer', padding: '2px 0 6px', width: '100%', textAlign: he ? 'right' : 'left' }}>
-                    {he ? '‹ חזרה לאפשרויות ההתחברות' : '‹ Back to sign-in options'}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '13px', cursor: 'pointer', padding: '2px 0 6px', width: '100%', textAlign: rtl ? 'right' : 'left' }}>
+                    {L('‹ חזרה לאפשרויות ההתחברות', '‹ Back to sign-in options')}
                   </button>
                   {/* MOBILE method — a single phone field. A one-time SMS code verifies
                       it; name + terms are asked afterwards (only if missing). No password. */}
@@ -2134,7 +2120,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <>
                       {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
                         <p className="sl-inlineError" role="status">
-                          {he ? 'SMS אינו זמין כעת — נסו שוב עוד רגע, או המשיכו עם אימייל / Google / Apple.' : 'SMS is temporarily unavailable — try again shortly, or continue with email / Google / Apple.'}
+                          {L('SMS אינו זמין כעת — נסו שוב עוד רגע, או המשיכו עם אימייל / Google / Apple.', 'SMS is temporarily unavailable — try again shortly, or continue with email / Google / Apple.')}
                         </p>
                       )}
                       <div className="sl-field">
@@ -2152,7 +2138,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           <input id="sl-signup-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                             value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                         </div>
-                        <div className="sl-hint">{he ? 'נאמת גם את האימייל — חשבון חדש מאמת נייד + אימייל.' : "We'll verify your email too — a new account confirms mobile + email."}</div>
+                        <div className="sl-hint">{L('נאמת גם את האימייל — חשבון חדש מאמת נייד + אימייל.', "We'll verify your email too — a new account confirms mobile + email.")}</div>
                       </div>
                     </>
                   )}
@@ -2183,12 +2169,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                             color: '#7A5A00',
                             fontSize: 13,
                             lineHeight: 1.45,
-                            textAlign: he ? 'right' : 'left',
+                            textAlign: rtl ? 'right' : 'left',
                           }}
                         >
-                          {he
-                            ? `כתובת האימייל ${emailConflictInfo.email} כבר רשומה במערכת. התחברו כאן כדי להמשיך.`
-                            : `The email ${emailConflictInfo.email} is already registered. Sign in here to continue.`}
+                          {he ? `כתובת האימייל ${emailConflictInfo.email} כבר רשומה במערכת. התחברו כאן כדי להמשיך.` : language === 'ar' ? `البريد الإلكتروني ${emailConflictInfo.email} مسجّل بالفعل. سجّل الدخول هنا للمتابعة.` : language === 'ru' ? `Email ${emailConflictInfo.email} уже зарегистрирован. Войдите здесь, чтобы продолжить.` : `The email ${emailConflictInfo.email} is already registered. Sign in here to continue.`}
                         </div>
                       )}
                       <div className="sl-field">
@@ -2198,21 +2182,21 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           <input id="sl-join-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                             value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); if (emailConflictInfo) setEmailConflictInfo(null); }} placeholder={t.emailPh} />
                         </div>
-                        <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
+                        <div className="sl-hint">{L('כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.', 'Any email — Gmail, Outlook, Yahoo, Walla or business.')}</div>
                       </div>
                       <div className="sl-field">
-                        <label className="sl-label" htmlFor="sl-join-password">{he ? 'סיסמה' : 'Password'}</label>
+                        <label className="sl-label" htmlFor="sl-join-password">{L('סיסמה', 'Password')}</label>
                         <div className="sl-inputWrap">
                           <FaLock className="sl-inputIcon" aria-hidden />
                           <input id="sl-join-password" className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
                             value={password} onChange={(e) => setPassword(e.target.value)}
-                            placeholder={he ? 'בחרו סיסמה (6 תווים לפחות)' : 'Choose a password (min 6 chars)'} />
+                            placeholder={L('בחרו סיסמה (6 תווים לפחות)', 'Choose a password (min 6 chars)')} />
                         </div>
                         <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
-                          style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
-                          {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
+                          style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: rtl ? 'right' : 'left', width: '100%' }}>
+                          {showPwd ? (L('הסתר סיסמה', 'Hide password')) : (L('הצג סיסמה', 'Show password'))}
                         </button>
-                        <div className="sl-hint">{he ? 'שמרו אותה ב-iCloud/Google לכניסה מהירה בפעם הבאה. או השאירו ריק וקבלו קוד חד-פעמי.' : 'Save it to iCloud/Google for one-tap return next time — or leave blank to get a one-time code.'}</div>
+                        <div className="sl-hint">{L('שמרו אותה ב-iCloud/Google לכניסה מהירה בפעם הבאה. או השאירו ריק וקבלו קוד חד-פעמי.', 'Save it to iCloud/Google for one-tap return next time — or leave blank to get a one-time code.')}</div>
                       </div>
                     </>
                   )}
@@ -2225,7 +2209,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       body sent `firstName`/`lastName` variables that were
                       never declared as state — silently `undefined`. */}
                   <div className="sl-field">
-                    <label className="sl-label" htmlFor="signup-first-name">{he ? 'שם פרטי' : 'First name'}</label>
+                    <label className="sl-label" htmlFor="signup-first-name">{L('שם פרטי', 'First name')}</label>
                     <div className="sl-inputWrap">
                       <input
                         id="signup-first-name"
@@ -2234,14 +2218,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         autoComplete="given-name"
                         value={firstName}
                         onChange={(e) => setFirstName(e.target.value)}
-                        placeholder={he ? 'למשל: דנה' : 'e.g. Dana'}
+                        placeholder={L('למשל: דנה', 'e.g. Dana')}
                         maxLength={80}
                         data-testid="signup-first-name"
                       />
                     </div>
                   </div>
                   <div className="sl-field">
-                    <label className="sl-label" htmlFor="signup-last-name">{he ? 'שם משפחה' : 'Last name'}</label>
+                    <label className="sl-label" htmlFor="signup-last-name">{L('שם משפחה', 'Last name')}</label>
                     <div className="sl-inputWrap">
                       <input
                         id="signup-last-name"
@@ -2250,7 +2234,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         autoComplete="family-name"
                         value={lastName}
                         onChange={(e) => setLastName(e.target.value)}
-                        placeholder={he ? 'למשל: לוי' : 'e.g. Levi'}
+                        placeholder={L('למשל: לוי', 'e.g. Levi')}
                         maxLength={80}
                         data-testid="signup-last-name"
                       />
@@ -2265,17 +2249,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       value={dob}
                       onChange={setDob}
                       maxYear={new Date().getFullYear() - 18}
-                      label={he ? 'תאריך לידה (18+)' : 'Date of birth (18+)'}
+                      label={L('תאריך לידה (18+)', 'Date of birth (18+)')}
                       monthNames={he ? ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'] : undefined}
-                      dayLabel={he ? 'יום' : 'Day'}
-                      monthLabel={he ? 'חודש' : 'Month'}
-                      yearLabel={he ? 'שנה' : 'Year'}
+                      dayLabel={L('יום', 'Day')}
+                      monthLabel={L('חודש', 'Month')}
+                      yearLabel={L('שנה', 'Year')}
                     />
-                    <div className="sl-hint">{he ? 'גללו לתאריך הלידה שלכם.' : 'Spin the wheels to your date of birth.'}</div>
+                    <div className="sl-hint">{L('גללו לתאריך הלידה שלכם.', 'Spin the wheels to your date of birth.')}</div>
                   </div>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setSent(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {he ? 'כבר יש לך חשבון? התחבר/י' : 'Already have an account? Sign in'}
+                    {L('כבר יש לך חשבון? התחבר/י', 'Already have an account? Sign in')}
                   </button>
                 </>
               )}
@@ -2297,11 +2281,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <button type="button" className="sl-switchLink" disabled={busy}
                     onClick={() => { setMethod('email'); setSent(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {he ? 'התחבר/י עם אימייל במקום' : 'Sign in with email instead'}
+                    {L('התחבר/י עם אימייל במקום', 'Sign in with email instead')}
                   </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('join'); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {he ? 'חדש כאן? צור/צרי חשבון' : 'New here? Create an account'}
+                    {L('חדש כאן? צור/צרי חשבון', 'New here? Create an account')}
                   </button>
                 </>
               )}
@@ -2324,13 +2308,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         <div className="sl-inputWrap">
                           <FaLock className="sl-inputIcon" aria-hidden />
                           <input id="sl-login-password" className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="current-password"
-                            value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'הסיסמה שלך' : 'Your password'}
+                            value={password} onChange={(e) => setPassword(e.target.value)} placeholder={L('הסיסמה שלך', 'Your password')}
                             onKeyDown={(e) => { if (e.key === 'Enter' && loginReady) { void loginWithPassword(); } }} />
                         </div>
                       </div>
                       <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
-                        style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
-                        {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
+                        style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: rtl ? 'right' : 'left', width: '100%' }}>
+                        {showPwd ? (L('הסתר סיסמה', 'Hide password')) : (L('הצג סיסמה', 'Show password'))}
                       </button>
                       {/* 2026-08-18 PR-AUTH-SECURITY-9 — Remember me on this device.
                           When OFF, the Firebase session is cleared on browser close
@@ -2358,7 +2342,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                           }}
                           data-testid="signin-remember-me"
                           style={{ accentColor: '#D4AF37', cursor: 'pointer' }} />
-                        <span>{he ? 'זכור אותי במכשיר הזה' : 'Remember me on this device'}</span>
+                        <span>{L('זכור אותי במכשיר הזה', 'Remember me on this device')}</span>
                       </label>
                       {/* Forgot password? (2026-08-16 audit D10). Firebase's
                           sendPasswordResetEmail has its own rate-limiting and
@@ -2369,7 +2353,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         data-action-id="AUTH_FORGOT_PASSWORD"
                         onClick={async () => {
                           if (!emailValid) {
-                            fail(he ? 'הזינו אימייל תקין קודם' : 'Enter a valid email first');
+                            fail(L('הזינו אימייל תקין קודם', 'Enter a valid email first'));
                             return;
                           }
                           emitCtaEvent('AUTH_FORGOT_PASSWORD');
@@ -2379,15 +2363,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                             await sendPasswordResetEmail(fbAuth, email);
                           } catch { /* Same generic message either way. */ }
                           toast({
-                            title: he ? 'איפוס סיסמה נשלח' : 'Password reset sent',
-                            description: he
-                              ? 'אם קיים חשבון עבור הכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדקו את תיבת הדואר.'
-                              : 'If an account exists for that address, a password reset email has been sent. Please check your inbox.',
+                            title: L('איפוס סיסמה נשלח', 'Password reset sent'),
+                            description: L('אם קיים חשבון עבור הכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדקו את תיבת הדואר.', 'If an account exists for that address, a password reset email has been sent. Please check your inbox.'),
                           });
                         }}
                         data-testid="button-forgot-password"
-                        style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '12.5px', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline', textAlign: he ? 'right' : 'left', width: '100%' }}>
-                        {he ? 'שכחתם סיסמה?' : 'Forgot password?'}
+                        style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '12.5px', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline', textAlign: rtl ? 'right' : 'left', width: '100%' }}>
+                        {L('שכחתם סיסמה?', 'Forgot password?')}
                       </button>
                     </>
                   )}
@@ -2397,18 +2379,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     onClick={() => setUsePassword((p) => !p)}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
                     {usePassword
-                      ? (he ? 'התחבר/י עם קוד חד-פעמי במקום' : 'Sign in with a one-time code instead')
-                      : (he ? 'התחבר/י עם סיסמה במקום' : 'Sign in with a password instead')}
+                      ? (L('התחבר/י עם קוד חד-פעמי במקום', 'Sign in with a one-time code instead'))
+                      : (L('התחבר/י עם סיסמה במקום', 'Sign in with a password instead'))}
                   </button>
                   {/* Let a phone-only member sign in with their number (2026-08-08). */}
                   <button type="button" className="sl-switchLink" disabled={busy}
                     onClick={() => { setMethod('mobile'); setUsePassword(false); setSent(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {he ? 'התחבר/י עם מספר נייד במקום' : 'Sign in with your mobile number instead'}
+                    {L('התחבר/י עם מספר נייד במקום', 'Sign in with your mobile number instead')}
                   </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('join'); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {he ? 'חדש כאן? צור/צרי חשבון' : 'New here? Create an account'}
+                    {L('חדש כאן? צור/צרי חשבון', 'New here? Create an account')}
                   </button>
                 </>
               )}
@@ -2418,7 +2400,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           {/* === OTP — appears after we send the SMS === */}
           {method === 'mobile' && sent && (
             <>
-              <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : `Enter the code sent to ${phone}`}</p>
+              <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : language === 'ar' ? `أدخل الرمز المرسل إلى ${phone}` : language === 'ru' ? `Введите код, отправленный на ${phone}` : `Enter the code sent to ${phone}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verify(c); }} loading={busy} language={he ? 'he' : 'en'} />
               {/* Resend actually resends. Old handler was setSent(false) — it
                   bounced the user back to the entry form and made them tap the
@@ -2430,8 +2412,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 data-action-id="AUTH_RESEND_OTP"
                 data-testid="button-resend-code-mobile">
                 {resendCountdown > 0
-                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
-                  : (he ? 'שלח קוד חדש' : 'Resend code')}
+                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : language === 'ar' ? `إعادة الإرسال خلال ${resendCountdown} ث` : language === 'ru' ? `Повторить через ${resendCountdown} с` : `Resend in ${resendCountdown}s`)
+                  : (L('שלח קוד חדש', 'Resend code'))}
               </button>
               {/* CEO §16/§17 — "Wrong number?" affordance. Without this a
                   customer who typed a wrong digit is trapped waiting for an
@@ -2443,7 +2425,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 onClick={() => { setSent(false); setInlineError(null); }}
                 data-testid="button-change-number-mobile"
                 style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                {he ? 'מספר לא נכון? שנה מספר' : 'Wrong number? Change number'}
+                {L('מספר לא נכון? שנה מספר', 'Wrong number? Change number')}
               </button>
             </>
           )}
@@ -2477,7 +2459,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               onVerified={(result) => {
                 const token = (result as any)?.sessionToken;
                 if (!token) {
-                  fail(he ? 'שגיאה לא צפויה באימות. נסה שוב.' : 'Unexpected verification error. Try again.');
+                  fail(L('שגיאה לא צפויה באימות. נסה שוב.', 'Unexpected verification error. Try again.'));
                   return;
                 }
                 setCachedEmailSessionToken(token);
@@ -2489,22 +2471,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
           {method === 'email' && sent && !sharedVerificationUi && (
             <>
-              <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : `Enter the code sent to ${email}`}</p>
+              <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : language === 'ar' ? `أدخل الرمز المرسل إلى ${email}` : language === 'ru' ? `Введите код, отправленный на ${email}` : `Enter the code sent to ${email}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
               <button className="sl-btn" disabled={busy || resendCountdown > 0}
                 onClick={() => { emitCtaEvent('AUTH_RESEND_OTP', { channel: 'email' }); setResendCountdown(60); void sendEmailCode(); }}
                 data-action-id="AUTH_RESEND_OTP"
                 data-testid="button-resend-code-email">
                 {resendCountdown > 0
-                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
-                  : (he ? 'שלח קוד חדש' : 'Resend code')}
+                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : language === 'ar' ? `إعادة الإرسال خلال ${resendCountdown} ث` : language === 'ru' ? `Повторить через ${resendCountdown} с` : `Resend in ${resendCountdown}s`)
+                  : (L('שלח קוד חדש', 'Resend code'))}
               </button>
               {/* Same "wrong email?" affordance — see the mobile block above. */}
               <button type="button" className="sl-switchLink" disabled={busy}
                 onClick={() => { setSent(false); setInlineError(null); }}
                 data-testid="button-change-email"
                 style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                {he ? 'כתובת לא נכונה? שנה אימייל' : 'Wrong email? Change email'}
+                {L('כתובת לא נכונה? שנה אימייל', 'Wrong email? Change email')}
               </button>
             </>
           )}
@@ -2515,14 +2497,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           {linkState && (
             <div className="sl-faceIdOffer">
               <p className="sl-helper sl-center">
-                {he
-                  ? `לאימייל ${linkState.email} כבר יש חשבון ב-PetWash. היכנסו כדי לחבר את ${linkState.newLabel} לחשבון.`
-                  : `${linkState.email} already has a PetWash account. Sign in to connect ${linkState.newLabel} to it.`}
+                {he ? `לאימייל ${linkState.email} כבר יש חשבון ב-PetWash. היכנסו כדי לחבר את ${linkState.newLabel} לחשבון.` : language === 'ar' ? `لدى ${linkState.email} حساب PetWash بالفعل. سجّل الدخول لربط ${linkState.newLabel} به.` : language === 'ru' ? `У ${linkState.email} уже есть аккаунт PetWash. Войдите, чтобы привязать к нему ${linkState.newLabel}.` : `${linkState.email} already has a PetWash account. Sign in to connect ${linkState.newLabel} to it.`}
               </p>
               {linkState.methods.includes('password') ? (
                 <>
                   <div className="sl-field">
-                    <label className="sl-label" htmlFor="sl-link-password">{he ? 'הסיסמה שלך' : 'Your password'}</label>
+                    <label className="sl-label" htmlFor="sl-link-password">{L('הסיסמה שלך', 'Your password')}</label>
                     <div className="sl-inputWrap">
                       <FaLock className="sl-inputIcon" aria-hidden />
                       <input id="sl-link-password" className="sl-input sl-input--icon" type="password" autoComplete="current-password"
@@ -2531,7 +2511,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     </div>
                   </div>
                   <button className="sl-cta" disabled={busy || !linkPassword} onClick={() => void linkViaPassword()}>
-                    {busy ? '…' : (he ? `התחברות וחיבור ${linkState.newLabel}` : `Sign in & connect ${linkState.newLabel}`)}
+                    {busy ? '…' : (he ? `התחברות וחיבור ${linkState.newLabel}` : language === 'ar' ? `سجّل الدخول واربط ${linkState.newLabel}` : language === 'ru' ? `Войти и привязать ${linkState.newLabel}` : `Sign in & connect ${linkState.newLabel}`)}
                   </button>
                 </>
               ) : (
@@ -2539,14 +2519,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   {busy ? '…' : (() => {
                     const m = linkState.methods;
                     const existing = m.includes('google.com') ? 'Google' : m.includes('apple.com') ? 'Apple' : 'Facebook';
-                    return he ? `היכנסו עם ${existing} וחברו את ${linkState.newLabel}` : `Sign in with ${existing} & connect ${linkState.newLabel}`;
+                    return he ? `היכנסו עם ${existing} וחברו את ${linkState.newLabel}` : language === 'ar' ? `سجّل الدخول عبر ${existing} واربط ${linkState.newLabel}` : language === 'ru' ? `Войти через ${existing} и привязать ${linkState.newLabel}` : `Sign in with ${existing} & connect ${linkState.newLabel}`;
                   })()}
                 </button>
               )}
               <button type="button" className="sl-switchLink" disabled={busy}
                 onClick={() => { setLinkState(null); setLinkPassword(''); }}
                 style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', width: '100%', textAlign: 'center' }}>
-                {he ? 'ביטול' : 'Cancel'}
+                {L('ביטול', 'Cancel')}
               </button>
             </div>
           )}
@@ -2563,7 +2543,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               <button type="button" className="sl-switchLink" disabled={busy}
                 onClick={() => { try { localStorage.setItem('petwash_faceid_offer_dismissed', '1'); } catch {} setShowFaceIDOffer(false); void routeNow(); }}
                 style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '10px 0', width: '100%', textAlign: 'center' }}>
-                {he ? 'לא עכשיו — המשך' : 'Not now — continue'}
+                {L('לא עכשיו — המשך', 'Not now — continue')}
               </button>
             </div>
           )}
@@ -2571,12 +2551,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           {/* === 2-step LOGIN code — returning member who turned on 2-step === */}
           {mfaChallenge && (
             <>
-              <p className="sl-helper sl-center">{he
-                ? `הזן את הקוד שנשלח ל-${mfaChallenge.phoneHint || 'הנייד שלך'}`
-                : `Enter the code sent to ${mfaChallenge.phoneHint || 'your phone'}`}</p>
+              <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${mfaChallenge.phoneHint || 'הנייד שלך'}` : language === 'ar' ? `أدخل الرمز المرسل إلى ${mfaChallenge.phoneHint || 'هاتفك'}` : language === 'ru' ? `Введите код, отправленный на ${mfaChallenge.phoneHint || 'ваш телефон'}` : `Enter the code sent to ${mfaChallenge.phoneHint || 'your phone'}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyLoginMfa(c); }} loading={busy} language={he ? 'he' : 'en'} />
               {inlineError && <p className="sl-inlineError" role="alert" style={{ textAlign: 'center', marginTop: 8 }}>{inlineError}</p>}
-              <button className="sl-btn" disabled={busy} onClick={() => { mfaLoginInFlight.current = false; setMfaChallenge(null); setPassword(''); setInlineError(null); }}>{he ? 'ביטול' : 'Cancel'}</button>
+              <button className="sl-btn" disabled={busy} onClick={() => { mfaLoginInFlight.current = false; setMfaChallenge(null); setPassword(''); setInlineError(null); }}>{L('ביטול', 'Cancel')}</button>
             </>
           )}
 
@@ -2607,19 +2585,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         if (password) { void emailSubmit(); } else { void sendEmailCode(); }
                       } else { void sendCode(); }
                     }}>
-                    <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (he ? 'יצירת חשבון' : 'Create account') : (he ? 'שליחת קוד אימות' : 'Send verification code'))}
+                    <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (L('יצירת חשבון', 'Create account')) : (L('שליחת קוד אימות', 'Send verification code')))}
                   </button>
                   {((method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed18Plus) && (
                     <div className="sl-hint sl-submitHint">
                       {(method === 'email' ? !emailValid : (!phoneValid || !emailValid))
                         ? (method === 'email'
-                            ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
+                            ? (L('הזינו כתובת אימייל תקינה כדי לקבל קוד.', 'Enter a valid email to get a code.'))
                             : (!phoneValid
-                                ? (he ? 'הזינו מספר נייד תקין.' : 'Enter a valid mobile number.')
-                                : (he ? 'הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.' : 'Add your email too — a new account verifies mobile + email.')))
+                                ? (L('הזינו מספר נייד תקין.', 'Enter a valid mobile number.'))
+                                : (L('הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.', 'Add your email too — a new account verifies mobile + email.'))))
                         : (!over18
-                            ? (he ? 'סמנו: אני בן/בת 18 ומעלה.' : 'Tick the "I am 18 or older" box.')
-                            : (he ? 'בחרו תאריך לידה (18+).' : 'Set your date of birth (18+).'))}
+                            ? (L('סמנו: אני בן/בת 18 ומעלה.', 'Tick the "I am 18 or older" box.'))
+                            : (L('בחרו תאריך לידה (18+).', 'Set your date of birth (18+).')))}
                     </div>
                   )}
                 </>
@@ -2630,12 +2608,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 // existing user through phone-session (isNewUser=false).
                 <button className="sl-cta" disabled={busy || !phoneValid}
                   onClick={() => { void sendCode(); }}>
-                  <FaMobileAlt aria-hidden /> {busy ? (he ? 'שולח קוד…' : 'Sending code…') : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
+                  <FaMobileAlt aria-hidden /> {busy ? (L('שולח קוד…', 'Sending code…')) : (L('שלחו לי קוד ב-SMS', 'Text me a one-time code'))}
                 </button>
               ) : usePassword ? (
                 <>
                   <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
-                    <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
+                    <FaLock aria-hidden /> {busy ? '…' : (L('התחברות', 'Sign in'))}
                   </button>
                   {/* PR-AUTH-FIX-RESET-EMAIL-3: Forgot Password on the login
                       screen. Generic success message regardless of whether an
@@ -2650,8 +2628,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       style={{ background: 'none', border: 'none', color: 'inherit', opacity: forgotBusy ? 0.5 : 0.85, fontSize: '13px', textDecoration: 'underline', cursor: forgotBusy ? 'wait' : 'pointer', padding: '4px 0' }}
                     >
                       {forgotBusy
-                        ? (he ? 'שולח…' : 'Sending…')
-                        : (he ? 'שכחתי את הסיסמה' : 'Forgot password?')}
+                        ? (L('שולח…', 'Sending…'))
+                        : (L('שכחתי את הסיסמה', 'Forgot password?'))}
                     </button>
                   </div>
                   {forgotSent && (
@@ -2660,9 +2638,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       data-testid="text-forgot-sent"
                       style={{ textAlign: 'center', fontSize: '13px', color: '#8A6A1B', marginTop: 8 }}
                     >
-                      {he
-                        ? 'אם קיים חשבון לכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדוק את תיבת הדואר.'
-                        : 'If an account exists for that address, a password reset email has been sent. Please check your inbox.'}
+                      {L('אם קיים חשבון לכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדוק את תיבת הדואר.', 'If an account exists for that address, a password reset email has been sent. Please check your inbox.')}
                     </p>
                   )}
                 </>
@@ -2670,7 +2646,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 // CODE-FIRST primary CTA (returning login): email → one-time code.
                 <button className="sl-cta" disabled={busy || !emailValid}
                   onClick={() => { setMethod('email'); void sendEmailCode(); }}>
-                  <FaEnvelope aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד חד-פעמי' : 'Email me a one-time code')}
+                  <FaEnvelope aria-hidden /> {busy ? '…' : (L('שלחו לי קוד חד-פעמי', 'Email me a one-time code'))}
                 </button>
               )}
 
@@ -2690,12 +2666,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   {/* 2026 Advanced Security — trust signals describing REAL protections
                       already in place (passkey/WebAuthn, invisible bot check, SMS/email
                       OTP). Display-only and honest — not fake controls. */}
-                  <div className="sl-secRow" aria-label={he ? 'אבטחה מתקדמת 2026' : '2026 advanced security'}>
-                    <div className="sl-secTitle">{he ? 'אבטחה מתקדמת 2026' : '2026 ADVANCED SECURITY'}</div>
+                  <div className="sl-secRow" aria-label={L('אבטחה מתקדמת 2026', '2026 advanced security')}>
+                    <div className="sl-secTitle">{L('אבטחה מתקדמת 2026', '2026 ADVANCED SECURITY')}</div>
                     <div className="sl-secItems">
-                      <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'מוכן ל-Passkey' : 'Passkey ready'}</span>
-                      <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'הגנת בוטים' : 'Bot protection'}</span>
-                      <span className="sl-secItem"><FaLock aria-hidden /> {he ? 'אימות OTP' : 'OTP verification'}</span>
+                      <span className="sl-secItem"><FaShieldAlt aria-hidden /> {L('מוכן ל-Passkey', 'Passkey ready')}</span>
+                      <span className="sl-secItem"><FaShieldAlt aria-hidden /> {L('הגנת בוטים', 'Bot protection')}</span>
+                      <span className="sl-secItem"><FaLock aria-hidden /> {L('אימות OTP', 'OTP verification')}</span>
                     </div>
                   </div>
                 </>
@@ -2707,7 +2683,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {/* Returning-user passkey/Face-ID — demoted to the bottom (see top note). */}
               {bioAvailable && (
                 <>
-                  <div className="sl-div">{he ? 'כבר חברים? התחברות מהירה' : 'Already a member? Quick sign-in'}</div>
+                  <div className="sl-div">{L('כבר חברים? התחברות מהירה', 'Already a member? Quick sign-in')}</div>
                   <button
                     type="button"
                     className="sl-bio"
@@ -2717,7 +2693,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     data-testid="button-auth-passkey"
                   >
                     {/* Apple's term is "passkey"; Face ID / Touch ID is how it is unlocked. */}
-                    <FaFingerprint aria-hidden /> {he ? `התחברות עם Passkey (${bioName})` : `Sign in with a passkey (${bioName})`}
+                    <FaFingerprint aria-hidden /> {he ? `התחברות עם Passkey (${bioName})` : language === 'ar' ? `تسجيل الدخول باستخدام Passkey (${bioName})` : language === 'ru' ? `Войти с Passkey (${bioName})` : `Sign in with a passkey (${bioName})`}
                   </button>
                   {passkeyError && (
                     <p className="sl-inlineError" role="alert" aria-live="polite" data-testid="passkey-error" style={{ margin: '8px 0 0', textAlign: 'center' }}>{passkeyError}</p>
@@ -2730,9 +2706,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   activates once the mobile number is verified too (the account
                   engine already withholds 'active' until BOTH are confirmed). */}
               <p className="sl-hint" style={{ textAlign: 'center', marginTop: 6 }}>
-                {he
-                  ? 'חברות מלאה מופעלת לאחר אימות אימייל וגם נייד.'
-                  : 'Full membership activates after both email and mobile are verified.'}
+                {L('חברות מלאה מופעלת לאחר אימות אימייל וגם נייד.', 'Full membership activates after both email and mobile are verified.')}
               </p>
             </>
           )}
