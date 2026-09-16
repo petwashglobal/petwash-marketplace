@@ -7,6 +7,7 @@
  * #F7F3EC, Cormorant Garamond serif. Hebrew-first: everything flips with dir.
  */
 import type { ReactNode } from 'react';
+export { placeLine } from '@shared/lib/placeLine';
 
 export const GOLD = '#D4AF37';
 export const GOLD_INK = '#9A7B2E';

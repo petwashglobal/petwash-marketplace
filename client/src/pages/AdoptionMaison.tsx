@@ -24,7 +24,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { sanitizeUrl } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
-  EditorialHeader, PillarRow, StepsBand, ClosingBand, SideNav, Chip, GOLD, GOLD_INK, HAIRLINE, PAPER, SERIF, INK,
+  EditorialHeader, PillarRow, StepsBand, ClosingBand, SideNav, Chip, placeLine, GOLD, GOLD_INK, HAIRLINE, PAPER, SERIF, INK,
 } from '@/components/pet-community/Editorial';
 import { adoptionApi, ageLabel, petLabel, errorText, type AdoptionListing } from '@/pages/adoption/adoptionUi';
 
@@ -104,7 +104,7 @@ function PetCard({ l, isHe, saved, onToggleSave }: { l: BoardListing; isHe: bool
           </div>
         )}
         <div className="mt-1.5 flex items-center gap-1.5 text-[13px] text-black/60">
-          <MapPin className="h-3.5 w-3.5 shrink-0" />{l.area ? `${l.city} · ${l.area}` : l.city}
+          <MapPin className="h-3.5 w-3.5 shrink-0" />{placeLine(l.city, l.area)}
         </div>
         <div className="mt-auto pt-4">
           {/* Desktop: outlined "View Profile" (mockup); phone: black "I'm Interested". */}

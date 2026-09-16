@@ -12,6 +12,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { AuthGateCard } from '@/components/AuthGateCard';
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { placeLine } from '@/components/pet-community/Editorial';
 import {
   AdoptionShell, PrimaryButton, StatusChip, HAIRLINE, PAPER, GOLD,
   ageLabel, sexLabel, petLabel, yesNoLabel, listerLabel,
@@ -20,8 +21,9 @@ import {
 
 interface Media { id: number; file_path: string; media_role: string }
 
-function Fact({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null;
+/** A fact the lister did not answer is left out, not printed as "Unknown". */
+function Fact({ label, value, answer }: { label: string; value?: string | null; answer?: string | null }) {
+  if (!value || answer === 'unknown' || answer === null) return null;
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5" style={{ borderBottom: `1px solid ${HAIRLINE}` }}>
       <span className="text-xs text-black/50">{label}</span>
@@ -149,7 +151,7 @@ export default function AdoptionListingPage({ listingId }: { listingId: number }
   const l = data.listing;
   const photos = data.media.length ? data.media : [];
   const current = photos[Math.min(activePhoto, Math.max(photos.length - 1, 0))];
-  const subtitle = [l.breed || petLabel(isHe, l.pet_type), ageLabel(isHe, l.age_group), sexLabel(isHe, l.sex), l.area ? `${l.city} · ${l.area}` : l.city]
+  const subtitle = [l.breed || petLabel(isHe, l.pet_type), ageLabel(isHe, l.age_group), sexLabel(isHe, l.sex), placeLine(l.city, l.area)]
     .filter(Boolean).join(' · ');
   const open = l.status === 'available' || l.status === 'pending';
 
@@ -188,16 +190,16 @@ export default function AdoptionListingPage({ listingId }: { listingId: number }
         <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-x-10">
           <div>
             <h3 className="font-serif text-lg mb-1">{isHe ? 'בריאות' : 'Health'}</h3>
-            <Fact label={isHe ? 'חיסונים' : 'Vaccinated'} value={yesNoLabel(isHe, l.vaccinated)} />
-            <Fact label={isHe ? 'עיקור / סירוס' : 'Spayed / neutered'} value={yesNoLabel(isHe, l.neutered)} />
-            <Fact label={isHe ? 'שבב' : 'Microchipped'} value={yesNoLabel(isHe, l.microchipped)} />
+            <Fact label={isHe ? 'חיסונים' : 'Vaccinated'} value={yesNoLabel(isHe, l.vaccinated)} answer={l.vaccinated} />
+            <Fact label={isHe ? 'עיקור / סירוס' : 'Spayed / neutered'} value={yesNoLabel(isHe, l.neutered)} answer={l.neutered} />
+            <Fact label={isHe ? 'שבב' : 'Microchipped'} value={yesNoLabel(isHe, l.microchipped)} answer={l.microchipped} />
             {l.health_notes && <p className="mt-3 text-xs leading-relaxed text-black/60 whitespace-pre-line">{l.health_notes}</p>}
           </div>
           <div className="mt-6 sm:mt-0">
             <h3 className="font-serif text-lg mb-1">{isHe ? 'מתאים/ה ל…' : 'Good with'}</h3>
-            <Fact label={isHe ? 'ילדים' : 'Children'} value={yesNoLabel(isHe, l.good_with_children)} />
-            <Fact label={isHe ? 'כלבים' : 'Dogs'} value={yesNoLabel(isHe, l.good_with_dogs)} />
-            <Fact label={isHe ? 'חתולים' : 'Cats'} value={yesNoLabel(isHe, l.good_with_cats)} />
+            <Fact label={isHe ? 'ילדים' : 'Children'} value={yesNoLabel(isHe, l.good_with_children)} answer={l.good_with_children} />
+            <Fact label={isHe ? 'כלבים' : 'Dogs'} value={yesNoLabel(isHe, l.good_with_dogs)} answer={l.good_with_dogs} />
+            <Fact label={isHe ? 'חתולים' : 'Cats'} value={yesNoLabel(isHe, l.good_with_cats)} answer={l.good_with_cats} />
             <Fact label={isHe ? 'מתאים לדירה' : 'Apartment friendly'} value={yesNoLabel(isHe, (l as any).apartment_friendly)} />
             <Fact label={isHe ? 'נשירה נמוכה' : 'Low shedding'} value={yesNoLabel(isHe, (l as any).low_shedding)} />
           </div>
