@@ -422,6 +422,15 @@ export default function AdminLoginV2() {
           <p className="text-gray-600 text-sm sm:text-base">
             Secure Business Management
           </p>
+          {/* Arriving because the 4h admin session lapsed — say so. Silence here
+              is what made a re-auth look like a refusal (CEO, 2026-09-17). */}
+          {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('expired') === '1' && (
+            <p className="mt-3 rounded-xl px-4 py-2.5 text-sm" style={{ background: '#FBEFD3', color: '#8A5A00' }} data-testid="admin-session-expired-note">
+              הכניסה לניהול תקפה ל-4 שעות והסתיימה — התחברו שוב כדי להמשיך.
+              <br />
+              <span className="text-xs opacity-80">Your 4-hour admin session ended. Sign in again to continue — your access has not changed.</span>
+            </p>
+          )}
         </div>
 
         {/* Primary CTAs - Biometric & Google SSO */}
