@@ -144,9 +144,11 @@ export class NayaxSitterMarketplaceService {
   
   /**
    * Process sitter payout after booking completion (via Nayax Transfer)
-   * 
-   * Sitter receives: 95% of base price
-   * Platform keeps: 5% broker fee (already captured)
+   *
+   * Sitter receives: 85% of the rate. Platform keeps 15% out of it —
+   * SitterAdvancedBookingEngine.calculatePrice and PLATFORM_COMMISSION_RATE are
+   * the two places that decide it, and they agree. (This comment said 95/5 and
+   * matched neither — corrected 2026-09-17.)
    */
   static async processSitterPayout(params: SitterPayoutParams): Promise<{
     success: boolean;

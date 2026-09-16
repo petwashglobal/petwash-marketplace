@@ -1536,7 +1536,13 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
       hasWithholdingExemption: false,
       customerPaidAmount: customerPaidILS,
       bookingDbId: booking.id,
-      commissionRate: 7.5,
+      // 2026-09-17: this used to pass 7.5. `commissionRate` is ONLY recorded on
+      // the provider_commissions row — it is never used in the arithmetic, which
+      // always applies PLATFORM_COMMISSION_RATE (15%). So every sitter settlement
+      // stored "rate 7.50%" next to an amount that is 15% of the customer's
+      // payment: a row that contradicts itself in front of the bookkeeper.
+      // Omitting it lets the writer record the rate it actually charged — the
+      // same thing Walk My Pet already does by passing nothing.
     });
 
     if (!settlementResult.success) {
