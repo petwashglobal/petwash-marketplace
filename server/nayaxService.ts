@@ -12,6 +12,7 @@ import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
 import { logger } from './lib/logger';
+import { evoucherExpiry } from '@shared/evoucherValidity';
 
 export interface NayaxPaymentRequest {
   packageId: number;
@@ -448,7 +449,11 @@ export class NayaxPaymentService {
         purchaserEmail: pending.customerEmail,
         recipientEmail: pending.recipientEmail || pending.customerEmail,
         nayaxTxId: pending.id,
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+        // 2026-09-17: this wrote 365 days. The customer had just PAID for this
+        // voucher, and our Terms promise 60 months — so the balance became
+        // unreachable four years early (the redeem routes read expires_at and
+        // mark it EXPIRED). One number, from shared/evoucherValidity.ts.
+        expiresAt: evoucherExpiry(),
       });
 
       // Update pending transaction

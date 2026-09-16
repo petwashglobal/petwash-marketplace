@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { eVouchers, eVoucherRedemptions } from '@shared/schema';
+import { evoucherPassExpiry } from '@shared/evoucherValidity';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 import { auth } from '../lib/firebase-admin';
 import { walletService } from '../services/WalletService';
@@ -641,7 +642,7 @@ router.get('/:voucherId/wallet/apple', walletPassLimiter, async (req, res) => {
       userName: voucher.recipientName || 'Gift Recipient',
       amount: Number(voucher.remainingAmount),
       currency: voucher.currency,
-      expiryDate: voucher.expiresAt ? new Date(voucher.expiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      expiryDate: evoucherPassExpiry(voucher.expiresAt, voucher.createdAt),
       qrCode: qrData,
       description: `₪${voucher.initialAmount} ⁦PetWash™⁩ E-Gift Card`
     });
@@ -766,7 +767,7 @@ router.get('/:voucherId/wallet/google', walletPassLimiter, async (req, res) => {
       userName: voucher.recipientName || 'Gift Recipient',
       amount: Number(voucher.remainingAmount),
       currency: voucher.currency,
-      expiryDate: voucher.expiresAt ? new Date(voucher.expiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      expiryDate: evoucherPassExpiry(voucher.expiresAt, voucher.createdAt),
       qrCode: qrData,
       description: `₪${voucher.initialAmount} ⁦PetWash™⁩ E-Gift Card`
     });
