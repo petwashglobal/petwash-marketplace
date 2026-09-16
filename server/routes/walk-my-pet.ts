@@ -1170,6 +1170,46 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/walk-my-pet/bookings/provider-completed
+ *
+ * The walker's finished walks. Added 2026-09-16: the dashboard only ever
+ * listed `pending_provider`, so once a walk was done it vanished from the
+ * walker's world — and under the gross model (#2496) the walker must record
+ * the number of the tax invoice they issued the customer before Pet Wash can
+ * approve the payout. A walk they cannot see is a payout they cannot unblock.
+ */
+router.get('/bookings/provider-completed', requireAuth, async (req, res) => {
+  try {
+    const providerUid = (req as any).user?.uid;
+    const [walker] = await db
+      .select()
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.userId, providerUid));
+
+    if (!walker) {
+      return res.json({ bookings: [], total: 0 });
+    }
+
+    const completed = await db
+      .select()
+      .from(walkBookings)
+      .where(
+        and(
+          eq(walkBookings.walkerId, walker.walkerId),
+          eq(walkBookings.status, 'completed')
+        )
+      )
+      .orderBy(desc(walkBookings.createdAt))
+      .limit(50);
+
+    res.json({ bookings: completed, total: completed.length });
+  } catch (error: any) {
+    logger.error('[Walk My Pet] Fetch provider completed error', { error: error?.message });
+    res.status(500).json({ error: 'Failed to fetch completed walks' });
+  }
+});
+
 // EMERGENCY/ASAP WALK REQUEST (PetWash™ "Book Now" model)
 router.post('/walks/emergency-request', requireAuth, async (req, res) => {
   try {

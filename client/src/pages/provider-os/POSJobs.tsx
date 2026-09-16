@@ -459,6 +459,94 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
   );
 }
 
+/**
+ * ProviderInvoiceBox — where the provider records the number of the tax invoice
+ * THEY issued to the customer.
+ *
+ * Gross model (#2496, docs/finance/00-platform-role-model.md §0.6): the provider
+ * is the legal seller of the service and invoices the customer for the full
+ * price; Pet Wash documents only its own fee. So before Pet Wash hands over the
+ * money, the provider has to tell us the invoice exists — a job without it is
+ * reported as PROVIDER_INVOICE_MISSING and the payout stays blocked.
+ *
+ * WALK-* jobs live in walk_bookings and have their own route.
+ */
+function ProviderInvoiceBox({ booking }: { booking: any }) {
+  const { toast } = useToast();
+  const recorded: string | null = booking.providerInvoiceNumber ?? null;
+  const [value, setValue] = useState('');
+  const jobRef: string = booking.requestId || booking.bookingNumber || booking.id;
+  const isWalk = /^WALK-/i.test(String(jobRef));
+  const url = isWalk
+    ? `/api/walk-my-pet/walks/${encodeURIComponent(jobRef)}/provider-invoice`
+    : `/api/booking-requests/${encodeURIComponent(jobRef)}/provider-invoice`;
+
+  const save = useMutation({
+    mutationFn: async () => apiRequest('POST', url, { invoiceNumber: value.trim() }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/bookings'] });
+      toast({ title: 'Invoice recorded', description: 'Pet Wash can now review this payout.' });
+    },
+    onError: (err: any) => {
+      // INVALID_INVOICE_NUMBER / JOB_NOT_COMPLETED come back from the server;
+      // say which one instead of a generic "failed".
+      const code = err?.body?.error;
+      toast({
+        variant: 'destructive',
+        title: "Couldn't save the invoice number",
+        description: code === 'INVALID_INVOICE_NUMBER'
+          ? 'Use letters, digits, dashes or slashes — up to 64 characters.'
+          : code === 'JOB_NOT_COMPLETED'
+            ? 'You can record the invoice once the job is finished.'
+            : 'Please try again.',
+      });
+    },
+  });
+
+  if (recorded) {
+    return (
+      <div
+        className="flex items-center gap-1.5 text-[11px] font-medium text-emerald-700"
+        data-testid={`provider-invoice-recorded-${booking.id}`}
+      >
+        <Receipt className="w-3.5 h-3.5 shrink-0" />
+        <span className="truncate">Your invoice {recorded} is on file</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-amber-50 border border-amber-100 rounded-xl p-3" data-testid={`provider-invoice-box-${booking.id}`}>
+      <p className="text-[11px] font-semibold text-amber-800 flex items-center gap-1.5">
+        <Receipt className="w-3.5 h-3.5 shrink-0" /> Your tax invoice
+      </p>
+      <p className="text-[11px] text-amber-700 mt-0.5">
+        You invoice the customer for the full price. Enter the number here — the payout is held until you do.
+      </p>
+      <div className="flex gap-2 mt-2">
+        <input
+          value={value}
+          onChange={(e) => setValue(e.target.value.slice(0, 64))}
+          placeholder="e.g. 2026-0042"
+          inputMode="text"
+          aria-label="Your invoice number"
+          data-testid={`provider-invoice-input-${booking.id}`}
+          /* 16px floor: anything smaller makes iOS Safari zoom the page on focus. */
+          className="flex-1 min-w-0 rounded-lg border border-amber-200 bg-white px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-300"
+        />
+        <button
+          onClick={() => save.mutate()}
+          disabled={!value.trim() || save.isPending}
+          data-testid={`provider-invoice-save-${booking.id}`}
+          className="px-4 rounded-lg bg-[#B8932F] text-white text-xs font-medium disabled:opacity-40 flex items-center gap-1.5 shrink-0"
+        >
+          {save.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function JobCard({
   booking, onAction, onCancelRequest, onDeclineRequest, onFinishRequest, isPending,
 }: {
@@ -528,13 +616,17 @@ function JobCard({
                 ProviderJobDetail panel so the /provider-os/jobs list itself
                 signals that a completed booking has actually paid out — before
                 this the completed tab was just a silent bucket. */}
+            {/* 2026-09-16: this line used to announce the money as released
+                with a 72-hour ETA. No automatic release exists any more — a
+                Pet Wash admin approves every payout by hand (CEO rule
+                2026-09-13) — so it promised money that had not moved. */}
             {['completed', 'reviewed'].includes(booking.status) && payout > 0 && (
               <p
                 data-testid={`payout-released-${booking.id}`}
                 className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1 mt-1"
               >
                 <CheckCircle2 className="w-3 h-3" />
-                ₪{payout.toFixed(0)} released · arriving in 72h
+                ₪{payout.toFixed(0)} held for you · Pet Wash approves it after review
               </p>
             )}
             {booking.status === 'reviewed' && (booking.ownerRating || booking.rating) && (
@@ -551,6 +643,14 @@ function JobCard({
             <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
           </button>
         </div>
+
+        {/* The provider's own tax invoice — shown without expanding, because
+            until it is on file the payout for this job cannot be approved. */}
+        {['provider_marked_complete', 'completed', 'reviewed'].includes(booking.status) && payout > 0 && (
+          <div className="mt-3">
+            <ProviderInvoiceBox booking={booking} />
+          </div>
+        )}
 
         {/* Expanded detail */}
         {expanded && (
