@@ -12,6 +12,12 @@ import { Storage } from '@google-cloud/storage';
 import { logger } from './logger';
 import { bucketName, contentTypeFor } from './pawFinderPhotoStore';
 
+// routes/adoption.ts imports contentTypeFor from HERE. Without this re-export
+// the ESM import throws at route registration — "does not provide an export
+// named 'contentTypeFor'" — which crashes the container on boot. The extension
+// → MIME mapping is shared with PawFinder on purpose; one table, one answer.
+export { contentTypeFor };
+
 export const ADOPTION_OBJECT_PREFIX = 'adoption/';
 /** ad-<ms>-<12 hex>.<ext> — exactly what the adoption upload names a file. */
 export const ADOPTION_OBJECT_NAME_RE = /^ad-\d{10,16}-[a-f0-9]{12}\.(jpg|jpeg|png|webp|heic)$/;
