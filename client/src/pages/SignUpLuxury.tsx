@@ -1498,8 +1498,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   function linkViaProvider() {
     return completeLink(async () => {
       const m = linkState!.methods;
-      const prov = m.includes('google.com') ? createGoogleProvider()
-                 : m.includes('apple.com') ? createAppleProvider()
+      // Exact match on the Firebase sign-in-method id (an array of ids like
+      // 'google.com' / 'password'), never a substring test — CodeQL reads
+      // includes('google.com') as a URL check (js/incomplete-url-substring-
+      // sanitization). Same behaviour, no ambiguity. 2026-09-14.
+      const hasMethod = (id: string) => m.some((x: string) => x === id);
+      const prov = hasMethod('google.com') ? createGoogleProvider()
+                 : hasMethod('apple.com') ? createAppleProvider()
                  : createFacebookProvider();
       await signInWithPopup(auth, prov);
     });
@@ -2518,7 +2523,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <button className="sl-cta" disabled={busy} onClick={() => void linkViaProvider()}>
                   {busy ? '…' : (() => {
                     const m = linkState.methods;
-                    const existing = m.includes('google.com') ? 'Google' : m.includes('apple.com') ? 'Apple' : 'Facebook';
+                    const existing = m.some((x: string) => x === 'google.com') ? 'Google' : m.some((x: string) => x === 'apple.com') ? 'Apple' : 'Facebook';
                     return he ? `היכנסו עם ${existing} וחברו את ${linkState.newLabel}` : language === 'ar' ? `سجّل الدخول عبر ${existing} واربط ${linkState.newLabel}` : language === 'ru' ? `Войти через ${existing} и привязать ${linkState.newLabel}` : `Sign in with ${existing} & connect ${linkState.newLabel}`;
                   })()}
                 </button>
