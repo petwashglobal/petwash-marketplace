@@ -23,7 +23,11 @@ router.get('/api/google-forms/config/:formType', async (req: Request, res: Respo
     const [config] = await db.select().from(googleFormsConfig).where(eq(googleFormsConfig.formType, formType)).limit(1);
 
     if (!config || !config.enabled) {
-      return res.status(404).json({ error: 'Form not configured or disabled' });
+      // "No Google Form is configured" is a NORMAL answer, not an error: the
+      // client renders its own form instead. Answering 404 made /contact and
+      // /careers log "[API Error] 404" in every visitor's console (live
+      // 2026-09-17) and hid real failures in the noise.
+      return res.json({ formType, enabled: false });
     }
 
     res.json(config);
