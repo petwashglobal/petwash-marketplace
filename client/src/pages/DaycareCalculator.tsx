@@ -248,11 +248,17 @@ export default function DaycareCalculator() {
         <div>
           <p className="text-[12px] font-medium text-gray-700 tracking-wide uppercase mb-3">
             Flash Deal Discount
-            <Link href="/flash-deals">
-              <span className="ml-2 text-[10px] normal-case font-normal underline" style={{ color: GOLD }}>
-                Browse deals
-              </span>
-            </Link>
+            {/* /flash-deals only exists when VITE_FLASH_DEALS_ENABLED === 'true'
+                (App.tsx). It is off in production, so this link put visitors on
+                the 404 page — verified live 2026-09-17. Shown only with the
+                same flag that registers the route. */}
+            {import.meta.env.VITE_FLASH_DEALS_ENABLED === 'true' && (
+              <Link href="/flash-deals">
+                <span className="ml-2 text-[10px] normal-case font-normal underline" style={{ color: GOLD }}>
+                  Browse deals
+                </span>
+              </Link>
+            )}
           </p>
           <div className="flex items-center gap-3">
             <input
