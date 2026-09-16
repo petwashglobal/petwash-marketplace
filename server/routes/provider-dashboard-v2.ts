@@ -143,6 +143,10 @@ function toV1Shape(row: Record<string, any>) {
     createdAt:           row.created_at ?? row.createdAt,
     // V2-only extras (bonus data the old system didn't have)
     requestId:           row.request_id ?? row.requestId,
+    // The provider's own tax invoice for this job. Until it is recorded the
+    // job evidence reports PROVIDER_INVOICE_MISSING and the payout stays held.
+    providerInvoiceNumber:      row.provider_invoice_number ?? row.providerInvoiceNumber ?? null,
+    providerInvoiceSubmittedAt: row.provider_invoice_submitted_at ?? row.providerInvoiceSubmittedAt ?? null,
     petCount:            row.pet_count ?? row.petCount,
     ownerMessage:        row.owner_message ?? row.ownerMessage,
     providerResponse:    row.provider_response ?? row.providerResponse,
@@ -193,7 +197,13 @@ router.get('/bookings', async (req: Request, res: Response) => {
         subtotal_cents, service_fee_cents, provider_payout_cents, total_cents,
         currency, payment_transaction_id, payout_status, payout_date,
         payment_held_at, service_started_at, service_completed_at,
-        cancelled_at, cancellation_reason, pet_count, created_at, updated_at
+        cancelled_at, cancellation_reason, pet_count, created_at, updated_at,
+        -- Gross model (#2496): the provider is the legal seller and records
+        -- their own tax invoice before Pet Wash approves the payout. Read via
+        -- to_jsonb so a database that has not applied 0159 yet returns NULL
+        -- instead of failing the whole job list.
+        to_jsonb(booking_requests)->>'provider_invoice_number'       AS provider_invoice_number,
+        to_jsonb(booking_requests)->>'provider_invoice_submitted_at' AS provider_invoice_submitted_at
        FROM booking_requests
        WHERE provider_id = $1
          ${resolvedStatuses && resolvedStatuses.length > 0

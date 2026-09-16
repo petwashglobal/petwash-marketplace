@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, MapPin, DollarSign, CheckCircle2, XCircle, TrendingUp, Star } from "lucide-react";
+import { Calendar, Clock, MapPin, DollarSign, CheckCircle2, XCircle, TrendingUp, Star, Receipt, Loader2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +51,8 @@ interface WalkBooking {
   duration?: number;
   totalCost?: string;
   walkerPayout?: string;
+  /** Gross model (#2496): the walker's own tax invoice to the customer. */
+  providerInvoiceNumber?: string | null;
   ownerAddress?: string;
   currency?: string;
   petName?: string;
@@ -89,6 +91,92 @@ interface Earnings {
   totalWalks: number;
 }
 
+/**
+ * WalkInvoiceRow — a finished walk plus the number of the tax invoice the
+ * walker issued the customer.
+ *
+ * Gross model (#2496): the walker is the legal seller and invoices the customer
+ * for the full price; Pet Wash documents only its own fee. Until the number is
+ * on file the job evidence reports PROVIDER_INVOICE_MISSING and an admin cannot
+ * approve the payout — so this row is the walker's way to unblock their money.
+ */
+function WalkInvoiceRow({ booking }: { booking: WalkBooking }) {
+  const { toast } = useToast();
+  const [value, setValue] = useState('');
+  const recorded = booking.providerInvoiceNumber ?? null;
+
+  const save = useMutation({
+    mutationFn: () =>
+      apiRequest('POST', `/api/walk-my-pet/walks/${encodeURIComponent(booking.bookingId)}/provider-invoice`, {
+        invoiceNumber: value.trim(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/walk-my-pet/bookings/provider-completed'] });
+      toast({ title: 'החשבונית נרשמה / Invoice recorded', description: 'Pet Wash can now review this payout.' });
+    },
+    onError: (err: any) => {
+      const code = err?.body?.error;
+      toast({
+        variant: 'destructive',
+        title: 'לא נשמר / Not saved',
+        description: code === 'INVALID_INVOICE_NUMBER'
+          ? 'Use letters, digits, dashes or slashes — up to 64 characters.'
+          : 'Please try again.',
+      });
+    },
+  });
+
+  return (
+    <Card className="luxury-glass-minimal" data-testid={`card-completed-${booking.bookingId}`}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="luxury-heading-sm">
+            {booking.petName || 'Pet'}{booking.bookingNumber ? ` — #${booking.bookingNumber}` : ''}
+          </span>
+          {booking.walkerPayout && (
+            <span className="luxury-text-small font-semibold">₪{parseFloat(booking.walkerPayout).toFixed(0)}</span>
+          )}
+        </div>
+
+        {recorded ? (
+          <p
+            className="mt-2 flex items-center gap-1.5 text-sm text-emerald-700"
+            data-testid={`walk-invoice-recorded-${booking.bookingId}`}
+          >
+            <Receipt className="w-4 h-4 shrink-0" />
+            <span className="truncate">Your invoice {recorded} is on file</span>
+          </p>
+        ) : (
+          <div className="mt-2" data-testid={`walk-invoice-box-${booking.bookingId}`}>
+            <p className="luxury-text-small">
+              מספר החשבונית שהוצאת ללקוח / Your invoice number — the payout is held until you enter it.
+            </p>
+            <div className="flex gap-2 mt-2">
+              <input
+                value={value}
+                onChange={(e) => setValue(e.target.value.slice(0, 64))}
+                placeholder="2026-0042"
+                aria-label="Your invoice number"
+                data-testid={`walk-invoice-input-${booking.bookingId}`}
+                /* 16px floor: smaller text makes iOS Safari zoom on focus. */
+                className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/40"
+              />
+              <Button
+                onClick={() => save.mutate()}
+                disabled={!value.trim() || save.isPending}
+                data-testid={`walk-invoice-save-${booking.bookingId}`}
+                className="shrink-0"
+              >
+                {save.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function WalkerDashboard() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -99,6 +187,14 @@ export default function WalkerDashboard() {
     queryKey: ['/api/walk-my-pet/bookings/provider-pending'],
   });
   const pendingBookings: WalkBooking[] = pendingData?.bookings || [];
+
+  // Finished walks — the walker records their own invoice number here, which is
+  // what lets a Pet Wash admin approve the payout (gross model, #2496).
+  const { data: completedData } = useQuery<{ bookings: WalkBooking[]; total: number }>({
+    queryKey: ['/api/walk-my-pet/bookings/provider-completed'],
+  });
+  const completedBookings: WalkBooking[] = completedData?.bookings || [];
+  const awaitingInvoice = completedBookings.filter((b) => !b.providerInvoiceNumber);
 
   // Earnings summary
   const { data: earnings } = useQuery<Earnings>({
@@ -193,6 +289,28 @@ export default function WalkerDashboard() {
               <p className="luxury-heading-lg luxury-text-gradient">{earnings?.totalWalks ?? 0}</p>
             </div>
           </div>
+
+          {/* Finished walks waiting for the walker's own invoice number.
+              Shown first when any are outstanding — it is the one thing
+              standing between the walker and their money. */}
+          {completedBookings.length > 0 && (
+            <div data-testid="walker-invoices-section">
+              <h2 className="luxury-heading-md mb-4 flex items-center gap-2">
+                <span className="luxury-badge-gold px-2 py-1">{awaitingInvoice.length}</span>
+                Your Invoices / החשבוניות שלך
+              </h2>
+              <p className="luxury-text-small mb-4">
+                אתם מוציאים ללקוח חשבונית על מלוא הסכום; Pet Wash™ מוציאה חשבונית על העמלה בלבד.
+              </p>
+              <div className="grid gap-4">
+                {[...awaitingInvoice, ...completedBookings.filter((b) => b.providerInvoiceNumber)]
+                  .slice(0, 20)
+                  .map((booking) => (
+                    <WalkInvoiceRow key={booking.bookingId} booking={booking} />
+                  ))}
+              </div>
+            </div>
+          )}
 
           {/* Pending Requests */}
           <div>

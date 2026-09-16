@@ -29,8 +29,13 @@ describe('POSJobs — completed/reviewed payout celebration', () => {
     expect(SRC).toMatch(/data-testid=\{`payout-released-\$\{booking\.id\}`\}/);
   });
 
-  it('surfaces the payout amount + 72h ETA copy', () => {
-    expect(SRC).toMatch(/released · arriving in 72h/);
+  // 2026-09-16: the original pin demanded "released · arriving in 72h". Since
+  // the CEO rule of 2026-09-13 no payout releases itself — an admin approves
+  // each one after reviewing the job evidence — so that sentence promised the
+  // provider money that had not moved. The subline stays; the promise goes.
+  it('states the money is held pending a Pet Wash review, and promises no ETA', () => {
+    expect(SRC).toMatch(/held for you · Pet Wash approves it after review/);
+    expect(SRC).not.toMatch(/arriving in 72h/);
   });
 
   it('shows a star-review badge when status === reviewed and a rating is present', () => {
