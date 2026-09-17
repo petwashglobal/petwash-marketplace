@@ -17,6 +17,7 @@
 import { eq, desc } from 'drizzle-orm';
 import { db, pool } from '../../db';
 import {
+  bookingRequests,
   sitterBookings,
   walkBookings,
   trainerBookings,
@@ -27,6 +28,7 @@ import { logger } from '../../lib/logger';
 import { generateTransactionRef } from '@shared/lib/fiscalPassport/idNamespace';
 import { paymentClassForEvent, type FiscalEventCode } from '@shared/lib/fiscalPassport/eventRegistry';
 import { getSumitDocumentMapping } from '../sumitDocumentMapping';
+import { bookingRequestFiscalKind, bookingRequestIsPaid } from './composer';
 
 export interface CustomerTransactionRow {
   transactionRef: string;
@@ -52,7 +54,8 @@ export interface CustomerTransactionRow {
     | 'sitter_bookings'
     | 'walk_bookings'
     | 'trainer_bookings'
-    | 'pettrek_trips';
+    | 'pettrek_trips'
+    | 'booking_requests';
   sourceId: string;
 }
 
@@ -184,6 +187,46 @@ export async function listCustomerTransactions(input: {
       });
     }
   } catch (err) { swallow('wallet_topup', err); }
+
+  // ── Marketplace bookings (booking_requests) — the flow a customer pays by
+  // card since BOOKING_CARD_RAIL=sumit. It was missing here, so a paid booking
+  // did not appear on the page the payment letter links to (2026-09-17).
+  try {
+    const brs = await db
+      .select({
+        id: bookingRequests.requestId,
+        total: bookingRequests.totalCents,
+        status: bookingRequests.status,
+        serviceType: bookingRequests.serviceType,
+        heldAt: bookingRequests.paymentHeldAt,
+        txn: bookingRequests.paymentTransactionId,
+        created: bookingRequests.createdAt,
+      })
+      .from(bookingRequests)
+      .where(eq(bookingRequests.ownerId, input.customerUid))
+      .orderBy(desc(bookingRequests.createdAt))
+      .limit(perSource);
+    for (const r of brs) {
+      const kind = bookingRequestFiscalKind(r.serviceType);
+      const paid = bookingRequestIsPaid(r as any);
+      const cancelled = ['cancelled', 'rejected', 'expired'].includes(String(r.status ?? ''));
+      rows.push({
+        transactionRef: generateTransactionRef({ stableId: `booking:${r.id}`, stableIsoDate: (r.heldAt ?? r.created)?.toISOString() ?? null }),
+        correlationId: `booking:${r.id}`,
+        occurredAt: isoOf(r.heldAt ?? r.created),
+        platform: kind.platform as CustomerTransactionRow['platform'],
+        label: kind.platform === 'WALK_MY_PET' ? 'Walk My Pet — dog walk'
+          : kind.platform === 'ACADEMY' ? 'PetWash Academy — training'
+          : 'The Sitter Suite — pet service',
+        totalCents: Number(r.total ?? 0),
+        currency: 'ILS',
+        paymentState: paid ? 'PAID' : cancelled ? 'NOT_REQUIRED' : 'PAYMENT_REQUIRED',
+        documentType: paid ? docTypeFor(kind.event) : undefined,
+        source: 'booking_requests',
+        sourceId: r.id,
+      });
+    }
+  } catch (err) { swallow('booking_requests', err); }
 
   // ── Sitter / Walk / Academy — pull each provider-side fiscal event
   try {
