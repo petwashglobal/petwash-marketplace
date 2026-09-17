@@ -54,7 +54,7 @@ import { EmailService } from '../emailService';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken, buildQrRedeemToken } from '../lib/passTokens';
-import { resolveMemberTier, tierLabel } from '../lib/memberTier';
+import { resolveMemberTier, tierLabel, isPrestigeEnrolled } from '../lib/memberTier';
 import { tierDisplay as tierDisplayFor } from '@shared/lib/tierLabels';
 import { ensureMemberIdentity, findMemberIdentity } from '../lib/memberIdentity';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations, PETWASH_COMMISSION_RATE } from '@shared/schema';
@@ -607,7 +607,26 @@ router.get('/wallet', async (req: Request, res: Response) => {
     let passData = passDoc.exists ? passDoc.data()! : null;
 
     if (!passData) {
-      // Auto-create pass on first access
+      // A PASS IS ISSUED TO MEMBERS, NOT TO VISITORS. This used to auto-create
+      // a 'public_member' pass doc for ANY signed-in caller on first access, so
+      // the endpoint could never answer "you are not a member" — it always had
+      // a pass to return. PrestigePassWallet.tsx keys its "not a member ->
+      // /loyalty/join?reason=prestige_required" redirect on exactly that answer
+      // (ok:false), so the join gate was dead code: a visitor who opened the
+      // wallet page got a pass-shaped page instead of the invitation to join,
+      // and a membership-card identity was minted for an account that never
+      // enrolled.
+      //
+      // Enrollment truth is the shared one — an ACTIVE privilege_members row
+      // for the account's own email (lib/memberTier.isPrestigeEnrolled, the
+      // same check lib/userCapabilities uses). A 'pending_verification' row is
+      // not a membership and gets the same ok:false.
+      const [passOwner] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      if (!(await isPrestigeEnrolled((passOwner as any)?.email ?? null))) {
+        return res.json({ ok: false, error: 'NOT_A_MEMBER' });
+      }
+
+      // Enrolled member opening this surface for the first time — issue it.
       const serialNumber = `PWL-${Date.now().toString(36).toUpperCase()}-${randomBytes(2).toString('hex').toUpperCase()}`;
       passData = {
         userId,
