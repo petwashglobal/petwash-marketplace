@@ -202,15 +202,31 @@ function renderBootFallback() {
 
     // Load App, ErrorBoundary, and auth-guardian ALL IN PARALLEL
     // Previously these were 3 sequential awaits — each blocking the next
-    const [{ default: App }, { AppErrorBoundary }] = await Promise.all([
+    const [{ default: App }, { AppErrorBoundary }, { HelmetProvider }] = await Promise.all([
       import('./App'),
       import('./components/AppErrorBoundary'),
+      import('react-helmet-async'),
       import('./lib/auth-guardian-2025'), // fire-and-forget side effect
     ]);
 
+    // HelmetProvider is REQUIRED by react-helmet-async — without it every
+    // <Helmet> is a hard render crash, not a degraded <title>. Its Dispatcher
+    // does `this.props.context.helmetInstances.add(this)` in init(), and with
+    // no provider that context is empty:
+    //     TypeError: Cannot read properties of undefined (reading 'add')
+    // Nothing ever mounted one, so every route that renders <Helmet> died at
+    // first paint and only AppErrorBoundary's fallback was left on screen —
+    // ServiceLandingPage (/services/:service, /services/:service/:city) and
+    // BookingSearchPage (/search, /marketplace/search). The service pages are
+    // the SEO landing pages, so Googlebot was crawling a crash.
+    // Reported from production by Sentry + the monitoring alert, iOS Safari,
+    // 2026-09-17. Provider sits INSIDE AppErrorBoundary so a genuine render
+    // fault is still caught and reported.
     createRoot(document.getElementById("root")!).render(
       <AppErrorBoundary>
-        <App />
+        <HelmetProvider>
+          <App />
+        </HelmetProvider>
       </AppErrorBoundary>
     );
 
