@@ -47,7 +47,7 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     // access" — the CEO hit the access-denied wall on his own signed-in Chrome
     // (2026-09-17) simply because the session was older than four hours.
     if (sessionExpired) {
-      setLocation(`/admin/login?expired=1&next=${encodeURIComponent(window.location.pathname)}`);
+      setLocation(`/admin/login?expired=1&returnTo=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
 

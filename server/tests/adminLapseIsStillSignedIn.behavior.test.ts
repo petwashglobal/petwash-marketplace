@@ -77,14 +77,20 @@ describe('the 4h rule still guards the admin API', () => {
 });
 
 describe('after signing in again the admin lands where they were', () => {
+  it('the guard sends the canonical returnTo key and the helper reads it through readReturnTo()', () => {
+    expect(R('client/src/components/AdminRouteGuard.tsx')).toContain('/admin/login?expired=1&returnTo=');
+    expect(R('client/src/lib/adminLandingPath.ts')).toContain('const target = readReturnTo(search);');
+  });
   it('returns to the admin page in ?next', async () => {
     const { adminLandingPath } = await import('../../client/src/lib/adminLandingPath');
-    expect(adminLandingPath('?expired=1&next=%2Fadmin%2Fpaw-finder')).toBe('/admin/paw-finder');
-    expect(adminLandingPath('?next=/admin')).toBe('/admin');
+    expect(adminLandingPath('?expired=1&returnTo=%2Fadmin%2Fpaw-finder')).toBe('/admin/paw-finder');
+    expect(adminLandingPath('?returnTo=/admin')).toBe('/admin');
+    // links already sent with the legacy key still work (readReturnTo accepts it)
+    expect(adminLandingPath('?next=%2Fadmin%2Fsumit')).toBe('/admin/sumit');
   });
   it('falls back to the control tower for anything that is not a same-site admin page', async () => {
     const { adminLandingPath } = await import('../../client/src/lib/adminLandingPath');
-    for (const bad of ['', '?next=https://evil.example/admin', '?next=//evil.example/admin', '?next=/account', '?next=/admin/login', '?next=/admin%0d%0aX', '?next=javascript:alert(1)', '?next=/adminx']) {
+    for (const bad of ['', '?next=https://evil.example/admin', '?next=//evil.example/admin', '?next=/account', '?next=/admin/login', '?next=/admin%0d%0aX', '?next=javascript:alert(1)', '?next=/adminx', '?returnTo=%2F%5Cevil.com', '?returnTo=/admin%09/x/../../evil']) {
       expect(adminLandingPath(bad)).toBe('/admin/octopus');
     }
   });

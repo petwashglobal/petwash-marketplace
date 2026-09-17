@@ -26,7 +26,7 @@ describe('the guard sends an expired admin to sign in, not to a wall', () => {
   const guard = R('client/src/components/AdminRouteGuard.tsx');
   it('redirects on sessionExpired, before the access-denied fall-through', () => {
     expect(guard).toContain('const { admin, isLoading: adminLoading, isError, sessionExpired } = useAdminAuth();');
-    expect(guard).toContain('setLocation(`/admin/login?expired=1&next=${encodeURIComponent(window.location.pathname)}`);');
+    expect(guard).toContain('setLocation(`/admin/login?expired=1&returnTo=${encodeURIComponent(window.location.pathname)}`);');
     const expiredAt = guard.indexOf('if (sessionExpired) {');
     const deniedAt = guard.indexOf('Logged in but NOT an admin');
     expect(expiredAt).toBeGreaterThan(0);

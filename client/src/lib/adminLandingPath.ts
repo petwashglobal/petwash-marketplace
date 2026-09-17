@@ -1,13 +1,16 @@
+import { readReturnTo } from '@/auth/returnTo';
+
 /**
  * Where to land after signing in. AdminRouteGuard sends a lapsed admin here
- * with ?next=<the admin page they were on>; take them back there. Only a
- * same-site /admin path is accepted (no "//host", no scheme) so the parameter
- * can never become an open redirect.
+ * with ?returnTo=<the admin page they were on>; take them back there.
+ * readReturnTo() is the one canonical reader (it also accepts the legacy
+ * ?next= and rejects anything that is not a safe same-site path); on top of
+ * that only an /admin page is a valid landing — never the sign-in page itself.
  */
 export function adminLandingPath(search: string = typeof window !== 'undefined' ? window.location.search : ''): string {
   try {
-    const next = new URLSearchParams(search).get('next') || '';
-    if (/^\/admin(\/[A-Za-z0-9._~\-\/]*)?$/.test(next) && !next.startsWith('/admin/login')) return next;
+    const target = readReturnTo(search);
+    if (target && /^\/admin(\/|$|\?)/.test(target) && !target.startsWith('/admin/login')) return target;
   } catch { /* fall through */ }
   return '/admin/octopus';
 }
