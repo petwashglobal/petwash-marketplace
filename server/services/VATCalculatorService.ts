@@ -315,9 +315,21 @@ class VATCalculatorService {
       netPaymentToProvider: number;
       commissionId: string;
       osekType?: "osek_patur" | "osek_murshe";
-    }
+    },
+    /**
+     * Which money model produced `grossCollectedILS` (shared/marketplaceMoney.ts).
+     *  - 'net'  (default, legacy): the fee was taken OUT of the gross, so it is
+     *    `rate × gross`.
+     *  - 'gross': the fee was added ON TOP of the provider's rate, so the gross
+     *    is `rate × (1 + r)` and the fee is `gross × r / (1 + r)`.
+     * Passing a gross-model total without this booked 15% of the fee-inclusive
+     * total — ₪172.50 of commission on a ₪1,150 booking whose fee was ₪150 —
+     * and overstated the VAT Pet Wash owes on it.
+     */
+    opts?: { model?: 'gross' | 'net' },
   ): Promise<PLedgerEntry> {
-    const commissionRate = this.getCommissionRate(platform);
+    const baseRate = this.getCommissionRate(platform);
+    const commissionRate = opts?.model === 'gross' ? baseRate / (1 + baseRate) : baseRate;
     const calc = this.calculateMarketplaceVAT(grossCollectedILS, commissionRate);
 
     const entryId = `PL-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
@@ -344,7 +356,15 @@ class VATCalculatorService {
       netProviderPayout: settlement?.netPaymentToProvider,
       osekType: settlement?.osekType,
       commissionId: settlement?.commissionId,
-      metadata,
+      // `commissionRate` above is the fee's share of the amount COLLECTED — the
+      // rate that reproduces this row's own numbers. For a gross-model booking
+      // that is 13.04%, while the fee Pet Wash advertises is 15% of the
+      // provider's rate. Both are recorded so a reader never has to guess.
+      metadata: {
+        ...(metadata ?? {}),
+        moneyModel: opts?.model ?? 'net',
+        serviceFeeRateOfProviderRate: baseRate,
+      },
     };
 
     try {

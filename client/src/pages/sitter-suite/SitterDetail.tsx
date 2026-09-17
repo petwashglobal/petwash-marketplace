@@ -19,6 +19,7 @@ import {
   Tree, Sun, Moon, Thermometer, Dog, Cat, Activity
 } from 'lucide-react';
 import { format, differenceInDays, addDays } from 'date-fns';
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 
 export default function SitterDetail() {
   const { id } = useParams();
@@ -93,12 +94,10 @@ export default function SitterDetail() {
   const calculateTotalCost = () => {
     if (!startDate || !endDate) return 0;
     const days = Math.max(1, differenceInDays(endDate, startDate));
-    const basePrice = (sitter?.pricePerDayCents || 0) / 100;
-    // 15% is the canonical sitter commission (SitterAdvancedBookingEngine — the server
-    // recomputes authoritatively and charges 15%). Display was showing 10% while the
-    // booking was charged at 15% → the total understated the real amount. (2026-08-08)
-    const platformFee = basePrice * days * 0.15;
-    return basePrice * days + platformFee;
+    // The same split the server charges (shared/marketplaceMoney.ts): rate +
+    // the 15% Pet Wash fee on top. (2026-08-08: this showed 10% while 15% was
+    // charged; 2026-09-17: routed through the shared split so it cannot drift.)
+    return splitMarketplaceJob((sitter?.pricePerDayCents || 0) * days).customerTotalCents / 100;
   };
 
   const handleBooking = async () => {
@@ -125,8 +124,11 @@ export default function SitterDetail() {
 
     const days = Math.max(1, differenceInDays(endDate, startDate));
     const basePriceCents = (sitter?.pricePerDayCents || 0) * days;
-    const platformServiceFeeCents = Math.round(basePriceCents * 0.15);
-    const totalChargeCents = basePriceCents + platformServiceFeeCents;
+    // One money model (shared/marketplaceMoney.ts). The server recomputes the
+    // price itself; these are sent for its audit trail and must agree with it.
+    const split = splitMarketplaceJob(basePriceCents);
+    const platformServiceFeeCents = split.serviceFeeCents;
+    const totalChargeCents = split.customerTotalCents;
 
     await createBookingMutation.mutateAsync({
       ownerId: user.uid,
@@ -138,8 +140,10 @@ export default function SitterDetail() {
       totalDays: days,
       basePriceCents,
       platformServiceFeeCents,
-      brokerCutCents: Math.round(basePriceCents * 0.15),
-      sitterPayoutCents: Math.round(basePriceCents * 0.85),
+      brokerCutCents: split.serviceFeeCents,
+      // The sitter is owed the whole rate — this used to send 85% while the
+      // total above already put the fee on top (a 30% take if anyone used it).
+      sitterPayoutCents: split.providerPayoutCents,
       totalChargeCents,
       specialInstructions,
     });
@@ -542,7 +546,7 @@ export default function SitterDetail() {
                     </div>
                     <div className="flex justify-between luxury-text-body">
                       <span className="font-medium">{isHebrew ? 'עמלת שירות' : 'Service Fee'} (15%)</span>
-                      <span className="font-bold">₪{days > 0 ? (((sitter.pricePerDayCents / 100) * days * 0.15).toFixed(0)) : '0'}</span>
+                      <span className="font-bold">₪{days > 0 ? (splitMarketplaceJob(sitter.pricePerDayCents * days).serviceFeeCents / 100).toFixed(0) : '0'}</span>
                     </div>
                     <div className="luxury-divider"></div>
                     <div className="luxury-glass-minimal p-4">

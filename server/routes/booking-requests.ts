@@ -4000,7 +4000,12 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           requestId,
           grossCollectedILS,
           requestId,
-          { serviceType: booking.serviceType, bookingFlow: 'booking_requests', confirmedAt: new Date().toISOString() }
+          { serviceType: booking.serviceType, bookingFlow: 'booking_requests', confirmedAt: new Date().toISOString() },
+          undefined,
+          // totalCents = the provider's rate + the 15% fee ON TOP (quoteEngine).
+          // Without this the ledger took 15% of the fee-inclusive total and
+          // booked ₪172.50 of commission on a ₪1,150 booking whose fee was ₪150.
+          { model: 'gross' },
         );
       } catch (vatErr: any) {
         logger.warn('[BookingRequests] VAT ledger recording failed (non-blocking)', { error: vatErr.message, requestId });

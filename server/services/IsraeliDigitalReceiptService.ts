@@ -124,6 +124,16 @@ export interface ProviderSettlementParams {
   // withholdingCertRate: the specific reduced rate (0–100) granted by the ITA certificate.
   withholdingCertExpiryDate?: Date;
   withholdingCertRate?: number; // e.g. 5 for 5% — overrides providerWithholdingRate when cert is valid
+  /**
+   * The Pet Wash fee ACTUALLY charged on this booking, in ILS, when the caller
+   * stored it. Preferred over the back-calculation below, which assumes the fee
+   * was taken OUT of the payout (payout × 15% / 85%). Under the fee-on-top model
+   * (shared/marketplaceMoney.ts) the payout is the full rate and that formula
+   * would book ₪176.47 of commission on a ₪1,000 stay whose fee was ₪150.
+   * For a booking made under the old model the two agree, so passing the stored
+   * fee is correct for both.
+   */
+  brokerCommissionAmount?: number;
 }
 
 export interface ProviderSettlementResult {
@@ -366,7 +376,11 @@ export class IsraeliDigitalReceiptService {
     const withholdingTaxAmount = parseFloat((grossPayoutAmount * effectiveRate).toFixed(2));
     const netPaymentToProvider = parseFloat((grossPayoutAmount - withholdingTaxAmount).toFixed(2));
 
-    const brokerCommission = parseFloat((grossPayoutAmount * PLATFORM_COMMISSION_RATE / (1 - PLATFORM_COMMISSION_RATE)).toFixed(2));
+    const storedFee = Number(params.brokerCommissionAmount);
+    const brokerCommission = Number.isFinite(storedFee) && storedFee >= 0
+      ? parseFloat(storedFee.toFixed(2))
+      // Legacy callers that stored no fee: the old net-model back-calculation.
+      : parseFloat((grossPayoutAmount * PLATFORM_COMMISSION_RATE / (1 - PLATFORM_COMMISSION_RATE)).toFixed(2));
     // Only Osek Murshe providers result in a VAT-carrying invoice for the broker commission.
     // Osek Patur providers are VAT-exempt — the platform does not owe VAT on their behalf.
     const vatOnCommission = resolvedIsVatRegistered
@@ -757,7 +771,16 @@ export class IsraeliDigitalReceiptService {
     try {
       const settlement = this.calculateProviderSettlement(params);
 
-      const commissionRate = params.commissionRate || PLATFORM_COMMISSION_RATE * 100;
+      // The rate recorded beside the amount must REPRODUCE the amount:
+      // commission ÷ what the customer paid. That is 15.00 for a booking where
+      // the fee came out of the rate, 13.04 where it sat on top (₪150 of
+      // ₪1,150). A caller-supplied number is used only when there is no
+      // customer total to derive it from — a hand-written rate is how Sitter
+      // Suite came to store "7.50" next to a 15% commission.
+      const paid = Number(params.customerPaidAmount);
+      const commissionRate = paid > 0
+        ? (settlement.brokerCommission / paid) * 100
+        : (params.commissionRate || PLATFORM_COMMISSION_RATE * 100);
 
       const invoiceNumber = await generateCommissionInvoiceNumber();
 

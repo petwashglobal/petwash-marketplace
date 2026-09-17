@@ -14,6 +14,7 @@ import { eq, and, gte, lte, inArray } from 'drizzle-orm';
 import { bookingPolicyEngine, type CancellationResult } from './BookingPolicyEngine';
 import { countCalendarDays } from '../lib/calendar-days';
 import escrowService from './EscrowService';
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 
 interface AvailabilityResult {
   available: boolean;
@@ -201,24 +202,26 @@ export class SitterAdvancedBookingEngine {
     // Kept as 0 so the return shape (loyaltyDiscount field) is unchanged.
     const loyaltyDiscount = 0;
 
-    // SINGLE 15% commission — disclosed-agent, unified with Walk My Pet
-    // (walkFeeCalculator) + the CEO's 2026-07-31 decision. The customer pays the
-    // sitter's rate (subtotal); PetWash keeps 15% OUT of it; the sitter nets 85%.
-    // NOT added on top. HISTORY: this used to add 15% + VAT ON TOP (customer paid
-    // more) while the sitter kept 100% — a different model from Walk and from the
-    // capture calculator, and it double-charged at capture.
-    const platformFee = subtotal * globalConfig.getCommissionRate();
+    // ONE MONEY MODEL (CEO 2026-09-14, confirmed 2026-09-17 — "same as Mad Paws,
+    // Rover"): the customer pays the sitter's rate PLUS the Pet Wash service fee
+    // on top; the sitter gets the full rate; Pet Wash keeps the fee, whose 18%
+    // VAT is inside it. shared/marketplaceMoney.ts is the only place that says
+    // how. HISTORY: this took 15% OUT of the rate (sitter netted 85%) while
+    // booking_requests put it on top — two receipts for the same service.
+    // `taxRate` (the country's VAT, from localSettings) is not used here: the
+    // Israeli 18% inside the fee comes from the shared split, the single source.
+    void taxRate;
+    const split = splitMarketplaceJob(Math.round(subtotal * 100));
+    const platformFee = split.serviceFeeCents / 100;
 
-    // VAT (18%) is on the COMMISSION only, EXTRACTED from it (the commission is
-    // VAT-inclusive) per the settled Israeli disclosed-agent rule — NOT added on top,
-    // so the customer's total = the sitter's rate.
-    const tax = platformFee * (taxRate / (1 + taxRate));
+    // VAT Pet Wash owes — on its fee only, extracted, never on the sitter's money.
+    const tax = split.serviceFeeVatCents / 100;
 
-    // The customer pays exactly the rate (subtotal). No owner surcharge, no VAT on top.
-    const totalPrice = subtotal;
+    // What the customer pays: the rate + the fee.
+    const totalPrice = split.customerTotalCents / 100;
 
-    // Sitter nets 85% — the 15% comes out of the rate, not added to the customer.
-    const sitterPayout = subtotal - platformFee;
+    // What the sitter is owed: the full rate.
+    const sitterPayout = split.providerPayoutCents / 100;
 
     return {
       baseRate,

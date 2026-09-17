@@ -2,33 +2,36 @@
  * THE SITTER SUITE™ - Financial Fee Calculator
  * Israeli Tax Law 2026 Compliant
  *
- * FLAT 15% COMMISSION (disclosed-agent model, unified across ALL PetWash™ paid
- * services — identical to Walk My Pet + Academy; CEO-confirmed 2026-07-31):
- * - Owner pays: the sitter's rate (base price). NOTHING added on top.
- * - Sitter receives: 85% of the base price.
- * - PetWash™ keeps: 15% commission, taken OUT of the base (not added on top).
- * - VAT (18%) is on PetWash's COMMISSION only, EXTRACTED from it (the commission is
- *   VAT-inclusive); the customer's total IS the base price.
+ * ONE MONEY MODEL (CEO 2026-09-14, confirmed 2026-09-17 — "same as Mad Paws,
+ * Rover"), shared with every marketplace flow via shared/marketplaceMoney.ts:
+ * - Owner pays: the sitter's rate + the Pet Wash service fee (15%) on top.
+ * - Sitter receives: the full rate.
+ * - PetWash™ keeps: the 15% fee. The 18% VAT Pet Wash owes is INSIDE that fee
+ *   (extracted 18/118) — never added on top, never charged on the sitter's money.
+ * - The sitter is the legal seller of the stay and invoices the owner for the
+ *   rate; Pet Wash invoices only its fee.
  *
- * HISTORY (the money leak this file used to be): the previous version charged the
- * owner base + 15% + VAT AND deducted 15% from the sitter = a ~30% real platform take
- * while the header claimed "15%". Worse, the capture path (NayaxSitterMarketplaceService)
- * feeds the booking's stored total back in as a per-day rate, so the on-top model
- * charged fees a SECOND time. Corrected 2026-07-31 to a single 15% disclosed-agent
- * commission (customer pays the rate; VAT extracted 18/118), matching walkFeeCalculator.
+ * HISTORY:
+ * - Before 2026-07-31 this charged base + 15% + VAT AND deducted 15% from the
+ *   sitter (~30% real take), and the capture path fed the stored total back in
+ *   as a per-day rate, charging fees twice.
+ * - 2026-07-31 → 2026-09-17 it took 15% OUT of the rate (sitter netted 85%),
+ *   while booking_requests put the fee on top — two models on one platform.
+ * - 2026-09-17: fee on top, one shared split, and the card is charged the
+ *   STORED total (acceptSitterBookingCore → processBookingPayment.chargeCents),
+ *   never a recomputation — so the double-fee trap above cannot come back.
  *
  * Payment Flow (PetWash™ escrow model):
- * 1. Owner pays the sitter's rate (base) to PetWash via Nayax.
- * 2. Platform holds funds in 72-hour escrow.
- * 3. Upon job completion: platform keeps 15% commission; withholding tax
- *    (ניכוי מס במקור) deducted from the sitter payout at settlement per certificate.
+ * 1. Owner pays rate + fee to PetWash.
+ * 2. Platform holds funds in escrow.
+ * 3. Upon job completion and a Pet Wash admin's approval: sitter is paid the
+ *    rate, less withholding tax (ניכוי מס במקור) per certificate.
  * 4. Digital receipt (קבלה דיגיטלית) emailed to customer.
  * 5. Transaction recorded in internal accounting system.
- *
- * Israeli VAT Rate: 18% (as of 2025-2026), extracted from the commission.
  */
 
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 
 const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 
@@ -56,9 +59,8 @@ export interface TransparentFeeCalculation {
 
 /**
  * Calculate transparent fees for ⁦The Sitter Suite™⁩ booking.
- * FLAT 15% commission, disclosed-agent (unified across all ⁦PetWash™⁩ platforms):
- * the owner pays the sitter's rate; PetWash keeps 15% out of it; the sitter gets 85%;
- * VAT is extracted from the commission (18/118), so the customer's total = the rate.
+ * One money model (shared/marketplaceMoney.ts): owner pays rate + 15% fee on top,
+ * sitter is owed the full rate, VAT is extracted from the fee (18/118).
  *
  * @param pricePerDayCents - Sitter's daily rate in agorot (cents)
  * @param totalDays - Number of days for booking
@@ -66,9 +68,8 @@ export interface TransparentFeeCalculation {
  *
  * @example
  * const fees = calculateTransparentFees(15000, 3); // ₪150/day × 3 days
- * // Base / owner pays: ₪450 (the sitter's rate — nothing added)
- * // Sitter payout: ₪382.50 (₪450 − 15% commission)
- * // PetWash commission: ₪67.50, of which ₪10.30 is VAT remitted (18/118) → ₪57.20 net
+ * // Sitter's rate: ₪450 · owner pays ₪517.50 · sitter is owed ₪450
+ * // PetWash fee: ₪67.50, of which ₪10.30 is VAT (18/118) → ₪57.20 net
  */
 export function calculateTransparentFees(
   pricePerDayCents: number,
@@ -76,22 +77,22 @@ export function calculateTransparentFees(
 ): TransparentFeeCalculation {
   const basePriceCents = pricePerDayCents * totalDays;
 
-  // SINGLE 15% commission, taken OUT of the base (disclosed-agent), NOT added on top.
-  const platformServiceFeeCents = Math.round(basePriceCents * 0.15);
+  // ONE MONEY MODEL (shared/marketplaceMoney.ts): the Pet Wash fee sits ON TOP
+  // of the sitter's rate, the sitter is owed the whole rate, and the 18% VAT is
+  // inside the fee. The split lives in one place so this cannot drift again.
+  const split = splitMarketplaceJob(basePriceCents);
 
-  const brokerCutCents = platformServiceFeeCents;
+  const platformServiceFeeCents = split.serviceFeeCents;
+  const brokerCutCents = split.serviceFeeCents;
 
-  // Sitter nets 85% — the 15% comes out of the rate.
-  const sitterPayoutCents = basePriceCents - brokerCutCents;
+  // The sitter is owed the full rate.
+  const sitterPayoutCents = split.providerPayoutCents;
 
-  // The owner pays exactly the rate — no surcharge, no VAT on top.
-  const subtotalBeforeVatCents = basePriceCents;
-
-  // VAT (18%) is on the commission only, EXTRACTED (the commission is VAT-inclusive).
-  const vatCents = Math.round(platformServiceFeeCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)));
-
-  // Customer's total IS the base — VAT lives inside the commission, not on top.
-  const totalChargeCents = basePriceCents;
+  // Everything the customer pays before VAT is separated out — VAT is only ever
+  // inside Pet Wash's fee, so "before VAT" is the total minus that VAT.
+  const vatCents = split.serviceFeeVatCents;
+  const totalChargeCents = split.customerTotalCents;
+  const subtotalBeforeVatCents = totalChargeCents - vatCents;
 
   const basePrice = (basePriceCents / 100).toFixed(2);
   const platformServiceFee = (platformServiceFeeCents / 100).toFixed(2);
@@ -123,38 +124,38 @@ export function calculateTransparentFees(
 }
 
 /**
- * Validate fee calculation integrity (disclosed-agent, single 15%).
+ * Validate fee calculation integrity (one money model).
  *
  * Ensures:
- * 1. Sitter payout + commission = base price (85% + 15% = 100%)
- * 2. The owner's total = base price (no surcharge; VAT is inside the commission)
- * 3. VAT ≤ commission (it is extracted from the commission, never added on top)
+ * 1. Sitter payout = the full rate
+ * 2. Owner's total = rate + fee
+ * 3. VAT ≤ fee (it is extracted from the fee, never added on top)
  * 4. All amounts are positive
  */
 export function validateFeeCalculation(fees: TransparentFeeCalculation): boolean {
-  const payoutPlusBroker = fees.sitterPayoutCents + fees.brokerCutCents;
-  if (payoutPlusBroker !== fees.basePriceCents) {
-    console.error('[Fee Validation] Payout + Commission ≠ Base Price', {
+  // The sitter is owed the whole rate — nothing is taken out of it.
+  if (fees.sitterPayoutCents !== fees.basePriceCents) {
+    console.error('[Fee Validation] Sitter payout ≠ rate (the fee must never come out of the sitter)', {
       sitterPayout: fees.sitterPayoutCents,
-      commission: fees.brokerCutCents,
-      sum: payoutPlusBroker,
       basePrice: fees.basePriceCents,
     });
     return false;
   }
 
-  // Disclosed-agent: the owner pays exactly the base — no surcharge, VAT extracted.
-  if (fees.totalChargeCents !== fees.basePriceCents) {
-    console.error('[Fee Validation] Owner total ≠ Base (no surcharge allowed; VAT is inside the commission)', {
+  // Customer pays the rate + the fee, to the agora.
+  if (fees.totalChargeCents !== fees.basePriceCents + fees.platformServiceFeeCents) {
+    console.error('[Fee Validation] Owner total ≠ rate + fee', {
       total: fees.totalChargeCents,
       basePrice: fees.basePriceCents,
+      fee: fees.platformServiceFeeCents,
     });
     return false;
   }
-  if (fees.subtotalBeforeVatCents !== fees.basePriceCents) {
-    console.error('[Fee Validation] Subtotal ≠ Base', {
+  if (fees.subtotalBeforeVatCents !== fees.totalChargeCents - fees.vatCents) {
+    console.error('[Fee Validation] Subtotal ≠ total − VAT', {
       subtotal: fees.subtotalBeforeVatCents,
-      basePrice: fees.basePriceCents,
+      total: fees.totalChargeCents,
+      vat: fees.vatCents,
     });
     return false;
   }
