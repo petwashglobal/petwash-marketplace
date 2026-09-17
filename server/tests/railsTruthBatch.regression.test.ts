@@ -73,6 +73,10 @@ describe('shop receipt and admin force-confirm receipt are durable too', () => {
     const at = p.indexOf("logger.info('[AdminWallet][ForceConfirm] Wallet debited'");
     const rc = p.indexOf("kind: 'academy_receipt'", at);
     expect(rc).toBeGreaterThan(at);
-    expect(p.slice(rc, rc + 2500)).toContain("paymentClass: 'PROVIDER_BOOKING_COMMISSION'");
+    // The receipt input is built just before the outbox call (2026-09-17) so
+    // the outbox stores it whole.
+    const block = p.slice(at, rc + 2500);
+    expect(block).toContain("paymentClass: 'PROVIDER_BOOKING_COMMISSION'");
+    expect(p.slice(rc, rc + 400)).toContain('payload: receiptInput');
   });
 });

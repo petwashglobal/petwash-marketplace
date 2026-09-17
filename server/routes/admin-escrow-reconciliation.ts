@@ -371,7 +371,13 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
       // reconciliation path in lockstep with TransactionEngine + booking
       // quote math if the rate ever changes.
       const amountCents = Math.round((fs.amount ?? 0) * 100);
-      const platformFeeCents = Math.round(amountCents * PETWASH_COMMISSION_RATE);
+      // Use the split the Firestore escrow was created with (EscrowService
+      // stores platformCommissionCents). A flat 15% of the amount is wrong for
+      // fee-on-top bookings (₪115 → ₪17.25 instead of ₪15); it stays only as
+      // the fallback for old docs without the field. (2026-09-17)
+      const platformFeeCents = typeof fs.platformCommissionCents === 'number'
+        ? fs.platformCommissionCents
+        : Math.round(amountCents * PETWASH_COMMISSION_RATE);
       // The commission is VAT-INCLUSIVE (disclosed-agent model), so VAT is the
       // 18/118 portion EXTRACTED from it — not 18% added on top. The old
       // `* 0.18` overstated VAT ~18% and wrote that wrong figure into the
