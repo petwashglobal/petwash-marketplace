@@ -13,6 +13,7 @@
  * Uses existing: GPSTrackingService, WalkSessionService
  */
 
+import { walkPeakSurcharge } from '@shared/walkPeakHours';
 import {
   BaseLuxuryBookingEngine,
   type AvailabilityStrategy,
@@ -151,14 +152,9 @@ class WalkPricingStrategy implements PricingStrategy {
   }
 
   private calculateSurgePricing(startDate: Date, subtotal: number): number {
-    const hour = startDate.getHours();
-    
-    // Peak hours: 7-9 AM or 5-7 PM (20% surge)
-    if ((hour >= 7 && hour < 9) || (hour >= 17 && hour < 19)) {
-      return subtotal * 0.20; // 20% surge
-    }
-
-    return 0;
+    // Peak hours: 7-9 AM or 5-7 PM (20% surge) — shared with the booking
+    // screen so the customer sees the price they are charged.
+    return walkPeakSurcharge(startDate.getHours(), subtotal);
   }
 }
 

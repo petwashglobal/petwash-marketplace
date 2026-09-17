@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
 import { apiRequest } from "@/lib/queryClient";
 import { splitMarketplaceJob } from "@shared/marketplaceMoney";
+import { walkPeakSurcharge } from "@shared/walkPeakHours";
 import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
 import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/WeatherConsentDialog";
 import { OwnerInstructionsForm, useOwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
@@ -241,15 +242,22 @@ export default function WalkBookingFlow() {
   // The SAME split the server charges (shared/marketplaceMoney.ts): walker's
   // rate + Pet Wash fee on top, VAT inside the fee. Display only — the server
   // prices the walk itself.
+  // Peak hours (7–9, 17–19) add 20% to the walker's price — the server's
+  // rule, so the screen shows what is charged (it used to leave it out).
+  const surcharge = useMemo(
+    () => (selectedDate ? walkPeakSurcharge(selectedDate.getHours(), baseAmount) : 0),
+    [selectedDate, baseAmount],
+  );
   const pricing = useMemo(() => {
-    const s = splitMarketplaceJob(Math.round(baseAmount * 100));
+    const s = splitMarketplaceJob(Math.round((baseAmount + surcharge) * 100));
     return {
       rate: s.rateCents / 100,
+      surcharge,
       fee: s.serviceFeeCents / 100,
       feeVat: s.serviceFeeVatCents / 100,
       total: s.customerTotalCents / 100,
     };
-  }, [baseAmount]);
+  }, [baseAmount, surcharge]);
 
   const canContinueDetails = useMemo(() => {
     return (
@@ -768,6 +776,12 @@ export default function WalkBookingFlow() {
                 <span>מחיר השירות</span>
                 <span>₪{pricing.rate.toFixed(2)}</span>
               </div>
+              {pricing.surcharge > 0 && (
+                <div className="mb-3 flex items-center justify-between luxury-text-small opacity-80" data-testid="walk-peak-surcharge">
+                  <span>מתוכם תוספת שעות עומס (+20%)</span>
+                  <span>₪{pricing.surcharge.toFixed(2)}</span>
+                </div>
+              )}
               <div className="mb-1 flex items-center justify-between luxury-text-body" data-testid="walk-service-fee">
                 <span>דמי שירות ⁦Pet Wash™⁩‎ (15%)</span>
                 <span>₪{pricing.fee.toFixed(2)}</span>
