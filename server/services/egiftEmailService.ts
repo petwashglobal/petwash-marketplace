@@ -18,6 +18,8 @@ interface EGiftEmailConfig {
   personalMessage?: string;
   eligibleServices: string[];
   expiresInMonths: number;
+  /** Where the recipient adds the gift to their account (guest eGift → /claim?code=…). */
+  claimUrl?: string;
 }
 
 const tierColors: Record<string, { bg: string; accent: string; name: string; nameHe: string }> = {
@@ -212,6 +214,16 @@ export async function sendEGiftConfirmationEmail(config: EGiftEmailConfig): Prom
         </span>
       </div>
     </div>
+
+    ${config.claimUrl ? `
+    <div style="padding:0 24px 20px;text-align:center;">
+      <a href="${config.claimUrl}" style="display:inline-block;padding:12px 28px;border-radius:6px;background:#1a1a1a;color:#D4AF37;text-decoration:none;font-weight:600;font-size:14px;">
+        ${isHe ? 'להוספת המתנה לחשבון שלי' : 'Add this gift to my account'}
+      </a>
+      <p style="font-size:11px;color:#888;margin:8px 0 0;">
+        ${isHe ? 'או היכנסו ל-petwash.co.il/claim והזינו את הקוד' : 'Or go to petwash.co.il/claim and enter the code'}
+      </p>
+    </div>` : ''}
 
     <!-- Order Details -->
     <div class="animate-fade-delay-2" style="background:white;padding:24px;border-top:1px solid #f0f0f0;">

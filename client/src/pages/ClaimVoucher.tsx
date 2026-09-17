@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useLanguage } from '@/lib/languageStore';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,13 @@ export default function ClaimVoucher() {
   const { toast } = useToast();
   
   const [voucherCode, setVoucherCode] = useState('');
+  // The gift email links to /claim?code=<code> (2026-09-17).
+  useEffect(() => {
+    try {
+      const fromLink = new URLSearchParams(window.location.search).get('code');
+      if (fromLink) setVoucherCode(fromLink.trim());
+    } catch { /* no query string */ }
+  }, []);
   const [claimSuccess, setClaimSuccess] = useState(false);
   const [claimedVoucher, setClaimedVoucher] = useState<any>(null);
 
@@ -31,6 +38,26 @@ export default function ClaimVoucher() {
       // apiRequest attaches the Bearer token; a bare cookie-only fetch was
       // refused by the CSRF gate (403) before it ever reached requireAuth
       // (2026-09-12 sweep — the client never sends X-CSRF-Token).
+      // Guest gift cards (bought at /buy-gift-card) are unified vouchers whose
+      // code is the serial (PWV-…); the legacy route only knows legacy codes,
+      // so a gift recipient always got "not found" (2026-09-17).
+      if (/^PWV-/i.test(code)) {
+        let r: Response;
+        try {
+          r = await apiRequest('POST', '/api/v2/vouchers/claim', { serialNumber: code.toUpperCase() });
+        } catch (err: any) {
+          throw new Error(err?.body?.error || 'Claim failed');
+        }
+        const body = await r.json();
+        const v = body?.voucher ?? {};
+        return {
+          voucherId: v.id,
+          initialAmount: v.valueOriginal,
+          remainingAmount: v.valueRemaining ?? v.valueOriginal,
+          codeLast4: String(v.serialNumber ?? code).slice(-4),
+          expiresAt: v.expiresAt ?? null,
+        };
+      }
       let response: Response;
       try {
         response = await apiRequest('POST', '/api/vouchers/claim', { code });

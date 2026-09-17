@@ -162,6 +162,51 @@ router.get('/guest/return', async (req: Request, res: Response) => {
       .set({ status: 'issued', voucherId: String(voucher.id), sumitTransactionId: txnId, issuedAt: new Date() })
       .where(eq(egiftGuestOrders.externalId, ext));
     logger.info('[GuestEgift] voucher issued to recipient', { ext, voucherId: voucher.id });
+    // DELIVER THE GIFT (2026-09-17). This path created the voucher and emailed
+    // only the buyer's receipt — the recipient never learned the code, while
+    // the page told the buyer "We emailed the gift to your recipient". The
+    // serial IS the guest gift code (80-bit; /claim adds it to an account,
+    // /api/v2/vouchers/redeem/web spends it). Never blocks the issue; a
+    // failure raises an admin alert so staff can resend.
+    try {
+      const { sendEGiftConfirmationEmail } = await import('../services/egiftEmailService');
+      const { isSendGridConfigured } = await import('../lib/sendgrid');
+      // sendEGiftConfirmationEmail returns quietly when mail is not configured;
+      // for a paid gift that is a delivery failure, so say so.
+      if (!isSendGridConfigured()) throw new Error('email_not_configured');
+      await sendEGiftConfirmationEmail({
+        senderName: order.senderName || order.senderEmail,
+        senderEmail: order.senderEmail,
+        recipientName: order.recipientName,
+        recipientEmail: order.recipientEmail,
+        value: order.amountIlsCents / 100,
+        currency: 'ILS',
+        publicCode: voucher.serialNumber,
+        giftCardId: String(voucher.id),
+        occasion: 'gift',
+        messageLanguage: 'he',
+        personalMessage: order.message ?? undefined,
+        eligibleServices: ['all'],
+        expiresInMonths: 60,
+        claimUrl: `${base}/claim?code=${encodeURIComponent(voucher.serialNumber)}`,
+      });
+    } catch (mailErr: any) {
+      logger.error('[GuestEgift] gift email FAILED — recipient has no code; resend by hand', { ext, voucherId: voucher.id, err: mailErr?.message });
+      try {
+        const { createOrUpdateAlert } = await import('../services/AlertEngine');
+        await createOrUpdateAlert({
+          dedupeKey: `egift_guest_delivery:${ext}`,
+          category: 'egift',
+          severity: 'critical',
+          title: 'Paid gift card not delivered',
+          message: `Guest gift ${ext} (voucher ${voucher.id}) was paid and issued, but the email to the recipient failed. Resend the code by hand.`,
+          linkedEntityType: 'egift_guest_order',
+          linkedEntityId: ext,
+          source: 'auto_sweep',
+          metadata: { voucherId: String(voucher.id) },
+        });
+      } catch { /* the error log above is the fallback */ }
+    }
     // THE OFFICIAL DOCUMENT (2026-09-13). The SUMIT payment page now leaves its
     // own document as a draft (SumitClient.beginRedirect), so this purchase needs
     // ours: stored value → CPA mapping EGIFT_PURCHASE = Receipt, no VAT at
