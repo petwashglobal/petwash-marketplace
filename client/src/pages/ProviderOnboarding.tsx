@@ -79,8 +79,13 @@ import {
 } from '@shared/legal/providerDeclaration';
 
 export default function ProviderOnboarding() {
-  const { user } = useFirebaseAuth();
+  const { user, logout } = useFirebaseAuth();
   const { language } = useLanguage();
+  // Staff / admin accounts can't apply as providers. They used to be bounced
+  // silently to their own home — for an admin that is the admin area, which
+  // then asked for a fresh 4-hour admin sign-in, so "join as a walker" looked
+  // like an admin login screen (CEO, 2026-09-17). Now the page says why.
+  const [internalRole, setInternalRole] = useState<string | null>(null);
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const isHebrew = language === 'he';
@@ -124,29 +129,19 @@ export default function ProviderOnboarding() {
     const blockedRoles = new Set([
       'staff', 'admin', 'super_admin', 'management', 'franchise_owner',
     ]);
-    if (!role || !blockedRoles.has(role)) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        // PR-FRES-B: route through postLoginCoordinator so this blocked-role
-        // bounce shares the in-flight Promise with any concurrent SignIn /
-        // OneTap / Account-tap call instead of firing a duplicate request.
-        const data = await resolvePostLogin();
-        if (cancelled) return;
-        // Lane A (CEO 2026-09-03): canonical customer workspace fallback.
-        // /home is the marketing page — signed-in customers must land on
-        // the workspace. The server post-login decider is the source of
-        // truth; this fallback only fires if the server has no opinion.
-        const nextUrl = data.nextUrl || data.redirectTo || '/pet-parent/home';
-        navigate(nextUrl);
-      } catch {
-        if (cancelled) return;
-        navigate('/pet-parent/home');
-      }
-    })();
-    return () => { cancelled = true; };
+    if (!role || !blockedRoles.has(role)) { setInternalRole(null); return; }
+    setInternalRole(role);
   }, [user, navigate]);
+
+  /** Where this internal account belongs — the server's post-login decider. */
+  const goToMyArea = async () => {
+    try {
+      const data = await resolvePostLogin();
+      navigate(data.nextUrl || data.redirectTo || '/pet-parent/home');
+    } catch {
+      navigate('/pet-parent/home');
+    }
+  };
 
   // Form state
   const [step, setStep] = useState(1);
@@ -1255,6 +1250,41 @@ export default function ProviderOnboarding() {
                 </Button>
               </Link>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (internalRole) {
+    return (
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center px-4 py-12" dir={isHebrew ? 'rtl' : 'ltr'} data-testid="provider-onboarding-internal-account">
+        <div className="max-w-md w-full rounded-3xl bg-white p-8 shadow-lg border border-[#EDE6D2] text-center space-y-4">
+          <h1 className="text-2xl font-bold text-black">
+            {isHebrew ? 'החשבון הזה הוא חשבון צוות' : 'This is a staff account'}
+          </h1>
+          <p className="text-base text-gray-600 leading-relaxed">
+            {isHebrew
+              ? 'חשבונות ניהול וצוות לא נרשמים כנותני שירות. כדי להצטרף כנותן שירות, התנתקו והתחברו עם חשבון אישי אחר.'
+              : 'Admin and staff accounts can’t register as service providers. To join as a provider, sign out and sign in with a separate personal account.'}
+          </p>
+          <div className="flex flex-col gap-3 pt-2">
+            <button
+              type="button"
+              onClick={async () => { await logout(); navigate('/sign-in?redirect=/provider-onboarding'); }}
+              className="w-full rounded-full bg-black px-6 py-3 text-base font-semibold text-white"
+              data-testid="button-switch-account"
+            >
+              {isHebrew ? 'התנתקות והתחברות עם חשבון אחר' : 'Sign out and use another account'}
+            </button>
+            <button
+              type="button"
+              onClick={goToMyArea}
+              className="w-full rounded-full border border-gray-300 px-6 py-3 text-base font-medium text-black"
+              data-testid="button-go-to-my-area"
+            >
+              {isHebrew ? 'לאזור שלי' : 'Go to my area'}
+            </button>
           </div>
         </div>
       </div>
