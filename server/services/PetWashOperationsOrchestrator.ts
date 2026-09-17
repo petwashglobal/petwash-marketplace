@@ -22,10 +22,12 @@ import { GoogleDriveBackupService } from './googleDriveBackupService';
 import { GoogleSheetsService } from './googleSheetsIntegration';
 import { EmailService } from '../emailService';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { MARKETPLACE_SERVICE_FEE_RATE } from '@shared/marketplaceMoney';
+import { vatFromInclusive } from '@shared/money';
+import { escapeHtml, toHeaderText } from '../lib/htmlEscape';
 
 const driveService = new GoogleDriveBackupService();
 // PR-W13: single source of truth — shared/israel-compliance-config.ts
-const VAT_RATE = ISRAEL_VAT_RATE;
 const COMPANY = {
   nameEn: 'PetWash™ Ltd.',
   nameHe: 'פט ווש בע"מ',
@@ -277,107 +279,52 @@ async function backupToGoogleDrive(title: string, content: string): Promise<stri
 }
 
 // ─────────────────────────────────────────────
-// HELPER: Generate Israeli-compliant tax invoice HTML
+// HELPER: job-completion summary (NOT a tax document)
 // ─────────────────────────────────────────────
-function generateIsraeliInvoiceHtml(opts: {
-  invoiceNumber: string;
-  invoiceDate: string;
+// 2026-09-17: this used to render "חשבונית מס / Tax Invoice" with a made-up
+// PWI-<year>-<ref> number, VAT on the whole amount, and a footer claiming it
+// was a legally compliant Israeli tax invoice — emailed straight to the
+// customer, never through SUMIT, on an amount the provider typed. Pet Wash's
+// only fiscal documents come from SUMIT, and under the one money model
+// (shared/marketplaceMoney.ts) Pet Wash invoices only its fee. Every field is
+// escaped: the provider supplies all of them.
+function generateJobSummaryHtml(opts: {
+  reference: string;
+  summaryDate: string;
   customerName: string;
-  customerEmail: string;
   serviceDescription: string;
   serviceDescriptionHe: string;
-  amountBeforeVat: number;
-  vatAmount: number;
-  totalAmount: number;
+  totalPaid: number;
+  serviceFee: number;
+  providerAmount: number;
   paymentMethod?: string;
   platform?: string;
 }): string {
-  const {
-    invoiceNumber, invoiceDate, customerName, customerEmail,
-    serviceDescription, serviceDescriptionHe,
-    amountBeforeVat, vatAmount, totalAmount, paymentMethod, platform,
-  } = opts;
+  const e = escapeHtml;
+  const ils = (n: number) => `₪${n.toFixed(2)}`;
+  const row = (he: string, en: string, v: string, strong = false) =>
+    `<tr><td style="padding:8px 12px;font-size:12px;color:#666;border:1px solid #eee;">${he} / ${en}</td>` +
+    `<td style="padding:8px 12px;text-align:right;font-size:${strong ? 15 : 12}px;${strong ? 'font-weight:700;' : ''}border:1px solid #eee;">${v}</td></tr>`;
 
   return `
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><title>חשבונית מס / Tax Invoice ${invoiceNumber}</title></head>
+<head><meta charset="UTF-8"><title>סיכום עבודה / Job summary ${e(opts.reference)}</title></head>
 <body style="font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif;margin:0;padding:32px;background:#fff;color:#000;">
-
-  <table width="100%" style="border-bottom:3px solid #C6A35B;padding-bottom:20px;margin-bottom:24px;">
-    <tr>
-      <td>
-        <div style="font-size:28px;font-weight:900;color:#C6A35B;">PetWash™</div>
-        <div style="font-size:12px;color:#666;">Israel's Pet Care Platform</div>
-        <div style="font-size:11px;color:#999;margin-top:8px;">
-          ${COMPANY.nameHe}<br>
-          ${COMPANY.address}<br>
-          ח.פ. ${COMPANY.taxId} | מע"מ ${COMPANY.vatNumber}<br>
-          ${COMPANY.phone} | ${COMPANY.email}
-        </div>
-      </td>
-      <td align="right">
-        <div style="font-size:22px;font-weight:700;color:#000;" dir="rtl">חשבונית מס</div>
-        <div style="font-size:13px;color:#444;">Tax Invoice</div>
-        <table style="margin-top:8px;text-align:right;" dir="rtl">
-          <tr><td style="color:#666;font-size:12px;">מספר חשבונית:</td><td style="font-weight:700;font-size:13px;padding-right:8px;">${invoiceNumber}</td></tr>
-          <tr><td style="color:#666;font-size:12px;">תאריך:</td><td style="font-size:12px;padding-right:8px;">${invoiceDate}</td></tr>
-          ${platform ? `<tr><td style="color:#666;font-size:12px;">פלטפורמה:</td><td style="font-size:12px;padding-right:8px;">${platform}</td></tr>` : ''}
-        </table>
-      </td>
-    </tr>
+  <div style="font-size:28px;font-weight:900;color:#C6A35B;">PetWash™</div>
+  <div style="font-size:22px;font-weight:700;margin-top:12px;" dir="rtl">סיכום עבודה</div>
+  <div style="font-size:13px;color:#444;">Job summary · ${e(opts.reference)} · ${e(opts.summaryDate)}${opts.platform ? ` · ${e(opts.platform)}` : ''}</div>
+  <p style="font-size:14px;margin:20px 0 4px;">${e(opts.customerName)}</p>
+  <p style="font-size:13px;margin:0;">${e(opts.serviceDescription)}</p>
+  <p style="font-size:12px;color:#666;margin:0 0 16px;" dir="rtl">${e(opts.serviceDescriptionHe)}</p>
+  <table width="100%" style="border-collapse:collapse;margin-bottom:16px;">
+    ${row('מחיר נותן השירות', 'Provider price', ils(opts.providerAmount))}
+    ${row('דמי שירות Pet Wash (15%, כולל מע״מ)', 'Pet Wash service fee (15%, VAT incl.)', ils(opts.serviceFee))}
+    ${row('סה״כ', 'Total', ils(opts.totalPaid), true)}
   </table>
-
-  <table width="100%" style="margin-bottom:20px;">
-    <tr>
-      <td>
-        <div style="font-size:12px;color:#666;margin-bottom:4px;">לכבוד / Customer</div>
-        <div style="font-size:14px;font-weight:600;">${customerName}</div>
-        <div style="font-size:12px;color:#666;">${customerEmail}</div>
-      </td>
-    </tr>
-  </table>
-
-  <table width="100%" style="border-collapse:collapse;margin-bottom:24px;">
-    <thead>
-      <tr style="background:#f5f5f5;">
-        <th style="padding:10px;text-align:left;font-size:12px;border:1px solid #eee;">Description / תיאור</th>
-        <th style="padding:10px;text-align:right;font-size:12px;border:1px solid #eee;">Amount / סכום</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="padding:12px;border:1px solid #eee;">
-          <div style="font-size:13px;">${serviceDescription}</div>
-          <div style="font-size:12px;color:#666;" dir="rtl">${serviceDescriptionHe}</div>
-        </td>
-        <td style="padding:12px;text-align:right;font-size:13px;border:1px solid #eee;">₪${amountBeforeVat.toFixed(2)}</td>
-      </tr>
-    </tbody>
-    <tfoot>
-      <tr style="background:#fafafa;">
-        <td style="padding:8px 12px;font-size:12px;color:#666;border:1px solid #eee;">לפני מע"מ / Before VAT</td>
-        <td style="padding:8px 12px;text-align:right;font-size:12px;border:1px solid #eee;">₪${amountBeforeVat.toFixed(2)}</td>
-      </tr>
-      <tr style="background:#fafafa;">
-        <td style="padding:8px 12px;font-size:12px;color:#666;border:1px solid #eee;">מע"מ 18% / VAT 18%</td>
-        <td style="padding:8px 12px;text-align:right;font-size:12px;border:1px solid #eee;">₪${vatAmount.toFixed(2)}</td>
-      </tr>
-      <tr style="background:#C6A35B;">
-        <td style="padding:12px;font-size:15px;font-weight:700;color:#fff;border:1px solid #b8941f;">סה"כ לתשלום / Total Due</td>
-        <td style="padding:12px;text-align:right;font-size:16px;font-weight:900;color:#fff;border:1px solid #b8941f;">₪${totalAmount.toFixed(2)}</td>
-      </tr>
-    </tfoot>
-  </table>
-
-  ${paymentMethod ? `<p style="font-size:12px;color:#666;">Payment Method / אמצעי תשלום: <strong>${paymentMethod}</strong></p>` : ''}
-
-  <div style="background:#f9f9f9;border:1px solid #eee;border-radius:8px;padding:16px;margin-top:24px;font-size:11px;color:#888;" dir="rtl">
-    <p style="margin:0 0 4px;font-weight:600;">הערות משפטיות:</p>
-    <p style="margin:0;">מסמך זה הוא חשבונית מס כחוק בהתאם לחוק מע"מ הישראלי ולהוראות פקידי המס. המחיר כולל מע"מ בשיעור 18%. ח.פ. ${COMPANY.taxId}</p>
-    <p style="margin:4px 0 0;">This is a legally compliant Israeli VAT tax invoice. VAT reg. ${COMPANY.vatNumber}. All prices include VAT at 18%.</p>
-  </div>
-
+  ${opts.paymentMethod ? `<p style="font-size:12px;color:#666;">Payment method / אמצעי תשלום: <strong>${e(opts.paymentMethod)}</strong></p>` : ''}
+  <p style="font-size:11px;color:#888;margin-top:20px;" dir="rtl">מסמך זה אינו חשבונית מס. מסמכי המס נשלחים בנפרד.</p>
+  <p style="font-size:11px;color:#888;margin:0;">This is not a tax invoice. Tax documents are sent separately.</p>
 </body>
 </html>`;
 }
@@ -542,34 +489,34 @@ export class PetWashOperationsOrchestrator {
   }> {
     logger.info('[Orchestrator] Handling job completion', { ref: data.bookingRef });
 
-    const invoiceNumber = `PWI-${new Date().getFullYear()}-${data.bookingRef}`;
-    const amountBeforeVat = data.amountILS / (1 + VAT_RATE);
-    const vatAmount = data.amountILS - amountBeforeVat;
+    // Reference only — not a fiscal number (see generateJobSummaryHtml).
+    const invoiceNumber = `JOB-${data.bookingRef}`;
+    // amountILS is what the customer paid = provider price + 15% fee on top.
+    const paidCents = Math.round(data.amountILS * 100);
+    const feeCents = Math.round(paidCents * MARKETPLACE_SERVICE_FEE_RATE / (1 + MARKETPLACE_SERVICE_FEE_RATE));
+    const serviceFee = feeCents / 100;
+    const providerAmount = (paidCents - feeCents) / 100;
+    const vatAmount = vatFromInclusive(feeCents, ISRAEL_VAT_RATE) / 100; // Pet Wash's VAT, inside its fee
     const invoiceDate = new Date().toLocaleDateString('en-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
-    // 2a. Generate Israeli tax invoice (חשבונית מס)
-    const invoiceHtml = generateIsraeliInvoiceHtml({
-      invoiceNumber,
-      invoiceDate,
+    const invoiceHtml = generateJobSummaryHtml({
+      reference: invoiceNumber,
+      summaryDate: invoiceDate,
       customerName: data.customerName,
-      customerEmail: data.customerEmail,
       serviceDescription: `${data.serviceType} – ${data.platform}`,
       serviceDescriptionHe: `שירות: ${data.serviceType} – ${data.platform}`,
-      amountBeforeVat,
-      vatAmount,
-      totalAmount: data.amountILS,
+      totalPaid: data.amountILS,
+      serviceFee,
+      providerAmount,
       paymentMethod: data.paymentMethod,
       platform: data.platform,
     });
 
-    // 2b. Generate receipt (קבלה) — same document marked as receipt
-    const receiptHtml = invoiceHtml.replace('חשבונית מס', 'קבלה').replace('Tax Invoice', 'Receipt');
-
-    // 2c. Email invoice + receipt to customer
+    // 2c. Email the summary to the customer
     try {
       await sendEmail(
         data.customerEmail,
-        `PetWash™ חשבונית מס / Tax Invoice – ${invoiceNumber}`,
+        toHeaderText(`PetWash™ סיכום עבודה / Job summary – ${invoiceNumber}`),
         invoiceHtml
       );
     } catch (err) {
@@ -581,12 +528,12 @@ export class PetWashOperationsOrchestrator {
       try {
         await sendEmail(
           data.providerEmail,
-          `PetWash™ Job Complete – ${data.bookingRef} | Payment Processing`,
-          brandedEmail(`Job Completed – ${data.bookingRef}`,
-            `<p style="color:#ccc;">Hi <strong style="color:#fff;">${data.providerName}</strong>,</p>
-             <p style="color:#ccc;">Job <strong style="color:#E7C978;">${data.bookingRef}</strong> has been marked complete.</p>
-             <p style="color:#ccc;">Service: ${data.serviceType}<br>Amount: ₪${data.amountILS.toFixed(2)}<br>Platform commission: ₪${(data.amountILS * 0.15).toFixed(2)} (15%)</p>
-             <p style="color:#ccc;">Your net payment: <strong style="color:#E7C978;">₪${(data.amountILS * 0.85).toFixed(2)}</strong> will be processed within 3 business days.</p>`)
+          toHeaderText(`PetWash™ Job Complete – ${data.bookingRef} | Payment Processing`),
+          brandedEmail(`Job Completed – ${escapeHtml(data.bookingRef)}`,
+            `<p style="color:#ccc;">Hi <strong style="color:#fff;">${escapeHtml(data.providerName)}</strong>,</p>
+             <p style="color:#ccc;">Job <strong style="color:#E7C978;">${escapeHtml(data.bookingRef)}</strong> has been marked complete.</p>
+             <p style="color:#ccc;">Service: ${escapeHtml(data.serviceType)}<br>Client paid: ₪${data.amountILS.toFixed(2)}<br>Pet Wash service fee (paid by the client on top): ₪${serviceFee.toFixed(2)}</p>
+             <p style="color:#ccc;">Your payment — your full price: <strong style="color:#E7C978;">₪${providerAmount.toFixed(2)}</strong>, processed within 3 business days.</p>`)
         );
       } catch { /* non-critical */ }
     }
@@ -599,7 +546,7 @@ export class PetWashOperationsOrchestrator {
         data.customerName, data.customerEmail,
         data.providerName, data.providerEmail || '',
         data.petName || '', data.amountILS.toFixed(2),
-        vatAmount.toFixed(2), (data.amountILS * 0.15).toFixed(2),
+        vatAmount.toFixed(2), serviceFee.toFixed(2),
         data.paymentMethod || '', 'COMPLETED',
       ]);
     } catch (err) {
@@ -608,8 +555,8 @@ export class PetWashOperationsOrchestrator {
 
     // 2f. Back up invoice to Google Drive
     const driveDocId = await backupToGoogleDrive(
-      `Invoice_${invoiceNumber}`,
-      `PETWASH™ TAX INVOICE / חשבונית מס\n${'-'.repeat(40)}\nInvoice: ${invoiceNumber}\nBooking: ${data.bookingRef}\nDate: ${invoiceDate}\nCustomer: ${data.customerName}\nService: ${data.serviceType}\nPlatform: ${data.platform}\nTotal (incl. VAT 18%): ₪${data.amountILS.toFixed(2)}\nVAT: ₪${vatAmount.toFixed(2)}\nBefore VAT: ₪${amountBeforeVat.toFixed(2)}\nProvider: ${data.providerName}\nProvider Net (85%): ₪${(data.amountILS * 0.85).toFixed(2)}`
+      `JobSummary_${invoiceNumber}`,
+      `PETWASH™ JOB SUMMARY (not a tax document)\n${'-'.repeat(40)}\nReference: ${invoiceNumber}\nBooking: ${data.bookingRef}\nDate: ${invoiceDate}\nCustomer: ${data.customerName}\nService: ${data.serviceType}\nPlatform: ${data.platform}\nClient paid: ₪${data.amountILS.toFixed(2)}\nPet Wash fee (15% on top, VAT ₪${vatAmount.toFixed(2)} inside): ₪${serviceFee.toFixed(2)}\nProvider: ${data.providerName}\nProvider amount (full price): ₪${providerAmount.toFixed(2)}`
     );
 
     logger.info('[Orchestrator] Job completion handled', { ref: data.bookingRef, invoiceNumber, driveDocId });
