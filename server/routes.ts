@@ -2920,17 +2920,14 @@ self.addEventListener('notificationclick', (event) => {
       const MAX_SESSION_AGE_ADMIN = 14400;
       const MAX_SESSION_AGE_USER = 1209600; // 14 days — matches the "remember me" cookie max (was 5d)
       const maxAge = mfaRequired ? MAX_SESSION_AGE_ADMIN : MAX_SESSION_AGE_USER;
-      const sessionExpired = sessionAge > maxAge;
-
-      if (sessionExpired && mfaRequired) {
-        return res.status(401).json({
-          authenticated: false,
-          error: 'session-expired',
-          message: 'Admin session expired. Please re-authenticate.',
-          maxSessionAge: maxAge,
-          currentSessionAge: sessionAge,
-        });
-      }
+      // An admin whose 4h window lapsed is STILL SIGNED IN — as a member. This
+      // used to answer 401 "not authenticated", so the whole site treated the CEO
+      // as logged out (header, member pages, admin banner) while the Firebase
+      // user and every Bearer call were fine; he then hit Google again and "it
+      // logged in". The 4h rule is enforced where it protects something:
+      // sessionAgeGuard on /api/admin/* + /api/kyc/* and requireAdmin. Here we
+      // only report it, so the admin guard can ask for a fresh sign-in.
+      const adminSessionExpired = mfaRequired && sessionAge > maxAge;
 
       logger.info(`[Whoami] ${userEmail} role=${role} mfa=${mfaVerified} session=${sessionAge}s`);
 
@@ -2957,9 +2954,11 @@ self.addEventListener('notificationclick', (event) => {
         prestigeStatus,
         activeFlow,
         roles,
+        adminSessionExpired,
         session: {
           ageSeconds: sessionAge,
           maxAgeSeconds: maxAge,
+          adminSessionExpired,
           ip: ip.split('.').slice(0, 2).join('.') + '.*.*',
           createdAt: decoded.auth_time ? new Date(decoded.auth_time * 1000).toISOString() : null,
         },

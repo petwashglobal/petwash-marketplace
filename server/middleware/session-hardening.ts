@@ -25,6 +25,10 @@ export function sessionAgeGuard(maxAgeSeconds: number = MAX_ADMIN_SESSION_AGE) {
         logger.warn(`[SessionHardening] Session too old: ${sessionAge}s > ${maxAgeSeconds}s for ${decoded.uid || decoded.email}`);
         res.status(401).json({
           error: 'session_expired',
+          // useAdminAuth reads this flag to send an admin to sign in again
+          // instead of the "no access" wall. This guard answers /api/admin/*
+          // BEFORE requireAdmin (which already set it), so it must say it too.
+          sessionExpired: true,
           message: 'Your session has expired. Please sign in again.',
           sessionAge,
           maxAge: maxAgeSeconds,

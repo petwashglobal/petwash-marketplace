@@ -12,6 +12,7 @@
 
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { adminLandingPath } from "@/lib/adminLandingPath";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,7 +181,7 @@ export default function AdminLoginV2() {
           await createServerSession(idToken);
           await assertAdminAccess();
           toast({ title: "Welcome back", description: "Successfully logged in with Google" });
-          setLocation("/admin/octopus");
+          setLocation(adminLandingPath());
         } catch (err: any) {
           trackAuthError(err, 'admin_google_redirect').catch(() => {});
           toast({
@@ -326,7 +327,7 @@ export default function AdminLoginV2() {
         });
         
         setTimeout(() => {
-          setLocation("/admin/octopus");
+          setLocation(adminLandingPath());
         }, 800);
       }
     } catch (error: any) {
@@ -377,7 +378,7 @@ export default function AdminLoginV2() {
       await assertAdminAccess();
 
       toast({ title: "Welcome back", description: "Successfully logged in with Google" });
-      setLocation("/admin/octopus");
+      setLocation(adminLandingPath());
     } catch (error: any) {
       if (error?.code === "auth/popup-closed-by-user" || error?.code === "auth/cancelled-popup-request") {
         setIsGoogleLoading(false);
