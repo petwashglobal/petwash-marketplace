@@ -27,6 +27,8 @@ export interface SumitBookingSessionInput {
   description: string;
   /** Where SUMIT returns the customer after payment (our verify endpoint). */
   returnUrl: string;
+  /** Customer's language code — SUMIT's page opens in it. */
+  language?: string;
 }
 
 export interface SumitBookingSessionResult {
@@ -58,6 +60,7 @@ export async function createSumitBookingSession(
       redirectUrl: input.returnUrl,
       customerName: input.customerName,
       customerEmail: input.customerEmail,
+      language: input.language,
     });
 
     if (!res.wired) {

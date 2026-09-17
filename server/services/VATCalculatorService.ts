@@ -173,14 +173,22 @@ class VATCalculatorService {
     };
   }
 
-  // ── Convenience: provider's net → gross (for callers that only know provider rate) ─
-  // Given the provider's share (= 85% of gross when commission is 15%), back-calculate gross.
-  // grossCollected = providerNetAmount / (1 - commissionRate)
+  // ── Convenience: provider's rate → what the customer pays ─────────────────
+  // ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-17): the fee is ON TOP
+  // of the provider's rate, so gross = rate × (1 + r). It used to be
+  // rate ÷ (1 − r) — the fee taken OUT — so a ₪100 provider showed ₪117.65.
   grossFromProviderShare(
-    providerNetILS: number,
+    providerRateILS: number,
     commissionRate: number = PLATFORM_COMMISSION_RATE
   ): number {
-    return ils(providerNetILS / (1 - commissionRate));
+    return ils(providerRateILS * (1 + commissionRate));
+  }
+
+  // The fee's share of a fee-inclusive gross: r / (1 + r) (15% → 13.04%).
+  // Pass this to calculateMarketplaceVAT when the gross already has the fee on
+  // top, so platformFeeGross comes out as 15% of the RATE, not of the total.
+  feeShareOfGross(commissionRate: number = PLATFORM_COMMISSION_RATE): number {
+    return commissionRate / (1 + commissionRate);
   }
 
   // ── K9000 direct sale (already correct, kept for symmetry) ─────────────────
@@ -206,7 +214,7 @@ class VATCalculatorService {
   ): Promise<PLedgerEntry> {
     const commissionRate = this.getCommissionRate(platform);
     const grossCollectedILS = this.grossFromProviderShare(providerShareILS, commissionRate);
-    const calc = this.calculateMarketplaceVAT(grossCollectedILS, commissionRate);
+    const calc = this.calculateMarketplaceVAT(grossCollectedILS, this.feeShareOfGross(commissionRate));
 
     const entryId = `PL-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
     const entry: PLedgerEntry = {

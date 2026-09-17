@@ -159,10 +159,10 @@ describe('Issue #153 PR-C — EscrowService idempotency + TOCTOU close', () => {
     expect(ROUTES_SRC).toMatch(
       /escrow\.customerId\s*!==\s*callerId\s*&&\s*escrow\.providerId\s*!==\s*callerId/,
     );
-    // Customer-only release rule preserved:
-    expect(ROUTES_SRC).toMatch(
-      /Only the customer who created this escrow can release it/,
-    );
+    // Party release is sealed (2026-09-17): only a Pet Wash admin approves a
+    // payout — the old customer-only release let a provider with a second
+    // account release their own hold.
+    expect(ROUTES_SRC).toMatch(/ESCROW_RELEASE_ADMIN_ONLY/);
   });
 
   it('preserves the auto-release Section-10 freeze logic (no regression on disputed-skip)', () => {

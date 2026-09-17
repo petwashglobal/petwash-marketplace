@@ -193,12 +193,12 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
         
         <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-${isHebrew ? 'right' : 'left'}: 3px solid #8A6A1B; border-radius: 2px; padding: 20px 24px; margin: 28px 0;">
           <strong style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 6px;">
-            ${isHebrew ? '\u05DE\u05D1\u05E0\u05D4 \u05E2\u05DE\u05DC\u05D5\u05EA:' : 'Commission Structure:'}
+            ${isHebrew ? 'איך מחושב התשלום:' : 'How you get paid:'}
           </strong>
           <span style="font-size: 13px; color: #475569; line-height: 1.7;">
             ${isHebrew
-              ? 'Pet Wash\u2122 \u05D2\u05D5\u05D1\u05D4 \u05E2\u05DE\u05DC\u05D4 \u05E7\u05D1\u05D5\u05E2\u05D4 \u05E9\u05DC 15% \u05E2\u05DC \u05DB\u05DC \u05D4\u05D6\u05DE\u05E0\u05D4. 85% \u05DE\u05D4\u05EA\u05E9\u05DC\u05D5\u05DD \u05DE\u05D5\u05E2\u05D1\u05E8 \u05D9\u05E9\u05D9\u05E8\u05D5\u05EA \u05D0\u05DC\u05D9\u05DA.'
-              : 'Pet Wash\u2122 charges a flat 15% commission on every booking. 85% of the payment goes directly to you.'}
+              ? 'את/ה מקבל/ת 100% מהמחיר שקבעת. הלקוח משלם את המחיר שלך ועוד דמי שירות של Pet Wash\u2122 בגובה 15% (כולל מע״מ).'
+              : 'You keep 100% of the price you set. The client pays your price plus a 15% Pet Wash\u2122 service fee on top (VAT included).'}
           </span>
         </div>
         

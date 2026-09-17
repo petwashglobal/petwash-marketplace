@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
@@ -76,7 +76,9 @@ describe('runtime', () => {
     const off = built.subscribeLanguagePacks(() => { notified += 1; });
 
     expect(built.t('nav.home', 'ru')).toBe(original['nav.home'].en); // fallback, triggers the load
-    await new Promise((r) => setTimeout(r, 200));
+    // Wait for the pack itself, not a fixed 200ms — on a loaded CI runner the
+    // dynamic import took longer and the pin went red on unrelated PRs (2026-09-17).
+    await vi.waitFor(() => expect(built.getLanguagePackVersion()).toBe(before + 1), { timeout: 5000, interval: 25 });
     expect(built.t('nav.home', 'ru')).toBe(original['nav.home'].ru);
     expect(built.getLanguagePackVersion()).toBe(before + 1);
     expect(notified).toBe(1);

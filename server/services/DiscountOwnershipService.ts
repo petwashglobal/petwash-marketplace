@@ -13,10 +13,13 @@
  *   - coupon_id = X     → override for specific coupon
  * Most specific rule wins: specific coupon > order_type default > global default.
  *
- * Provider payout calculation:
- *   If platform absorbs:  payout = pre-discount booking amount × (1 - commission_rate)
- *   If provider absorbs:  payout = post-discount booking amount × (1 - commission_rate)
- *   If split:             payout = (pre_discount × platform_pct/100 + post_discount × provider_pct/100) × (1 - commission_rate)
+ * Provider payout (one money model, shared/marketplaceMoney.ts, 2026-09-17):
+ * the Pet Wash fee is charged ON TOP of the provider's rate, so the provider is
+ * paid their rate less only THEIR share of the discount:
+ *   If platform absorbs:  payout = pre-discount rate
+ *   If provider absorbs:  payout = post-discount rate
+ *   If split:             payout = rate − discount × provider_pct/100
+ * The fee reported (commissionCents) is commission_rate × that payout.
  */
 
 import { pool } from '../db';
@@ -90,7 +93,7 @@ export class DiscountOwnershipService {
   /**
    * Compute the provider payout after applying the discount ownership rule.
    *
-   * commissionRate: platform commission (0.0–1.0), e.g. 0.18 = 18%
+   * commissionRate: Pet Wash fee as a share of the rate (0.15), charged on top
    */
   async computeProviderPayout(params: {
     grossBookingCents:   number;
@@ -110,11 +113,12 @@ export class DiscountOwnershipService {
     const platformAbsorbsCents = Math.round(couponDiscountCents * rule.platformPct / 100);
     const providerAbsorbsCents = Math.round(couponDiscountCents * rule.providerPct / 100);
 
-    // Provider earns their share of the post-their-absorption amount
-    // If provider absorbs some discount, their effective booking base is reduced.
-    const providerBase = grossBookingCents - platformAbsorbsCents;  // platform already absorbs its share
+    // Only the provider's OWN share of the discount comes off their rate. This
+    // subtracted the PLATFORM's share instead — so a "platform absorbs" coupon
+    // was paid by the provider — and then took the fee out of what was left.
+    const providerBase = Math.max(0, grossBookingCents - providerAbsorbsCents);
     const commissionCents = Math.round(providerBase * commissionRate);
-    const providerPayoutCents = Math.max(0, providerBase - commissionCents);
+    const providerPayoutCents = providerBase;
 
     logger.debug('[DiscountOwnership] Payout computed', {
       couponId, orderType, grossBookingCents, couponDiscountCents,

@@ -34,6 +34,7 @@ import { MobileDatePicker } from '@/components/ui/mobile-date-picker';
 import { CreditWalletCard } from '@/components/wallet/CreditWalletCard';
 import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
 import { emitCtaEvent } from '@/lib/ctaActions';
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 
 /**
  * Lane C.3 (post-release 2026-09-03) — Journey Brain Phase 2 wire.
@@ -330,10 +331,14 @@ export default function MarketplaceBookingFlow() {
   })();
 
   const hasClientEstimate = basePriceCents !== null;
-  const platformFeeCents = Math.round((basePriceCents ?? 0) * 0.10); // 10% platform fee
-  const subtotalCents = (basePriceCents ?? 0) + platformFeeCents + addonsTotalCents;
-  const vatCents = Math.round(subtotalCents * 0.18); // 18% VAT (Israeli law updated Jan 2025)
-  const totalCents = subtotalCents + vatCents;
+  // Estimate until the server quote arrives — the same one money model the
+  // server charges (shared/marketplaceMoney.ts): 15% Pet Wash fee on top of the
+  // provider's price, VAT already inside that fee. (Was 10% + 18% VAT on
+  // everything: ₪100 showed ₪129.80 while the server charged something else.)
+  const estimate = splitMarketplaceJob((basePriceCents ?? 0) + addonsTotalCents);
+  const platformFeeCents = estimate.serviceFeeCents;
+  const vatCents = estimate.serviceFeeVatCents;
+  const totalCents = estimate.customerTotalCents;
 
   // Time slots (example - would come from backend)
   const timeSlots = [
@@ -974,11 +979,11 @@ export default function MarketplaceBookingFlow() {
                         )}
                         
                         <div className="flex justify-between text-gray-700 dark:text-black">
-                          <span>{isHebrew ? 'עמלת פלטפורמה (10%)' : 'Platform Fee (10%)'}</span>
+                          <span>{isHebrew ? 'דמי שירות Pet Wash (15%, כולל מע״מ)' : 'Pet Wash service fee (15%, VAT incl.)'}</span>
                           <span data-testid="price-platform-fee">₪{((quoteData?.platformFeeCents || platformFeeCents) / 100).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-gray-700 dark:text-black">
-                          <span>{isHebrew ? 'מע״מ (18%)' : 'VAT (18%)'}</span>
+                          <span>{isHebrew ? 'מתוכם מע״מ (18%)' : 'of which VAT (18%)'}</span>
                           <span data-testid="price-vat">₪{((quoteData?.vatCents || vatCents) / 100).toFixed(2)}</span>
                         </div>
                         <div className="border-t-2 border-[#D4AF37] dark:border-[#B8932F] pt-2 mt-2">

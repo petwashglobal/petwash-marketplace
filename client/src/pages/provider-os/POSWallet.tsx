@@ -263,8 +263,8 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
                 <ul className="text-xs text-[#B8932F] mt-1 space-y-1">
                   <li>• Client pays → funds enter escrow</li>
                   <li>• Job completed → 48h review period</li>
-                  <li>• Platform commission (15%) deducted + VAT 18% on commission only</li>
-                  <li>• Remaining → released to your balance</li>
+                  <li>• Pet Wash's 15% service fee is paid by the client on top — nothing is taken from your price</li>
+                  <li>• Your full price → released to your balance</li>
                   <li>• Request payout → 3 business days to bank</li>
                 </ul>
               </div>
@@ -275,10 +275,10 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
             <p className="text-sm font-semibold text-gray-900 mb-3">Fee breakdown example</p>
             <div className="space-y-2">
               {[
-                { label: 'Client pays',           value: '₪100.00', color: 'text-gray-900', bold: false },
-                { label: 'Platform commission (15%)', value: '-₪15.00', color: 'text-red-600', bold: false },
-                { label: 'VAT on commission (18%)', value: '-₪2.70', color: 'text-red-600', bold: false },
-                { label: 'Your net payout',        value: '₪82.30', color: 'text-green-700', bold: true },
+                { label: 'Your price',                           value: '₪100.00', color: 'text-gray-900', bold: false },
+                { label: 'Pet Wash service fee (15%, VAT incl.)', value: '+₪15.00', color: 'text-gray-600', bold: false },
+                { label: 'Client pays',                          value: '₪115.00', color: 'text-gray-900', bold: false },
+                { label: 'Your payout',                          value: '₪100.00', color: 'text-green-700', bold: true },
               ].map(row => (
                 <div key={row.label} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-100 last:border-none">
                   <span className="text-gray-600 text-xs">{row.label}</span>

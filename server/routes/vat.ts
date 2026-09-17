@@ -42,8 +42,9 @@ router.post("/calculate", requireAuth, async (req, res) => {
         const gross = parseFloat(grossCollectedILS);
         calculation = VATCalculatorService.calculateMarketplaceVAT(gross, rate);
       } else if (baseAmount) {
+        // baseAmount = the provider's rate; the fee sits on top of it.
         const gross = VATCalculatorService.grossFromProviderShare(parseFloat(baseAmount), rate);
-        calculation = VATCalculatorService.calculateMarketplaceVAT(gross, rate);
+        calculation = VATCalculatorService.calculateMarketplaceVAT(gross, VATCalculatorService.feeShareOfGross(rate));
       } else {
         return res.status(400).json({ error: "Provide grossCollectedILS or baseAmount" });
       }
@@ -55,7 +56,10 @@ router.post("/calculate", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/record-transaction", requireAuth, async (req, res) => {
+// Writes a 'completed' row into Pet Wash's P&L ledger. Admin only — it was
+// requireAuth, so any signed-in customer could book revenue (2026-09-17).
+// Nothing in the product calls it; the real paths call the service directly.
+router.post("/record-transaction", requireAdmin, async (req, res) => {
   try {
     const { platform, transactionId, baseAmount, bookingId, metadata } = req.body;
     const entry = await VATCalculatorService.recordTransaction(

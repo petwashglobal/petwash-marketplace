@@ -419,6 +419,27 @@ class EscrowService {
       },
     });
 
+    // No card-refund rail exists: every escrow refund (admin, booking cancel,
+    // dispute closure) is a card refund someone must do by hand. Say so where
+    // an admin will see it (2026-09-17). Never blocks the refund.
+    try {
+      const { createOrUpdateAlert } = await import("./AlertEngine");
+      await createOrUpdateAlert({
+        dedupeKey: `escrow_card_refund:${escrowId}`,
+        category: "payment",
+        severity: "warning",
+        title: "Card refund to do by hand",
+        message: `Escrow ${escrowId} · booking ${escrow.bookingId} · ₪${Number(escrow.amount || 0).toFixed(2)} was marked refunded (${reason}). `
+          + `No card money moved — refund it with the card provider, then close this alert.`,
+        linkedEntityType: "escrow",
+        linkedEntityId: escrowId,
+        source: "auto_sweep",
+        metadata: { bookingId: escrow.bookingId, customerId: escrow.customerId, refundedBy },
+      });
+    } catch (alertErr: any) {
+      console.error("[Escrow] marked refunded but the admin alert failed — card refund must be done by hand", { escrowId, error: alertErr?.message });
+    }
+
     await NotificationService.sendNotification({
       userId: escrow.customerId,
       type: "payment",
