@@ -1765,6 +1765,9 @@ router.get('/me', async (req: Request, res: Response) => {
 // Called from booking checkout when user selects "Pay with Prestige Pass"
 // Applies deduction order: promo → gift → package → wallet → card_fallback
 // ─────────────────────────────────────────────────────────
+// Not an env flag: turning this on needs code (see the handler comment).
+const PRESTIGE_ONLINE_REDEMPTION_WIRED = false as boolean;
+
 const redeemOnlineSchema = z.object({
   bookingId:   z.string().min(1).max(200),
   serviceType: z.enum([
@@ -1779,6 +1782,23 @@ router.post('/redeem-online', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'),
     const session = (req as any).session;
     const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    // FAIL-CLOSED (2026-09-17). Nothing consumes this debit. The three
+    // callers (walk-my-pet / sitter-suite / academy BookingFlow) send a
+    // client-computed amount and, before the booking exists, a placeholder id
+    // `PENDING-<SERVICE>-<uid8>`; none passes onRedemptionSuccess, and no
+    // booking row is marked paid from here. The customer's wallet was debited
+    // and they then paid the same booking by card — charged twice, with a
+    // debit tied to no booking. Closed until a booking-owned hold/commit
+    // (like academy.ts wallet_hold) replaces it: the server must price the
+    // booking itself and mark it paid in the same step.
+    if (!PRESTIGE_ONLINE_REDEMPTION_WIRED) {
+      return res.status(409).json({
+        ok: false,
+        code: 'PRESTIGE_ONLINE_REDEMPTION_NOT_WIRED',
+        error: 'Paying a booking with Prestige Pass balance is not available yet. Nothing was charged.',
+      });
+    }
 
     const parsed = redeemOnlineSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -4309,8 +4329,15 @@ router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Re
 
     if (refundCents <= 0) return res.status(422).json({ error: 'Nothing left to refund' });
 
-    // Timestamp-based key allows multiple partial refunds; each is a distinct ledger entry
-    const idempotencyKey = `wallet:booking:refund:admin:${bookingId}:${Date.now()}`;
+    // The key is the refund STAGE, not the clock (2026-09-17). It was
+    // `${bookingId}:${Date.now()}`: a double-click or two admin tabs read the
+    // same wallet_refunded_cents, got two different keys, and refundToWallet
+    // credited the customer twice — while the blind SET below recorded only one
+    // of them. Keyed on the amount already refunded, a second partial refund
+    // (after the first landed) still gets a fresh key, but two requests racing
+    // on the same stage collapse into one ledger entry under the wallet row lock.
+    // Same fix force-cancel got earlier.
+    const idempotencyKey = `wallet:booking:refund:admin:${bookingId}:${alreadyRefunded}`;
     const { refundToWallet } = await import('../services/WalletLedger');
     const result = await refundToWallet({
       userId:         booking.user_id,
@@ -4324,9 +4351,21 @@ router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Re
       metadata:       { adminId: uid, reason, actorSource: 'admin_refund' },
     });
 
+    // Another request already refunded this stage — nothing was credited now,
+    // and the booking row is that request's to write.
+    if (result.idempotent) {
+      return res.status(409).json({
+        error: 'This refund was already issued by another request. Reload to see the current balance.',
+        code: 'REFUND_ALREADY_ISSUED',
+        txnId: result.txnId,
+      });
+    }
+
     const newRefunded = alreadyRefunded + refundCents;
     const newState = newRefunded >= debitedCents ? 'refunded' : 'debited';
 
+    // Compare-and-set on the stage we read, so the record can never be
+    // overwritten by a request that started from an older figure.
     if (sourceTable === 'booking_requests') {
       await db.execute(sql`
         UPDATE booking_requests
@@ -4335,6 +4374,7 @@ router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Re
             wallet_refund_key = ${result.txnId},
             updated_at = NOW()
         WHERE request_id = ${bookingId}
+          AND COALESCE(wallet_refunded_cents, 0) = ${alreadyRefunded}
       `);
     } else {
       await db.execute(sql`
@@ -4344,6 +4384,7 @@ router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Re
             wallet_refund_key = ${result.txnId},
             updated_at = NOW()
         WHERE booking_id = ${bookingId}
+          AND COALESCE(wallet_refunded_cents, 0) = ${alreadyRefunded}
       `);
     }
 
