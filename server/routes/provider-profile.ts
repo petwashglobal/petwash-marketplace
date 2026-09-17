@@ -17,6 +17,7 @@ import { providerProfiles, providers } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
+import { backgroundCheckPassed } from '@shared/backgroundCheck';
 
 const router = Router();
 
@@ -51,7 +52,7 @@ function computeCompleteness(profile: {
     price:            { done: profile.priceFromCents != null && profile.priceFromCents > 0, weight: 20, label: 'Set your starting price' },
     acceptedPets:     { done: !!(profile.acceptedPets && profile.acceptedPets.length > 0), weight: 10, label: 'Set accepted pet types' },
     homeSetup:        { done: profile.hasFencedYard !== null && profile.hasNoPetsAtHome !== null, weight: 10, label: 'Complete home setup questions' },
-    backgroundCheck:  { done: profile.backgroundCheckStatus === 'approved', weight: 20, label: 'Get background check approved' },
+    backgroundCheck:  { done: backgroundCheckPassed(profile.backgroundCheckStatus), weight: 20, label: 'Get background check approved' },
     firstReview:      { done: !!(profile.ratingAvg && Number(profile.ratingAvg) > 0), weight: 15, label: 'Receive your first review' },
   };
 

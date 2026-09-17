@@ -38,6 +38,7 @@ import { eq, and, gt, gte, lte, sql, desc, asc, or, ilike, notInArray, inArray }
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { aliasesForCity } from '@shared/lib/address';
+import { backgroundCheckPassed } from '@shared/backgroundCheck';
 
 /**
  * Build a Drizzle SQL OR clause that ilikes the given column against every
@@ -802,7 +803,7 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
               distanceKm,
               rating,
               isVerified: walker.verificationStatus === 'verified',
-              hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
+              hasPoliceCheck: backgroundCheckPassed(walker.backgroundCheckStatus),
               totalBookings: walker.totalWalks || 0,
             }),
           };
@@ -849,7 +850,7 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
         pricePerHour: walker.baseHourlyRate ? parseInt(walker.baseHourlyRate) : null,
         city: walker.city || '',
         isVerified: walker.verificationStatus === 'verified',
-        hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
+        hasPoliceCheck: backgroundCheckPassed(walker.backgroundCheckStatus),
         yearsExperience: walker.yearsOfExperience || 0,
         acceptedPetTypes: ['dog'],
         maxPets: walker.maxDailyWalks || 3,
@@ -908,7 +909,7 @@ async function searchWalkers(filters: BookingSearchFilters, searchId: string): P
       pricePerHour: walker.baseHourlyRate ? parseInt(walker.baseHourlyRate) : null,
       city: walker.city || '',
       isVerified: walker.verificationStatus === 'verified',
-      hasPoliceCheck: walker.backgroundCheckStatus === 'passed',
+      hasPoliceCheck: backgroundCheckPassed(walker.backgroundCheckStatus),
       yearsExperience: walker.yearsOfExperience || 0,
       acceptedPetTypes: ['dog'],
       maxPets: walker.maxDailyWalks || 3,
@@ -1347,7 +1348,7 @@ function buildBadges(sitter: any): string[] {
 function buildWalkerBadges(walker: any): string[] {
   const badges: string[] = [];
   if (walker.verificationStatus === 'verified') badges.push('verified');
-  if (walker.backgroundCheckStatus === 'passed') badges.push('police_check');
+  if (backgroundCheckPassed(walker.backgroundCheckStatus)) badges.push('police_check');
   if (walker.hasBodyCamera) badges.push('body_camera');
   if (walker.gpsTracking) badges.push('gps_tracking');
   if ((walker.yearsOfExperience || 0) >= 5) badges.push('experienced');

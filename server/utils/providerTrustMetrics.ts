@@ -29,6 +29,7 @@ import { bookingRequests, providerProfiles } from '@shared/schema';
 import { eq, and, sql, count } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { refreshAndCacheProviderRankingScore } from './providerRanking';
+import { backgroundCheckPassed } from '@shared/backgroundCheck';
 
 const MIN_BOOKINGS_FOR_RATE     = 5;
 const MIN_BOOKINGS_FOR_TIME     = 5;
@@ -198,7 +199,7 @@ export async function computeProviderTrustMetrics(
     const badgeList: string[] = Array.isArray(profile?.badges) ? (profile.badges as string[]) : [];
 
     // Automatically include background_check badge if background check is approved
-    if (profile?.backgroundCheckStatus === 'approved' && !badgeList.includes('background_check')) {
+    if (backgroundCheckPassed(profile?.backgroundCheckStatus) && !badgeList.includes('background_check')) {
       badgeList.push('background_check');
     }
 

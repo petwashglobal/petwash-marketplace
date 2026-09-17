@@ -91,6 +91,7 @@ import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contac
 import VATCalculatorService from '../services/VATCalculatorService';
 import { providerTypeToFiscalPlatform } from '@shared/serviceDivisions';
 import { enforceSwitch } from '../lib/envSwitch';
+import { backgroundCheckClearsBooking } from '@shared/backgroundCheck';
 import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
@@ -1522,7 +1523,7 @@ router.post('/:requestId/respond', async (req, res) => {
         .from(providerProfiles)
         .where(eq(providerProfiles.userId, userId!))
         .limit(1);
-      if (!profile || profile.backgroundCheckStatus !== 'approved') {
+      if (!profile || !backgroundCheckClearsBooking(profile.backgroundCheckStatus)) {
         logger.warn('[BookingRequests] Provider accept blocked — BGC not approved', { providerId: userId, backgroundCheckStatus: profile?.backgroundCheckStatus });
         return res.status(403).json({
           error: 'BACKGROUND_CHECK_REQUIRED',
