@@ -467,7 +467,7 @@ import { legacyGiftCardRedeemHandler } from "./lib/legacy-gift-card-redeem-handl
 import { IsraeliTaxService } from "@shared/israeliTax";
 import multer from 'multer';
 import crypto from 'crypto';
-import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter, aiChatLimiter, aiChatHourlyLimiter } from './middleware/rateLimiter';
+import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, sessionLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter, aiChatLimiter, aiChatHourlyLimiter } from './middleware/rateLimiter';
 import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from './middleware/aiUserBudget';
 import { incrementAIRequest, startAIMetricsFlusher } from './middleware/aiSecurity';
 import { loginRateLimitMiddleware, recordFailedLogin, clearLoginAttempts } from './middleware/loginRateLimiter';
@@ -1368,7 +1368,7 @@ self.addEventListener('notificationclick', (event) => {
 
   // POST /api/auth/session - Exchange ID token for session cookie (iOS-compatible)
   // Rate-limited: 20 requests/15min per IP — prevents token-spam / session flooding
-  app.post('/api/auth/session', authLimiter, async (req, res) => {
+  app.post('/api/auth/session', sessionLimiter, async (req, res) => {
     try {
       const traceId = req.body?.traceId;
       logger.debug('[Session] Creating session cookie', { 
@@ -2062,7 +2062,7 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // POST /api/auth/post-login - Central role-based routing decider
-  app.post('/api/auth/post-login', authLimiter, requireAuth, auditLogMiddleware('POST_LOGIN'), postLoginDecider);
+  app.post('/api/auth/post-login', sessionLimiter, requireAuth, auditLogMiddleware('POST_LOGIN'), postLoginDecider);
 
   // POST /api/auth/seed-intent — Phase A: HttpOnly cookie that survives ITP.
   // Called by the public SignIn page BEFORE the Firebase OAuth redirect so the

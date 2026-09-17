@@ -166,6 +166,35 @@ export const authLimiter = rateLimit({
   }
 });
 
+// Session / post-login limiter — token EXCHANGE, not a credential guess.
+//
+// POST /api/auth/session and /api/auth/post-login only accept a Firebase ID
+// token that Google already verified (verifyIdToken, checkRevoked) — nothing
+// to brute-force. They shared authLimiter's single 10/min-per-IP bucket with
+// the SMS/email code routes, and the app calls them on EVERY page load
+// (AuthProvider re-mints the cookie) plus once per sign-in. A handful of quick
+// page loads — or a family / office behind one IP — hit 429 and Google sign-in
+// failed: "Server rejected the sign-in [HTTP 429] — Auth rate limit exceeded"
+// (CEO's Chrome, 2026-09-17). Own bucket, 60/min per IP; the credential routes
+// keep authLimiter + otpLimiter.
+export const sessionLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: 'Too many sign-in requests',
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: redisRateLimitStore('auth-session'),
+  keyGenerator: (req: Request) => `auth-session:${getClientIP(req)}`,
+  handler: (req: Request, res: Response) => {
+    const retryAfter = Math.ceil(Date.now() / 1000) + 60;
+    res.status(429).json({
+      error: 'Sign-in rate limit exceeded',
+      message: 'Too many sign-in requests. Please wait a minute and try again.',
+      retryAfter,
+    });
+  },
+});
+
 // KYC submission endpoint limiter - 5 requests per hour per user UID
 // Protects KYC submission endpoints from spam
 export const kycLimiter = rateLimit({
