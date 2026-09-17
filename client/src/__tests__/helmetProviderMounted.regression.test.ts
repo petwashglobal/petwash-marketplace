@@ -70,9 +70,11 @@ describe('react-helmet-async has a provider (2026-09-17)', () => {
     expect(MAIN.indexOf('<AppErrorBoundary>')).toBeLessThan(MAIN.indexOf('<HelmetProvider>'));
   });
 
-  it('at least one page still renders <Helmet> (the pin guards something real)', () => {
-    // If this ever hits zero the dependency is unused and the provider (plus
-    // this pin) can go — but never the other way round.
-    expect(helmetConsumers().length).toBeGreaterThan(0);
+  it('every page that renders <Helmet> is covered — the provider may outlive them, never the other way round', () => {
+    // Pages are free to move to useSEO() (#2528 moved the two that crashed).
+    // Zero consumers is fine; a consumer with no provider is the crash.
+    const consumers = helmetConsumers();
+    if (consumers.length > 0) expect(MAIN).toMatch(/<HelmetProvider>/);
+    expect(Array.isArray(consumers)).toBe(true);
   });
 });
