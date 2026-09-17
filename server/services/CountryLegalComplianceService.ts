@@ -10,6 +10,7 @@
  * 
  * Countries supported: Israel (ISR), USA, UK, Australia (AUS), Canada (CAN)
  */
+import { backgroundCheckClearsBooking } from '@shared/backgroundCheck';
 
 interface CountryLegalRequirements {
   countryCode: string;
@@ -299,7 +300,7 @@ export class CountryLegalComplianceService {
     }
 
     // Background check
-    if (requirements.backgroundCheckRequired && sitter.backgroundCheckStatus !== 'passed') {
+    if (requirements.backgroundCheckRequired && !backgroundCheckClearsBooking(sitter.backgroundCheckStatus)) {
       errors.push(`Background check required: ${requirements.backgroundCheckProvider}`);
     }
 

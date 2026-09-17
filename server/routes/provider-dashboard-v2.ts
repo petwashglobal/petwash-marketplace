@@ -25,6 +25,7 @@ import { resolveProviderBookingActions } from '@shared/lib/providerBookingAction
 import { releaseSlotLock } from '../lib/marketplaceSlotLock';
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { walletService } from '../services/WalletService';
+import { backgroundCheckClearsBooking } from '@shared/backgroundCheck';
 
 const router = Router();
 
@@ -848,7 +849,7 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
         .from(providerProfiles)
         .where(eq(providerProfiles.userId, user.uid))
         .limit(1);
-      if (!profile || profile.backgroundCheckStatus !== 'approved') {
+      if (!profile || !backgroundCheckClearsBooking(profile.backgroundCheckStatus)) {
         logger.warn('[ProviderV2] accept blocked — BGC not approved', {
           providerId: user.uid, backgroundCheckStatus: profile?.backgroundCheckStatus,
         });

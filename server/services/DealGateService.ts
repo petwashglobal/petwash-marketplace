@@ -19,6 +19,7 @@ import {
 import { DEAL_GATE_FLAGS } from "../config/dealGateFlags";
 import { eq, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { backgroundCheckClearsBooking } from '@shared/backgroundCheck';
 
 // ── §G. Deal Gate validator result ─────────────────────────────────────────────
 export interface CanConfirmResult {
@@ -60,7 +61,7 @@ async function readProviderApproved(providerUserId: string | null): Promise<bool
     // Approved when identity verified OR background check approved (fail-open for
     // legacy providers without the newer columns is intentionally NOT done here —
     // this gate is read-only advice, the live accept route keeps its own guard).
-    return p.verification_status === "verified" || p.background_check_status === "approved";
+    return p.verification_status === "verified" || backgroundCheckClearsBooking(p.background_check_status);
   } catch (e: any) {
     logger.warn("[DealGate] readProviderApproved failed", { providerUserId, error: e?.message });
     return false;

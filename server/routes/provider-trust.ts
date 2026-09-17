@@ -29,6 +29,7 @@ import {
   rankingTier,
 } from '../utils/providerRanking';
 import { requireAuth } from '../middleware/gates';
+import { backgroundCheckPassed } from '@shared/backgroundCheck';
 
 // P0-FIX: SUPER_ADMIN_UID must be set as SUPER_ADMIN_UID environment variable.
 // Hardcoded Firebase UIDs in source code are a security risk — anyone who reads
@@ -122,7 +123,7 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
       }
     } else {
       const badgeList = Array.isArray(profile.badges) ? (profile.badges as string[]) : [];
-      if (profile.backgroundCheckStatus === 'approved' && !badgeList.includes('background_check')) {
+      if (backgroundCheckPassed(profile.backgroundCheckStatus) && !badgeList.includes('background_check')) {
         badgeList.push('background_check');
       }
       metrics = {
@@ -172,7 +173,7 @@ router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
       isNew: metrics.isNew,
       // ── Verified badges ───────────────────────────────────────────────────
       badges: metrics.badges,
-      hasBackgroundCheck: profile?.backgroundCheckStatus === 'approved',
+      hasBackgroundCheck: backgroundCheckPassed(profile?.backgroundCheckStatus),
       // ── Home setup ────────────────────────────────────────────────────────
       hasFencedYard: metrics.hasFencedYard,
       hasNoPetsAtHome: metrics.hasNoPetsAtHome,
@@ -231,7 +232,7 @@ router.get('/providers/browse', requireAuth, async (req: Request, res: Response)
 
   // backgroundCheckOnly — server-backed (DB column background_check_status)
   if (backgroundCheckOnly === 'true') {
-    whereParts.push(`pp.background_check_status = 'approved'`);
+    whereParts.push(`pp.background_check_status IN ('passed', 'approved')`); // = BACKGROUND_CHECK_PASSED
   }
 
   // fencedYardOnly — server-backed (DB column has_fenced_yard)
@@ -347,7 +348,7 @@ router.get('/providers/browse', requireAuth, async (req: Request, res: Response)
       ratingCount: row.ratingCount ?? 0,
       isAvailableThisWeek:
         row.availabilityState === 'online' || row.availabilityState === 'available',
-      hasBackgroundCheck: row.backgroundCheckStatus === 'approved',
+      hasBackgroundCheck: backgroundCheckPassed(row.backgroundCheckStatus),
       hasFencedYard: row.hasFencedYard ?? null,
       hasNoPetsAtHome: row.hasNoPetsAtHome ?? null,
       completedBookingsCount: row.completedBookingsCount ?? 0,
