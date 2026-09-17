@@ -555,8 +555,8 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
       </p>
       <p style="margin:0;font-size:10px;color:#cccccc;line-height:1.7;">
         ${isHe
-          ? 'כרטיס זה מונפק ע"י PetWash Ltd. (ח.פ. 516458396) · אינו ניתן להעברה · © 2024–2026 PetWash™'
-          : 'Issued by PetWash Ltd. (Co. 516458396) · Non-transferable · © 2024–2026 PetWash™'
+          ? 'כרטיס זה מונפק ע"י PetWash Ltd. (ח.פ. 517145033) · אינו ניתן להעברה · © 2024–2026 PetWash™'
+          : 'Issued by PetWash Ltd. (Co. 517145033) · Non-transferable · © 2024–2026 PetWash™'
         }
       </p>
     </td>

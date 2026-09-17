@@ -10,8 +10,13 @@ import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 /**
- * Israeli Tax Invoice Generator
- * Generates VAT-compliant invoices in Hebrew and English
+ * Commission STATEMENT (Hebrew / English) — NOT a tax document.
+ *
+ * 2026-09-17: this rendered "חשבונית מס / TAX INVOICE" with a locally minted
+ * PW-INV number and a footer citing the VAT regulations. Pet Wash's fiscal
+ * documents come only from SUMIT, and under the one money model the fee is
+ * invoiced to the customer — so this PDF is an informational statement of the
+ * fee on a provider's booking.
  * Complies with Israeli Tax Authority regulations
  */
 export class IsraeliInvoiceGenerator {
@@ -53,9 +58,9 @@ export class IsraeliInvoiceGenerator {
         size: "A4",
         margin: 50,
         info: {
-          Title: language === "he" ? "חשבונית מס" : "Tax Invoice",
+          Title: language === "he" ? "דוח עמלה" : "Commission statement",
           Author: "Pet Wash Ltd",
-          Subject: `Invoice ${commission.invoiceNumber || commissionId}`,
+          Subject: `Commission statement ${commission.invoiceNumber || commissionId}`,
         },
       });
 
@@ -104,7 +109,7 @@ export class IsraeliInvoiceGenerator {
     doc
       .fontSize(20)
       .font("Helvetica-Bold")
-      .text("חשבונית מס - Pet Wash Ltd", { align: "right" });
+      .text("דוח עמלה (אינו מסמך מס) - Pet Wash Ltd", { align: "right" });
 
     doc
       .fontSize(10)
@@ -122,7 +127,7 @@ export class IsraeliInvoiceGenerator {
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
-      .text(`מספר חשבונית: ${commission.invoiceNumber || commission.commissionId}`, {
+      .text(`מספר אסמכתא: ${commission.invoiceNumber || commission.commissionId}`, {
         align: "right",
       })
       .font("Helvetica")
@@ -206,7 +211,7 @@ export class IsraeliInvoiceGenerator {
       .moveDown(3)
       .fontSize(8)
       .font("Helvetica")
-      .text("חשבונית זו הונפקה בהתאם לתקנות מס ערך מוסף, התשל\"ו-1976", {
+      .text("מסמך זה הוא דוח מידע בלבד ואינו חשבונית מס. מסמכי המס של Pet Wash מופקים במערכת SUMIT.", {
         align: "center",
       })
       .text("עסקה זו מבוצעת באמצעות מודל תיווך (Marketplace)", {
@@ -227,7 +232,7 @@ export class IsraeliInvoiceGenerator {
     doc
       .fontSize(20)
       .font("Helvetica-Bold")
-      .text("TAX INVOICE - Pet Wash Ltd", { align: "left" });
+      .text("COMMISSION STATEMENT (not a tax document) - Pet Wash Ltd", { align: "left" });
 
     doc
       .fontSize(10)
@@ -245,7 +250,7 @@ export class IsraeliInvoiceGenerator {
     doc
       .fontSize(12)
       .font("Helvetica-Bold")
-      .text(`Invoice Number: ${commission.invoiceNumber || commission.commissionId}`, {
+      .text(`Reference: ${commission.invoiceNumber || commission.commissionId}`, {
         align: "left",
       })
       .font("Helvetica")
@@ -329,7 +334,7 @@ export class IsraeliInvoiceGenerator {
       .fontSize(8)
       .font("Helvetica")
       .text(
-        "This invoice was issued in accordance with Value Added Tax Regulations, 1976",
+        "Information only — not a tax invoice. Pet Wash tax documents are issued through SUMIT.",
         { align: "center" }
       )
       .text("This transaction is conducted through a marketplace brokerage model", {

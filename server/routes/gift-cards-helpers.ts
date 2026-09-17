@@ -247,7 +247,7 @@ async function sendGiftCardToRecipient(params: {
           <p><strong>⁦PetWash™⁩</strong> — Premium Organic Pet Care</p>
           <p><a href="https://petwash.co.il" style="color:#d4af37;text-decoration:none;">petwash.co.il</a></p>
           <div class="legal">
-            <p>This e-gift card is issued by PetWash Ltd. (Israel Company #516458396)</p>
+            <p>This e-gift card is issued by PetWash Ltd. (Israel Company #517145033)</p>
             <p>Non-refundable. Non-transferable. Cannot be redeemed for cash. Single-use only.</p>
             <p>Blockchain-secured transaction with immutable audit trail.</p>
             <p>© ${new Date().getFullYear()} ⁦PetWash™⁩. All rights reserved.</p>

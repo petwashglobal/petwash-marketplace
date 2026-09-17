@@ -3303,7 +3303,7 @@ export class EmailService {
   }
 
   /**
-   * Send marketplace booking confirmation email with invoice number
+   * Send marketplace booking confirmation email (reference number — NOT a tax invoice)
    * Bilingual Hebrew/English luxury email for pet service bookings
    */
   static async sendBookingConfirmation(params: {
@@ -3386,7 +3386,6 @@ export class EmailService {
       const releaseStr = `${fmtDate(escrowReleaseDate)} ${isHebrew ? 'בשעה' : 'at'} ${fmtTime(escrowReleaseDate)}`;
 
       const totalFmt = (totalAmountCents / 100).toFixed(2);
-      const netFmt   = (netCents / 100).toFixed(2);
       const vatFmt   = (vatCents / 100).toFixed(2);
       const discFmt  = loyaltyDiscountCents > 0 ? (loyaltyDiscountCents / 100).toFixed(2) : null;
 
@@ -3413,7 +3412,7 @@ export class EmailService {
 
       // ── Google Calendar link ──────────────────────────────────────────────
       const calText   = encodeURIComponent(`${isHebrew ? 'טיפול ב-PetWash™' : 'PetWash™ Service'} — ${providerName}`);
-      const calDetail = encodeURIComponent(`${isHebrew ? 'הזמנה' : 'Booking'}: ${bookingId} | ${isHebrew ? 'חשבונית' : 'Invoice'}: ${invoiceNumber}`);
+      const calDetail = encodeURIComponent(`${isHebrew ? 'הזמנה' : 'Booking'}: ${bookingId} | ${isHebrew ? 'אסמכתא' : 'Reference'}: ${invoiceNumber}`);
       const calStart  = startDate.toISOString().replace(/-|:|\.\d{3}/g, '');
       const calEnd    = endDate.toISOString().replace(/-|:|\.\d{3}/g, '');
       const calLink   = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${calText}&dates=${calStart}/${calEnd}&details=${calDetail}`;
@@ -3466,7 +3465,7 @@ export class EmailService {
           <td style="width:33%;padding:0 0 0 6px;vertical-align:top;">
             <div style="background:#F5F0FF;border-radius:10px;padding:14px 12px;text-align:center;">
               <div style="font-size:20px;margin-bottom:4px;">📋</div>
-              <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">${isHebrew ? 'חשבונית' : 'Invoice'}</div>
+              <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">${isHebrew ? 'אסמכתא' : 'Reference'}</div>
               <div style="font-size:11px;font-weight:700;color:#1a1a1a;margin-top:3px;font-family:monospace;">${invoiceNumber}</div>
             </div>
           </td>
@@ -3485,27 +3484,26 @@ export class EmailService {
         ${detailRow(isHebrew ? 'שעות' : 'Time', `${timeStart} – ${timeEnd}`)}
         ${providerAddress ? detailRow(isHebrew ? 'כתובת' : 'Location', providerAddress) : ''}
         ${detailRow(isHebrew ? 'מספר הזמנה' : 'Booking ID', bookingId, '#555')}
-        ${detailRow(isHebrew ? 'מספר חשבונית' : 'Invoice No.', invoiceNumber, '#555')}
+        ${detailRow(isHebrew ? 'מספר אסמכתא' : 'Reference No.', invoiceNumber, '#555')}
         ${detailRow(isHebrew ? 'סטטוס תשלום' : 'Payment Status', paymentStatus, '#00B140')}
       </table>
 
       <!-- Section: Financial Summary -->
       <div style="font-size:10px;font-weight:700;color:#FF6B6B;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">${isHebrew ? 'סיכום כספי' : 'FINANCIAL SUMMARY'}</div>
       <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
-        ${finRow(isHebrew ? 'מחיר לפני מע"מ' : 'Service Fee (excl. VAT)', `₪${netFmt}`)}
-        ${finRow(isHebrew ? 'מע"מ 18%' : 'VAT 18% (Reg. 517145033)', `₪${vatFmt}`, '#FF6B6B')}
+        ${finRow(isHebrew ? 'מתוכם מע"מ על דמי השירות של Pet Wash' : 'Incl. VAT on the Pet Wash service fee', `₪${vatFmt}`)}
         ${discFmt ? finRow(isHebrew ? 'הנחת נאמנות' : 'Loyalty Discount', `-₪${discFmt}`, '#00C9A7') : ''}
       </table>
       <!-- Total -->
       <div style="background:#1a1a1a;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;direction:${dir};margin-bottom:28px;">
-        <span style="font-size:14px;font-weight:700;color:#ffffff;">${isHebrew ? 'סה"כ לתשלום' : 'Total Charged'}</span>
+        <span style="font-size:14px;font-weight:700;color:#ffffff;">${isHebrew ? 'סה"כ לתשלום' : 'Total'}</span>
         <span style="font-size:20px;font-weight:800;color:#FF6B6B;">₪${totalFmt}</span>
       </div>
 
       <!-- Escrow Status -->
       <div style="background:#F0FDF6;border-radius:10px;padding:18px 20px;border-${side}:4px solid #00B140;margin-bottom:28px;direction:${dir};">
         <div style="font-size:10px;font-weight:700;color:#00B140;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">🔒 ${isHebrew ? 'סטטוס נאמנות' : 'ESCROW STATUS'}</div>
-        <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">${isHebrew ? 'התשלום שלך מוחזק בנאמנות' : 'Your payment is held in secure escrow'}</div>
+        <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:4px;">${isHebrew ? 'לאחר התשלום, הסכום מוחזק בנאמנות' : 'Once paid, your payment is held in secure escrow'}</div>
         <div style="font-size:12px;color:#444;line-height:1.6;">
           ${isHebrew
             ? `העברה לנותן השירות: <strong>${releaseStr}</strong> לאחר אישור הושלמה`

@@ -483,7 +483,7 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
             : 'Non-refundable. Non-transferable. Cannot be redeemed for cash. Single-use only.'}
         </p>
         <p style="font-size:8px;color:rgba(255,255,255,0.12);margin:0;letter-spacing:1px;">
-          Pet Wash Ltd. (Israel Company #516458396)
+          Pet Wash Ltd. (Israel Company #517145033)
           <br>&copy; ${new Date().getFullYear()} PetWash™. ${isHe ? 'כל הזכויות שמורות.' : 'All rights reserved.'}
         </p>
       </div>
