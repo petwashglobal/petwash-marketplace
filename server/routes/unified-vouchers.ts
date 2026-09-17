@@ -17,7 +17,7 @@ import { Router, type Request, type Response } from "express";
 import { z } from "zod";
 import { db } from "../db";
 import { unifiedVouchers, unifiedVoucherLedger } from "../../shared/schema";
-import { eq, desc, or } from "drizzle-orm";
+import { and, eq, desc, isNull, or } from "drizzle-orm";
 import {
   issueVoucher,
   generateQrToken,
@@ -509,14 +509,22 @@ router.post("/claim", requireAuth, validate(claimSchema), async (req: Request, r
         updatedAt: new Date(),
       })
       .where(
+        // First claim wins (2026-09-17): both branches used to match on id
+        // alone, so two people claiming the same code at once both "won" and
+        // the last write took the gift.
         voucher.ownerUserId
-          ? eq(unifiedVouchers.id, voucher.id) // caller-already-owner → idempotent update
-          : eq(unifiedVouchers.id, voucher.id),
+          ? and(eq(unifiedVouchers.id, voucher.id), eq(unifiedVouchers.ownerUserId, uid))
+          : and(eq(unifiedVouchers.id, voucher.id), isNull(unifiedVouchers.ownerUserId)),
       )
       .returning({ id: unifiedVouchers.id });
 
     if (claimed.length === 0) {
-      return res.status(500).json({ success: false, error: "Claim update matched zero rows", traceId: tid });
+      return res.status(409).json({
+        success: false,
+        error: "This voucher has already been claimed by another account.",
+        code: "VOUCHER_ALREADY_CLAIMED",
+        traceId: tid,
+      });
     }
 
     const details = await getVoucherWithBalance(voucher.id);

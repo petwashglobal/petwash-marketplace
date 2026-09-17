@@ -1,6 +1,7 @@
 import { Layout } from '@/components/Layout';
 import { WashPackages } from '@/components/WashPackages';
-import { LoyaltyProgram } from '@/components/LoyaltyProgram';
+import { Link } from 'wouter';
+import { BASE_CLUB_DISCOUNT, MAX_DISCOUNT_CAP, SPECIAL_CATEGORY_DISCOUNTS } from '@shared/schema-loyalty';
 import { type Language, t } from '@/lib/i18n';
 import { useState } from 'react';
 import petwashStationPhoto from '@assets/petwash-station-real.png';
@@ -395,7 +396,38 @@ export default function OurService({ language, onLanguageChange }: OurServicePro
                   {t('ourService.loyaltySubtitle', language)}
                 </p>
               </div>
-              <LoyaltyProgram language={language} />
+              {/* TRUTHFUL SUMMARY (2026-09-17). This tab rendered components/
+                  LoyaltyProgram: 14 raw i18n keys on screen and tier badges of
+                  5%…50% "הנחה" — the program caps discounts at MAX_DISCOUNT_CAP
+                  (shared/schema-loyalty.ts, the authoritative table). Numbers
+                  come from that file; the full ladder lives on /loyalty/tiers. */}
+              <div style={{ maxWidth: 640, margin: '0 auto', textAlign: language === 'he' || language === 'ar' ? 'right' : 'left' }}>
+                <ul style={{ listStyle: 'disc', paddingInlineStart: 20, lineHeight: 1.9, color: '#374151' }}>
+                  <li>
+                    {language === 'he'
+                      ? `${BASE_CLUB_DISCOUNT}% הנחת חבר מועדון על שטיפות בעמדות K9000`
+                      : `${BASE_CLUB_DISCOUNT}% club-member discount on K9000 station washes`}
+                  </li>
+                  <li>
+                    {language === 'he'
+                      ? `${SPECIAL_CATEGORY_DISCOUNTS.senior}% לגיל הזהב ו-${SPECIAL_CATEGORY_DISCOUNTS.disabled}% לבעלי תעודת נכות (לאחר אימות)`
+                      : `${SPECIAL_CATEGORY_DISCOUNTS.senior}% for seniors and ${SPECIAL_CATEGORY_DISCOUNTS.disabled}% with a disability certificate (after verification)`}
+                  </li>
+                  <li>
+                    {language === 'he'
+                      ? `דרגות נאמנות מוסיפות הטבה קטנה — ההנחה המצטברת לא עולה על ${MAX_DISCOUNT_CAP}%`
+                      : `Loyalty tiers add a small bonus — the combined discount never exceeds ${MAX_DISCOUNT_CAP}%`}
+                  </li>
+                </ul>
+                <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <Link href="/loyalty/tiers" style={{ padding: '10px 20px', borderRadius: 8, background: '#111', color: '#D4AF37', fontWeight: 600, textDecoration: 'none' }}>
+                    {language === 'he' ? 'כל הדרגות וההטבות' : 'All tiers and benefits'}
+                  </Link>
+                  <Link href="/loyalty/join" style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid #111', color: '#111', fontWeight: 600, textDecoration: 'none' }}>
+                    {language === 'he' ? 'הצטרפות חינם' : 'Join free'}
+                  </Link>
+                </div>
+              </div>
             </div>
           )}
         </section>

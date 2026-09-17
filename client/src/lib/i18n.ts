@@ -503,6 +503,13 @@ export const translations: TranslationStrings = {
   'ourService.technology': { en: 'Technology', he: 'טכנולוגיה', ar: 'التكنولوجيا', ru: 'Технология', fr: 'Technologie', es: 'Tecnología' },
   'ourService.products': { en: 'Products', he: 'מוצרים', ar: 'المنتجات', ru: 'Продукты', fr: 'Produits', es: 'Productos' },
   'ourService.packages': { en: 'Packages', he: 'חבילות', ar: 'الحزم', ru: 'Пакеты', fr: 'Forfaits', es: 'Paquetes' },
+  // Missing keys that rendered as raw text on customer pages (2026-09-17).
+  'common.home': { en: 'Home', he: 'לדף הבית', ar: 'الرئيسية', ru: 'На главную', fr: 'Accueil', es: 'Inicio' },
+  'common.failed': { en: 'Something went wrong', he: 'משהו השתבש', ar: 'حدث خطأ ما', ru: 'Что-то пошло не так', fr: 'Une erreur est survenue', es: 'Algo salió mal' },
+  'payment.active': { en: 'Active', he: 'פעיל', ar: 'نشط', ru: 'Активен', fr: 'Actif', es: 'Activo' },
+  'payment.washes': { en: 'washes', he: 'שטיפות', ar: 'غسلات', ru: 'моек', fr: 'lavages', es: 'lavados' },
+  'payment.backToHome': { en: 'Back to Home', he: 'חזרה לדף הבית', ar: 'العودة إلى الرئيسية', ru: 'Вернуться на главную', fr: "Retour à l'accueil", es: 'Volver al inicio' },
+  'gallery.noImages': { en: 'No images in this category yet', he: 'אין עדיין תמונות בקטגוריה הזו', ar: 'لا توجد صور في هذه الفئة بعد', ru: 'В этой категории пока нет изображений', fr: "Pas encore d'images dans cette catégorie", es: 'Aún no hay imágenes en esta categoría' },
   'ourService.loyalty': { en: 'Loyalty', he: 'נאמנות', ar: 'الولاء', ru: 'Лояльность', fr: 'Fidélité', es: 'Lealtad' },
   'ourService.title': { en: 'Our Services', he: 'השירות שלנו', ar: 'خدماتنا', ru: 'Наши услуги', fr: 'Nos services', es: 'Nuestros servicios' },
   'ourService.advancedTechnology': { en: 'Advanced Technology', he: 'טכנולוגיה מתקדמת', ar: 'تكنولوجيا متقدمة', ru: 'Передовые технологии', fr: 'Technologie avancée', es: 'Tecnología avanzada' },

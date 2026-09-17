@@ -276,7 +276,8 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
     } catch (error: any) {
       toast({
         title: t('common.failed', language),
-        description: error.message || t('giftCards.purchaseFailed', language),
+        // Never render a raw server/transport message to the buyer (CEO §60).
+        description: t('giftCards.purchaseFailed', language),
         variant: "destructive",
       });
     } finally {
