@@ -11,16 +11,15 @@ import {
   users,
   BOOKING_STATUS_TRANSITIONS,
   type BookingLifecycleStatus,
-  PETWASH_COMMISSION_RATE
 } from '@shared/schema';
 import { eq, and, gte, lte, sql, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import { planEscrowOnCreate, planEscrowOnTerminal } from '../lib/escrowSettlement';
 import { GoogleSheetsService } from './googleSheetsIntegration';
-import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import { splitMarketplaceJob } from "@shared/marketplaceMoney";
+import { vatFromInclusive } from "@shared/money";
 
-const VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
 const ESCROW_HOURS = 72;
 
 const PLATFORM_ADDON_PRICING: Record<string, number> = {
@@ -269,10 +268,16 @@ class BookingLifecycleService {
     // the charge total, commission or VAT. Surfaced separately for the UI/payment hold.
     const depositCents = Math.round(subtotalCents * ((card.securityDepositPercent || 0) / 100));
 
-    const platformFeeCents = Math.round(subtotalCents * PETWASH_COMMISSION_RATE);
-    const vatCents = Math.round(platformFeeCents * VAT_RATE);
-    const totalCents = subtotalCents + vatCents;
-    const providerEarningsCents = subtotalCents - platformFeeCents;
+    // ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-17). This used to
+    // charge rate + VAT-on-the-fee but never the fee itself, and paid the
+    // provider rate − fee: ₪100 → customer ₪102.70, provider ₪85. Now the fee
+    // is on top, VAT is inside it, and the provider keeps the whole rate:
+    // ₪100 → customer ₪115, provider ₪100, fee ₪15 (VAT ₪2.29 inside).
+    const split = splitMarketplaceJob(subtotalCents);
+    const platformFeeCents = split.serviceFeeCents;
+    const vatCents = split.serviceFeeVatCents;
+    const totalCents = split.customerTotalCents;
+    const providerEarningsCents = split.providerPayoutCents;
 
     return {
       baseAmountCents,
@@ -547,8 +552,11 @@ class BookingLifecycleService {
 
     const grossAmountCents = Math.round(parseFloat(booking.total) * 100);
     const platformFeeCents = Math.round(parseFloat(booking.platformFee || '0') * 100);
-    const vatCents = Math.round(platformFeeCents * VAT_RATE);
-    const netProviderAmountCents = grossAmountCents - platformFeeCents - vatCents;
+    // VAT is inside the fee (18/118), and the provider is owed everything
+    // except the fee. The old `gross − fee − fee×18%` took Pet Wash's VAT out
+    // of the provider's money.
+    const vatCents = vatFromInclusive(platformFeeCents);
+    const netProviderAmountCents = grossAmountCents - platformFeeCents;
 
     // R2: a booking has at most one escrow holding. There is no UNIQUE(booking_id)
     // constraint yet and a 'pending'/'pending_payment' row may already exist (created at
