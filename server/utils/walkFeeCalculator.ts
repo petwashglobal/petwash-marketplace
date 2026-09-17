@@ -1,41 +1,39 @@
 /**
  * WALK MY PET™ - Financial Fee Calculator
- * 
- * FLAT 15% COMMISSION (disclosed-agent model, unified across ALL PetWash™
- * paid services — same as Academy + TransactionEngine; CEO-confirmed 2026-06-15):
- * - Owner pays: the provider's rate (base price). NO separate surcharge.
- * - Walker receives: 85% of the base price.
- * - PetWash™ keeps: 15% commission (taken out of the base, not added on top).
- * - VAT (18%) is on PetWash's COMMISSION only, extracted from it (the commission
- *   is VAT-inclusive); the customer's total IS the base price.
  *
- * HISTORY: the previous version charged the owner +15% AND deducted 15% from the
- * walker = 30% real platform take while labelling it "15%". Corrected to a single
- * 15% commission per the CEO's instruction ("15% on every paid service").
+ * ONE MONEY MODEL (CEO 2026-09-14, confirmed 2026-09-17 — "same as Mad Paws,
+ * Rover"), shared with every marketplace flow via shared/marketplaceMoney.ts:
+ * - Owner pays: the walker's rate + the 15% Pet Wash fee on top.
+ * - Walker receives: the full rate.
+ * - PetWash™ keeps: the fee; the 18% VAT it owes is INSIDE the fee (18/118),
+ *   never added on top and never charged on the walker's money.
  *
- * Commission Breakdown Example (₪100 base):
- * - Owner pays: ₪100 (the walker's rate, nothing added).
- * - Walker gets: ₪85 (₪100 − 15% commission).
- * - PetWash keeps: ₪15 commission, of which ₪2.29 is VAT remitted (18/118) → ₪12.71 net.
+ * Example (₪100 rate): owner ₪115 · walker ₪100 · Pet Wash ₪15
+ * (₪2.29 VAT inside, ₪12.71 net).
+ *
+ * HISTORY: before 2026-06-15 the owner paid +15% AND the walker lost 15% (a 30%
+ * take). 2026-06-15 → 2026-09-17 the 15% came out of the walker's rate (walker
+ * netted 85%) while booking_requests put it on top — two models on one
+ * platform. Now one.
  *
  * Israeli Market Adaptations:
  * - Currency: ILS (Israeli Shekel)
- * - VAT: 18% on the commission, extracted (disclosed-agent), per Tax Authority rules
- * - Payment: Nayax (preferred Israeli payment gateway)
+ * - VAT: 18%, inside Pet Wash's fee only
  */
 
+import { splitMarketplaceJob, MARKETPLACE_SERVICE_FEE_RATE } from "@shared/marketplaceMoney";
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 export interface WalkFeeCalculation {
   basePriceCents: number;
   
-  platformServiceFeeOwnerCents: number; // 15% platform fee charged to owner
-  walkerFeeCents: number; // 15% deducted from walker payout
-  walkerPayoutCents: number; // 85% to walker (base - 15%)
-  platformCommissionTotalCents: number; // 15% total platform revenue
+  platformServiceFeeOwnerCents: number; // the Pet Wash fee, on top of the rate
+  walkerFeeCents: number; // taken from the walker — always 0 in the one money model
+  walkerPayoutCents: number; // the full rate
+  platformCommissionTotalCents: number; // Pet Wash's whole fee (VAT inside)
   totalChargeCents: number; // What owner pays (base + 15% platform fee)
-  vatCents: number; // 18% Israeli VAT on platform fee
-  totalChargeWithVATCents: number; // Final amount charged
+  vatCents: number; // VAT Pet Wash owes, extracted from its fee
+  totalChargeWithVATCents: number; // = totalChargeCents (VAT is already inside the fee)
   
   // Human-readable amounts (in ILS)
   basePrice: string;
@@ -57,30 +55,25 @@ export interface WalkFeeCalculation {
  * 
  * @example
  * const fees = calculateWalkFees(10000); // ₪100 base walk price
- * // Owner pays: ₪100 (the walker's rate — nothing added)
- * // Walker gets: ₪85 (₪100 − 15% commission)
- * // PetWash keeps: ₪15 commission (₪2.29 VAT remitted, ₪12.71 net)
+ * // Owner pays: ₪115 (₪100 rate + ₪15 Pet Wash fee)
+ * // Walker gets: ₪100
+ * // PetWash keeps: ₪15 (₪2.29 VAT inside, ₪12.71 net)
  */
 export function calculateWalkFees(basePriceCents: number): WalkFeeCalculation {
-  // 15% commission, disclosed-agent (unified with Academy + TransactionEngine):
-  // the owner pays the rate; PetWash keeps 15% out of it; the walker gets 85%;
-  // VAT is on the commission, extracted (18/118), so the customer's total = base.
-  const platformCommissionTotalCents = Math.round(basePriceCents * 0.15);
+  const split = splitMarketplaceJob(basePriceCents);
 
-  // The 15% comes OUT of the provider's rate (NOT added on top of it).
-  const walkerFeeCents = platformCommissionTotalCents;
+  // The whole fee is on the owner's side, on top of the rate.
+  const platformServiceFeeOwnerCents = split.serviceFeeCents;
+  const platformCommissionTotalCents = split.serviceFeeCents;
 
-  const walkerPayoutCents = basePriceCents - walkerFeeCents;
+  // Nothing is taken from the walker.
+  const walkerFeeCents = 0;
+  const walkerPayoutCents = split.providerPayoutCents;
 
-  // No separate owner surcharge — the owner pays exactly the rate.
-  const platformServiceFeeOwnerCents = 0;
+  const totalChargeCents = split.customerTotalCents;
+  const vatCents = split.serviceFeeVatCents;
 
-  const totalChargeCents = basePriceCents;
-
-  // VAT is on the commission only, extracted (the commission is VAT-inclusive).
-  const vatCents = Math.round(platformCommissionTotalCents * (ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE)));
-
-  // VAT lives inside the commission — it is NOT added on top of what the owner pays.
+  // VAT lives inside the fee — never added on top of what the owner pays.
   const totalChargeWithVATCents = totalChargeCents;
   
   // Convert to ILS for display (divide by 100: agorot → shekels)
@@ -134,24 +127,21 @@ export function calculateWalkFeesByDuration(
  * Validate fee calculation integrity for ⁦Walk My Pet™⁩
  * 
  * Ensures that:
- * 1. Walker payout + walker fee = base price (85% + 15% = 100%)
- * 2. Platform commission = 15% of base
- * 3. Base price + platform fee = total charge before VAT
- * 4. Total + VAT = final charge
- * 5. All amounts are positive
+ * 1. The walker is owed the whole rate (nothing taken from them)
+ * 2. Rate + Pet Wash fee = what the owner pays
+ * 3. VAT is inside the fee (final charge = total; VAT ≤ fee)
+ * 4. All amounts are positive
  */
 export function validateWalkFeeCalculation(fees: WalkFeeCalculation): boolean {
-  const payoutPlusFee = fees.walkerPayoutCents + fees.walkerFeeCents;
-  if (payoutPlusFee !== fees.basePriceCents) {
-    console.error('[Walk Fee Validation] Payout + Walker Fee ≠ Base Price', {
+  if (fees.walkerPayoutCents !== fees.basePriceCents || fees.walkerFeeCents !== 0) {
+    console.error('[Walk Fee Validation] Walker must be owed the whole rate', {
       walkerPayout: fees.walkerPayoutCents,
       walkerFee: fees.walkerFeeCents,
-      sum: payoutPlusFee,
       basePrice: fees.basePriceCents,
     });
     return false;
   }
-  
+
   const basePlusPlatformFee = fees.basePriceCents + fees.platformServiceFeeOwnerCents;
   if (basePlusPlatformFee !== fees.totalChargeCents) {
     console.error('[Walk Fee Validation] Base + Platform Fee ≠ Total', {
@@ -162,39 +152,34 @@ export function validateWalkFeeCalculation(fees: WalkFeeCalculation): boolean {
     });
     return false;
   }
-  
-  // Disclosed-agent: VAT is extracted from the commission, NOT added on top —
-  // so the owner's final charge equals the base/total, and VAT ≤ commission.
+
+  // VAT is inside the fee, never on top.
   if (fees.totalChargeWithVATCents !== fees.totalChargeCents) {
-    console.error('[Walk Fee Validation] Final Charge ≠ Total (VAT must be inside the commission, not added)', {
+    console.error('[Walk Fee Validation] Final Charge ≠ Total (VAT must be inside the fee, not added)', {
       total: fees.totalChargeCents,
       finalCharge: fees.totalChargeWithVATCents,
     });
     return false;
   }
   if (fees.vatCents > fees.platformCommissionTotalCents) {
-    console.error('[Walk Fee Validation] VAT exceeds commission (must be extracted from it)', {
+    console.error('[Walk Fee Validation] VAT exceeds the fee (must be extracted from it)', {
       vat: fees.vatCents,
-      commission: fees.platformCommissionTotalCents,
+      fee: fees.platformCommissionTotalCents,
     });
     return false;
   }
 
-  // platformServiceFeeOwnerCents is intentionally 0 (no owner surcharge), so it
-  // is NOT in this positive-amount check.
   if (
     fees.basePriceCents <= 0 ||
-    fees.walkerFeeCents <= 0 ||
     fees.walkerPayoutCents <= 0 ||
     fees.platformCommissionTotalCents <= 0 ||
     fees.totalChargeCents <= 0 ||
-    fees.vatCents <= 0 ||
-    fees.totalChargeWithVATCents <= 0
+    fees.vatCents <= 0
   ) {
     console.error('[Walk Fee Validation] Negative or zero amount detected', fees);
     return false;
   }
-  
+
   return true;
 }
 
@@ -210,10 +195,10 @@ export function getWalkCommissionBreakdown(): {
   currency: string;
 } {
   return {
-    platformCommissionTotalRate: 0.15,
-    ownerFeeRate: 0, // no owner surcharge — the 15% comes out of the provider's rate
-    walkerFeeRate: 0.15,
-    walkerPayoutRate: 0.85,
+    platformCommissionTotalRate: MARKETPLACE_SERVICE_FEE_RATE,
+    ownerFeeRate: MARKETPLACE_SERVICE_FEE_RATE, // the fee sits on top of the walker's rate
+    walkerFeeRate: 0,                           // nothing is taken from the walker
+    walkerPayoutRate: 1,                        // the walker is owed the whole rate
     vatRate: ISRAEL_VAT_RATE,
     currency: 'ILS',
   };

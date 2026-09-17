@@ -24,6 +24,22 @@ import { logger } from '../lib/logger';
 import { calculateWalkFees, type WalkFeeCalculation } from '../utils/walkFeeCalculator';
 import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 
+/**
+ * A moment as Israel's wall clock sees it: walk_bookings stores the date and the
+ * "HH:MM" separately, in local time (jobEvidenceLoader reads them back the same
+ * way). Intl handles the DST switch; the server's own time zone is irrelevant.
+ */
+export function toIsraelLocal(at: Date): { date: string; time: string } {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jerusalem',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    }).formatToParts(at).map((p) => [p.type, p.value]),
+  );
+  return { date: `${parts.year}-${parts.month}-${parts.day}`, time: `${parts.hour}:${parts.minute}` };
+}
+
 interface EmergencyWalkRequest {
   ownerId: string;
   ownerEmail: string;
@@ -56,6 +72,53 @@ interface SurgePricing {
   surgeMultiplier: number; // 1.0 = no surge, 1.5 = 50% increase, 2.0 = double
   surgePriceCents: number;
   reason: string;
+}
+
+/**
+ * The emergency-walk result as the customer's screen reads it
+ * (client/src/components/EmergencyWalkBooking.tsx).
+ *
+ * 2026-09-17: the route sent the raw internals. The screen reads
+ * `pricing.*ILS` and `surgePricing.isSurge / surgeReasons / surgePriceILS`,
+ * none of which existed, so every price row — the total included — was blank.
+ * It also sent the walker's private email, phone and account id to the
+ * customer, which the screen never shows. Only what is displayed goes out.
+ */
+export function presentEmergencyWalkForOwner(r: {
+  matchedWalker?: WalkerMatch;
+  pricing?: WalkFeeCalculation;
+  surgePricing?: SurgePricing;
+}) {
+  const ils = (cents: number) => `₪${(cents / 100).toFixed(2)}`;
+  const f = r.pricing;
+  const sp = r.surgePricing;
+  return {
+    matchedWalker: r.matchedWalker ? {
+      walkerId: r.matchedWalker.walkerId,
+      walkerName: r.matchedWalker.walkerName,
+      rating: r.matchedWalker.rating,
+      completedWalks: r.matchedWalker.completedWalks,
+      estimatedArrivalMinutes: r.matchedWalker.estimatedArrivalMinutes,
+      distanceKm: r.matchedWalker.distanceKm,
+    } : undefined,
+    pricing: f ? {
+      basePrice: f.basePriceCents / 100, basePriceILS: ils(f.basePriceCents),
+      ownerFee: f.platformServiceFeeOwnerCents / 100, ownerFeeILS: ils(f.platformServiceFeeOwnerCents),
+      walkerDeduction: f.walkerFeeCents / 100, walkerDeductionILS: ils(f.walkerFeeCents),
+      walkerPayout: f.walkerPayoutCents / 100, walkerPayoutILS: ils(f.walkerPayoutCents),
+      totalCharge: f.totalChargeCents / 100, totalChargeILS: ils(f.totalChargeCents),
+      vat: f.vatCents / 100, vatILS: ils(f.vatCents),
+      totalChargeWithVAT: f.totalChargeWithVATCents / 100, totalChargeWithVATILS: ils(f.totalChargeWithVATCents),
+    } : undefined,
+    surgePricing: sp ? {
+      surgeMultiplier: sp.surgeMultiplier,
+      surgeReasons: sp.reason ? [sp.reason] : [],
+      isSurge: sp.surgeMultiplier > 1,
+      surgePriceCents: sp.surgePriceCents,
+      surgePriceILS: ils(sp.surgePriceCents),
+      surgeMessage: sp.reason ?? '',
+    } : undefined,
+  };
 }
 
 export class EmergencyWalkService {
@@ -185,36 +248,51 @@ export class EmergencyWalkService {
       });
 
       // Step 5: Insert emergency walk booking under the held lock.
+      //
+      // 2026-09-17: this insert could never succeed. It wrote columns the table
+      // does not have (ownerEmail, scheduledTime, estimatedDuration,
+      // pickupLocation, specialInstructions, paymentStatus, estimated*Time) —
+      // Drizzle drops unknown keys — and left out six NOT NULL columns
+      // (scheduled_start_time, duration_minutes, pickup_latitude/longitude/
+      // address, walker_rate, the two fee columns, walker_payout). Postgres
+      // refused every row, so every "Book Now" request failed after a walker
+      // had already been matched and locked. It also stored no walker payout
+      // and no fee, so a completed emergency walk would have settled at ₪0.
+      // Only real columns now, and the full money split.
+      const startLocal = toIsraelLocal(estimatedStartTime);
       await db.insert(walkBookings).values({
         bookingId,
         ownerId: request.ownerId,
-        ownerEmail: request.ownerEmail,
         walkerId: matchedWalker.walkerId,
         petName: request.petName,
         petBreed: request.petBreed,
         petWeight: request.petWeight.toString(),
-        specialInstructions: request.specialInstructions || null,
-        scheduledDate: new Date(),
-        scheduledTime: estimatedStartTime.toTimeString().slice(0, 5),
-        estimatedDuration: request.walkDuration,
-        totalCost: (fees.totalChargeWithVATCents / 100).toFixed(2),
+        petSpecialNeeds: request.specialInstructions || null,
+        scheduledDate: startLocal.date,
+        scheduledStartTime: startLocal.time,
+        durationMinutes: request.walkDuration,
+        pickupLatitude: request.location.latitude.toString(),
+        pickupLongitude: request.location.longitude.toString(),
+        pickupAddress: request.location.address,
+        // One money model: walker is owed the whole (surge-priced) rate, the
+        // Pet Wash fee sits on top, VAT is inside the fee.
+        walkerRate: (fees.basePriceCents / 100).toFixed(2),
+        platformFeeOwner: (fees.platformCommissionTotalCents / 100).toFixed(2),
+        platformFeeSitter: '0.00',
+        totalCost: (fees.totalChargeCents / 100).toFixed(2),
+        walkerPayout: (fees.walkerPayoutCents / 100).toFixed(2),
         currency: 'ILS',
         status: 'confirmed',
-        paymentStatus: 'pending',
         isEmergencyWalk: true, // Flag for emergency/ASAP
         emergencySurgeMultiplier: surgePricing.surgeMultiplier.toString(),
-        estimatedStartTime,
-        estimatedEndTime,
-        pickupLocation: request.location as any,
+        emergencySurgeReason: surgePricing.reason ?? null,
         // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
         serviceSource: 'walk_my_pet',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      } as any);
+      });
 
       logger.info('[Emergency Walk] Booking created', {
         bookingId,
-        totalCostWithVAT: fees.totalChargeWithVAT,
+        totalCost: fees.totalCharge,
         walkerPayout: fees.walkerPayout,
         platformCommission: fees.platformCommissionTotal,
       });

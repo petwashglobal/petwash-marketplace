@@ -745,8 +745,11 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       // callers keep working.
       petSafetySnapshot: safeSnapshot,
       walkerRate: pricing.baseRate.toFixed(2),
-      platformFeeOwner: (pricing.platformFee * 0.25).toFixed(2),
-      platformFeeSitter: (pricing.platformFee * 0.75).toFixed(2),
+      // One money model: the whole Pet Wash fee is on the owner's side, on top
+      // of the walker's rate — nothing is taken from the walker. (Was split
+      // 25% owner / 75% walker, a leftover of the fee-out-of-the-rate model.)
+      platformFeeOwner: pricing.platformFee.toFixed(2),
+      platformFeeSitter: '0.00',
       totalCost: pricing.totalPrice.toFixed(2),
       walkerPayout: pricing.providerPayout.toFixed(2),
       currency: pricing.currency,
@@ -1250,12 +1253,14 @@ router.post('/walks/emergency-request', requireAuth, async (req, res) => {
       label: `Emergency Walk: ${req.body.petName}`,
     });
 
+    const { presentEmergencyWalkForOwner } = await import('../services/EmergencyWalkService');
+    const shown = presentEmergencyWalkForOwner(result);
     res.status(201).json({
       success: true,
       bookingId: result.bookingId,
-      matchedWalker: result.matchedWalker,
-      pricing: result.pricing,
-      surgePricing: result.surgePricing,
+      matchedWalker: shown.matchedWalker,
+      pricing: shown.pricing,
+      surgePricing: shown.surgePricing,
       eta: result.eta,
       navigation: navigationLinks,
       message: `Emergency walk confirmed! Walker ${result.matchedWalker?.walkerName} will arrive in ${result.matchedWalker?.estimatedArrivalMinutes} minutes.`,
@@ -2034,16 +2039,29 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
     // walkerPayout is the gross amount earned by the walker (before withholding).
     // We call recordProviderSettlement so withholding is tracked in provider_commissions.
     // Non-blocking — failure must not abort the completion response.
+    // The fee this walk was actually sold with, and which money model that was —
+    // read from the walk's own stored numbers, so walks booked before the one
+    // money model (2026-09-17) keep the reading they were sold under.
+    const walkFeeIls =
+      parseFloat(booking.platformFeeOwner || '0') + parseFloat(booking.platformFeeSitter || '0');
+    const walkPaidIls = parseFloat(booking.totalCost || '0');
+    const walkPayoutIls = parseFloat(booking.walkerPayout || '0');
+    const walkMoneyModel: 'gross' | 'net' =
+      walkFeeIls > 0 && Math.abs(walkPaidIls - (walkPayoutIls + walkFeeIls)) < 0.01 ? 'gross' : 'net';
+
     let walkSettlement: any = undefined;
     try {
       const walkSettlementResult = await IsraeliDigitalReceiptService.recordProviderSettlement({
         bookingId,
         providerId: booking.walkerId,
         providerType: 'walker',
-        grossPayoutAmount: parseFloat(booking.walkerPayout || '0'),
+        grossPayoutAmount: walkPayoutIls,
         hasWithholdingExemption: false,
-        customerPaidAmount: parseFloat(booking.totalCost || '0'),
+        customerPaidAmount: walkPaidIls,
         bookingDbId: booking.id,
+        // Book the fee that was charged — not payout × 15/85, which is only
+        // right when the fee came out of the walker's rate.
+        ...(walkFeeIls > 0 ? { brokerCommissionAmount: walkFeeIls } : {}),
       });
       if (walkSettlementResult.success && walkSettlementResult.settlement) {
         walkSettlement = walkSettlementResult.settlement;
@@ -2070,7 +2088,8 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
           netPaymentToProvider: walkSettlement.netPaymentToProvider,
           commissionId: walkSettlement.commissionId,
           osekType: walkSettlement.osekType,
-        } : undefined
+        } : undefined,
+        { model: walkMoneyModel },
       );
     } catch (vatCompletionErr: any) {
       logger.warn('[Walk My Pet] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId });

@@ -20,6 +20,7 @@ import { getLoyaltyStatus, type LoyaltyUser } from '../../loyalty';
 import { bookingPolicyEngine, type CancellationResult } from '../../BookingPolicyEngine';
 import escrowService from '../../EscrowService';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import { splitMarketplaceJob } from "@shared/marketplaceMoney";
 
 // Strategy Interfaces
 export interface AvailabilityStrategy {
@@ -136,6 +137,21 @@ export abstract class BaseLuxuryBookingEngine {
    * 
    * CRITICAL: Recalculates provider payout AFTER discount to ensure financial reconciliation
    */
+  /**
+   * Whose sale is this?
+   *  - 'direct_sale' (default): Pet Wash sells its OWN service (K9000 wash) —
+   *    VAT is on the whole price, loyalty discounts apply. Unchanged.
+   *  - 'marketplace': a provider's service sold through Pet Wash — the one
+   *    money model in shared/marketplaceMoney.ts: provider's rate + Pet Wash fee
+   *    on top, provider owed the full rate, VAT only inside the fee, and no
+   *    loyalty discount (discounts are K9000-only; on a marketplace job they came
+   *    out of the provider's pay through the payout ratio).
+   * An engine opts in by overriding this.
+   */
+  protected moneyModel(): 'direct_sale' | 'marketplace' {
+    return 'direct_sale';
+  }
+
   async quotePrice(params: PricingParams): Promise<PricingBreakdown> {
     try {
       logger.info('[Luxury Booking] Calculating price quote', {
@@ -146,6 +162,30 @@ export abstract class BaseLuxuryBookingEngine {
 
       // Get base pricing from vertical strategy
       const basePricing = await this.pricingStrategy.calculatePrice(params);
+
+      if (this.moneyModel() === 'marketplace') {
+        const split = splitMarketplaceJob(Math.round(basePricing.subtotal * 100));
+        const marketplacePricing: PricingBreakdown = {
+          ...basePricing,
+          loyaltyDiscount: 0,
+          subtotal: split.rateCents / 100,
+          platformFee: split.serviceFeeCents / 100,
+          tax: split.serviceFeeVatCents / 100,      // Pet Wash's VAT, INSIDE the fee
+          totalPrice: split.customerTotalCents / 100,
+          providerPayout: split.providerPayoutCents / 100,
+          breakdown: [
+            ...basePricing.breakdown,
+            { description: 'Pet Wash service fee (15%, VAT included)', amount: split.serviceFeeCents / 100 },
+          ],
+        };
+        logger.info('[Luxury Booking] Marketplace price quote', {
+          customerPays: marketplacePricing.totalPrice,
+          providerGets: marketplacePricing.providerPayout,
+          platformFee: marketplacePricing.platformFee,
+          vatInsideFee: marketplacePricing.tax,
+        });
+        return marketplacePricing;
+      }
 
       // Apply loyalty tier discount (UNIFIED across all platforms)
       const loyaltyUser = await getLoyaltyStatus(params.userId);
@@ -278,12 +318,20 @@ export abstract class BaseLuxuryBookingEngine {
       });
 
       // Process payment and move to escrow (marketplace platform)
+      // A marketplace job holds the provider's WHOLE rate: the commission share
+      // of the held amount is fee ÷ total (₪15 of ₪115 = 13.04%), not a flat
+      // 15% of it — that held ₪97.75 for a walker owed ₪100.
+      const commissionPercent =
+        this.moneyModel() === 'marketplace' && pricing.totalPrice > 0
+          ? (pricing.platformFee / pricing.totalPrice) * 100
+          : undefined;
       const escrowResult = await this.moveToEscrow(
         bookingId,
         pricing.totalPrice,
         pricing.currency,
         userId,
-        providerId
+        providerId,
+        commissionPercent,
       );
 
       if (!escrowResult.success) {
@@ -446,7 +494,8 @@ export abstract class BaseLuxuryBookingEngine {
     amount: number,
     currency: string,
     customerId: string,
-    providerId: string
+    providerId: string,
+    platformCommissionPercent?: number,
   ): Promise<{
     success: boolean;
     escrowReferenceId?: string;
@@ -458,7 +507,9 @@ export abstract class BaseLuxuryBookingEngine {
         providerId,
         amount,
         undefined,
-        { currency, engine: 'BaseLuxuryBookingEngine' }
+        { currency, engine: 'BaseLuxuryBookingEngine' },
+        undefined,
+        platformCommissionPercent,
       );
 
       logger.info('[Escrow] Funds moved to escrow via EscrowService', {

@@ -9,7 +9,7 @@ import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
 import { apiRequest } from "@/lib/queryClient";
-import { vatCalculator } from "@/lib/vatCalculator";
+import { splitMarketplaceJob } from "@shared/marketplaceMoney";
 import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
 import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/WeatherConsentDialog";
 import { OwnerInstructionsForm, useOwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
@@ -238,8 +238,17 @@ export default function WalkBookingFlow() {
     return walker.hourlyRate * (duration / 60); // Pro-rate for duration
   }, [walker, duration]);
 
+  // The SAME split the server charges (shared/marketplaceMoney.ts): walker's
+  // rate + Pet Wash fee on top, VAT inside the fee. Display only — the server
+  // prices the walk itself.
   const pricing = useMemo(() => {
-    return vatCalculator.calculateVAT(baseAmount);
+    const s = splitMarketplaceJob(Math.round(baseAmount * 100));
+    return {
+      rate: s.rateCents / 100,
+      fee: s.serviceFeeCents / 100,
+      feeVat: s.serviceFeeVatCents / 100,
+      total: s.customerTotalCents / 100,
+    };
   }, [baseAmount]);
 
   const canContinueDetails = useMemo(() => {
@@ -386,10 +395,10 @@ export default function WalkBookingFlow() {
         petIds: selectedPetIds,
         pricing: {
           currency: "ILS",
-          baseAmount: pricing.baseAmount,
-          commission: pricing.commission,
-          vatAmount: pricing.vatOnCommission,
-          totalAmount: pricing.totalCharged
+          baseAmount: pricing.rate,
+          commission: pricing.fee,
+          vatAmount: pricing.feeVat,
+          totalAmount: pricing.total
         },
         platformData: {
           walkerName: walker.businessName || walker.displayName || 'Professional Walker',
@@ -757,21 +766,24 @@ export default function WalkBookingFlow() {
             <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
               <div className="mb-3 flex items-center justify-between luxury-text-body">
                 <span>מחיר השירות</span>
-                <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
+                <span>₪{pricing.rate.toFixed(2)}</span>
               </div>
-              <div className="mb-1 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
-                <span>כולל עמלת PetWash (15%)</span>
-                <span>₪{pricing.commission.toFixed(2)}</span>
+              <div className="mb-1 flex items-center justify-between luxury-text-body" data-testid="walk-service-fee">
+                <span>דמי שירות ⁦Pet Wash™⁩‎ (15%)</span>
+                <span>₪{pricing.fee.toFixed(2)}</span>
               </div>
-              <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
+              <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 ps-3 border-s-2 border-[#D4AF37]/20">
                 <span>מהם מע״מ (18/118)</span>
-                <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
+                <span>₪{pricing.feeVat.toFixed(2)}</span>
               </div>
               <div className="pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between">
                 <span className="luxury-heading-sm">סה״כ לחיוב</span>
-                <span className="luxury-heading-lg luxury-text-gradient">
-                  ₪{pricing.totalCharged.toFixed(2)}
+                <span className="luxury-heading-lg luxury-text-gradient" data-testid="walk-total">
+                  ₪{pricing.total.toFixed(2)}
                 </span>
+              </div>
+              <div className="mt-2 luxury-text-small opacity-70">
+                המוליך/ה מקבל/ת את מלוא המחיר ומוציא/ה לך חשבונית עליו. ⁦Pet Wash™⁩‎ מוציאה חשבונית על דמי השירות בלבד.
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-[#D4AF37]" />
@@ -815,15 +827,16 @@ export default function WalkBookingFlow() {
               <div className="mb-4 luxury-heading-sm">פירוט מחיר</div>
               <div className="mb-2 flex items-center justify-between luxury-text-small">
                 <span>מחיר השירות</span>
-                <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
+                <span>₪{pricing.rate.toFixed(2)}</span>
               </div>
-              <div className="mb-2 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
-                <span>כולל עמלת PetWash + מע״מ</span>
-                <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
+              {/* VAT is INSIDE the fee — this line used to add the two together. */}
+              <div className="mb-2 flex items-center justify-between luxury-text-small">
+                <span>דמי שירות ⁦Pet Wash™⁩‎ (כולל מע״מ)</span>
+                <span>₪{pricing.fee.toFixed(2)}</span>
               </div>
               <div className="pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between">
                 <span className="luxury-heading-sm">סה״כ</span>
-                <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
+                <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.total.toFixed(2)}</span>
               </div>
               {appliedCredits && (
                 <div className="mt-3 pt-3 border-t border-[#D4AF37]/20 space-y-1">
@@ -843,7 +856,7 @@ export default function WalkBookingFlow() {
             </div>
 
             <WalletCheckoutPreview
-              subtotalCents={Math.round(pricing.totalCharged * 100)}
+              subtotalCents={Math.round(pricing.total * 100)}
               divisionCode="walkers"
               className="mb-6 luxury-stagger-item"
             />
@@ -863,7 +876,7 @@ export default function WalkBookingFlow() {
                 <CreditWalletCard
                   userId={user.uid}
                   platform="walker"
-                  transactionAmountCents={Math.round(pricing.totalCharged * 100)}
+                  transactionAmountCents={Math.round(pricing.total * 100)}
                   onRedeemCredits={(preview, redemption) => {
                     setAppliedCredits({
                       redemptionSessionId: redemption.sessionId,
@@ -876,12 +889,12 @@ export default function WalkBookingFlow() {
             )}
 
             {/* PrestigePass Payment Option */}
-            {user && pricing.totalCharged > 0 && (
+            {user && pricing.total > 0 && (
               <div className="mb-4">
                 <PrestigePassPaymentOption
                   bookingId={bookingId || `PENDING-WALKER-${user.uid.slice(0, 8)}`}
                   serviceType="dog_walker"
-                  amountGross={Math.round(pricing.totalCharged * 100)}
+                  amountGross={Math.round(pricing.total * 100)}
                 />
               </div>
             )}
