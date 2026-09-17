@@ -1605,6 +1605,48 @@ router.post(
           .set({ status: 'cancelled' })
           .where(eq(washHistoryTable.id, washHistoryId));
 
+        // GIVE THE ONE-TIME NEW-MEMBER BONUS BACK. POST /api/checkout burns
+        // users.hasUsedNewMemberDiscount when it BUILDS the session, before the
+        // customer has paid a thing — that write stops the same bonus being
+        // spent by two sessions at once, but it also meant every abandoned,
+        // declined or expired checkout silently consumed the member's one-time
+        // 10% forever. The bonus is only actually redeemed when the payment is
+        // confirmed (the payment.completed branch above re-asserts the flag),
+        // so on a terminal failure it has to go back.
+        //
+        // Scoped to this session's own metadata: restore only when THIS session
+        // is the one that burned it. A session that merely ran at 5% as a
+        // regular member never set the flag and must not clear it. Duplicate
+        // deliveries of the same event are already dedup'd by the webhook inbox
+        // (markProcessing / checkoutMarkCompleted), so this cannot re-open a
+        // bonus that a later completed purchase legitimately spent.
+        try {
+          const { db: adminDbFailed } = await import('../lib/firebase-admin');
+          const failedSessionDoc = await adminDbFailed
+            .collection('checkout_sessions')
+            .doc(String(washHistoryId))
+            .get();
+          const failedSession = failedSessionDoc.exists ? (failedSessionDoc.data() as any) : null;
+
+          if (failedSession?.hasUsedNewMemberDiscount === true
+              && failedSession?.discountType === 'new_member_bonus'
+              && historyRow.userId) {
+            await db
+              .update(usersTable)
+              .set({ hasUsedNewMemberDiscount: false, updatedAt: new Date() })
+              .where(eq(usersTable.id, historyRow.userId));
+            logger.info('[CheckoutWebhook] New-member bonus returned after failed checkout', {
+              washHistoryId, userId: historyRow.userId, event: payload.event,
+            });
+          }
+        } catch (restoreErr: any) {
+          // Never fail the webhook over this: the payment is already terminal
+          // and Nayax must still get its 200. Ops can see the miss in the log.
+          logger.error('[CheckoutWebhook] Could not return new-member bonus', {
+            washHistoryId, event: payload.event, error: restoreErr?.message,
+          });
+        }
+
         logger.info('[CheckoutWebhook] Payment failed/cancelled — wash history cancelled', {
           washHistoryId, event: payload.event,
         });

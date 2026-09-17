@@ -130,7 +130,9 @@ class WalkPricingStrategy implements PricingStrategy {
       tax: 0, // Calculated in base engine
       totalPrice: subtotal,
       currency: 'ILS',
-      providerPayout: subtotal * 0.85, // Walker gets 85% (15% platform commission)
+      // The walker is owed the full rate; the base engine adds the Pet Wash fee
+      // on top (marketplace money model). Was 85% of the subtotal.
+      providerPayout: subtotal,
       breakdown: [
         { description: 'Base Rate', amount: baseRate * durationHours },
         { description: 'Peak Hours Surge (20%)', amount: surgePricing },
@@ -207,6 +209,16 @@ export class WalkEliteBookingEngine extends BaseLuxuryBookingEngine {
       new WalkPricingStrategy(),
       new WalkPostConfirmationStrategy()
     );
+  }
+
+  /**
+   * A walk is the walker's service, sold through Pet Wash (CEO 2026-09-17: one
+   * money model). Before this the base engine priced it as Pet Wash's own
+   * sale: 18% VAT on the WHOLE price (₪100 walk → ₪118) while the walker got
+   * 85%, plus a loyalty discount that came out of the walker's pay.
+   */
+  protected moneyModel(): 'marketplace' {
+    return 'marketplace';
   }
 
   /**

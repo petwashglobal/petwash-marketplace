@@ -16542,6 +16542,13 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
             // The customer-quoted reference is the searchable handle; fall back
             // to the uid when a report arrives without one (e.g. client-boot).
             traceId: errorReport?.referenceId || errorReport?.userId,
+            // The request's own header, not the body — a report can't claim to be someone else's browser.
+            userAgent: String(req.headers['user-agent'] || errorReport?.userAgent || '') || undefined,
+            automated: errorReport?.webdriver === true,
+            // Cloudflare's script failing to load/run in ONE visitor's browser
+            // (network, ad-blocker) is not a fault in our code — record it, don't
+            // page. Verified 2026-09-17 that the script loads on the live CSP.
+            severity: errorReport?.source === 'turnstile-client' ? 'warning' : undefined,
           }))
           .catch(() => { /* reporter must never break the log endpoint */ });
       }

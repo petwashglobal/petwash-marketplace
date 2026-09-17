@@ -30,11 +30,12 @@ function check(name: string, cond: boolean, detail: string): MoneyCheck {
 export function runDeterministicMoneyChecks(now: Date = new Date()): MoneyCheck[] {
   const checks: MoneyCheck[] = [];
 
-  // 1. Walk: single 15% disclosed-agent — owner pays the rate, walker nets 85%, VAT extracted.
-  const w = calculateWalkFees(10000); // ₪100
-  checks.push(check('walk_fee_single_15pct',
-    w.totalChargeCents === 10000 && w.walkerPayoutCents === 8500 && w.platformCommissionTotalCents === 1500,
-    `owner=${w.totalChargeCents} walker=${w.walkerPayoutCents} commission=${w.platformCommissionTotalCents} (want 10000/8500/1500)`));
+  // 1. Walk: ONE MONEY MODEL (2026-09-17) — owner pays the rate + 15% on top,
+  //    walker is owed the whole rate, VAT sits inside the fee.
+  const w = calculateWalkFees(10000); // ₪100 rate
+  checks.push(check('walk_fee_15pct_on_top',
+    w.totalChargeCents === 11500 && w.walkerPayoutCents === 10000 && w.platformCommissionTotalCents === 1500 && w.walkerFeeCents === 0,
+    `owner=${w.totalChargeCents} walker=${w.walkerPayoutCents} fee=${w.platformCommissionTotalCents} takenFromWalker=${w.walkerFeeCents} (want 11500/10000/1500/0)`));
   checks.push(check('walk_vat_extracted_not_added',
     w.totalChargeWithVATCents === w.totalChargeCents && w.vatCents <= w.platformCommissionTotalCents && w.vatCents === Math.round(1500 * (ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE))),
     `finalCharge=${w.totalChargeWithVATCents} base=${w.totalChargeCents} vat=${w.vatCents} (VAT must be inside the commission, not on top)`));

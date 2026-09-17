@@ -44,6 +44,36 @@ export interface FaultContext {
   statusCode?: number;
   /** First app frame of the React componentStack (client faults) — the alert was anonymous without it. */
   component?: string;
+  /** Browser identity of a client fault. Without it an alert could not be told apart from a test sweep. */
+  userAgent?: string;
+  /** Client reported navigator.webdriver, or the UA is a known automation/headless browser. */
+  automated?: boolean;
+  /**
+   * 'warning' for faults that happen on the visitor's side and do not mean our
+   * code is broken (a third-party script their network or ad-blocker refused).
+   * Recorded and visible, never paged. Default: critical.
+   */
+  severity?: 'critical' | 'warning';
+}
+
+/**
+ * Automation that is NOT a customer: our own Playwright/Puppeteer sweeps,
+ * headless Chrome, Lighthouse, crawlers — and Playwright's iPhone emulation.
+ *
+ * The iPhone rule is deliberately narrow. Real Safari on iOS 26+ FREEZES the
+ * OS token at "iPhone OS 18_6" while reporting "Version/26.x" (WebKit, Safari
+ * 26.0 release notes), so a big OS/Safari gap alone is a real customer. What
+ * no real iPhone can send is Safari 26+ with an OS token BELOW 18 — Safari 26
+ * only ships with iOS 26. Playwright's devices['iPhone 13'] sends exactly that
+ * ("iPhone OS 15_0 … Version/26.0"): 2026-09-13, 8 critical alerts, 0 real users.
+ */
+export function isAutomatedUserAgent(ua?: string | null): boolean {
+  if (!ua) return false;
+  if (/HeadlessChrome|Playwright|Puppeteer|Chrome-Lighthouse|\bLighthouse\b|Googlebot|bingbot|\bbot\b|crawler|spider/i.test(ua)) return true;
+  const ios = ua.match(/iPhone OS (\d+)_/);
+  const safari = ua.match(/Version\/(\d+)(?:\.\d+)* Mobile\/\S+ Safari\//);
+  if (ios && safari && Number(safari[1]) >= 26 && Number(ios[1]) < 18) return true;
+  return false;
 }
 
 // Per-signature throttle so a fault storm doesn't flood email/Slack (the GCP
@@ -79,20 +109,29 @@ export async function reportFault(err: unknown, ctx: FaultContext): Promise<void
     /* logging must never throw */
   }
 
+  // Automated traffic is recorded (never hidden) but does not page anyone:
+  // a separate dedupe key so a test sweep can't hold open — or close — the
+  // alert for the same fault in a real customer's browser.
+  const automated = ctx.automated === true || isAutomatedUserAgent(ctx.userAgent);
+  const alertKey = automated ? `${dedupeKey}:automated`.slice(0, 200) : dedupeKey;
+  const quiet = automated || ctx.severity === 'warning';
+
   // 2. Record (deduped) → Alerts Center / Octopus Control Tower.
   try {
     await createOrUpdateAlert({
-      dedupeKey,
+      dedupeKey: alertKey,
       category: 'system',
-      severity: 'critical',
+      severity: quiet ? 'warning' : 'critical',
       title: `${e.name}: ${(e.message || 'fault').slice(0, 120)}`,
-      message: `${ctx.source}${ctx.url ? ` · ${ctx.method} ${ctx.url}` : ''}${ctx.component ? `\nComponent: ${ctx.component}` : ''}\nLine of fault: ${faultLine}`,
+      message: `${automated ? '[automated browser] ' : ''}${ctx.source}${ctx.url ? ` · ${ctx.method} ${ctx.url}` : ''}${ctx.component ? `\nComponent: ${ctx.component}` : ''}\nLine of fault: ${faultLine}${ctx.userAgent ? `\nBrowser: ${ctx.userAgent.slice(0, 200)}` : ''}`,
       source: 'fault_reporter',
       metadata: {
         faultLine,
         component: ctx.component,
         traceId: ctx.traceId,
         statusCode: ctx.statusCode,
+        userAgent: ctx.userAgent?.slice(0, 300),
+        automated,
         stack: (e.stack || '').slice(0, 2000),
       },
     });
@@ -103,13 +142,13 @@ export async function reportFault(err: unknown, ctx: FaultContext): Promise<void
   // 3. Alert Nir + Ido (throttled per signature).
   try {
     const now = Date.now();
-    if (!lastAlertedAt[dedupeKey] || now - lastAlertedAt[dedupeKey] > ALERT_THROTTLE_MS) {
+    if (!quiet && (!lastAlertedAt[dedupeKey] || now - lastAlertedAt[dedupeKey] > ALERT_THROTTLE_MS)) {
       lastAlertedAt[dedupeKey] = now;
       await sendAlert({
         type: 'system_error',
         severity: 'critical',
         message: `Fault in ${ctx.source}: ${e.name}: ${(e.message || '').slice(0, 160)}`,
-        details: `${ctx.component ? `Component: ${ctx.component}\n` : ''}Line of fault: ${faultLine}\n${ctx.url ? `${ctx.method} ${ctx.url}\n` : ''}traceId: ${ctx.traceId || '-'}\n\n${(e.stack || '').slice(0, 1500)}`,
+        details: `${ctx.component ? `Component: ${ctx.component}\n` : ''}Line of fault: ${faultLine}\n${ctx.url ? `${ctx.method} ${ctx.url}\n` : ''}${ctx.userAgent ? `Browser: ${ctx.userAgent.slice(0, 200)}\n` : ''}traceId: ${ctx.traceId || '-'}\n\n${(e.stack || '').slice(0, 1500)}`,
       });
     }
   } catch (alErr) {
