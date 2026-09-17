@@ -265,8 +265,13 @@ router.post("/create", requireAuth, async (req, res) => {
       }
     }
 
+    // One money model: customer pays the provider's rate + 15% fee on top; the
+    // provider's rate stays whole (was rate ÷ 0.85 → ₪117.65 on ₪100).
     const grossCollectedILS = VATCalculatorService.grossFromProviderShare(booking.baseAmount);
-    const vatCalc = VATCalculatorService.calculateMarketplaceVAT(grossCollectedILS);
+    const vatCalc = VATCalculatorService.calculateMarketplaceVAT(
+      grossCollectedILS,
+      VATCalculatorService.feeShareOfGross(),
+    );
 
     // Fetch provider details to enrich booking
     const providerDoc = await db.collection("providers").doc(booking.providerId).get();

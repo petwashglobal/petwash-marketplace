@@ -634,13 +634,20 @@ export class PaymentGatewayService {
    */
   private static async createEscrowPayout(booking: any, paymentIntent: any): Promise<void> {
     try {
-      // Calculate platform fee and VAT-correct provider payout.
-      // Use VATCalculatorService (Mode B / Marketplace) to align with TransactionEngine.
-      // Formula: providerGross = gross * 0.85; providerNet = providerGross - VAT(providerGross)
+      // ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-17): the booking
+      // total is the provider's rate + the Pet Wash fee on top. The provider is
+      // owed everything except the fee — Pet Wash's VAT is inside the fee and
+      // is never taken from the provider. This used to escrow
+      // `total × 0.85 − VAT` — ₪72.03 of a ₪100 booking.
       const totalAmount = parseFloat(booking.total);
-      const vatBreakdown = vatCalculatorService.calculateMarketplaceVAT(totalAmount);
-      const platformFee = vatBreakdown.platformFeeGross;
-      const netAmount = vatBreakdown.providerNet;
+      const storedFee = parseFloat(booking.platformFee ?? '');
+      const platformFee = Number.isFinite(storedFee) && storedFee >= 0
+        ? storedFee
+        : vatCalculatorService.calculateMarketplaceVAT(
+            totalAmount,
+            vatCalculatorService.feeShareOfGross(),
+          ).platformFeeGross;
+      const netAmount = Math.round((totalAmount - platformFee) * 100) / 100;
 
       // Calculate escrow release date (72 hours from now)
       const escrowReleaseDate = new Date();
