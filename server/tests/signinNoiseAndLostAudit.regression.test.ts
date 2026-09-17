@@ -25,7 +25,7 @@ describe('biometric failure reports actually reach the ledger', () => {
   });
 
   it('the silent autofill probe does not report its normal cancel, but real taps do', () => {
-    expect(fn).toContain('if (opts.silent && isCanceled) return;');
+    expect(fn).toContain("if (opts.silent && (isCanceled || errorType === 'NotSupportedError')) return;");
     const conditional = src.slice(src.indexOf('export async function signInWithPasskeyConditional'));
     expect(conditional).toContain('{ silent: true }');
     // the explicit button and step-up paths keep reporting
