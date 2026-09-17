@@ -84,7 +84,11 @@ function nowIsoPair(): { quotedAt: string; expiresAt: string } {
 }
 
 function previewId(surface: PaymentSurface, seed: string): string {
-  const h = crypto.createHash('sha1').update(`${surface}:${seed}`).digest('hex').slice(0, 12);
+  // An opaque display id, not a security control — but SHA-1 over input that
+  // includes the caller's user id is flagged by CodeQL (js/weak-cryptographic-
+  // algorithm, open on main since 2026-08-28). SHA-256 costs nothing here; the
+  // id is generated fresh per preview and never compared or stored.
+  const h = crypto.createHash('sha256').update(`${surface}:${seed}`).digest('hex').slice(0, 12);
   return `PV-${surface}-${h}`;
 }
 

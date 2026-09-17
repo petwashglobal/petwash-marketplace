@@ -20,6 +20,12 @@ import { getApiUrl } from '@/lib/apiConfig';
  * @param authMethod - The authentication method used
  * @param deviceId - Optional device identifier
  */
+function toAuditMethod(name: string): 'passkey' | 'face_id' | 'touch_id' | 'windows_hello' | 'biometric' {
+  const n = String(name || '').toLowerCase().replace(/[\s-]+/g, '_');
+  if (n === 'face_id' || n === 'touch_id' || n === 'windows_hello' || n === 'biometric' || n === 'passkey') return n;
+  return 'passkey';
+}
+
 async function logBiometricFailure(
   error: any,
   authMethod: 'passkey' | 'face_id' | 'touch_id' | 'windows_hello' | 'biometric' = 'passkey',
@@ -35,7 +41,9 @@ async function logBiometricFailure(
     // cancel/abort is the normal "this device has no PetWash passkey" outcome —
     // reporting it filled the ledger request with noise on every visit
     // (observed live 2026-09-17). Real taps and real errors still report.
-    if (opts.silent && isCanceled) return;
+    // NotSupportedError on the silent probe = this browser cannot do passkeys
+    // at all (not an attack, not a failure worth a ledger row).
+    if (opts.silent && (isCanceled || errorType === 'NotSupportedError')) return;
 
     // apiRequest carries the CSRF token. The bare fetch() that used to be here
     // was rejected 403 "invalid csrf token" EVERY time, so not one biometric
@@ -46,7 +54,10 @@ async function logBiometricFailure(
         errorMessage: error.message || 'N/A',
         deviceId,
         isCanceled,
-        authMethod,
+        // The server accepts face_id | touch_id | windows_hello | biometric |
+        // passkey. Callers pass the DISPLAY name ("Face ID"), which the server
+        // rejected with 400 — a second reason no report ever landed.
+        authMethod: toAuditMethod(authMethod),
         metadata: {
           browser: getBrowserName(),
           platform: navigator.platform,

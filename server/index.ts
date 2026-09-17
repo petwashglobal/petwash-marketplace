@@ -816,6 +816,13 @@ const AUTH_CSRF_EXEMPT = new Set([
   // itself was rejected 403 EBADCSRFTOKEN — leaving us blind to the original
   // error. Telemetry-only endpoint (writes an error row; mutates nothing).
   '/api/errors/log',
+  // Passkey / Face ID failure reporter (routes/audit.ts). Same situation as
+  // /api/errors/log: it fires when a SIGNED-OUT passkey sign-in fails, and
+  // Firebase Hosting strips the pw.csrf cookie, so it was rejected 403 EVERY
+  // time — not one biometric failure was ever recorded (live 2026-09-17).
+  // Telemetry only: writes a failure event, changes no account state; the
+  // handler is rate-limited and size-capped, uid comes only from a verified token.
+  '/api/audit/record-biometric-failure',
 ]);
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({

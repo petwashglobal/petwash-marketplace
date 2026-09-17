@@ -11,6 +11,8 @@ import { requireAdmin, isSuperAdminVerified } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import rateLimit from 'express-rate-limit';
+import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 
 const router = Router();
 
@@ -263,15 +265,34 @@ router.post('/record-discount-usage', async (req: AuthenticatedRequest, res: Res
  * 
  * CRITICAL for diagnosing WebAuthn/Passkey issues and fraud detection
  */
-router.post('/record-biometric-failure', async (req: AuthenticatedRequest, res: Response) => {
+// Anonymous by nature: a passkey sign-in fails BEFORE any session exists, and
+// Firebase Hosting strips every cookie but __session, so the pw.csrf
+// double-submit can never succeed for this caller (server/index.ts exempts it
+// like /api/errors/log). Compensating controls: per-IP rate limit, bounded
+// fields, and uid taken ONLY from a verified token — never from the body.
+const biometricFailureLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many reports' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  store: redisRateLimitStore('biometric_failure_report'),
+});
+
+router.post('/record-biometric-failure', biometricFailureLimiter, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const schema = z.object({
-      errorType: z.string().min(1, { message: "Error type is required" }),
-      errorMessage: z.string().optional(),
-      deviceId: z.string().optional(),
+      errorType: z.string().min(1, { message: "Error type is required" }).max(64),
+      errorMessage: z.string().max(300).optional(),
+      deviceId: z.string().max(128).optional(),
       isCanceled: z.boolean().default(false),
       authMethod: z.enum(['passkey', 'face_id', 'touch_id', 'windows_hello', 'biometric']).default('passkey'),
-      metadata: z.any().optional(),
+      metadata: z.object({
+        browser: z.string().max(40).optional(),
+        platform: z.string().max(60).optional(),
+        timestamp: z.string().max(40).optional(),
+      }).strip().optional(),
     });
     
     const validation = schema.safeParse(req.body);
