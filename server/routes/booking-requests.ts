@@ -91,6 +91,7 @@ import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contac
 import VATCalculatorService from '../services/VATCalculatorService';
 import { providerTypeToFiscalPlatform } from '@shared/serviceDivisions';
 import { enforceSwitch } from '../lib/envSwitch';
+import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -2486,7 +2487,7 @@ router.post('/:requestId/pay', async (req, res) => {
 
     // Fetch owner email for the payment session (optional — enriches the receipt).
     const [ownerUser] = await db
-      .select({ email: users.email, firstName: users.firstName })
+      .select({ email: users.email, firstName: users.firstName, language: users.language })
       .from(users)
       .where(eq(users.id, booking.ownerId))
       .limit(1);
@@ -2502,6 +2503,7 @@ router.post('/:requestId/pay', async (req, res) => {
         description: `PetWash™ ${booking.serviceType} — ${booking.petCount ?? 1} pet(s)`,
         // SUMIT returns the customer here; the verify handler confirms the booking.
         returnUrl: `${appUrl}/api/booking-requests/${requestId}/sumit-return`,
+        language: paymentLanguageFor(req, ownerUser?.language),
       });
     } else {
       const { NayaxOnlinePaymentService } = await import('../services/NayaxOnlinePaymentService');

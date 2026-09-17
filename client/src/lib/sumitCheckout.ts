@@ -24,6 +24,11 @@
 import { apiRequest } from '@/lib/queryClient';
 import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 
+/** The language the site is showing — SUMIT's hosted card page opens in it. */
+function pageLanguage(): string {
+  try { return document.documentElement.lang || 'he'; } catch { return 'he'; }
+}
+
 /** The server-owned Phase-1 catalog SKUs `/begin` accepts (besides ACCOUNT_CREDIT). */
 export type SumitSku =
   | 'SINGLE_WASH'
@@ -59,6 +64,7 @@ export async function startSkuCheckout(input: {
 }): Promise<SumitCheckoutResult> {
   try {
     const res = await apiRequest('POST', '/api/payments/sumit/begin', {
+      language: pageLanguage(),
       sku: input.sku,
       orderId: input.orderId,
       ...(input.couponCode ? { couponCode: input.couponCode } : {}),
@@ -100,6 +106,7 @@ export async function startWalletTopUpCheckout(input: { amountIls: number }): Pr
   }
   try {
     const res = await apiRequest('POST', '/api/payments/sumit/begin', {
+      language: pageLanguage(),
       sku: 'ACCOUNT_CREDIT',
       topupIls: input.amountIls,
     });
@@ -151,6 +158,7 @@ export async function startGuestEgiftCheckout(input: {
   }
   try {
     const res = await apiRequest('POST', '/api/egift/guest/start', {
+      language: pageLanguage(),
       amountIls: input.amountIls,
       senderEmail: input.senderEmail,
       senderName: input.senderName,

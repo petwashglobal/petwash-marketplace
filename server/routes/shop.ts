@@ -451,6 +451,8 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
                           redirectUrl: `${process.env.BASE_URL || 'https://petwash.co.il'}/api/payments/sumit/return?ext=${encodeURIComponent(externalId)}`,
                           customerName: profile?.displayName ?? undefined,
                           customerEmail: profile?.email ?? undefined,
+                          // checkout already carries the site language (validated enum)
+                          language: body.language,
                   });
                   if (!redirect.wired) {
                           return res.status(503).json({ error: 'Card payments are not enabled yet', code: 'CARD_RAIL_NOT_WIRED', reason: redirect.reason });
