@@ -23,19 +23,17 @@ import { execFileSync } from 'node:child_process';
 
 const WORKFLOW = readFileSync(join(__dirname, '../../.github/workflows/petwash-ci.yml'), 'utf8');
 
-/** The guard's own logic, run as the shell actually runs it. */
+/**
+ * The guard's own logic, run through a real shell — it decides `optin`, which
+ * every database-touching step is gated on.
+ */
 function guardAccepts(subject: string): boolean {
   const script = `
     case "$1" in
-      *"[apply-pending-migrations]"*) exit 0 ;;
-      *) exit 1 ;;
+      *"[apply-pending-migrations]"*) echo true ;;
+      *) echo false ;;
     esac`;
-  try {
-    execFileSync('/bin/sh', ['-c', script, 'guard', subject], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
+  return execFileSync('/bin/sh', ['-c', script, 'guard', subject], { encoding: 'utf8' }).trim() === 'true';
 }
 
 describe('what the guard lets through', () => {
@@ -54,29 +52,37 @@ describe('what the guard lets through', () => {
 });
 
 describe('the guard is wired into the job, before anything touches the database', () => {
-  const job = WORKFLOW.slice(WORKFLOW.indexOf('Apply pending SQL migrations'));
+  const job = WORKFLOW.slice(WORKFLOW.indexOf('  apply-migrations:'), WORKFLOW.indexOf('  deploy-backend:'));
 
-  it('runs on push, reads the SUBJECT only, and exits non-zero otherwise', () => {
+  it('reads the SUBJECT line only', () => {
     expect(job).toContain('Confirm the migration opt-in is real, not prose');
     expect(job).toContain('git log -1 --pretty=%s');
-    expect(job).toContain('exit 1');
   });
 
-  it('stands BEFORE the credentials, the secret fetch and the apply step', () => {
-    const guard = job.indexOf('Confirm the migration opt-in is real, not prose');
-    const auth = job.indexOf('Authenticate to Google Cloud');
-    const secret = job.indexOf('Fetch DATABASE_URL from Secret Manager');
-    const apply = job.indexOf('npx tsx scripts/apply-pending-migrations.ts');
-    expect(guard).toBeGreaterThan(0);
-    expect(auth).toBeGreaterThan(guard);
-    expect(secret).toBeGreaterThan(guard);
-    expect(apply).toBeGreaterThan(guard);
+  it('EVERY step that reaches credentials or the database is gated on the opt-in', () => {
+    for (const step of [
+      'Setup Node', 'Install deps', 'Authenticate to Google Cloud',
+      'Set up gcloud CLI', 'Fetch DATABASE_URL from Secret Manager',
+      'Apply pending SQL migrations',
+    ]) {
+      const i = job.indexOf(`- name: ${step}`);
+      expect(i, `${step} must exist in the job`).toBeGreaterThan(0);
+      expect(job.slice(i, i + 200), `${step} must be gated on the opt-in`)
+        .toContain("if: steps.optin.outputs.optin == 'true'");
+    }
   });
 
-  it('a manual run (workflow_dispatch) is already deliberate and is not blocked', () => {
+  it('a wrong opt-in SKIPS — it must not fail, because a failed job blocks the deploy', () => {
     const start = job.indexOf('Confirm the migration opt-in is real, not prose');
-    // The step's own `if:` is the line straight after its name.
     const guardBlock = job.slice(start, job.indexOf('- name: Setup Node', start));
-    expect(guardBlock).toContain("if: github.event_name == 'push'");
+    expect(guardBlock).toContain("optin=false");
+    expect(guardBlock).not.toContain('exit 1');
+  });
+
+  it('a manual run (workflow_dispatch) is already deliberate and opts in', () => {
+    const start = job.indexOf('Confirm the migration opt-in is real, not prose');
+    const guardBlock = job.slice(start, job.indexOf('- name: Setup Node', start));
+    expect(guardBlock).toContain("workflow_dispatch");
+    expect(guardBlock).toContain('optin=true');
   });
 });

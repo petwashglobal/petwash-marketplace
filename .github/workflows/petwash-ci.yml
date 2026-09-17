@@ -487,42 +487,58 @@ jobs:
       # The marker is an OPT-IN, and an opt-in has to be deliberate. Only the
       # subject line counts: prose in the body that names the marker — including
       # prose that says the commit is NOT opting in — must never reach the
-      # database. workflow_dispatch is already a deliberate act and skips this.
+      # database. workflow_dispatch is already a deliberate act and is exempt.
+      #
+      # This SKIPS rather than fails. deploy-backend treats a FAILED
+      # apply-migrations as a blocked deploy (correct: a half-migrated prod is
+      # worse than no deploy), and "someone quoted the marker in a commit body"
+      # is not a half-migrated prod — it is simply no opt-in, which is the
+      # ordinary push case. So the job ends green and the deploy carries on.
       - name: Confirm the migration opt-in is real, not prose
-        if: github.event_name == 'push'
+        id: optin
         run: |
           set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Manual run with run_migrations=true — a deliberate act."
+            echo "optin=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           SUBJECT="$(git log -1 --pretty=%s)"
           echo "Head commit subject: $SUBJECT"
           case "$SUBJECT" in
             *"[apply-pending-migrations]"*)
-              echo "✅ Marker is in the subject line — this is a real opt-in."
+              echo "✅ Marker is in the subject line — a real opt-in."
+              echo "optin=true" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              echo "::error::The [apply-pending-migrations] marker appears only in the commit BODY, not the subject line."
-              echo "::error::Refusing to touch the production database. Put the marker in the subject, or run the workflow manually with run_migrations=true."
-              exit 1
+              echo "::warning::The [apply-pending-migrations] marker appears only in the commit BODY, not the subject line — treating this as NO opt-in and leaving the database alone."
+              echo "optin=false" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
       - name: Setup Node
+        if: steps.optin.outputs.optin == 'true'
         uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: 'npm'
 
       - name: Install deps
+        if: steps.optin.outputs.optin == 'true'
         run: npm ci
 
       - name: Authenticate to Google Cloud
+        if: steps.optin.outputs.optin == 'true'
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
 
       - name: Set up gcloud CLI
+        if: steps.optin.outputs.optin == 'true'
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Fetch DATABASE_URL from Secret Manager
+        if: steps.optin.outputs.optin == 'true'
         id: fetch-db-url
         run: |
           set -e
@@ -536,6 +552,7 @@ jobs:
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
 
       - name: Apply pending SQL migrations
+        if: steps.optin.outputs.optin == 'true'
         run: |
           set -e
           echo "Applying pending SQL migrations to production database..."
