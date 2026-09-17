@@ -823,6 +823,12 @@ const AUTH_CSRF_EXEMPT = new Set([
   // Telemetry only: writes a failure event, changes no account state; the
   // handler is rate-limited and size-capped, uid comes only from a verified token.
   '/api/audit/record-biometric-failure',
+  // Marketplace provider SEARCH (routes/marketplace.ts POST /search): a
+  // read-only query — validates filters and returns public provider cards,
+  // writes nothing. Signed-out visitors carry no Bearer and Firebase Hosting
+  // strips pw.csrf, so every anonymous search was 403 and /marketplace showed
+  // "No providers found … Failed" (live 2026-09-17).
+  '/api/marketplace/search',
 ]);
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
