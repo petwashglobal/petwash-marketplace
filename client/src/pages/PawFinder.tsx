@@ -1354,7 +1354,7 @@ function PossibleMatches({ isHe, onOpen }: { isHe: boolean; onOpen: (id: number)
               </div>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={() => onOpen(m.lost_id)} className="rounded-full px-3 py-1.5 text-[12px]" style={{ border: `1px solid ${HAIRLINE}` }}>{isHe ? 'הדיווח האבוד' : 'Lost notice'}</button>
+              <button type="button" onClick={() => onOpen(m.lost_id)} className="rounded-full px-3 py-1.5 text-[12px]" style={{ border: `1px solid ${HAIRLINE}` }}>{isHe ? 'דיווח האובדן' : 'Lost notice'}</button>
               <button type="button" onClick={() => onOpen(otherId === m.lost_id ? m.found_id : otherId)} className="rounded-full bg-black px-3 py-1.5 text-[12px] text-white">{isHe ? 'לצפייה בהתאמה' : 'View match'}</button>
             </div>
           </div>
@@ -1554,9 +1554,9 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div>
                       <h2 className="text-[30px] leading-tight" style={{ fontFamily: SERIF }}>
-                        {view === 'found' ? L('חיות שנמצאו', 'Found Pets Near You') : view === 'lost' ? L('חיות אבודות', 'Lost Pets Near You') : L('חיות אבודות בסביבתך', 'Find Lost Pets Near You')}
+                        {view === 'found' ? L('חיות שנמצאו', 'Found Pets Near You') : view === 'lost' ? L('חיות אבודות', 'Lost Pets Near You') : L('אבדו ונמצאו באזור שלכם', 'Find Lost Pets Near You')}
                       </h2>
-                      <p className="text-[13px] text-black/55">{L('אנשים אמיתיים. התראות אמיתיות. איחודים אמיתיים.', 'Real people. Real alerts. Real reunions.')}</p>
+                      <p className="text-[13px] text-black/55">{L('דיווחים של שכנים אמיתיים, בזמן אמת.', 'Real people. Real alerts. Real reunions.')}</p>
                     </div>
                     <div className="flex flex-1 flex-col gap-2 sm:flex-row md:max-w-md">
                       <label className="flex flex-1 items-center gap-2 rounded-xl bg-white px-3" style={{ border: `1px solid ${HAIRLINE}` }}>
@@ -1591,7 +1591,7 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
                       <option value="7d">{L('שבוע', 'Last 7 days')}</option>
                       <option value="30d">{L('חודש', 'Last 30 days')}</option>
                     </select><ChevronDown aria-hidden className="pointer-events-none absolute h-3.5 w-3.5 text-black/55" style={{ insetInlineEnd: 10 }} /></span>
-                    <Chip active={rewardOnly} onClick={() => setRewardOnly(!rewardOnly)} testId="chip-reward">{L('עם גמול', 'Reward')}</Chip>
+                    <Chip active={rewardOnly} onClick={() => setRewardOnly(!rewardOnly)} testId="chip-reward">{L('עם פרס למוצא', 'Reward')}</Chip>
                   </div>
 
                   {view === 'map' && (
@@ -1608,9 +1608,9 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
                   )}
 
                   <div className="mt-6 flex items-center justify-between">
-                    <h3 className="text-2xl" style={{ fontFamily: SERIF }}>{view === 'map' ? L('התראות אחרונות', 'Recent Alerts') : L(`${posts.length} התראות`, `${posts.length} alerts`)}</h3>
+                    <h3 className="text-2xl" style={{ fontFamily: SERIF }}>{view === 'map' ? L('דיווחים אחרונים', 'Recent Alerts') : L(`${posts.length} התראות`, `${posts.length} alerts`)}</h3>
                     {view === 'map' && posts.length > recent.length && (
-                      <button type="button" onClick={() => setView(typeChip === 'found' ? 'found' : 'lost')} className="text-[13px] underline">{L('לכל ההתראות', 'View All')}</button>
+                      <button type="button" onClick={() => setView(typeChip === 'found' ? 'found' : 'lost')} className="text-[13px] underline">{L('לכל הדיווחים', 'View All')}</button>
                     )}
                   </div>
 
@@ -1619,14 +1619,14 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
                   ) : recent.length === 0 ? (
                     <div className="py-6">
                       <p className="text-sm text-black/60" style={{ textAlign: 'center' }}>
-                        {L('אין כרגע התראות תואמות.', 'No matching alerts right now.')}
+                        {L('אין כרגע דיווחים שמתאימים לחיפוש.', 'No matching alerts right now.')}
                       </p>
                       {/* Nothing real to show → show what a real alert looks like,
                           labelled EXAMPLE. A fabricated missing pet is never OK. */}
                       <ExamplePreview
                         isHe={isHe}
-                        title={L('כך נראית התראה ב-PawFinder', 'This is what a PawFinder alert looks like')}
-                        subtitle={L('שלוש דוגמאות להמחשה — אין כאן חיות אמיתיות שאבדו.', 'Three examples for illustration — no real pets are missing here.')}
+                        title={L('כך ייראה הדיווח שלכם ב-PawFinder', 'This is what a PawFinder alert looks like')}
+                        subtitle={L('אלה דוגמאות בלבד — לא חיות אמיתיות.', 'Three examples for illustration — no real pets are missing here.')}
                         cards={pawFinderExamples(isHe)}
                         cta={{ href: '/paw-finder?tab=report', label: isHe ? 'דיווח על חיה ←' : 'Report a pet ←' }}
                         note={L('הדוגמאות נעלמות ברגע שמתפרסם דיווח אמיתי אחד.', 'The examples disappear the moment one real notice is published.')}

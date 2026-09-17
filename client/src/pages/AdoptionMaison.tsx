@@ -120,7 +120,7 @@ function PetCard({ l, isHe, saved, onToggleSave }: { l: BoardListing; isHe: bool
             className="sm:hidden w-full rounded-full bg-black py-3 text-sm font-medium text-white"
             data-testid={`adoption-interested-${l.id}`}
           >
-            {isHe ? 'אני מעוניין/ת' : "I'm Interested"}
+            {isHe ? 'רוצה להכיר' : "I'm Interested"}
           </button>
         </div>
       </div>
@@ -156,14 +156,14 @@ function AdopterProfileForm({ isHe }: { isHe: boolean }) {
       setDraft(null);
       qc.invalidateQueries({ queryKey: ['/api/adoption/my/profile'] });
       qc.invalidateQueries({ queryKey: ['/api/adoption/my/matches'] });
-      toast({ title: isHe ? 'הפרופיל נשמר' : 'Profile saved', description: isHe ? 'ההתאמות שלך עודכנו.' : 'Your matches are updated.' });
+      toast({ title: isHe ? 'הפרופיל נשמר' : 'Profile saved', description: isHe ? 'ההתאמות שלכם עודכנו.' : 'Your matches are updated.' });
     } catch (err) {
       toast({ variant: 'destructive', title: isHe ? 'לא נשמר' : 'Not saved', description: errorText(isHe, err) });
     }
   }
   return (
     <div className="rounded-2xl p-5" style={{ border: `1px solid ${HAIRLINE}` }} data-testid="adopter-profile-form">
-      <h3 className="text-2xl" style={{ fontFamily: SERIF }}>{isHe ? 'פרופיל מאמץ/ת' : 'Your adopter profile'}</h3>
+      <h3 className="text-2xl" style={{ fontFamily: SERIF }}>{isHe ? 'הבית שלכם' : 'Your adopter profile'}</h3>
       <p className="mt-1 text-sm text-black/60">{isHe ? 'ממלאים פעם אחת — ונראה לכם חיות שמתאימות לבית שלכם.' : 'Fill it once — we show pets that fit your home.'}</p>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <label className="block">
@@ -176,7 +176,7 @@ function AdopterProfileForm({ isHe }: { isHe: boolean }) {
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs text-black/55">{isHe ? 'מחפש/ת' : 'Looking for'}</span>
+          <span className="mb-1 block text-xs text-black/55">{isHe ? 'מה אתם מחפשים' : 'Looking for'}</span>
           <select value={p.preferredSpecies} onChange={set('preferredSpecies')} className="w-full rounded-xl bg-white px-3 py-2.5 text-base" style={{ border: `1px solid ${HAIRLINE}` }}>
             <option value="any">{isHe ? 'כל חיה' : 'Any pet'}</option>
             <option value="dog">{isHe ? 'כלב' : 'Dog'}</option>
@@ -192,7 +192,7 @@ function AdopterProfileForm({ isHe }: { isHe: boolean }) {
         {yn('hasChildren', isHe ? 'ילדים בבית' : 'Children at home')}
         {yn('hasDogs', isHe ? 'כלבים בבית' : 'Dogs at home')}
         {yn('hasCats', isHe ? 'חתולים בבית' : 'Cats at home')}
-        {yn('wantsLowShedding', isHe ? 'צריך/ה נשירה נמוכה' : 'Need low shedding')}
+        {yn('wantsLowShedding', isHe ? 'חשובה לנו נשירה נמוכה' : 'Need low shedding')}
       </div>
       <button type="button" onClick={save} className="mt-5 rounded-full bg-black px-6 py-2.5 text-sm text-white" data-testid="button-save-adopter-profile">
         {isHe ? 'שמירה' : 'Save profile'}
@@ -306,7 +306,7 @@ export default function AdoptionMaison() {
         cornerStart={isHe ? ['מחר', 'מלא', 'חמלה'] : ['A more', 'compassionate', 'tomorrow']}
         cornerEnd={isHe ? ['אנשים', 'חיות', 'קהילות', 'טובות יותר'] : ['People', 'Pets', 'Kinder', 'Communities']}
         title={L('אימוץ חיות', 'Adopt a Pet')}
-        subtitle={L('פלטפורמת אימוץ ללא עלות, לחברי PetWash.', 'A free members-only adoption platform.')}
+        subtitle={L('אימוץ חיות — חינם לחברי PetWash.', 'A free members-only adoption platform.')}
         italic={isHe ? 'לכל נשמה מגיע בית.' : 'Every soul deserves a home.'}
       />
 
@@ -395,15 +395,15 @@ export default function AdoptionMaison() {
                       <p className="text-sm text-black/60" style={{ textAlign: 'center' }}>
                         {view === 'saved' ? L('עוד לא שמרתם חיות. לחצו על הלב בכרטיס.', 'No saved pets yet. Tap the heart on a card.')
                           : view === 'matches' ? L('אין כרגע חיות שמתאימות לפרופיל שלכם.', 'No pets match your profile right now.')
-                          : L('אין כרגע חיות הממתינות לאימוץ.', 'No pets are waiting for adoption right now.')}
+                          : L('עוד אין כאן חיות שמחכות לבית.', 'No pets are waiting for adoption right now.')}
                       </p>
                       {/* Nothing real to show → show what a real listing looks like,
                           labelled EXAMPLE on every card. Never invented pets. */}
                       {view === 'browse' && (
                         <ExamplePreview
                           isHe={isHe}
-                          title={L('כך נראית מודעת אימוץ ב-PetWash', 'This is what an adoption listing looks like')}
-                          subtitle={L('שלוש דוגמאות להמחשה — אין כאן חיות אמיתיות הממתינות לאימוץ.', 'Three examples for illustration — no real pets are waiting here.')}
+                          title={L('כך תיראה המודעה שלכם ב-PetWash', 'This is what an adoption listing looks like')}
+                          subtitle={L('אלה דוגמאות בלבד — לא חיות אמיתיות שמחכות לאימוץ.', 'Three examples for illustration — no real pets are waiting here.')}
                           cards={adoptionExamples(isHe)}
                           cta={{ href: '/adoption/new', label: isHe ? 'פרסמו חיה לאימוץ ←' : 'List a pet for adoption ←' }}
                           note={L('הדוגמאות נעלמות ברגע שמתפרסמת מודעה אמיתית אחת.', 'The examples disappear the moment one real listing is published.')}
@@ -433,7 +433,7 @@ export default function AdoptionMaison() {
 
       <PillarRow pillars={[
         { icon: <ShieldCheck className="h-6 w-6" />, title: L('כל מודעה נבדקת', 'Verified Listings'), body: L('צוות PetWash עובר על כל מודעה לפני שהיא עולה לאתר.', 'All listings are reviewed to ensure genuine, responsible adoptions.') },
-        { icon: <Heart className="h-6 w-6" />, title: L('מתאים לבית שלכם', 'Smart Matching'), body: L('דירה, ילדים, חיות אחרות בבית — רואים מיד מי באמת מתאים לכם.', 'Find pets that fit your lifestyle with intelligent recommendations.') },
+        { icon: <Heart className="h-6 w-6" />, title: L('מי מתאים לכם', 'Smart Matching'), body: L('דירה, ילדים, חיות אחרות בבית — רואים מיד מי באמת מתאים לכם.', 'Find pets that fit your lifestyle with intelligent recommendations.') },
         { icon: <MessageCircle className="h-6 w-6" />, title: L('פונים בלי לחשוף', 'Secure Enquiries'), body: L('כותבים דרך PetWash. הטלפון של המפרסם נחשף רק כשהוא מאשר את הפנייה.', 'Connect safely through our members-only messaging system.') },
         { icon: <Home className="h-6 w-6" />, title: L('נפגשים ומתאהבים', 'Meet & Adopt'), body: L('קובעים היכרות, ואם יש קליק — הם עוברים הביתה.', 'Arrange meetups with shelters or approved caregivers and give a pet their forever home.') },
       ]} />
