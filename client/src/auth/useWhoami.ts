@@ -50,13 +50,27 @@ export interface WhoamiResponse {
   };
 }
 
+/**
+ * Retry a failed whoami only when the failure can heal: network errors, 5xx,
+ * cold-start 503. A 4xx is the server's ANSWER ("not signed in", "forbidden")
+ * — retrying it just repeats the question. With retry: 2 every signed-out page
+ * view asked three times, and for a signed-in browser whose cookie had lapsed
+ * each attempt also force-refreshed the Google token (queryClient's one-shot
+ * 401 retry): 13 whoami calls in a row in the CEO's browser, 2026-09-17.
+ */
+export function whoamiRetry(failureCount: number, error: unknown): boolean {
+  const status = (error as { status?: unknown } | null)?.status;
+  if (typeof status === 'number' && status >= 400 && status < 500) return false;
+  return failureCount < 2;
+}
+
 export function useWhoami() {
   const query = useQuery<WhoamiResponse>({
     queryKey: ['/api/session/whoami'],
     // BUGFIX 2026-06-18: was retry:false, so a SINGLE transient whoami failure
     // (cold start, 503, token-refresh race) made guards treat the user as logged
     // out and bounce them to /signin. Retry transient failures so blips self-heal.
-    retry: 2,
+    retry: whoamiRetry,
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
