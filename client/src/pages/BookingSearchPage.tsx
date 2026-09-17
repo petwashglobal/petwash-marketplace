@@ -1,23 +1,25 @@
 import { useTranslation } from 'react-i18next';
-import { Helmet } from 'react-helmet-async';
+import { useSEO } from '@/lib/seo';
 import BookingSearch from '@/components/booking/BookingSearch';
 
 export default function BookingSearchPage() {
   const { i18n } = useTranslation();
   const isHebrew = i18n.language === 'he';
 
+  // Title + description through the site's own head manager. This page used
+  // react-helmet-async's <Helmet>, but the app mounts no <HelmetProvider>, so
+  // every visit crashed ("Cannot read properties of undefined (reading 'add')",
+  // /marketplace/search, 2026-09-17).
+  useSEO({
+    title: isHebrew ? 'חפש שירותי חיות מחמד | ⁦PetWash™⁩' : 'Find Pet Services | ⁦PetWash™⁩',
+    description: isHebrew
+      ? 'מצא שומרי חיות מחמד, מטיילי כלבים, מטפחים ועוד באזור שלך. חיפוש לפי סוג חיה, מיקום, תאריך ומחיר.'
+      : 'Find pet sitters, dog walkers, groomers and more in your area. Search by pet type, location, date and price.',
+    locale: isHebrew ? 'he_IL' : 'en_US',
+  });
+
   return (
     <>
-      <Helmet>
-        <title>{isHebrew ? 'חפש שירותי חיות מחמד | ⁦PetWash™⁩' : 'Find Pet Services | ⁦PetWash™⁩'}</title>
-        <meta 
-          name="description" 
-          content={isHebrew 
-            ? 'מצא שומרי חיות מחמד, מטיילי כלבים, מטפחים ועוד באזור שלך. חיפוש לפי סוג חיה, מיקום, תאריך ומחיר.'
-            : 'Find pet sitters, dog walkers, groomers and more in your area. Search by pet type, location, date and price.'
-          } 
-        />
-      </Helmet>
       <div className="min-h-screen bg-white dark:bg-zinc-950 pt-20 pb-12">
         <BookingSearch />
       </div>
