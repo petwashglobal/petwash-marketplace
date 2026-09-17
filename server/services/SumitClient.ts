@@ -27,6 +27,9 @@
  */
 
 import crypto from 'crypto';
+
+/** Stamped into the hosted page's document description: `PW-REF <externalId>`. */
+export const SUMIT_ORDER_REF_PREFIX = 'PW-REF ';
 import { logger } from '../lib/logger';
 import { parseSumitPaymentId } from '../lib/sumitPaymentId';
 export { parseSumitPaymentId };
@@ -1242,6 +1245,8 @@ export class SumitClient {
    * FIELDS UNVERIFIED — confirm exact request keys in SANDBOX (SUMIT_SANDBOX=true)
    * before production (docs/finance/sumit-upay-wiring-readiness-2026-06-11.md §6).
    */
+  /** Marker we stamp on the hosted page's document so a payment can be traced to its order. */
+  // (exported below as SUMIT_ORDER_REF_PREFIX)
   async beginRedirect(input: {
     externalId: string;        // our order/idempotency id
     amountIls: number;         // VAT-inclusive gross
@@ -1272,6 +1277,13 @@ export class SumitClient {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
       RedirectURL: input.redirectUrl,
       ExternalIdentifier: input.externalId,
+      // THE ONLY THREAD BACK TO THE ORDER (2026-09-18). SUMIT's Payment object
+      // carries no external identifier — verified live on the first real
+      // charge — but every hosted-page payment creates a document, the payment
+      // record links to it (CRM folder תשלומים דיגיטליים → property מסמך), and
+      // documents/list returns Description. Stamping the order ref here is what
+      // lets a paid-but-never-returned checkout be found later.
+      DocumentDescription: `${SUMIT_ORDER_REF_PREFIX}${input.externalId}`,
       ...(input.expirationHours ? { ExpirationHours: input.expirationHours } : {}),
       Customer: {
         Name: input.customerName || 'PetWash Customer',
@@ -1406,6 +1418,59 @@ export class SumitClient {
       };
     } catch (err: any) {
       return { ok: false, payments: [], hasNextPage: false, reason: `network: ${err?.message}` };
+    }
+  }
+
+  /**
+   * POST /accounting/documents/list/ — READ. Documents in a date window with
+   * the fields needed to trace a payment back to its order (Description holds
+   * `PW-REF <externalId>` for anything paid through our hosted page).
+   * ISO dates only — see findDocumentByExternalReference for why.
+   */
+  async listDocumentsInWindow(input: { from: Date; to: Date; includeDrafts?: boolean; pageSize?: number }): Promise<{
+    ok: boolean;
+    documents: Array<{ id: string; description: string | null; valueIls: number; date: string | null; customerId: string | null; isDraft: boolean }>;
+    reason?: string;
+  }> {
+    const env = readEnv();
+    if (!isWired()) return { ok: false, documents: [], reason: 'SUMIT not enabled' };
+    const iso = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const pageSize = input.pageSize ?? 200;
+    const out: Array<{ id: string; description: string | null; valueIls: number; date: string | null; customerId: string | null; isDraft: boolean }> = [];
+    try {
+      for (let page = 0; page < 10; page++) {
+        const res = await fetch(`${env.baseUrl}/accounting/documents/list/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            Credentials: { CompanyID: Number(env.companyId), APIKey: env.apiKey },
+            DateFrom: iso(input.from),
+            DateTo: iso(input.to),
+            IncludeDrafts: input.includeDrafts ?? true,
+            Paging: { StartIndex: page * pageSize, PageSize: pageSize },
+          }),
+        });
+        let body: any = null;
+        try { body = await res.json(); } catch { /* non-JSON */ }
+        if (!res.ok || (body?.Status !== 0 && body?.Status !== 'Success')) {
+          return { ok: false, documents: [], reason: `status ${res.status}/${JSON.stringify(body?.Status)}` };
+        }
+        const rows: any[] = body?.Data?.Documents ?? [];
+        for (const r of rows) {
+          out.push({
+            id: String(r?.DocumentID ?? r?.ID ?? ''),
+            description: r?.Description ?? null,
+            valueIls: Number(r?.DocumentValue ?? 0),
+            date: r?.Date ?? null,
+            customerId: r?.CustomerID != null ? String(r.CustomerID) : null,
+            isDraft: r?.IsDraft === true,
+          });
+        }
+        if (body?.Data?.HasNextPage !== true || rows.length === 0) break;
+      }
+      return { ok: true, documents: out };
+    } catch (err: any) {
+      return { ok: false, documents: [], reason: `network: ${err?.message}` };
     }
   }
 
