@@ -13,6 +13,7 @@ permissions:
 #          /website/companies/getdetails/  — company settings (clearing-related fields only)
 #          /billing/payments/list/         — every card payment in the window (counts, dates,
 #                                            amounts, valid flag, status text)
+#          /billing/payments/get/          — field NAMES of valid payments (does SUMIT echo our reference?)
 #          /accounting/documents/list/     — tax documents: per-type totals, drafts, credits,
 #                                            possible double documents (same ExternalReference)
 #   DOES NOT: open a terminal (openupayterminal), set Upay credentials, charge, refund,
@@ -84,6 +85,17 @@ jobs:
           echo "-- each payment (no card/customer data) --"
           jq -r '[.Date, .Amount, .Currency, .ValidPayment, .Status, .StatusDescription] | map(tostring) | join(" | ")' all.json
 
+          echo "== 2b. /billing/payments/get/ for each VALID payment — which fields come back (names only) =="
+          # Question: does SUMIT echo our ExternalIdentifier on a payment? (swagger says no field)
+          for PID in $(jq -r 'select(.ValidPayment == true) | .ID' all.json | head -5); do
+            RG="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                  -d "$(jq -n --argjson c "$CREDS" --argjson id "$PID" '{Credentials:$c, PaymentID:$id}')" \
+                  https://api.sumit.co.il/billing/payments/get/)"
+            echo "-- payment $PID: status $(echo "$RG" | jq -c '.Status')"
+            echo "$RG" | jq -r '[.Data // {} | paths(scalars) | map(tostring) | join(".")] | .[]' | grep -v -i -E 'card|number|citizen|token|expir|cvv' | sort
+            echo "   external-looking values: $(echo "$RG" | jq -c '[.. | strings | select(test("sumit_verify|^eg_|^pw|ext|booking";"i"))]')"
+          done
+
           echo "== 3. /accounting/documents/list/ (last ${DAYS:-90} days, drafts included) =="
           # List only — never getpdf/getdetails (never consume an original). No download URLs,
           # no customer names printed.
@@ -113,5 +125,7 @@ jobs:
           jq -r 'def credit: (.Type as $t | ((($t|tostring)|test("Credit")) or ([5,6,7,14,19,20,21] | any(. == $t)))); select(credit) | [.Date[0:10], .Type, .DocumentNumber, .DocumentValue, .ExternalReference, .Description] | map(tostring) | join(" | ")' docs.json
           echo "-- every draft --"
           jq -r 'select(.IsDraft == true) | [.Date[0:10], .Type, .DocumentID, .DocumentValue, .ExternalReference] | map(tostring) | join(" | ")' docs.json
+          echo "-- last 2 days: date / type / number / value / ExternalReference / draft --"
+          jq -r 'select((.Date // "") >= "'"$(date -u -d '-2 days' +%Y-%m-%d)"'") | [.Date[0:16], .Type, .DocumentNumber, .DocumentValue, .ExternalReference, .IsDraft] | map(tostring) | join(" | ")' docs.json
           echo "-- documents with no ExternalReference (issued outside the product/bridge) --"
           jq -s '[.[] | select((.ExternalReference // "") == "")] | {count: length, by_type: (group_by(.Type) | map({type: .[0].Type, n: length}))}' docs.json
