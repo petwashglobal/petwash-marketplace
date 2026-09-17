@@ -27,6 +27,7 @@ import {
   EditorialHeader, PillarRow, StepsBand, ClosingBand, SideNav, Chip, placeLine, GOLD, GOLD_INK, HAIRLINE, PAPER, SERIF, INK,
 } from '@/components/pet-community/Editorial';
 import { adoptionApi, ageLabel, petLabel, errorText, type AdoptionListing } from '@/pages/adoption/adoptionUi';
+import { ExamplePreview, adoptionExamples } from '@/components/pet-community/ExamplePreview';
 
 type View = 'browse' | 'matches' | 'saved' | 'messages' | 'profile';
 type ChipKey = 'all' | 'dog' | 'cat' | 'apartment' | 'kids' | 'dogs' | 'cats' | 'low_shedding' | 'special';
@@ -389,13 +390,25 @@ export default function AdoptionMaison() {
                   ) : isError && view === 'browse' ? (
                     <div className="py-20 text-sm text-black/55" style={{ textAlign: 'center' }}>{L('לא הצלחנו לטעון כרגע. נסו שוב.', 'Could not load right now. Please try again.')}</div>
                   ) : shown.length === 0 ? (
-                    <div className="py-16" style={{ textAlign: 'center' }}>
+                    <div className="py-6">
                       <div className="mb-2 flex justify-center"><PetWashIcon name="brand_paw" size={30} label="" /></div>
-                      <p className="text-sm text-black/60">
+                      <p className="text-sm text-black/60" style={{ textAlign: 'center' }}>
                         {view === 'saved' ? L('עוד לא שמרתם חיות. לחצו על הלב בכרטיס.', 'No saved pets yet. Tap the heart on a card.')
                           : view === 'matches' ? L('אין כרגע חיות שמתאימות לפרופיל שלכם.', 'No pets match your profile right now.')
-                          : L('אין כרגע חיות הממתינות לאימוץ. בקרו שוב בקרוב.', 'No pets awaiting adoption right now. Check back soon.')}
+                          : L('אין כרגע חיות הממתינות לאימוץ.', 'No pets are waiting for adoption right now.')}
                       </p>
+                      {/* Nothing real to show → show what a real listing looks like,
+                          labelled EXAMPLE on every card. Never invented pets. */}
+                      {view === 'browse' && (
+                        <ExamplePreview
+                          isHe={isHe}
+                          title={L('כך נראית מודעת אימוץ ב-PetWash', 'This is what an adoption listing looks like')}
+                          subtitle={L('שלוש דוגמאות להמחשה — אין כאן חיות אמיתיות הממתינות לאימוץ.', 'Three examples for illustration — no real pets are waiting here.')}
+                          cards={adoptionExamples(isHe)}
+                          cta={{ href: '/adoption/new', label: isHe ? 'פרסמו חיה לאימוץ ←' : 'List a pet for adoption ←' }}
+                          note={L('הדוגמאות נעלמות ברגע שמתפרסמת מודעה אמיתית אחת.', 'The examples disappear the moment one real listing is published.')}
+                        />
+                      )}
                     </div>
                   ) : (
                     <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

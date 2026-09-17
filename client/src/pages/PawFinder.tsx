@@ -24,6 +24,7 @@ import {
 import {
   EditorialHeader, PillarRow, StepsBand, ClosingBand, SideNav, Chip, placeLine, GOLD, GOLD_INK, HAIRLINE, PAPER, SERIF, INK,
 } from '@/components/pet-community/Editorial';
+import { ExamplePreview, pawFinderExamples } from '@/components/pet-community/ExamplePreview';
 import { apiRequest, getFirebaseBearerToken } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
 import { PetWashIcon } from '@/components/PetWashIcon';
@@ -1616,8 +1617,20 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
                   {isLoading ? (
                     <div className="py-16 text-sm text-black/45" style={{ textAlign: 'center' }}><Loader2 className="inline h-4 w-4 animate-spin" /> {L('טוען…', 'Loading…')}</div>
                   ) : recent.length === 0 ? (
-                    <div className="py-14 text-sm text-black/60" style={{ textAlign: 'center' }}>
-                      {L('אין כרגע התראות תואמות. איבדתם או מצאתם חיה? דווחו — ללא עלות.', 'No matching alerts right now. Lost or found a pet? Report it — free.')}
+                    <div className="py-6">
+                      <p className="text-sm text-black/60" style={{ textAlign: 'center' }}>
+                        {L('אין כרגע התראות תואמות.', 'No matching alerts right now.')}
+                      </p>
+                      {/* Nothing real to show → show what a real alert looks like,
+                          labelled EXAMPLE. A fabricated missing pet is never OK. */}
+                      <ExamplePreview
+                        isHe={isHe}
+                        title={L('כך נראית התראה ב-PawFinder', 'This is what a PawFinder alert looks like')}
+                        subtitle={L('שלוש דוגמאות להמחשה — אין כאן חיות אמיתיות שאבדו.', 'Three examples for illustration — no real pets are missing here.')}
+                        cards={pawFinderExamples(isHe)}
+                        cta={{ href: '/paw-finder?tab=report', label: isHe ? 'דיווח על חיה ←' : 'Report a pet ←' }}
+                        note={L('הדוגמאות נעלמות ברגע שמתפרסם דיווח אמיתי אחד.', 'The examples disappear the moment one real notice is published.')}
+                      />
                     </div>
                   ) : (
                     <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
