@@ -345,6 +345,9 @@ router.post('/', async (req, res) => {
     let subtotalCents: number;
     let serviceFeeCents: number;
     let totalCents: number;
+    // The SERVER's own quote — the only source for what the customer owes and
+    // for how much credit is actually spent (2026-09-18).
+    let serverQuote: Awaited<ReturnType<typeof calculateQuote>> | null = null;
     let totalDays: number;
     let dailyRateCents = 0;
     let hourlyRateCents = 0;
@@ -381,6 +384,12 @@ router.post('/', async (req, res) => {
       // from the authoritative server total by more than a rounding agora we refuse
       // and surface the real price (blocks forgery AND honest stale quotes, and
       // never silently charges a surprise price — Consumer Protection §17a).
+      // The customer's payment instruments MUST be part of the server's own
+      // price (2026-09-18). They were missing here, so the recompute returned
+      // the undiscounted total while the code below still debited loyalty and
+      // held wallet credit from the CLIENT's quote: the customer paid the full
+      // price AND lost the credit. It also 409'd every honest booking that used
+      // credits, because the client total (discounted) never matched.
       const freshQuote = await calculateQuote({
         providerId: data.providerId,
         serviceType: data.serviceType,
@@ -388,6 +397,9 @@ router.post('/', async (req, res) => {
         pets: data.petDetails ?? [],
         addons: data.selectedAddons ?? [],
         promoCode: data.promoCode ?? null,
+        applyLoyaltyCredits: data.applyLoyaltyCredits ?? false,
+        useWalletCredit: data.useWalletCredit ?? false,
+        giftCardCode: data.giftCardCode ?? null,
         userId,
       });
       if (!freshQuote.success || typeof freshQuote.totals?.totalCents !== 'number') {
@@ -417,6 +429,7 @@ router.post('/', async (req, res) => {
       subtotalCents = freshQuote.totals.subtotalCents;
       serviceFeeCents = freshQuote.totals.serviceFeeCents ?? 0;
       totalCents = freshQuote.totals.totalCents;
+      serverQuote = freshQuote;
     } else {
       // Legacy fallback (2026-07-30 rewrite): the profile is resolved by the
       // TARGET provider's uid, never by a client-supplied profile id alone.
@@ -681,19 +694,21 @@ router.post('/', async (req, res) => {
           // TOP; the provider is owed their full price. Written at creation so the
           // provider dashboard and payout balance are never ₪0.
           providerPayoutCents: subtotalCents,
-          // Quote engine columns (stored when finalQuote is provided)
-          ...(fq && fq.success ? {
-            quoteSubtotalCents: fq.totals.subtotalCents,
-            quoteDiscountCents: fq.totals.discountCents,
-            quoteCreditCents: fq.totals.walletCreditAppliedCents,
-            quoteGiftCardCents: fq.totals.giftCardAppliedCents,
-            quoteTaxCents: fq.totals.taxCents,
-            quoteTotalCents: fq.totals.totalCents,
-            quoteCurrency: fq.currency || 'ILS',
-            quoteBreakdown: fq,
-            pricingVersion: fq.pricingVersion || 'v1.0.0',
+          // Quote engine columns — the SERVER's quote, not the client's copy
+          // (2026-09-18): these columns are read back by the ledger and the
+          // receipts, so a client number here becomes the record of the sale.
+          ...(serverQuote && serverQuote.success ? {
+            quoteSubtotalCents: serverQuote.totals.subtotalCents,
+            quoteDiscountCents: serverQuote.totals.discountCents,
+            quoteCreditCents: serverQuote.totals.walletCreditAppliedCents,
+            quoteGiftCardCents: serverQuote.totals.giftCardAppliedCents,
+            quoteTaxCents: serverQuote.totals.taxCents,
+            quoteTotalCents: serverQuote.totals.totalCents,
+            quoteCurrency: serverQuote.currency || 'ILS',
+            quoteBreakdown: serverQuote,
+            pricingVersion: serverQuote.pricingVersion || 'v1.0.0',
             promoCode: data.promoCode || null,
-            loyaltyRedeemedCents: fq.totals.loyaltyRedeemedCents ?? 0,
+            loyaltyRedeemedCents: serverQuote.totals.loyaltyRedeemedCents ?? 0,
           } : {}),
           currency: 'ILS',
           status: 'pending',
@@ -1080,15 +1095,19 @@ router.post('/', async (req, res) => {
     // ── Loyalty credit redemption — synchronous debit after booking row exists ──
     // Amount was already reflected in the quote's totalCents.
     // Idempotency fingerprint prevents double-spend on retries.
+    // Credit the server priced but could NOT actually take: the customer owes
+    // it in cash, otherwise the booking silently collects less than its price.
+    let uncoveredCreditCents = 0;
     let loyaltyApplied = 0;
-    const quotedLoyalty = (fq && fq.success) ? (fq.totals.loyaltyRedeemedCents ?? 0) : 0;
+    // From the SERVER's quote (the client's numbers are display only).
+    const quotedLoyalty = serverQuote?.success ? (serverQuote.totals.loyaltyRedeemedCents ?? 0) : 0;
     if (data.applyLoyaltyCredits && quotedLoyalty > 0 && userId) {
       try {
         const redeemResult = await redeemLoyaltyCredit({
           userId:          userId,
           amountCents:     quotedLoyalty,
           bookingId:       booking.id,
-          orderTotalCents: fq!.totals.subtotalCents,
+          orderTotalCents: subtotalCents,
           fingerprint:     `loyalty_redeem:${booking.requestId}`,
         });
         loyaltyApplied = redeemResult.applied;
@@ -1096,6 +1115,7 @@ router.post('/', async (req, res) => {
         // If the applied amount differs from what was quoted (race condition),
         // update the booking row to reflect the actual debit.
         if (loyaltyApplied !== quotedLoyalty) {
+          uncoveredCreditCents += Math.max(0, quotedLoyalty - loyaltyApplied);
           await db.update(bookingRequests)
             .set({ loyaltyRedeemedCents: loyaltyApplied })
             .where(eq(bookingRequests.id, booking.id));
@@ -1115,8 +1135,15 @@ router.post('/', async (req, res) => {
     // Amount comes from the quote engine's walletCreditAppliedCents.
     // Server re-validates the cap (50% of subtotal) before holding.
     // On ACCEPT: debitFromHold. On DECLINE/CANCEL: releaseHold.
-    const quotedWalletCredit = (fq && fq.success) ? (fq.totals.walletCreditAppliedCents ?? 0) : 0;
+    // Wallet credit AND the eGift balance: both were subtracted from the
+    // server total, so both must be frozen. The eGift part was discounted and
+    // never held — the balance stayed spendable and Pet Wash collected less
+    // (holdWallet drains promo → egift → referral → cash).
+    const quotedWalletCredit = serverQuote?.success
+      ? (serverQuote.totals.walletCreditAppliedCents ?? 0) + (serverQuote.totals.giftCardAppliedCents ?? 0)
+      : 0;
     let walletHoldApplied = 0;
+    let walletHeldConfirmed = 0;
     if (quotedWalletCredit > 0 && userId) {
       try {
         const divisionCode = getDivisionCode(data.serviceType);
@@ -1146,16 +1173,34 @@ router.post('/', async (req, res) => {
             })
             .where(eq(bookingRequests.id, booking.id));
 
+          walletHeldConfirmed = walletHoldApplied;
           logger.info('[BookingRequests] Wallet hold created', {
             bookingId: booking.requestId, walletHoldApplied, txnId: holdResult.txnId,
           });
         }
       } catch (holdErr: any) {
-        // Non-fatal: booking still created. Log for alerting. Wallet credit simply not applied.
+        // Booking still stands, but nothing was frozen.
+        walletHeldConfirmed = 0;
         logger.error('[BookingRequests] Wallet hold failed', {
           bookingId: booking.requestId, error: holdErr.message,
         });
       }
+      // Counted once, whether the hold succeeded, was capped, or threw: credit
+      // that was priced but not frozen was never really applied.
+      uncoveredCreditCents += Math.max(0, quotedWalletCredit - walletHeldConfirmed);
+    }
+
+    // The price the customer is actually asked to pay (/pay charges
+    // booking.totalCents). Any credit the server priced but could not take is
+    // added back here, so the booking never collects less than its own price.
+    if (uncoveredCreditCents > 0) {
+      totalCents += uncoveredCreditCents;
+      await db.update(bookingRequests)
+        .set({ totalCents, updatedAt: new Date() })
+        .where(eq(bookingRequests.id, booking.id));
+      logger.warn('[BookingRequests] Credit could not be taken — amount due raised', {
+        bookingId: booking.requestId, uncoveredCreditCents, totalCents,
+      });
     }
     
     res.status(201).json({
