@@ -174,14 +174,14 @@ export default function AdminProviderControl() {
 
   const mutation = useMutation({
     mutationFn: async (action: PendingAction) => {
-      if (!action.row.applicationId) {
-        throw new Error('לנותן שירות זה אין בקשה מקושרת — לא ניתן לשנות רמת אישור.');
-      }
-      const res = await apiRequest(
-        'POST',
-        `/api/provider-applications/admin/${action.row.applicationId}/service/${encodeURIComponent(action.row.serviceType)}/approve`,
-        { level: action.level, reason },
-      );
+      // Keyed by the provider's uid: the current onboarding wizard leaves no
+      // provider_applicants row, so applicationId is null for every provider it
+      // approved and the ladder could never move (2026-09-17). Legacy rows that
+      // do carry an applicationId keep the original endpoint.
+      const path = action.row.applicationId
+        ? `/api/provider-applications/admin/${action.row.applicationId}/service/${encodeURIComponent(action.row.serviceType)}/approve`
+        : `/api/provider-applications/admin/provider/${encodeURIComponent(action.row.providerId)}/service/${encodeURIComponent(action.row.serviceType)}/approve`;
+      const res = await apiRequest('POST', path, { level: action.level, reason });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body?.message || body?.error || 'הפעולה נכשלה');
@@ -425,7 +425,8 @@ function RowActions({
   onAct: (row: ProviderServiceRow, level: ServiceLevel, direction: 'up' | 'down') => void;
   disabled: boolean;
 }) {
-  const noApp = !row.applicationId;
+  // Every row has a provider uid, so every row can move up or down the ladder.
+  const noApp = !row.providerId;
   return (
     <div className="flex flex-wrap gap-1.5">
       {!row.profileVisible && (

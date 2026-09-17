@@ -379,6 +379,46 @@ async function loadAgreements() {
   };
 }
 
+// ─── SUMIT probe cache — every SUMIT API call is billed past the quota ─────
+// 2026-09-17: SUMIT emailed on 09-04 "quota fully used — every further call is
+// charged" and on 09-09 "80% used". The Brain dashboard polls this summary
+// every 60 s (BrainDashboard.tsx refetchInterval), and each poll ran a live
+// getvatrate call: up to 1,440 billed calls a day per open admin tab, to learn
+// something that changes a few times a year. The answer is now reused for
+// 6 hours; a failed probe is retried after 10 minutes so an outage still shows
+// up quickly. The manual "test connection" button (admin-sumit.ts) stays live.
+export const SUMIT_PROBE_TTL_MS = 6 * 60 * 60 * 1000;
+export const SUMIT_PROBE_FAILED_TTL_MS = 10 * 60 * 1000;
+type SumitProbe = { ran: boolean; ok?: boolean; reachable?: boolean; authRejected?: boolean; reason?: string; checkedAt?: string };
+let sumitProbeCache: { value: SumitProbe; expiresAt: number } | null = null;
+let sumitProbeInFlight: Promise<SumitProbe> | null = null;
+
+export async function cachedSumitProbe(now: () => number = Date.now): Promise<SumitProbe> {
+  if (sumitProbeCache && sumitProbeCache.expiresAt > now()) return sumitProbeCache.value;
+  // Many tabs polling at once share ONE call.
+  if (sumitProbeInFlight) return sumitProbeInFlight;
+  sumitProbeInFlight = (async () => {
+    const probe = await safeQuery(() => sumitClient.connectionTest(), 'sumitConnectionTest');
+    const value: SumitProbe = probe.ok
+      ? { ran: true, ok: probe.value.ok, reachable: probe.value.reachable, authRejected: probe.value.authRejected, reason: probe.value.reason }
+      : { ran: true, ok: false, reason: probe.error };
+    value.checkedAt = new Date(now()).toISOString();
+    sumitProbeCache = { value, expiresAt: now() + (value.ok ? SUMIT_PROBE_TTL_MS : SUMIT_PROBE_FAILED_TTL_MS) };
+    return value;
+  })();
+  try {
+    return await sumitProbeInFlight;
+  } finally {
+    sumitProbeInFlight = null;
+  }
+}
+
+/** Test hook. */
+export function _resetSumitProbeCache(): void {
+  sumitProbeCache = null;
+  sumitProbeInFlight = null;
+}
+
 // ─── Payments panel — SUMIT + UPay clearing + Nayax online (the money arm) ────
 // Octopus "arm" for the charging + fiscal-invoice rail. Reports whether money
 // can actually move, WITHOUT ever returning a secret value (presence booleans
@@ -411,10 +451,7 @@ async function loadPayments() {
   let liveProbe: { ran: boolean; ok?: boolean; reachable?: boolean; authRejected?: boolean; reason?: string } =
     { ran: false, reason: 'SUMIT creds not configured — probe skipped' };
   if (companyIdConfigured && apiKeyConfigured) {
-    const probe = await safeQuery(() => sumitClient.connectionTest(), 'sumitConnectionTest');
-    liveProbe = probe.ok
-      ? { ran: true, ok: probe.value.ok, reachable: probe.value.reachable, authRejected: probe.value.authRejected, reason: probe.value.reason }
-      : { ran: true, ok: false, reason: probe.error };
+    liveProbe = await cachedSumitProbe();
   }
 
   const ready = wired && liveProbe.ok === true && nayaxLive;
@@ -436,7 +473,7 @@ async function loadPayments() {
     itaConnection: 'SUMIT ↔ רשות המסים active (verified 2026-07-03)',
     liveProbe,
     blockers,
-    note: 'Secrets never returned — presence booleans only. Probe (getvatrate) moves no money and issues no document.',
+    note: 'Secrets never returned — presence booleans only. Probe (getvatrate) moves no money and issues no document; its result is reused for up to 6 h because every SUMIT API call counts against the paid quota (see liveProbe.checkedAt).',
   };
 }
 

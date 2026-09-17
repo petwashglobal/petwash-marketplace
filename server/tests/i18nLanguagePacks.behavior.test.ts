@@ -76,9 +76,9 @@ describe('runtime', () => {
     const off = built.subscribeLanguagePacks(() => { notified += 1; });
 
     expect(built.t('nav.home', 'ru')).toBe(original['nav.home'].en); // fallback, triggers the load
-    // Wait for the pack itself, not a fixed delay — the import of a 100KB+
-    // module took over 200ms on a loaded CI runner (#2536 went red on it).
-    await vi.waitFor(() => expect(notified).toBe(1), { timeout: 15_000, interval: 25 });
+    // Wait for the pack itself, not a fixed 200ms — on a loaded CI runner the
+    // dynamic import took longer and the pin went red on unrelated PRs (2026-09-17).
+    await vi.waitFor(() => expect(built.getLanguagePackVersion()).toBe(before + 1), { timeout: 5000, interval: 25 });
     expect(built.t('nav.home', 'ru')).toBe(original['nav.home'].ru);
     expect(built.getLanguagePackVersion()).toBe(before + 1);
     expect(notified).toBe(1);
