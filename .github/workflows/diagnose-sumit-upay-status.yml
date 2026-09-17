@@ -3,18 +3,20 @@ on:
   workflow_dispatch:
     inputs:
       days:
-        description: "How many days of payments to list"
+        description: "How many days of payments and documents to list"
         required: false
         default: "90"
 permissions:
   contents: read
 # WHAT THIS DOES / DOES NOT DO
-#   DOES:  two READ calls to api.sumit.co.il (per api.sumit.co.il/swagger):
+#   DOES:  three READ calls to api.sumit.co.il (per api.sumit.co.il/swagger):
 #          /website/companies/getdetails/  — company settings (clearing-related fields only)
 #          /billing/payments/list/         — every card payment in the window (counts, dates,
 #                                            amounts, valid flag, status text)
+#          /accounting/documents/list/     — tax documents: per-type totals, drafts, credits,
+#                                            possible double documents (same ExternalReference)
 #   DOES NOT: open a terminal (openupayterminal), set Upay credentials, charge, refund,
-#          or fetch any document. No card numbers, bank details, IDs or keys are printed.
+#          or open/download any document (list only). No card numbers, bank details, IDs or keys are printed.
 jobs:
   diag:
     runs-on: ubuntu-latest
@@ -81,3 +83,35 @@ jobs:
                   sum_valid: (map(select(.ValidPayment == true) | (.Amount // 0)) | add // 0)}' all.json
           echo "-- each payment (no card/customer data) --"
           jq -r '[.Date, .Amount, .Currency, .ValidPayment, .Status, .StatusDescription] | map(tostring) | join(" | ")' all.json
+
+          echo "== 3. /accounting/documents/list/ (last ${DAYS:-90} days, drafts included) =="
+          # List only — never getpdf/getdetails (never consume an original). No download URLs,
+          # no customer names printed.
+          DFROM="${FROM%%T*}"; DTO="${TO%%T*}"
+          : > docs.json
+          for PAGE in $(seq 0 19); do
+            R3="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                  -d "$(jq -n --argjson c "$CREDS" --arg f "$DFROM" --arg t "$DTO" --argjson i $((PAGE * 500)) \
+                        '{Credentials:$c, DateFrom:$f, DateTo:$t, IncludeDrafts:true, Paging:{StartIndex:$i, PageSize:500}}')" \
+                  https://api.sumit.co.il/accounting/documents/list/)"
+            [ "$PAGE" = 0 ] && echo "$R3" | jq '{Status, UserErrorMessage}'
+            echo "$R3" | jq -c '.Data.Documents // [] | .[]' >> docs.json
+            [ "$(echo "$R3" | jq -r '.Data.HasNextPage // false')" = "true" ] || break
+          done
+          echo "-- per type: count / drafts / open / sum(DocumentValue) --"
+          jq -s 'group_by(.Type) | map({type: .[0].Type, count: length,
+                   drafts: map(select(.IsDraft == true)) | length,
+                   not_closed: map(select(.IsClosed == false)) | length,
+                   sum: (map(.DocumentValue // 0) | add)})' docs.json
+          echo "-- per day (count) --"
+          jq -s -r 'group_by(.Date[0:10]) | .[] | "\(.[0].Date[0:10])  \(length)"' docs.json
+          echo "-- same ExternalReference on more than one non-credit document (possible double document) --"
+          jq -s -r 'def credit: (.Type as $t | ((($t|tostring)|test("Credit")) or ([5,6,7,14,19,20,21] | any(. == $t)))); [.[] | select((.ExternalReference // "") != "" and (credit|not))]
+                    | group_by(.ExternalReference) | map(select(length > 1))
+                    | .[] | "\(.[0].ExternalReference): " + (map("\(.Type)#\(.DocumentNumber) \(.Date[0:10]) ₪\(.DocumentValue)") | join(", "))' docs.json
+          echo "-- every credit / cancellation document --"
+          jq -r 'def credit: (.Type as $t | ((($t|tostring)|test("Credit")) or ([5,6,7,14,19,20,21] | any(. == $t)))); select(credit) | [.Date[0:10], .Type, .DocumentNumber, .DocumentValue, .ExternalReference, .Description] | map(tostring) | join(" | ")' docs.json
+          echo "-- every draft --"
+          jq -r 'select(.IsDraft == true) | [.Date[0:10], .Type, .DocumentID, .DocumentValue, .ExternalReference] | map(tostring) | join(" | ")' docs.json
+          echo "-- documents with no ExternalReference (issued outside the product/bridge) --"
+          jq -s '[.[] | select((.ExternalReference // "") == "")] | {count: length, by_type: (group_by(.Type) | map({type: .[0].Type, n: length}))}' docs.json
