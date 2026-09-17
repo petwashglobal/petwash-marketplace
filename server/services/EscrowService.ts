@@ -437,7 +437,7 @@ class EscrowService {
         metadata: { bookingId: escrow.bookingId, customerId: escrow.customerId, refundedBy },
       });
     } catch (alertErr: any) {
-      console.error(`[Escrow] ${escrowId} marked refunded but the admin alert failed — card refund must be done by hand`, alertErr?.message);
+      console.error("[Escrow] marked refunded but the admin alert failed — card refund must be done by hand", { escrowId, error: alertErr?.message });
     }
 
     await NotificationService.sendNotification({
