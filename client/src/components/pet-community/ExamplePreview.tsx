@@ -69,7 +69,8 @@ export function ExamplePreview({ isHe, title, subtitle, cards, cta, note }: {
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {/* Three cards, three columns: a 4-column grid left a dead slot on wide screens. */}
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => (
           <article
             key={c.name}
