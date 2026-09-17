@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({
   bookings: [] as any[],
   alerts: [] as any[],
   resolvedPrefixes: [] as string[],
+  docs: null as any,
   sqlSeen: [] as string[],
 }));
 
@@ -33,20 +34,24 @@ vi.mock('../db', () => ({
   },
 }));
 vi.mock('../services/SumitClient', () => ({
-  sumitClient: { listPayments: async () => h.pages.shift() ?? { ok: true, payments: [], hasNextPage: false } },
+  SUMIT_ORDER_REF_PREFIX: 'PW-REF ',
+  sumitClient: {
+    listPayments: async () => h.pages.shift() ?? { ok: true, payments: [], hasNextPage: false },
+    listDocumentsInWindow: async () => h.docs ?? { ok: true, documents: [] },
+  },
 }));
 vi.mock('../services/AlertEngine', () => ({
   createOrUpdateAlert: async (a: any) => { h.alerts.push(a); },
   resolveClearedByPrefix: async (p: string, cur: string[]) => { h.resolvedPrefixes.push(`${p}|${cur.length}`); return 1; },
 }));
 
-import { runSumitUnclaimedPaymentWatch, unclaimedOf, describeUnclaimed, WATCH_FLOOR } from '../cron/sumit-unclaimed-payments';
+import { runSumitUnclaimedPaymentWatch, unclaimedOf, describeUnclaimed, refFromDocuments, WATCH_FLOOR } from '../cron/sumit-unclaimed-payments';
 
 const NOW = new Date('2026-09-18T12:00:00Z');
 const pay = (id: string, amountCents: number, date = '2026-09-18T10:00:00+03:00') => ({ id, customerId: '77', date, amountCents, valid: true });
 
 describe('SUMIT unclaimed-payment watch', () => {
-  beforeEach(() => { h.pages = []; h.claimed = []; h.bookings = []; h.alerts = []; h.resolvedPrefixes = []; h.sqlSeen = []; });
+  beforeEach(() => { h.pages = []; h.claimed = []; h.bookings = []; h.alerts = []; h.resolvedPrefixes = []; h.sqlSeen = []; h.docs = null; });
 
   it('alerts once per valid payment no order claimed, naming same-amount waiting orders', async () => {
     h.pages = [{ ok: true, hasNextPage: false, payments: [pay('9001', 25000), pay('9002', 4800)] }];
@@ -94,5 +99,41 @@ describe('SUMIT unclaimed-payment watch', () => {
   it('says plainly when no waiting order matches', () => {
     expect(describeUnclaimed({ id: '5', customerId: '9', date: null, amountCents: 1234 }, []))
       .toMatch(/₪12\.34.*No waiting order has this amount/);
+  });
+
+  it("names the order from SUMIT's own document stamp, and stops guessing by amount", async () => {
+    h.pages = [{ ok: true, hasNextPage: false, payments: [pay('9100', 25000)] }];
+    h.docs = { ok: true, documents: [
+      { description: 'PW-REF bkg_BR-xyz_m1', valueIls: 250, date: '2026-09-18T10:05:00+03:00' },
+      { description: 'PW-REF eg_other', valueIls: 99, date: '2026-09-18T10:05:00+03:00' },
+    ] };
+    h.bookings = [{ ref: 'BR-should-not-be-used', cents: 25000, at: '2026-09-18T06:55:00Z' }];
+    await runSumitUnclaimedPaymentWatch(NOW);
+    expect(h.alerts[0].message).toContain('bkg_BR-xyz_m1');
+    expect(h.alerts[0].message).not.toContain('BR-should-not-be-used');
+    expect(h.alerts[0].metadata.stampedRef).toBe('bkg_BR-xyz_m1');
+  });
+
+  it('two documents of the same value are ambiguous — no order is named', () => {
+    const p = { amountCents: 25000, date: '2026-09-18T10:00:00+03:00' };
+    const docs = [
+      { description: 'PW-REF a', valueIls: 250, date: '2026-09-18T10:01:00+03:00' },
+      { description: 'PW-REF b', valueIls: 250, date: '2026-09-18T10:02:00+03:00' },
+    ];
+    expect(refFromDocuments(p, docs)).toBeNull();
+  });
+
+  it('a document far from the payment time is not a match', () => {
+    expect(refFromDocuments(
+      { amountCents: 25000, date: '2026-09-18T10:00:00+03:00' },
+      [{ description: 'PW-REF a', valueIls: 250, date: '2026-09-15T10:00:00+03:00' }],
+    )).toBeNull();
+  });
+
+  it('a document without our stamp is never used', () => {
+    expect(refFromDocuments(
+      { amountCents: 25000, date: '2026-09-18T10:00:00+03:00' },
+      [{ description: 'חשבונית ללקוח', valueIls: 250, date: '2026-09-18T10:01:00+03:00' }],
+    )).toBeNull();
   });
 });

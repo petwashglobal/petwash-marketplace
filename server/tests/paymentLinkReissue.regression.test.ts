@@ -63,3 +63,11 @@ describe('payment link expiry + replacement', () => {
     expect(fn).toMatch(/if \(!r\.ok\) throw new Error\(`sumit_list_failed/);
   });
 });
+
+describe('order ref stamped on SUMIT documents', () => {
+  it('beginRedirect sends DocumentDescription with the PW-REF prefix', () => {
+    const src = R('server/services/SumitClient.ts');
+    expect(src).toMatch(/export const SUMIT_ORDER_REF_PREFIX = 'PW-REF ';/);
+    expect(src).toMatch(/DocumentDescription: `\$\{SUMIT_ORDER_REF_PREFIX\}\$\{input\.externalId\}`/);
+  });
+});

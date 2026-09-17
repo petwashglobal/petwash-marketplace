@@ -16,7 +16,7 @@
 import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import { logger } from '../lib/logger';
-import { sumitClient } from '../services/SumitClient';
+import { sumitClient, SUMIT_ORDER_REF_PREFIX } from '../services/SumitClient';
 
 // Payments before this instant are the go-live tests (₪1 rail checks, 2026-09-17).
 export const WATCH_FLOOR = new Date('2026-09-17T10:00:00Z');
@@ -26,6 +26,30 @@ const KEY = (id: string) => `sumit_unclaimed_payment:${id}:`;
 export type UnclaimedPayment = { id: string; customerId: string | null; date: string | null; amountCents: number };
 
 export type Candidate = { kind: 'booking' | 'egift_guest' | 'purchase'; ref: string; amountCents: number; createdAt: string };
+
+/**
+ * The order ref SUMIT's own document carries for a payment (2026-09-18).
+ * beginRedirect stamps `PW-REF <externalId>` into DocumentDescription, so the
+ * document created by a hosted-page charge names the order. Matched by value
+ * and time because the payment object itself links nowhere.
+ */
+export function refFromDocuments(
+  payment: { amountCents: number; date: string | null },
+  documents: Array<{ description: string | null; valueIls: number; date: string | null }>,
+  windowMinutes = 180,
+): string | null {
+  const paidAt = payment.date ? Date.parse(payment.date) : NaN;
+  const hits = documents.filter((d) => {
+    if (Math.round(d.valueIls * 100) !== payment.amountCents) return false;
+    if (!d.description || !d.description.includes(SUMIT_ORDER_REF_PREFIX)) return false;
+    if (!Number.isFinite(paidAt) || !d.date) return true;
+    return Math.abs(Date.parse(d.date) - paidAt) <= windowMinutes * 60_000;
+  });
+  if (hits.length !== 1) return null; // ambiguous is not a match
+  const after = hits[0].description!.slice(hits[0].description!.indexOf(SUMIT_ORDER_REF_PREFIX) + SUMIT_ORDER_REF_PREFIX.length);
+  const ref = after.split(/[\s,;|]/)[0]?.trim();
+  return ref ? ref : null;
+}
 
 /** Pure: which listed payments have no claim. */
 export function unclaimedOf(payments: UnclaimedPayment[], claimed: Set<string>, floor = WATCH_FLOOR): UnclaimedPayment[] {
@@ -37,9 +61,10 @@ export function unclaimedOf(payments: UnclaimedPayment[], claimed: Set<string>, 
 }
 
 /** Pure: the alert text for one unclaimed payment. */
-export function describeUnclaimed(p: UnclaimedPayment, candidates: Candidate[]): string {
+export function describeUnclaimed(p: UnclaimedPayment, candidates: Candidate[], stampedRef?: string | null): string {
   const amount = `₪${(p.amountCents / 100).toFixed(2)}`;
   const head = `SUMIT payment ${p.id} · ${amount} · ${p.date ?? 'no date'} · SUMIT customer ${p.customerId ?? '?'} — money received, no order fulfilled.`;
+  if (stampedRef) return `${head} SUMIT's own document names the order: ${stampedRef}. Fulfil that order or refund.`;
   if (candidates.length === 0) return `${head} No waiting order has this amount — check SUMIT and refund or fulfil by hand.`;
   const list = candidates.slice(0, 5).map((c) => `${c.kind} ${c.ref} (${c.createdAt.slice(0, 16)})`).join('; ');
   return `${head} Waiting orders with the same amount: ${list}. Confirm the customer, then fulfil or refund.`;
@@ -126,19 +151,29 @@ export async function runSumitUnclaimedPaymentWatch(now = new Date()): Promise<{
   for (const id of claimed) resolved += await resolveClearedByPrefix(KEY(id), []);
 
   const open = unclaimedOf(payments, claimed);
+  // One document read for the whole window; the stamp turns "some payment" into
+  // "this order" (see refFromDocuments).
+  let documents: Array<{ description: string | null; valueIls: number; date: string | null }> = [];
+  if (open.length > 0) {
+    const docs = await sumitClient.listDocumentsInWindow({ from, to: now, includeDrafts: true });
+    if (docs.ok) documents = docs.documents;
+    else logger.warn('[SumitUnclaimed] documents/list failed — alerts will name amounts only', { reason: docs.reason });
+  }
+
   for (const p of open) {
     const around = p.date ? new Date(p.date) : now;
-    const candidates = await waitingOrders(p.amountCents, around);
+    const stampedRef = refFromDocuments(p, documents);
+    const candidates = stampedRef ? [] : await waitingOrders(p.amountCents, around);
     await createOrUpdateAlert({
       dedupeKey: KEY(p.id),
       category: 'payment',
       severity: 'critical',
       title: 'Card payment received — no order fulfilled',
-      message: describeUnclaimed(p, candidates),
+      message: describeUnclaimed(p, candidates, stampedRef),
       linkedEntityType: 'sumit_payment',
       linkedEntityId: p.id,
       source: 'auto_sweep',
-      metadata: { amountCents: p.amountCents, sumitCustomerId: p.customerId, candidates },
+      metadata: { amountCents: p.amountCents, sumitCustomerId: p.customerId, candidates, stampedRef },
     });
   }
   if (open.length) logger.error('[SumitUnclaimed] valid SUMIT payments with no order', { count: open.length, ids: open.map((p) => p.id) });
