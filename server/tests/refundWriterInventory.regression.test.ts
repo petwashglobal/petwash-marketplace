@@ -194,24 +194,18 @@ describe('M4 — known-open bypasses are still where the doc says they are', () 
     ).toBe(3);
   });
 
-  it('the prestige-pass Date.now() keys are still present (B9–B11) — needs a finance decision', () => {
+  it('B9–B11 stay CLOSED — no clock-derived refund key, and every staff refund goes through the claimed path', () => {
+    // Closed 2026-09-17 (see the inventory doc). A clock key makes every retry
+    // a fresh refund; an amount key skips a second same-size partial refund.
     const src = read('routes', 'prestige-pass.ts');
     const clockKeys = src.match(/idempotencyKey(Suffix)?[^\n]*\$\{Date\.now\(\)\}/g) ?? [];
-    expect(
-      clockKeys.length,
-      'prestige-pass clock-derived idempotency keys changed. Fixing these is a ' +
-      'finance decision (they exist to allow repeated partial refunds) — update ' +
-      'the inventory doc B9–B11 with the decision.',
-    ).toBe(1); // was 3 when this branch was cut; main fixed 2 of 3 — see below
-  });
-
-  it('B10 + B11 stay FIXED — main made two of the three keys deterministic', () => {
-    // Fixed on main by #2115 "F3 over-refund cap + F4 deterministic idempotency
-    // (3 sites)" while this branch was out. Pinned so they cannot regress to a
-    // clock-derived key, which would make every retry a fresh refund.
-    const src = read('routes', 'prestige-pass.ts');
-    expect(src).toMatch(/wallet:support:refund:\$\{bookingType\}:\$\{booking\.booking_id\}:\$\{refundCents\}/);
-    expect(src).toMatch(/wallet:approval:refund:\$\{bookingType\}:\$\{booking\.booking_id\}:\$\{approvalId\}/);
+    expect(clockKeys).toEqual([]);
+    expect(src).not.toMatch(/wallet:support:refund:\$\{bookingType\}:\$\{booking\.booking_id\}:\$\{refundCents\}/);
+    expect(src).toMatch(/keySuffix: `admin:\$\{alreadyRefunded\}`/);
+    expect(src).toMatch(/keySuffix: `support:\$\{alreadyRefunded\}`/);
+    expect(src).toMatch(/keySuffix: `approval:\$\{approvalId\}`/);
+    const lib = read('lib', 'bookingWalletRefund.ts');
+    expect(lib.indexOf('RETURNING 1 AS claimed')).toBeLessThan(lib.indexOf('refundBookingWallet('));
   });
 
   it('B12 — BookingLifecycleService.settleEscrowTerminal is still UNGUARDED (new, pre-existing)', () => {

@@ -541,111 +541,120 @@ class WalletService {
       throw new Error('Wallet not found');
     }
 
-    const now = new Date();
     const refundTransactions: any[] = [];
 
-    // SECURITY (hostile audit T01): All refund restores use atomic SQL increments
-    // so that concurrent refund attempts on the same session cannot produce a
-    // double-credit (lost-update race). The session status gate above prevents
-    // a second call reaching here, but the SQL increment is a defence-in-depth.
+    await db.transaction(async (tx) => {
+      const now = new Date();
+      const claimed = await tx.update(redemptionSessions)
+        .set({ status: 'refunded' as any, updatedAt: now })
+        .where(and(
+          eq(redemptionSessions.sessionId, sessionId),
+          eq(redemptionSessions.status, 'completed' as any),
+        ))
+        .returning({ sessionId: redemptionSessions.sessionId });
+      if (claimed.length === 0) {
+        throw new Error('Cannot refund session: already refunded or no longer completed');
+      }
 
-    // Restore e-gift
-    if ((session.egiftAppliedCents || 0) > 0) {
-      const [upd] = await db.update(walletAccounts)
-        .set({ egiftBalanceCents: sql`COALESCE(egift_balance_cents, 0) + ${session.egiftAppliedCents}`, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId))
-        .returning({ egiftBalanceCents: walletAccounts.egiftBalanceCents });
-      refundTransactions.push({
-        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
-        walletId: session.walletId,
-        creditType: 'egift',
-        transactionType: 'refund',
-        amountCents: session.egiftAppliedCents,
-        balanceAfterCents: upd?.egiftBalanceCents ?? 0,
-        redemptionSessionId: sessionId,
-        platform: session.platform,
-        bookingId: session.bookingId,
-        description: `E-gift refunded: ${reason}`,
-        initiatedBy,
-      });
-    }
+      // SECURITY (hostile audit T01 + 2026-09-17): the status check above reads
+      // a snapshot — two concurrent refunds (double-click, retried request) BOTH
+      // passed it and BOTH restored the e-gift / packages / points / promo; the
+      // final status flip had no WHERE on the old status. Now the flip is the
+      // claim: completed → refunded runs FIRST, inside the same transaction as
+      // every restore, and only the request that wins it restores anything. A
+      // failed restore rolls the claim back, so a session is never "refunded"
+      // with nothing given back. The SQL increments stay as defence-in-depth.
 
-    // Restore wash packages
-    if ((session.washPackagesApplied || 0) > 0) {
-      const [upd] = await db.update(walletAccounts)
-        .set({ washPackageCredits: sql`COALESCE(wash_package_credits, 0) + ${session.washPackagesApplied}`, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId))
-        .returning({ washPackageCredits: walletAccounts.washPackageCredits });
-      refundTransactions.push({
-        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
-        walletId: session.walletId,
-        creditType: 'wash_package',
-        transactionType: 'refund',
-        amountUnits: session.washPackagesApplied,
-        balanceAfterUnits: upd?.washPackageCredits ?? 0,
-        redemptionSessionId: sessionId,
-        platform: session.platform,
-        bookingId: session.bookingId,
-        description: `Wash package refunded: ${reason}`,
-        initiatedBy,
-      });
-    }
+      // Restore e-gift
+      if ((session.egiftAppliedCents || 0) > 0) {
+        const [upd] = await tx.update(walletAccounts)
+          .set({ egiftBalanceCents: sql`COALESCE(egift_balance_cents, 0) + ${session.egiftAppliedCents}`, updatedAt: now })
+          .where(eq(walletAccounts.walletId, session.walletId))
+          .returning({ egiftBalanceCents: walletAccounts.egiftBalanceCents });
+        refundTransactions.push({
+          transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+          walletId: session.walletId,
+          creditType: 'egift',
+          transactionType: 'refund',
+          amountCents: session.egiftAppliedCents,
+          balanceAfterCents: upd?.egiftBalanceCents ?? 0,
+          redemptionSessionId: sessionId,
+          platform: session.platform,
+          bookingId: session.bookingId,
+          description: `E-gift refunded: ${reason}`,
+          initiatedBy,
+        });
+      }
 
-    // Restore loyalty points
-    if ((session.loyaltyPointsApplied || 0) > 0) {
-      const pointsToRestore = Math.ceil((session.loyaltyPointsApplied || 0) / 10);
-      const [upd] = await db.update(walletAccounts)
-        .set({ loyaltyPointsBalance: sql`COALESCE(loyalty_points_balance, 0) + ${pointsToRestore}`, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId))
-        .returning({ loyaltyPointsBalance: walletAccounts.loyaltyPointsBalance });
-      refundTransactions.push({
-        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
-        walletId: session.walletId,
-        creditType: 'loyalty_points',
-        transactionType: 'refund',
-        amountUnits: pointsToRestore,
-        balanceAfterUnits: upd?.loyaltyPointsBalance ?? 0,
-        redemptionSessionId: sessionId,
-        platform: session.platform,
-        bookingId: session.bookingId,
-        description: `Loyalty points refunded: ${reason}`,
-        initiatedBy,
-      });
-    }
+      // Restore wash packages
+      if ((session.washPackagesApplied || 0) > 0) {
+        const [upd] = await tx.update(walletAccounts)
+          .set({ washPackageCredits: sql`COALESCE(wash_package_credits, 0) + ${session.washPackagesApplied}`, updatedAt: now })
+          .where(eq(walletAccounts.walletId, session.walletId))
+          .returning({ washPackageCredits: walletAccounts.washPackageCredits });
+        refundTransactions.push({
+          transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+          walletId: session.walletId,
+          creditType: 'wash_package',
+          transactionType: 'refund',
+          amountUnits: session.washPackagesApplied,
+          balanceAfterUnits: upd?.washPackageCredits ?? 0,
+          redemptionSessionId: sessionId,
+          platform: session.platform,
+          bookingId: session.bookingId,
+          description: `Wash package refunded: ${reason}`,
+          initiatedBy,
+        });
+      }
 
-    // Restore promo credits
-    if ((session.promoAppliedCents || 0) > 0) {
-      const [upd] = await db.update(walletAccounts)
-        .set({ promoBalanceCents: sql`COALESCE(promo_balance_cents, 0) + ${session.promoAppliedCents}`, updatedAt: now })
-        .where(eq(walletAccounts.walletId, session.walletId))
-        .returning({ promoBalanceCents: walletAccounts.promoBalanceCents });
-      refundTransactions.push({
-        transactionId: `TXN-${nanoid(12).toUpperCase()}`,
-        walletId: session.walletId,
-        creditType: 'promo_credit',
-        transactionType: 'refund',
-        amountCents: session.promoAppliedCents,
-        balanceAfterCents: upd?.promoBalanceCents ?? 0,
-        redemptionSessionId: sessionId,
-        platform: session.platform,
-        bookingId: session.bookingId,
-        description: `Promo credit refunded: ${reason}`,
-        initiatedBy,
-      });
-    }
+      // Restore loyalty points
+      if ((session.loyaltyPointsApplied || 0) > 0) {
+        const pointsToRestore = Math.ceil((session.loyaltyPointsApplied || 0) / 10);
+        const [upd] = await tx.update(walletAccounts)
+          .set({ loyaltyPointsBalance: sql`COALESCE(loyalty_points_balance, 0) + ${pointsToRestore}`, updatedAt: now })
+          .where(eq(walletAccounts.walletId, session.walletId))
+          .returning({ loyaltyPointsBalance: walletAccounts.loyaltyPointsBalance });
+        refundTransactions.push({
+          transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+          walletId: session.walletId,
+          creditType: 'loyalty_points',
+          transactionType: 'refund',
+          amountUnits: pointsToRestore,
+          balanceAfterUnits: upd?.loyaltyPointsBalance ?? 0,
+          redemptionSessionId: sessionId,
+          platform: session.platform,
+          bookingId: session.bookingId,
+          description: `Loyalty points refunded: ${reason}`,
+          initiatedBy,
+        });
+      }
 
-    // Insert refund transaction records
-    if (refundTransactions.length > 0) {
-      await db.insert(creditTransactions).values(refundTransactions);
-    }
+      // Restore promo credits
+      if ((session.promoAppliedCents || 0) > 0) {
+        const [upd] = await tx.update(walletAccounts)
+          .set({ promoBalanceCents: sql`COALESCE(promo_balance_cents, 0) + ${session.promoAppliedCents}`, updatedAt: now })
+          .where(eq(walletAccounts.walletId, session.walletId))
+          .returning({ promoBalanceCents: walletAccounts.promoBalanceCents });
+        refundTransactions.push({
+          transactionId: `TXN-${nanoid(12).toUpperCase()}`,
+          walletId: session.walletId,
+          creditType: 'promo_credit',
+          transactionType: 'refund',
+          amountCents: session.promoAppliedCents,
+          balanceAfterCents: upd?.promoBalanceCents ?? 0,
+          redemptionSessionId: sessionId,
+          platform: session.platform,
+          bookingId: session.bookingId,
+          description: `Promo credit refunded: ${reason}`,
+          initiatedBy,
+        });
+      }
 
-    // Update session status to refunded
-    await db.update(redemptionSessions)
-      .set({ 
-        status: 'refunded' as any,
-        updatedAt: now,
-      })
-      .where(eq(redemptionSessions.sessionId, sessionId));
+      // Insert refund transaction records
+      if (refundTransactions.length > 0) {
+        await tx.insert(creditTransactions).values(refundTransactions);
+      }
+    });
 
     schedulePassSync(wallet.userId, 'redemption_refunded');
     logger.info('[Wallet] Redemption refunded', { 

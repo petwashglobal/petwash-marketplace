@@ -125,88 +125,45 @@ async function assertEscrowParticipant(
   return escrow;
 }
 
-router.post("/create", requireAuth, async (req, res) => {
-  try {
-    const { bookingId, providerId, amount, nayaxTransactionId, metadata } = req.body;
-    const customerId = req.user!.uid;
-
-    const escrow = await EscrowService.createEscrowPayment(
-      bookingId,
-      customerId,
-      providerId,
-      amount,
-      nayaxTransactionId,
-      metadata
-    );
-
-    res.json({ escrow });
-  } catch (error: any) {
-    logger.error("[Escrow] Error creating", { error: error.message });
-    res.status(error.status ?? 500).json({ error: clientSafeErrorMessage(error, "Could not create the escrow hold.") });
-  }
+// SEALED (2026-09-17). Neither route has a caller in the app — escrow holds are
+// created by the booking services, and payouts are released only by a Pet Wash
+// admin (POST /admin/:escrowId/approve-release, CEO rule 2026-09-13).
+//   /create  took amount, providerId and nayaxTransactionId from the body with
+//            no payment check, so any signed-in user could mint a "held" payment.
+//   /release let the customer release it — a provider with a second account
+//            could create a hold for themselves and approve their own payout.
+router.post("/create", requireAuth, (_req, res) => {
+  res.status(410).json({ error: "ESCROW_CREATE_SEALED", message: "Escrow holds are created by the booking flow." });
 });
 
-router.post("/:escrowId/release", requireAuth, async (req, res) => {
-  try {
-    const { escrowId } = req.params;
-    const callerId = req.user!.uid;
-
-    const escrow = await assertEscrowParticipant(escrowId, callerId);
-
-    if (escrow.customerId !== callerId) {
-      return res.status(403).json({
-        error: "Only the customer who created this escrow can release it",
-      });
-    }
-
-    await EscrowService.releaseEscrowPayment(escrowId, callerId);
-    res.json({ success: true });
-
-    // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
-    setImmediate(() => {
-      const amountStr = String(escrow.amount || '');
-      Promise.all([
-        logReceipt({
-          receiptId: `escrow-release-${escrowId}`,
-          transactionId: escrow.nayaxTransactionId || escrowId,
-          customerName: '',
-          email: '',
-          amount: amountStr,
-          paymentMethod: 'Escrow Release',
-          platform: 'PetWash',
-          serviceType: 'Escrow',
-          description: `Escrow released — booking ${escrow.bookingId}`,
-          status: 'Released',
-        }),
-        logOpsLiveFeed({
-          eventType: 'escrow.released',
-          source: 'escrow_route',
-          entityId: escrowId,
-          bookingId: escrow.bookingId,
-          amountILS: amountStr,
-          platform: 'PetWash',
-          status: 'released',
-          actor: callerId,
-          details: `customer released escrow to provider`,
-        }),
-      ]).catch(e => logger.warn('[Escrow] Sheets logging error (non-blocking)', e));
-    });
-  } catch (error: any) {
-    logger.error("[Escrow] Error releasing", { error: error.message });
-    res.status(error.status ?? 500).json({ error: clientSafeErrorMessage(error, "Could not release the escrow hold.") });
-  }
+router.post("/:escrowId/release", requireAuth, (_req, res) => {
+  res.status(410).json({
+    error: "ESCROW_RELEASE_ADMIN_ONLY",
+    message: "Provider payouts are approved by Pet Wash: POST /api/escrow/admin/:escrowId/approve-release",
+  });
 });
 
-router.post("/:escrowId/refund", requireAuth, async (req, res) => {
+// ADMIN ONLY (2026-09-17). Was requireAuth + "either party": a customer could
+// mark their own held payment 'refunded' after the job — outside the
+// cancellation policy and fees — and that status blocks the provider's
+// release forever; a provider could do the same outside the cancel flow.
+// Customer/provider cancellations already refund through their own state
+// machines (booking-requests.ts, bookings.ts). This flips a status only — no
+// card money moves; refundEscrowPayment raises the admin alert to refund the
+// card by hand.
+router.post("/:escrowId/refund", requireAdmin, async (req, res) => {
   try {
     const { escrowId } = req.params;
-    const { reason } = req.body;
-    const callerId = req.user!.uid;
+    const callerId = (req as any).firebaseUser?.uid || (req as any).user?.uid || (req as any).adminUser?.uid;
+    if (!callerId) return res.status(401).json({ error: "ADMIN_IDENTITY_REQUIRED" });
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim().slice(0, 500) : "";
+    if (!reason) return res.status(400).json({ error: "REASON_REQUIRED" });
 
-    const escrow = await assertEscrowParticipant(escrowId, callerId);
+    const escrow = await EscrowService.getEscrowPayment(escrowId);
+    if (!escrow) return res.status(404).json({ error: "ESCROW_NOT_FOUND" });
 
     await EscrowService.refundEscrowPayment(escrowId, reason, callerId);
-    res.json({ success: true });
+    res.json({ success: true, cardRefund: "manual" });
 
     // ── Fire-and-forget: Sheets receipt + live feed ────────────────────────
     setImmediate(() => {
