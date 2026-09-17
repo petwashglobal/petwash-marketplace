@@ -36,12 +36,15 @@ describe('the booking engine prices a walk as the walker’s sale', () => {
   const base = read('services/booking-engines/base/BaseLuxuryBookingEngine.ts');
   const walk = read('services/booking-engines/walk/WalkEliteBookingEngine.ts');
 
-  it('walk opts into the marketplace model; the base default stays direct sale (K9000)', () => {
+  it('walk and pettrek opt into the marketplace model; the base default stays direct sale (K9000)', () => {
     expect(walk).toMatch(/protected moneyModel\(\): 'marketplace' \{\s*return 'marketplace';/);
     expect(base).toMatch(/protected moneyModel\(\): 'direct_sale' \| 'marketplace' \{\s*return 'direct_sale';/);
-    for (const other of ['k9000/K9000StationBookingEngine.ts', 'pettrek/PetTrekChauffeurBookingEngine.ts']) {
-      expect(read(`services/booking-engines/${other}`)).not.toContain('moneyModel()');
-    }
+    // PetTrek joined 2026-09-18 (CEO: "it's 15%") — it is frozen, so this is
+    // the model waiting for whenever it is switched on.
+    expect(read('services/booking-engines/pettrek/PetTrekChauffeurBookingEngine.ts'))
+      .toMatch(/protected moneyModel\(\): 'marketplace' \{\s*return 'marketplace';/);
+    // K9000 is Pet Wash's own sale — it must never opt in.
+    expect(read('services/booking-engines/k9000/K9000StationBookingEngine.ts')).not.toContain('moneyModel()');
   });
 
   it('marketplace quotes use the shared split — no VAT on top, no loyalty discount', () => {

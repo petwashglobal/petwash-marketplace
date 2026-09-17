@@ -108,13 +108,25 @@ class PetTrekPricingStrategy implements PricingStrategy {
       tax: 0, // Calculated in base engine
       totalPrice: subtotal,
       currency: 'ILS',
-      providerPayout: subtotal * 0.75, // Driver gets 75% (25% platform fee)
+      providerPayout: subtotal, // The driver keeps the whole fare; the base engine adds the Pet Wash fee on top (marketplace money model). Was 75% (a 25% cut).
       breakdown: [
         { description: `Base Rate (${distanceKm}km × ₪${baseRatePerKm}/km)`, amount: distanceKm * baseRatePerKm },
         { description: 'Minimum Fare Adjustment', amount: Math.max(0, minimumFare - (distanceKm * baseRatePerKm)) },
         { description: 'Peak Hours Surge', amount: surgePricing },
       ],
     };
+  }
+
+  /**
+   * A trip is the driver's service, sold through Pet Wash (CEO 2026-09-18: one
+   * money model, same as Walk and Sitter). PetTrek used to take 25% out of the
+   * fare AND be priced as Pet Wash's own sale (18% VAT on the whole fare).
+   * Now: driver keeps the fare, customer pays a 15% Pet Wash fee on top with
+   * the VAT inside it. (PetTrek is frozen — routes return 403 — so this is the
+   * money model waiting for whenever it is switched on.)
+   */
+  protected moneyModel(): 'marketplace' {
+    return 'marketplace';
   }
 
   private getBaseRatePerKm(petSize: string): number {
