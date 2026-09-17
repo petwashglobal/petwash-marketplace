@@ -91,6 +91,7 @@ import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contac
 import VATCalculatorService from '../services/VATCalculatorService';
 import { providerTypeToFiscalPlatform } from '@shared/serviceDivisions';
 import { enforceSwitch } from '../lib/envSwitch';
+import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -2383,7 +2384,8 @@ router.post('/:requestId/pay', async (req, res) => {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
-    const { paymentMethod, transactionId } = req.body;
+    // The body's paymentMethod/transactionId are not trusted: the server picks the
+    // rail (BOOKING_CARD_RAIL) and the processor reports the transaction.
 
     const [booking] = await db.select()
       .from(bookingRequests)
@@ -2486,7 +2488,7 @@ router.post('/:requestId/pay', async (req, res) => {
 
     // Fetch owner email for the payment session (optional — enriches the receipt).
     const [ownerUser] = await db
-      .select({ email: users.email, firstName: users.firstName })
+      .select({ email: users.email, firstName: users.firstName, language: users.language })
       .from(users)
       .where(eq(users.id, booking.ownerId))
       .limit(1);
@@ -2502,6 +2504,7 @@ router.post('/:requestId/pay', async (req, res) => {
         description: `PetWash™ ${booking.serviceType} — ${booking.petCount ?? 1} pet(s)`,
         // SUMIT returns the customer here; the verify handler confirms the booking.
         returnUrl: `${appUrl}/api/booking-requests/${requestId}/sumit-return`,
+        language: paymentLanguageFor(req, ownerUser?.language),
       });
     } else {
       const { NayaxOnlinePaymentService } = await import('../services/NayaxOnlinePaymentService');
@@ -2539,9 +2542,16 @@ router.post('/:requestId/pay', async (req, res) => {
       });
     }
 
+    // The rail that actually took this payment — recorded on the booking, the
+    // status history and the deal-gate audit. These said 'nayax' / 'NAYAX' even
+    // when SUMIT charged the card, and paymentMethod came from the request body
+    // (the client never chooses the rail). (2026-09-17)
+    const railName = cardRail === 'sumit' ? 'SUMIT' : 'Nayax';
+    const railMethod = cardRail === 'sumit' ? 'sumit' : 'nayax';
+
     const sessionId = sessionResult.sessionId || `SESSION-${requestId}`;
     if (!sessionResult.sessionId) {
-      logger.warn('[BookingRequests] Nayax session created without a sessionId — using fallback placeholder; webhook reconciliation may be affected', { requestId });
+      logger.warn(`[BookingRequests] ${railName} session created without a sessionId — using fallback placeholder; webhook reconciliation may be affected`, { requestId });
     }
 
     // Create the Firestore escrow record with the session ID as a placeholder.
@@ -2593,13 +2603,13 @@ router.post('/:requestId/pay', async (req, res) => {
     statusHistory.push({
       status: 'payment_pending',
       timestamp: new Date().toISOString(),
-      note: `Payment session created via Nayax. Awaiting customer payment of ₪${(booking.totalCents / 100).toFixed(2)}.`,
+      note: `Payment session created via ${railName}. Awaiting customer payment of ₪${(booking.totalCents / 100).toFixed(2)}.`,
     });
 
     await db.update(bookingRequests)
       .set({
         status: 'payment_pending',
-        paymentMethod: paymentMethod || 'nayax',
+        paymentMethod: railMethod,
         paymentTransactionId: sessionId, // placeholder; real txId set by webhook
         statusHistory,
         updatedAt: new Date(),
@@ -2609,8 +2619,8 @@ router.post('/:requestId/pay', async (req, res) => {
         eq(bookingRequests.paymentTransactionId, claimToken),
       ));
 
-    logger.info('[BookingRequests] Payment session initiated — awaiting Nayax confirmation', {
-      requestId, sessionId: sessionResult.sessionId, demoMode: sessionResult.demoMode,
+    logger.info(`[BookingRequests] Payment session initiated — awaiting ${railName} confirmation`, {
+      requestId, rail: railMethod, sessionId: sessionResult.sessionId, demoMode: sessionResult.demoMode,
     });
 
     logBookingEvent('payment_initiated', buildEventPayload({ ...booking, status: 'payment_pending' }), {
@@ -2624,7 +2634,7 @@ router.post('/:requestId/pay', async (req, res) => {
       customerUserId: booking.ownerId,
       providerUserId: booking.providerId ?? null,
       side: 'customer',
-      paymentProvider: 'NAYAX',
+      paymentProvider: railName.toUpperCase(),
       paymentTransactionId: sessionId,
       paymentAuthorisedAt: new Date(),
       amountTotalCents: booking.totalCents ?? undefined,

@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 import {
   Dog, Moon, MapPin, Scissors, GraduationCap, Home, Clock, Eye,
   Plus, Trash2, Loader2, ChevronDown, ChevronUp, ToggleLeft, ToggleRight,
@@ -182,8 +183,8 @@ export default function POSServices() {
         <Info className="w-4 h-4 text-[#B8932F] mt-0.5 shrink-0" />
         <div className="text-xs text-[#B8932F] space-y-0.5">
           <p className="font-semibold">What clients see vs what you earn</p>
-          <p>Clients see your base price on your public profile. You receive the base price minus a 15% platform commission. VAT (18%) applies to the commission portion only.</p>
-          <p className="text-[#B8932F] font-medium">Your net = base price × 82.3%</p>
+          <p>You keep 100% of your price. Clients pay your price plus a 15% Pet Wash service fee on top (VAT included in the fee).</p>
+          <p className="text-[#B8932F] font-medium">You earn = your price · Client pays = your price × 1.15</p>
         </div>
       </div>
 
@@ -282,7 +283,7 @@ export default function POSServices() {
                     </div>
                     {svc.basePrice != null && (
                       <p className="text-[10px] text-gray-400 mt-1">
-                        Your net after 15% commission + VAT: ₪{(svc.basePrice * 0.823).toFixed(0)}
+                        You earn ₪{svc.basePrice.toFixed(0)} · client pays ₪{(splitMarketplaceJob(Math.round(svc.basePrice * 100)).customerTotalCents / 100).toFixed(0)}
                       </p>
                     )}
                   </div>

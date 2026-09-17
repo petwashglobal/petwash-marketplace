@@ -245,7 +245,7 @@ export default function MyWallet() {
   const handleSaveCard = async () => {
     setSaveCardLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/payments/save-card/start', {});
+      const res = await apiRequest('POST', '/api/payments/save-card/start', { language: document.documentElement.lang || 'he' });
       const data = await res.json();
       if (data?.ok && data?.redirectUrl) {
         window.location.href = data.redirectUrl;

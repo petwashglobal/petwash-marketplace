@@ -69,8 +69,11 @@ describe('Build C — long-stay rate engine', () => {
     expect(q.cleaningFeeCents).toBe(8000);
     expect(q.subtotalCents).toBe(58000); // 50000 + 8000
     expect(q.depositCents).toBe(11600); // 20% of 58000 — HELD, not charged
-    const expectedTotal = 58000 + Math.round(Math.round(58000 * COMMISSION) * VAT);
-    expect(q.totalCents).toBe(expectedTotal);
+    // One money model: 15% fee on top, VAT inside the fee, provider keeps the rate.
+    expect(q.platformFeeCents).toBe(Math.round(58000 * COMMISSION)); // 8700
+    expect(q.totalCents).toBe(58000 + 8700);
+    expect(q.providerEarningsCents).toBe(58000);
+    expect(q.vatCents).toBe(Math.round(8700 * VAT / (1 + VAT))); // 1327, inside the fee
   });
 
   it('bi-weekly discount applies for 14–29 nights (between weekly and monthly)', async () => {
