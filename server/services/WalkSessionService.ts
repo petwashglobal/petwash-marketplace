@@ -74,6 +74,26 @@ interface WalkSessionLog {
   userAgent: string;
 }
 
+/**
+ * The money split a walk was sold with, straight from its stored columns — no
+ * recomputation. Works for walks sold before and after the one money model.
+ */
+export function storedWalkMoney(walk: {
+  totalCost?: unknown; walkerPayout?: unknown; walkerRate?: unknown;
+  platformFeeOwner?: unknown; platformFeeSitter?: unknown;
+}): { totalPaid: number; rate: number; walkerEarnings: number; platformFee: number } {
+  const n = (v: unknown) => {
+    const x = parseFloat(String(v ?? '0'));
+    return Number.isFinite(x) ? x : 0;
+  };
+  return {
+    totalPaid: n(walk.totalCost),
+    rate: n(walk.walkerRate),
+    walkerEarnings: n(walk.walkerPayout),
+    platformFee: Math.round((n(walk.platformFeeOwner) + n(walk.platformFeeSitter)) * 100) / 100,
+  };
+}
+
 export class WalkSessionService {
   /**
    * P1-14 helper (2026-08-18): translate a caller's Firebase UID into the
@@ -337,10 +357,11 @@ export class WalkSessionService {
         if (!current.actualStartTime) {
           throw new Error('Completed walk has no actualStartTime — data-integrity error');
         }
-        const idemTotal = parseFloat((current.totalCost as any) || '0');
-        const idemBase = idemTotal / 1.15;
-        const idemWalker = idemBase * 0.85;
-        const idemFee = idemTotal - idemWalker;
+        const idem = storedWalkMoney(current);
+        const idemTotal = idem.totalPaid;
+        const idemBase = idem.rate;
+        const idemWalker = idem.walkerEarnings;
+        const idemFee = idem.platformFee;
         return {
           success: true,
           sessionSummary: {
@@ -367,26 +388,20 @@ export class WalkSessionService {
       throw new Error('No check-in time found - cannot check out');
     }
 
-    // P0-5 NOTE (2026-08-18, deferred to money-orchestrator work):
-    // The commission math below reverse-engineers walker earnings from
-    // totalCost * 0.85 / 1.15. Audit 2026-08-18 confirmed ZERO downstream
-    // consumers of the returned earningsBreakdown (no client reads it, no
-    // server callers read it; processNayaxPayment is commented-out dead
-    // code). The canonical money authorities are quoteEngine +
-    // UnifiedPricingService (pricing), EscrowService (holds), and
-    // ProviderPayoutService (walker earnings). WalkSessionService MUST NOT
-    // become a second commission engine. This block is preserved for
-    // strict wire-compat this cycle; a follow-up money-orchestrator PR
-    // (CEO §31, needs money approval) replaces the recompute with a read
-    // from ProviderPayoutService.getWalkerPayout(walkId).
+    // P0-5 (2026-08-18) asked for this block to stop being a second commission
+    // engine. Done 2026-09-17: it reads the stored split (storedWalkMoney).
     const totalCostValue = walk.totalCost;
     if (!totalCostValue || isNaN(parseFloat(totalCostValue as any))) {
       throw new Error('Invalid or missing totalCost - cannot calculate payment');
     }
-    const totalPaid = parseFloat(totalCostValue as any);
-    const basePriceEstimate = totalPaid / 1.15;
-    const walkerEarnings = basePriceEstimate * 0.85;
-    const platformFee = totalPaid - walkerEarnings;
+    // 2026-09-17: read the split the walk was SOLD with instead of
+    // reverse-engineering it (total ÷ 1.15 × 0.85 — a 30% take that matched
+    // neither money model). See storedWalkMoney().
+    const stored = storedWalkMoney(walk);
+    const totalPaid = stored.totalPaid;
+    const basePriceEstimate = stored.rate;
+    const walkerEarnings = stored.walkerEarnings;
+    const platformFee = stored.platformFee;
 
     // Create blockchain audit entry for check-out
     await db.insert(walkBlockchainAudit).values({

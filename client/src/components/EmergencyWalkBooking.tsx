@@ -306,11 +306,8 @@ export function EmergencyWalkBooking() {
                   <span data-testid="text-owner-fee">{bookingResult.pricing.ownerFeeILS}</span>
                 </div>
                 
-                <div className="flex justify-between text-xs text-gray-500">
-                  <span>{t('emergency.walkerDeduction')}:</span>
-                  <span data-testid="text-walker-deduction">{bookingResult.pricing.walkerDeductionILS}</span>
-                </div>
-                
+                {/* One money model (2026-09-17): nothing is deducted from the
+                    walker, so the "walker deduction" row is gone. */}
                 <div className="flex justify-between text-xs text-green-600">
                   <span>{t('emergency.walkerPayout')}:</span>
                   <span className="font-semibold" data-testid="text-walker-payout">
