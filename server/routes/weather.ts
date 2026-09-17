@@ -176,10 +176,20 @@ router.get('/7-day-planner', async (req, res) => {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${geocoded.latitude}&longitude=${geocoded.longitude}&daily=temperature_2m_max,temperature_2m_min,weather_code,precipitation_probability_max,uv_index_max,wind_speed_10m_max&timezone=auto&forecast_days=7`;
     
     const response = await fetch(url);
-    const data = await response.json();
+    const data = await response.json().catch(() => ({} as any));
 
-    if (!data.daily) {
-      return res.status(404).json({ error: 'Forecast data not available' });
+    if (!response.ok || !data.daily) {
+      // Upstream refused or returned no forecast. Say so — this used to be a
+      // bare 404 "Forecast data not available" with the provider's reason
+      // thrown away, so the live /pet-wash-day-planner failure (2026-09-17)
+      // could not be diagnosed. Open-Meteo reports its reason in `reason`
+      // (e.g. daily request limit for a shared egress IP).
+      logger.warn('[Weather] 7-day planner upstream failure', {
+        status: response.status,
+        reason: typeof data?.reason === 'string' ? data.reason.slice(0, 200) : null,
+        location: String(location).slice(0, 60),
+      });
+      return res.status(503).json({ error: 'weather_unavailable', message: 'Weather forecast is temporarily unavailable.' });
     }
 
     // Transform to luxury 7-day planner format with translations
