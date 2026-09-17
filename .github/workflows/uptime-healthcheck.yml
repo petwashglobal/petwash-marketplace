@@ -39,19 +39,57 @@ jobs:
         # fails whenever its prebuilt libvips download blips (run 34717591551:
         # "vips/vips8: No such file"). The probe then reported a site outage.
         # Node's resolver walks up to ./node_modules, so a symlink is enough.
+        #
+        # RETRY THE SETUP (2026-09-17). A probe that cannot install itself is
+        # NOT a site outage, but it fails the job and GitHub mails "All jobs
+        # have failed" — which reads exactly like one. Run 35168250781 died on
+        #   npm error code ECONNRESET
+        #   network request to https://registry.npmjs.org/playwright failed
+        # and homepage-healthcheck.mjs never ran at all; the site was fine, with
+        # green checks either side. Same class as the sharp/libvips blip #2465
+        # fixed: the probe's own plumbing pages the CEO.
+        #
+        # Three attempts with backoff on each network step. A real npm or CDN
+        # outage still fails (correctly — the probe genuinely cannot run), but a
+        # single blip no longer looks like production is down.
         run: |
+          set -euo pipefail
           PW_DIR="$RUNNER_TEMP/pw"
           mkdir -p "$PW_DIR"
-          (cd "$PW_DIR" && npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.58.2)
-          ln -sfn "$PW_DIR/node_modules" "$GITHUB_WORKSPACE/node_modules"
-          (cd "$PW_DIR" && npx playwright install --with-deps chromium)
 
+          retry() {
+            local what="$1"; shift
+            local attempt=1
+            until "$@"; do
+              if [ "$attempt" -ge 3 ]; then
+                echo "::error::probe setup failed after 3 attempts: $what — this is the PROBE, not the site"
+                return 1
+              fi
+              local wait=$((attempt * 10))
+              echo "::warning::$what failed (attempt $attempt/3) — retrying in ${wait}s"
+              sleep "$wait"
+              attempt=$((attempt + 1))
+            done
+          }
+
+          (cd "$PW_DIR" && npm init -y >/dev/null)
+          retry "npm install playwright" \
+            npm --prefix "$PW_DIR" install --no-audit --no-fund playwright@1.58.2
+          ln -sfn "$PW_DIR/node_modules" "$GITHUB_WORKSPACE/node_modules"
+          retry "playwright install chromium" \
+            npx --prefix "$PW_DIR" playwright install --with-deps chromium
+
+      # Only THIS step's failure means the site is degraded. Any failure above
+      # it is the probe's own setup (see the retry note there).
       - name: Run health-check
+        id: probe
         run: node scripts/monitoring/homepage-healthcheck.mjs "https://petwash.co.il"
 
       # Optional: ping Slack on failure (only if the secret is configured).
+      # Fires only when the PROBE ran and judged the site degraded — not when
+      # the runner could not install a browser.
       - name: Slack alert on failure
-        if: failure() && env.SLACK_WEBHOOK != ''
+        if: failure() && steps.probe.conclusion == 'failure' && env.SLACK_WEBHOOK != ''
         env:
           SLACK_WEBHOOK: ${{ secrets.ALERTS_SLACK_WEBHOOK }}
         run: |
