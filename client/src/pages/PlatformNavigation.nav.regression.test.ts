@@ -33,7 +33,8 @@ describe('PetTrek legal booking guard', () => {
     const marketplaceSource = read('Marketplace.tsx');
     const petTrekConfigIndex = marketplaceSource.indexOf("id: 'pet_trek'");
     const disabledIndex = marketplaceSource.indexOf('disabled: true', petTrekConfigIndex);
-    const badgeIndex = marketplaceSource.indexOf("badge: 'Coming Soon'", petTrekConfigIndex);
+    // The badge is bilingual since 2026-09-17: badge: L('Coming Soon', 'בקרוב').
+    const badgeIndex = marketplaceSource.indexOf("badge: L('Coming Soon', 'בקרוב')", petTrekConfigIndex);
 
     expect(petTrekConfigIndex).toBeGreaterThan(-1);
     expect(disabledIndex).toBeGreaterThan(petTrekConfigIndex);

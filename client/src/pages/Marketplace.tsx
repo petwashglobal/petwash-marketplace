@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import type { MarketplaceSearchFilters, MarketplacePlatformId } from '@shared/schema';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { useLanguage } from '@/lib/languageStore';
 
 type TierFilter = 'prestige' | 'gold' | 'silver' | 'bronze' | undefined;
 
@@ -67,6 +68,11 @@ const TIER_CONFIG = {
 
 export default function Marketplace() {
   useSEO(pageSEO.marketplace);
+  // Was English-only on the Hebrew site (2026-09-17). Platform and tier names
+  // stay English (brand rule); everything else follows the site language.
+  const { language } = useLanguage();
+  const isHe = language === 'he';
+  const L = (en: string, he: string) => (isHe ? he : en);
   const [selectedPlatform, setSelectedPlatform] = useState<MarketplacePlatformId>('walk_my_pet');
   const [showFilters, setShowFilters] = useState(false);
   const [activeTierFilter, setActiveTierFilter] = useState<TierFilter>(undefined);
@@ -120,7 +126,7 @@ export default function Marketplace() {
       icon: <Car className="w-5 h-5" />,
       color: 'text-[#B8932F]',
       disabled: true,
-      badge: 'Coming Soon',
+      badge: L('Coming Soon', 'בקרוב'),
     },
     {
       id: 'groomers' as MarketplacePlatformId,
@@ -147,10 +153,10 @@ export default function Marketplace() {
       <div className="border-b border-[#D4AF37]/20">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center luxury-fade-in">
           <h1 className="luxury-heading-xl mb-4">
-            Pet Services Marketplace
+            {L('Pet Services Marketplace', 'שירותים לחיות מחמד')}
           </h1>
           <p className="luxury-subtitle-lg">
-            Find trusted professionals for all your pet care needs
+            {L('Find trusted professionals for all your pet care needs', 'אנשי מקצוע מאומתים לכל מה שחיית המחמד שלכם צריכה')}
           </p>
         </div>
       </div>
@@ -199,7 +205,7 @@ export default function Marketplace() {
             data-testid="button-toggle-filters-mobile"
           >
             {showFilters ? <X className="w-4 h-4" /> : <Filter className="w-4 h-4" />}
-            {showFilters ? 'Hide Filters' : 'Filters'}
+            {showFilters ? L('Hide Filters', 'הסתרת סינון') : L('Filters', 'סינון')}
           </button>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -209,15 +215,15 @@ export default function Marketplace() {
               <div className="p-6 border-b border-[#D4AF37]/20">
                 <h3 className="text-lg font-bold flex items-center gap-2 luxury-gradient-text">
                   <SlidersHorizontal className="w-5 h-5" />
-                  Filters
+                  {L('Filters', 'סינון')}
                 </h3>
               </div>
               <div className="p-6 space-y-6">
                 {/* Sort By */}
                 <div>
                   <Label className="mb-2 block">
-                    <TrendingUp className="w-4 h-4 inline mr-1" />
-                    Sort By
+                    <TrendingUp className="w-4 h-4 inline me-1" />
+                    {L('Sort By', 'מיון')}
                   </Label>
                   <Select
                     value={filters.sortBy ?? 'recommended'}
@@ -227,9 +233,9 @@ export default function Marketplace() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="recommended">Recommended</SelectItem>
-                      <SelectItem value="rating">Highest Rated</SelectItem>
-                      <SelectItem value="availability">Soonest Available</SelectItem>
+                      <SelectItem value="recommended">{L('Recommended', 'מומלצים')}</SelectItem>
+                      <SelectItem value="rating">{L('Highest Rated', 'הדירוג הגבוה ביותר')}</SelectItem>
+                      <SelectItem value="availability">{L('Soonest Available', 'הזמינים ביותר')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -237,12 +243,12 @@ export default function Marketplace() {
                 {/* City Filter */}
                 <div>
                   <Label htmlFor="city" className="mb-2 block">
-                    <MapPin className="w-4 h-4 inline mr-1" />
-                    City
+                    <MapPin className="w-4 h-4 inline me-1" />
+                    {L('City', 'עיר')}
                   </Label>
                   <Input
                     id="city"
-                    placeholder="Enter city..."
+                    placeholder={L('Enter city...', 'הקלידו עיר…')}
                     value={filters.city || ''}
                     onChange={(e) => updateFilter('city', e.target.value || undefined)}
                     data-testid="input-city"
@@ -252,8 +258,8 @@ export default function Marketplace() {
                 {/* Minimum Rating */}
                 <div>
                   <Label className="mb-2 block">
-                    <Star className="w-4 h-4 inline mr-1" />
-                    Minimum Rating
+                    <Star className="w-4 h-4 inline me-1" />
+                    {L('Minimum Rating', 'דירוג מינימלי')}
                   </Label>
                   <div className="space-y-2">
                     <Slider
@@ -264,14 +270,14 @@ export default function Marketplace() {
                       className="w-full"
                     />
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {filters.minRating?.toFixed(1) || '0'} stars and up
+                      {isHe ? `${filters.minRating?.toFixed(1) || '0'} כוכבים ומעלה` : `${filters.minRating?.toFixed(1) || '0'} stars and up`}
                     </p>
                   </div>
                 </div>
 
                 {/* Verified Only */}
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="verified">Verified Only</Label>
+                  <Label htmlFor="verified">{L('Verified Only', 'מאומתים בלבד')}</Label>
                   <Switch
                     id="verified"
                     checked={filters.verifiedOnly || false}
@@ -284,7 +290,7 @@ export default function Marketplace() {
                 {selectedPlatform === 'walk_my_pet' && (
                   <>
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="bodycam">Body Camera</Label>
+                      <Label htmlFor="bodycam">{L('Body Camera', 'מצלמת גוף')}</Label>
                       <Switch
                         id="bodycam"
                         checked={filters.bodyCamera || false}
@@ -293,7 +299,7 @@ export default function Marketplace() {
                       />
                     </div>
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="drone">Drone Access</Label>
+                      <Label htmlFor="drone">{L('Drone Access', 'צילום רחפן')}</Label>
                       <Switch
                         id="drone"
                         checked={filters.droneAccess || false}
@@ -306,7 +312,7 @@ export default function Marketplace() {
 
                 {selectedPlatform === 'groomers' && (
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="mobile">Mobile Service</Label>
+                    <Label htmlFor="mobile">{L('Mobile Service', 'שירות עד הבית')}</Label>
                     <Switch
                       id="mobile"
                       checked={filters.mobileService || false}
@@ -328,7 +334,7 @@ export default function Marketplace() {
                   }
                   data-testid="button-reset-filters"
                 >
-                  Reset Filters
+                  {L('Reset Filters', 'איפוס סינון')}
                 </button>
               </div>
             </div>
@@ -340,18 +346,20 @@ export default function Marketplace() {
             <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-black flex-1">
                 {isLoading ? (
-                  'Searching...'
+                  L('Searching...', 'מחפשים…')
                 ) : data?.total ? (
-                  `${data.total} ${data.total === 1 ? 'provider' : 'providers'} found`
+                  isHe
+                    ? (data.total === 1 ? 'נמצא נותן שירות אחד' : `נמצאו ${data.total} נותני שירות`)
+                    : `${data.total} ${data.total === 1 ? 'provider' : 'providers'} found`
                 ) : (
-                  'No providers found'
+                  L('No providers found', 'לא נמצאו נותני שירות')
                 )}
               </h2>
               {/* Active sort indicator */}
               {filters.sortBy === 'recommended' && (
                 <span className="text-xs text-[#B8932F] dark:text-[#D4AF37] font-medium flex items-center gap-1">
                   <TrendingUp className="w-3.5 h-3.5" />
-                  Ranked by quality
+                  {L('Ranked by quality', 'מדורגים לפי איכות')}
                 </span>
               )}
             </div>
@@ -382,7 +390,7 @@ export default function Marketplace() {
                   onClick={() => handleTierClick(undefined)}
                   className="px-3 py-1.5 rounded-full text-xs font-medium border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500"
                 >
-                  Clear filter
+                  {L('Clear filter', 'ניקוי סינון')}
                 </button>
               )}
             </div>
@@ -413,7 +421,7 @@ export default function Marketplace() {
             {error && (
               <div className="luxury-glass-card luxury-shadow-lg border-red-200 p-6">
                 <p className="text-red-600 dark:text-red-400">
-                  Failed to load providers. Please try again.
+                  {L('Failed to load providers. Please try again.', 'לא הצלחנו לטעון נותני שירות. נסו שוב.')}
                 </p>
               </div>
             )}
@@ -425,10 +433,10 @@ export default function Marketplace() {
                   <div className="luxury-glass-card luxury-shadow-lg p-12 text-center">
                     <Search className="w-12 h-12 mx-auto mb-4 luxury-gradient-icon" />
                     <h3 className="text-lg font-bold mb-2 luxury-gradient-text">
-                      No providers found
+                      {L('No providers found', 'לא נמצאו נותני שירות')}
                     </h3>
                     <p className="luxury-text-body">
-                      Try adjusting your filters or search in a different city
+                      {L('Try adjusting your filters or search in a different city', 'נסו לשנות את הסינון או לחפש בעיר אחרת')}
                     </p>
                   </div>
                 ) : (
@@ -439,7 +447,7 @@ export default function Marketplace() {
                     return (
                       <div key={provider.id} className="relative">
                         {tierCfg && TierIcon && tierKey !== 'new' && (
-                          <div className="absolute -top-2 right-3 z-10">
+                          <div className="absolute -top-2 end-3 z-10">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${tierCfg.color}`}>
                               <TierIcon className="w-3 h-3" />
                               {tierCfg.label}
@@ -463,7 +471,7 @@ export default function Marketplace() {
                   onClick={() => updateFilter('offset', Math.max(0, (filters.offset || 0) - filters.limit!))}
                   data-testid="button-prev-page"
                 >
-                  Previous
+                  {L('Previous', 'הקודם')}
                 </button>
                 <button
                   className="luxury-btn-outline"
@@ -471,7 +479,7 @@ export default function Marketplace() {
                   onClick={() => updateFilter('offset', (filters.offset || 0) + filters.limit!)}
                   data-testid="button-next-page"
                 >
-                  Next
+                  {L('Next', 'הבא')}
                 </button>
               </div>
             )}
