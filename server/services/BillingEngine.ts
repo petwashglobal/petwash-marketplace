@@ -151,11 +151,15 @@ function calcPlatformFee(grossAgorot: number, feeRate: number): {
   platformFeeVatAgorot: number;
   providerPayoutAgorot: number;
 } {
-  // Fee is taken from the pre-VAT portion
-  const { subtotalAgorot } = calcVatFromGrossAgorot(grossAgorot);
-  const platformFeeNet   = Math.floor(subtotalAgorot * feeRate);
-  const platformFeeVat   = Math.round(platformFeeNet * ISRAELI_VAT_RATE);
-  const providerPayout   = subtotalAgorot - platformFeeNet;
+  // ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-17): the gross is the
+  // provider's rate + the fee ON TOP, so the fee is gross × r/(1+r), Pet Wash's
+  // VAT is inside it (18/118), and the provider gets everything else — the
+  // whole rate. This used to take VAT off the whole gross and then the fee:
+  // ₪115 charged → provider ₪82.85 instead of ₪100.
+  const platformFeeGross = Math.round(grossAgorot * feeRate / (1 + feeRate));
+  const platformFeeVat   = Math.round(platformFeeGross * ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE));
+  const platformFeeNet   = platformFeeGross - platformFeeVat;
+  const providerPayout   = grossAgorot - platformFeeGross;
   return {
     platformFeeAgorot:    platformFeeNet,
     platformFeeVatAgorot: platformFeeVat,

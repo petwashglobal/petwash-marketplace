@@ -45,7 +45,21 @@ import { logger } from '../lib/logger';
 import type { AuthenticatedRequest } from '../middleware/rbac';
 
 import { clientSafeErrorMessage } from '../lib/sanitizeErrorResponse';
+import { requireAdmin } from '../adminAuth';
 const router = Router();
+
+// SECURITY 2026-09-17: every /admin/* route here had no admin check, and the
+// mount in routes.ts has none either. Anonymous callers could read the
+// discount-ownership rules; any signed-in account (Bearer skips CSRF) could
+// trigger SMS/email/push campaigns, issue personal coupons and rewrite who
+// absorbs a discount. Admin only now. The handlers read req.firebaseUser for
+// the audit uid; requireAdmin sets req.user, so carry it across.
+router.use('/admin', requireAdmin, (req: AuthenticatedRequest, _res: Response, next: () => void) => {
+  if (!req.firebaseUser && (req as any).user?.uid) {
+    (req as any).firebaseUser = { uid: (req as any).user.uid, email: (req as any).user.email };
+  }
+  next();
+});
 
 // ─────────────────────────────────────────────────────────────
 // LEGACY TIER ENDPOINTS
