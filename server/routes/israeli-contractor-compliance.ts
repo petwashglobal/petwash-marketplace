@@ -7,7 +7,7 @@
  * AUTH MODEL:
  * - Provider endpoints: Firebase token required; caller must own the providerId
  * - Admin endpoints: Firebase token required + role must be admin/management/staff
- * - calculate-commission: Firebase token required (server or admin calls only)
+ * - calculate-commission: Admin only (writes commission rows + invoice numbers)
  * - run-monthly-audit: Admin only
  */
 
@@ -154,8 +154,10 @@ router.get('/compliance-status/:providerId', async (req, res) => {
 
 /**
  * POST /calculate-commission
- * Calculate commission for a booking.
- * Auth: Firebase token required; caller must own the providerId or be admin.
+ * Record the Pet Wash fee on a booking (writes provider_commissions and uses a
+ * sequential commission invoice number).
+ * Auth: admin only. It was owner-or-admin, so a provider could write their own
+ * commission rows at a rate they chose and burn invoice numbers (2026-09-17).
  */
 router.post('/calculate-commission', async (req, res) => {
   try {
@@ -164,11 +166,10 @@ router.post('/calculate-commission', async (req, res) => {
       providerType: z.enum(['walker', 'sitter', 'driver', 'groomer', 'trainer']),
       bookingId: z.number().min(1),
       customerPaidAmount: z.number().min(0),
-      commissionRate: z.number().min(15).max(25).default(20),
     });
 
+    await verifyAdmin(req);
     const data = schema.parse(req.body);
-    await verifyProviderOwnership(req, data.providerId);
 
     logger.info('[Israeli Compliance API] Calculating commission', {
       providerId: data.providerId,
@@ -181,7 +182,6 @@ router.post('/calculate-commission', async (req, res) => {
       data.providerType,
       data.bookingId,
       data.customerPaidAmount,
-      data.commissionRate
     );
 
     res.json({ success: true, commission });
