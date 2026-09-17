@@ -20,7 +20,9 @@ describe('generateReceipt wires payment class → SUMIT document type (2026-07-0
   it('accepts a paymentClass and resolves the doc type from the CPA mapping', () => {
     expect(SVC).toMatch(/paymentClass\?: PetWashPaymentClass/);
     expect(SVC).toMatch(/getSumitDocumentMapping\(params\.paymentClass\)\.documentType/);
-    expect(SVC).toMatch(/documentType: classDocType && classDocType !== 'CreditInvoice'/);
+    // 2026-09-17: resolved once into docType, then passed to SUMIT.
+    expect(SVC).toMatch(/classDocType && classDocType !== 'CreditInvoice' \? classDocType : undefined/);
+    expect(SVC).toMatch(/documentType: docType,/);
   });
 
   it('every generateReceipt caller declares its payment class', () => {
