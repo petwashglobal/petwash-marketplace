@@ -143,6 +143,9 @@ export class AppErrorBoundary extends Component<Props, State> {
         stack: error.stack,
         componentStack: errorInfo.componentStack,
         timestamp: new Date().toISOString(),
+        // True under Playwright / Puppeteer / Selenium (W3C WebDriver flag).
+        // Lets triage tell our own test sweeps from a customer's crash.
+        webdriver: typeof navigator !== "undefined" && navigator.webdriver === true,
         ...context,
       }),
     }).catch(() => {
