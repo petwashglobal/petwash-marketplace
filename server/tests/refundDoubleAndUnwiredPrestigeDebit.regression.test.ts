@@ -8,9 +8,15 @@
  *     concurrent refunds both passed and both restored. The flip is now the
  *     claim, first, in one transaction with the restores.
  *
- *  2. POST /api/prestige-pass/admin/wallet/refund keyed its ledger entry on
- *     Date.now(), so a double-click credited twice. Now keyed on the stage
- *     (amount already refunded); a replay returns 409 and writes nothing.
+ *  2. The three staff refunds (admin, support, approved request) credited
+ *     first and wrote the booking row after — a double-click credited twice
+ *     — and academy cancel refunded the full debit even after a partial staff
+ *     refund. All four now go through lib/bookingWalletRefund (claim the row,
+ *     then credit; behaviour test: bookingWalletRefund.behavior.test.ts).
+ *
+ *  2b. Escrow: /create and the party /release are sealed (a provider with a
+ *     second account could mint and release their own payout); /refund is
+ *     admin-only and every escrow refund raises a manual card-refund alert.
  *
  *  3. POST /api/prestige-pass/redeem-online debited a client-chosen amount
  *     against a placeholder booking id and nothing marked the booking paid —
@@ -125,20 +131,35 @@ describe('refundRedemption — one refund per redemption, even under a double-cl
   });
 });
 
-describe('admin wallet refund — a double-click is one refund', () => {
-  const src = read('server', 'routes', 'prestige-pass.ts');
-  const handler = src.slice(src.indexOf("router.post('/admin/wallet/refund',"));
-  const body = handler.slice(0, handler.indexOf('\n});'));
+describe('staff refunds + academy cancel — one shared, claimed path', () => {
+  const pp = read('server', 'routes', 'prestige-pass.ts');
+  const academy = read('server', 'routes', 'academy.ts');
 
-  it('keys the ledger entry on the refund stage, not the clock', () => {
-    expect(body).toContain('`wallet:booking:refund:admin:${bookingId}:${alreadyRefunded}`');
-    expect(body).not.toMatch(/refund:admin:\$\{bookingId\}:\$\{Date\.now\(\)\}/);
+  it('no staff refund path credits the wallet directly any more', () => {
+    expect(pp).not.toMatch(/const \{ refundToWallet \} = await import/);
+    expect(pp).not.toMatch(/refund:admin:\$\{bookingId\}:\$\{Date\.now\(\)\}/);
+    expect(pp.match(/await refundDebitedBookingToWallet\(/g)).toHaveLength(3);
   });
 
-  it('a replay answers 409 and never rewrites the booking', () => {
-    expect(body).toMatch(/if \(result\.idempotent\) \{[\s\S]*?status\(409\)[\s\S]*?REFUND_ALREADY_ISSUED/);
-    expect(body.indexOf('result.idempotent')).toBeLessThan(body.indexOf('UPDATE booking_requests'));
-    expect(body.match(/AND COALESCE\(wallet_refunded_cents, 0\) = \$\{alreadyRefunded\}/g)).toHaveLength(2);
+  it('academy cancel refunds only what is left, through the same path, after a status compare-and-set', () => {
+    expect(academy).toMatch(/const remaining = booking\.walletDebitedCents - \(booking\.walletRefundedCents \?\? 0\);/);
+    expect(academy).toMatch(/refundDebitedBookingToWallet\(\{[\s\S]*?refundCents: remaining,/);
+    expect(academy).toMatch(/eq\(trainerBookings\.bookingStatus, booking\.bookingStatus\)/);
+    expect(academy).not.toMatch(/amountCents: booking\.walletDebitedCents,/);
+  });
+});
+
+describe('escrow — parties cannot mint, release or refund', () => {
+  const escrow = read('server', 'routes', 'escrow.ts');
+  const svc = read('server', 'services', 'EscrowService.ts');
+  it('create and party release are sealed; refund is admin-only', () => {
+    expect(escrow).toMatch(/router\.post\("\/create", requireAuth, \(_req, res\) => \{\n  res\.status\(410\)/);
+    expect(escrow).toMatch(/router\.post\("\/:escrowId\/release", requireAuth, \(_req, res\) => \{\n  res\.status\(410\)/);
+    expect(escrow).toMatch(/router\.post\("\/:escrowId\/refund", requireAdmin,/);
+  });
+  it('every escrow refund raises the manual card-refund alert', () => {
+    const fn = svc.slice(svc.indexOf('async refundEscrowPayment('), svc.indexOf('async disputeEscrowPayment('));
+    expect(fn).toMatch(/dedupeKey: `escrow_card_refund:\$\{escrowId\}`/);
   });
 });
 

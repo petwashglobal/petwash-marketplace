@@ -114,15 +114,23 @@ describe('#237 escrow release: requireAuth + ownership check', () => {
     );
   });
 
-  it('the release handler enforces customerId ownership', () => {
-    // The handler body must compare escrow.customerId to callerId and
-    // 403 on mismatch — this is the "not a shared header secret" part.
+  it('the party release route releases nothing — only a Pet Wash admin approves a payout (2026-09-17)', () => {
+    // Superseded the customerId ownership check: a provider with a second
+    // (customer) account could create a hold and release it to themselves.
     const handler = escrow.match(
       /router\.post\(\s*['"]\/:escrowId\/release['"][\s\S]*?\}\s*\);/,
     );
     expect(handler, 'release handler must exist').toBeTruthy();
-    expect(handler![0]).toMatch(/escrow\.customerId\s*!==\s*callerId/);
-    expect(handler![0]).toMatch(/res\.status\(403\)/);
+    expect(handler![0]).toMatch(/res\.status\(410\)/);
+    expect(handler![0]).not.toMatch(/releaseEscrowPayment/);
+    expect(escrow).toMatch(/router\.post\("\/admin\/:escrowId\/approve-release", requireAdmin,/);
+  });
+
+  it('create and refund are not open to the parties', () => {
+    const create = escrow.match(/router\.post\("\/create"[\s\S]*?\}\);/);
+    expect(create![0]).toMatch(/res\.status\(410\)/);
+    expect(create![0]).not.toMatch(/createEscrowPayment/);
+    expect(escrow).toMatch(/router\.post\("\/:escrowId\/refund", requireAdmin,/);
   });
 
   it('the release path does NOT accept an X-Escrow-Secret header for auth', () => {

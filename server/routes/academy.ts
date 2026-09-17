@@ -40,6 +40,7 @@ import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../l
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walletService } from '../services/WalletService';
+import { refundDebitedBookingToWallet } from '../lib/bookingWalletRefund';
 import { dispatchAcademySms } from '../services/academySmsHelper';
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 
@@ -663,7 +664,9 @@ router.post('/bookings/:id/cancel', async (req, res) => {
       return res.status(400).json({ error: 'Booking cannot be cancelled' });
     }
     
-    // Update booking status
+    // Update booking status — compare-and-set on the status we read, so two
+    // cancels racing (double-tap, user + trainer) cannot both proceed to the
+    // wallet step (2026-09-17).
     const [updatedBooking] = await db
       .update(trainerBookings)
       .set({
@@ -673,8 +676,14 @@ router.post('/bookings/:id/cancel', async (req, res) => {
         cancellationReason: reason || 'User cancelled',
         updatedAt: new Date(),
       })
-      .where(eq(trainerBookings.bookingId, bookingId))
+      .where(and(
+        eq(trainerBookings.bookingId, bookingId),
+        eq(trainerBookings.bookingStatus, booking.bookingStatus),
+      ))
       .returning();
+    if (!updatedBooking) {
+      return res.status(409).json({ error: 'Booking was already changed. Reload and try again.' });
+    }
 
     // Free the trainer's calendar: release the slot lock this booking held
     // (P0-2 fix). Without this a cancelled session would block the slot forever.
@@ -695,15 +704,33 @@ router.post('/bookings/:id/cancel', async (req, res) => {
       walletUpdates = { financeState: 'released', walletReleaseKey: releaseResult.txnId };
       logger.info('[Academy] Wallet hold released on cancel', { bookingId, releasedCents: booking.walletHoldCents, txnId: releaseResult.txnId });
     } else if (booking.financeState === 'debited' && booking.walletDebitedCents > 0) {
-      const refundResult = await walletService.refundBookingWallet({
-        userId: booking.userId,
-        amountCents: booking.walletDebitedCents,
-        bookingId,
-        divisionCode: 'academy',
-        ipAddress: req.ip ?? null,
-      });
-      walletUpdates = { financeState: 'refunded', walletRefundKey: refundResult.txnId, walletRefundedCents: booking.walletDebitedCents };
-      logger.info('[Academy] Wallet refunded on cancel', { bookingId, refundedCents: booking.walletDebitedCents, txnId: refundResult.txnId });
+      // Refund what is LEFT (2026-09-17): this refunded the full debit even
+      // when staff had already refunded part of it, and wrote the full debit
+      // over wallet_refunded_cents. The shared path claims the remainder on
+      // the row first and records it itself.
+      const remaining = booking.walletDebitedCents - (booking.walletRefundedCents ?? 0);
+      if (remaining > 0) {
+        const outcome = await refundDebitedBookingToWallet({
+          booking: {
+            booking_id: bookingId,
+            user_id: booking.userId,
+            division_code: 'academy',
+            wallet_debited_cents: booking.walletDebitedCents,
+            wallet_refunded_cents: booking.walletRefundedCents ?? 0,
+          },
+          sourceTable: 'trainer_bookings',
+          refundCents: remaining,
+          keySuffix: 'cancel',
+          reason: 'booking_cancelled',
+          ip: req.ip ?? null,
+          metadata: { cancelledBy: req.user.uid },
+        });
+        if (outcome.ok) {
+          logger.info('[Academy] Wallet refunded on cancel', { bookingId, refundedCents: remaining, txnId: outcome.txnId });
+        } else {
+          logger.error('[Academy] cancel refund not issued — staff must review', { bookingId, code: outcome.code, remaining });
+        }
+      }
     }
 
     if (Object.keys(walletUpdates).length > 0) {
