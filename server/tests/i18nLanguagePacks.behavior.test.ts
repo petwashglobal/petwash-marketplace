@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join, resolve } from 'path';
@@ -76,7 +76,9 @@ describe('runtime', () => {
     const off = built.subscribeLanguagePacks(() => { notified += 1; });
 
     expect(built.t('nav.home', 'ru')).toBe(original['nav.home'].en); // fallback, triggers the load
-    await new Promise((r) => setTimeout(r, 200));
+    // Wait for the pack itself, not a fixed delay — the import of a 100KB+
+    // module took over 200ms on a loaded CI runner (#2536 went red on it).
+    await vi.waitFor(() => expect(notified).toBe(1), { timeout: 15_000, interval: 25 });
     expect(built.t('nav.home', 'ru')).toBe(original['nav.home'].ru);
     expect(built.getLanguagePackVersion()).toBe(before + 1);
     expect(notified).toBe(1);

@@ -204,7 +204,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
         setFinishModal(null);
         toast({
           title: '✅ Job completed!',
-          description: invoiceNum ? `Invoice ${invoiceNum} sent to client.` : 'Invoice sent to client.',
+          description: invoiceNum ? `Job summary ${invoiceNum} sent to the client. Remember to record your own tax invoice below.` : 'Job summary sent to the client.',
         });
       } catch (err: any) {
         // Invoice was created; only the booking-status flip failed. Say so
@@ -212,7 +212,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
         // actionMutation's own onError already retried invalidateAll(), so
         // the list will reflect the real current status on next load.
         toast({
-          title: invoiceNum ? `Invoice ${invoiceNum} sent, but job status didn't update` : 'Invoice sent, but job status didn’t update',
+          title: invoiceNum ? `Summary ${invoiceNum} sent, but job status didn't update` : 'Summary sent, but job status didn’t update',
           description: (err?.message || 'Please refresh and mark the job complete again if it still shows Active.'),
           variant: 'destructive',
         });
@@ -394,7 +394,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
                 <Receipt className="w-5 h-5 text-[#B8932F]" />
                 <h3 className="text-base font-semibold text-gray-900">Complete Job</h3>
               </div>
-              <p className="text-xs text-gray-500">Confirm payment — a tax invoice will be sent to the client automatically.</p>
+              <p className="text-xs text-gray-500">Confirm payment — the client gets a job summary. Your tax invoice to the client is yours to issue for your full price.</p>
             </div>
             <div className="p-5 space-y-4">
               <div className="bg-white rounded-xl p-3 space-y-1">
@@ -449,7 +449,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
                 className="flex-1 py-3 bg-[#B8932F] text-white rounded-xl text-sm font-semibold hover:bg-[#B8932F] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
                 {finishing
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
-                  : <><CheckCircle2 className="w-4 h-4" /> Finish & Invoice</>}
+                  : <><CheckCircle2 className="w-4 h-4" /> Finish job</>}
               </button>
             </div>
           </div>
