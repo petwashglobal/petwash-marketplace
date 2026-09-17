@@ -44,6 +44,8 @@ export interface SumitBookingSessionResult {
  * NayaxOnlinePaymentService.createPaymentSession so /pay is a drop-in swap.
  * Never throws — returns { success:false, error } so /pay can respond honestly.
  */
+export const PAYMENT_LINK_TTL_HOURS = 2;
+
 export async function createSumitBookingSession(
   input: SumitBookingSessionInput,
 ): Promise<SumitBookingSessionResult> {
@@ -63,6 +65,10 @@ export async function createSumitBookingSession(
       language: input.language,
       // Pet Wash sends its own letter when the booking is confirmed.
       notifyCustomer: false,
+      // SUMIT's default is ONE hour: a customer who opens the page, fetches a
+      // card and comes back finds a dead link and a booking stuck in
+      // payment_pending. Two hours, and /pay can issue a fresh link after that.
+      expirationHours: PAYMENT_LINK_TTL_HOURS,
     });
 
     if (!res.wired) {
