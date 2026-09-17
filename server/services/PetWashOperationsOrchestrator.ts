@@ -21,6 +21,7 @@ import { calendarIntegrationService, type BookingCalendarEvent } from './Calenda
 import { GoogleDriveBackupService } from './googleDriveBackupService';
 import { GoogleSheetsService } from './googleSheetsIntegration';
 import { EmailService } from '../emailService';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { MARKETPLACE_SERVICE_FEE_RATE } from '@shared/marketplaceMoney';
 import { vatFromInclusive } from '@shared/money';
 import { escapeHtml, toHeaderText } from '../lib/htmlEscape';
@@ -495,7 +496,7 @@ export class PetWashOperationsOrchestrator {
     const feeCents = Math.round(paidCents * MARKETPLACE_SERVICE_FEE_RATE / (1 + MARKETPLACE_SERVICE_FEE_RATE));
     const serviceFee = feeCents / 100;
     const providerAmount = (paidCents - feeCents) / 100;
-    const vatAmount = vatFromInclusive(feeCents) / 100; // Pet Wash's VAT, inside its fee
+    const vatAmount = vatFromInclusive(feeCents, ISRAEL_VAT_RATE) / 100; // Pet Wash's VAT, inside its fee
     const invoiceDate = new Date().toLocaleDateString('en-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     const invoiceHtml = generateJobSummaryHtml({
