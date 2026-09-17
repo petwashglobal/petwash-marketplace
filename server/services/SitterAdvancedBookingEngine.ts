@@ -292,6 +292,13 @@ export class SitterAdvancedBookingEngine {
         engine: 'SitterAdvancedBookingEngine',
         idempotencyKey: `sitter:${bookingId}`,
       },
+      undefined,
+      // Commission share = the stay's own fee ÷ total: 15/115 under the one
+      // money model (sitter keeps the whole rate), 15/100 for stays sold
+      // before it. A flat 15% of ₪115 held ₪97.75 for a sitter owed ₪100.
+      pricing.totalPrice > 0 && typeof pricing.platformFee === 'number'
+        ? (pricing.platformFee / pricing.totalPrice) * 100
+        : undefined,
     );
     logger.info('[Sitter Escrow] Funds held in escrow on confirm', {
       bookingId,

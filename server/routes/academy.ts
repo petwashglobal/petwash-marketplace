@@ -43,6 +43,7 @@ import { walletService } from '../services/WalletService';
 import { refundDebitedBookingToWallet } from '../lib/bookingWalletRefund';
 import { dispatchAcademySms } from '../services/academySmsHelper';
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 
 const router = Router();
 
@@ -358,13 +359,14 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
 
     // Calculate pricing
     const durationHours = validatedData.sessionDuration / 60;
-    const totalAmount = parseFloat(trainer.hourlyRate) * durationHours;
-    // Uniform 15% platform commission across ALL PetWash paid services (same
-    // PETWASH_COMMISSION_RATE constant as PetSitter/Walk; CEO-confirmed 2026-06-15).
-    // Previously this used per-trainer trainer.commissionRate, which (a) could
-    // diverge from 15% and (b) produced NaN pricing when a trainer had no rate set.
-    const platformFee = totalAmount * PETWASH_COMMISSION_RATE;
-    const trainerPayout = totalAmount - platformFee;
+    // ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-17): the trainer's
+    // rate × hours is theirs in full; the 15% Pet Wash fee (VAT inside) is added
+    // on top for the customer. This used to charge the rate and pay the
+    // trainer 85% of it — ₪100 session → customer ₪100, trainer ₪85.
+    const split = splitMarketplaceJob(Math.round(parseFloat(trainer.hourlyRate) * durationHours * 100));
+    const totalAmount = split.customerTotalCents / 100;
+    const platformFee = split.serviceFeeCents / 100;
+    const trainerPayout = split.providerPayoutCents / 100;
     
     // Wallet hold (Academy = 100% cap)
     const walletCreditAppliedCents: number = Number(req.body.walletCreditAppliedCents ?? 0);
@@ -456,10 +458,10 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
         startDate: startAt,
         endDate: endAt,
         petCount: 1,
-        subtotalCents: Math.round(totalAmount * 100),
-        serviceFeeCents: Math.round(platformFee * 100),
-        totalCents: Math.round(totalAmount * 100),
-        providerPayoutCents: Math.round(trainerPayout * 100),
+        subtotalCents: split.rateCents,
+        serviceFeeCents: split.serviceFeeCents,
+        totalCents: split.customerTotalCents,
+        providerPayoutCents: split.providerPayoutCents,
         ownerMessage: validatedData.specialNotes ?? null,
         legacyRef: { table: 'trainer_bookings', id: newBooking.bookingId },
       });
@@ -834,46 +836,49 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       const totalAmount = (booking.walletHoldCents || 0) / 100;
       if (totalAmount > 0) {
         try {
+          // The fee on this receipt is the booking's own stored share of what
+          // the customer paid (fee ÷ total): 15/115 for bookings under the one
+          // money model, 15/100 for bookings sold before it. It was always
+          // 15% of the amount paid.
+          const storedTotal = parseFloat(String(booking.totalAmount ?? '0'));
+          const storedFee = parseFloat(String(booking.platformFee ?? '0'));
+          const feeShare = storedTotal > 0 && storedFee >= 0 ? storedFee / storedTotal : PETWASH_COMMISSION_RATE;
+          const platformFeeAmount = Math.round(totalAmount * feeShare * 100) / 100;
+          // Resolve the names BEFORE persisting, so the outbox holds the full
+          // receipt input. It used to store a summary (no customer, no
+          // amounts) and the drainer passed that straight to generateReceipt.
+          const [cust] = await db
+            .select({ email: users.email, first: users.firstName, last: users.lastName })
+            .from(users).where(eq(users.id, booking.userId)).limit(1);
+          const [trn] = await db
+            .select({ first: users.firstName, last: users.lastName })
+            .from(users).where(eq(users.id, booking.trainerUserId)).limit(1);
+          const receiptInput = {
+            platform: 'academy' as const,
+            paymentClass: 'PROVIDER_BOOKING_COMMISSION' as const,
+            bookingId,
+            customerEmail: cust?.email || '',
+            customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
+            serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
+            providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
+            providerId: String(booking.trainerId),
+            providerType: 'trainer' as const,
+            serviceDescription: 'Pet Wash Academy training session',
+            serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
+            subtotalAmount: totalAmount,
+            platformFeeAmount,
+            totalAmount,
+            paymentMethod: 'PetWash Wallet',
+            providerPayoutAmount: Math.round((totalAmount - platformFeeAmount) * 100) / 100,
+            brokerCommissionAmount: platformFeeAmount,
+          };
           const outcome = await runFiscalDocumentAndPersistOnFailure({
             pool,
             kind: 'academy_receipt',
             sourceKey: `booking:${bookingId}`,
-            payload: {
-              platform: 'academy',
-              paymentClass: 'PROVIDER_BOOKING_COMMISSION',
-              bookingId,
-              trainerId: booking.trainerId,
-              trainerUserId: booking.trainerUserId,
-              customerUserId: booking.userId,
-              totalAmountIls: totalAmount,
-            },
+            payload: receiptInput,
             runNow: async () => {
-              const [cust] = await db
-                .select({ email: users.email, first: users.firstName, last: users.lastName })
-                .from(users).where(eq(users.id, booking.userId)).limit(1);
-              const [trn] = await db
-                .select({ first: users.firstName, last: users.lastName })
-                .from(users).where(eq(users.id, booking.trainerUserId)).limit(1);
-              const platformFeeAmount = Math.round(totalAmount * PETWASH_COMMISSION_RATE * 100) / 100;
-              await IsraeliDigitalReceiptService.generateReceipt({
-                platform: 'academy',
-                paymentClass: 'PROVIDER_BOOKING_COMMISSION',
-                bookingId,
-                customerEmail: cust?.email || '',
-                customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
-                serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
-                providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
-                providerId: String(booking.trainerId),
-                providerType: 'trainer',
-                serviceDescription: 'Pet Wash Academy training session',
-                serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
-                subtotalAmount: totalAmount,
-                platformFeeAmount,
-                totalAmount,
-                paymentMethod: 'PetWash Wallet',
-                providerPayoutAmount: Math.round((totalAmount - platformFeeAmount) * 100) / 100,
-                brokerCommissionAmount: platformFeeAmount,
-              });
+              await IsraeliDigitalReceiptService.generateReceipt(receiptInput);
             },
           });
           if (!outcome.ranInline) {

@@ -23,8 +23,10 @@ describe('academy commission — uniform 15%', () => {
     expect(schemaSrc).toMatch(/export const PETWASH_COMMISSION_RATE = 0\.15/);
   });
 
-  it('prices platformFee from PETWASH_COMMISSION_RATE, not the per-trainer rate', () => {
-    expect(academySrc).toMatch(/const platformFee = totalAmount \* PETWASH_COMMISSION_RATE/);
+  it('prices platformFee from the shared 15% (one money model), not the per-trainer rate', () => {
+    // 2026-09-17: the fee is 15% of the rate ON TOP (splitMarketplaceJob uses
+    // MARKETPLACE_SERVICE_FEE_RATE, pinned equal to PETWASH_COMMISSION_RATE).
+    expect(academySrc).toMatch(/const platformFee = split\.serviceFeeCents \/ 100/);
     expect(academySrc).not.toMatch(/platformFee = totalAmount \* \(parseFloat\(trainer\.commissionRate\)/);
   });
 

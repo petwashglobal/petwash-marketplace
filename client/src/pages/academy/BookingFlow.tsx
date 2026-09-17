@@ -419,14 +419,14 @@ export default function AcademyBookingFlow() {
             <div className="mb-6 luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-stagger-item p-6">
               <div className="mb-3 flex items-center justify-between luxury-text-body">
                 <span>מחיר השיעור</span>
-                <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
+                <span>₪{pricing.baseAmount.toFixed(2)}</span>
               </div>
               <div className="mb-1 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
-                <span>כולל עמלת PetWash (15%)</span>
+                <span>דמי שירות PetWash (15%)</span>
                 <span>₪{pricing.commission.toFixed(2)}</span>
               </div>
               <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
-                <span>מהם מע״מ (18/118)</span>
+                <span>מתוכם מע״מ (18/118)</span>
                 <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
               </div>
               <div className="pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between">
@@ -473,8 +473,8 @@ export default function AcademyBookingFlow() {
 
             <div className="mb-4 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-4">
               <BookingFinancialSummary
-                subtotalCents={Math.round(pricing.grossCollectedILS * 100)}
-                serviceFeeCents={Math.round((pricing.commission + pricing.vatOnCommission) * 100)}
+                subtotalCents={Math.round(pricing.baseAmount * 100)}
+                serviceFeeCents={Math.round(pricing.commission * 100)}
                 totalCents={Math.round(pricing.totalCharged * 100)}
                 loyaltyRedeemedCents={appliedCredits ? appliedCredits.totalCreditsAppliedCents : 0}
               />
@@ -572,8 +572,8 @@ export default function AcademyBookingFlow() {
 
             <div className="max-w-md mx-auto mb-6 luxury-glass-card luxury-shadow-xl p-4">
               <BookingFinancialSummary
-                subtotalCents={Math.round(pricing.grossCollectedILS * 100)}
-                serviceFeeCents={Math.round((pricing.commission + pricing.vatOnCommission) * 100)}
+                subtotalCents={Math.round(pricing.baseAmount * 100)}
+                serviceFeeCents={Math.round(pricing.commission * 100)}
                 totalCents={Math.round(pricing.totalCharged * 100)}
                 loyaltyRedeemedCents={appliedCredits ? appliedCredits.totalCreditsAppliedCents : 0}
                 financeState={bookingFinanceState !== 'none' ? bookingFinanceState : undefined}
