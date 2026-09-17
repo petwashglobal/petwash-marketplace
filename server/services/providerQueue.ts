@@ -131,7 +131,6 @@ export async function getQueueList(options?: {
          a.kyc_liveness_score AS liveness_score,
          a.kyc_ocr_confidence AS ocr_confidence,
          a.kyc_decision_flags AS flags,
-         a.fraud_flags,
          a.kyc_fraud_risk_level AS fraud_risk_level,
          q.unread_count,
          q.assigned_to,
@@ -172,8 +171,12 @@ export async function getQueueList(options?: {
     flags: (() => {
       try { return JSON.parse(r.flags || "[]"); } catch { return []; }
     })(),
+    // provider_applications has NO fraud_flags column — not in any migration and
+    // not in the drizzle schema (fraud_flags belongs to user_devices). Selecting
+    // it made the whole admin queue answer 500 in production (2026-09-17). The
+    // KYC risk signal this screen shows is kyc_fraud_risk_level, read below.
     fraudFlags: (() => {
-      try { return JSON.parse(r.fraud_flags || "[]"); } catch { return []; }
+      try { return JSON.parse((r as any).fraud_flags || "[]"); } catch { return []; }
     })(),
     fraudRiskLevel: r.fraud_risk_level,
     unreadCount: r.unread_count,
