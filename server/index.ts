@@ -865,6 +865,13 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // CSRF gate 403s every real SUMIT webhook before activation can run — the
     // [[csrf-public-post-regression-class]] failure mode.
     if (req.path === '/api/sumit/webhook') return true;
+    // SUMIT TRIGGER push (2026-09-18): /api/sumit/trigger/<token>. SUMIT's
+    // trigger mechanism sends no signature and no CSRF token; the credential is
+    // the unguessable path token derived from SUMIT_WEBHOOK_SECRET, and the
+    // handler trusts NOTHING in the body — it only wakes the reconciliation
+    // that re-reads SUMIT with our own key. Same class as the provider
+    // resubmit-token skip below.
+    if (/^\/api\/sumit\/trigger\/[A-Za-z0-9]+$/.test(req.path)) return true;
     // Provider document RESUBMIT (2026-09-13): the credential is the single-use,
     // expiring secure token in the path, claimed atomically by the handler
     // (server/routes/provider-onboarding.ts POST /resubmit/:token). A cross-site
