@@ -294,6 +294,19 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
 
     const { slotId, lockToken, petIds, specialInstructions, addons } = req.body;
 
+    // FAIL CLOSED (2026-09-18): this route charges quote.totalCents and does
+    // nothing with credits — it never confirmed the redemption session, so a
+    // caller sending creditBreakdown got the full amount charged AND kept the
+    // credit (screen said "Pay ₪310", card took ₪460). Refuse instead of
+    // silently ignoring, until credits are applied and the remainder charged.
+    if (req.body?.creditBreakdown || req.body?.redemptionSessionId) {
+      return res.status(400).json({
+        success: false,
+        errorCode: 'CREDITS_NOT_SUPPORTED_HERE',
+        error: 'Wallet credits cannot be applied to this booking yet. Nothing was charged and your credits were not used.',
+      });
+    }
+
     // Validate required fields
     if (!slotId || !lockToken) {
       return res.status(400).json({ 

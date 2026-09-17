@@ -31,7 +31,6 @@ import {
 import type { MarketplacePlatformId } from '@shared/schema';
 import { BookingCalendar } from '@/components/marketplace/BookingCalendar';
 import { MobileDatePicker } from '@/components/ui/mobile-date-picker';
-import { CreditWalletCard } from '@/components/wallet/CreditWalletCard';
 import { useJourneyCheckpoint } from '@/hooks/useJourneyCheckpoint';
 import { emitCtaEvent } from '@/lib/ctaActions';
 import { splitMarketplaceJob } from '@shared/marketplaceMoney';
@@ -115,17 +114,6 @@ export default function MarketplaceBookingFlow() {
     );
   };
 
-  // Credit wallet state
-  const [appliedCredits, setAppliedCredits] = useState<{
-    redemptionSessionId: string;
-    egiftCents: number;
-    washPackages: number;
-    loyaltyPointsCents: number;
-    promoCents: number;
-    referralCents: number;
-    totalCreditsAppliedCents: number;
-    cashPaidCents: number;
-  } | null>(null);
 
   // Quote state (fetched from backend)
   const [quoteId, setQuoteId] = useState<string | null>(null);
@@ -400,18 +388,6 @@ export default function MarketplaceBookingFlow() {
             petIds: selectedPetId ? [selectedPetId] : [],
             specialInstructions,
             addons: selectedAddons,
-            ...(appliedCredits ? {
-              creditBreakdown: {
-                egiftCents: appliedCredits.egiftCents,
-                washPackages: appliedCredits.washPackages,
-                loyaltyPointsCents: appliedCredits.loyaltyPointsCents,
-                promoCents: appliedCredits.promoCents,
-                referralCents: appliedCredits.referralCents,
-                totalCreditsAppliedCents: appliedCredits.totalCreditsAppliedCents,
-                cashPaidCents: appliedCredits.cashPaidCents,
-              },
-              redemptionSessionId: appliedCredits.redemptionSessionId,
-            } : {}),
           }),
         },
       );
@@ -996,54 +972,17 @@ export default function MarketplaceBookingFlow() {
                     )}
                   </div>
 
-                  {/* Credit Wallet Integration */}
+                  {/* Wallet credits are NOT accepted in this flow (2026-09-18).
+                      The card is charged the full quote: /checkout ignored the
+                      credit fields the screen sent, so it promised "Pay ₪310"
+                      while ₪460 was charged and the credit was never spent.
+                      Offer credits here again only once the server applies them
+                      and charges the remainder. */}
                   {user && quoteData && (
-                    <div className="mb-6">
-                      <CreditWalletCard
-                        userId={user.uid}
-                        platform={platform as 'walker' | 'sitter' | 'pettrek' | 'k9000' | 'plush_lab'}
-                        transactionAmountCents={quoteData.totalCents}
-                        compact={false}
-                        onRedeemCredits={(preview, redemption) => {
-                          setAppliedCredits({
-                            redemptionSessionId: redemption.sessionId,
-                            egiftCents: redemption.creditsApplied.egiftCents,
-                            washPackages: redemption.creditsApplied.washPackages,
-                            loyaltyPointsCents: redemption.creditsApplied.loyaltyPoints,
-                            promoCents: redemption.creditsApplied.promoCents,
-                            referralCents: 0,
-                            totalCreditsAppliedCents: preview.totalCreditsApplicableCents,
-                            cashPaidCents: redemption.cashDueCents,
-                          });
-                        }}
-                      />
-                      {appliedCredits && appliedCredits.totalCreditsAppliedCents > 0 && (
-                        <div className="mt-3 p-3 bg-green-50 dark:bg-white border border-green-200 dark:border-green-800 rounded-lg">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-green-800 dark:text-green-200 font-medium">
-                              {isHebrew ? 'זיכויים הופעלו' : 'Credits Applied'}
-                            </span>
-                            <span className="text-green-700 dark:text-green-300 font-bold">
-                              -₪{(appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}
-                            </span>
-                          </div>
-                          {appliedCredits.cashPaidCents > 0 && (
-                            <div className="flex items-center justify-between text-sm mt-1">
-                              <span className="text-gray-600 dark:text-gray-400">
-                                {isHebrew ? 'יתרה לתשלום במזומן' : 'Remaining cash payment'}
-                              </span>
-                              <span className="text-gray-800 dark:text-black font-semibold">
-                                ₪{(appliedCredits.cashPaidCents / 100).toFixed(2)}
-                              </span>
-                            </div>
-                          )}
-                          {appliedCredits.cashPaidCents === 0 && (
-                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                              {isHebrew ? 'שולם במלואו מהזיכויים שלך!' : 'Paid in full by your credits!'}
-                            </p>
-                          )}
-                        </div>
-                      )}
+                    <div className="mb-6 p-3 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600 dark:text-gray-400" data-testid="credits-not-available">
+                      {isHebrew
+                        ? 'לא ניתן להשתמש בזיכויי הארנק בהזמנה זו — סכום ההזמנה המלא מחויב בכרטיס. הזיכויים שלך נשמרים.'
+                        : 'Wallet credits cannot be used for this booking — the full amount is charged to your card. Your credits stay in your wallet.'}
                     </div>
                   )}
 
@@ -1087,12 +1026,7 @@ export default function MarketplaceBookingFlow() {
                         ) : (
                           <>
                             <CreditCard className="w-5 h-5 mr-2" />
-                            {appliedCredits && appliedCredits.cashPaidCents === 0
-                              ? (isHebrew ? 'אישור הזמנה (מכוסה בזיכויים)' : 'Confirm Booking (Covered by Credits)')
-                              : appliedCredits && appliedCredits.cashPaidCents > 0
-                                ? (isHebrew ? `המשך לתשלום ₪${(appliedCredits.cashPaidCents / 100).toFixed(2)}` : `Pay ₪${(appliedCredits.cashPaidCents / 100).toFixed(2)} via Nayax`)
-                                : (isHebrew ? 'המשך לתשלום (Nayax)' : 'Proceed to Payment (Nayax)')
-                            }
+                            {isHebrew ? 'המשך לתשלום (Nayax)' : 'Proceed to Payment (Nayax)'}
                           </>
                         )}
                       </Button>
@@ -1101,10 +1035,7 @@ export default function MarketplaceBookingFlow() {
                     <div className="flex items-center justify-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                       <Shield className="w-4 h-4 text-green-600" />
                       <span>
-                        {appliedCredits && appliedCredits.cashPaidCents === 0
-                          ? (isHebrew ? 'שולם במלואו מהזיכויים שלך' : 'Paid in full by your wallet credits')
-                          : (isHebrew ? 'תשלום מאובטח דרך Nayax Israel' : 'Secure payment via Nayax Israel')
-                        }
+                        {isHebrew ? 'תשלום מאובטח דרך Nayax Israel' : 'Secure payment via Nayax Israel'}
                       </span>
                     </div>
                   </div>
