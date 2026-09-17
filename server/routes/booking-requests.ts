@@ -3118,6 +3118,11 @@ router.post('/:requestId/provider-invoice', async (req, res) => {
     await db.update(bookingRequests)
       .set({ providerInvoiceNumber: invoiceNumber, providerInvoiceSubmittedAt: new Date(), updatedAt: new Date() } as any)
       .where(eq(bookingRequests.requestId, req.params.requestId));
+    // A Sitter Suite stay or a Walk My Pet walk is mirrored into this table for
+    // the provider inbox, and its payout gate reads the ORIGINAL row. Keep both
+    // in step, or a provider who did exactly what was asked stays blocked.
+    const { copyInvoiceToLegacyRow } = await import('../lib/providerInvoiceLink');
+    await copyInvoiceToLegacyRow(req.params.requestId, invoiceNumber);
     return res.json({ ok: true });
   } catch (error: any) {
     logger.error('[BookingRequests] provider-invoice record failed', { error: error?.message });

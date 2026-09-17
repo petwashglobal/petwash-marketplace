@@ -1166,6 +1166,8 @@ router.post('/bookings/:bookingId/provider-invoice', requireAuth, async (req, re
       .update(sitterBookings)
       .set({ providerInvoiceNumber: invoiceNumber, providerInvoiceSubmittedAt: new Date(), updatedAt: new Date() } as any)
       .where(eq(sitterBookings.bookingId, req.params.bookingId));
+    const { copyInvoiceToMirrorRequest } = await import('../lib/providerInvoiceLink');
+    await copyInvoiceToMirrorRequest('sitter_bookings', req.params.bookingId, invoiceNumber);
     return res.json({ ok: true });
   } catch (error: any) {
     logger.error('[Sitter Suite] provider-invoice record failed', { error: error?.message });
