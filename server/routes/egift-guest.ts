@@ -28,6 +28,7 @@ import { logger } from '../lib/logger';
 import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 import { sumitExternalRefMismatch, readSumitExternalRef } from '../lib/sumitExternalRef';
 import { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } from '../lib/sumitPaymentReturn';
+import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -98,6 +99,7 @@ router.post('/guest/start', paymentLimiter, auditLogMiddleware('EGIFT_ISSUE'), a
     redirectUrl: `${baseUrl()}/api/egift/guest/return?ext=${encodeURIComponent(externalId)}`,
     customerName: d.senderName,
     customerEmail: d.senderEmail,
+    language: paymentLanguageFor(req),
   });
   if (!result.wired) return res.status(503).json({ error: 'Payments not enabled yet', reason: result.reason });
   if (!result.redirectUrl) return res.status(502).json({ error: 'Could not start payment', reason: result.reason });

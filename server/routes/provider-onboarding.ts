@@ -32,6 +32,7 @@ import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { generateProviderWelcomeEmail } from '../email/templates/welcome-provider-signup-2026';
 import { writeProviderAudit } from '../services/providerAudit';
 import { seedProviderServicesOnApproval, resolveApplicationServiceTypes } from '../services/providerServiceApproval';
+import { seedProviderProfiles } from '../services/providerProfileSeed';
 import { emitProviderEvent } from '../services/providerMonitoring';
 import { logProviderMessage } from '../services/providerMessageLog';
 import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFromDecision as _queuePriority } from '../services/providerQueue';
@@ -2743,6 +2744,38 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
               }
             }
           }
+        }
+
+        // LAST MILE (2026-09-17). This — the approval the admin review screen
+        // uses — wrote `providers` and a starter rate card but never the
+        // platform profile that customer search joins (walker_profiles /
+        // sitter_profiles / trainers), nor the provider_profiles row both
+        // booking-accept gates read. The other approval path
+        // (provider-applications) already seeds the platform profiles. Result:
+        // every provider approved here was invisible to customers and could not
+        // accept a booking. Seed both; idempotent, never a second row.
+        try {
+          const seeded = await seedProviderProfiles(application as any, platformIds);
+          if (seeded.skipped.length) {
+            logger.warn('[Provider Onboarding] profile seed skipped for some platforms', { userId: application.userId, skipped: seeded.skipped });
+          }
+        } catch (profileErr: any) {
+          logger.error('[Provider Onboarding] platform profile seed FAILED — approved provider not searchable until reconciled', {
+            applicationId, userId: application.userId, error: profileErr?.message,
+          });
+        }
+        try {
+          await pool.query(
+            `INSERT INTO provider_profiles (user_id, background_check_status, created_at, updated_at)
+             VALUES ($1, 'passed', NOW(), NOW())
+             ON CONFLICT (user_id) DO UPDATE
+               SET background_check_status = 'passed', updated_at = NOW()`,
+            [application.userId],
+          );
+        } catch (ppErr: any) {
+          logger.error('[Provider Onboarding] provider_profiles upsert FAILED — provider cannot accept bookings until reconciled', {
+            applicationId, userId: application.userId, error: ppErr?.message,
+          });
         }
 
         // Multi-role fix (CEO 2026-08-24: "provider vs booker user role to

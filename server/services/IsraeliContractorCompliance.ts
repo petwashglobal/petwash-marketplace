@@ -34,7 +34,8 @@ import { logger } from '../lib/logger';
 import { encryptPII } from '../lib/piiFieldCrypto';
 import { nanoid } from 'nanoid';
 import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
-import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import { MARKETPLACE_SERVICE_FEE_RATE } from "@shared/marketplaceMoney";
+import { vatFromInclusive } from "@shared/money";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -246,32 +247,30 @@ export class IsraeliContractorComplianceService {
   }
 
   /**
-   * Calculate commission for a booking
-   * Pet Wash takes flat 15% commission on ALL third-party providers (unified rate)
+   * Record the Pet Wash fee on a booking.
+   *
+   * ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-17): the customer paid
+   * the provider's rate + a 15% fee ON TOP, so the fee is paid × 15/115 and the
+   * provider earns the rest — the whole rate. The rate is fixed; it used to be
+   * caller-chosen (the route defaulted to 20%) and taken OUT of what the
+   * customer paid: ₪115 paid → provider ₪92 instead of ₪100.
    */
   static async calculateCommission(
     providerId: string,
     providerType: ProviderType,
     bookingId: number,
     customerPaidAmount: number,
-    commissionRate: number = 15 // Flat 15% on all platforms
   ): Promise<CommissionCalculation> {
     try {
-      if (commissionRate < 5 || commissionRate > 25) {
-        throw new Error('Commission rate must be between 5% and 25%');
-      }
+      const commissionRate = MARKETPLACE_SERVICE_FEE_RATE * 100;
+      const paidCents = Math.round(customerPaidAmount * 100);
+      const feeCents = Math.round(paidCents * MARKETPLACE_SERVICE_FEE_RATE / (1 + MARKETPLACE_SERVICE_FEE_RATE));
+      const grossCommission = feeCents / 100;
+      const providerEarnings = (paidCents - feeCents) / 100;
 
-      // Calculate amounts (Israeli VAT Law - marketplace broker model)
-      // Commission is VAT-INCLUSIVE (marketplace platform/on-demand platform): Customer payment already includes VAT
-      const grossCommission = parseFloat((customerPaidAmount * (commissionRate / 100)).toFixed(2));
-      const providerEarnings = parseFloat((customerPaidAmount - grossCommission).toFixed(2));
-
-      // Israeli VAT calculation (18% - VAT-inclusive reverse calculation)
-      // The commission already includes VAT. We extract the VAT portion for tax reporting.
-      // Formula: VAT = GrossAmount / 1.18 * 0.18 (reverse calculation)
+      // The fee is VAT-inclusive: Pet Wash's VAT is extracted from it (18/118).
       const includesVat = true;
-      const vatRate = ISRAEL_VAT_RATE;
-      const vatAmount = parseFloat((grossCommission / (1 + vatRate) * vatRate).toFixed(2));
+      const vatAmount = vatFromInclusive(feeCents) / 100;
       const commissionAmount = grossCommission; // Gross commission (includes VAT)
       const netCommission = parseFloat((grossCommission - vatAmount).toFixed(2)); // Net commission (without VAT)
       
@@ -899,8 +898,11 @@ export class IsraeliContractorComplianceService {
     const vatStatus = await this.checkVatThreshold(providerId);
 
     // Calculate summary
-    const petwashCommission = grossPayoutAmount * 0.15; // 15% flat commission (all platforms)
-    const netAfterCommission = grossPayoutAmount - petwashCommission;
+    // The payout IS the provider's rate. Pet Wash's fee was charged to the
+    // customer on top of it (shared/marketplaceMoney.ts), so nothing comes off
+    // here — this used to take another 15% out of money already net of fee.
+    const petwashCommission = 0;
+    const netAfterCommission = grossPayoutAmount;
     const remitToTaxAuthority = withholding.withholdingTaxAmount;
     const providerTakeHome = netAfterCommission - remitToTaxAuthority;
 

@@ -1490,6 +1490,7 @@ jobs:
             -e NAYAX_ENABLED=true \
             -e SUMIT_ENABLED=true \
             -e SUMIT_SANDBOX=false \
+            -e BOOKING_CARD_RAIL=sumit \
             -e SMS_GLOBAL_HOURLY_LIMIT=120 \
             -e SMS_GLOBAL_DAILY_LIMIT=400 \
             -e IDENTITY_UNIFIED_ENABLED=true \
@@ -2014,6 +2015,11 @@ jobs:
           # above, which scripts/guards/deploy_env_mirrors_smoke.py enforces on every PR).
           # Setting them in the console works until the next deploy, then silently vanishes.
           #
+          # BOOKING_CARD_RAIL=sumit (CEO 2026-09-17, "real booking from the website"):
+          # booking /pay opens SUMIT's hosted page (Upay clearing active in SUMIT);
+          # /sumit-return re-verifies the transaction with SUMIT before confirming.
+          # Unset = nayax, whose online rail is dark → every /pay was ONLINE_CARD_NOT_LIVE.
+          #
           # NOTE: do NOT put explanatory comments inside the `flags: |` block below —
           # they're passed to gcloud as positional args and break parsing on
           # apostrophes/quotes (real outage: PR #448). Keep all comments up here.
@@ -2026,7 +2032,7 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            --set-env-vars=NODE_ENV=production,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,NAYAX_ENABLED=true,SUMIT_ENABLED=true,SUMIT_SANDBOX=false,SMS_GLOBAL_HOURLY_LIMIT=120,SMS_GLOBAL_DAILY_LIMIT=400,IDENTITY_UNIFIED_ENABLED=true,LYNX_ENABLED=true,LYNX_SANDBOX=false,LYNX_OPERATOR_ID=2002942146,UNIFIED_VERIFICATION_ENABLED=true,UNIFIED_VERIFICATION_SIGNUP_ENABLED=true,UNIFIED_VERIFICATION_LOGIN_ENABLED=true,UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED=true,UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED=true
+            --set-env-vars=NODE_ENV=production,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,NAYAX_ENABLED=true,SUMIT_ENABLED=true,SUMIT_SANDBOX=false,BOOKING_CARD_RAIL=sumit,SMS_GLOBAL_HOURLY_LIMIT=120,SMS_GLOBAL_DAILY_LIMIT=400,IDENTITY_UNIFIED_ENABLED=true,LYNX_ENABLED=true,LYNX_SANDBOX=false,LYNX_OPERATOR_ID=2002942146,UNIFIED_VERIFICATION_ENABLED=true,UNIFIED_VERIFICATION_SIGNUP_ENABLED=true,UNIFIED_VERIFICATION_LOGIN_ENABLED=true,UNIFIED_VERIFICATION_DISABLE_2FA_ENABLED=true,UNIFIED_VERIFICATION_CHANGE_PHONE_ENABLED=true
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
             --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30

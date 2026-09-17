@@ -1120,7 +1120,8 @@ export default function BookingConfirmation() {
       if (!payKeyRef.current) payKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${requestId}/pay`, {
         method: 'POST',
-        body: { paymentMethod: 'card' },
+        // The site's language — SUMIT's card page opens in it (foreign card holders).
+        body: { paymentMethod: 'card', language: document.documentElement.lang || 'he' },
         headers: { 'Idempotency-Key': payKeyRef.current },
       });
       return res.json();

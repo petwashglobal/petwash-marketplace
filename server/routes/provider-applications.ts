@@ -1614,6 +1614,13 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
         if (seeded.skipped.length) {
           logger.warn('[ProviderApplication] profile seed skipped for some platforms', { userId: application.userId, skipped: seeded.skipped });
         }
+        // Both booking-accept gates read provider_profiles.background_check_status.
+        await pool.query(
+          `INSERT INTO provider_profiles (user_id, background_check_status, created_at, updated_at)
+           VALUES ($1, 'passed', NOW(), NOW())
+           ON CONFLICT (user_id) DO UPDATE SET background_check_status = 'passed', updated_at = NOW()`,
+          [application.userId],
+        ).catch((ppErr: any) => logger.error('[ProviderApplication] provider_profiles upsert FAILED', { userId: application.userId, error: ppErr?.message }));
         // Multi-role fix (CEO 2026-08-24): do NOT destructively overwrite
         // users.role='provider' — that pinned scalar 'provider' on users who
         // were also customers, causing every requireCustomer/requireLoyaltyMember
@@ -1773,12 +1780,115 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
   }
 });
 
+const ALLOWED_SERVICE_LEVELS: ServiceLevel[] = ['waitlist', 'profile', 'booking', 'payout'];
+
+/** Reflect a provider's per-service map in their Firebase claims (best-effort). */
+async function refreshServiceClaims(userId: string): Promise<void> {
+  try {
+    const { providerServices } = await import('@shared/schema-provider-services');
+    const allRows = await db.select().from(providerServices).where(eq(providerServices.providerId, userId));
+    const existingClaims = (await firebaseAuth.getUser(userId)).customClaims || {};
+    // Additive (CEO §1/§28): don't overwrite existing customer identity.
+    const preservedRole = (existingClaims.role && existingClaims.role !== 'public') ? existingClaims.role : 'provider';
+    const preservedAccountType = (existingClaims.accountType && existingClaims.accountType !== 'pet_parent') ? existingClaims.accountType : 'provider';
+    const priorRoles = Array.isArray(existingClaims.roles) ? existingClaims.roles.filter((r: string) => typeof r === 'string') : [];
+    const nextRoles = Array.from(new Set([...priorRoles, 'provider']));
+    await firebaseAuth.setCustomUserClaims(userId, {
+      ...existingClaims,
+      role: preservedRole,
+      accountType: preservedAccountType,
+      roles: nextRoles,
+      approvedServices: allRows.map((r) => ({
+        serviceType: r.serviceType,
+        serviceStatus: r.serviceStatus,
+        bookingEnabled: r.bookingEnabled,
+        payoutEnabled: r.payoutEnabled,
+      })),
+    });
+  } catch (claimsErr) {
+    logger.warn('[ProviderApplication] Could not refresh claims after service-level change (non-fatal)', { claimsErr, userId });
+  }
+}
+
+// POST /api/provider-applications/admin/provider/:providerUid/service/:serviceType/approve
+// The same per-service ladder, keyed by the provider's uid instead of a
+// provider_applicants id. The current onboarding wizard deletes its
+// provider_applicants draft on submit, so the Provider Control Tower had no
+// applicationId for anyone approved through it and every ladder button was
+// disabled — no provider could ever be raised to booking (2026-09-17).
+// "Applied for" = approval seeded a provider_services row for this service.
+router.post('/admin/provider/:providerUid/service/:serviceType/approve', async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).firebaseUser;
+    if (!callerIsAdmin(req)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    const providerUid = String(req.params.providerUid || '').trim();
+    const serviceType = req.params.serviceType;
+    const { level, reason } = req.body || {};
+    if (!providerUid || providerUid.length > 128) {
+      return res.status(400).json({ error: 'INVALID_PROVIDER' });
+    }
+    if (!ALLOWED_SERVICE_LEVELS.includes(level)) {
+      return res.status(400).json({
+        error: 'INVALID_LEVEL',
+        message: `level must be one of: ${ALLOWED_SERVICE_LEVELS.join(', ')}`,
+      });
+    }
+    if (!reason || String(reason).trim().length < 3) {
+      return res.status(400).json({ error: 'REASON_REQUIRED', message: 'A reason is required for service approval changes.' });
+    }
+
+    const { normalizeServiceType } = await import('@shared/provider-service-levels');
+    const { providerServices } = await import('@shared/schema-provider-services');
+    const canonicalRequested = normalizeServiceType(serviceType);
+    const existing = await db.select({ serviceType: providerServices.serviceType })
+      .from(providerServices)
+      .where(eq(providerServices.providerId, providerUid));
+    if (!existing.some((r) => normalizeServiceType(r.serviceType) === canonicalRequested)) {
+      return res.status(400).json({
+        error: 'SERVICE_NOT_APPLIED',
+        message: `Provider has no "${serviceType}" service from an approved application.`,
+        appliedServices: existing.map((r) => normalizeServiceType(r.serviceType)),
+      });
+    }
+
+    const updated = await setProviderServiceLevel(providerUid, serviceType, level as ServiceLevel);
+    await refreshServiceClaims(providerUid);
+
+    // Audit against the provider's approved onboarding application.
+    const [app] = await db.select({ id: providerApplications.id })
+      .from(providerApplications)
+      .where(and(eq(providerApplications.userId, providerUid), eq(providerApplications.status, 'approved')))
+      .orderBy(desc(providerApplications.reviewedAt))
+      .limit(1);
+    const auditPayload = { providerUid, serviceType: updated.serviceType, level, newStatus: updated.serviceStatus, reason: String(reason).slice(0, 500), approvedBy: user?.email };
+    if (app?.id != null) {
+      await writeProviderAudit({
+        applicationId: Number(app.id),
+        eventType: 'provider_service_level_changed',
+        actorUserId: user?.uid,
+        actorRole: 'admin',
+        payload: auditPayload,
+      });
+    } else {
+      logger.warn('[ProviderApplication] service level changed for a provider with no approved application row — audit in log only', auditPayload);
+    }
+
+    logger.info('[ProviderApplication] Per-service level changed (by provider)', auditPayload);
+    return res.json({ success: true, service: updated });
+  } catch (error) {
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Service-level change (by provider) error', { error, traceId });
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to change service level', traceId });
+  }
+});
+
 // POST /api/provider-applications/admin/:applicationId/service/:serviceType/approve
 // Advance ONE service for a provider to a level: waitlist | profile | booking | payout.
 // This is the per-service multi-stage approval ladder the legal spec mandates — a
 // provider approved for one service is NOT approved for another, and approved-for-
 // booking is NOT approved-for-payout. Admin-only. Writes an audit event.
-const ALLOWED_SERVICE_LEVELS: ServiceLevel[] = ['waitlist', 'profile', 'booking', 'payout'];
 router.post('/admin/:applicationId/service/:serviceType/approve', async (req: Request, res: Response) => {
   try {
     const user = (req as any).firebaseUser;
@@ -1826,31 +1936,7 @@ router.post('/admin/:applicationId/service/:serviceType/approve', async (req: Re
 
     const updated = await setProviderServiceLevel(application.userId, serviceType, level as ServiceLevel);
 
-    // Reflect the new per-service map in Firebase claims (best-effort).
-    try {
-      const { providerServices } = await import('@shared/schema-provider-services');
-      const allRows = await db.select().from(providerServices).where(eq(providerServices.providerId, application.userId));
-      const existingClaims = (await firebaseAuth.getUser(application.userId)).customClaims || {};
-      // Additive (CEO §1/§28): don't overwrite existing customer identity.
-      const preservedRole = (existingClaims.role && existingClaims.role !== 'public') ? existingClaims.role : 'provider';
-      const preservedAccountType = (existingClaims.accountType && existingClaims.accountType !== 'pet_parent') ? existingClaims.accountType : 'provider';
-      const priorRoles = Array.isArray(existingClaims.roles) ? existingClaims.roles.filter((r: string) => typeof r === 'string') : [];
-      const nextRoles = Array.from(new Set([...priorRoles, 'provider']));
-      await firebaseAuth.setCustomUserClaims(application.userId, {
-        ...existingClaims,
-        role: preservedRole,
-        accountType: preservedAccountType,
-        roles: nextRoles,
-        approvedServices: allRows.map((r) => ({
-          serviceType: r.serviceType,
-          serviceStatus: r.serviceStatus,
-          bookingEnabled: r.bookingEnabled,
-          payoutEnabled: r.payoutEnabled,
-        })),
-      });
-    } catch (claimsErr) {
-      logger.warn('[ProviderApplication] Could not refresh claims after service-level change (non-fatal)', { claimsErr, userId: application.userId });
-    }
+    await refreshServiceClaims(application.userId);
 
     await writeProviderAudit({
       applicationId,
