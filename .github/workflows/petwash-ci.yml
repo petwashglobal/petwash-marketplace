@@ -463,6 +463,15 @@ jobs:
     # `gh workflow run petwash-ci.yml -f run_migrations=true` directly. Absent
     # the marker, the twice-burned M-DEPLOY-2 discipline still holds: pushes
     # do NOT auto-apply migrations.
+    #
+    # 2026-09-17 — THE MARKER MUST BE IN THE SUBJECT LINE. contains() searches
+    # the WHOLE message, body included, so a commit whose body merely MENTIONS
+    # the marker opted itself in. A PR that said, in its own body,
+    #     "NOT tagged [apply-pending-migrations]: 0161 rewrites customer rows"
+    # applied that migration to production on merge. A safeguard you can trip by
+    # writing about it is not a safeguard. The job still gates on contains() —
+    # GitHub expressions cannot split lines — but the FIRST STEP below re-reads
+    # the subject alone and stops the job when the marker is only prose.
     if: >-
       ${{ (github.event_name == 'workflow_dispatch' && inputs.run_migrations == true)
         || (github.event_name == 'push' && contains(github.event.head_commit.message, '[apply-pending-migrations]')) }}
@@ -474,6 +483,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      # The marker is an OPT-IN, and an opt-in has to be deliberate. Only the
+      # subject line counts: prose in the body that names the marker — including
+      # prose that says the commit is NOT opting in — must never reach the
+      # database. workflow_dispatch is already a deliberate act and skips this.
+      - name: Confirm the migration opt-in is real, not prose
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          SUBJECT="$(git log -1 --pretty=%s)"
+          echo "Head commit subject: $SUBJECT"
+          case "$SUBJECT" in
+            *"[apply-pending-migrations]"*)
+              echo "✅ Marker is in the subject line — this is a real opt-in."
+              ;;
+            *)
+              echo "::error::The [apply-pending-migrations] marker appears only in the commit BODY, not the subject line."
+              echo "::error::Refusing to touch the production database. Put the marker in the subject, or run the workflow manually with run_migrations=true."
+              exit 1
+              ;;
+          esac
 
       - name: Setup Node
         uses: actions/setup-node@v5
