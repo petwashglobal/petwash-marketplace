@@ -1510,12 +1510,12 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
 
       <EditorialHeader
         isHe={isHe}
-        cornerStart={isHe ? ['מפה חיה', 'התראות חכמות', 'כוח הקהילה'] : ['Live map', 'Smart alerts', 'Community-powered']}
-        cornerEnd={isHe ? ['אנשים', 'חיות', 'קהילות', 'טובות יותר'] : ['People', 'Pets', 'Kinder', 'Communities']}
+        cornerStart={isHe ? ['מפה חיה', 'התראות באזור', 'כל השכונה איתכם'] : ['Live map', 'Smart alerts', 'Community-powered']}
+        cornerEnd={isHe ? ['שכנים', 'שעוזרים', 'לשכנים'] : ['People', 'Pets', 'Kinder', 'Communities']}
         title="PawFinder"
         titleMark="™‎"
-        subtitle={L('שירות ללא עלות לחברי PetWash — חיות שאבדו ונמצאו.', 'A free members service for lost & found pets.')}
-        italic={L('מוצאים מהר יותר. חוזרים הביתה מוקדם יותר.', 'Find faster. Reunite sooner.')}
+        subtitle={L('חיה נעלמה? מצאתם חיה? שירות חינם לחברי PetWash.', 'A free members service for lost & found pets.')}
+        italic={L('כל השכונה מחפשת איתכם.', 'Find faster. Reunite sooner.')}
       />
 
       <main className="mx-auto max-w-6xl px-3 sm:px-5">
@@ -1541,7 +1541,7 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
               items={navItems}
               active={view}
               onSelect={selectView}
-              note={isHe ? ['קהילות חזקות', 'חיות מאושרות', 'מחר טוב יותר'] : ['Stronger', 'Communities', 'Happier Pets', 'Brighter', 'Tomorrows']}
+              note={isHe ? ['כל עין', 'ברחוב', 'עוזרת'] : ['Stronger', 'Communities', 'Happier Pets', 'Brighter', 'Tomorrows']}
             />
 
             <div className="min-w-0 flex-1">
@@ -1691,21 +1691,21 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
       </main>
 
       <PillarRow pillars={[
-        { icon: <MapPin className="h-6 w-6" />, title: L('מפה חיה', 'Live Map'), body: L('רואים בזמן אמת התראות על חיות שאבדו ונמצאו בסביבה.', 'See real-time lost and found pet alerts near you.') },
-        { icon: <Bell className="h-6 w-6" />, title: L('התראות מיידיות', 'Instant Alerts'), body: L('מקבלים התראה על דיווחים חדשים ועל התאמות.', 'Get notified about new alerts in your area.') },
-        { icon: <Heart className="h-6 w-6" />, title: L('התאמות אפשריות', 'Possible Matches'), body: L('ההתאמה החכמה שלנו מקרבת איחוד מהיר יותר.', 'Our smart matching helps reunite pets faster.') },
-        { icon: <Users className="h-6 w-6" />, title: L('קשר ישיר', 'Direct Contact'), body: L('שולחים הודעה או מתקשרים ישירות למוצאים ולבעלים.', 'Message or call pet finders and owners directly.') },
+        { icon: <MapPin className="h-6 w-6" />, title: L('מפה חיה', 'Live Map'), body: L('כל דיווח באזור שלכם מופיע על המפה ברגע שהוא עולה.', 'See real-time lost and found pet alerts near you.') },
+        { icon: <Bell className="h-6 w-6" />, title: L('תדעו מיד', 'Instant Alerts'), body: L('דיווח חדש באזור או התאמה אפשרית — מקבלים התראה.', 'Get notified about new alerts in your area.') },
+        { icon: <Heart className="h-6 w-6" />, title: L('אולי זה הוא?', 'Possible Matches'), body: L('המערכת משווה כל "אבד" מול כל "נמצא" — סוג, צבע, מקום ותאריך — ומראה לכם.', 'Our smart matching helps reunite pets faster.') },
+        { icon: <Users className="h-6 w-6" />, title: L('מדברים ישירות', 'Direct Contact'), body: L('שולחים הודעה למוצא או לבעלים, ואתם מחליטים מתי לתת טלפון.', 'Message or call pet finders and owners directly.') },
       ]} />
 
       <StepsBand
         isHe={isHe}
-        lead={L('דרך מהירה יותר הביתה.', 'A faster path home.')}
+        lead={L('מהרגע שנעלמו — ועד שחוזרים הביתה.', 'A faster path home.')}
         steps={[
-          { icon: <ClipboardList className="h-5 w-5" />, title: L('מדווחים', 'Report'), body: L('על חיה שאבדה או נמצאה.', 'Report a lost or found pet.') },
-          { icon: <MapIcon className="h-5 w-5" />, title: L('על המפה', 'Map'), body: L('ההתראה מופיעה במפה החיה.', 'Your alert appears on the live map.') },
-          { icon: <Heart className="h-5 w-5" />, title: L('התאמה', 'Match'), body: L('מקבלים התראה על התאמות.', 'Get notified of possible matches.') },
-          { icon: <MessageSquare className="h-5 w-5" />, title: L('יוצרים קשר', 'Contact'), body: L('מדברים ישירות ומשתפים פרטים.', 'Speak directly and share details.') },
-          { icon: <HomeIcon className="h-5 w-5" />, title: L('חוזרים הביתה', 'Reunite'), body: L('חיות מאושרות. משפחות מאושרות.', 'Happy pets. Happier families.') },
+          { icon: <ClipboardList className="h-5 w-5" />, title: L('מדווחים', 'Report'), body: L('תמונה, מקום ושעה — וזהו.', 'Report a lost or found pet.') },
+          { icon: <MapIcon className="h-5 w-5" />, title: L('על המפה', 'Map'), body: L('כל מי שבאזור רואה את הדיווח.', 'Your alert appears on the live map.') },
+          { icon: <Heart className="h-5 w-5" />, title: L('התאמה', 'Match'), body: L('מישהו דיווח על חיה דומה? תדעו.', 'Get notified of possible matches.') },
+          { icon: <MessageSquare className="h-5 w-5" />, title: L('יוצרים קשר', 'Contact'), body: L('מאמתים פרט מזהה ומדברים.', 'Speak directly and share details.') },
+          { icon: <HomeIcon className="h-5 w-5" />, title: L('חוזרים הביתה', 'Reunite'), body: L('וכולם נושמים לרווחה.', 'Happy pets. Happier families.') },
         ]}
       />
 
@@ -1713,10 +1713,10 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
         isHe={isHe}
         image="/community/closing-cat.jpg"
         imageAlt=""
-        heading={isHe ? ['אותן קהילות.', 'חזקות יותר ביחד.'] : ['Same communities.', 'Stronger together.']}
-        caption={isHe ? ['PawFinder עוזר להחזיר', 'חיות אבודות', 'למשפחות שלהן.'] : ['PawFinder helps reunite', 'lost pets with their', 'existing families.']}
-        seal={isHe ? ['אבדו ונמצאו', 'נפרד', 'מאימוץ.'] : ['Lost & found', 'is separate', 'from', 'adoption.']}
-        footer={<>PawFinder™‎ {L('עוזר להחזיר חיות אבודות למשפחות שלהן.', 'helps reunite lost pets with their existing families.')}</>}
+        heading={isHe ? ['כשכולם מחפשים,', 'מוצאים.'] : ['Same communities.', 'Stronger together.']}
+        caption={isHe ? ['PawFinder מחבר', 'בין מי שאיבד', 'למי שמצא.'] : ['PawFinder helps reunite', 'lost pets with their', 'existing families.']}
+        seal={isHe ? ['מחזירים', 'אותם', 'הביתה.'] : ['Lost & found', 'is separate', 'from', 'adoption.']}
+        footer={<>PawFinder™‎ {L('מחזיר חיות אבודות הביתה — חינם לחברי PetWash.', 'helps reunite lost pets with their existing families.')}</>}
       />
     </div>
   );

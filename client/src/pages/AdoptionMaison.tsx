@@ -330,12 +330,12 @@ export default function AdoptionMaison() {
 
           <div className="flex gap-6">
             <SideNav
-              title={L('למצוא להם את הפרק הבא', 'Find Their Next Chapter')}
-              subtitle={L('חיות אמיתיות. משפחות אמיתיות. מחר טוב יותר.', 'Real pets. Real families. A brighter tomorrow.')}
+              title={L('הפרק הבא שלהם מתחיל אצלכם', 'Find Their Next Chapter')}
+              subtitle={L('חיות אמיתיות, משפחות אמיתיות — וכל מודעה נבדקת לפני שהיא עולה.', 'Real pets. Real families. A brighter tomorrow.')}
               items={navItems}
               active={view}
               onSelect={selectView}
-              note={isHe ? ['בתים', 'טובים יותר', 'חיים', 'מאירים יותר'] : ['Better', 'Homes', 'Brighter', 'Lives']}
+              note={isHe ? ['לאמץ', 'זה לתת', 'בית', 'לתמיד'] : ['Better', 'Homes', 'Brighter', 'Lives']}
             />
 
             <div className="min-w-0 flex-1">
@@ -432,21 +432,21 @@ export default function AdoptionMaison() {
       </main>
 
       <PillarRow pillars={[
-        { icon: <ShieldCheck className="h-6 w-6" />, title: L('מודעות מאומתות', 'Verified Listings'), body: L('כל מודעה נבדקת כדי להבטיח אימוץ אמיתי ואחראי.', 'All listings are reviewed to ensure genuine, responsible adoptions.') },
-        { icon: <Heart className="h-6 w-6" />, title: L('התאמה חכמה', 'Smart Matching'), body: L('מוצאים חיות שמתאימות לאורח החיים שלכם.', 'Find pets that fit your lifestyle with intelligent recommendations.') },
-        { icon: <MessageCircle className="h-6 w-6" />, title: L('פניות מאובטחות', 'Secure Enquiries'), body: L('יוצרים קשר בבטחה דרך מערכת ההודעות לחברים.', 'Connect safely through our members-only messaging system.') },
-        { icon: <Home className="h-6 w-6" />, title: L('היכרות ואימוץ', 'Meet & Adopt'), body: L('מתאמים היכרות עם המטפלים ומעניקים לחיה בית לתמיד.', 'Arrange meetups with shelters or approved caregivers and give a pet their forever home.') },
+        { icon: <ShieldCheck className="h-6 w-6" />, title: L('כל מודעה נבדקת', 'Verified Listings'), body: L('צוות PetWash עובר על כל מודעה לפני שהיא עולה לאתר.', 'All listings are reviewed to ensure genuine, responsible adoptions.') },
+        { icon: <Heart className="h-6 w-6" />, title: L('מתאים לבית שלכם', 'Smart Matching'), body: L('דירה, ילדים, חיות אחרות בבית — רואים מיד מי באמת מתאים לכם.', 'Find pets that fit your lifestyle with intelligent recommendations.') },
+        { icon: <MessageCircle className="h-6 w-6" />, title: L('פונים בלי לחשוף', 'Secure Enquiries'), body: L('כותבים דרך PetWash. הטלפון של המפרסם נחשף רק כשהוא מאשר את הפנייה.', 'Connect safely through our members-only messaging system.') },
+        { icon: <Home className="h-6 w-6" />, title: L('נפגשים ומתאהבים', 'Meet & Adopt'), body: L('קובעים היכרות, ואם יש קליק — הם עוברים הביתה.', 'Arrange meetups with shelters or approved caregivers and give a pet their forever home.') },
       ]} />
 
       <StepsBand
         isHe={isHe}
-        lead={L('חמישה צעדים פשוטים למחר טוב יותר.', 'Five simple steps to a brighter tomorrow.')}
+        lead={L('מהמסך הזה ועד הספה בסלון — חמישה צעדים.', 'Five simple steps to a brighter tomorrow.')}
         steps={[
-          { icon: <Search className="h-5 w-5" />, title: L('מגלים', 'Browse'), body: L('חיות מדהימות בסביבתכם.', 'Explore amazing pets near you.') },
-          { icon: <Heart className="h-5 w-5" />, title: L('מתאימים', 'Match'), body: L('מוצאים את ההתאמה הנכונה.', 'Find the right fit for your lifestyle.') },
-          { icon: <MessageCircle className="h-5 w-5" />, title: L('פונים', 'Enquire'), body: L('פותחים שיחה בבטחה.', 'Start a conversation securely.') },
-          { icon: <CalendarDays className="h-5 w-5" />, title: L('נפגשים', 'Meet'), body: L('מתאמים היכרות עם המטפלים.', 'Arrange a meetup with the current caregiver.') },
-          { icon: <Home className="h-5 w-5" />, title: L('מאמצים', 'Adopt'), body: L('מקבלים אותם הביתה.', 'Welcome them home. Change a life forever.') },
+          { icon: <Search className="h-5 w-5" />, title: L('מגלים', 'Browse'), body: L('מי מחכה לבית, קרוב אליכם.', 'Explore amazing pets near you.') },
+          { icon: <Heart className="h-5 w-5" />, title: L('מתאימים', 'Match'), body: L('מסננים לפי הבית, הילדים והקצב שלכם.', 'Find the right fit for your lifestyle.') },
+          { icon: <MessageCircle className="h-5 w-5" />, title: L('פונים', 'Enquire'), body: L('שולחים הודעה ישר מהמודעה.', 'Start a conversation securely.') },
+          { icon: <CalendarDays className="h-5 w-5" />, title: L('נפגשים', 'Meet'), body: L('קובעים היכרות, בלי לחץ ובלי התחייבות.', 'Arrange a meetup with the current caregiver.') },
+          { icon: <Home className="h-5 w-5" />, title: L('מאמצים', 'Adopt'), body: L('והבית מתמלא.', 'Welcome them home. Change a life forever.') },
         ]}
       />
 
@@ -454,10 +454,10 @@ export default function AdoptionMaison() {
         isHe={isHe}
         image="/community/closing-dog.jpg"
         imageAlt=""
-        heading={isHe ? ['חיים שונים.', 'מחר מאיר יותר.'] : ['Different lives.', 'A brighter tomorrow.']}
-        caption={isHe ? ['אימוץ יוצר', 'אנשים מאושרים, חיות מאושרות,', 'קהילות טובות יותר.'] : ['Adoption creates', 'happier people, happier pets,', 'kinder communities.']}
-        seal={isHe ? ['עולם', 'טוב יותר', 'לכל', 'חיה'] : ['A kinder', 'world', 'for every', 'pet']}
-        footer={L('אימוץ חיות עוזר לחיות למצוא משפחה חדשה לתמיד.', 'Adopt a Pet helps pets find a new permanent family.')}
+        heading={isHe ? ['הם לא צריכים הרבה.', 'רק אתכם.'] : ['Different lives.', 'A brighter tomorrow.']}
+        caption={isHe ? ['כל אימוץ', 'מפנה מקום בעמותה', 'לחיה הבאה שמחכה.'] : ['Adoption creates', 'happier people, happier pets,', 'kinder communities.']}
+        seal={isHe ? ['לכל', 'חיה', 'מגיע', 'בית'] : ['A kinder', 'world', 'for every', 'pet']}
+        footer={L('Adopt a Pet מחבר בין חיה שמחכה לבית, לבית שמחכה לה.', 'Adopt a Pet helps pets find a new permanent family.')}
       />
     </div>
   );
