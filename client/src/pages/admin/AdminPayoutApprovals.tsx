@@ -28,7 +28,9 @@ interface Evidence {
   measured: { gpsPoints: number; gpsDistanceMeters: number | null; gpsSpanMinutes: number | null; checkInDistanceMeters: number | null; maxSpeedKmh: number | null };
 }
 interface Item {
-  escrowId: string;
+  /** 'escrow' = a held escrow row; 'sitter_stay' = a finished Sitter Suite stay. */
+  kind?: 'escrow' | 'sitter_stay';
+  escrowId: string | null;
   bookingId: string | null;
   providerId: string | null;
   amountIls: number;
@@ -52,9 +54,14 @@ function ApproveBox({ item, onDone }: { item: Item; onDone: () => void }) {
   const blocked = item.evidence?.verdict === "blocked";
   const canSubmit = reason.trim().length > 0 && (!blocked || (override && reason.trim().length >= 20));
 
+  // A Sitter Suite stay is not an escrow row and has its own approval route.
+  const url = item.kind === 'sitter_stay'
+    ? `/api/escrow/admin/sitter-stay/${encodeURIComponent(item.bookingId ?? '')}/approve-payout`
+    : `/api/escrow/admin/${encodeURIComponent(item.escrowId ?? '')}/approve-release`;
+
   const approve = useMutation({
     mutationFn: async () => {
-      const r = await apiRequest("POST", `/api/escrow/admin/${encodeURIComponent(item.escrowId)}/approve-release`, {
+      const r = await apiRequest("POST", url, {
         reason: reason.trim(),
         ...(blocked ? { overrideBlocked: override } : {}),
       });
@@ -76,7 +83,7 @@ function ApproveBox({ item, onDone }: { item: Item; onDone: () => void }) {
   });
 
   return (
-    <div className="mt-4 rounded-xl border border-gray-200 p-3" data-testid={`approve-box-${item.escrowId}`}>
+    <div className="mt-4 rounded-xl border border-gray-200 p-3" data-testid={`approve-box-${item.escrowId ?? item.bookingId}`}>
       <label className="block text-sm text-gray-700">
         מה בדקת לפני האישור?
         <textarea
@@ -84,12 +91,12 @@ function ApproveBox({ item, onDone }: { item: Item; onDone: () => void }) {
           onChange={(e) => setReason(e.target.value.slice(0, 500))}
           rows={2}
           className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/40"
-          data-testid={`approve-reason-${item.escrowId}`}
+          data-testid={`approve-reason-${item.escrowId ?? item.bookingId}`}
         />
       </label>
       {blocked && (
         <label className="mt-2 flex items-start gap-2 text-sm text-red-700">
-          <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} className="mt-1 h-5 w-5" data-testid={`approve-override-${item.escrowId}`} />
+          <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} className="mt-1 h-5 w-5" data-testid={`approve-override-${item.escrowId ?? item.bookingId}`} />
           <span>אני מאשר/ת לעקוף את החסימה על אחריותי (נדרש נימוק של 20 תווים לפחות).</span>
         </label>
       )}
@@ -97,7 +104,7 @@ function ApproveBox({ item, onDone }: { item: Item; onDone: () => void }) {
         onClick={() => approve.mutate()}
         disabled={!canSubmit || approve.isPending}
         className="mt-3 w-full rounded-full bg-black py-5 text-base text-white"
-        data-testid={`approve-submit-${item.escrowId}`}
+        data-testid={`approve-submit-${item.escrowId ?? item.bookingId}`}
       >
         {approve.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : `אישור תשלום ₪${item.amountIls.toFixed(2)}`}
       </Button>
@@ -140,18 +147,19 @@ export default function AdminPayoutApprovals() {
 
       <div className="mt-6 space-y-4">
         {data?.items.map((item) => {
+          const rowId = item.escrowId ?? item.bookingId ?? '';
           const v = VERDICT_UI[item.evidence?.verdict ?? "none"];
-          const expanded = open === item.escrowId;
+          const expanded = open === rowId;
           return (
-            <section key={item.escrowId} className="rounded-2xl border border-gray-100 p-4 shadow-sm" data-testid={`payout-card-${item.escrowId}`}>
+            <section key={rowId} className="rounded-2xl border border-gray-100 p-4 shadow-sm" data-testid={`payout-card-${rowId}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-lg font-semibold text-gray-900" dir="ltr" style={{ textAlign: "right" }}>₪{item.amountIls.toFixed(2)}</div>
                   <div className="text-xs text-gray-500 break-all" dir="ltr" style={{ textAlign: "right" }}>
-                    {item.bookingId ?? "—"} · {item.holdEnded ? "תקופת ההחזקה הסתיימה" : "עדיין בתקופת החזקה"}
+                    {item.bookingId ?? "—"} · {item.kind === 'sitter_stay' ? "אירוח (Sitter Suite)" : item.holdEnded ? "תקופת ההחזקה הסתיימה" : "עדיין בתקופת החזקה"}
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium" style={{ color: v.color, border: `1px solid ${v.color}` }} data-testid={`payout-verdict-${item.escrowId}`}>
+                <span className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium" style={{ color: v.color, border: `1px solid ${v.color}` }} data-testid={`payout-verdict-${rowId}`}>
                   <v.Icon className="h-4 w-4" /> {v.he}
                 </span>
               </div>
@@ -172,7 +180,7 @@ export default function AdminPayoutApprovals() {
                 </div>
               )}
 
-              <Button variant="outline" onClick={() => setOpen(expanded ? null : item.escrowId)} className="mt-3 rounded-full" data-testid={`payout-open-${item.escrowId}`}>
+              <Button variant="outline" onClick={() => setOpen(expanded ? null : rowId)} className="mt-3 rounded-full" data-testid={`payout-open-${rowId}`}>
                 {expanded ? "סגירה" : "לאישור התשלום"}
               </Button>
               {expanded && <ApproveBox item={item} onDone={done} />}
