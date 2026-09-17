@@ -434,25 +434,25 @@ export default function TrainerProfile() {
                           <span>{t('Hourly Rate')}</span>
                           <span>₪{parseFloat(trainer.hourlyRate).toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                          <span>{t('Platform Fee')} ({parseFloat(trainer.commissionRate).toFixed(0)}%)</span>
-                          <span>₪{(parseFloat(trainer.hourlyRate) * parseFloat(trainer.commissionRate) / 100).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-gray-600 dark:text-gray-400">
-                          <span>{t('VAT on Fee')} (18%)</span>
-                          <span>₪{(parseFloat(trainer.hourlyRate) * parseFloat(trainer.commissionRate) / 100 * 0.18).toFixed(2)}</span>
-                        </div>
-                        <Separator />
-                        <div className="flex justify-between font-semibold text-gray-900 dark:text-black">
-                          <span>{t('Total per Hour')}</span>
-                          <span>
-                            ₪{(
-                              parseFloat(trainer.hourlyRate) +
-                              (parseFloat(trainer.hourlyRate) * parseFloat(trainer.commissionRate) / 100) +
-                              (parseFloat(trainer.hourlyRate) * parseFloat(trainer.commissionRate) / 100 * 0.18)
-                            ).toFixed(2)}
-                          </span>
-                        </div>
+                        {/* One money model: the same 15% fee the server charges, VAT inside it.
+                            (Was the trainer's own commissionRate + 18% VAT on top — ₪117.70
+                            shown for a ₪100 hour the server priced differently.) */}
+                        {(() => {
+                          const hour = splitMarketplaceJob(Math.round(parseFloat(trainer.hourlyRate) * 100));
+                          return (
+                            <>
+                              <div className="flex justify-between text-gray-600 dark:text-gray-400">
+                                <span>{t('Service fee')} (15%, {t('VAT incl.')})</span>
+                                <span>₪{(hour.serviceFeeCents / 100).toFixed(2)}</span>
+                              </div>
+                              <Separator />
+                              <div className="flex justify-between font-semibold text-gray-900 dark:text-black">
+                                <span>{t('Total per Hour')}</span>
+                                <span>₪{(hour.customerTotalCents / 100).toFixed(2)}</span>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Info Notes */}

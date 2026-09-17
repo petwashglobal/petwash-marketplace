@@ -1,45 +1,39 @@
 /**
- * Frontend VAT Calculator Helper — Israeli marketplace broker model.
- * Aligns with server/services/VATCalculatorService.ts Mode B.
+ * Frontend price helper — the ONE marketplace money model
+ * (shared/marketplaceMoney.ts, CEO 2026-09-17, the Rover / Mad Paws way):
  *
- * Israeli VAT: 18% (effective Jan 1, 2025)
+ *   customer pays  = provider's price + 15% Pet Wash service fee
+ *   provider gets  = their price, in full
+ *   VAT (18%)      = inside the fee (18/118), never added on top
  *
- * MARKETPLACE MODEL (Sitter Suite, Walk My Pet, Academy, PetTrek):
- *   • Customer pays the provider's listed price — no surcharges added on top
- *   • PetWash commission (15%) is extracted FROM the gross, not added on top
- *   • VAT (18%) is embedded inside the commission (18/118 extraction, not additive)
- *   • Provider nets: gross − commission
+ * Example — trainer at ₪100/hour:
+ *   grossCollectedILS = ₪115.00   commission = ₪15.00
+ *   vatOnCommission   = ₪2.29     netToProvider = ₪100.00
  *
- * Example — sitter listed at ₪150/night:
- *   grossCollectedILS  = ₪150.00  (customer pays this)
- *   commission         = ₪ 22.50  (15% extracted from gross)
- *   vatOnCommission    = ₪  3.43  (18/118 of ₪22.50 — owed to ITA)
- *   netToProvider      = ₪127.50  (gross − commission)
- *
- * WRONG (old additive):  totalCharged = ₪150 + ₪22.50 + ₪4.05 = ₪176.55 ← overcharges
- * CORRECT (broker model): totalCharged = ₪150.00                          ← listed price
+ * (Until 2026-09-17 this took the fee OUT of the price: ₪100 → trainer ₪85.)
  */
+import { splitMarketplaceJob, MARKETPLACE_SERVICE_FEE_RATE } from '@shared/marketplaceMoney';
 
 export const ISRAELI_VAT_RATE = 0.18;
-export const PLATFORM_COMMISSION_RATE = 0.15;
+export const PLATFORM_COMMISSION_RATE = MARKETPLACE_SERVICE_FEE_RATE;
 
 export interface VATCalculation {
-  /** Gross the customer pays — equals the provider's listed price */
+  /** What the customer pays = provider's price + fee */
   grossCollectedILS: number;
-  /** Platform commission extracted from the gross (not added on top) */
+  /** Pet Wash service fee, added on top of the price (VAT inside) */
   commission: number;
   /**
    * VAT embedded inside the commission, owed by PetWash to ITA.
    * Calculated as commission × 18/118 (extraction, not addition).
    */
   vatOnCommission: number;
-  /** Provider's net payout = gross − commission */
+  /** Provider's payout = their whole price */
   netToProvider: number;
 
   // ── backward-compat aliases used in booking payloads ──────────────────────
   /** @deprecated alias for grossCollectedILS */
   totalCharged: number;
-  /** @deprecated alias for grossCollectedILS — base IS the gross in broker model */
+  /** The provider's price (before the fee) */
   baseAmount: number;
   /** @deprecated alias for vatOnCommission */
   vatAmount: number;
@@ -48,30 +42,18 @@ export interface VATCalculation {
 export class VATCalculator {
   /**
    * Compute marketplace VAT breakdown.
-   * @param listedPriceILS  The price the provider set; this IS what the customer pays.
-   * @param commissionRate  Platform cut (default 15%).
+   * @param listedPriceILS  The price the provider set; the fee goes on top.
    */
-  calculateVAT(
-    listedPriceILS: number,
-    commissionRate: number = PLATFORM_COMMISSION_RATE,
-  ): VATCalculation {
-    const gross = this.roundToCurrency(listedPriceILS);
-    const commission = this.roundToCurrency(gross * commissionRate);
-    // VAT is embedded inside the commission — extract at 18/118 (not additive 18%)
-    const vatOnCommission = this.roundToCurrency(
-      commission * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)),
-    );
-    const netToProvider = this.roundToCurrency(gross - commission);
-
+  calculateVAT(listedPriceILS: number): VATCalculation {
+    const s = splitMarketplaceJob(Math.round(listedPriceILS * 100));
     return {
-      grossCollectedILS: gross,
-      commission,
-      vatOnCommission,
-      netToProvider,
-      // backward-compat aliases
-      totalCharged: gross,
-      baseAmount: gross,
-      vatAmount: vatOnCommission,
+      grossCollectedILS: s.customerTotalCents / 100,
+      commission: s.serviceFeeCents / 100,
+      vatOnCommission: s.serviceFeeVatCents / 100,
+      netToProvider: s.providerPayoutCents / 100,
+      totalCharged: s.customerTotalCents / 100,
+      baseAmount: s.rateCents / 100,
+      vatAmount: s.serviceFeeVatCents / 100,
     };
   }
 
@@ -84,18 +66,14 @@ export class VATCalculator {
     return Math.round(amount * 100) / 100;
   }
 
-  /** VAT embedded in the commission for a given gross amount. */
-  calculateVATAmount(grossAmount: number): number {
-    const commission = grossAmount * PLATFORM_COMMISSION_RATE;
-    return this.roundToCurrency(commission * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)));
+  /** VAT inside the fee on a provider's price. */
+  calculateVATAmount(listedPriceILS: number): number {
+    return this.calculateVAT(listedPriceILS).vatOnCommission;
   }
 
-  /**
-   * Total charged to the customer.
-   * In the broker model this equals the listed price — nothing is added on top.
-   */
+  /** Total charged to the customer = price + fee. */
   calculateTotalWithVAT(listedPriceILS: number): number {
-    return this.roundToCurrency(listedPriceILS);
+    return this.calculateVAT(listedPriceILS).totalCharged;
   }
 }
 

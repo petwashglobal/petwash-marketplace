@@ -335,7 +335,11 @@ router.post("/create", requireAuth, async (req, res) => {
         booking.providerId,
         vatCalc.grossCollectedILS,
         undefined,
-        { bookingPlatform: booking.platform }
+        { bookingPlatform: booking.platform },
+        undefined,
+        // Commission share = fee ÷ total, so the escrow holds the provider's
+        // whole rate (a flat 15% of ₪115 held ₪97.75 for a ₪100 provider).
+        vatCalc.grossCollectedILS > 0 ? (vatCalc.platformFeeGross / vatCalc.grossCollectedILS) * 100 : 0,
       );
     }
 
