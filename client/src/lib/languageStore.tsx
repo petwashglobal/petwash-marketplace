@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { t as translate, isRTL, Language } from './i18n';
+import i18next from './i18next-init';
 
 interface LanguageContextType {
   language: Language;
@@ -113,6 +114,12 @@ function syncUrlLanguage(lang: Language): void {
 function applyDirToDOM(lang: Language) {
   document.documentElement.lang = lang;
   document.documentElement.dir = isRTL(lang) ? 'rtl' : 'ltr';
+  // react-i18next is a SECOND language source (22 components read
+  // i18n.language). It was initialised to 'en' and never told when the site
+  // language changed, so booking search, provider search/filters/cards,
+  // How-it-works, Trust & Safety and the contact form were English on the
+  // Hebrew site (2026-09-17). Every language change goes through here.
+  if (i18next.language !== lang) void i18next.changeLanguage(lang);
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
