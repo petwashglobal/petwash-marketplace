@@ -14,6 +14,7 @@ permissions:
 #          /billing/payments/list/         — every card payment in the window (counts, dates,
 #                                            amounts, valid flag, status text)
 #          /billing/payments/get/          — field NAMES of valid payments (does SUMIT echo our reference?)
+#          /crm/* (listfolders, listentities, listviews) — can SUMIT push payments to us?
 #          /accounting/documents/list/     — tax documents: per-type totals, drafts, credits,
 #                                            possible double documents (same ExternalReference)
 #   DOES NOT: open a terminal (openupayterminal), set Upay credentials, charge, refund,
@@ -94,6 +95,36 @@ jobs:
             echo "-- payment $PID: status $(echo "$RG" | jq -c '.Status')"
             echo "$RG" | jq -r '[.Data // {} | paths(scalars) | map(tostring) | join(".")] | .[]' | grep -v -i -E 'card|number|citizen|token|expir|cvv' | sort
             echo "   external-looking values: $(echo "$RG" | jq -c '[.. | strings | select(test("sumit_verify|^eg_|^pw|ext|booking";"i"))]')"
+          done
+
+          echo "== 2c. CRM: folders / views / payment entity fields (read-only) =="
+          echo "-- folders --"
+          curl -sS --max-time 30 -H 'Content-Type: application/json' \
+            -d "$(jq -n --argjson c "$CREDS" '{Credentials:$c}')" \
+            https://api.sumit.co.il/crm/schema/listfolders/ \
+            | jq -r '.Data // {} | .. | objects | select(has("ID") and (has("Name") or has("EnglishName"))) | "\(.ID)\t\(.Name // .EnglishName)"' | sort -u | head -40
+          for F in Payments Billing payments billing; do
+            R="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                 -d "$(jq -n --argjson c "$CREDS" --arg f "$F" '{Credentials:$c, Folder:$f, LoadProperties:true, Paging:{StartIndex:0, PageSize:3}}')" \
+                 https://api.sumit.co.il/crm/data/listentities/)"
+            ST="$(echo "$R" | jq -c '.Status')"
+            echo "-- listentities Folder=$F → Status $ST $(echo "$R" | jq -r '.UserErrorMessage // ""')"
+            [ "$ST" = "0" ] || continue
+            echo "   field names:"
+            echo "$R" | jq -r '[.Data // {} | paths(scalars) | map(tostring) | join(".")] | .[]' \
+              | sed -E 's/\.[0-9]+\./.N./g' | sort -u | grep -v -i -E 'card|cvv|citizen|token|expir' | head -40
+            echo "   values that look like OUR reference:"
+            echo "$R" | jq -c '[.. | strings | select(test("^bkg_|^eg_|^sumit_verify|^pw_";"i"))] | unique'
+          done
+          echo "-- views (for a trigger subscription) --"
+          for FID in $(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                 -d "$(jq -n --argjson c "$CREDS" '{Credentials:$c}')" \
+                 https://api.sumit.co.il/crm/schema/listfolders/ | jq -r '[.. | objects | select(has("ID")) | .ID] | unique | .[]' | head -12); do
+            V="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                 -d "$(jq -n --argjson c "$CREDS" --argjson f "$FID" '{Credentials:$c, FolderID:$f}')" \
+                 https://api.sumit.co.il/crm/views/listviews/)"
+            [ "$(echo "$V" | jq -c '.Status')" = "0" ] || continue
+            echo "   folder $FID views: $(echo "$V" | jq -c '[.Data // {} | .. | objects | select(has("ID") and has("Name")) | {ID, Name}] | unique')"
           done
 
           echo "== 3. /accounting/documents/list/ (last ${DAYS:-90} days, drafts included) =="
