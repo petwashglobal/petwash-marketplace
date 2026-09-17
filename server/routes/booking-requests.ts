@@ -2410,10 +2410,68 @@ router.post('/:requestId/pay', async (req, res) => {
       return res.status(403).json({ error: 'Only the owner can make payment' });
     }
 
-    if (!['meet_greet_completed', 'accepted'].includes(booking.status)) {
+    // A SUMIT link dies after PAYMENT_LINK_TTL_HOURS. Without a way to get a
+    // new one the booking sat in payment_pending for ever: /pay demanded
+    // paymentTransactionId IS NULL and a status of accepted/meet_greet_completed,
+    // and both had already changed. A replacement link is allowed once the old
+    // one is dead — but NEVER while SUMIT holds an unclaimed payment for this
+    // amount, because that customer may have paid on the old link (2026-09-17).
+    const { PAYMENT_LINK_TTL_HOURS } = await import('../services/SumitBookingPayment');
+    const linkDeadAt = new Date(Date.now() - PAYMENT_LINK_TTL_HOURS * 3600_000);
+    const previousSessionId = booking.paymentTransactionId ?? null;
+    const isReissue =
+      booking.status === 'payment_pending' &&
+      typeof previousSessionId === 'string' &&
+      previousSessionId.startsWith('bkg_') &&
+      !!booking.updatedAt && booking.updatedAt < linkDeadAt;
+
+    if (!['meet_greet_completed', 'accepted'].includes(booking.status) && !isReissue) {
       return res.status(400).json({
-        error: `Cannot pay for booking with status: ${booking.status}. Meet & Greet must be completed first.`
+        error: booking.status === 'payment_pending'
+          ? 'A payment page was already opened for this booking. Finish it, or try again in a couple of hours.'
+          : `Cannot pay for booking with status: ${booking.status}. Meet & Greet must be completed first.`,
+        errorCode: booking.status === 'payment_pending' ? 'PAYMENT_LINK_STILL_ALIVE' : 'BOOKING_NOT_PAYABLE',
       });
+    }
+
+    if (isReissue) {
+      // Ask SUMIT what it actually holds before opening a second page.
+      try {
+        const { unclaimedPaymentsIn } = await import('../cron/sumit-unclaimed-payments');
+        const since = new Date((booking.updatedAt as Date).getTime() - 15 * 60_000);
+        const suspects = (await unclaimedPaymentsIn(since, new Date()))
+          .filter((p) => p.amountCents === booking.totalCents);
+        if (suspects.length > 0) {
+          logger.error('[BookingRequests] /pay replacement refused — unclaimed SUMIT payment of this amount exists', {
+            requestId, suspects: suspects.map((s) => s.id),
+          });
+          try {
+            const { createOrUpdateAlert } = await import('../services/AlertEngine');
+            await createOrUpdateAlert({
+              dedupeKey: `booking_pay_reissue_blocked:${requestId}:`,
+              category: 'payment',
+              severity: 'critical',
+              title: 'Customer asked for a new payment link — money may already be in',
+              message: `Booking ${requestId} (₪${(booking.totalCents / 100).toFixed(2)}): SUMIT holds unclaimed payment(s) ${suspects.map((s) => s.id).join(', ')} for this amount. Confirm before letting them pay again.`,
+              linkedEntityType: 'booking_request',
+              linkedEntityId: requestId,
+              source: 'auto_sweep',
+              metadata: { suspects: suspects.map((s) => ({ id: s.id, date: s.date })) },
+            });
+          } catch { /* the error log above is the fallback */ }
+          return res.status(409).json({
+            error: 'It looks like a payment for this booking already went through. Our team is checking it — please do not pay again.',
+            errorCode: 'PAYMENT_MAY_HAVE_SUCCEEDED',
+          });
+        }
+      } catch (lookupErr: any) {
+        // SUMIT unreachable — fail CLOSED: never open a second page blind.
+        logger.error('[BookingRequests] /pay replacement refused — SUMIT lookup failed', { requestId, error: lookupErr?.message });
+        return res.status(503).json({
+          error: 'We cannot reach the payment provider right now. Please try again in a few minutes.',
+          errorCode: 'PAYMENT_PROVIDER_UNAVAILABLE',
+        });
+      }
     }
 
     // ATOMIC PAYMENT SLOT CLAIM (2026-08-16 audit item 162, money-safety).
@@ -2439,8 +2497,17 @@ router.post('/:requestId/pay', async (req, res) => {
       })
       .where(and(
         eq(bookingRequests.requestId, requestId),
-        isNull(bookingRequests.paymentTransactionId),
-        inArray(bookingRequests.status, ['accepted', 'meet_greet_completed']),
+        // First attempt: the slot is free. Replacement: we take over the dead
+        // session id we just validated, so a concurrent /pay still loses.
+        isReissue
+          ? and(
+              eq(bookingRequests.paymentTransactionId, previousSessionId as string),
+              eq(bookingRequests.status, 'payment_pending'),
+            )
+          : and(
+              isNull(bookingRequests.paymentTransactionId),
+              inArray(bookingRequests.status, ['accepted', 'meet_greet_completed']),
+            ),
       ))
       .returning({ id: bookingRequests.id });
 
@@ -2464,7 +2531,7 @@ router.post('/:requestId/pay', async (req, res) => {
     const rollbackClaim = async () => {
       try {
         await db.update(bookingRequests)
-          .set({ paymentTransactionId: null, updatedAt: new Date() })
+          .set({ paymentTransactionId: isReissue ? previousSessionId : null, updatedAt: new Date() })
           .where(and(
             eq(bookingRequests.requestId, requestId),
             eq(bookingRequests.paymentTransactionId, claimToken),
@@ -2563,7 +2630,10 @@ router.post('/:requestId/pay', async (req, res) => {
         booking.ownerId,
         booking.providerId,
         booking.totalCents / 100,
-        sessionId, // placeholder until real txId arrives from webhook
+        // Dedup key is (bookingId, this id) — a replacement link passes the
+        // ORIGINAL session id so it reuses the escrow row instead of creating
+        // a second hold for one booking.
+        isReissue ? (previousSessionId as string) : sessionId,
         {
           serviceType: booking.serviceType,
           providerType: booking.providerType,

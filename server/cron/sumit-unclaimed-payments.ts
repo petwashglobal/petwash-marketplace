@@ -77,6 +77,29 @@ async function waitingOrders(amountCents: number, around: Date): Promise<Candida
   return out;
 }
 
+/**
+ * Valid SUMIT payments in a window that no order has claimed. Used by the watch
+ * and by /pay before it issues a REPLACEMENT link: if money of exactly this
+ * amount is sitting unclaimed, the customer may have paid already and a second
+ * link would charge them twice.
+ */
+export async function unclaimedPaymentsIn(from: Date, to: Date): Promise<UnclaimedPayment[]> {
+  const payments: UnclaimedPayment[] = [];
+  for (let page = 0, start = 0; page < 20; page++) {
+    const r = await sumitClient.listPayments({ from, to, startIndex: start, validOnly: true });
+    if (!r.ok) throw new Error(`sumit_list_failed:${r.reason ?? 'unknown'}`);
+    payments.push(...r.payments.filter((p) => p.valid));
+    if (!r.hasNextPage || r.payments.length === 0) break;
+    start += r.payments.length;
+  }
+  if (payments.length === 0) return [];
+  const rows: any = await db.execute(sql`
+    SELECT payment_id::text AS id FROM sumit_payment_claims
+    WHERE payment_id::text IN (${sql.join(payments.map((p) => sql`${p.id}`), sql`, `)})`);
+  const claimed = new Set<string>(((rows?.rows ?? []) as any[]).map((r) => String(r.id)));
+  return unclaimedOf(payments, claimed);
+}
+
 export async function runSumitUnclaimedPaymentWatch(now = new Date()): Promise<{ listed: number; unclaimed: number; resolved: number; ok: boolean }> {
   const from = new Date(Math.max(now.getTime() - WINDOW_MS, WATCH_FLOOR.getTime()));
   const payments: UnclaimedPayment[] = [];

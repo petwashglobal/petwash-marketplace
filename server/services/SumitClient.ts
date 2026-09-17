@@ -1256,6 +1256,8 @@ export class SumitClient {
     draftDocument?: boolean;
     /** Customer's language code (he/en/ar/es/ru/fr…) — the page opens in it; see paymentPageLanguage. */
     language?: string;
+    /** Hours the hosted link stays valid. SUMIT defaults to 1 (max 240). */
+    expirationHours?: number;
     /**
      * false = SUMIT sends no "חיוב שבוצע בהצלחה" mail; the flow sends Pet Wash's
      * own letter (services/paymentLetter). Leave unset where SUMIT's mail is the
@@ -1270,6 +1272,7 @@ export class SumitClient {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
       RedirectURL: input.redirectUrl,
       ExternalIdentifier: input.externalId,
+      ...(input.expirationHours ? { ExpirationHours: input.expirationHours } : {}),
       Customer: {
         Name: input.customerName || 'PetWash Customer',
         EmailAddress: input.customerEmail || undefined,
