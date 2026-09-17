@@ -27,10 +27,14 @@ const GOLD = '#D4AF37';
 const INK = '#0a0a0a';
 
 interface PerPeriod { sumitCents: number; kioskCents: number; kioskCount: number; shopCents: number; bookingCents: number; egiftGuestCents?: number }
+type FeedKey = 'kiosk' | 'sumit' | 'shop' | 'booking' | 'egiftGuest';
+interface Feed { everCount: number; lastAt: string | null }
 interface Overview {
   ok: boolean;
   generatedAt: string;
   sales: { today: PerPeriod; week: PerPeriod; month: PerPeriod } | null;
+  /** Has each source EVER recorded a sale? Null when the check itself failed. */
+  feeds?: Record<FeedKey, Feed> | null;
   stations: Array<{ machineId: string; lastEventAt: string; washesToday: number; ilsToday: number }> | null;
   shop: { activeProducts: number; realItems: number; orders: number; openOrders: number } | null;
   providers: { pending: number; approved: number; total: number } | null;
@@ -41,6 +45,24 @@ interface Overview {
 const nis = (cents: number) => `₪${Math.round((cents ?? 0) / 100).toLocaleString('he-IL')}`;
 const totalOf = (p?: PerPeriod | null) =>
   p ? p.sumitCents + p.kioskCents + p.shopCents + p.bookingCents + (p.egiftGuestCents ?? 0) : 0;
+
+// One row per sales source: which PerPeriod field it fills, and what to say
+// when it has never recorded a sale. Station sales are the one source we know
+// is not wired into the product (the bays invoice through SUMIT directly), so
+// "not connected"; the rest are live rails that simply have no sale yet.
+const SOURCES: Array<{ feed: FeedKey; label: string; short: string; cents: (p: PerPeriod) => number; never: string }> = [
+  { feed: 'kiosk', label: 'עמדות (Nayax)', short: 'עמדות', cents: (p) => p.kioskCents, never: 'לא מחובר' },
+  { feed: 'sumit', label: 'אונליין (SUMIT)', short: 'אונליין', cents: (p) => p.sumitCents, never: 'אין עדיין' },
+  { feed: 'shop', label: 'חנות', short: 'חנות', cents: (p) => p.shopCents, never: 'אין עדיין' },
+  { feed: 'booking', label: 'שירותים', short: 'שירותים', cents: (p) => p.bookingCents, never: 'אין עדיין' },
+  { feed: 'egiftGuest', label: 'מתנות (אורחים)', short: 'מתנות', cents: (p) => p.egiftGuestCents ?? 0, never: 'אין עדיין' },
+];
+
+/** A source that never recorded a sale has no ₪ figure — it has a status. */
+const hasFeed = (feeds: Overview['feeds'], k: FeedKey) => !feeds || (feeds[k]?.everCount ?? 0) > 0;
+
+const dateHe = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' }) : '';
 
 const MACHINE_NAMES: Record<string, string> = {
   '182443': 'פארק ולד — תא ימין',
@@ -64,6 +86,8 @@ export default function AdminOctopus() {
 
   const s = data?.sales;
   const st = data?.stations;
+  const feeds = data?.feeds;
+  const kioskMissing = !!feeds && !hasFeed(feeds, 'kiosk');
 
   const actions = [
     { label: 'הנהלת חשבונות — עמדות', to: '/admin/bookkeeping', icon: BookOpen },
@@ -92,7 +116,7 @@ export default function AdminOctopus() {
             <div>
               <h1 className="text-xl font-extrabold" style={{ color: INK }}>מגדל הבקרה</h1>
               <p className="text-xs text-neutral-500">
-                נתונים חיים · עודכן {data ? new Date(data.generatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '…'}
+                מתעדכן כל דקה · עודכן {data ? new Date(data.generatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '…'}
               </p>
             </div>
           </div>
@@ -119,7 +143,9 @@ export default function AdminOctopus() {
         <div className="mb-5 overflow-hidden rounded-3xl" style={{ background: INK }}>
           <div className="flex flex-wrap items-end justify-between gap-4 p-6">
             <div>
-              <p className="text-xs font-semibold tracking-wide text-white/50">סך מכירות היום · כל המקורות</p>
+              <p className="text-xs font-semibold tracking-wide text-white/50">
+                סך מכירות היום · {kioskMissing ? 'מקורות מחוברים בלבד' : 'כל המקורות'}
+              </p>
               <p className="mt-1 text-4xl font-extrabold text-white">
                 {isLoading ? '…' : s ? nis(totalOf(s.today)) : '—'}
               </p>
@@ -130,15 +156,35 @@ export default function AdminOctopus() {
               )}
             </div>
             {s && (
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-white/70">
-                <span>עמדות (Nayax)</span><span className="text-left font-semibold text-white">{nis(s.today.kioskCents)}</span>
-                <span>אונליין (SUMIT)</span><span className="text-left font-semibold text-white">{nis(s.today.sumitCents)}</span>
-                <span>חנות</span><span className="text-left font-semibold text-white">{nis(s.today.shopCents)}</span>
-                <span>שירותים</span><span className="text-left font-semibold text-white">{nis(s.today.bookingCents)}</span>
-                <span>מתנות (אורחים)</span><span className="text-left font-semibold text-white">{nis(s.today.egiftGuestCents ?? 0)}</span>
+              <div className="grid grid-cols-[auto_auto] gap-x-6 gap-y-1 text-xs text-white/70" data-testid="octopus-sources">
+                {SOURCES.map((src) => {
+                  const live = hasFeed(feeds, src.feed);
+                  const last = feeds?.[src.feed]?.lastAt;
+                  return (
+                    <div key={src.feed} className="contents">
+                      <span>{src.label}</span>
+                      <span className="text-left" data-testid={`octopus-source-${src.feed}`}>
+                        {live ? (
+                          <>
+                            <span className="font-semibold text-white">{nis(src.cents(s.today))}</span>
+                            {last && <span className="mr-1.5 text-[10px] text-white/40">אחרונה {dateHe(last)}</span>}
+                          </>
+                        ) : (
+                          <span className="font-semibold" style={{ color: src.feed === 'kiosk' ? GOLD : 'rgba(255,255,255,0.45)' }}>{src.never}</span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
+          {kioskMissing && (
+            <p className="border-t border-white/10 px-6 py-3 text-xs leading-5 text-white/60" data-testid="octopus-kiosk-not-connected">
+              מכירות העמדות עוד לא מגיעות למערכת — הן מופקות ב־SUMIT ישירות מהעמדה, ולכן אינן כלולות בסכומים כאן.
+              החיבור נפתח עם ה־webhook של Nayax.
+            </p>
+          )}
         </div>
 
         {/* KPI row */}
@@ -197,11 +243,7 @@ export default function AdminOctopus() {
               <thead>
                 <tr className="text-xs text-neutral-400">
                   <th className="pb-2 font-medium">תקופה</th>
-                  <th className="pb-2 font-medium">עמדות</th>
-                  <th className="pb-2 font-medium">אונליין</th>
-                  <th className="pb-2 font-medium">חנות</th>
-                  <th className="pb-2 font-medium">שירותים</th>
-                  <th className="pb-2 font-medium">מתנות</th>
+                  {SOURCES.map((src) => <th key={src.feed} className="pb-2 font-medium">{src.short}</th>)}
                   <th className="pb-2 font-semibold" style={{ color: INK }}>סה״כ</th>
                 </tr>
               </thead>
@@ -209,11 +251,11 @@ export default function AdminOctopus() {
                 {([['היום', s?.today], ['7 ימים', s?.week], ['30 יום', s?.month]] as const).map(([label, p]) => (
                   <tr key={label} className="border-t" style={{ borderColor: '#F3EEDF' }}>
                     <td className="py-2 font-semibold" style={{ color: INK }}>{label}</td>
-                    <td className="py-2 text-neutral-600">{p ? nis(p.kioskCents) : '—'}</td>
-                    <td className="py-2 text-neutral-600">{p ? nis(p.sumitCents) : '—'}</td>
-                    <td className="py-2 text-neutral-600">{p ? nis(p.shopCents) : '—'}</td>
-                    <td className="py-2 text-neutral-600">{p ? nis(p.bookingCents) : '—'}</td>
-                    <td className="py-2 text-neutral-600">{p ? nis(p.egiftGuestCents ?? 0) : '—'}</td>
+                    {SOURCES.map((src) => (
+                      <td key={src.feed} className="py-2 text-neutral-600">
+                        {!p ? '—' : hasFeed(feeds, src.feed) ? nis(src.cents(p)) : <span className="text-xs text-neutral-400">{src.never}</span>}
+                      </td>
+                    ))}
                     <td className="py-2 font-extrabold" style={{ color: INK }}>{p ? nis(totalOf(p)) : '—'}</td>
                   </tr>
                 ))}

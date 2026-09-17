@@ -146,6 +146,33 @@ router.get('/overview', requireSuperAdmin, async (_req: Request, res: Response) 
     }),
   ]);
 
+  // FEEDS (CEO 2026-09-17: "says live, not true"). A ₪0 is only a fact when the
+  // source has ever recorded a sale. Station sales, for example, are issued
+  // through SUMIT by the bay bridge and have never reached
+  // nayax_transaction_events — so "עמדות ₪0" read as "nothing sold" when the
+  // truth is "not connected". Per source: has it EVER recorded one, and when
+  // was the last. The client shows words instead of a bare zero.
+  const feeds = await block('feeds', async () => {
+    const one = async (q: ReturnType<typeof sql>) => {
+      const [r] = (await db.execute(q)).rows as any[];
+      const n = Number(r?.n ?? 0);
+      return { everCount: n, lastAt: n > 0 && r?.last_at ? new Date(r.last_at).toISOString() : null };
+    };
+    const [kiosk, sumit, shop, booking, egiftGuest] = await Promise.all([
+      one(sql`SELECT COUNT(*)::int AS n, MAX(created_at) AS last_at FROM nayax_transaction_events
+               WHERE approval_status = 'approved' AND event_type = 'transaction'`),
+      one(sql`SELECT COUNT(*)::int AS n, MAX(created_at) AS last_at FROM purchases
+               WHERE status IN ('paid','activated')`),
+      one(sql`SELECT COUNT(*)::int AS n, MAX(created_at) AS last_at FROM shop_orders
+               WHERE status NOT IN ('cancelled','refunded','payment_required')`),
+      one(sql`SELECT COUNT(*)::int AS n, MAX(created_at) AS last_at FROM octopus_ledger
+               WHERE type = 'BOOKING_CREATED'`),
+      one(sql`SELECT COUNT(*)::int AS n, MAX(COALESCE(issued_at, created_at)) AS last_at FROM egift_guest_orders
+               WHERE status = 'issued'`),
+    ]);
+    return { kiosk, sumit, shop, booking, egiftGuest };
+  });
+
   const [members, alerts] = await Promise.all([
     block('members', async () => {
       const [m] = (await db.execute(sql`
@@ -166,7 +193,7 @@ router.get('/overview', requireSuperAdmin, async (_req: Request, res: Response) 
     }),
   ]);
 
-  res.json({ ok: true, generatedAt: new Date().toISOString(), sales, stations, shop, providers, members, alerts });
+  res.json({ ok: true, generatedAt: new Date().toISOString(), sales, feeds, stations, shop, providers, members, alerts });
 });
 
 export default router;
