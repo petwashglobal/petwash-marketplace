@@ -453,6 +453,8 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
                           customerEmail: profile?.email ?? undefined,
                           // checkout already carries the site language (validated enum)
                           language: body.language,
+                          // Pet Wash's letter goes out from /api/payments/sumit/return.
+                          notifyCustomer: false,
                   });
                   if (!redirect.wired) {
                           return res.status(503).json({ error: 'Card payments are not enabled yet', code: 'CARD_RAIL_NOT_WIRED', reason: redirect.reason });

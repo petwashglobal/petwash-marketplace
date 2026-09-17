@@ -61,6 +61,8 @@ export async function createSumitBookingSession(
       customerName: input.customerName,
       customerEmail: input.customerEmail,
       language: input.language,
+      // Pet Wash sends its own letter when the booking is confirmed.
+      notifyCustomer: false,
     });
 
     if (!res.wired) {
@@ -105,6 +107,8 @@ export async function verifySumitBookingPayment(
   valid: boolean;
   amountCents?: number;
   reason?: string;
+  /** SUMIT's payment record — for the card's last digits on the letter. */
+  raw?: unknown;
 }> {
   if (!transactionId) return { valid: false, reason: 'no_transaction_id' };
   const v = await sumitClient.getTransaction(transactionId);
@@ -116,5 +120,5 @@ export async function verifySumitBookingPayment(
       return { valid: false, reason: 'external_ref_mismatch' };
     }
   }
-  return { valid: v.valid === true, amountCents: v.amountCents, reason: v.valid ? undefined : (v.reason || 'not_valid') };
+  return { valid: v.valid === true, amountCents: v.amountCents, reason: v.valid ? undefined : (v.reason || 'not_valid'), raw: (v as any).raw };
 }
