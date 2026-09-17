@@ -905,9 +905,7 @@ export class IsraeliDigitalReceiptService {
     try {
       const mailService = createMailService();
 
-      const vatRate = parseFloat(receipt.vatRate);
       const subtotal = parseFloat(receipt.subtotalAmount);
-      const vatAmount = parseFloat(receipt.vatAmount);
       const total = parseFloat(receipt.totalAmount);
       const platformFee = parseFloat(receipt.platformFeeAmount || '0');
 
@@ -917,7 +915,7 @@ export class IsraeliDigitalReceiptService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>קבלה דיגיטלית - ⁦PetWash™⁩</title>
+  <title>אישור תשלום - ⁦PetWash™⁩</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f8f9fa;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;">
@@ -932,8 +930,8 @@ export class IsraeliDigitalReceiptService {
     <!-- Receipt Title -->
     <tr>
       <td style="padding:30px 40px 10px;text-align:center;">
-        <h2 style="margin:0;font-size:22px;color:#000000;">קבלה דיגיטלית</h2>
-        <p style="margin:5px 0;color:#666666;font-size:14px;">Digital Receipt</p>
+        <h2 style="margin:0;font-size:22px;color:#000000;">אישור תשלום</h2>
+        <p style="margin:5px 0;color:#666666;font-size:14px;">Payment confirmation</p>
       </td>
     </tr>
 
@@ -943,7 +941,7 @@ export class IsraeliDigitalReceiptService {
         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e0e0;border-radius:8px;">
           <tr>
             <td style="padding:15px 20px;border-left:1px solid #e0e0e0;text-align:center;">
-              <p style="margin:0;color:#999;font-size:11px;">מספר קבלה</p>
+              <p style="margin:0;color:#999;font-size:11px;">מספר אסמכתא</p>
               <p style="margin:4px 0 0;font-weight:bold;font-size:14px;color:#000;">${receipt.receiptNumber}</p>
             </td>
             <td style="padding:15px 20px;text-align:center;">
@@ -985,20 +983,13 @@ export class IsraeliDigitalReceiptService {
       </td>
     </tr>
 
-    <!-- VAT Breakdown -->
+    <!-- Total (the VAT breakdown lives on the official SUMIT document only —
+         this email is a payment confirmation, 2026-09-17) -->
     <tr>
       <td style="padding:10px 40px;">
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-          <tr>
-            <td style="padding:8px 16px;font-size:13px;color:#666;">סכום לפני מע"מ</td>
-            <td style="padding:8px 16px;font-size:13px;text-align:left;color:#666;">₪${subtotal.toFixed(2)}</td>
-          </tr>
-          <tr>
-            <td style="padding:8px 16px;font-size:13px;color:#666;">מע"מ ${vatRate}%</td>
-            <td style="padding:8px 16px;font-size:13px;text-align:left;color:#666;">₪${vatAmount.toFixed(2)}</td>
-          </tr>
           <tr style="border-top:2px solid #000;">
-            <td style="padding:12px 16px;font-size:16px;font-weight:bold;color:#000;">סה"כ לתשלום</td>
+            <td style="padding:12px 16px;font-size:16px;font-weight:bold;color:#000;">סה"כ שולם</td>
             <td style="padding:12px 16px;font-size:16px;font-weight:bold;text-align:left;color:#000;">₪${total.toFixed(2)}</td>
           </tr>
         </table>
@@ -1018,10 +1009,10 @@ export class IsraeliDigitalReceiptService {
     <tr>
       <td style="padding:20px 40px;border-top:1px solid #e0e0e0;">
         <p style="margin:0;font-size:11px;color:#999;text-align:center;">
-          מסמך זה מהווה קבלה דיגיטלית בהתאם לחוק ניהול ספרים ותקנות מס הכנסה
+          זהו אישור תשלום ואינו מסמך מס. מסמך המס הרשמי נשלח אליך בנפרד.
         </p>
         <p style="margin:4px 0;font-size:11px;color:#999;text-align:center;">
-          This document is a legally valid digital receipt per Israeli tax law
+          This is a payment confirmation, not a tax document. Your official tax document is sent separately.
         </p>
         <p style="margin:8px 0 0;font-size:11px;color:#cccccc;text-align:center;">
           Hash: ${receipt.auditHash?.substring(0, 16)}...
@@ -1118,7 +1109,7 @@ export class IsraeliDigitalReceiptService {
       await mailService.send({
         to: receipt.customerEmail,
         from: { email: FROM_EMAIL, name: FROM_NAME },
-        subject: `קבלה דיגיטלית ${receipt.receiptNumber} | ⁦PetWash™⁩`,
+        subject: `אישור תשלום ${receipt.receiptNumber} | ⁦PetWash™⁩`,
         html: emailHtml,
       });
 

@@ -5360,8 +5360,8 @@ export default function MyAccount() {
                       <span className="text-lg">🧾</span>
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'חשבוניות מס קבלה' : 'Tax Invoices'}</h3>
-                      <p className="text-xs text-gray-400">{isHebrew ? 'כל החשבוניות שלך בפורמט ישראלי רשמי' : 'All invoices in official Israeli format'}</p>
+                      <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'אישורי תשלום' : 'Payment confirmations'}</h3>
+                      <p className="text-xs text-gray-400">{isHebrew ? 'סיכום התשלומים שלך. מסמכי המס הרשמיים נשלחים אליך במייל ממערכת SUMIT.' : 'A summary of your payments. Your official tax documents are emailed to you from SUMIT.'}</p>
                     </div>
                   </div>
                 </div>
@@ -5405,7 +5405,7 @@ export default function MyAccount() {
                 {selectedInvoice && (
                   <div className="mt-5">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-bold text-gray-700">{isHebrew ? 'חשבונית מס מלאה' : 'Full Tax Invoice'}</h4>
+                      <h4 className="text-sm font-bold text-gray-700">{isHebrew ? 'פירוט תשלום' : 'Payment details'}</h4>
                       <button onClick={() => setSelectedInvoice(null)} className="text-xs text-gray-400 hover:text-gray-600">
                         {isHebrew ? 'סגור' : 'Close'} ✕
                       </button>
