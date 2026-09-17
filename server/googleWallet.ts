@@ -185,7 +185,7 @@ export class GoogleWalletService {
           translatedValues: [
             {
               language: 'he',
-              value: 'פט ווש™'
+              value: 'פט וואש™'
             }
           ]
         },
@@ -292,7 +292,7 @@ export class GoogleWalletService {
           translatedValues: [
             {
               language: 'he',
-              value: 'שובר פט ווש'
+              value: 'שובר פט וואש'
             }
           ]
         },

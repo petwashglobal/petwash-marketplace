@@ -418,7 +418,7 @@ router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Respo
       providerName: booking.resourceType === 'HUMAN' ? booking.resourceId : undefined,
       providerId: booking.resourceType === 'HUMAN' ? booking.resourceId : undefined,
       serviceDescription: serviceDescription || `PetWash™ service - ${booking.serviceId}`,
-      serviceDescriptionHe: serviceDescriptionHe || `שירות פט ווש™ - ${booking.serviceId}`,
+      serviceDescriptionHe: serviceDescriptionHe || `שירות פט וואש™ - ${booking.serviceId}`,
     };
 
     const result = await unifiedBookingEngine.complete(booking, completedBy, receiptData);

@@ -20,6 +20,7 @@
 
 import { SUPPORT_EMAIL, SUPPORT_PHONE as SUPPORT_PHONE_CONST, SUPPORT_WHATSAPP_URL } from '../../../shared/support-contact';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import { COMPANY_TAX_ID, LEGAL_NAME_HE, COMPANY_ADDRESS_HE } from '../brand-identity';
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const GOLD       = '#B8941F';   // readable on white AND dark
@@ -39,8 +40,11 @@ const GOLD_FADE  = '#F5EDD8';   // background of total row highlight
 
 // ─── Israeli legal constants ──────────────────────────────────────────────────
 const VAT_RATE      = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-config.ts
-const BUSINESS_REG  = '515895671';
-const BUSINESS_HE   = 'פט ווש בע"מ';
+// Company identity from the one official source (brand-identity.ts). This file
+// used to print a wrong company number (515895671), "פט ווש" and "תל אביב" on
+// receipts — Pet Wash Ltd is ח.פ. 517145033, registered in Rosh HaAyin (2026-09-17).
+const BUSINESS_REG  = COMPANY_TAX_ID;
+const BUSINESS_HE   = LEGAL_NAME_HE;
 const BUSINESS_EN   = 'Pet Wash Ltd';
 
 function vatBreakdown(gross: number) {
@@ -163,7 +167,7 @@ ${preheader}&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nb
                 letter-spacing:2px;color:${TEXT_DIM};text-transform:uppercase;">פרטי עוסק</p>
               <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:10px;
                 color:${TEXT_SEC};line-height:1.8;">${BUSINESS_HE} / ${BUSINESS_EN}<br>
-                עוסק מורשה מס׳ ${BUSINESS_REG}<br>תל אביב, ישראל</p>
+                ח.פ. ${BUSINESS_REG}<br>${COMPANY_ADDRESS_HE}</p>
             </td>
             <td width="20">&nbsp;</td>
             <td valign="top" align="left">
@@ -395,7 +399,7 @@ export function buildEGiftReceipt(p: EGiftReceiptParams): string {
           color:${TEXT_DIM};line-height:1.7;text-align:right;">
           <strong style="color:${TEXT_SEC};">הערת מס:</strong>
           מסמך זה כולל חשבונית מס קבלה בהתאם לחוק מע"מ. מע"מ בשיעור 18% כלול במחיר.
-          ${BUSINESS_HE}, עוסק מורשה ${BUSINESS_REG}.
+          ${BUSINESS_HE}, ח.פ. ${BUSINESS_REG}.
         </p>
       </td>
     </tr>
@@ -559,7 +563,7 @@ export function buildProviderTxReceipt(p: ProviderTxReceiptParams): string {
           color:${TEXT_DIM};line-height:1.7;text-align:right;">
           <strong style="color:${TEXT_SEC};">הערת מס:</strong>
           מסמך זה מהווה חשבונית מס קבלה לפי חוק מע"מ. מע"מ 18% כלול במחיר הכולל.
-          עמלת הפלטפורמה כוללת מע"מ. ${BUSINESS_HE}, עוסק מורשה ${BUSINESS_REG}.
+          עמלת הפלטפורמה כוללת מע"מ. ${BUSINESS_HE}, ח.פ. ${BUSINESS_REG}.
           הכנסת הספק ממוסה בנפרד ואינה כלולה בחשבונית זו.
         </p>
       </td>

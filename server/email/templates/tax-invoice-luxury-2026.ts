@@ -31,7 +31,7 @@ const GOLD_FADE   = '#F5EDD8';
 
 // Israeli legal constants
 const VAT_RATE    = ISRAEL_VAT_RATE;
-const BUSINESS_HE = 'פט ווש בע"מ';
+const BUSINESS_HE = 'פט וואש בע"מ';
 const BUSINESS_EN = 'Pet Wash Ltd';
 const COMPANY_REG = COMPANY_TAX_ID;
 // Registered address (VAT Law §4(a) — required on every חשבונית מס)

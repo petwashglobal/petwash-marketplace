@@ -6,6 +6,7 @@
  */
 
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { LEGAL_NAME_HE, COMPANY_TAX_ID } from '../brand-identity';
 import { SUPPORT_EMAIL, SUPPORT_PHONE as SUPPORT_PHONE_CONST, SUPPORT_WHATSAPP_URL } from '@shared/support-contact';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { formatUserAddress } from '@shared/formatAddress';
@@ -23,9 +24,9 @@ const TEXT_DIM    = '#888888';
 const GOLD_FADE   = '#F5EDD8';
 const SUCCESS_GRN = '#1A7A3F';
 const VAT_RATE    = ISRAEL_VAT_RATE;
-const BUSINESS_HE = 'פט ווש בע"מ';
+const BUSINESS_HE = LEGAL_NAME_HE; // was 'פט ווש' — official name from brand-identity
 const BUSINESS_EN = 'Pet Wash Ltd';
-const COMPANY_REG = '515895671';
+const COMPANY_REG = COMPANY_TAX_ID; // was 515895671, not Pet Wash's number (ח.פ. 517145033)
 
 function formatILS(cents: number): string {
   return `₪${(cents / 100).toFixed(2)}`;
