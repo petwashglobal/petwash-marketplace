@@ -52,7 +52,10 @@ export type FiscalOutboxKind =
   // 2026-09-13: the SUMIT leg of a customer receipt (was log-and-forget) and
   // the shop order receipt (was swallow-and-forget).
   | 'sumit_receipt_dispatch'
-  | 'shop_receipt';
+  | 'shop_receipt'
+  // 2026-09-17: the SUMIT credit document of a refund (was try/catch-and-forget;
+  // a rejected call came back without throwing and was never retried).
+  | 'sumit_credit_dispatch';
 
 export class FiscalOutboxUnavailableError extends Error {
   readonly kind: FiscalOutboxKind;

@@ -52,6 +52,28 @@ import {
   isShaamAllocationRequired,
 } from '@shared/israel-compliance-config';
 
+/** The slice of SumitClient this service issues documents through. */
+export interface SumitIssuer {
+  createCustomerReceipt: (i: any) => Promise<{ sumitDocumentId?: string; reason?: string }>;
+  createCreditDocument: (i: any) => Promise<{ sumitDocumentId?: string; reason?: string }>;
+  findDocumentByExternalReference: (i: {
+    externalReference: string; documentTypes: string[]; createAttemptAt: Date | null | undefined;
+  }) => Promise<
+    | { outcome: 'FOUND' | 'FOUND_MISMATCH'; documentId: string; documentNumber?: string; documentType?: string }
+    | { outcome: 'ABSENT' }
+    | { outcome: 'INCONCLUSIVE'; reason: string }
+  >;
+}
+
+/**
+ * What a SUMIT dispatch did. Every outcome that leaves a paid sale or a refund
+ * WITHOUT its SUMIT document throws instead — see issueOnceAtSumit.
+ */
+export type SumitDispatchResult = {
+  status: 'issued' | 'recovered' | 'already_issued' | 'not_wired' | 'nothing_to_issue';
+  sumitDocumentId?: string;
+};
+
 const PLATFORM_COMMISSION_RATE = 0.15; // Flat 15% on all platforms
 const DEFAULT_WITHHOLDING_TAX_RATE = WITHHOLDING_RATE_POLICY.defaultRate;
 const COMPANY_NAME = CONFIG_COMPANY_NAME;
@@ -412,18 +434,66 @@ export class IsraeliDigitalReceiptService {
    * id back. THROWS on a SUMIT/network failure so the outbox drainer retries.
    * Idempotent at SUMIT via idempotencyKey = receiptNumber.
    */
-  static async dispatchReceiptToSumit(params: { receiptId: number; paymentClass?: PetWashPaymentClass }): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id' | 'withheld'; sumitDocumentId?: string }> {
+  static async dispatchReceiptToSumit(params: { receiptId: number; paymentClass?: PetWashPaymentClass; retry?: boolean }): Promise<SumitDispatchResult> {
     const { sumitClient } = await import('./SumitClient');
     if (sumitClient.isWired()) {
-      return IsraeliDigitalReceiptService.dispatchReceiptToSumitWired(sumitClient, params);
+      return IsraeliDigitalReceiptService.dispatchReceiptToSumitWired(sumitClient as unknown as SumitIssuer, params);
     }
     return { status: 'not_wired' };
   }
 
+  /**
+   * Issue ONE document at SUMIT, safely retryable (2026-09-17).
+   *
+   * Before: a SUMIT rejection or a dropped connection came back as "no document
+   * id" WITHOUT throwing, so runFiscalDocumentAndPersistOnFailure counted it as
+   * success, nothing was queued, and a paid customer had no legal document.
+   * Blindly throwing is not enough either: when the request reached SUMIT and
+   * only the reply was lost, a retry would issue a SECOND legal document, which
+   * can never be deleted — only credited.
+   *
+   * So: on a retry, READ BEFORE RECREATE (the same guard the Nayax rails use).
+   *   FOUND          → link the existing document.
+   *   ABSENT         → create it.
+   *   MISMATCH / INCONCLUSIVE → do not create; throw, so the outbox keeps it and
+   *                    eventually marks it failed_needs_review for a person.
+   * And any create that returns no document id THROWS, so the outbox retries it.
+   */
+  static async issueOnceAtSumit(opts: {
+    sumitClient: SumitIssuer;
+    retry: boolean;
+    externalReference: string;
+    documentTypes: string[];
+    createAttemptAt: Date;
+    create: () => Promise<{ sumitDocumentId?: string; reason?: string }>;
+  }): Promise<{ sumitDocumentId: string; recovered: boolean }> {
+    if (opts.retry) {
+      const lookup = await opts.sumitClient.findDocumentByExternalReference({
+        externalReference: opts.externalReference,
+        documentTypes: opts.documentTypes,
+        createAttemptAt: opts.createAttemptAt,
+      });
+      if (lookup.outcome === 'FOUND') {
+        return { sumitDocumentId: String(lookup.documentId), recovered: true };
+      }
+      if (lookup.outcome !== 'ABSENT') {
+        const why = lookup.outcome === 'FOUND_MISMATCH'
+          ? `reference exists under another document type (${lookup.documentType ?? '?'})`
+          : `lookup inconclusive (${(lookup as { reason?: string }).reason ?? '?'})`;
+        throw new Error(`SUMIT_RECONCILE_NEEDED:${opts.externalReference}: ${why}`);
+      }
+    }
+    const result = await opts.create();
+    if (!result.sumitDocumentId) {
+      throw new Error(`SUMIT_NOT_ISSUED:${opts.externalReference}: ${result.reason ?? 'no document id returned'}`);
+    }
+    return { sumitDocumentId: String(result.sumitDocumentId), recovered: false };
+  }
+
   private static async dispatchReceiptToSumitWired(
-    sumitClient: { createCustomerReceipt: (i: any) => Promise<{ sumitDocumentId?: string; reason?: string }> },
-    params: { receiptId: number; paymentClass?: PetWashPaymentClass },
-  ): Promise<{ status: 'issued' | 'already_issued' | 'not_wired' | 'no_document_id' | 'withheld'; sumitDocumentId?: string }> {
+    sumitClient: SumitIssuer,
+    params: { receiptId: number; paymentClass?: PetWashPaymentClass; retry?: boolean },
+  ): Promise<SumitDispatchResult> {
     const [row] = await db.select().from(digitalReceipts).where(eq(digitalReceipts.id, params.receiptId)).limit(1);
     if (!row) throw new Error(`RECEIPT_NOT_FOUND:${params.receiptId}`);
     if (row.sumitDocumentId) return { status: 'already_issued', sumitDocumentId: row.sumitDocumentId };
@@ -451,10 +521,16 @@ export class IsraeliDigitalReceiptService {
       const feeIls = Number(row.brokerCommissionAmount ?? row.platformFeeAmount ?? 0);
       if (!(feeIls > 0)) {
         logger.warn('[Digital Receipt] marketplace booking with no platform fee — nothing of Pet Wash\'s to document', { receiptNumber });
-        return { status: 'no_document_id' };
+        return { status: 'nothing_to_issue' };
       }
       const feeVat = Math.round((feeIls - feeIls / (1 + ISRAELI_VAT_RATE)) * 100) / 100;
-      const feeResult = await sumitClient.createCustomerReceipt({
+      const fee = await IsraeliDigitalReceiptService.issueOnceAtSumit({
+        sumitClient,
+        retry: params.retry === true,
+        externalReference: receiptNumber,
+        documentTypes: ['InvoiceAndReceipt'],
+        createAttemptAt: new Date(row.issuedAt ?? Date.now()),
+        create: () => sumitClient.createCustomerReceipt({
         idempotencyKey: receiptNumber,
         documentType: 'InvoiceAndReceipt',
         customer: {
@@ -468,20 +544,24 @@ export class IsraeliDigitalReceiptService {
         totalAmount: feeIls,
         currency: 'ILS',
         context: { platform: row.platform, bookingId: row.bookingId ?? undefined, receiptNumber, kind: 'platform_fee' },
+        }),
       });
-      if (!feeResult.sumitDocumentId) {
-        logger.warn('[Digital Receipt] SUMIT platform-fee document returned no id', { receiptNumber, reason: feeResult.reason });
-        return { status: 'no_document_id' };
-      }
       await db.update(digitalReceipts)
-        .set({ sumitDocumentId: feeResult.sumitDocumentId, issuerOfRecord: 'sumit' })
+        .set({ sumitDocumentId: fee.sumitDocumentId, issuerOfRecord: 'sumit' })
         .where(eq(digitalReceipts.id, row.id));
-      return { status: 'issued', sumitDocumentId: feeResult.sumitDocumentId };
+      return { status: fee.recovered ? 'recovered' : 'issued', sumitDocumentId: fee.sumitDocumentId };
     }
 
-    const sumitResult = await sumitClient.createCustomerReceipt({
+    const docType = classDocType && classDocType !== 'CreditInvoice' ? classDocType : undefined;
+    const issued = await IsraeliDigitalReceiptService.issueOnceAtSumit({
+      sumitClient,
+      retry: params.retry === true,
+      externalReference: receiptNumber,
+      documentTypes: [docType ?? 'InvoiceAndReceipt'],
+      createAttemptAt: new Date(row.issuedAt ?? Date.now()),
+      create: () => sumitClient.createCustomerReceipt({
       idempotencyKey: receiptNumber,
-      documentType: classDocType && classDocType !== 'CreditInvoice' ? classDocType : undefined,
+      documentType: docType,
       customer: {
         name: row.customerName || row.customerEmail || '',
         email: row.customerEmail || undefined,
@@ -493,21 +573,13 @@ export class IsraeliDigitalReceiptService {
       totalAmount: Number(row.totalAmount),
       currency: 'ILS',
       context: { platform: row.platform, bookingId: row.bookingId ?? undefined, receiptNumber },
+      }),
     });
-    if (!sumitResult.sumitDocumentId) {
-      // A deliberate non-issue (SUMIT said no document) is not a transport
-      // failure — do not retry forever; reconciliation sees issuer_of_record NULL.
-      logger.warn('[Digital Receipt] SUMIT issue did not return a document id', { receiptNumber: row.receiptNumber, reason: sumitResult.reason });
-      return { status: 'no_document_id' };
-    }
-    // Persist the SUMIT document id back onto the receipt so the official
-    // document is retrievable later. SUMIT is the issuer of record (CPA
-    // 2026-07-09); the PW- row is an internal ledger reference.
     await db.update(digitalReceipts)
-      .set({ sumitDocumentId: sumitResult.sumitDocumentId, issuerOfRecord: 'sumit' })
+      .set({ sumitDocumentId: issued.sumitDocumentId, issuerOfRecord: 'sumit' })
       .where(eq(digitalReceipts.id, row.id));
-    logger.info('[Digital Receipt] SUMIT document issued', { receiptNumber: row.receiptNumber, sumitDocumentId: sumitResult.sumitDocumentId, platform: row.platform });
-    return { status: 'issued', sumitDocumentId: sumitResult.sumitDocumentId };
+    logger.info('[Digital Receipt] SUMIT document issued', { receiptNumber: row.receiptNumber, sumitDocumentId: issued.sumitDocumentId, platform: row.platform, recovered: issued.recovered });
+    return { status: issued.recovered ? 'recovered' : 'issued', sumitDocumentId: issued.sumitDocumentId };
   }
 
   static async generateReceipt(params: ReceiptGenerationParams): Promise<ReceiptResult> {
@@ -1364,70 +1436,33 @@ export class IsraeliDigitalReceiptService {
         });
       }
 
-      // Mirror generateReceipt: when SUMIT is wired it is the issuer of record for
-      // EVERY credit note (זיכוי), not just above the ₪5k threshold, so each
-      // refund reaches the ITA as a proper SUMIT credit document. Dormant until
-      // the account is switched on (isWired() false until SUMIT_ENABLED + creds).
-      // NEVER throws — a SUMIT hiccup must not fail a refund the customer is owed.
-      const { sumitClient } = await import('./SumitClient');
-      if (sumitClient.isWired()) {
-        try {
-          const creditResult = await sumitClient.createCreditDocument({
-            idempotencyKey: creditNoteNumber,
-            originalSumitDocumentId: original.sumitDocumentId ?? undefined,
-            customer: { name: original.customerName || params.customerEmail, email: params.customerEmail },
-            description: `זיכוי על ${original.receiptNumber} — ${params.reason}`,
-            amountBeforeVat: vatBreakdown.subtotalBeforeVAT,
-            vatAmount: vatBreakdown.vatAmount,
-            totalAmount: refundAmount,
-            currency: 'ILS',
-            context: { platform: params.platform, bookingId: params.bookingId, creditNoteNumber },
-          });
-          if (creditResult.sumitDocumentId) {
-            // Post-release 2026-09-03 (backlog P1): the stamp UPDATE is
-            // now durable. Prior code logged CRITICAL on failure and
-            // moved on, leaving the local receipt orphaned and inviting
-            // ops to re-issue in SUMIT (the double-credit scenario the
-            // source comment already warns about). runFiscalDocumentAnd
-            // PersistOnFailure keeps the inline attempt as the fast path,
-            // enqueues a durable row on inline failure, and throws
-            // FiscalOutboxUnavailableError on double-failure so nothing
-            // silently vanishes.
-            const stampPayload = {
-              creditNoteId: creditNote.id,
-              sumitDocumentId: creditResult.sumitDocumentId,
-            };
-            try {
-              await runFiscalDocumentAndPersistOnFailure({
-                pool,
-                kind: 'sumit_credit_stamp',
-                sourceKey: `credit_note:${creditNote.id}`,
-                payload: stampPayload,
-                runNow: async () => {
-                  await db.update(digitalReceipts)
-                    .set({ sumitDocumentId: creditResult.sumitDocumentId, issuerOfRecord: 'sumit' })
-                    .where(eq(digitalReceipts.id, creditNote.id));
-                },
-              });
-            } catch (fatal) {
-              if (fatal instanceof FiscalOutboxUnavailableError) {
-                logger.error('[Digital Receipt] CRITICAL: SUMIT credit issued but stamp inline + outbox both failed — reconcile manually', {
-                  creditNoteNumber,
-                  creditNoteId: creditNote.id,
-                  sumitDocumentId: creditResult.sumitDocumentId,
-                  kind: fatal.kind,
-                  sourceKey: fatal.sourceKey,
-                });
-              } else {
-                throw fatal;
-              }
-            }
-          }
-        } catch (sumitErr: any) {
-          logger.warn('[Digital Receipt] credit note issued locally but SUMIT credit failed (non-fatal)', {
-            creditNoteNumber, error: sumitErr?.message,
+      // SUMIT leg — DURABLE (2026-09-17). SUMIT is the issuer of record for
+      // every credit note (זיכוי). Before, the SUMIT call sat in a try/catch
+      // and a rejected or dropped call came back WITHOUT throwing: the refund
+      // went through, the local credit note existed, and SUMIT — the document
+      // the tax authority sees — never got one. Nothing retried; nothing
+      // alerted. Now it goes through the same durable outbox as receipts, and a
+      // retry reads SUMIT before it creates (issueOnceAtSumit). A refund the
+      // customer is owed never fails because of SUMIT.
+      try {
+        const outcome = await runFiscalDocumentAndPersistOnFailure({
+          pool,
+          kind: 'sumit_credit_dispatch',
+          sourceKey: `credit_note:${creditNote.id}`,
+          payload: { creditNoteId: creditNote.id, creditNoteNumber, bookingId: params.bookingId },
+          runNow: () => IsraeliDigitalReceiptService.dispatchCreditNoteToSumit({ creditNoteId: creditNote.id }),
+        });
+        if (!outcome.ranInline) {
+          logger.error('[Digital Receipt] 🔴 SUMIT credit document failed — queued for retry (refund and local credit note stand)', {
+            creditNoteNumber, bookingId: params.bookingId, error: outcome.inlineError,
           });
         }
+      } catch (fatal: any) {
+        // Refund and local credit note stand; only the SUMIT copy is missing.
+        logger.error('[Digital Receipt] 🔴 SUMIT credit document failed AND the retry queue is unavailable — reconcile manually', {
+          creditNoteNumber, creditNoteId: creditNote.id, bookingId: params.bookingId,
+          outboxUnavailable: fatal instanceof FiscalOutboxUnavailableError, error: fatal?.message,
+        });
       }
 
       logger.info('[Digital Receipt] Credit note issued', {
@@ -1446,6 +1481,55 @@ export class IsraeliDigitalReceiptService {
       logger.error('[Digital Receipt] issueCreditNote failed', { error: error.message });
       return { success: false, error: error.message };
     }
+  }
+
+  /**
+   * Issue (or recover) the SUMIT credit document for a stored credit note.
+   * Inline on refund; the outbox drainer calls it again with retry:true, which
+   * looks the document up in SUMIT before creating anything.
+   */
+  static async dispatchCreditNoteToSumit(params: { creditNoteId: number; retry?: boolean }): Promise<SumitDispatchResult> {
+    const { sumitClient } = await import('./SumitClient');
+    if (sumitClient.isWired()) {
+      return IsraeliDigitalReceiptService.dispatchCreditNoteToSumitWired(sumitClient as unknown as SumitIssuer, params);
+    }
+    return { status: 'not_wired' };
+  }
+
+  static async dispatchCreditNoteToSumitWired(
+    sumitClient: SumitIssuer,
+    params: { creditNoteId: number; retry?: boolean },
+  ): Promise<SumitDispatchResult> {
+    const [credit] = await db.select().from(digitalReceipts).where(eq(digitalReceipts.id, params.creditNoteId)).limit(1);
+    if (!credit) throw new Error(`CREDIT_NOTE_NOT_FOUND:${params.creditNoteId}`);
+    if (credit.sumitDocumentId) return { status: 'already_issued', sumitDocumentId: credit.sumitDocumentId };
+    const [original] = credit.originalReceiptId
+      ? await db.select().from(digitalReceipts).where(eq(digitalReceipts.id, credit.originalReceiptId)).limit(1)
+      : [];
+
+    const refundAmount = Math.abs(Number(credit.totalAmount));
+    const issued = await IsraeliDigitalReceiptService.issueOnceAtSumit({
+      sumitClient,
+      retry: params.retry === true,
+      externalReference: credit.receiptNumber,
+      documentTypes: ['CreditInvoiceAndReceipt'],
+      createAttemptAt: new Date(credit.issuedAt ?? Date.now()),
+      create: () => sumitClient.createCreditDocument({
+        idempotencyKey: credit.receiptNumber,
+        originalSumitDocumentId: original?.sumitDocumentId ?? undefined,
+        customer: { name: credit.customerName || credit.customerEmail || '', email: credit.customerEmail || undefined },
+        description: credit.serviceDescriptionHe || credit.serviceDescription || `זיכוי ${credit.receiptNumber}`,
+        amountBeforeVat: Math.abs(Number(credit.subtotalAmount)),
+        vatAmount: Math.abs(Number(credit.vatAmount)),
+        totalAmount: refundAmount,
+        currency: 'ILS',
+        context: { platform: credit.platform, bookingId: credit.bookingId ?? undefined, creditNoteNumber: credit.receiptNumber },
+      }),
+    });
+    await db.update(digitalReceipts)
+      .set({ sumitDocumentId: issued.sumitDocumentId, issuerOfRecord: 'sumit' })
+      .where(eq(digitalReceipts.id, credit.id));
+    return { status: issued.recovered ? 'recovered' : 'issued', sumitDocumentId: issued.sumitDocumentId };
   }
 
   /**

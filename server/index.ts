@@ -1811,8 +1811,13 @@ if (isProduction) {
           // 2026-09-13: retry the SUMIT leg of a customer receipt whose local
           // PW- row exists but whose SUMIT document was never issued.
           // Idempotent: skips when sumit_document_id is already stamped.
+          // retry:true — a queued row means an earlier attempt may have reached
+          // SUMIT, so the dispatcher looks the document up before creating one.
           sumit_receipt_dispatch: async (p: any) => {
-            await IsraeliDigitalReceiptService.dispatchReceiptToSumit({ receiptId: Number(p.receiptId), paymentClass: (p.paymentClass ?? undefined) as any });
+            await IsraeliDigitalReceiptService.dispatchReceiptToSumit({ receiptId: Number(p.receiptId), paymentClass: (p.paymentClass ?? undefined) as any, retry: true });
+          },
+          sumit_credit_dispatch: async (p: any) => {
+            await IsraeliDigitalReceiptService.dispatchCreditNoteToSumit({ creditNoteId: Number(p.creditNoteId), retry: true });
           },
           // 2026-09-13: shop order receipt retry (generateReceipt is
           // idempotent by bookingId = shop:<order_number>).

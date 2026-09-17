@@ -31,6 +31,7 @@ describe('SUMIT issuer-of-record is recorded (2026-07-09)', () => {
   });
 
   it('is written alongside sumitDocumentId (best-effort, dormant-safe)', () => {
-    expect(SVC).toMatch(/sumitDocumentId: sumitResult\.sumitDocumentId, issuerOfRecord: 'sumit'/);
+    // 2026-09-17: the id now comes from issueOnceAtSumit (receipt, fee doc, credit).
+    expect(SVC).toMatch(/sumitDocumentId: (issued|fee)\.sumitDocumentId, issuerOfRecord: 'sumit'/);
   });
 });

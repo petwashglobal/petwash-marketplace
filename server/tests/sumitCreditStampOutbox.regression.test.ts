@@ -21,12 +21,16 @@ describe('SUMIT credit-note stamp — fiscal outbox wire', () => {
     expect(src).toMatch(/'sumit_credit_stamp'/);
   });
 
-  it('IsraeliDigitalReceiptService routes the stamp through runFiscalDocumentAndPersistOnFailure', () => {
+  // 2026-09-17: the whole SUMIT credit leg (create + stamp) is now ONE durable
+  // job, sumit_credit_dispatch — the create itself used to be try/catch-and-
+  // forget. sumit_credit_stamp stays declared and handled for rows already
+  // queued under it.
+  it('IsraeliDigitalReceiptService routes the SUMIT credit leg through runFiscalDocumentAndPersistOnFailure', () => {
     const src = read('server/services/IsraeliDigitalReceiptService.ts');
     // Import present
     expect(src).toMatch(/runFiscalDocumentAndPersistOnFailure/);
-    // Kind used at the stamp call site
-    expect(src).toMatch(/kind:\s*'sumit_credit_stamp'/);
+    // Kind used at the credit call site
+    expect(src).toMatch(/kind:\s*'sumit_credit_dispatch'/);
     // Idempotency key is the credit_note id
     expect(src).toMatch(/sourceKey:\s*`credit_note:\$\{[^}]+\.id\}`/);
     // FiscalOutboxUnavailableError is the fatal branch the caller escalates
