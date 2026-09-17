@@ -218,6 +218,24 @@ export class BackgroundJobProcessor {
         }
       }
     });
+    // SUMIT UNCLAIMED-PAYMENT WATCH (2026-09-17) — card payments are live; a
+    // customer who pays and closes the tab before SUMIT's redirect leaves money
+    // with no order. Every 15 min: valid SUMIT payments with no
+    // sumit_payment_claims row → critical admin alert (read-only, never fulfils).
+    cron.schedule('*/15 * * * *', async () => {
+      if ((process.env.SUMIT_UNCLAIMED_WATCH_DISABLED || '').toLowerCase() === 'true') return;
+      if (await this.acquireLock('sumitUnclaimedWatch')) {
+        try {
+          const { runSumitUnclaimedPaymentWatch } = await import('./cron/sumit-unclaimed-payments');
+          const r = await runSumitUnclaimedPaymentWatch();
+          if (r.unclaimed > 0) logger.warn('[SumitUnclaimed] open', r);
+        } catch (e: any) {
+          logger.error('[SumitUnclaimed] cron failed', { error: e?.message });
+        } finally {
+          this.releaseLock('sumitUnclaimedWatch');
+        }
+      }
+    });
     // Daily K9000 reconciliation at 02:30 — writes k9000_reconciliation_breaks.
     cron.schedule('30 2 * * *', async () => {
       if (await this.acquireLock('k9000Reconciliation')) {

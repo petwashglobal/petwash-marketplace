@@ -1357,6 +1357,55 @@ export class SumitClient {
    * exactly true, the returned Payment.ID is the id we asked about, and Amount is
    * a finite number. A missing amount is now a refusal, never "skip the check".
    */
+  /**
+   * POST /billing/payments/list/ — READ. Valid payments in a date window, one
+   * page (SUMIT pages by StartIndex; HasNextPage says if there is more).
+   * Swagger Typed.Payment: ID, CustomerID, Date, ValidPayment, Status,
+   * StatusDescription, Amount, Currency, … — NO external identifier (verified
+   * live 2026-09-17), so a payment cannot be tied to an order from here.
+   */
+  async listPayments(input: { from: Date; to: Date; startIndex?: number; validOnly?: boolean }): Promise<{
+    ok: boolean;
+    payments: Array<{ id: string; customerId: string | null; date: string | null; amountCents: number; valid: boolean }>;
+    hasNextPage: boolean;
+    reason?: string;
+  }> {
+    const env = readEnv();
+    if (!isWired()) return { ok: false, payments: [], hasNextPage: false, reason: 'SUMIT not enabled' };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/payments/list/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+          Date_From: input.from.toISOString(),
+          Date_To: input.to.toISOString(),
+          Valid: input.validOnly ?? true,
+          StartIndex: input.startIndex ?? 0,
+        }),
+      });
+      let body: any = null;
+      try { body = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok || (body?.Status !== 0 && body?.Status !== 'Success')) {
+        return { ok: false, payments: [], hasNextPage: false, reason: `status ${res.status}/${JSON.stringify(body?.Status)}` };
+      }
+      const rows: any[] = body?.Data?.Payments ?? [];
+      return {
+        ok: true,
+        hasNextPage: body?.Data?.HasNextPage === true,
+        payments: rows.map((r) => ({
+          id: String(r?.ID ?? ''),
+          customerId: r?.CustomerID != null ? String(r.CustomerID) : null,
+          date: r?.Date ?? null,
+          amountCents: Math.round(Number(r?.Amount ?? 0) * 100),
+          valid: r?.ValidPayment === true,
+        })).filter((p) => p.id !== ''),
+      };
+    } catch (err: any) {
+      return { ok: false, payments: [], hasNextPage: false, reason: `network: ${err?.message}` };
+    }
+  }
+
   async getTransaction(transactionId: string): Promise<{
     wired: boolean;
     valid: boolean;
