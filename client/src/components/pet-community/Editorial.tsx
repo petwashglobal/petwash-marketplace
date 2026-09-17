@@ -45,7 +45,7 @@ export function EditorialHeader({ isHe, cornerStart, cornerEnd, title, titleMark
         <div className="flex flex-col items-center">
           <div className="text-[28px] leading-none" style={{ fontFamily: SERIF }}>PetWash™‎</div>
           <div className="mt-1.5 text-[9px] tracking-[0.34em] uppercase" style={{ color: GOLD_INK }}>
-            {isHe ? 'חיות מאושרות · מחר טוב יותר' : 'Happier pets. Brighter tomorrows.'}
+            {isHe ? 'כי הם המשפחה' : 'Happier pets. Brighter tomorrows.'}
           </div>
           <span className="mt-3"><Rule w={28} /></span>
         </div>
@@ -148,7 +148,7 @@ export function ClosingBand({ isHe, image, imageAlt, heading, caption, seal, foo
         <div className="flex items-center gap-3">
           <Rule w={20} />
           <span className="text-[10px] tracking-[0.3em] uppercase text-black/60 leading-5" style={{ textAlign: isHe ? 'left' : 'right' }}>
-            {isHe ? <>חמלה היום<br />מחר טוב יותר</> : <>Compassion today.<br />Brighter tomorrows.</>}
+            {isHe ? <>לב פתוח<br />בית חם</> : <>Compassion today.<br />Brighter tomorrows.</>}
           </span>
         </div>
       </footer>

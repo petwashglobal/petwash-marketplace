@@ -49,8 +49,8 @@ describe('the example block cannot be mistaken for a real pet', () => {
   it('it says out loud that these are not real pets', () => {
     const adoption = R('client/src/pages/AdoptionMaison.tsx');
     const paw = R('client/src/pages/PawFinder.tsx');
-    expect(adoption).toContain('אין כאן חיות אמיתיות הממתינות לאימוץ.');
-    expect(paw).toContain('אין כאן חיות אמיתיות שאבדו.');
+    expect(adoption).toContain('אלה דוגמאות בלבד — לא חיות אמיתיות שמחכות לאימוץ.');
+    expect(paw).toContain('אלה דוגמאות בלבד — לא חיות אמיתיות.');
     expect(SRC).toContain("{isHe ? 'כך תיראה המודעה שלכם' : 'This is how your listing will look'}");
   });
 });
