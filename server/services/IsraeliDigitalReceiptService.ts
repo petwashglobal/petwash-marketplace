@@ -123,6 +123,32 @@ export function creditNoteAmounts(original: {
   };
 }
 
+/**
+ * A sale was paid for and no tax document could be written. One open alert per
+ * booking in the admin alert centre, so it is fixed by hand today rather than
+ * found in a VAT return. Never throws — the money has already moved.
+ */
+export async function raiseMissingReceiptAlert(input: {
+  bookingId: string; platform: string; totalAmount: number; error: string;
+}): Promise<void> {
+  try {
+    const { createOrUpdateAlert } = await import('./AlertEngine');
+    await createOrUpdateAlert({
+      dedupeKey: `receipt_missing:${input.bookingId}`,
+      category: 'finance_doc',
+      severity: 'critical',
+      title: 'Paid sale with no tax document',
+      message: `${input.platform} ${input.bookingId} was paid ₪${Number(input.totalAmount ?? 0).toFixed(2)} but no receipt could be written (${input.error}). Issue the document in SUMIT and check the customer got it.`,
+      linkedEntityType: 'booking',
+      linkedEntityId: input.bookingId,
+      source: 'receipt_engine',
+      metadata: { platform: input.platform, totalAmount: input.totalAmount, error: input.error },
+    });
+  } catch {
+    /* an alert failure must never turn into a failed sale */
+  }
+}
+
 export type SumitDispatchResult = {
   status: 'issued' | 'recovered' | 'already_issued' | 'not_wired' | 'nothing_to_issue';
   sumitDocumentId?: string;
@@ -875,7 +901,22 @@ export class IsraeliDigitalReceiptService {
       };
 
     } catch (error: any) {
-      logger.error('[Digital Receipt] Generation failed', { error: error.message });
+      // 2026-09-17: every caller ignores this return value (booking, shop,
+      // academy, prestige pass, guest eGift, wallet top-up / eGift / wash
+      // package). A customer had paid and the tax document did not exist, with
+      // one log line nobody reads. Raise it where it happens, so it is one
+      // alert per sale regardless of which surface sold it. The sale itself is
+      // never failed for this — the money already moved.
+      logger.error('[Digital Receipt] 🔴 Generation failed — customer paid with NO tax document', {
+        bookingId: params.bookingId, platform: params.platform,
+        totalAmount: params.totalAmount, error: error.message,
+      });
+      await raiseMissingReceiptAlert({
+        bookingId: params.bookingId ?? `${params.platform}:unknown`,
+        platform: params.platform,
+        totalAmount: params.totalAmount,
+        error: error.message,
+      });
       return {
         success: false,
         error: error.message,
