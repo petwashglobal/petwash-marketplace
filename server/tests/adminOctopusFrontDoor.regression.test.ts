@@ -13,7 +13,10 @@ describe('octopus is the admin front door', () => {
   it('AdminLoginV2 lands on /admin/octopus (not the old dashboard)', () => {
     const login = R('client/src/pages/admin/AdminLoginV2.tsx');
     expect(login).not.toContain('setLocation("/admin/dashboard")');
-    expect(login).toContain('setLocation("/admin/octopus")');
+    // Lands via adminLandingPath(): back to ?next=<admin page> after a 4h lapse,
+    // otherwise the control tower.
+    expect(login).toContain('setLocation(adminLandingPath())');
+    expect(R('client/src/lib/adminLandingPath.ts')).toContain("return '/admin/octopus';");
   });
 
   it('/admin root redirects to octopus', () => {
