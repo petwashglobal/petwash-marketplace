@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
 import { apiRequest } from "@/lib/queryClient";
-import { vatCalculator } from "@/lib/vatCalculator";
+import { splitMarketplaceJob } from "@shared/marketplaceMoney";
 import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
 import { PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { AddressPicker } from "@/components/ui/address-picker";
@@ -260,8 +260,19 @@ export default function SitterBookingFlow() {
     return (sitter.pricePerDayCents / 100) * totalDays;
   }, [sitter, totalDays]);
 
+  // The SAME split the server charges (shared/marketplaceMoney.ts): the sitter's
+  // rate, plus the Pet Wash fee on top, VAT inside the fee. This screen used the
+  // old "fee out of the rate" helper, so it showed a total the server no longer
+  // charges. The server recomputes the price itself — this is display only, and
+  // it must match to the agora (§17a: the customer sees what they will pay).
   const pricing = useMemo(() => {
-    return vatCalculator.calculateVAT(baseAmount);
+    const s = splitMarketplaceJob(Math.round(baseAmount * 100));
+    return {
+      rate: s.rateCents / 100,
+      fee: s.serviceFeeCents / 100,
+      feeVat: s.serviceFeeVatCents / 100,
+      total: s.customerTotalCents / 100,
+    };
   }, [baseAmount]);
 
   const canContinueDetails = useMemo(() => {
@@ -390,10 +401,10 @@ export default function SitterBookingFlow() {
         bookingScopedShare,
         pricing: {
           currency: "ILS",
-          baseAmount: pricing.baseAmount,
-          commission: pricing.commission,
-          vatAmount: pricing.vatOnCommission,
-          totalAmount: pricing.totalCharged
+          baseAmount: pricing.rate,
+          commission: pricing.fee,
+          vatAmount: pricing.feeVat,
+          totalAmount: pricing.total
         },
         ownerInstructions: ownerInstructions.shareWithProvider ? {
           gateCode: ownerInstructions.gateCode,
@@ -822,22 +833,25 @@ export default function SitterBookingFlow() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-600">
                   <span>₪{(sitter.pricePerDayCents / 100).toFixed(0)}/יום x {totalDays || 0} ימים</span>
-                  <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
+                  <span>₪{pricing.rate.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-500 text-xs pl-3 border-l-2 border-slate-100">
-                  <span>כולל עמלת PetWash (15%)</span>
-                  <span>₪{pricing.commission.toFixed(2)}</span>
+                <div className="flex justify-between text-slate-600" data-testid="sitter-service-fee">
+                  <span>דמי שירות ⁦Pet Wash™⁩‎ (15%)</span>
+                  <span>₪{pricing.fee.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-500 text-xs pl-3 border-l-2 border-slate-100">
+                <div className="flex justify-between text-slate-500 text-xs ps-3 border-s-2 border-slate-100">
                   <span>מהם מע״מ (18/118)</span>
-                  <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
+                  <span>₪{pricing.feeVat.toFixed(2)}</span>
                 </div>
                 <div className="pt-3 mt-2 border-t border-slate-100 flex justify-between">
                   <span className="font-semibold text-slate-900">סה״כ לחיוב</span>
-                  <span className="font-bold text-lg text-emerald-600">
-                    ₪{pricing.totalCharged.toFixed(2)}
+                  <span className="font-bold text-lg text-emerald-600" data-testid="sitter-total">
+                    ₪{pricing.total.toFixed(2)}
                   </span>
                 </div>
+                <p className="text-xs text-slate-400">
+                  המשמר/ת מקבל/ת את מלוא המחיר שלו/ה ומוציא/ה לך חשבונית עליו. ⁦Pet Wash™⁩‎ מוציאה חשבונית על דמי השירות בלבד.
+                </p>
               </div>
               <p className="text-xs text-slate-400 mt-3 flex items-center gap-1">
                 <Shield className="h-3 w-3 text-emerald-400 flex-shrink-0" />
@@ -895,15 +909,17 @@ export default function SitterBookingFlow() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between text-slate-600">
                   <span>מחיר השירות ({totalDays} ימים)</span>
-                  <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
+                  <span>₪{pricing.rate.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-slate-500 text-xs pl-3 border-l-2 border-slate-100">
-                  <span>כולל עמלת PetWash + מע״מ</span>
-                  <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
+                {/* The VAT is INSIDE the fee — this line used to add the two
+                    together and show a fee larger than the one charged. */}
+                <div className="flex justify-between text-slate-600">
+                  <span>דמי שירות ⁦Pet Wash™⁩‎ (כולל מע״מ)</span>
+                  <span>₪{pricing.fee.toFixed(2)}</span>
                 </div>
                 <div className="pt-3 mt-2 border-t border-slate-100 flex justify-between">
                   <span className="font-semibold text-slate-900">סה״כ</span>
-                  <span className="font-bold text-lg text-emerald-600">₪{pricing.totalCharged.toFixed(2)}</span>
+                  <span className="font-bold text-lg text-emerald-600">₪{pricing.total.toFixed(2)}</span>
                 </div>
                 {appliedCredits && (
                   <>
@@ -922,7 +938,7 @@ export default function SitterBookingFlow() {
             </section>
 
             <WalletCheckoutPreview
-              subtotalCents={Math.round(pricing.totalCharged * 100)}
+              subtotalCents={Math.round(pricing.total * 100)}
               divisionCode="petsitter"
             />
 
@@ -940,7 +956,7 @@ export default function SitterBookingFlow() {
               <CreditWalletCard
                 userId={user.uid}
                 platform="sitter"
-                transactionAmountCents={Math.round(pricing.totalCharged * 100)}
+                transactionAmountCents={Math.round(pricing.total * 100)}
                 onRedeemCredits={(preview, redemption) => {
                   setAppliedCredits({
                     redemptionSessionId: redemption.sessionId,
@@ -952,11 +968,11 @@ export default function SitterBookingFlow() {
             )}
 
             {/* PrestigePass Payment Option */}
-            {user && pricing.totalCharged > 0 && (
+            {user && pricing.total > 0 && (
               <PrestigePassPaymentOption
                 bookingId={bookingId || `PENDING-SITTER-${user.uid.slice(0, 8)}`}
                 serviceType="pet_sitter"
-                amountGross={Math.round(pricing.totalCharged * 100)}
+                amountGross={Math.round(pricing.total * 100)}
               />
             )}
 

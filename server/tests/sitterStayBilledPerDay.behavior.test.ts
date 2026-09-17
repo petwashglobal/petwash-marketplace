@@ -42,7 +42,8 @@ describe('pet_sitting (the Sitter Suite booking) bills per calendar day', () => 
     const p = await quote('pet_sitting', '2026-11-10T08:00:00Z', '2026-11-12T08:00:00Z');
     expect(p.duration).toBe(2);
     expect(p.subtotal).toBe(900);
-    expect(p.totalPrice).toBe(900);
+    // One money model (2026-09-17): the customer pays the rate + the 15% fee.
+    expect(p.totalPrice).toBe(1035);
   });
 
   it('a 16h overnight (crosses midnight) is one day, not 16 hours', async () => {
@@ -62,10 +63,13 @@ describe('pet_sitting (the Sitter Suite booking) bills per calendar day', () => 
     expect(p.subtotal).toBe(1350);
   });
 
-  it('commission stays 15% of the stay (sitter nets 85%)', async () => {
+  it('the fee is 15% of the stay, on top — the sitter is owed the whole ₪900', async () => {
     const p = await quote('pet_sitting', '2026-11-10T08:00:00Z', '2026-11-12T08:00:00Z');
     expect(p.platformFee).toBeCloseTo(135, 6);
-    expect(p.sitterPayout).toBeCloseTo(765, 6);
+    expect(p.sitterPayout).toBeCloseTo(900, 6);
+    expect(p.totalPrice).toBeCloseTo(1035, 6);
+    // VAT Pet Wash owes is inside its ₪135 fee: 135 × 18/118 = 20.59
+    expect(p.tax).toBeCloseTo(20.59, 2);
   });
 });
 

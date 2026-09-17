@@ -39,14 +39,19 @@ export function runDeterministicMoneyChecks(now: Date = new Date()): MoneyCheck[
     w.totalChargeWithVATCents === w.totalChargeCents && w.vatCents <= w.platformCommissionTotalCents && w.vatCents === Math.round(1500 * (ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE))),
     `finalCharge=${w.totalChargeWithVATCents} base=${w.totalChargeCents} vat=${w.vatCents} (VAT must be inside the commission, not on top)`));
 
-  // 2. Sitter: single 15% — customer pays the rate (no on-top), sitter nets 85%.
-  const s = calculateTransparentFees(15000, 3); // ₪150/day × 3
-  checks.push(check('sitter_fee_single_15pct',
-    s.totalChargeCents === 45000 && s.basePriceCents === 45000 && s.sitterPayoutCents === 38250 && s.platformServiceFeeCents === 6750,
-    `customer=${s.totalChargeCents} base=${s.basePriceCents} sitter=${s.sitterPayoutCents} commission=${s.platformServiceFeeCents} (want 45000/45000/38250/6750)`));
+  // 2. Sitter: ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-17) — the
+  //    customer pays the rate + a 15% fee on top, the sitter is owed the full
+  //    rate, VAT sits inside the fee.
+  const s = calculateTransparentFees(15000, 3); // ₪150/day × 3 = ₪450 rate
+  checks.push(check('sitter_fee_15pct_on_top',
+    s.basePriceCents === 45000 && s.platformServiceFeeCents === 6750 && s.totalChargeCents === 51750 && s.sitterPayoutCents === 45000,
+    `rate=${s.basePriceCents} fee=${s.platformServiceFeeCents} customer=${s.totalChargeCents} sitter=${s.sitterPayoutCents} (want 45000/6750/51750/45000)`));
   checks.push(check('sitter_no_double_charge',
-    s.totalChargeCents === s.basePriceCents && s.sitterPayoutCents + s.platformServiceFeeCents === s.basePriceCents,
-    `customer must pay the base and payout+commission must equal base (no fee on top, no double take)`));
+    s.totalChargeCents === s.basePriceCents + s.platformServiceFeeCents && s.sitterPayoutCents === s.basePriceCents,
+    `customer must pay rate + ONE fee and the sitter must be owed the whole rate (no fee twice, nothing taken from the sitter)`));
+  checks.push(check('sitter_vat_inside_fee',
+    s.vatCents === Math.round(6750 * (ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE))) && s.vatCents < s.platformServiceFeeCents,
+    `vat=${s.vatCents} fee=${s.platformServiceFeeCents} (VAT is extracted from Pet Wash's fee, never charged on the sitter's money)`));
 
   // 3. Israeli VAT rate is the expected 18% for today.
   const vat = resolveVatRateForDate(now);

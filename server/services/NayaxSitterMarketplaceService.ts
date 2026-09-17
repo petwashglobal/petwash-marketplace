@@ -39,9 +39,18 @@ interface SitterBookingPaymentParams {
   bookingId: string;
   ownerId: string;
   sitterId: number;
-  pricePerDayCents: number;
+  /** The sitter's rate for the whole stay, as stored when the booking was made. */
+  basePriceCents: number;
+  /**
+   * EXACTLY what the customer agreed to pay (sitter_bookings.total_charge_cents).
+   * The card is charged this and nothing recomputed. It used to be rebuilt as
+   * (total ÷ days) × days through the fee calculator — which charged the fee a
+   * second time whenever the fee sat on top, and could drift by agorot on the
+   * rounding.
+   */
+  chargeCents: number;
   totalDays: number;
-  ownerPaymentToken: string;
+  ownerPaymentToken?: string;
   terminalId?: string;
 }
 
@@ -56,6 +65,16 @@ interface SitterPayoutParams {
    * See server/lib/payoutHumanApproval.ts (CEO rule 2026-09-13).
    */
   approvedByUid?: string | null;
+}
+
+/**
+ * The fee split for a stay whose rate is already stored. Uses the per-day form
+ * only when the base divides evenly, so the split is of the stored base itself.
+ */
+function feesForStoredBooking(basePriceCents: number, totalDays: number): TransparentFeeCalculation {
+  const days = Math.max(1, Math.round(totalDays || 1));
+  if (basePriceCents % days === 0) return calculateTransparentFees(basePriceCents / days, days);
+  return calculateTransparentFees(basePriceCents, 1);
 }
 
 // ==================== NAYAX SITTER MARKETPLACE SERVICE ====================
@@ -83,8 +102,9 @@ export class NayaxSitterMarketplaceService {
     error?: string;
   }> {
     try {
-      // Calculate transparent fees
-      const fees = calculateTransparentFees(params.pricePerDayCents, params.totalDays);
+      // The split of the RATE, for the log and the caller. The amount charged is
+      // `params.chargeCents` below — never this recomputation.
+      const fees = feesForStoredBooking(params.basePriceCents, params.totalDays);
       
       logger.info('[Sitter Suite] Processing booking payment (Israeli law 2026)', {
         bookingId: params.bookingId,
@@ -99,7 +119,7 @@ export class NayaxSitterMarketplaceService {
       // Prepare Nayax payment request
       const paymentRequest: NayaxPaymentRequest = {
         TerminalId: params.terminalId || this.NAYAX_TERMINAL_ID || '',
-        Amount: fees.totalChargeCents,
+        Amount: params.chargeCents,
         Currency: this.CURRENCY,
         Token: params.ownerPaymentToken,
         ExternalTransactionId: `SITTER_${params.bookingId}_${nanoid(10)}`,
@@ -113,7 +133,8 @@ export class NayaxSitterMarketplaceService {
         logger.info('[Sitter Suite] Payment successful', {
           bookingId: params.bookingId,
           nayaxTransactionId: nayaxResponse.TransactionId,
-          brokerProfit: fees.brokerCut, // Our 5% cut 💰
+          chargedCents: params.chargeCents,
+          serviceFeeCents: fees.platformServiceFeeCents,
         });
         
         return {
@@ -138,7 +159,7 @@ export class NayaxSitterMarketplaceService {
     } catch (error) {
       logger.error('[Sitter Suite] Payment processing error', error);
       
-      const fees = calculateTransparentFees(params.pricePerDayCents, params.totalDays);
+      const fees = feesForStoredBooking(params.basePriceCents, params.totalDays);
       
       return {
         success: false,

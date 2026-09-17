@@ -1770,6 +1770,9 @@ if (isProduction) {
               p.bookingId,
               p.metadata ?? {},
               p.settlement ?? undefined,
+              // Replay the money model the booking was sold under. Rows queued
+              // before 2026-09-17 carry none and keep the legacy 'net' reading.
+              p.moneyModel === 'gross' ? { model: 'gross' } : undefined,
             );
           },
           academy_receipt: async (p: any) => {

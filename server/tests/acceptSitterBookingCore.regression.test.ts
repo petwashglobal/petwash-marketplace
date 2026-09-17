@@ -369,3 +369,34 @@ describe('acceptSitterBookingCore — payment success', () => {
     expect(arg.traceId).toBe('trace-99');
   });
 });
+
+describe('acceptSitterBookingCore — the card is charged EXACTLY what the customer agreed to', () => {
+  // 2026-09-17. The charge used to be rebuilt: (total ÷ days) was passed as a
+  // per-day RATE into the fee calculator, which added its fee to it. Under a
+  // fee-on-top model that charges the fee twice. Now the stored total goes
+  // straight through, and each booking keeps the model it was sold under.
+  it('a stay booked under the fee-on-top model: charges base + fee, once', async () => {
+    seed({ basePriceCents: 90000, platformServiceFeeCents: 13500, sitterPayoutCents: 90000, totalChargeCents: 103500, totalDays: 2 });
+    processBookingPaymentMock.mockResolvedValueOnce({ success: true, nayaxTransactionId: 'SIM_x', error: '' });
+    await acceptSitterBookingCore({ bookingId: 'SIT-ACC-1', providerUid: 'sitter-uid' });
+    const arg = processBookingPaymentMock.mock.calls[0][0];
+    expect(arg.chargeCents).toBe(103500);           // not 103500 × 1.15
+    expect(arg.basePriceCents).toBe(90000);
+    expect(arg).not.toHaveProperty('pricePerDayCents');
+  });
+
+  it('a stay booked before the change keeps its old total', async () => {
+    seed({}); // base 10000, total 10000 — the old model
+    processBookingPaymentMock.mockResolvedValueOnce({ success: true, nayaxTransactionId: 'SIM_y', error: '' });
+    await acceptSitterBookingCore({ bookingId: 'SIT-ACC-1', providerUid: 'sitter-uid' });
+    expect(processBookingPaymentMock.mock.calls[0][0].chargeCents).toBe(10000);
+  });
+
+  it('an odd total that does not divide by the days is charged to the agora', async () => {
+    seed({ basePriceCents: 10001, platformServiceFeeCents: 1500, sitterPayoutCents: 10001, totalChargeCents: 11501, totalDays: 3 });
+    processBookingPaymentMock.mockResolvedValueOnce({ success: true, nayaxTransactionId: 'SIM_z', error: '' });
+    await acceptSitterBookingCore({ bookingId: 'SIT-ACC-1', providerUid: 'sitter-uid' });
+    // (11501 ÷ 3) × 3 would have been 11502 or 11499 depending on rounding.
+    expect(processBookingPaymentMock.mock.calls[0][0].chargeCents).toBe(11501);
+  });
+});

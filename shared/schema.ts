@@ -4800,8 +4800,10 @@ export const sitterBookings = pgTable("sitter_bookings", {
   basePriceCents: integer("base_price_cents").notNull(), // Sitter's base rate × days
   platformServiceFeeCents: integer("platform_service_fee_cents").notNull(), // 15% platform commission
   brokerCutCents: integer("broker_cut_cents").notNull(), // 15% platform commission (same as service fee)
-  sitterPayoutCents: integer("sitter_payout_cents").notNull(), // 85% of base (100% - 15%)
-  totalChargeCents: integer("total_charge_cents").notNull(), // base + platform fee
+  // One money model (shared/marketplaceMoney.ts, 2026-09-17): the sitter is owed
+  // the full base; stays booked before then stored 85% here and keep it.
+  sitterPayoutCents: integer("sitter_payout_cents").notNull(), // = base (was 85% of base before 2026-09-17)
+  totalChargeCents: integer("total_charge_cents").notNull(), // base + platform fee — what the card is charged, never recomputed
   
   // Payment Integration (NAYAX ONLY - Like marketplace platform)
   nayaxTransactionId: varchar("nayax_transaction_id"), // Nayax payment transaction ID

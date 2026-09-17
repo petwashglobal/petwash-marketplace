@@ -1037,7 +1037,9 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
     const octopusId = `OB-SITTER-${nanoid(8)}`;
     const priceCents = Math.round(pricing.totalPrice * 100);
     const platformFeeCents = Math.round(pricing.platformFee * 100);
-    const providerShareCents = Math.round(pricing.providerPayout * 100);
+    // The engine returns `sitterPayout` — there is no `providerPayout` on it.
+    // Reading the missing field wrote NaN into the Octopus ledger's providerShare.
+    const providerShareCents = Math.round(pricing.sitterPayout * 100);
     try {
       await db.insert(octopusBookings).values({
         id: octopusId,
@@ -1106,7 +1108,7 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
         basePrice: pricing.subtotal,
         loyaltyDiscount: pricing.loyaltyDiscount,
         platformFee: pricing.platformFee,
-        sitterPayout: pricing.providerPayout,
+        sitterPayout: pricing.sitterPayout, // was pricing.providerPayout → undefined in every response
         currency: pricing.currency,
         breakdown: pricing.breakdown,
       },
@@ -1543,6 +1545,11 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
       // payment: a row that contradicts itself in front of the bookkeeper.
       // Omitting it lets the writer record the rate it actually charged — the
       // same thing Walk My Pet already does by passing nothing.
+      //
+      // The fee ACTUALLY charged, as stored at booking time. Right for a stay
+      // booked under either model — the old back-calculation (payout × 15/85)
+      // is only right when the fee came out of the payout.
+      brokerCommissionAmount: (booking.platformServiceFeeCents ?? 0) / 100,
     });
 
     if (!settlementResult.success) {
@@ -1609,10 +1616,16 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
     // on failure enqueue a durable fiscal_document_outbox row for the
     // drainer worker to retry. If BOTH fail we return 5xx so the
     // client retries the whole booking-completion (idempotent by id).
+    // Which money model this stay was booked under, read from its own stored
+    // numbers: the fee sat on top iff the customer paid more than the rate.
+    // Stays booked before 2026-09-17 keep the model they were sold with.
+    const moneyModel: 'gross' | 'net' =
+      booking.totalChargeCents > booking.basePriceCents ? 'gross' : 'net';
     const vatPayload = {
       source: 'sitter-suite',
       bookingId: booking.bookingId,
       grossAmountIls: booking.totalChargeCents / 100,
+      moneyModel,
       metadata: {
         completedAt: new Date().toISOString(),
         bookingDbId: booking.id,
@@ -1639,6 +1652,7 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
             booking.bookingId,
             { completedAt: new Date().toISOString(), bookingDbId: booking.id },
             vatPayload.settlement || undefined,
+            { model: moneyModel },
           );
         },
       });

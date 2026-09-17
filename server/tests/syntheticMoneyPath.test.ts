@@ -15,11 +15,13 @@ describe('SyntheticMoneyPathMonitor — invariants match the live money code', (
     expect(checks.length).toBeGreaterThanOrEqual(5);
   });
 
-  it('covers walk 15%, sitter single-15%, no-double-charge, and VAT-18%', () => {
+  it('covers walk 15%, sitter fee-on-top, no-double-charge, VAT inside the fee, and VAT-18%', () => {
     const names = runDeterministicMoneyChecks().map((c) => c.name);
     expect(names).toContain('walk_fee_single_15pct');
     expect(names).toContain('walk_vat_extracted_not_added');
-    expect(names).toContain('sitter_fee_single_15pct');
+    // 2026-09-17: sitter moved to the one money model (fee on top, sitter keeps the rate).
+    expect(names).toContain('sitter_fee_15pct_on_top');
+    expect(names).toContain('sitter_vat_inside_fee');
     expect(names).toContain('sitter_no_double_charge');
     expect(names).toContain('vat_rate_is_18pct');
   });

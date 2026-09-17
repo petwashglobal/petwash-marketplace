@@ -130,14 +130,18 @@ export async function acceptSitterBookingCore(input: AcceptSitterInput): Promise
 
     // Payment capture against the owner's stored method. Provider does
     // NOT supply a token — this is a marketplace push charge.
-    const pricePerDayCents = Math.round(booking.totalChargeCents / booking.totalDays);
+    // Charge EXACTLY the total the customer agreed to when they booked. This used
+    // to pass (total ÷ days) as a per-day RATE into the fee calculator, which
+    // rebuilt the charge from it — charging the fee twice under a fee-on-top
+    // model, and drifting by agorot on the division.
     let paymentResult = { success: false, nayaxTransactionId: '', error: '' };
     try {
       paymentResult = await nayaxSitterMarketplace.processBookingPayment({
         bookingId: booking.bookingId,
         ownerId: booking.ownerId,
         sitterId: booking.sitterId,
-        pricePerDayCents,
+        basePriceCents: booking.basePriceCents,
+        chargeCents: booking.totalChargeCents,
         totalDays: booking.totalDays,
       });
     } catch (paymentErr: any) {
