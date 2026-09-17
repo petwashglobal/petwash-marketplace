@@ -31,7 +31,10 @@ import { useLocation } from "wouter";
 import { vatCalculator } from "@/lib/vatCalculator";
 
 interface FareEstimate {
+  /** What the customer pays = driver's fare + the 15% Pet Wash fee. */
   estimatedFare: number;
+  /** The driver's fare, before the fee. */
+  driverFare?: number;
   driverPayout: number;
   platformCommission: number;
   baseFare: number;
@@ -99,7 +102,9 @@ export default function BookTrip() {
 
   const pricing = useMemo(() => {
     if (!fareEstimate) return null;
-    return vatCalculator.calculateVAT(fareEstimate.estimatedFare);
+    // Split the DRIVER'S fare — calculateVAT adds the 15% fee on top, and
+    // estimatedFare already includes it (older responses send only the fare).
+    return vatCalculator.calculateVAT(fareEstimate.driverFare ?? fareEstimate.estimatedFare);
   }, [fareEstimate]);
 
   async function fetchFareEstimate() {

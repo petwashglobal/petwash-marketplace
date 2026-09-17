@@ -5,7 +5,7 @@
  * Features:
  * - Base fare + distance + time calculations
  * - Surge pricing for peak hours
- * - 15% platform commission split
+ * - 15% Pet Wash service fee ON TOP of the driver's fare (one money model)
  * - Real-time fare estimates
  * 
  * Commission Structure:
@@ -16,7 +16,9 @@
 import { logger } from '../lib/logger';
 
 // Pricing Configuration (ILS)
-const COMMISSION_RATE_TRANSPORT = 0.15; // 15% platform commission
+const COMMISSION_RATE_TRANSPORT = MARKETPLACE_SERVICE_FEE_RATE; // fee on top of the fare
+import { splitMarketplaceJob, MARKETPLACE_SERVICE_FEE_RATE } from '@shared/marketplaceMoney';
+
 const BASE_FARE = 15.00; // ILS base fare
 const RATE_PER_KM = 4.50; // ILS per kilometer
 const RATE_PER_MINUTE = 0.75; // ILS per minute
@@ -35,6 +37,8 @@ export interface Location {
 
 export interface FareEstimate {
   estimatedFare: number;
+  /** The driver's fare, before the Pet Wash fee is added for the customer. */
+  driverFare?: number;
   driverPayout: number;
   platformCommission: number;
   baseFare: number;
@@ -149,9 +153,14 @@ export class PetTrekFareEstimationService {
       const surgeFare = isPeak ? subtotal * (surgeMultiplier - 1) : 0;
       subtotal = subtotal * surgeMultiplier;
       
-      // Calculate commission
-      const platformCommission = subtotal * COMMISSION_RATE_TRANSPORT;
-      const driverPayout = subtotal * (1 - COMMISSION_RATE_TRANSPORT);
+      // ONE MONEY MODEL (shared/marketplaceMoney.ts, 2026-09-18): the fare is
+      // the driver's in full and the 15% Pet Wash fee (VAT inside) is added on
+      // top for the customer. This used to take the fee OUT of the fare:
+      // a ₪100 trip paid the driver ₪85.
+      const split = splitMarketplaceJob(Math.round(subtotal * 100));
+      const platformCommission = split.serviceFeeCents / 100;
+      const driverPayout = split.providerPayoutCents / 100;
+      const customerTotal = split.customerTotalCents / 100;
       
       logger.info('[PetTrek Fare] Estimate calculated', {
         distanceKm: routeInfo.distanceKm,
@@ -162,7 +171,9 @@ export class PetTrekFareEstimationService {
       });
       
       return {
-        estimatedFare: Math.round(subtotal * 100) / 100,
+        // What the customer pays = fare + fee.
+        estimatedFare: customerTotal,
+        driverFare: Math.round(subtotal * 100) / 100,
         driverPayout: Math.round(driverPayout * 100) / 100,
         platformCommission: Math.round(platformCommission * 100) / 100,
         baseFare: Math.round(baseFare * 100) / 100,
@@ -201,6 +212,7 @@ export class PetTrekFareEstimationService {
    * Estimate total trip cost including potential surge
    * Returns range: [minimum fare, maximum fare with surge]
    */
+  // Both ends of the range are what the CUSTOMER pays (fee included).
   getFareRange(start: Location, end: Location): { min: number; max: number } {
     const normalFare = this.getFareEstimate(start, end, new Date());
     const peakFare = normalFare.estimatedFare * SURGE_MULTIPLIER_PEAK;
