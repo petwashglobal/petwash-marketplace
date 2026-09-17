@@ -44,6 +44,7 @@ const KNOWN_SOURCES: FiscalSourceHint[] = [
   'walk_bookings',
   'trainer_bookings',
   'pettrek_trips',
+  'booking_requests',
 ];
 
 function resolveViewer(req: Request): FiscalActor | null {

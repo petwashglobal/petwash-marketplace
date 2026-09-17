@@ -25,6 +25,7 @@ import {
   k9000WashEvents,
   egiftGuestOrders,
   users,
+  bookingRequests,
   pettrekTrips,
   pettrekProviders,
 } from '@shared/schema';
@@ -70,7 +71,8 @@ export type FiscalSourceHint =
   | 'sitter_bookings'
   | 'walk_bookings'
   | 'trainer_bookings'
-  | 'pettrek_trips';
+  | 'pettrek_trips'
+  | 'booking_requests';
 
 export interface ComposeFiscalInput {
   sourceHint: FiscalSourceHint;
@@ -100,6 +102,8 @@ export async function composeFiscalPassport(input: ComposeFiscalInput): Promise<
         return await composeAcademyFiscal(input.sourceId, input.viewer);
       case 'pettrek_trips':
         return await composePettrekFiscal(input.sourceId, input.viewer);
+      case 'booking_requests':
+        return await composeBookingRequestFiscal(input.sourceId, input.viewer);
     }
   } catch (err: any) {
     logger.error('[FiscalPassport] compose failed', {
@@ -753,6 +757,85 @@ async function composePettrekFiscal(tripId: string, viewer: FiscalActor): Promis
     payDate: (t.actualDropoffTime ?? t.actualPickupTime ?? t.scheduledPickupTime)?.toISOString() ?? null,
     externalTxn: t.nayaxTransactionId ?? null,
     nayaxTxId: t.nayaxTransactionId ?? null,
+  });
+}
+
+// ─── MARKETPLACE BOOKING (booking_requests) ─────────────────────────
+//
+// The flow a customer actually pays by card since BOOKING_CARD_RAIL=sumit
+// (2026-09-17): search → book → provider accepts → SUMIT hosted page →
+// confirmed. It had no passport at all, so a paid booking was missing from
+// "my transactions" — the page the payment letter links to.
+//
+// GROSS MODEL (2026-09-14): the customer pays provider price + 15% on top;
+// Pet Wash's document covers the fee only, so providerExpected = subtotal.
+
+const BOOKING_REQUEST_EVENTS: Record<string, { event: FiscalEventCode; platform: FiscalTransactionPassport['platform']; serviceType: string; itemCode: LineItemCode }> = {
+  dog_walking: { event: 'WALK_BOOKING_PAID', platform: 'WALK_MY_PET', serviceType: 'dog_walk', itemCode: 'WALK_60_MIN' },
+  walking:     { event: 'WALK_BOOKING_PAID', platform: 'WALK_MY_PET', serviceType: 'dog_walk', itemCode: 'WALK_60_MIN' },
+  pet_sitting: { event: 'SITTER_BOOKING_PAID', platform: 'SITTER_SUITE', serviceType: 'pet_sitting', itemCode: 'SITTER_DAY' },
+  sitting:     { event: 'SITTER_BOOKING_PAID', platform: 'SITTER_SUITE', serviceType: 'pet_sitting', itemCode: 'SITTER_DAY' },
+  training:    { event: 'ACADEMY_BOOKING_PAID', platform: 'ACADEMY', serviceType: 'training', itemCode: 'ACADEMY_SESSION' },
+  grooming:    { event: 'SITTER_BOOKING_PAID', platform: 'SITTER_SUITE', serviceType: 'grooming', itemCode: 'SITTER_DAY' },
+};
+
+/** Paid = the money is actually held: the SUMIT return stamps both. */
+export function bookingRequestIsPaid(b: { status?: string | null; paymentHeldAt?: Date | null; paymentTransactionId?: string | null }): boolean {
+  const status = String(b.status ?? '');
+  if (['confirmed', 'in_progress', 'completed'].includes(status)) return true;
+  return !!b.paymentHeldAt && !!b.paymentTransactionId;
+}
+
+export function bookingRequestFiscalKind(serviceType: string | null | undefined) {
+  const s = String(serviceType ?? '').toLowerCase();
+  if (BOOKING_REQUEST_EVENTS[s]) return BOOKING_REQUEST_EVENTS[s];
+  if (s.includes('walk')) return BOOKING_REQUEST_EVENTS.dog_walking;
+  if (s.includes('sit')) return BOOKING_REQUEST_EVENTS.pet_sitting;
+  if (s.includes('train') || s.includes('academy')) return BOOKING_REQUEST_EVENTS.training;
+  if (s.includes('groom')) return BOOKING_REQUEST_EVENTS.grooming;
+  return BOOKING_REQUEST_EVENTS.dog_walking;
+}
+
+async function composeBookingRequestFiscal(requestId: string, viewer: FiscalActor): Promise<FiscalPassportEnvelope | null> {
+  const [b] = await db.select().from(bookingRequests).where(eq(bookingRequests.requestId, requestId));
+  if (!b) return null;
+  const isOwner = viewer.kind === 'CUSTOMER' && viewer.uid === b.ownerId;
+  const isProvider = viewer.kind === 'PROVIDER' && viewer.uid === b.providerId;
+  const isStaff = viewer.kind === 'PETWASH_STAFF';
+  if (!isOwner && !isProvider && !isStaff) return null;
+
+  const kind = bookingRequestFiscalKind(b.serviceType);
+  const total = Number(b.totalCents ?? 0);
+  const providerExpected = Number(b.subtotalCents ?? 0); // gross model: provider is owed the full price
+  const paid = bookingRequestIsPaid(b as any);
+  const correlationId = `booking:${b.requestId}`;
+  const transactionRef = generateTransactionRef({
+    stableId: correlationId,
+    stableIsoDate: (b.paymentHeldAt ?? b.createdAt)?.toISOString() ?? null,
+  });
+
+  const [providerUser] = b.providerId
+    ? await db.select({ firstName: users.firstName, lastName: users.lastName }).from(users).where(eq(users.id, b.providerId)).limit(1)
+    : [];
+
+  return buildBookingFiscal({
+    b, correlationId, transactionRef, event: kind.event,
+    platform: kind.platform,
+    serviceType: kind.serviceType,
+    itemCode: kind.itemCode,
+    itemQuantity: 1,
+    itemUnitCents: total,
+    fulfillerActor: {
+      kind: 'PROVIDER',
+      uid: b.providerId,
+      displayName: [providerUser?.firstName, providerUser?.lastName].filter(Boolean).join(' ').trim() || undefined,
+    },
+    total, providerExpected, paid,
+    viewer, isProvider: !!isProvider, isStaff,
+    sourceType: 'booking_requests',
+    sourceId: b.requestId,
+    payDate: (b.paymentHeldAt ?? null)?.toISOString() ?? null,
+    externalTxn: b.paymentTransactionId ?? null,
   });
 }
 
