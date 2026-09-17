@@ -45,6 +45,7 @@ import rateLimit from 'express-rate-limit';
 import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { sumitTriggerTokenMatches } from '../lib/sumitTriggerToken';
 import { sumitClient } from '../services/SumitClient';
 import { recordAuditEvent } from '../utils/auditSignature';
 import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
@@ -195,6 +196,38 @@ function extractExternalRef(body: Record<string, unknown> | null): string | null
   }
   return null;
 }
+
+/**
+ * POST /api/sumit/trigger/:token — SUMIT push (2026-09-18).
+ *
+ * Subscribed via /triggers/triggers/subscribe/ on the payments view. SUMIT
+ * sends an unsigned JSON body, so NOTHING in it is trusted or parsed for
+ * money: the call is a wake-up that runs the unclaimed-payment reconciliation,
+ * which re-reads payments and documents from SUMIT with our own credentials.
+ * Worst case for a leaked URL is an extra read of our own SUMIT account,
+ * rate-limited below. Always answers 200 quickly so SUMIT does not retry.
+ */
+router.post(
+  '/trigger/:token',
+  sumitWebhookLimiter,
+  express.json({ limit: '256kb' }),
+  async (req: Request, res: Response) => {
+    if (!sumitTriggerTokenMatches(req.params.token)) {
+      logger.warn('[SumitTrigger] bad or unconfigured token', { ip: req.ip });
+      return res.status(404).json({ ok: false });
+    }
+    res.status(200).json({ ok: true });
+    setImmediate(async () => {
+      try {
+        const { runSumitUnclaimedPaymentWatch } = await import('../cron/sumit-unclaimed-payments');
+        const r = await runSumitUnclaimedPaymentWatch();
+        logger.info('[SumitTrigger] push handled', { ...r, keys: Object.keys((req.body ?? {}) as Record<string, unknown>).slice(0, 10) });
+      } catch (e: any) {
+        logger.error('[SumitTrigger] reconciliation after push failed', { error: e?.message });
+      }
+    });
+  },
+);
 
 router.post(
   '/webhook',
