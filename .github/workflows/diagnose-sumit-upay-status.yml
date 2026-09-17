@@ -103,30 +103,25 @@ jobs:
             -d "$(jq -n --argjson c "$CREDS" '{Credentials:$c}')" \
             https://api.sumit.co.il/crm/schema/listfolders/ \
             | jq -r '.Data // {} | .. | objects | select(has("ID") and (has("Name") or has("EnglishName"))) | "\(.ID)\t\(.Name // .EnglishName)"' | sort -u | head -40
-          for F in Payments Billing payments billing; do
+          # Folder IDs read live 2026-09-18: 1421721659 תשלומים דיגיטליים,
+          # 1421722084 סליקות אשראי (חיצוניות), 1421721381 תשלומים כלליים,
+          # 1421722631 מסמכים, 1421721059 פרטי תשלום.
+          for F in 1421721659 1421722084 1421721381 1421722631; do
             R="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
-                 -d "$(jq -n --argjson c "$CREDS" --arg f "$F" '{Credentials:$c, Folder:$f, LoadProperties:true, Paging:{StartIndex:0, PageSize:3}}')" \
+                 -d "$(jq -n --argjson c "$CREDS" --argjson f "$F" '{Credentials:$c, Folder:$f, LoadProperties:true, Paging:{StartIndex:0, PageSize:3}}')" \
                  https://api.sumit.co.il/crm/data/listentities/)"
             ST="$(echo "$R" | jq -c '.Status')"
             echo "-- listentities Folder=$F → Status $ST $(echo "$R" | jq -r '.UserErrorMessage // ""')"
             [ "$ST" = "0" ] || continue
+            echo "   count: $(echo "$R" | jq -c '[.Data // {} | .. | objects | select(has("ID"))] | length')"
             echo "   field names:"
             echo "$R" | jq -r '[.Data // {} | paths(scalars) | map(tostring) | join(".")] | .[]' \
-              | sed -E 's/\.[0-9]+\./.N./g' | sort -u | grep -v -i -E 'card|cvv|citizen|token|expir' | head -40
-            echo "   values that look like OUR reference:"
-            echo "$R" | jq -c '[.. | strings | select(test("^bkg_|^eg_|^sumit_verify|^pw_";"i"))] | unique'
+              | sed -E 's/\.[0-9]+\./.N./g' | sort -u | grep -v -i -E 'card|cvv|citizen|token|expir' | head -50
+            echo "   values that look like OUR reference: $(echo "$R" | jq -c '[.. | strings | select(test("^bkg_|^eg_|^sumit_verify|^pw_";"i"))] | unique')"
+            echo "   views on this folder: $(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                 -d "$(jq -n --argjson c "$CREDS" --argjson f "$F" '{Credentials:$c, FolderID:$f}')" \
+                 https://api.sumit.co.il/crm/views/listviews/ | jq -c '[.Data // {} | .. | objects | select(has("ID") and has("Name")) | {ID, Name}] | unique')"
           done
-          echo "-- views (for a trigger subscription) --"
-          for FID in $(curl -sS --max-time 30 -H 'Content-Type: application/json' \
-                 -d "$(jq -n --argjson c "$CREDS" '{Credentials:$c}')" \
-                 https://api.sumit.co.il/crm/schema/listfolders/ | jq -r '[.. | objects | select(has("ID")) | .ID] | unique | .[]' | head -12); do
-            V="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
-                 -d "$(jq -n --argjson c "$CREDS" --argjson f "$FID" '{Credentials:$c, FolderID:$f}')" \
-                 https://api.sumit.co.il/crm/views/listviews/)"
-            [ "$(echo "$V" | jq -c '.Status')" = "0" ] || continue
-            echo "   folder $FID views: $(echo "$V" | jq -c '[.Data // {} | .. | objects | select(has("ID") and has("Name")) | {ID, Name}] | unique')"
-          done
-
           echo "== 3. /accounting/documents/list/ (last ${DAYS:-90} days, drafts included) =="
           # List only — never getpdf/getdetails (never consume an original). No download URLs,
           # no customer names printed.
