@@ -174,6 +174,7 @@ describe('B5 — guest eGift sales appear in the control tower', () => {
   it('the page adds them into the total and shows them', () => {
     const src = R('client/src/pages/AdminOctopus.tsx');
     expect(src).toMatch(/\+ \(p\.egiftGuestCents \?\? 0\)/);
-    expect(src).toContain('nis(p.egiftGuestCents ?? 0)');
+    // Shown through the SOURCES table (hero + per-period table).
+    expect(src).toContain("{ feed: 'egiftGuest', label: 'מתנות (אורחים)', short: 'מתנות', cents: (p) => p.egiftGuestCents ?? 0,");
   });
 });
