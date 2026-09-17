@@ -448,7 +448,9 @@ const SVC_EN: Record<ProviderServiceType, string> = {
 
 export function buildProviderTxReceipt(p: ProviderTxReceiptParams): string {
   const { net, vat, gross } = vatBreakdown(p.grossChargedIls);
-  const pfGross = +(p.grossChargedIls * p.platformFeeRate).toFixed(2);
+  // The charge is the provider's rate + the fee on top (shared/marketplaceMoney.ts),
+  // so the fee is gross × r/(1+r): ₪115 → ₪15, not 15% of ₪115.
+  const pfGross = +(p.grossChargedIls * p.platformFeeRate / (1 + p.platformFeeRate)).toFixed(2);
   const pfVat   = +(pfGross - pfGross / (1 + VAT_RATE)).toFixed(2);
   const payout  = +(p.grossChargedIls - pfGross).toFixed(2);
   const icon    = SVC_ICON[p.serviceType];

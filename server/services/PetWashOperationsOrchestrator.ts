@@ -1063,8 +1063,8 @@ export class PetWashOperationsOrchestrator {
          <li>Complete your profile and set your availability</li>
          <li>You'll start receiving booking requests within 24 hours</li>
        </ol>
-       <p style="color:#ccc;font-size:13px;">Commission: You keep <strong style="color:#E7C978;">85%</strong> of every completed booking. Payments within 3 business days.</p>
-       <p style="color:#888;font-size:11px;" dir="rtl">ברוכים הבאים לצוות PetWash™! אתה שומר 85% מכל הזמנה. תשלומים תוך 3 ימי עסקים.</p>`
+       <p style="color:#ccc;font-size:13px;">You keep <strong style="color:#E7C978;">100%</strong> of your price — the client pays a 15% Pet Wash service fee on top (VAT included). Payments within 3 business days.</p>
+       <p style="color:#888;font-size:11px;" dir="rtl">ברוכים הבאים לצוות PetWash™! את/ה מקבל/ת 100% מהמחיר שלך — הלקוח משלם בנוסף דמי שירות של 15% (כולל מע״מ). תשלומים תוך 3 ימי עסקים.</p>`
     );
     try {
       await sendEmail(opts.email, `🎉 PetWash™ Provider Approved – ${opts.applicationId}`, approvalHtml);
