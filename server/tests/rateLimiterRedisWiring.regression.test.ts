@@ -44,6 +44,7 @@ const REDIS_BACKED = [
   ['aiChatLimiter', 'ai_chat_min'],
   ['aiChatHourlyLimiter', 'ai_chat_hour'],
   ['authLimiter', 'auth'],
+  ['sessionLimiter', 'auth-session'],
   ['otpLimiter', 'otp'],
   ['webauthnLimiter', 'webauthn'],
 ] as const;
