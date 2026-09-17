@@ -8,13 +8,35 @@ import { Router, type Request, type Response } from 'express';
 import { AuditLedgerService } from '../services/AuditLedgerService';
 import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin, isSuperAdminVerified } from '../middleware/rbac';
-import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { validateFirebaseToken, optionalFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
 import { redisRateLimitStore } from '../middleware/rateLimiterRedisStore';
 
 const router = Router();
+
+// Anonymous by nature: a passkey sign-in fails BEFORE any session exists, and
+// Firebase Hosting strips every cookie but __session, so the pw.csrf
+// double-submit can never succeed for this caller (server/index.ts exempts it
+// like /api/errors/log). Compensating controls: per-IP rate limit, bounded
+// fields, and uid taken ONLY from a verified token — never from the body.
+const biometricFailureLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { error: 'Too many reports' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false, ip: false, default: false },
+  store: redisRateLimitStore('biometric_failure_report'),
+});
+
+// Registered BEFORE the token gate below. A failed passkey sign-in happens
+// while signed out, so requiring a token here meant the report could NEVER be
+// recorded (live 2026-09-17: 401 "No authorization token provided").
+// optionalFirebaseToken still attributes the event when a valid token exists.
+router.post('/record-biometric-failure', biometricFailureLimiter, optionalFirebaseToken, (req, res) =>
+  recordBiometricFailure(req as AuthenticatedRequest, res));
 
 // 🔒 SECURITY: All audit routes require authentication
 router.use(validateFirebaseToken);
@@ -265,22 +287,7 @@ router.post('/record-discount-usage', async (req: AuthenticatedRequest, res: Res
  * 
  * CRITICAL for diagnosing WebAuthn/Passkey issues and fraud detection
  */
-// Anonymous by nature: a passkey sign-in fails BEFORE any session exists, and
-// Firebase Hosting strips every cookie but __session, so the pw.csrf
-// double-submit can never succeed for this caller (server/index.ts exempts it
-// like /api/errors/log). Compensating controls: per-IP rate limit, bounded
-// fields, and uid taken ONLY from a verified token — never from the body.
-const biometricFailureLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: 10,
-  message: { error: 'Too many reports' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  validate: { xForwardedForHeader: false, ip: false, default: false },
-  store: redisRateLimitStore('biometric_failure_report'),
-});
-
-router.post('/record-biometric-failure', biometricFailureLimiter, async (req: AuthenticatedRequest, res: Response) => {
+async function recordBiometricFailure(req: AuthenticatedRequest, res: Response) {
   try {
     const schema = z.object({
       errorType: z.string().min(1, { message: "Error type is required" }).max(64),
@@ -362,6 +369,6 @@ router.post('/record-biometric-failure', biometricFailureLimiter, async (req: Au
     logger.error('[Audit API] Biometric failure logging failed:', error);
     res.status(500).json({ error: 'Failed to log biometric failure' });
   }
-});
+}
 
 export default router;
