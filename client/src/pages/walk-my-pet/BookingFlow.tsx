@@ -888,8 +888,14 @@ export default function WalkBookingFlow() {
               </div>
             )}
 
-            {/* PrestigePass Payment Option */}
-            {user && pricing.total > 0 && (
+            {/* PrestigePass Payment Option — HIDDEN (2026-09-17). Tapping it
+                debited the member's wallet for a client-computed amount against
+                a placeholder booking id, and nothing marked the booking paid,
+                so the customer then paid the same booking by card. The server
+                now refuses (/api/prestige-pass/redeem-online → 409
+                PRESTIGE_ONLINE_REDEMPTION_NOT_WIRED). Re-enable only together
+                with a booking-owned hold/commit on the server. */}
+            {false && user && pricing.total > 0 && (
               <div className="mb-4">
                 <PrestigePassPaymentOption
                   bookingId={bookingId || `PENDING-WALKER-${user.uid.slice(0, 8)}`}

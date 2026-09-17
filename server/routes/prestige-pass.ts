@@ -23,6 +23,7 @@
  */
 
 import { reserveLiteralSegments } from '../lib/reserveLiteralSegments';
+import { refundDebitedBookingToWallet } from '../lib/bookingWalletRefund';
 import { safeEqual } from '../lib/safeEqual';
 import { Router, Request, Response, NextFunction } from 'express';
 import { createHash, createHmac, randomBytes } from 'crypto';
@@ -1765,6 +1766,9 @@ router.get('/me', async (req: Request, res: Response) => {
 // Called from booking checkout when user selects "Pay with Prestige Pass"
 // Applies deduction order: promo → gift → package → wallet → card_fallback
 // ─────────────────────────────────────────────────────────
+// Not an env flag: turning this on needs code (see the handler comment).
+const PRESTIGE_ONLINE_REDEMPTION_WIRED = false as boolean;
+
 const redeemOnlineSchema = z.object({
   bookingId:   z.string().min(1).max(200),
   serviceType: z.enum([
@@ -1779,6 +1783,23 @@ router.post('/redeem-online', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'),
     const session = (req as any).session;
     const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    // FAIL-CLOSED (2026-09-17). Nothing consumes this debit. The three
+    // callers (walk-my-pet / sitter-suite / academy BookingFlow) send a
+    // client-computed amount and, before the booking exists, a placeholder id
+    // `PENDING-<SERVICE>-<uid8>`; none passes onRedemptionSuccess, and no
+    // booking row is marked paid from here. The customer's wallet was debited
+    // and they then paid the same booking by card — charged twice, with a
+    // debit tied to no booking. Closed until a booking-owned hold/commit
+    // (like academy.ts wallet_hold) replaces it: the server must price the
+    // booking itself and mark it paid in the same step.
+    if (!PRESTIGE_ONLINE_REDEMPTION_WIRED) {
+      return res.status(409).json({
+        ok: false,
+        code: 'PRESTIGE_ONLINE_REDEMPTION_NOT_WIRED',
+        error: 'Paying a booking with Prestige Pass balance is not available yet. Nothing was charged.',
+      });
+    }
 
     const parsed = redeemOnlineSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -4309,43 +4330,23 @@ router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Re
 
     if (refundCents <= 0) return res.status(422).json({ error: 'Nothing left to refund' });
 
-    // Timestamp-based key allows multiple partial refunds; each is a distinct ledger entry
-    const idempotencyKey = `wallet:booking:refund:admin:${bookingId}:${Date.now()}`;
-    const { refundToWallet } = await import('../services/WalletLedger');
-    const result = await refundToWallet({
-      userId:         booking.user_id,
-      amountCents:    refundCents,
-      divisionCode:   booking.division_code ?? 'general',
-      sourceType:     'booking',
-      sourceId:       bookingId,
-      idempotencyKey,
-      reason:         reason ?? 'admin_refund',
-      ipAddress:      req.ip,
-      metadata:       { adminId: uid, reason, actorSource: 'admin_refund' },
+    const outcome = await refundDebitedBookingToWallet({
+      booking,
+      sourceTable,
+      refundCents,
+      keySuffix: `admin:${alreadyRefunded}`,
+      reason:    reason ?? 'admin_refund',
+      ip:        req.ip,
+      metadata:  { adminId: uid, reason, actorSource: 'admin_refund' },
     });
-
-    const newRefunded = alreadyRefunded + refundCents;
-    const newState = newRefunded >= debitedCents ? 'refunded' : 'debited';
-
-    if (sourceTable === 'booking_requests') {
-      await db.execute(sql`
-        UPDATE booking_requests
-        SET finance_state = ${newState},
-            wallet_refunded_cents = ${newRefunded},
-            wallet_refund_key = ${result.txnId},
-            updated_at = NOW()
-        WHERE request_id = ${bookingId}
-      `);
-    } else {
-      await db.execute(sql`
-        UPDATE trainer_bookings
-        SET finance_state = ${newState},
-            wallet_refunded_cents = ${newRefunded},
-            wallet_refund_key = ${result.txnId},
-            updated_at = NOW()
-        WHERE booking_id = ${bookingId}
-      `);
+    if (!outcome.ok) {
+      return res.status(409).json({
+        error: 'Another refund on this booking was issued at the same moment. Reload to see the current balance.',
+        code: outcome.code,
+      });
     }
+    const result = { txnId: outcome.txnId };
+    const newState = outcome.newState;
 
     logger.info('[AdminWallet][Refund] Refund issued', {
       bookingId, userId: booking.user_id, refundCents, newState,
@@ -4738,42 +4739,23 @@ router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Resp
       ? Math.min(rawAmount, maxRefundable)
       : maxRefundable;
 
-    const idempotencyKey = `wallet:support:refund:${bookingType}:${booking.booking_id}:${refundCents}`;
-    const { refundToWallet } = await import('../services/WalletLedger');
-    const result = await refundToWallet({
-      userId:         booking.user_id,
-      amountCents:    refundCents,
-      divisionCode:   booking.division_code ?? 'general',
-      sourceType:     'booking',
-      sourceId:       booking.booking_id,
-      idempotencyKey,
-      reason:         reason ?? 'support_refund',
-      ipAddress:      req.ip,
-      metadata:       { ...supportMeta, actorSource: 'admin_refund' },
+    const outcome = await refundDebitedBookingToWallet({
+      booking,
+      sourceTable,
+      refundCents,
+      keySuffix: `support:${alreadyRefunded}`,
+      reason:    reason ?? 'support_refund',
+      ip:        req.ip,
+      metadata:  { ...supportMeta, actorSource: 'admin_refund' },
     });
-
-    const newRefunded = alreadyRefunded + refundCents;
-    const newState = newRefunded >= debitedCents ? 'refunded' : 'debited';
-
-    if (sourceTable === 'booking_requests') {
-      await db.execute(sql`
-        UPDATE booking_requests
-        SET finance_state = ${newState},
-            wallet_refunded_cents = ${newRefunded},
-            wallet_refund_key = ${result.txnId},
-            updated_at = NOW()
-        WHERE request_id = ${booking.booking_id}
-      `);
-    } else {
-      await db.execute(sql`
-        UPDATE trainer_bookings
-        SET finance_state = ${newState},
-            wallet_refunded_cents = ${newRefunded},
-            wallet_refund_key = ${result.txnId},
-            updated_at = NOW()
-        WHERE booking_id = ${booking.booking_id}
-      `);
+    if (!outcome.ok) {
+      return res.status(409).json({
+        error: 'Another refund on this booking was issued at the same moment. Reload to see the current balance.',
+        code: outcome.code,
+      });
     }
+    const result = { txnId: outcome.txnId };
+    const newState = outcome.newState;
 
     logger.info('[Support][IssueRefund] Refund issued', {
       bookingId, bookingType, refundCents, newState, txnId: result.txnId, adminUid: uid,
@@ -7348,7 +7330,7 @@ router.post('/admin/wallet/disputes/:caseRef/apply-resolution', async (req: Requ
 // Rules (locked):
 //   • REFUND_AUTO_APPROVE_LIMIT_CENTS env, default 5000
 //   • Always write refund_approvals row first, then branch
-//   • auto_approved  → execute immediately (reuses fetchSupportBooking + refundToWallet)
+//   • auto_approved  → execute immediately (reuses fetchSupportBooking + refundDebitedBookingToWallet)
 //   • pending        → no wallet mutation; wait for second approver
 //   • second approver cannot be the requester (403 self-approve guard)
 //   • approve is the ONLY path that executes money movement for pending rows
@@ -7423,38 +7405,21 @@ async function executeApprovalRefund(opts: {
   if (maxRefundable <= 0) throw new Error('Nothing left to refund');
 
   const refundCents = amountCents > 0 ? Math.min(amountCents, maxRefundable) : maxRefundable;
-  const idempotencyKey = `wallet:approval:refund:${bookingType}:${booking.booking_id}:${approvalId}`;
-  const { refundToWallet } = await import('../services/WalletLedger');
-  const result = await refundToWallet({
-    userId:         booking.user_id,
-    amountCents:    refundCents,
-    divisionCode:   booking.division_code ?? 'general',
-    sourceType:     'booking',
-    sourceId:       booking.booking_id,
-    idempotencyKey,
-    reason:         reason ?? 'approval_refund',
-    ipAddress:      ip,
-    metadata:       { ...supportMeta, actorSource: 'admin_refund' },
+  const outcome = await refundDebitedBookingToWallet({
+    booking,
+    sourceTable,
+    refundCents,
+    keySuffix: `approval:${approvalId}`,
+    reason:    reason ?? 'approval_refund',
+    ip,
+    metadata:  { ...supportMeta, actorSource: 'admin_refund' },
   });
-
-  const newRefunded = alreadyRefunded + refundCents;
-  const newState    = newRefunded >= debitedCents ? 'refunded' : 'debited';
-
-  if (sourceTable === 'booking_requests') {
-    await db.execute(sql`
-      UPDATE booking_requests
-      SET finance_state=${newState}, wallet_refunded_cents=${newRefunded},
-          wallet_refund_key=${result.txnId}, updated_at=NOW()
-      WHERE request_id=${booking.booking_id}
-    `);
-  } else {
-    await db.execute(sql`
-      UPDATE trainer_bookings
-      SET finance_state=${newState}, wallet_refunded_cents=${newRefunded},
-          wallet_refund_key=${result.txnId}, updated_at=NOW()
-      WHERE booking_id=${booking.booking_id}
-    `);
+  if (!outcome.ok) {
+    throw new Error(outcome.code === 'REFUND_ALREADY_ISSUED'
+      ? 'This refund request was already paid'
+      : 'Another refund on this booking was issued at the same moment — reload and review');
   }
+  const result = { txnId: outcome.txnId };
 
   return { ok: true, actionTaken: 'refund', amountCents: refundCents, txnId: result.txnId };
 }

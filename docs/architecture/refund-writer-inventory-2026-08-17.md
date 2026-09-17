@@ -96,19 +96,24 @@ refunds can each pass the `maxRefundable` check and both execute.
 
 | # | Location | Key | Status |
 |---|---|---|---|
-| B9 | `server/routes/prestige-pass.ts:4018` `POST /admin/wallet/refund` | `wallet:booking:refund:admin:${bookingId}:${Date.now()}` | **STILL OPEN** |
-| B10 | `server/routes/prestige-pass.ts` support refund | `wallet:support:refund:${bookingType}:${booking.booking_id}:${refundCents}` | **FIXED ON MAIN** — PR #2115 |
-| B11 | `server/routes/prestige-pass.ts` approval refund | `wallet:approval:refund:${bookingType}:${booking.booking_id}:${approvalId}` | **FIXED ON MAIN** — PR #2115 |
+| B9 | `server/routes/prestige-pass.ts:4018` `POST /admin/wallet/refund` | `wallet:booking:refund:admin:${bookingId}:${Date.now()}` | **FIXED 2026-09-17** — `lib/bookingWalletRefund` (suffix `admin:${alreadyRefunded}`) |
+| B10 | `server/routes/prestige-pass.ts` support refund | `wallet:support:refund:${bookingType}:${booking.booking_id}:${refundCents}` | PR #2115; **replaced 2026-09-17** — the amount key silently skipped a second same-size partial refund; now suffix `support:${alreadyRefunded}` |
+| B11 | `server/routes/prestige-pass.ts` approval refund | `wallet:approval:refund:${bookingType}:${booking.booking_id}:${approvalId}` | PR #2115; now suffix `approval:${approvalId}` via `lib/bookingWalletRefund` |
 
 Re-verified 2026-09-05. Two of the three were fixed on main while this branch was out, by
 PR #2115 *"F3 over-refund cap + F4 deterministic idempotency (3 sites)"* — exactly the safe
 shape this section recommended: the key is now derived from the **amount** (`refundCents`)
 or the **approval id**, not the clock. Both are pinned so they cannot regress.
 
-**B9 remains open.** Its comment says the timestamp exists to allow multiple partial
-refunds. That is a real product need — but the safe shape is a key derived from the
-*amount and a client request id*, not from the clock. **CEO/finance decision required**
-before changing it.
+**B9–B11 closed 2026-09-17** without changing what can be refunded: all three staff
+refunds (and academy cancel) go through `server/lib/bookingWalletRefund.ts`. It first
+claims the refund on the booking row (compare-and-set on `wallet_refunded_cents` as
+read, `finance_state = 'debited'`), then credits through
+`walletService.refundBookingWallet` (ledger + credit document + SMS), and gives the
+claim back if the credit throws or was already issued. Repeated partial refunds still
+work — each one starts from a different `wallet_refunded_cents`, so it gets a new key —
+but two requests on the same stage can no longer both credit. Behaviour test:
+`server/tests/bookingWalletRefund.behavior.test.ts`.
 
 ### P2 — declared-but-never-paid, and missing authorization
 
@@ -166,4 +171,4 @@ fire today.
 4. `refund_transactions.idempotencyKey` stays `.unique().notNull()`.
 
 The pins **freeze the known bypasses at their current count**. They do not fix them.
-Fixing B1–B18 is follow-up work and, for B9–B11, needs a finance decision first.
+Fixing B1–B18 is follow-up work (B9–B11 closed 2026-09-17).

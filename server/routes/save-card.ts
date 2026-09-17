@@ -20,6 +20,7 @@ import { SumitCardVault, isCardVaultEnabled } from '../services/SumitCardVault';
 import { logger } from '../lib/logger';
 import { sendAlert } from '../monitoring';
 import { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } from '../lib/sumitPaymentReturn';
+import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -127,6 +128,7 @@ router.post('/save-card/start', validateFirebaseToken, async (req: Request, res:
     redirectUrl: `${baseUrl()}/api/payments/save-card/return?ext=${encodeURIComponent(externalId)}`,
     customerName: (req.firebaseUser as any)?.name,
     customerEmail: req.firebaseUser?.email,
+    language: paymentLanguageFor(req),
   });
 
   // SUMIT never started → release the pending key rather than leaving it to rot.
