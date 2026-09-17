@@ -5,6 +5,7 @@ import { geminiMatchingService } from "../services/GeminiMatchingService";
 import { requirePlatform, requireFeature, requireBookingAuth, type PlatformFeature } from "../middleware/platformContext";
 import { logAuditEvent } from "../middleware/auditLogger";
 import { z } from "zod";
+import { requireAdmin } from "../adminAuth";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id || (req as any).session?.userId || null;
@@ -116,7 +117,8 @@ router.get("/platforms/:id", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/platforms/seed", async (req: Request, res: Response) => {
+// SECURITY 2026-09-17: was callable without login.
+router.post("/platforms/seed", requireAdmin, async (req: Request, res: Response) => {
   try {
     const result = await platformService.seedDefaultPlatforms();
 
