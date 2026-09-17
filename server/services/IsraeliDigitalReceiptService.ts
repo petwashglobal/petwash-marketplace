@@ -69,6 +69,60 @@ export interface SumitIssuer {
  * What a SUMIT dispatch did. Every outcome that leaves a paid sale or a refund
  * WITHOUT its SUMIT document throws instead — see issueOnceAtSumit.
  */
+/**
+ * The amounts a credit note must carry, mirroring the document it reverses
+ * (2026-09-17).
+ *
+ * A credit reverses the SAME share of the SAME document: refunding a fraction
+ * of a sale credits that fraction of its VAT, and — for a marketplace booking,
+ * whose Pet Wash document covers only Pet Wash's fee (one money model,
+ * shared/marketplaceMoney.ts) — credits only that fraction of the fee at SUMIT.
+ *
+ * Before: VAT was 18/118 of the whole refund whatever the original said, and
+ * SUMIT was credited the whole refund. A full refund of a ₪1,150 walk credited
+ * ₪1,150 (VAT ₪175.42) against a Pet Wash invoice of ₪150 (VAT ₪22.88), and a
+ * refunded eGift credited VAT that was never charged.
+ */
+export function creditNoteAmounts(original: {
+  totalAmount: string | number | null;
+  vatAmount: string | number | null;
+  providerPayoutAmount?: string | number | null;
+  brokerCommissionAmount?: string | number | null;
+  platformFeeAmount?: string | number | null;
+}, refundAmount: number): {
+  refund: number;
+  ratio: number;
+  localVat: number;
+  localSubtotal: number;
+  sumitTotal: number;
+  sumitVat: number;
+  feeOnly: boolean;
+} {
+  const n = (v: unknown) => {
+    const x = Number(v);
+    return Number.isFinite(x) ? Math.abs(x) : 0;
+  };
+  const r2 = (x: number) => Math.round(x * 100) / 100;
+  const refund = r2(Math.abs(refundAmount));
+  const originalTotal = n(original.totalAmount);
+  const ratio = originalTotal > 0 ? Math.min(1, refund / originalTotal) : 1;
+  const localVat = r2(n(original.vatAmount) * ratio);
+  const feeOnly = n(original.providerPayoutAmount) > 0;
+  const fee = n(original.brokerCommissionAmount) || n(original.platformFeeAmount);
+  const sumitTotal = feeOnly ? r2(fee * ratio) : refund;
+  return {
+    refund,
+    ratio,
+    localVat,
+    localSubtotal: r2(refund - localVat),
+    sumitTotal,
+    // The original's VAT already sits on the part Pet Wash documented (the fee
+    // for a marketplace booking, the whole sale otherwise) — same share.
+    sumitVat: localVat,
+    feeOnly,
+  };
+}
+
 export type SumitDispatchResult = {
   status: 'issued' | 'recovered' | 'already_issued' | 'not_wired' | 'nothing_to_issue';
   sumitDocumentId?: string;
@@ -1356,7 +1410,10 @@ export class IsraeliDigitalReceiptService {
       const issuedAt = new Date();
 
       const refundAmount = Math.abs(params.refundAmount);
-      const vatBreakdown = this.calculateVATBreakdown(refundAmount);
+      // Mirror the original document's VAT share — never a flat 18/118 of the
+      // refund (see creditNoteAmounts).
+      const amounts = creditNoteAmounts(original, refundAmount);
+      const vatBreakdown = { subtotalBeforeVAT: amounts.localSubtotal, vatAmount: amounts.localVat };
       const shaamRequired = this.isShaamRequired(vatBreakdown.subtotalBeforeVAT, issuedAt);
 
       const { creditNote, creditNoteNumber } = await this.withReceiptNumberRetry(async (creditNoteNumber) => {
@@ -1378,9 +1435,12 @@ export class IsraeliDigitalReceiptService {
         serviceDescription: `Credit note for ${original.receiptNumber} — ${params.reason}`,
         serviceDescriptionHe: `זיכוי על ${original.receiptNumber} — ${params.reason}`,
         subtotalAmount: (-vatBreakdown.subtotalBeforeVAT).toFixed(2),
-        vatRate: (ISRAELI_VAT_RATE * 100).toFixed(2),
+        vatRate: original.vatRate ?? (ISRAELI_VAT_RATE * 100).toFixed(2),
         vatAmount: (-vatBreakdown.vatAmount).toFixed(2),
         platformFeeAmount: '0',
+        // The fee share this credit reverses — read back by the SUMIT dispatch.
+        brokerCommissionAmount: amounts.feeOnly ? (-amounts.sumitTotal).toFixed(2) : null,
+        providerPayoutAmount: amounts.feeOnly ? (-(amounts.refund - amounts.sumitTotal)).toFixed(2) : null,
         totalAmount: (-refundAmount).toFixed(2),
         currency: 'ILS',
         paymentMethod: original.paymentMethod,
@@ -1498,7 +1558,12 @@ export class IsraeliDigitalReceiptService {
       ? await db.select().from(digitalReceipts).where(eq(digitalReceipts.id, credit.originalReceiptId)).limit(1)
       : [];
 
-    const refundAmount = Math.abs(Number(credit.totalAmount));
+    // A marketplace credit reverses Pet Wash's FEE share only — the document
+    // it credits covered only the fee. Stored on the credit row at issue.
+    const feeOnly = credit.brokerCommissionAmount != null && Number(credit.providerPayoutAmount ?? 0) !== 0;
+    const sumitTotal = feeOnly ? Math.abs(Number(credit.brokerCommissionAmount)) : Math.abs(Number(credit.totalAmount));
+    const sumitVat = Math.abs(Number(credit.vatAmount));
+    if (!(sumitTotal > 0)) return { status: 'nothing_to_issue' };
     const issued = await IsraeliDigitalReceiptService.issueOnceAtSumit({
       sumitClient,
       retry: params.retry === true,
@@ -1510,9 +1575,9 @@ export class IsraeliDigitalReceiptService {
         originalSumitDocumentId: original?.sumitDocumentId ?? undefined,
         customer: { name: credit.customerName || credit.customerEmail || '', email: credit.customerEmail || undefined },
         description: credit.serviceDescriptionHe || credit.serviceDescription || `זיכוי ${credit.receiptNumber}`,
-        amountBeforeVat: Math.abs(Number(credit.subtotalAmount)),
-        vatAmount: Math.abs(Number(credit.vatAmount)),
-        totalAmount: refundAmount,
+        amountBeforeVat: Math.round((sumitTotal - sumitVat) * 100) / 100,
+        vatAmount: sumitVat,
+        totalAmount: sumitTotal,
         currency: 'ILS',
         context: { platform: credit.platform, bookingId: credit.bookingId ?? undefined, creditNoteNumber: credit.receiptNumber },
       }),
