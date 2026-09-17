@@ -30,10 +30,10 @@ const driveService = new GoogleDriveBackupService();
 // PR-W13: single source of truth — shared/israel-compliance-config.ts
 const COMPANY = {
   nameEn: 'PetWash™ Ltd.',
-  nameHe: 'פט ווש בע"מ',
+  nameHe: 'פט וואש בע"מ',
   address: '1 Rothschild Blvd, Tel Aviv 6688101',
-  taxId: '515234567',
-  vatNumber: '515234567',
+  taxId: '517145033', // ח.פ. (official — see shared/finance-identity.ts)
+  vatNumber: '517145033',
   phone: '1-800-PETWASH',
   email: 'billing@petwash.co.il',
 };
@@ -195,7 +195,7 @@ function brandedEmail(title: string, bodyHtml: string): string {
                 <tr>
                   <td style="font-size:10px;line-height:1.7;">
                     <p style="margin:0 0 2px;color:#666666;">PetWash™ Ltd. &nbsp;·&nbsp; 1 Rothschild Blvd, Tel Aviv 6688101 &nbsp;·&nbsp; <a href="mailto:support@petwash.co.il" style="color:#B8941F;text-decoration:none;">support@petwash.co.il</a> &nbsp;·&nbsp; VAT 18%</p>
-                    <p style="margin:0;color:#888888;" dir="rtl">פט ווש בע"מ &nbsp;·&nbsp; מספר ח.פ. 515234567 &nbsp;·&nbsp; מע&quot;מ כלול בכל מחיר &nbsp;·&nbsp; מורשה ומפוקח על ידי רשויות ישראל</p>
+                    <p style="margin:0;color:#888888;" dir="rtl">פט וואש בע"מ &nbsp;·&nbsp; ח.פ. 517145033 &nbsp;·&nbsp; מע&quot;מ כלול בכל מחיר &nbsp;·&nbsp; מורשה ומפוקח על ידי רשויות ישראל</p>
                   </td>
                 </tr>
               </table>
@@ -1253,7 +1253,7 @@ ${'─'.repeat(70)}
 
 PARTIES:
 
-1. PetWash™ Ltd. ("Company"), Company Reg. 515234567,
+1. PetWash™ Ltd. ("Company"), Company Reg. 517145033,
    1 Rothschild Blvd, Tel Aviv 6688101, Israel
 
 2. ${opts.firstName} ${opts.lastName} ("Service Provider"),

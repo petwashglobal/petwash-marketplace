@@ -15,7 +15,7 @@ const AGREEMENTS = [
     content: `PETWASH™‎ TERMS OF SERVICE – VERSION 4.2 (MARCH 2026)
 
 1. PARTIES
-These Terms of Service ("Agreement") are entered into between PetWash™‎ Ltd., company registration number 515234567, registered in Israel ("PetWash", "we", "us"), and the user ("you", "User").
+These Terms of Service ("Agreement") are entered into between PetWash™‎ Ltd., company registration number 517145033, registered in Israel ("PetWash", "we", "us"), and the user ("you", "User").
 
 2. SERVICES
 PetWash™‎ operates the following platforms: K9000 automated pet wash stations, Sitter Suite, Walk My Pet, PetTrek, Academy, and Plush Lab. By using any of our platforms, you agree to these terms.
