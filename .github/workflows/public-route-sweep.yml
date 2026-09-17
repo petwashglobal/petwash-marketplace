@@ -1,0 +1,108 @@
+name: Public Route Sweep (petwash.co.il)
+
+# Does every PUBLIC page still render? The uptime probe loads one url (the
+# homepage); App.tsx declares 500+ routes, so a crash anywhere else is
+# invisible to it. On 2026-09-17 a missing <HelmetProvider> killed /search,
+# /marketplace/search and both /services/* SEO landing pages while uptime and
+# CI stayed green — found only when a customer's iPhone hit it (#2524).
+#
+# REPORT-ONLY on purpose. It writes a job summary and never fails the run, so
+# it can prove itself against real traffic before anyone lets it block a
+# deploy. Flip the `--fail` flag in the run step when you trust it.
+
+on:
+  # After a production deploy finishes, so a broken page is caught by us and
+  # not by a customer.
+  workflow_run:
+    workflows: ["PetWash CI 2026 — Production Deploy"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * *"     # once a day, off the deploy path
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Base URL to sweep"
+        required: false
+        default: "https://petwash.co.il"
+      fail_on_broken:
+        description: "Exit non-zero when a route is broken"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: public-route-sweep
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  sweep:
+    # A deploy that itself failed tells us nothing about the site.
+    if: >-
+      ${{ github.event_name != 'workflow_run'
+          || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Same shape as uptime-healthcheck.yml: install into an EMPTY dir, never
+      # the repo root (npm install at the root drags in the whole tree and its
+      # native builds), and retry — a probe that cannot install itself is not a
+      # site outage and must not look like one.
+      - name: Install Playwright + Chromium
+        run: |
+          set -euo pipefail
+          PW_DIR="$RUNNER_TEMP/pw"
+          mkdir -p "$PW_DIR"
+
+          retry() {
+            local what="$1"; shift
+            local attempt=1
+            until "$@"; do
+              if [ "$attempt" -ge 3 ]; then
+                echo "::error::probe setup failed after 3 attempts: $what — this is the PROBE, not the site"
+                return 1
+              fi
+              local wait=$((attempt * 10))
+              echo "::warning::$what failed (attempt $attempt/3) — retrying in ${wait}s"
+              sleep "$wait"
+              attempt=$((attempt + 1))
+            done
+          }
+
+          (cd "$PW_DIR" && npm init -y >/dev/null)
+          retry "npm install playwright" \
+            npm --prefix "$PW_DIR" install --no-audit --no-fund playwright@1.58.2
+          ln -sfn "$PW_DIR/node_modules" "$GITHUB_WORKSPACE/node_modules"
+          retry "playwright install chromium" \
+            npx --prefix "$PW_DIR" playwright install --with-deps chromium
+
+      - name: Sweep public routes
+        id: sweep
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://petwash.co.il' }}
+          SWEEP_CONCURRENCY: "6"
+        run: |
+          set -o pipefail
+          FAIL_FLAG=""
+          if [ "${{ github.event.inputs.fail_on_broken }}" = "true" ]; then FAIL_FLAG="--fail"; fi
+          node scripts/monitoring/public-route-sweep.mjs "$BASE_URL" $FAIL_FLAG | tee sweep.log
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## Public route sweep"
+            echo ""
+            echo '```'
+            tail -n 60 sweep.log 2>/dev/null || echo "(no output — the sweep did not run)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
