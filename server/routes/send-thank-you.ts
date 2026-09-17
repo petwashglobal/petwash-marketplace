@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin } from '../adminAuth';
 import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 import { logger } from '../lib/logger';
 import { sendSanitizedError } from '../lib/sanitizeErrorResponse';
@@ -13,7 +14,9 @@ const router = Router();
 /**
  * POST /api/send-signature-invite - Send e-signature invitation to Ido Shakarzi
  */
-router.post('/send-signature-invite', async (req, res) => {
+// SECURITY 2026-09-17: per-route admin gate (this router is mounted on bare /api,
+// so a router-level guard would block the whole API).
+router.post('/send-signature-invite', requireAdmin, async (req, res) => {
   try {
     if (!process.env.SENDGRID_API_KEY) {
       return res.status(500).json({ 
@@ -116,7 +119,7 @@ router.post('/send-signature-invite', async (req, res) => {
  * POST /api/send-thank-you - Send thank you email to Ido Shakarzi
  * One-time endpoint for management appreciation
  */
-router.post('/send-thank-you', async (req, res) => {
+router.post('/send-thank-you', requireAdmin, async (req, res) => {
   try {
     if (!process.env.SENDGRID_API_KEY) {
       return res.status(500).json({ 

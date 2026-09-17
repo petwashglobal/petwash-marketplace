@@ -113,7 +113,9 @@ export async function reportFault(err: unknown, ctx: FaultContext): Promise<void
   // a separate dedupe key so a test sweep can't hold open — or close — the
   // alert for the same fault in a real customer's browser.
   const automated = ctx.automated === true || isAutomatedUserAgent(ctx.userAgent);
-  const alertKey = automated ? `${dedupeKey}:automated`.slice(0, 200) : dedupeKey;
+  // Cut the key BEFORE the suffix: slicing after it dropped ':automated' on a
+  // long key (deep file paths), merging the robot's alert into the real one.
+  const alertKey = automated ? `${dedupeKey.slice(0, 200 - ':automated'.length)}:automated` : dedupeKey;
   const quiet = automated || ctx.severity === 'warning';
 
   // 2. Record (deduped) → Alerts Center / Octopus Control Tower.

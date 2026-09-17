@@ -104,6 +104,14 @@ router.post('/send', async (req: Request, res: Response) => {
     // Get target user IDs
     const targetUserIds = body.userIds || (body.userId ? [body.userId] : []);
 
+    // SECURITY 2026-09-17: a single-user push to SOMEONE ELSE was open to any
+    // signed-in account (only multi-user sends were checked) — any user could
+    // push an arbitrary title/body/url to any other user. Only yourself, or a
+    // verified super-admin.
+    if (targetUserIds.some((id) => id !== senderId) && !isSuperAdminVerified(req)) {
+      return res.status(403).json({ error: 'You can only send notifications to yourself' });
+    }
+
     if (targetUserIds.length === 0) {
       return res.status(400).json({ error: 'Must specify userId or userIds' });
     }

@@ -11887,7 +11887,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/enterprise/franchise', validateFirebaseToken, adminLimiter, requireAdminMfa, enterpriseFranchiseRoutes);
   
   // Logistics & Fleet Management routes (Field Operations - Phase 2)
-  app.use('/api/logistics', validateFirebaseToken, apiLimiter, logisticsRoutes); // SECURITY 2026-06-25: was optionalFirebaseToken → anonymous reads+writes; now requires auth
+  // SECURITY 2026-09-17: any signed-in customer could read every task/vehicle and reassign/complete tasks. Admin only (only caller: control panel).
+  app.use('/api/logistics', validateFirebaseToken, apiLimiter, requireAdmin, logisticsRoutes); // SECURITY 2026-06-25: was optionalFirebaseToken → anonymous reads+writes; now requires auth
   
   // Chat History routes (PostgreSQL-backed AI chat history - Nov 2025)
   const chatHistoryRoutes = await import('./routes/chat-history');
@@ -12480,7 +12481,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/geo', apiLimiter, geoLanguageRoutes);
   
   // Gmail OAuth Integration (Premium Luxury 2025)
-  app.use('/api/gmail', apiLimiter, gmailRoutes);
+  // SECURITY 2026-09-17: listed the company Gmail's labels/messages to any signed-in user; no in-app caller. Admin only.
+  app.use('/api/gmail', apiLimiter, requireAdmin, gmailRoutes);
   
   // Weather API - Pet Wash Day Planner (Google Weather + Open-Meteo)
   app.use('/api/weather', apiLimiter, weatherRoutes);
@@ -12681,7 +12683,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', adminLimiter, platformCopyEmailRoutes);
   app.use('/api', sendInvestorEventEmailRoutes);
 
-  app.post('/api/send-membership-confirmation', requireAuth, async (req, res) => {
+  // SECURITY 2026-09-17: was reachable without admin — anyone could make Pet Wash send this.
+  app.post('/api/send-membership-confirmation', requireAdmin, async (req, res) => {
     try {
       const { email, firstName, tier, points, membershipId, language } = req.body;
       if (!email || !firstName) {
@@ -12699,7 +12702,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  app.post('/api/send-egift-activation', requireAuth, async (req, res) => {
+  // SECURITY 2026-09-17: was reachable without admin — anyone could make Pet Wash send this.
+  app.post('/api/send-egift-activation', requireAdmin, async (req, res) => {
     try {
       const { recipientEmail, recipientName, senderName, giftValue, currency, giftCode, serialNumber, personalMessage, expiresAt, language } = req.body;
       if (!recipientEmail || !recipientName || !senderName) {
@@ -13416,7 +13420,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Send Partner Invitation Email with Investor Presentation Access
-  app.post('/api/email/send-partner-invitation', async (req, res) => {
+  // SECURITY 2026-09-17: was reachable without admin — anyone could make Pet Wash send this.
+  app.post('/api/email/send-partner-invitation', requireAdmin, async (req, res) => {
     try {
       const { sendPartnerInvitation } = await import('./email/luxury-email-service');
       const { partnerEmail, partnerName, role, ccEmails } = req.body;
@@ -13457,7 +13462,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Send Partner Invitation Email in Hebrew with Investor Presentation Access
-  app.post('/api/email/send-partner-invitation-hebrew', async (req, res) => {
+  // SECURITY 2026-09-17: was reachable without admin — anyone could make Pet Wash send this.
+  app.post('/api/email/send-partner-invitation-hebrew', requireAdmin, async (req, res) => {
     try {
       const { sendPartnerInvitationHebrew } = await import('./email/luxury-email-service');
       const { partners, ccEmails } = req.body;
@@ -13521,7 +13527,8 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Send Welcome Email to New Customer (Triggered on registration)
-  app.post('/api/email/welcome', async (req, res) => {
+  // SECURITY 2026-09-17: was reachable without admin — anyone could make Pet Wash send this.
+  app.post('/api/email/welcome', requireAdmin, async (req, res) => {
     try {
       const { sendWelcomeEmail } = await import('./email/luxury-email-service');
       const { email, firstName, petName, petType, language } = req.body;
@@ -13678,9 +13685,14 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Get user's birthday vouchers
-  app.get('/api/birthday-voucher/user/:uid', async (req, res) => {
+  // SECURITY 2026-09-17: returned ANY user's birthday vouchers (codes) with no
+  // login. Owner only (no in-app caller).
+  app.get('/api/birthday-voucher/user/:uid', requireAuth, async (req: any, res) => {
     try {
       const { uid } = req.params;
+      const callerUid = req.user?.uid || req.firebaseUser?.uid;
+      if (!callerUid) return res.status(401).json({ success: false, error: 'Authentication required' });
+      if (callerUid !== uid) return res.status(403).json({ success: false, error: 'Forbidden' });
       const vouchers = await getUserBirthdayVouchers(uid);
       
       res.json({ 
@@ -16106,7 +16118,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Platform Status Report Email
   // ========================================
   
-  app.post('/api/send-platform-report', async (req, res) => {
+  // SECURITY 2026-09-17: was reachable without admin — anyone could make Pet Wash send this.
+  app.post('/api/send-platform-report', requireAdmin, async (req, res) => {
     try {
       const reportPath = './PLATFORM_STATUS_REPORT_OCT25_2025.txt';
       const { readFileSync } = await import('fs');

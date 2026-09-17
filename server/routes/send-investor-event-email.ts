@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import { requireAdmin } from '../adminAuth';
 import { sendInvestorLaunchEventEmail } from '../email/luxury-email-service';
 import { logger } from '../lib/logger';
 
@@ -13,7 +14,9 @@ const router = Router();
  * POST /api/send-investor-event-email
  * Send luxury investor launch event email
  */
-router.post('/send-investor-event-email', async (req, res) => {
+// SECURITY 2026-09-17: anyone could send this invitation to any address.
+// Per-route gate — the router is mounted on bare /api.
+router.post('/send-investor-event-email', requireAdmin, async (req, res) => {
   try {
     const { email, name, language = 'he', cc } = req.body;
 
