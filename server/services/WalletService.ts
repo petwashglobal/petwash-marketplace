@@ -68,6 +68,30 @@ export interface RedemptionResult {
   cashDueCents: number;
 }
 
+/**
+ * A refund went through but its credit note (זיכוי) could not be written —
+ * the original tax document still stands for money already returned. One open
+ * alert per booking in the admin alert centre. Never throws.
+ */
+export async function raiseMissingCreditNoteAlert(input: { bookingId: string; amountCents: number; error: string }): Promise<void> {
+  try {
+    const { createOrUpdateAlert } = await import('./AlertEngine');
+    await createOrUpdateAlert({
+      dedupeKey: `credit_note_missing:${input.bookingId}`,
+      category: 'finance_doc',
+      severity: 'critical',
+      title: 'Refund issued without a credit note',
+      message: `Booking ${input.bookingId} was refunded ₪${(input.amountCents / 100).toFixed(2)} but no credit note was written (${input.error}). Issue it by hand in SUMIT against the original document.`,
+      linkedEntityType: 'booking',
+      linkedEntityId: input.bookingId,
+      source: 'wallet_refund',
+      metadata: { amountCents: input.amountCents, error: input.error },
+    });
+  } catch {
+    /* an alert failure must never undo a refund */
+  }
+}
+
 class WalletService {
   async getOrCreateWallet(userId: string): Promise<WalletAccount> {
     const [existing] = await db.select()
@@ -1470,16 +1494,34 @@ IP Address: ${ipAddress || 'unknown'}
     // and NON-BLOCKING: the customer's refund must never fail on a doc hiccup.
     // Emits nothing when the booking was never receipted (returns no_original).
     if (!result.idempotent) {
+      // 2026-09-17: the result was never read. issueCreditNoteForBooking reports
+      // failure in its return value (it does not throw), so a refund whose
+      // credit note could not be written left the original tax document
+      // standing for money already given back — with only a log line, or not
+      // even that. A booking that was never receipted legitimately needs no
+      // credit ('no_original_receipt'); anything else pages the finance queue.
+      // No automatic retry here: issueCreditNote is not idempotent, and a
+      // second credit note is worse than a person checking one.
+      let creditFailure: string | null = null;
       try {
         const { IsraeliDigitalReceiptService } = await import('./IsraeliDigitalReceiptService');
-        await IsraeliDigitalReceiptService.issueCreditNoteForBooking({
+        const credit = await IsraeliDigitalReceiptService.issueCreditNoteForBooking({
           bookingId: params.bookingId,
           refundAmount: params.amountCents / 100,
           reason: params.reason ?? 'booking_cancelled',
         });
+        if (!credit.success && credit.error !== 'no_original_receipt') {
+          creditFailure = credit.error ?? 'unknown';
+        }
       } catch (creditErr: any) {
-        logger.warn('[Wallet] booking refunded but credit note failed (non-blocking)', {
-          bookingId: params.bookingId, error: creditErr?.message,
+        creditFailure = creditErr?.message ?? 'unknown';
+      }
+      if (creditFailure) {
+        logger.error('[Wallet] booking refunded but NO credit note was written', {
+          bookingId: params.bookingId, amountCents: params.amountCents, error: creditFailure,
+        });
+        await raiseMissingCreditNoteAlert({
+          bookingId: params.bookingId, amountCents: params.amountCents, error: creditFailure,
         });
       }
 

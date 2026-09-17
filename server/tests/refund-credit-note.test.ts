@@ -41,6 +41,8 @@ describe('refund credit-note (זיכוי) — audit 2026-07-05', () => {
 
   it('refundBookingWallet issues a credit note on a real (non-idempotent) refund, non-blocking', () => {
     expect(WALLET).toMatch(/if \(!result\.idempotent\)[\s\S]*issueCreditNoteForBooking\(/);
-    expect(WALLET).toMatch(/credit note failed \(non-blocking\)/);
+    // 2026-09-17: non-blocking, but no longer silent — a failure pages finance.
+    expect(WALLET).toMatch(/booking refunded but NO credit note was written/);
+    expect(WALLET).toMatch(/await raiseMissingCreditNoteAlert\(/);
   });
 });
