@@ -2799,6 +2799,16 @@ router.get('/:requestId/sumit-return', async (req, res) => {
 
     logger.info('[BookingRequests] ✅ Booking confirmed via real SUMIT payment', { requestId, txnId });
 
+    // Pet Wash's payment letter — only the winner of the flip above gets here,
+    // so it goes out once. SUMIT's own mail is off for this page (notifyCustomer:false).
+    void import('../services/paymentLetter').then(({ sendPaymentLetter, bookingItemLabel }) => sendPaymentLetter({
+      userId: booking.ownerId,
+      amountIls: booking.totalCents / 100,
+      itemDescription: bookingItemLabel(booking.serviceType),
+      reference: requestId,
+      sumitRaw: verify.raw,
+    })).catch((e: any) => logger.warn('[BookingRequests] payment letter skipped', { requestId, err: e?.message }));
+
     // Flip bridged sitter/walk/academy legacy rows to confirmed — the money truth point.
     try {
       const { applyBridgePaymentConfirmed } = await import('../services/legacyBookingBridge');

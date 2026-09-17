@@ -25,6 +25,7 @@ import { activateFromVerifiedPayment } from '../services/PurchaseActivationServi
 import { sumitExternalRefMismatch, readSumitExternalRef } from '../lib/sumitExternalRef';
 import { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } from '../lib/sumitPaymentReturn';
 import { paymentLanguageFor } from '../lib/paymentPageLanguage';
+import { purchaseItemLabel } from '../services/paymentLetter';
 
 const router = Router();
 
@@ -293,6 +294,8 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
     customerName: (req.firebaseUser as any)?.name,
     customerEmail: req.firebaseUser?.email,
     language: paymentLanguageFor(req),
+    // Pet Wash sends its own letter from /return (services/paymentLetter).
+    notifyCustomer: false,
   });
 
   if (!result.wired) return res.status(503).json({ error: 'Payments not enabled yet', reason: result.reason });
@@ -345,6 +348,8 @@ router.get('/return', async (req: Request, res: Response) => {
     return res.redirect(`${base}/payment-failed?ref=${encodeURIComponent(ext || txnId)}`);
   }
   logger.info('[SumitPay] payment verified', { txnId, ext });
+  // First verification only ('claimed') — a refresh ('same_order') never re-sends.
+  const firstVerification = claim === 'claimed';
 
   // FULFIL NOW, from the verified return — do NOT depend on a SUMIT webhook.
   // beginRedirect registers NO notification URL with SUMIT, and the webhook
@@ -398,6 +403,22 @@ router.get('/return', async (req: Request, res: Response) => {
     } catch (alertErr: any) {
       logger.error('[SumitPay] Failed to open reconciliation alert (non-blocking)', { txnId, err: alertErr?.message });
     }
+  }
+
+  if (firstVerification && ext) {
+    void (async () => {
+      const [p] = await db.select({ buyerUserId: purchases.buyerUserId, amountCents: purchases.amountCents, productType: purchases.productType })
+        .from(purchases).where(eq(purchases.surfaceRefId, ext)).limit(1);
+      if (!p) return;
+      const { sendPaymentLetter } = await import('../services/paymentLetter');
+      await sendPaymentLetter({
+        userId: p.buyerUserId,
+        amountIls: Number(p.amountCents) / 100,
+        itemDescription: purchaseItemLabel(p.productType),
+        reference: ext,
+        sumitRaw: verify.raw,
+      });
+    })().catch((e: any) => logger.warn('[SumitPay] payment letter skipped', { ext, err: e?.message }));
   }
 
   // Always land on success (the money DID clear); when fulfilment didn't complete,

@@ -1256,6 +1256,12 @@ export class SumitClient {
     draftDocument?: boolean;
     /** Customer's language code (he/en/ar/es/ru/fr…) — the page opens in it; see paymentPageLanguage. */
     language?: string;
+    /**
+     * false = SUMIT sends no "חיוב שבוצע בהצלחה" mail; the flow sends Pet Wash's
+     * own letter (services/paymentLetter). Leave unset where SUMIT's mail is the
+     * customer's only copy of the document (guest eGift, save-card).
+     */
+    notifyCustomer?: boolean;
   }): Promise<{ wired: boolean; redirectUrl?: string; reason?: string; rawResponse?: unknown }> {
     const env = readEnv();
     if (!isWired()) return { wired: false, reason: 'SUMIT not enabled' };
@@ -1285,6 +1291,8 @@ export class SumitClient {
       // Enum NAME, not ISO code (same Accounting_Typed_Language enum as documents).
       // The customer's language: a foreign card holder must be able to read the form.
       Language: sumitPageLanguage(input.language),
+      // Swagger: "Send payment notification to customer on successful payment."
+      ...(input.notifyCustomer === false ? { UpdateCustomerOnSuccess: false } : {}),
     };
     try {
       const res = await fetch(`${env.baseUrl}/billing/payments/beginredirect/`, {

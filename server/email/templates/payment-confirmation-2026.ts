@@ -43,6 +43,8 @@ export interface PaymentConfirmationInput {
   documentUrl?: string | null;
   /** e.g. "חשבונית מס/קבלה" — shown on the button when a document exists. */
   documentLabel?: string | null;
+  /** Full button text, when "View <label>" doesn't read naturally. */
+  buttonText?: string | null;
 }
 
 export interface BuiltEmail { subject: string; html: string; text: string }
@@ -80,7 +82,7 @@ export function buildPaymentConfirmationEmail(input: PaymentConfirmationInput): 
         greeting: name ? `${esc(name)}, תודה.` : 'תודה.',
         lead: 'החיוב הושלם בהצלחה. פרטי העסקה שמורים אצלנו, וכאן לעיונך.',
         date: 'מועד', method: 'אמצעי תשלום', item: 'עבור', ref: 'אסמכתא',
-        button: input.documentLabel ? `לצפייה ב${esc(input.documentLabel)}` : 'לצפייה במסמך',
+        button: input.buttonText ? esc(input.buttonText) : input.documentLabel ? `לצפייה ב${esc(input.documentLabel)}` : 'לצפייה במסמך',
         noDoc: 'המסמך החשבונאי יישלח אליך בנפרד עם השלמת השירות.',
         help: 'שאלה על החיוב? נשמח לעזור',
         legal: `${LEGAL_NAME_HE} · ח.פ. ${COMPANY_TAX_ID} · ${COMPANY_ADDRESS_HE}`,
@@ -94,7 +96,7 @@ export function buildPaymentConfirmationEmail(input: PaymentConfirmationInput): 
         greeting: name ? `Thank you, ${esc(name)}.` : 'Thank you.',
         lead: 'Your payment went through. The details are kept on file and set out below.',
         date: 'Date', method: 'Paid with', item: 'For', ref: 'Reference',
-        button: input.documentLabel ? `View ${esc(input.documentLabel)}` : 'View document',
+        button: input.buttonText ? esc(input.buttonText) : input.documentLabel ? `View ${esc(input.documentLabel)}` : 'View document',
         noDoc: 'Your tax document will follow separately once the service is complete.',
         help: 'A question about this payment? We are here',
         legal: `${LEGAL_NAME_EN} · Company No. ${COMPANY_TAX_ID} · ${COMPANY_ADDRESS_EN}`,
