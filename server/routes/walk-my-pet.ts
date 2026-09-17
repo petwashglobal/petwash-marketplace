@@ -1946,6 +1946,8 @@ router.post('/walks/:bookingId/provider-invoice', requireAuth, async (req, res) 
     await db.update(walkBookings)
       .set({ providerInvoiceNumber: invoiceNumber, providerInvoiceSubmittedAt: new Date() } as any)
       .where(eq(walkBookings.bookingId, req.params.bookingId));
+    const { copyInvoiceToMirrorRequest } = await import('../lib/providerInvoiceLink');
+    await copyInvoiceToMirrorRequest('walk_bookings', req.params.bookingId, invoiceNumber);
     return res.json({ ok: true });
   } catch (error: any) {
     logger.error('[Walk My Pet] provider-invoice record failed', { error: error?.message });
