@@ -1,0 +1,117 @@
+name: Diagnose SUMIT/Upay clearing status (read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "How many days of payments and documents to list"
+        required: false
+        default: "90"
+permissions:
+  contents: read
+# WHAT THIS DOES / DOES NOT DO
+#   DOES:  three READ calls to api.sumit.co.il (per api.sumit.co.il/swagger):
+#          /website/companies/getdetails/  — company settings (clearing-related fields only)
+#          /billing/payments/list/         — every card payment in the window (counts, dates,
+#                                            amounts, valid flag, status text)
+#          /accounting/documents/list/     — tax documents: per-type totals, drafts, credits,
+#                                            possible double documents (same ExternalReference)
+#   DOES NOT: open a terminal (openupayterminal), set Upay credentials, charge, refund,
+#          or open/download any document (list only). No card numbers, bank details, IDs or keys are printed.
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SERVICE: petwash-api
+      REGION: me-west1
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: Read SUMIT company settings + payments (read-only)
+        env:
+          DAYS: ${{ github.event.inputs.days }}
+        run: |
+          set -uo pipefail
+          ENVJSON="$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>/dev/null | jq -c '(.spec.template.spec.containers[0].env // [])')"
+          KEY_SECRET="$(echo "$ENVJSON" | jq -r '.[] | select(.name=="SUMIT_API_KEY")    | .valueFrom.secretKeyRef.name // empty')"
+          CO_SECRET="$(echo "$ENVJSON"  | jq -r '.[] | select(.name=="SUMIT_COMPANY_ID") | .valueFrom.secretKeyRef.name // empty')"
+          CO_PLAIN="$(echo "$ENVJSON"   | jq -r '.[] | select(.name=="SUMIT_COMPANY_ID") | .value // empty')"
+          echo "SUMIT env on $SERVICE: $(echo "$ENVJSON" | jq -r '[.[] | select(.name|test("SUMIT|BOOKING_CARD_RAIL|EGIFT")) | "\(.name)=\(.value // "secret")"] | join(" ")')"
+          if [ -z "$KEY_SECRET" ]; then echo "SUMIT_API_KEY not wired as a secret — nothing sent."; exit 0; fi
+          APIKEY="$(gcloud secrets versions access latest --secret="$KEY_SECRET" 2>/dev/null)"
+          if [ -n "$CO_SECRET" ]; then COMPANY="$(gcloud secrets versions access latest --secret="$CO_SECRET" 2>/dev/null)"; else COMPANY="$CO_PLAIN"; fi
+          if [ -z "${APIKEY:-}" ] || [ -z "${COMPANY:-}" ]; then echo "Could not resolve SUMIT creds — nothing sent."; exit 0; fi
+          echo "::add-mask::$APIKEY"
+          CREDS=$(jq -n --arg co "$COMPANY" --arg k "$APIKEY" '{CompanyID: ($co|tonumber? // $co), APIKey: $k}')
+
+          echo "== 1. /website/companies/getdetails/ =="
+          R1="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                -d "$(jq -n --argjson c "$CREDS" '{Credentials:$c}')" \
+                https://api.sumit.co.il/website/companies/getdetails/)"
+          echo "$R1" | jq '{Status, UserErrorMessage}'
+          echo "-- all field names in Data.Company --"
+          echo "$R1" | jq -r '[.Data.Company // {} | paths(scalars) | map(tostring) | join(".")] | .[]' | sort
+          echo "-- clearing-related fields (values) --"
+          echo "$R1" | jq -r '.Data.Company // {} | paths(scalars) as $p
+             | ($p | map(tostring) | join(".")) as $k
+             | select($k|test("upay|clear|credit|terminal|payment|billing|status|active|enabled|type|name";"i"))
+             | select($k|test("bank|account|phone|email|mail|address|idnumber|taxid|key|token|password";"i")|not)
+             | "\($k) = \(getpath($p))"'
+
+          echo "== 2. /billing/payments/list/ (last ${DAYS:-90} days) =="
+          FROM="$(date -u -d "-${DAYS:-90} days" +%Y-%m-%dT00:00:00Z)"; TO="$(date -u +%Y-%m-%dT23:59:59Z)"
+          IDX=0; : > all.json
+          for PAGE in $(seq 1 20); do
+            R2="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                  -d "$(jq -n --argjson c "$CREDS" --arg f "$FROM" --arg t "$TO" --argjson i $IDX '{Credentials:$c, Date_From:$f, Date_To:$t, StartIndex:$i}')" \
+                  https://api.sumit.co.il/billing/payments/list/)"
+            [ "$PAGE" = 1 ] && echo "$R2" | jq '{Status, UserErrorMessage}'
+            echo "$R2" | jq -c '.Data.Payments // [] | .[]' >> all.json
+            N="$(echo "$R2" | jq '.Data.Payments // [] | length')"
+            [ "$(echo "$R2" | jq -r '.Data.HasNextPage // false')" = "true" ] || break
+            IDX=$((IDX + N))
+          done
+          echo "-- payment field names --"
+          jq -s -r '[.[] | paths(scalars) | map(select(type=="string")) | join(".")] | unique | .[]' all.json
+          echo "-- totals --"
+          jq -s '{payments: length,
+                  valid: map(select(.ValidPayment == true)) | length,
+                  sum_valid: (map(select(.ValidPayment == true) | (.Amount // 0)) | add // 0)}' all.json
+          echo "-- each payment (no card/customer data) --"
+          jq -r '[.Date, .Amount, .Currency, .ValidPayment, .Status, .StatusDescription] | map(tostring) | join(" | ")' all.json
+
+          echo "== 3. /accounting/documents/list/ (last ${DAYS:-90} days, drafts included) =="
+          # List only — never getpdf/getdetails (never consume an original). No download URLs,
+          # no customer names printed.
+          DFROM="${FROM%%T*}"; DTO="${TO%%T*}"
+          : > docs.json
+          for PAGE in $(seq 0 19); do
+            R3="$(curl -sS --max-time 30 -H 'Content-Type: application/json' \
+                  -d "$(jq -n --argjson c "$CREDS" --arg f "$DFROM" --arg t "$DTO" --argjson i $((PAGE * 500)) \
+                        '{Credentials:$c, DateFrom:$f, DateTo:$t, IncludeDrafts:true, Paging:{StartIndex:$i, PageSize:500}}')" \
+                  https://api.sumit.co.il/accounting/documents/list/)"
+            [ "$PAGE" = 0 ] && echo "$R3" | jq '{Status, UserErrorMessage}'
+            echo "$R3" | jq -c '.Data.Documents // [] | .[]' >> docs.json
+            [ "$(echo "$R3" | jq -r '.Data.HasNextPage // false')" = "true" ] || break
+          done
+          echo "-- per type: count / drafts / open / sum(DocumentValue) --"
+          jq -s 'group_by(.Type) | map({type: .[0].Type, count: length,
+                   drafts: map(select(.IsDraft == true)) | length,
+                   not_closed: map(select(.IsClosed == false)) | length,
+                   sum: (map(.DocumentValue // 0) | add)})' docs.json
+          echo "-- per day (count) --"
+          jq -s -r 'group_by(.Date[0:10]) | .[] | "\(.[0].Date[0:10])  \(length)"' docs.json
+          echo "-- same ExternalReference on more than one non-credit document (possible double document) --"
+          jq -s -r 'def credit: (.Type as $t | ((($t|tostring)|test("Credit")) or ([5,6,7,14,19,20,21] | any(. == $t)))); [.[] | select((.ExternalReference // "") != "" and (credit|not))]
+                    | group_by(.ExternalReference) | map(select(length > 1))
+                    | .[] | "\(.[0].ExternalReference): " + (map("\(.Type)#\(.DocumentNumber) \(.Date[0:10]) ₪\(.DocumentValue)") | join(", "))' docs.json
+          echo "-- every credit / cancellation document --"
+          jq -r 'def credit: (.Type as $t | ((($t|tostring)|test("Credit")) or ([5,6,7,14,19,20,21] | any(. == $t)))); select(credit) | [.Date[0:10], .Type, .DocumentNumber, .DocumentValue, .ExternalReference, .Description] | map(tostring) | join(" | ")' docs.json
+          echo "-- every draft --"
+          jq -r 'select(.IsDraft == true) | [.Date[0:10], .Type, .DocumentID, .DocumentValue, .ExternalReference] | map(tostring) | join(" | ")' docs.json
+          echo "-- documents with no ExternalReference (issued outside the product/bridge) --"
+          jq -s '[.[] | select((.ExternalReference // "") == "")] | {count: length, by_type: (group_by(.Type) | map({type: .[0].Type, n: length}))}' docs.json
