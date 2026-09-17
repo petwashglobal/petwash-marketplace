@@ -7,7 +7,7 @@ import { clientSafeErrorMessage } from "../lib/sanitizeErrorResponse";
 import { sendSanitizedError } from "../lib/sanitizeErrorResponse";
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
 import { db } from "../db";
-import { bookingDisputes, users } from "@shared/schema";
+import { bookingDisputes, sitterBookings, users } from "@shared/schema";
 import { and, eq, inArray } from "drizzle-orm";
 
 /**
@@ -342,16 +342,62 @@ router.get("/booking/:bookingId", requireAuth, async (req, res) => {
  * evidence verdict, so a Pet Wash admin decides with the facts in front of them.
  * READ-ONLY. No customer contact data is returned.
  */
+/**
+ * Sitter Suite stays that are finished and owed money, in the same shape as a
+ * held escrow so one admin screen covers every provider. A stay is waiting when
+ * it is completed and its payout has not been released.
+ */
+async function listSitterStaysAwaitingPayout(
+  buildJobEvidenceReport: (jobId: string) => Promise<any>,
+  limit = 40,
+): Promise<any[]> {
+  const rows = await db
+    .select({
+      bookingId: sitterBookings.bookingId,
+      sitterId: sitterBookings.sitterId,
+      payoutCents: sitterBookings.sitterPayoutCents,
+      totalCents: sitterBookings.totalChargeCents,
+      completedAt: sitterBookings.completedAt,
+      payoutStatus: sitterBookings.payoutStatus,
+    })
+    .from(sitterBookings)
+    .where(and(eq(sitterBookings.status, "completed"), eq(sitterBookings.payoutStatus, "pending")))
+    .orderBy(sitterBookings.completedAt)
+    .limit(limit);
+
+  const items = [];
+  for (const r of rows) {
+    let evidence: any = null;
+    try { evidence = await buildJobEvidenceReport(r.bookingId); } catch { evidence = null; }
+    items.push({
+      kind: "sitter_stay" as const,
+      escrowId: null,
+      bookingId: r.bookingId,
+      providerId: r.sitterId != null ? String(r.sitterId) : null,
+      amountIls: (r.payoutCents ?? 0) / 100,
+      providerPayoutIls: (r.payoutCents ?? 0) / 100,
+      currency: "ILS",
+      holdUntil: null,
+      // A finished stay is past its hold by definition — it is waiting on a person.
+      holdEnded: true,
+      awaitingAdminApprovalAt: r.completedAt ?? null,
+      evidence,
+    });
+  }
+  return items;
+}
+
 router.get("/admin/awaiting-approval", requireAdmin, async (_req, res) => {
   try {
     const held = await EscrowService.listHeldForAdmin(100);
     const { buildJobEvidenceReport } = await import("../services/jobEvidenceLoader");
     const now = Date.now();
-    const items = [];
+    const escrowItems = [];
     for (const e of held.slice(0, 60)) {
       let evidence: any = null;
       try { evidence = e.bookingId ? await buildJobEvidenceReport(String(e.bookingId)) : null; } catch { evidence = null; }
-      items.push({
+      escrowItems.push({
+        kind: "escrow" as const,
         escrowId: e.id,
         bookingId: e.bookingId ?? null,
         providerId: e.providerId ?? null,
@@ -364,9 +410,87 @@ router.get("/admin/awaiting-approval", requireAdmin, async (_req, res) => {
         evidence,
       });
     }
-    res.json({ ok: true, total: held.length, items });
+    // Sitter Suite stays are NOT escrow rows — the Sitter Suite has its own
+    // table and its own completion path — so money owed to a sitter never
+    // appeared in this queue, and under the human-approval rule (2026-09-13)
+    // a sitter could never be paid at all. Same shape, same evidence.
+    const sitterItems = await listSitterStaysAwaitingPayout(buildJobEvidenceReport);
+    const items = [...escrowItems, ...sitterItems];
+
+    res.json({ ok: true, total: held.length + sitterItems.length, items });
   } catch (error: any) {
     sendSanitizedError(res, error, "ESCROW_AWAITING_APPROVAL_FAILED", { logContext: { op: "awaiting-approval" } });
+  }
+});
+
+/**
+ * THE HUMAN "YES" FOR A SITTER STAY (CEO rule 2026-09-13).
+ *
+ * A sitter stay is not an escrow row, so the escrow approve route could never
+ * reach it. Same rules: an admin, a written reason, the job cross-examined
+ * first, and a BLOCKED verdict approved only with an explicit override and a
+ * 20-character reason. No money moves here — the Sitter Suite has no payout
+ * rail — but the decision is recorded and the payout is marked approved, so
+ * whoever wires the rail pays only what a person allowed.
+ */
+router.post("/admin/sitter-stay/:bookingId/approve-payout", requireAdmin, async (req, res) => {
+  try {
+    const adminUid = (req as any).firebaseUser?.uid || (req as any).user?.uid || (req as any).adminUser?.uid;
+    if (!adminUid) return res.status(401).json({ error: "ADMIN_IDENTITY_REQUIRED" });
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim().slice(0, 500) : "";
+    if (!reason) return res.status(400).json({ error: "REASON_REQUIRED", message: "Say what evidence you checked." });
+
+    const bookingId = String(req.params.bookingId);
+    const [stay] = await db
+      .select({
+        bookingId: sitterBookings.bookingId,
+        status: sitterBookings.status,
+        payoutStatus: sitterBookings.payoutStatus,
+        payoutCents: sitterBookings.sitterPayoutCents,
+        sitterId: sitterBookings.sitterId,
+      })
+      .from(sitterBookings)
+      .where(eq(sitterBookings.bookingId, bookingId))
+      .limit(1);
+    if (!stay) return res.status(404).json({ error: "STAY_NOT_FOUND" });
+    if (stay.status !== "completed") return res.status(409).json({ error: "STAY_NOT_COMPLETED" });
+    if (stay.payoutStatus !== "pending") return res.status(409).json({ error: "PAYOUT_NOT_PENDING" });
+
+    const { buildJobEvidenceReport } = await import("../services/jobEvidenceLoader");
+    const evidence = await buildJobEvidenceReport(bookingId);
+    const override = req.body?.overrideBlocked === true;
+    if (evidence?.verdict === "blocked" && !(override && reason.length >= 20)) {
+      // Only the gate code — never the evidence detail — goes back over HTTP.
+      return res.status(409).json({ error: "EVIDENCE_BLOCKED", reason: evidence.findings?.[0]?.code ?? "blocked" });
+    }
+
+    // Claim the payout so two admins cannot approve the same stay twice.
+    const claimed = await db
+      .update(sitterBookings)
+      .set({ payoutStatus: "approved", updatedAt: new Date() })
+      .where(and(eq(sitterBookings.bookingId, bookingId), eq(sitterBookings.payoutStatus, "pending")))
+      .returning({ id: sitterBookings.id });
+    if (claimed.length === 0) return res.status(409).json({ error: "PAYOUT_NOT_PENDING" });
+
+    try {
+      const { nayaxSitterMarketplace } = await import("../services/NayaxSitterMarketplaceService");
+      await nayaxSitterMarketplace.processSitterPayout({
+        bookingId,
+        sitterId: stay.sitterId,
+        sitterPayoutCents: stay.payoutCents ?? 0,
+        sitterBankAccount: "TBD",
+        approvedByUid: adminUid,
+      });
+    } catch (payoutErr: any) {
+      logger.error("[Escrow] sitter payout queue step failed after approval", { bookingId, error: payoutErr?.message });
+    }
+
+    logger.info("[Escrow] sitter stay payout APPROVED by admin", {
+      bookingId, adminUid, amountCents: stay.payoutCents, verdict: evidence?.verdict ?? "none", override,
+    });
+    return res.json({ ok: true, bookingId, approvedBy: adminUid, verdict: evidence?.verdict ?? null });
+  } catch (error: any) {
+    sendSanitizedError(res, error, "SITTER_PAYOUT_APPROVE_FAILED", { logContext: { op: "sitter-approve-payout" } });
   }
 });
 

@@ -95,8 +95,13 @@ describe('the provider records their own invoice (Pet Wash never issues it)', ()
   });
   it('the evidence loader requires it for every marketplace job', () => {
     const loader = readFileSync(join(__dirname, '../services/jobEvidenceLoader.ts'), 'utf8');
-    expect(loader.match(/providerInvoiceRequired: true,/g)).toHaveLength(2);
+    // EVERY loader, not a fixed count: walks, marketplace bookings and (2026-09-18)
+    // Sitter Suite stays. A new product must carry the same rule.
+    const loaders = loader.match(/export async function load\w*Evidence\(/g) ?? [];
+    expect(loaders.length).toBeGreaterThanOrEqual(3);
+    expect(loader.match(/providerInvoiceRequired: true,/g)).toHaveLength(loaders.length);
     // reads safely even before the migration is applied
     expect(loader).toContain("to_jsonb(br)->>'provider_invoice_number'");
+    expect(loader).toContain("to_jsonb(sb)->>'provider_invoice_number'");
   });
 });

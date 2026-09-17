@@ -59,10 +59,14 @@ describe('loaders → rules', () => {
     expect(israelLocalDateTime('2026-09-13', '11:00')?.toISOString()).toBe('2026-09-13T08:00:00.000Z');
   });
 
-  it('honest walk is clear except "no customer confirmation" (walks have no confirm step today)', async () => {
+  // 2026-09-18: an honest walk used to sit in 'review' forever for a customer
+  // confirmation step Walk My Pet does not have — nobody could ever clear it,
+  // and it buried the jobs that do need a look. The flow now declares whether a
+  // confirmation is expected (customerConfirmationExpected).
+  it('honest walk is clear — Walk My Pet has no customer confirm step to be missing', async () => {
     const r = await buildJobEvidenceReport('WALK-2026-000001');
-    expect(r?.findings.map((f) => f.code)).toEqual(['NO_CUSTOMER_CONFIRMATION']);
-    expect(r?.verdict).toBe('review');
+    expect(r?.findings.map((f) => f.code)).toEqual([]);
+    expect(r?.verdict).toBe('clear');
     expect(r?.measured.gpsPoints).toBe(13);
     expect(r?.measured.checkInDistanceMeters).toBe(0);
   });
@@ -78,7 +82,9 @@ describe('loaders → rules', () => {
     expect(JSON.stringify(r)).not.toContain('H-WALKER');
   });
 
-  it('sitter stay completed by the system after silence → review (no customer confirmation)', async () => {
+  // booking_requests DOES ask the customer to confirm (and auto-approves after
+  // 24h of silence), so there the absence is a real fact about the job.
+  it('marketplace booking completed by the system after silence → review (no customer confirmation)', async () => {
     const r = await buildJobEvidenceReport('BR-SIT-1');
     expect(r?.kind).toBe('booking_request');
     expect(r?.findings.map((f) => f.code)).toEqual(['NO_CUSTOMER_CONFIRMATION']);

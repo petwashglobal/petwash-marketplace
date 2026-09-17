@@ -47,6 +47,13 @@ export interface JobEvidence {
   claimedDurationMinutes?: number | null;
   photoTimes?: Array<Date | null>;
   customerConfirmedAt?: Date | null;
+  /**
+   * Does this product ASK the customer to confirm the job? Walks and Sitter
+   * Suite stays have no confirm step today, so "the customer has not confirmed"
+   * says nothing about the provider — flagging it put every one of those jobs
+   * permanently in review for something nobody can do. Defaults to true.
+   */
+  customerConfirmationExpected?: boolean;
   autoApproved?: boolean;
   openDispute?: boolean;
   /**
@@ -206,7 +213,9 @@ export function evaluateJobEvidence(ev: JobEvidence): EvidenceReport {
   }
 
   // ── Customer confirmation ──────────────────────────────────────────────────
-  if (!valid(ev.customerConfirmedAt) || ev.autoApproved) {
+  // Only where the product actually asks for one (see customerConfirmationExpected).
+  const confirmationExpected = ev.customerConfirmationExpected !== false;
+  if (confirmationExpected && (!valid(ev.customerConfirmedAt) || ev.autoApproved)) {
     warn('NO_CUSTOMER_CONFIRMATION', ev.autoApproved
       ? 'completed automatically after 24h of customer silence — the customer never confirmed'
       : 'the customer has not confirmed the job');

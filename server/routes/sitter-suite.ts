@@ -1128,6 +1128,52 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
 });
 
 /**
+ * POST /api/sitter-suite/bookings/:bookingId/provider-invoice
+ *
+ * The sitter records the number of the tax invoice THEY issued the customer.
+ * Gross model (#2496): the sitter is the legal seller and invoices the customer
+ * for the full price; Pet Wash documents only its fee. A stay with no invoice on
+ * file is reported as PROVIDER_INVOICE_MISSING and its payout stays blocked.
+ * Walkers and marketplace providers got this on 2026-09-17 (#2500, migration
+ * 0159); sitter stays live in their own table and were missed (migration 0162).
+ */
+router.post('/bookings/:bookingId/provider-invoice', requireAuth, async (req, res) => {
+  try {
+    const callerId = (req as any).user?.uid;
+    if (!callerId) return res.status(401).json({ error: 'Not authenticated' });
+    const invoiceNumber = String(req.body?.invoiceNumber ?? '').trim();
+    if (!/^[A-Za-z0-9][A-Za-z0-9\-\/ ]{0,63}$/.test(invoiceNumber)) {
+      return res.status(400).json({ error: 'INVALID_INVOICE_NUMBER' });
+    }
+    const [booking] = await db
+      .select({ id: sitterBookings.id, sitterId: sitterBookings.sitterId, status: sitterBookings.status })
+      .from(sitterBookings)
+      .where(eq(sitterBookings.bookingId, req.params.bookingId))
+      .limit(1);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    const [profile] = await db
+      .select({ userId: sitterProfiles.userId })
+      .from(sitterProfiles)
+      .where(eq(sitterProfiles.id, booking.sitterId))
+      .limit(1);
+    if (!profile || profile.userId !== callerId) {
+      return res.status(403).json({ error: 'Only the sitter can record their invoice' });
+    }
+    if (booking.status !== 'completed') {
+      return res.status(409).json({ error: 'JOB_NOT_COMPLETED' });
+    }
+    await db
+      .update(sitterBookings)
+      .set({ providerInvoiceNumber: invoiceNumber, providerInvoiceSubmittedAt: new Date(), updatedAt: new Date() } as any)
+      .where(eq(sitterBookings.bookingId, req.params.bookingId));
+    return res.json({ ok: true });
+  } catch (error: any) {
+    logger.error('[Sitter Suite] provider-invoice record failed', { error: error?.message });
+    return res.status(500).json({ error: 'PROVIDER_INVOICE_SAVE_FAILED' });
+  }
+});
+
+/**
  * POST /api/sitter-suite/bookings/:bookingId/cancel — CUSTOMER cancel.
  * MONEY-SAFE: only BEFORE a provider accepts (status pending_provider), when no
  * money has moved. Cancels BOTH the customer row and the bridged provider-inbox row

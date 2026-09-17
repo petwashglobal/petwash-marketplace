@@ -4803,6 +4803,9 @@ export const sitterBookings = pgTable("sitter_bookings", {
   // One money model (shared/marketplaceMoney.ts, 2026-09-17): the sitter is owed
   // the full base; stays booked before then stored 85% here and keep it.
   sitterPayoutCents: integer("sitter_payout_cents").notNull(), // = base (was 85% of base before 2026-09-17)
+  // Gross model (migration 0162): the sitter's OWN invoice/receipt to the customer.
+  providerInvoiceNumber: varchar("provider_invoice_number", { length: 64 }),
+  providerInvoiceSubmittedAt: timestamp("provider_invoice_submitted_at"),
   totalChargeCents: integer("total_charge_cents").notNull(), // base + platform fee — what the card is charged, never recomputed
   
   // Payment Integration (NAYAX ONLY - Like marketplace platform)

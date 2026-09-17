@@ -3,6 +3,7 @@
  * (server/services/jobEvidence.ts). READ-ONLY.
  *
  *   WALK-*           → walk_bookings + walk_gps_tracking + walker_profiles
+ *   SITTER_*         → sitter_bookings + sitter_profiles (the Sitter Suite's own table)
  *   anything else    → booking_requests (sitter / walker / trainer marketplace)
  *
  * Phone numbers are compared by the stored HMAC (users.phone_hash), falling back
@@ -97,8 +98,10 @@ export async function loadWalkEvidence(bookingId: string): Promise<JobEvidence |
     photoTimes: Array.isArray(vital.photos) ? vital.photos.map((ph) => date(ph?.timestamp)) : [],
     providerInvoiceNumber: b.provider_invoice_no ?? null,
     providerInvoiceRequired: true,
-    // Walks have no customer confirm step today — reported as such, not assumed.
+    // Walks have no customer confirm step today, so its absence says nothing
+    // about the walker (it used to put every honest walk in 'review').
     customerConfirmedAt: null,
+    customerConfirmationExpected: false,
     autoApproved: false,
     openDispute: await hasOpenDispute(bookingId),
   };
@@ -150,8 +153,59 @@ export async function loadBookingRequestEvidence(requestId: string): Promise<Job
   };
 }
 
+/**
+ * A Sitter Suite stay (its own table, its own id shape SITTER_*). No GPS and no
+ * photo stream — a stay is judged on its times, the parties, the dispute state
+ * and the sitter's own invoice, the same as any marketplace job.
+ */
+export async function loadSitterStayEvidence(bookingId: string): Promise<JobEvidence | null> {
+  const { rows } = await pool.query(
+    `SELECT sb.owner_id, sb.sitter_id,
+            sb.start_date  AT TIME ZONE 'UTC' AS start_date,
+            sb.end_date    AT TIME ZONE 'UTC' AS end_date,
+            sb.started_at  AT TIME ZONE 'UTC' AS started_at,
+            sb.completed_at AT TIME ZONE 'UTC' AS completed_at,
+            sb.service_address_lat, sb.service_address_lng,
+            sp.user_id AS sitter_uid,
+            to_jsonb(sb)->>'provider_invoice_number' AS provider_invoice_no
+       FROM sitter_bookings sb
+       LEFT JOIN sitter_profiles sp ON sp.id = sb.sitter_id
+      WHERE sb.booking_id = $1 LIMIT 1`, [bookingId]);
+  const b = rows[0];
+  if (!b) return null;
+  const phones = await phoneKeys([b.sitter_uid ?? null, b.owner_id ?? null]);
+  const lat = num(b.service_address_lat);
+  const lng = num(b.service_address_lng);
+  return {
+    kind: 'booking_request',
+    jobId: bookingId,
+    providerUid: b.sitter_uid ?? null,
+    ownerUid: b.owner_id ?? null,
+    providerPhoneHash: b.sitter_uid ? phones.get(b.sitter_uid) ?? null : null,
+    ownerPhoneHash: b.owner_id ? phones.get(b.owner_id) ?? null : null,
+    scheduledStart: date(b.start_date),
+    scheduledEnd: date(b.end_date),
+    serviceLocation: lat !== null && lng !== null ? { lat, lng } : null,
+    actualStart: date(b.started_at),
+    actualEnd: date(b.completed_at),
+    providerCompletedAt: date(b.completed_at),
+    gpsPoints: [],
+    photoTimes: [],
+    // The Sitter Suite has no customer confirm step today, so its absence says
+    // nothing about the sitter.
+    customerConfirmedAt: null,
+    customerConfirmationExpected: false,
+    autoApproved: false,
+    providerInvoiceNumber: b.provider_invoice_no ?? null,
+    providerInvoiceRequired: true,
+    openDispute: await hasOpenDispute(bookingId),
+  };
+}
+
 /** Evidence report for any provider job id. null = job not found. */
 export async function buildJobEvidenceReport(jobId: string): Promise<EvidenceReport | null> {
-  const ev = /^WALK-/i.test(jobId) ? await loadWalkEvidence(jobId) : await loadBookingRequestEvidence(jobId);
+  const ev = /^WALK-/i.test(jobId) ? await loadWalkEvidence(jobId)
+    : /^SITTER_/i.test(jobId) ? await loadSitterStayEvidence(jobId)
+    : await loadBookingRequestEvidence(jobId);
   return ev ? evaluateJobEvidence(ev) : null;
 }
