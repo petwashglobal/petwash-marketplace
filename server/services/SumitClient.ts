@@ -31,6 +31,7 @@ import { logger } from '../lib/logger';
 import { parseSumitPaymentId } from '../lib/sumitPaymentId';
 export { parseSumitPaymentId };
 import { israeliFiscalDate } from '@shared/israel-compliance-config';
+import { sumitPageLanguage } from '../lib/paymentPageLanguage';
 
 /**
  * Env is read on every call (not cached at module load) so tests can
@@ -1253,6 +1254,8 @@ export class SumitClient {
      * that issues no receipt of its own (the ₪1 save-card verification).
      */
     draftDocument?: boolean;
+    /** Customer's language code (he/en/ar/es/ru/fr…) — the page opens in it; see paymentPageLanguage. */
+    language?: string;
   }): Promise<{ wired: boolean; redirectUrl?: string; reason?: string; rawResponse?: unknown }> {
     const env = readEnv();
     if (!isWired()) return { wired: false, reason: 'SUMIT not enabled' };
@@ -1280,7 +1283,8 @@ export class SumitClient {
       // SUMIT_PAYMENT_PAGE_DRAFT_DOCUMENT=false restores SUMIT's own document.
       DraftDocument: input.draftDocument ?? (process.env.SUMIT_PAYMENT_PAGE_DRAFT_DOCUMENT !== 'false'),
       // Enum NAME, not ISO code (same Accounting_Typed_Language enum as documents).
-      Language: 'Hebrew',
+      // The customer's language: a foreign card holder must be able to read the form.
+      Language: sumitPageLanguage(input.language),
     };
     try {
       const res = await fetch(`${env.baseUrl}/billing/payments/beginredirect/`, {

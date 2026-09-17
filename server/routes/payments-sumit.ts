@@ -24,6 +24,7 @@ import { resolveWashDiscount, applyWashDiscountCents, type WashDiscount } from '
 import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
 import { sumitExternalRefMismatch, readSumitExternalRef } from '../lib/sumitExternalRef';
 import { readSumitPaymentIdFromReturn, claimSumitPayment, claimAllowsFulfil } from '../lib/sumitPaymentReturn';
+import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 
 const router = Router();
 
@@ -291,6 +292,7 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
     redirectUrl: `${baseUrl()}/api/payments/sumit/return?ext=${encodeURIComponent(externalId)}`,
     customerName: (req.firebaseUser as any)?.name,
     customerEmail: req.firebaseUser?.email,
+    language: paymentLanguageFor(req),
   });
 
   if (!result.wired) return res.status(503).json({ error: 'Payments not enabled yet', reason: result.reason });
