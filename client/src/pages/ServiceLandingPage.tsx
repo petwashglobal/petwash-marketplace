@@ -1,5 +1,5 @@
 import { useParams, Link } from 'wouter';
-import { Helmet } from 'react-helmet-async';
+import { useSEO } from '@/lib/seo';
 import { useLanguage } from '@/lib/languageStore';
 import { Star, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -137,6 +137,26 @@ export default function ServiceLandingPage() {
   const svc = SERVICE_MAP[service || ''];
   const cityInfo = city ? CITY_MAP[city] : null;
 
+  // SEO via the app's own useSEO (2026-09-17). This page used react-helmet-
+  // async, but the app never mounts a HelmetProvider, so <Helmet> threw
+  // "Cannot read properties of undefined (reading 'add')" and every
+  // /services/... landing page rendered the crash screen.
+  const seoTitle = !svc ? 'PetWash' : cityInfo
+    ? isRTL ? `${svc.labelHe} ב${cityInfo.he} | PetWash` : `${svc.labelEn} in ${cityInfo.en} | PetWash`
+    : isRTL ? `${svc.labelHe} בישראל | PetWash` : `${svc.labelEn} in Israel | PetWash`;
+  const seoDesc = !svc ? '' : isRTL
+    ? `מצא את הספק הטוב ביותר ל${svc.labelHe}${cityInfo ? ` ב${cityInfo.he}` : ''}. ספקים עוברים אימות לפני קבלת הזמנות, ונדרשים להחזיק בביטוח לפי דין.`
+    : `Find the best ${svc.labelEn}${cityInfo ? ` in ${cityInfo.en}` : ''} in Israel. Providers complete verification before accepting bookings; providers are required to maintain their own insurance as required by law.`;
+  useSEO({
+    title: seoTitle,
+    description: seoDesc,
+    ogType: 'website',
+    noindex: !svc,
+    canonical: svc
+      ? (cityInfo ? `https://petwash.co.il/services/${service}/${city}` : `https://petwash.co.il/services/${service}`)
+      : undefined,
+  });
+
   if (!svc) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -148,20 +168,7 @@ export default function ServiceLandingPage() {
     );
   }
 
-  const pageTitle = cityInfo
-    ? isRTL
-      ? `${svc.labelHe} ב${cityInfo.he} | PetWash`
-      : `${svc.labelEn} in ${cityInfo.en} | PetWash`
-    : isRTL
-      ? `${svc.labelHe} בישראל | PetWash`
-      : `${svc.labelEn} in Israel | PetWash`;
-
-  // PR-LEGAL-B: previously claimed providers are "insured" / "ביטוח כלול".
-  // Replaced with a §8-aligned description per the Provider & Host
-  // Services Agreement (PR-LEGAL-A #246).
-  const metaDesc = isRTL
-    ? `מצא את הספק הטוב ביותר ל${svc.labelHe}${cityInfo ? ` ב${cityInfo.he}` : ''}. ספקים עוברים אימות לפני קבלת הזמנות, ונדרשים להחזיק בביטוח לפי דין.`
-    : `Find the best ${svc.labelEn}${cityInfo ? ` in ${cityInfo.en}` : ''} in Israel. Providers complete verification before accepting bookings; providers are required to maintain their own insurance as required by law.`;
+  // Title/description for the page head are set by useSEO above.
 
   const faqs = isRTL ? svc.faqHe : svc.faqEn;
 
@@ -172,16 +179,6 @@ export default function ServiceLandingPage() {
 
   return (
     <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
-      <Helmet>
-        <title>{pageTitle}</title>
-        <meta name="description" content={metaDesc} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={metaDesc} />
-        <meta property="og:type" content="website" />
-        <meta name="robots" content="index, follow" />
-        {cityInfo && <link rel="canonical" href={`https://petwash.co.il/services/${service}/${city}`} />}
-        {!cityInfo && <link rel="canonical" href={`https://petwash.co.il/services/${service}`} />}
-      </Helmet>
 
       <div className="bg-gradient-to-b from-gray-50 to-white py-12 px-4">
         <div className="max-w-2xl mx-auto text-center">
