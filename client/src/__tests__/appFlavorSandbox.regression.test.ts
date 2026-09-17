@@ -72,6 +72,16 @@ describe('marketing surfaces stay out of the native apps', () => {
     // Dismiss key is versioned so wording bumps re-show the strip once.
     expect(layout).toMatch(/UNDER_DEV_DISMISS_KEY/);
   });
+
+  it('the notice never claims "no live payments" while card payments are live (2026-09-17)', () => {
+    // The strip follows the same signal the checkout screens use.
+    expect(layout).toMatch(/const \{ cardPaymentsEnabled \} = usePaymentStatus\(\);/);
+    const live = layout.slice(layout.indexOf('{cardPaymentsEnabled ? ('), layout.indexOf(') : isRTL ? ('));
+    expect(live).toMatch(/האתר בהרצה/);
+    expect(live).toMatch(/Early launch/);
+    expect(live).not.toMatch(/no live payments|אין תשלום חי/);
+    expect(layout).toMatch(/pw_under_dev_notice_dismissed_v2/);
+  });
 });
 
 describe('apps do not look like the website (CEO canonical designs)', () => {

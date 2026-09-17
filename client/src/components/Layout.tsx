@@ -4,11 +4,13 @@ import { Footer } from './Footer';
 import { NetworkOfflineBanner } from './NetworkOfflineBanner';
 import { type Language } from '@/lib/i18n';
 import { useLanguage } from '@/lib/languageStore';
+import { usePaymentStatus } from '@/hooks/use-payment-status';
 
 // UNDER-DEV-NOTICE (CEO 2026-08-23): key used to remember a viewer dismissed
 // the "site under development" strip. Bump the suffix if the wording changes
 // materially so returning users see the new version once.
-const UNDER_DEV_DISMISS_KEY = 'pw_under_dev_notice_dismissed_v1';
+// v2 (2026-09-17): wording changed when card payments went live — re-show once.
+const UNDER_DEV_DISMISS_KEY = 'pw_under_dev_notice_dismissed_v2';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -60,6 +62,8 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
   // own live-vs-test state per feature; this is the site-wide "we're still
   // building" honest signal that lives above them.
 
+  const { cardPaymentsEnabled } = usePaymentStatus();
+
   useEffect(() => {
     if (!language) return;
     
@@ -102,8 +106,25 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
               `<bdi>` isolates the embedded run so its own direction is
               resolved independently and its punctuation stays attached to it.
               Both language branches embed the other script, so both need it. */}
+          {/* TRUTHFUL COPY (2026-09-17): card payments went live (SUMIT/Upay,
+              first real charge verified). "No live payments yet" became false
+              the moment /api/payments/gateway-status said creditCard.enabled,
+              so the strip now follows that same signal. While it is loading or
+              payments are off, the original wording stands. */}
           <span className="pw-under-dev-copy">
-            {isRTL ? (
+            {cardPaymentsEnabled ? (
+              isRTL ? (
+                <>
+                  {'האתר בהרצה — חלק מהשירותים עדיין בבנייה. '}
+                  <bdi dir="ltr">(Early launch — some services are still being built.)</bdi>
+                </>
+              ) : (
+                <>
+                  {'Early launch — some services are still being built. '}
+                  <bdi dir="rtl">(האתר בהרצה — חלק מהשירותים עדיין בבנייה.)</bdi>
+                </>
+              )
+            ) : isRTL ? (
               <>
                 {'האתר עדיין בפיתוח — אין תשלום חי כרגע. '}
                 <bdi dir="ltr">(Site under development — no live payments yet.)</bdi>
