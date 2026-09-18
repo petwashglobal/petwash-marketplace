@@ -25,7 +25,6 @@ server/tests/backup-report-honesty-2026-07-08.test.ts  # red on main at gate lan
 server/tests/booking-complete-email-sms.test.ts  # red on main at gate landing
 server/tests/booking-fullcircle.test.ts  # red on main at gate landing
 server/tests/booking-requests-401-sweep.regression.test.ts  # red on main at gate landing
-server/tests/bookingAuditWiring.regression.test.ts  # red on main at gate landing
 server/tests/bookingCancelIdempotent.regression.test.ts  # red on main at gate landing
 server/tests/bookingCompleteIdempotent.regression.test.ts  # red on main at gate landing
 server/tests/bookingCompleteReplayAudit.regression.test.ts  # red on main at gate landing
@@ -35,7 +34,6 @@ server/tests/botCheckHealthTruth.regression.test.ts  # red on main at gate landi
 server/tests/bug-hunt-fixes-2026-07-09.test.ts  # red on main at gate landing
 server/tests/canonicalMemberHome.regression.test.ts  # red on main at gate landing
 server/tests/claimsSync.regression.test.ts  # red on main at gate landing
-server/tests/customer-capacitor-foundation.regression.test.ts  # red on main at gate landing
 server/tests/customerRoutesErrorLeaks.regression.test.ts  # red on main at gate landing
 server/tests/email-blackout-visibility.test.ts  # red on main at gate landing
 server/tests/healthBuildSha.regression.test.ts  # red on main at gate landing
@@ -51,7 +49,6 @@ server/tests/petOnboardingA11y.regression.test.ts  # red on main at gate landing
 server/tests/petOnboardingShell.regression.test.ts  # red on main at gate landing
 server/tests/petPhotoOnboarding.regression.test.ts  # red on main at gate landing
 server/tests/provider-applications-admin-role-shape.test.ts  # red on main at gate landing
-server/tests/provider-capacitor-foundation.regression.test.ts  # red on main at gate landing
 server/tests/providerAppIdempotent.regression.test.ts  # red on main at gate landing
 server/tests/providerApplicationSectionStatus.regression.test.ts  # red on main at gate landing
 server/tests/providerApproveMultiService.regression.test.ts  # red on main at gate landing
@@ -61,14 +58,12 @@ server/tests/routeContractClientDefects.regression.test.ts  # red on main at gat
 server/tests/sendgridInventory.regression.test.ts  # red on main at gate landing
 server/tests/sendgridWebhookAsyncJobs.regression.test.ts  # red on main at gate landing
 server/tests/signinDoorFlip.regression.test.ts  # red on main at gate landing
-server/tests/signupAgeGate.regression.test.ts  # red on main at gate landing
 server/tests/signupDobPersist.regression.test.ts  # red on main at gate landing
 server/tests/signupMethodFirst.regression.test.ts  # red on main at gate landing
 server/tests/signupOneContact.regression.test.ts  # red on main at gate landing
 server/tests/signupSmartRouting.regression.test.ts  # red on main at gate landing
 server/tests/t4t5Tail.regression.test.ts  # red on main at gate landing
 server/tests/termsCanonPage.regression.test.ts  # red on main at gate landing
-server/tests/turnstileReleaseGateFailsClosed.behavior.test.ts  # red on main at gate landing
 server/tests/waldStationPhoto.regression.test.ts  # red on main at gate landing
 server/tests/walk-my-pet-walks-mine.test.ts  # red on main at gate landing
 server/tests/wash-pack-bleed-stop.test.ts  # red on main at gate landing

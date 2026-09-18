@@ -45,7 +45,14 @@ import { resolve } from 'path';
 const ROOT = resolve(__dirname, '..', '..');
 const bookings    = readFileSync(resolve(ROOT, 'server/routes/bookings.ts'), 'utf8');
 const bookingChat = readFileSync(resolve(ROOT, 'server/routes/booking-chat.ts'), 'utf8');
-const sitterSuite = readFileSync(resolve(ROOT, 'server/routes/sitter-suite.ts'), 'utf8');
+// 2026-09-18: the sitter accept/decline branch — atomic claim, capture, escrow,
+// the SIM_ guard and this audit event — was extracted out of
+// server/routes/sitter-suite.ts into two modules. The audit did not move away,
+// it moved WITH the code; this test was still reading the old file and reported
+// the event as missing. Read where it lives.
+const sitterAccept  = readFileSync(resolve(ROOT, 'server/services/booking-response/acceptSitterBookingCore.ts'), 'utf8');
+const sitterDecline = readFileSync(resolve(ROOT, 'server/services/booking-response/declineSitterBookingCore.ts'), 'utf8');
+const sitterSuite = `${sitterAccept}\n${sitterDecline}`;
 const auditLog    = readFileSync(resolve(ROOT, 'server/middleware/auditLog.ts'), 'utf8');
 
 type EventTypeMap = Record<string, { src: string; expectedActions: readonly string[] }>;
@@ -166,18 +173,18 @@ describe('PR-D-BOOKING-AUDIT-WIRING — audit fires AFTER the state mutation suc
     expect(auditIdx).toBeGreaterThan(updateIdx);
   });
 
-  it('9. sitter-suite.ts provider-respond — both accept + decline emit before res.json', () => {
-    // ACCEPT branch must emit before its res.json
-    const acceptAudit = sitterSuite.indexOf("response: 'accept'");
-    const acceptResJsonIdx = sitterSuite.indexOf("status: 'confirmed'", acceptAudit);
+  it('9. sitter accept + decline emit the audit before they return the new status', () => {
+    // ACCEPT: the audit is written before the caller is told 'confirmed'.
+    const acceptAudit = sitterAccept.indexOf("response: 'accept'");
+    const acceptReturn = sitterAccept.indexOf("status: 'confirmed',", acceptAudit);
     expect(acceptAudit).toBeGreaterThan(0);
-    expect(acceptResJsonIdx).toBeGreaterThan(acceptAudit);
+    expect(acceptReturn).toBeGreaterThan(acceptAudit);
 
-    // DECLINE branch must emit before its res.json
-    const declineAudit = sitterSuite.indexOf("response: 'decline'");
-    const declineResJsonIdx = sitterSuite.indexOf("status: 'declined'", declineAudit);
+    // DECLINE: same, before 'declined'.
+    const declineAudit = sitterDecline.indexOf("response: 'decline'");
+    const declineReturn = sitterDecline.indexOf("status: 'declined',", declineAudit);
     expect(declineAudit).toBeGreaterThan(0);
-    expect(declineResJsonIdx).toBeGreaterThan(declineAudit);
+    expect(declineReturn).toBeGreaterThan(declineAudit);
   });
 });
 
@@ -230,12 +237,13 @@ describe('PR-D-BOOKING-AUDIT-WIRING — import surface', () => {
     );
   });
 
-  it('14. sitter-suite.ts already imported logAuditEvent (no duplicate import added)', () => {
-    expect(sitterSuite).toMatch(
-      /import\s*\{\s*logAuditEvent\s*\}\s*from\s*['"]\.\.\/middleware\/auditLog['"]/,
-    );
-    // Defensive — only ONE import line for logAuditEvent (no duplicate)
-    const matches = sitterSuite.match(/from\s*['"]\.\.\/middleware\/auditLog['"]/g) || [];
-    expect(matches.length).toBe(1);
+  it('14. each sitter module imports logAuditEvent exactly once', () => {
+    for (const src of [sitterAccept, sitterDecline]) {
+      expect(src).toMatch(
+        /import\s*\{\s*logAuditEvent\s*\}\s*from\s*['"]\.\.\/\.\.\/middleware\/auditLog['"]/,
+      );
+      const matches = src.match(/from\s*['"]\.\.\/\.\.\/middleware\/auditLog['"]/g) || [];
+      expect(matches.length).toBe(1);
+    }
   });
 });
