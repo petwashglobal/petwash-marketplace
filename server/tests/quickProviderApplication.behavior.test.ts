@@ -10,6 +10,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
 import request from 'supertest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 const h = vi.hoisted(() => ({ existing: [] as string[], inserted: [] as any[], alerts: [] as any[], turnstileOk: true, lastEmail: '' }));
 
@@ -97,5 +99,18 @@ describe('POST /api/provider-apply/apply', () => {
   it('a one-word name still works (lastName is not required by a human)', () => {
     const lead = applicationToLead({ ...good, fullName: 'דנה' } as any);
     expect(lead).toMatchObject({ firstName: 'דנה', lastName: '-' });
+  });
+});
+
+describe('the page actually sends a bot-check token', () => {
+  it('QuickApply asks Turnstile for a token before posting', () => {
+    const page = readFileSync(resolve(__dirname, '..', '..', 'client', 'src', 'pages', 'QuickApply.tsx'), 'utf8');
+    // Production has TURNSTILE_SECRET_KEY set, so the server verifies every
+    // submission. A page that posts without a token gets "Could not verify you
+    // are human" for every real applicant — verified live 2026-09-18.
+    expect(page).toMatch(/executeTurnstileInvisible\('provider_quick_apply'\)/);
+    const fn = page.slice(page.indexOf('mutationFn'), page.indexOf('onSuccess'));
+    expect(fn.indexOf('executeTurnstileInvisible')).toBeLessThan(fn.indexOf("apiRequest('POST'"));
+    expect(fn).toMatch(/services, turnstileToken \}/);
   });
 });

@@ -12,6 +12,7 @@ import { Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, Loader2 } from 'lucide-react';
@@ -35,7 +36,19 @@ export default function QuickApply() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const r = await apiRequest('POST', '/api/provider-apply/apply', { ...form, services });
+      // The server runs the bot check whenever TURNSTILE_SECRET_KEY is set —
+      // which it is in production. Without a token every real application was
+      // answered "Could not verify you are human" (caught live 2026-09-18,
+      // before the page was announced to anyone). Invisible: the applicant
+      // sees nothing unless Cloudflare decides to challenge.
+      let turnstileToken = '';
+      try {
+        const r = await executeTurnstileInvisible('provider_quick_apply');
+        turnstileToken = r.ok ? r.token : '';
+      } catch {
+        turnstileToken = '';
+      }
+      const r = await apiRequest('POST', '/api/provider-apply/apply', { ...form, services, turnstileToken });
       return r.json();
     },
     onSuccess: (body: any) => {
