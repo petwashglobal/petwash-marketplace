@@ -681,6 +681,15 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
           personalMessage: message,
           eligibleServices,
           expiresInMonths: 60, // Israeli Amendment 33: gift vouchers ≥5 years
+          // WITHOUT claimUrl the recipient gets a bare code and NOTHING else
+          // (2026-09-19). egiftEmailService gates BOTH the "Add this gift to my
+          // account" button AND the fallback "go to petwash.co.il/claim and
+          // enter the code" line behind `config.claimUrl ? ... : ''`. So this
+          // call — the live SUMIT rail for a signed-in buyer — sent an email
+          // with a code and no way to use it, while the guest rail
+          // (egift-guest.ts) has always passed one. Same shape as the guest
+          // rail so the two cannot drift.
+          claimUrl: `${process.env.BASE_URL || 'https://petwash.co.il'}/claim?code=${encodeURIComponent(gift.publicCode)}`,
         });
       } catch (mailErr: any) {
         logger.warn('[Activation] eGift email send failed (non-fatal; voucher already created)', { err: mailErr?.message, giftCardId: gift.giftCardId });

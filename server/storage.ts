@@ -1547,7 +1547,16 @@ export class DatabaseStorage implements IStorage {
         currency: data.currency,
         initialAmount: data.amount,
         remainingAmount: data.amount,
-        status: 'PENDING',
+        // 'ISSUED', not 'PENDING' (2026-09-19). 'PENDING' is not a state in the
+        // eVoucher lifecycle at all — the schema documents
+        // ISSUED|CLAIMED|ACTIVE|REDEEMED|EXPIRED|CANCELLED and defaults to
+        // ISSUED. This line was the ONLY occurrence of 'PENDING' in the entire
+        // codebase: nothing accepted it and nothing ever transitioned out of
+        // it. POST /api/gift-cards/:id/activate-wallet only matches
+        // inArray(status, ['ISSUED','ACTIVE']), so every voucher created here
+        // was born dead — the buyer was charged through SUMIT and the
+        // recipient got "Gift card is expired or invalid" forever.
+        status: 'ISSUED',
         purchaserEmail: data.purchaserEmail,
         recipientEmail: data.recipientEmail,
         purchaserUid: data.purchaserUid,
