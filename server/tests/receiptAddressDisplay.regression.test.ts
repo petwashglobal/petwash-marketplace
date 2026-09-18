@@ -101,12 +101,17 @@ describe('all paid call sites pass the service address to the receipt', () => {
     });
   }
 
-  it('walk-my-pet accept issues NO fiscal receipt (no payment rail on that path)', () => {
-    // 2026-09-13: accept moved into acceptWalkBookingCore — check route AND core.
+  it('walk-my-pet ACCEPT issues no fiscal receipt — completion does, once paid', () => {
+    // 2026-09-13: accept moved into acceptWalkBookingCore. 2026-09-18: walks
+    // are paid by card, so the customer's receipt is issued at COMPLETION (the
+    // fiscal event) and only for a walk carrying a verified payment.
     const route = R('server/routes/walk-my-pet.ts');
     const core = R('server/services/booking-response/acceptWalkBookingCore.ts');
-    expect(route).not.toMatch(/generateReceipt\(/);
     expect(core).not.toMatch(/generateReceipt\(/);
     expect(core).toMatch(/no receipt issued|NO fiscal receipt/i);
+    const receiptAt = route.indexOf("// ── The customer's digital receipt");
+    expect(receiptAt).toBeGreaterThan(0);
+    expect(route.indexOf('recordTransactionFromGross(')).toBeLessThan(receiptAt);
+    expect(route).toContain('if (walkWasPaid && walkPaidIls > 0) {');
   });
 });

@@ -2240,6 +2240,75 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
       logger.warn('[Walk My Pet] VAT ledger at completion failed (non-blocking)', { error: vatCompletionErr.message, bookingId });
     }
 
+    // ── The customer's digital receipt (2026-09-18) ────────────────────────
+    // Walks are paid by card now, and completion is the fiscal event (מועד
+    // החיוב is the supply), so this is where the customer's document belongs.
+    // Only for a walk that actually carries a VERIFIED payment: the return
+    // handler stamps paymentSessionId with SUMIT's numeric transaction id,
+    // while an unpaid attempt leaves the `bkg_…` session reference. A walk
+    // confirmed before the rail existed has neither, and must not be given a
+    // receipt for money nobody collected.
+    const walkPaymentTxnId = String(booking.paymentSessionId ?? '');
+    const walkWasPaid = /^[0-9]+$/.test(walkPaymentTxnId);
+    if (walkWasPaid && walkPaidIls > 0) {
+      try {
+        const [walkCustomer] = await db
+          .select({ email: users.email, first: users.firstName, last: users.lastName })
+          .from(users).where(eq(users.id, booking.ownerId)).limit(1);
+        const [walkWalkerRow] = await db
+          .select({ userId: walkerProfiles.userId })
+          .from(walkerProfiles).where(eq(walkerProfiles.walkerId, booking.walkerId)).limit(1);
+        const [walkProvider] = walkWalkerRow?.userId
+          ? await db.select({ first: users.firstName, last: users.lastName })
+              .from(users).where(eq(users.id, String(walkWalkerRow.userId))).limit(1)
+          : [undefined];
+
+        const walkReceiptInput = {
+          platform: 'walk-my-pet' as const,
+          paymentClass: 'PROVIDER_BOOKING_COMMISSION' as const,
+          bookingId,
+          customerEmail: walkCustomer?.email || '',
+          customerName: [walkCustomer?.first, walkCustomer?.last].filter(Boolean).join(' '),
+          providerName: [walkProvider?.first, walkProvider?.last].filter(Boolean).join(' ') || `Walker ${booking.walkerId}`,
+          providerId: String(booking.walkerId),
+          providerType: 'walker' as const,
+          serviceDescription: 'Pet Wash dog walk',
+          serviceDescriptionHe: 'טיול עם הכלב — פט וואש',
+          subtotalAmount: walkPaidIls,
+          platformFeeAmount: walkFeeIls,
+          totalAmount: walkPaidIls,
+          paymentMethod: 'Credit card',
+          providerPayoutAmount: walkPayoutIls,
+          brokerCommissionAmount: walkFeeIls,
+        };
+
+        const receiptOutcome = await runFiscalDocumentAndPersistOnFailure({
+          pool,
+          kind: 'digital_receipt',
+          sourceKey: `walk:${bookingId}`,
+          payload: walkReceiptInput,
+          runNow: async () => {
+            await IsraeliDigitalReceiptService.generateReceipt(walkReceiptInput);
+          },
+        });
+        if (!receiptOutcome.ranInline) {
+          logger.warn('[Walk My Pet] customer receipt enqueued to outbox for retry', {
+            bookingId, inlineError: receiptOutcome.inlineError,
+          });
+        }
+      } catch (receiptErr: any) {
+        // Never fail the completion for the document — the outbox drainer and
+        // ops alerting own the retry.
+        logger.error('[Walk My Pet] customer receipt failed inline AND outbox — needs manual issue', {
+          bookingId, error: receiptErr?.message,
+        });
+      }
+    } else {
+      logger.info('[Walk My Pet] no customer receipt — this walk carries no verified payment', {
+        bookingId, paymentReference: walkPaymentTxnId || null,
+      });
+    }
+
     // Create blockchain audit record
     const previousBlock = await db
       .select()

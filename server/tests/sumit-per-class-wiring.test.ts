@@ -50,9 +50,13 @@ describe('generateReceipt wires payment class → SUMIT document type (2026-07-0
       .toMatch(/acceptSitterBookingCore\(/);
     // What that class resolves to (Invoice / VAT_ON_COMMISSION_ONLY /
     // PETWASH_DISCLOSED_AGENT) stays pinned in sumit-document-mapping.test.ts.
-    // walk-my-pet no longer calls generateReceipt at all (2026-07-30): its
-    // accept path collects no money, so it may not issue a fiscal document.
-    expect(read('routes/walk-my-pet.ts')).not.toMatch(/generateReceipt\(/);
+    // walk-my-pet: no receipt on ACCEPT (that path collects nothing), and one
+    // at COMPLETION for a walk that carries a verified card payment — walks
+    // became payable 2026-09-18. It must declare its class like every caller.
+    const walkRoute = read('routes/walk-my-pet.ts');
+    expect(walkRoute).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
+    expect(read('services/booking-response/acceptWalkBookingCore.ts')).not.toMatch(/generateReceipt\(/);
+    expect(walkRoute).toMatch(/const walkWasPaid = \/\^\[0-9\]\+\$\/\.test\(walkPaymentTxnId\);/);
     expect(read('routes/academy.ts')).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
     expect(read('services/unified-booking/UnifiedBookingEngine.ts')).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
     expect(read('services/ShopService.ts')).toMatch(/paymentClass: 'SHOP_ITEM'/);
