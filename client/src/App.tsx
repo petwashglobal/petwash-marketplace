@@ -1603,32 +1603,34 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/legal/cookies">
           {() => <Layout><CookiesPolicy /></Layout>}
         </Route>
+        {/* In Layout (2026-09-18): these opened with no header and no footer,
+            so the only way out of a legal page was the browser back button. */}
         <Route path="/legal/trademarks">
-          {() => <Trademarks />}
+          {() => <Layout><Trademarks /></Layout>}
         </Route>
         {/* PR-NAV-2: redirect to canonical /accessibility (was 1 of 3 split paths) */}
         <Route path="/legal/accessibility">{() => <Redirect to="/accessibility" />}</Route>
         <Route path="/legal/marketplace-terms">
-          {() => <MarketplaceTerms />}
+          {() => <Layout><MarketplaceTerms /></Layout>}
         </Route>
         <Route path="/legal/disclaimer">
-          {() => <LegalDisclaimer />}
+          {() => <Layout><LegalDisclaimer /></Layout>}
         </Route>
         {/* Legal Routes — Israel 2026 set (draft, pending counsel) */}
         <Route path="/legal/customer-terms">
-          {() => <LegalCustomerTerms />}
+          {() => <Layout><LegalCustomerTerms /></Layout>}
         </Route>
         <Route path="/legal/provider-agreement">
           {() => <LegalProviderAgreement />}
         </Route>
         <Route path="/legal/cancellation-refund-policy">
-          {() => <LegalCancellationRefund />}
+          {() => <Layout><LegalCancellationRefund /></Layout>}
         </Route>
         <Route path="/legal/wallet-egift-terms">
           {() => <Layout><LegalWalletEGiftTerms /></Layout>}
         </Route>
         <Route path="/legal/station-use-terms">
-          {() => <LegalStationUseTerms />}
+          {() => <Layout><LegalStationUseTerms /></Layout>}
         </Route>
         <Route path="/legal/home-access-property-authority">
           {() => <LegalHomeAccess />}

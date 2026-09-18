@@ -215,7 +215,16 @@ export default function Contact({ language }: ContactProps) {
                     <h3 className="luxury-heading-sm">
                       {currentLanguage === 'en' ? 'Phone Support' : 'תמיכה טלפונית'}
                     </h3>
-                    <p className="luxury-text-small">+972-54-983-3355</p>
+                    {/* Tappable (2026-09-18): the number was plain text, so a
+                        phone visitor could not call support from this page. */}
+                    <a
+                      href="tel:+972549833355"
+                      className="luxury-text-small underline decoration-dotted underline-offset-4"
+                      data-testid="contact-phone-link"
+                      dir="ltr"
+                    >
+                      +972-54-983-3355
+                    </a>
                   </div>
                 </div>
 

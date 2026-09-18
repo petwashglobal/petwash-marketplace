@@ -73,7 +73,10 @@ export function Footer({ language }: FooterProps) {
                 </Link>
               </div>
               <div>
-                <Link href="/terms" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
+                {/* /legal/terms — the same document the menu links, inside the
+                    site layout. /terms redirected to a page with no header or
+                    footer, in English, on a Hebrew site (2026-09-18). */}
+                <Link href="/legal/terms" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
                   {t('footer.terms', language)}
                 </Link>
               </div>
