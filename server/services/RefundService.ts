@@ -17,7 +17,7 @@
 import crypto from "crypto";
 import { db } from "../db";
 import { refundTransactions } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { createOrUpdateAlert } from "./AlertEngine";
 import { logAuditEvent } from "../middleware/auditLog";
@@ -74,6 +74,27 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
     return { refundId: "", status: "failed", executed: false, idempotent: false, skipped: "zero" };
   }
 
+  // Idempotency FIRST (2026-09-18). This lookup used to sit below the
+  // over-refund guards, so once the cumulative cap landed a plain RETRY of an
+  // already-recorded refund counted its own row against the ceiling and threw
+  // instead of returning the existing one. "Have we already recorded exactly
+  // this refund?" has to be answered before "would a NEW refund break the
+  // ceiling?" — caught by the replay case in the behaviour test.
+  const [existing] = await db
+    .select()
+    .from(refundTransactions)
+    .where(eq(refundTransactions.idempotencyKey, idempotencyKey))
+    .limit(1);
+  if (existing) {
+    return {
+      refundId: existing.refundId,
+      status: existing.status as RefundResult["status"],
+      executed: existing.status === "succeeded",
+      railRef: existing.railRef ?? undefined,
+      idempotent: true,
+    };
+  }
+
   // Money-audit F3 (2026-08-24): treasury-drain guard. Previously the service
   // trusted the caller to pass a sane refundCents. Any bug/coercion at a call
   // site with an inflated refundCents ran refundToWallet blind. Now: when the
@@ -90,26 +111,51 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
         `REFUND_EXCEEDS_CHARGE: refundCents (${refundCents}) > chargedCents (${input.chargedCents})`,
       );
     }
+
+    // PARTIAL REFUNDS (2026-09-18). The check above is PER CALL, and every
+    // partial refund passes it on its own. Two refunds of ₪600 against a
+    // ₪1,000 charge are each ≤ ₪1,000, carry different idempotency keys — so
+    // the idempotency guard does not fire either — and together hand back
+    // ₪1,200. Nothing summed what had already gone out.
+    //
+    // Sum every refund for this source that is not `failed`: `succeeded` is
+    // money gone, `pending` is money owed and about to go. Both must count, or
+    // a second refund raised while the first is still awaiting its rail slips
+    // through.
+    //
+    // Serialised per source with a transaction-scoped advisory lock, because
+    // the sum-then-insert is otherwise a read-modify-write: two concurrent
+    // callers under READ COMMITTED cannot see each other's uncommitted row and
+    // would both pass. The lock is keyed on the source, so refunds for
+    // different bookings never wait on each other.
+    const lockKey = `refund:${sourceType}:${sourceId}`;
+    const alreadyOut = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
+      const [agg] = await tx
+        .select({ total: sql<string>`COALESCE(SUM(${refundTransactions.refundCents}), 0)` })
+        .from(refundTransactions)
+        .where(and(
+          eq(refundTransactions.sourceType, sourceType),
+          eq(refundTransactions.sourceId, sourceId),
+          ne(refundTransactions.status, "failed"),
+        ));
+      return Number(agg?.total ?? 0);
+    });
+
+    if (alreadyOut + refundCents > input.chargedCents) {
+      logger.error("[RefundService] REJECTED over-refund attempt: refunds already out + this one exceed the charge", {
+        sourceType, sourceId, userId,
+        refundCents, alreadyRefundedCents: alreadyOut, chargedCents: input.chargedCents,
+        initiatedBy: input.initiatedBy,
+      });
+      throw new Error(
+        `REFUND_EXCEEDS_CHARGE: already refunded ${alreadyOut} + this ${refundCents} > charged ${input.chargedCents}`,
+      );
+    }
   } else {
     logger.warn("[RefundService] refund proceeding without chargedCents context — over-refund guard cannot enforce a cap on this call", {
       sourceType, sourceId, userId, refundCents, initiatedBy: input.initiatedBy,
     });
-  }
-
-  // Idempotency — already recorded?
-  const [existing] = await db
-    .select()
-    .from(refundTransactions)
-    .where(eq(refundTransactions.idempotencyKey, idempotencyKey))
-    .limit(1);
-  if (existing) {
-    return {
-      refundId: existing.refundId,
-      status: existing.status as RefundResult["status"],
-      executed: existing.status === "succeeded",
-      railRef: existing.railRef ?? undefined,
-      idempotent: true,
-    };
   }
 
   const refundId = makeRefundId(idempotencyKey);
