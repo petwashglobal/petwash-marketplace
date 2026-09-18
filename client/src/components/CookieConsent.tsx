@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Cookie } from 'lucide-react';
 import type { Language } from '@/lib/i18n';
 import { 
@@ -36,6 +36,39 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
       document.body.removeAttribute('data-cookie-consent-active');
     };
   }, [isVisible]);
+
+  // Measured live on 2026-09-18, iPhone-sized viewport (375×812), first visit
+  // to /packages: the panel occupied y=420…806 — 48% of the screen — and sat
+  // ON TOP of 17 tappable things, including the ₪150 / ₪220 / ₪400 package
+  // cards and every item of the bottom nav. A first-time visitor could not
+  // buy the product they came for until they answered the banner.
+  //
+  // Publish the panel's real height so the page can reserve room BELOW its
+  // content (index.css). Then everything the banner covers can be scrolled
+  // clear of it; nothing is unreachable while the choice is still open. Not
+  // one word of the notice changes — this is reach, not copy.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!isVisible || !panelRef.current) {
+      root.style.removeProperty('--pw-cookie-banner-h');
+      return;
+    }
+    const el = panelRef.current;
+    const publish = () => {
+      root.style.setProperty('--pw-cookie-banner-h', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    };
+    publish();
+    // The panel's height changes with language, font size and orientation.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(publish) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', publish);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', publish);
+      root.style.removeProperty('--pw-cookie-banner-h');
+    };
+  }, [isVisible, language]);
 
   const handleAcceptAll = async () => {
     await saveConsentPreferences(createAcceptAllConsent());
@@ -126,19 +159,22 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
   return (
     <div
       data-testid="cookie-consent-banner"
-      className={`fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md z-[9100] transition-all duration-400 ${
+      ref={panelRef}
+      className={`fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md z-[9100] transition-all duration-400 ${
         isAnimatingOut ? 'opacity-0 translate-y-4 scale-95' : 'opacity-100 translate-y-0 scale-100'
       }`}
       style={{
         animation: isAnimatingOut ? 'none' : 'slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-        // Issue #166: keep the panel fully visible above iPhone home indicator
-        // by adding the safe-area inset; cap height so long copy doesn't push
-        // the action buttons offscreen (panel scrolls internally instead).
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        // Sit ABOVE MobileBottomNav (2026-09-18) — it used to cover the whole
+        // bar, so Home / PawFinder / the rest were untappable for a first-time
+        // visitor. --pw-bottom-nav-offset is 56px on mobile, 0 from 768px up
+        // (client/src/styles/floating-stack.css), which is the same offset the
+        // floating buttons already use.
+        bottom: 'calc(1rem + var(--pw-bottom-nav-offset, 0px) + env(safe-area-inset-bottom, 0px))',
       }}
     >
       <div
-        className="backdrop-blur-xl rounded-2xl p-5 shadow-2xl overflow-y-auto"
+        className="backdrop-blur-xl rounded-2xl p-5 shadow-2xl flex flex-col"
         style={{
           background: '#FFFFFF',
           border: '1px solid #000000',
@@ -155,7 +191,10 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
           maxHeight: 'min(62dvh, calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px)))',
         }}
       >
-        <div className="flex gap-4">
+        {/* The NOTICE scrolls if it has to; the CHOICES never do. The whole
+            panel used to be the scroller, so on a short viewport the Accept /
+            Reject / Manage buttons could be scrolled out of the panel itself. */}
+        <div className="flex gap-4 min-h-0 overflow-y-auto">
           <div 
             className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
             style={{
@@ -203,45 +242,45 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
               </a>
             </p>
             
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={handleAcceptAll}
-                className="btn-gucci-black w-full hover:opacity-90 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl shadow-lg"
-                style={{
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                  fontWeight: 500,
-                }}
-                data-testid="button-accept-all-cookies"
-              >
-                {t.acceptAll}
-              </button>
-              
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button
-                  onClick={handleRejectAll}
-                  className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
-                  style={{
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                    fontWeight: 400,
-                  }}
-                  data-testid="button-reject-all-cookies"
-                >
-                  {t.rejectAll}
-                </button>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 flex-shrink-0 mt-4">
+          <button
+            onClick={handleAcceptAll}
+            className="btn-gucci-black w-full hover:opacity-90 transition-all duration-200 px-4 py-2.5 text-sm rounded-xl shadow-lg"
+            style={{
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+              fontWeight: 500,
+            }}
+            data-testid="button-accept-all-cookies"
+          >
+            {t.acceptAll}
+          </button>
+          
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              onClick={handleRejectAll}
+              className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+              style={{
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                fontWeight: 400,
+              }}
+              data-testid="button-reject-all-cookies"
+            >
+              {t.rejectAll}
+            </button>
 
-                <button
-                  onClick={handleManagePreferences}
-                  className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
-                  style={{
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                    fontWeight: 400,
-                  }}
-                  data-testid="button-manage-cookies"
-                >
-                  {t.manage}
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={handleManagePreferences}
+              className="flex-1 bg-white hover:bg-white text-black border border-black transition-all duration-200 px-4 py-2.5 text-sm rounded-xl"
+              style={{
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                fontWeight: 400,
+              }}
+              data-testid="button-manage-cookies"
+            >
+              {t.manage}
+            </button>
           </div>
         </div>
       </div>
