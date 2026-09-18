@@ -422,8 +422,17 @@ async function fetchSitters(
     : new Set<string>();
 
   const results: ProviderSearchItem[] = [];
+  // What a sitter offers when nothing has been recorded yet. Nothing writes
+  // sitter_profiles.service_types — not the approval seed, not the rate card,
+  // not the profile PATCH — so this post-filter hid EVERY approved sitter and
+  // Browse Sitters returned 0 rows no matter what the sitter did (2026-09-18).
+  // An empty list now means "the standard pet-sitting offer", which is what an
+  // approved sitter is; anything they choose later narrows it.
+  const DEFAULT_SITTER_SERVICES = ["boarding", "drop_in"];
+
   for (const s of rows) {
-    const services = s.sitterServices ?? [];
+    const recorded = s.sitterServices ?? [];
+    const services = recorded.length > 0 ? recorded : DEFAULT_SITTER_SERVICES;
     // Post-filter by requested service type
     if (serviceType) {
       const required = SITTER_SERVICE_MAP[serviceType] ?? [];

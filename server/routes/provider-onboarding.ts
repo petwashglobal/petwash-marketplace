@@ -2555,6 +2555,11 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         sitter: 'sitter_suite',
         driver: 'pet_trek',
         trainer: 'academy',
+        // A groomer had NO mapping here (2026-09-18), so approving one produced
+        // an empty platformIds set and the whole block — providers row, profile
+        // seed, provider_profiles upsert — was skipped. /groomers searches
+        // providers.platform_id = 'groomers', so groomers could never exist.
+        groomer: 'groomers',
         station_operator: 'k9000',
       };
       // CEO §73 #17 (2026-08-28): MULTI-SERVICE APPROVAL.

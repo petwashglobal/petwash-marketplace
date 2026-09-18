@@ -1567,7 +1567,9 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
         sitter:            'sitter_suite',
         driver:            'pet_trek',
         trainer:           'academy',
-        groomer:           'pet_wash_hub',
+        // 'pet_wash_hub' is read by no search (2026-09-18): a groomer approved
+        // here was invisible too. /groomers reads platform_id = 'groomers'.
+        groomer:           'groomers',
         station_operator:  'k9000',
       };
       const seededTypes = approvedServices.map((s) => s.serviceType);
