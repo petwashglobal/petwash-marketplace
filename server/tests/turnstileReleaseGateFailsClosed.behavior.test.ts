@@ -31,8 +31,10 @@ const WRITER = join(ROOT, 'scripts', 'guards', 'write-build-config.mjs');
 
 /** A bundle that DID get a site key, so the client half never masks a server-half result. */
 let goodDist = '';
-/** A PATH with node but deliberately no gcloud. */
+/** A PATH with node but deliberately no gcloud. This is the DEFAULT for every run. */
 let noGcloudPath = '';
+/** A PATH whose `gcloud` reports a CURRENT service that already binds the secret. */
+let boundGcloudPath = '';
 
 beforeAll(() => {
   goodDist = mkdtempSync(join(tmpdir(), 'pw-good-'));
@@ -46,7 +48,41 @@ beforeAll(() => {
   const binDir = mkdtempSync(join(tmpdir(), 'pw-bin-'));
   mkdirSync(binDir, { recursive: true });
   writeFileSync(join(binDir, 'node'), `#!/bin/sh\nexec ${process.execPath} "$@"\n`, { mode: 0o755 });
-  noGcloudPath = `${binDir}:/usr/bin:/bin`;
+  // ONLY this dir: the CI runner image ships gcloud in /usr/bin, so a PATH that
+  // still carried the system dirs would not be gcloud-free at all.
+  noGcloudPath = binDir;
+
+  // A gcloud that answers instantly with a service that DOES bind the secret.
+  // The real thing must never be reached from a test: an unauthenticated
+  // `gcloud run services describe` sits on the metadata server for tens of
+  // seconds, which is how this file timed out on CI while passing locally —
+  // and a test that reaches a live GCP project is not a test.
+  const gcloudDir = mkdtempSync(join(tmpdir(), 'pw-gcloud-'));
+  mkdirSync(gcloudDir, { recursive: true });
+  writeFileSync(join(gcloudDir, 'node'), `#!/bin/sh\nexec ${process.execPath} "$@"\n`, { mode: 0o755 });
+  writeFileSync(
+    join(gcloudDir, 'gcloud'),
+    // `echo` and not a heredoc + `cat`: PATH here is the fake bin dir alone, so
+    // only shell builtins are reachable.
+    '#!/bin/sh\necho \''
+    + JSON.stringify({
+      spec: {
+        template: {
+          spec: {
+            containers: [{
+              env: [
+                { name: 'DATABASE_URL', valueFrom: { secretKeyRef: { name: 'DATABASE_URL' } } },
+                { name: 'TURNSTILE_SECRET_KEY', valueFrom: { secretKeyRef: { name: 'TURNSTILE_SECRET_KEY' } } },
+              ],
+            }],
+          },
+        },
+      },
+    })
+    + '\'\n',
+    { mode: 0o755 },
+  );
+  boundGcloudPath = gcloudDir;
 });
 
 afterAll(() => {
@@ -67,7 +103,9 @@ function run(env: Record<string, string>, dist = goodDist): { code: number; out:
   try {
     const out = execFileSync('/bin/sh', ['-c', cmd], {
       encoding: 'utf8',
-      env: { ...process.env, ...env },
+      // PATH is pinned to a gcloud-free one BEFORE the caller's env, so a test
+      // only talks to gcloud when it deliberately puts one on the PATH.
+      env: { ...process.env, PATH: noGcloudPath, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     return { code: 0, out };
@@ -141,8 +179,10 @@ describe('FAIL CLOSED when the gate cannot evaluate', () => {
 
   it('a healthy CURRENT service is a diagnostic, never a pass', () => {
     // Even if the live service binds it, that says nothing about the candidate.
-    const r = run({ TURNSTILE_INVARIANT_ENV: 'production' });
+    const r = run({ TURNSTILE_INVARIANT_ENV: 'production', PATH: boundGcloudPath });
     expect(r.code).toBe(1);
+    expect(r.out).toContain('Currently deployed service binds TURNSTILE_SECRET_KEY');
+    expect(r.out).toContain('not evidence about the next revision');
   });
 
   it('non-production warns instead of blocking', () => {

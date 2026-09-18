@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
+/**
+ * The per-platform capacitor.config.json files are written by `npx cap sync`
+ * and are gitignored (ios/.gitignore, android/.gitignore), so they exist on a
+ * developer machine and NEVER in CI. Reading them unconditionally made this
+ * whole file fail on CI with ENOENT — it passed locally, so it sat in the red
+ * baseline and guarded nothing. Everything else here is committed and is always
+ * checked; these two are checked wherever they have been generated.
+ */
+const readIfGenerated = (path: string): string | null => {
+  try { return readFileSync(path, "utf8"); } catch { return null; }
+};
+
 describe("customer Capacitor foundation", () => {
   it("keeps provider as the default root config and stores customer as a separate template", () => {
     const rootConfig = read("capacitor.config.ts");
@@ -47,8 +59,8 @@ describe("customer Capacitor foundation", () => {
     const iosPackage = read("ios-customer/App/CapApp-SPM/Package.swift");
     const androidGradle = read("android-customer/app/build.gradle");
     const androidManifest = read("android-customer/app/src/main/AndroidManifest.xml");
-    const iosConfig = read("ios-customer/App/App/capacitor.config.json");
-    const androidConfig = read("android-customer/app/src/main/assets/capacitor.config.json");
+    const iosConfig = readIfGenerated("ios-customer/App/App/capacitor.config.json");
+    const androidConfig = readIfGenerated("android-customer/app/src/main/assets/capacitor.config.json");
 
     expect(xcodeProject).toContain("PRODUCT_BUNDLE_IDENTIFIER = com.petwash.il");
     // The customer app now ships to TestFlight, so it IS signed. Guard that the
@@ -75,7 +87,7 @@ describe("customer Capacitor foundation", () => {
     expect(androidTest).toContain('"il.co.petwash.customer"');
     expect(androidTest).not.toContain("com.getcapacitor.myapp");
 
-    for (const generatedConfig of [iosConfig, androidConfig]) {
+    for (const generatedConfig of [iosConfig, androidConfig].filter((c): c is string => c !== null)) {
       expect(generatedConfig).toContain('"appId": "com.petwash.il"');
       expect(generatedConfig).toContain('"appName": "PetWash Customer"');
       expect(generatedConfig).toContain('"webDir": "dist/public"');
