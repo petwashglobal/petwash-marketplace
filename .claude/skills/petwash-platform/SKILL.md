@@ -372,6 +372,10 @@ For pure backend PRs (audit, observability, governance), state explicitly which 
 ### Verification baselines
 Always capture **before** numbers for `tsc --noEmit` error count and `vitest` pass/fail before you start. Re-run after. The PR report must show both numbers.
 
+**Why main looks "always failing" (read before you touch CI or a test):**
+- The Production Deploy workflow is serialized on one concurrency group with `cancel-in-progress: false`. GitHub keeps only ONE queued run per group, so when merges land minutes apart the superseded queued run is marked **cancelled**. That is not a failed deploy: the newest commit still deploys. 2026-09-17/18: 35 cancelled vs 23 success vs 0 failed.
+- The red ✗ on a push to main is the **Money & Auth Safety Gate → regression-pins** job. It runs the whole vitest suite (3,700+ files) against `scripts/ci/pins_red_baseline.txt`. One test that passes on a PR but fails on main (different env: `GITHUB_REF`, gcloud on PATH) turns EVERY subsequent push red until someone fixes that one test — a new file each time. Fix the test so it is hermetic; never add it to the baseline; and verify with `GITHUB_REF=refs/heads/main NODE_ENV=test npx vitest run <file>` before removing anything from the baseline.
+
 ---
 
 ## 6. Design rules
