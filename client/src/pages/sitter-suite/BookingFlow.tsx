@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { countCalendarDays } from '@shared/calendarDays';
 import { useParams, useLocation } from "wouter";
 import { useNetworkGuard } from "@/hooks/useNetworkGuard";
 import { useQuery } from "@tanstack/react-query";
@@ -69,9 +70,12 @@ function formatDisplayDate(date?: Date | null): string {
   return date.toLocaleDateString('he-IL', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+// The SAME nights the server charges (shared/calendarDays.ts). This counted
+// 24-hour blocks, so a Mon 09:00 → Tue 18:00 stay showed 2 nights (₪575) while
+// the server charged 1 (₪287.50) — and the sitter was paid for one.
+// A stay that ends after it starts is always at least one night.
 function daysBetween(start: Date, end: Date): number {
-  const diff = end.getTime() - start.getTime();
-  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  return Math.max(1, countCalendarDays(start, end, 'Asia/Jerusalem'));
 }
 
 export default function SitterBookingFlow() {

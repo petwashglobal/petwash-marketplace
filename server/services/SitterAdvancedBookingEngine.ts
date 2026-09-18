@@ -184,13 +184,17 @@ export class SitterAdvancedBookingEngine {
     // Base subtotal
     let subtotal = baseRate * duration;
 
-    // Apply holiday surge pricing (50% increase)
-    let holidaySurge = 0;
+    // Holiday surge: OFF (2026-09-18). It added 50% to the stay here while the
+    // booking screen has no surge term at all — the customer would confirm
+    // ₪862.50 and be charged ₪1,293.75, which §17a does not allow. It was inert
+    // only because the ISR holiday windows in SitterGlobalConfig all ended
+    // 2026-01-05; refreshing that list would have switched it on silently.
+    // To bring it back: price it in the quote the screen shows (a surcharge
+    // line the customer sees before confirming), not here.
+    const holidaySurge = 0;
     const countryCode = this.getCountryFromIP(ipAddress);
     if (globalConfig.isHolidayPeriod(startDate, endDate, countryCode)) {
-      holidaySurge = subtotal * 0.50; // 50% surge
-      subtotal += holidaySurge;
-      logger.info('[Dynamic Pricing] Holiday surge applied', { sitterId, surge: holidaySurge });
+      logger.info('[Dynamic Pricing] Holiday period — no surge applied (not shown to the customer)', { sitterId });
     }
 
     // Loyalty discounts are NOT allowed on pet-sitting — it is a marketplace JV
