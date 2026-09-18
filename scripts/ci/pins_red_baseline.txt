@@ -23,7 +23,6 @@ server/tests/adminOctopus.regression.test.ts  # red on main at gate landing
 server/tests/aiUserBudgetWiring.regression.test.ts  # red on main at gate landing
 server/tests/backup-report-honesty-2026-07-08.test.ts  # red on main at gate landing
 server/tests/booking-complete-email-sms.test.ts  # red on main at gate landing
-server/tests/booking-fullcircle.test.ts  # red on main at gate landing
 server/tests/booking-requests-401-sweep.regression.test.ts  # red on main at gate landing
 server/tests/bookingCancelIdempotent.regression.test.ts  # red on main at gate landing
 server/tests/bookingCompleteIdempotent.regression.test.ts  # red on main at gate landing

@@ -70,9 +70,16 @@ describe('COMPLETE circles — must stay wired (regression guard)', () => {
   });
 
   it('sitter: nayax payment txn + receipt + notification', () => {
-    const s = src('server/routes/sitter-suite.ts');
-    expect(s).toMatch(/processBookingPayment|nayaxSitterMarketplace/);
-    expect(s).toMatch(/generateReceipt/);
+    // 2026-09-18: the accept path moved OUT of the route into
+    // acceptSitterBookingCore. The route kept the Nayax import, so the first
+    // half of this pin still matched and only the receipt half failed —
+    // a pin that reads the wrong file reports the wrong thing either way.
+    expect(src('server/routes/sitter-suite.ts')).toMatch(/processBookingPayment|nayaxSitterMarketplace/);
+    const core = src('server/services/booking-response/acceptSitterBookingCore.ts');
+    expect(core).toMatch(/generateReceipt/);
+    // And never for money that was not collected — a SIM_ payment must not
+    // produce a חשבונית.
+    expect(core).toMatch(/SIM_/);
   });
 });
 
@@ -96,7 +103,10 @@ describe('KNOWN GAPS — pinned until fixed (flip the assertion when wired)', ()
 
   it('Sitter receipt resolves the real customer email (gap fixed)', () => {
     // The empty-string default that silently dropped the receipt email is gone;
-    // the route looks up the owner's email from the users table.
-    expect(src('server/routes/sitter-suite.ts')).toMatch(/customerEmail:\s*owner\?\.email/);
+    // the accept path looks the owner's email up from the users table. It lives
+    // in acceptSitterBookingCore since the route was split (2026-09-18) — the
+    // pin was still reading sitter-suite.ts and so reported a fixed gap as open.
+    expect(src('server/services/booking-response/acceptSitterBookingCore.ts'))
+      .toMatch(/customerEmail:\s*owner\?\.email/);
   });
 });
