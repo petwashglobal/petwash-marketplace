@@ -65,6 +65,23 @@ function sign(bodyBytes: Buffer, secret = SECRET): string {
   return 'sha256=' + crypto.createHmac('sha256', secret).update(bodyBytes).digest('hex');
 }
 
+/**
+ * Send the EXACT bytes, and nothing else.
+ *
+ * 2026-09-18: every case here used `.send(Buffer.from(json))`. With
+ * content-type application/json, superagent JSON-SERIALISES a Buffer, so the
+ * handler received `{"type":"Buffer","data":[123,34,...]}` — not the bytes the
+ * test signed. A correct signature therefore could never verify (the positive
+ * case failed, red-baselined), and the three rejection cases passed for the
+ * wrong reason: they would have passed against a handler that verified nothing.
+ *
+ * A STRING body is transmitted verbatim, so the bytes signed are the bytes
+ * received. Buffer.from(text) is what both the signature and express.raw see.
+ */
+function bodyText(obj: unknown): string {
+  return JSON.stringify(obj);
+}
+
 function buildApp() {
   const app = express();
   // Same middleware production uses on this route.
@@ -90,12 +107,13 @@ describe('WhatsApp Meta webhook — signature verification (regression)', () => 
     delete process.env.META_WEBHOOK_SECRET;
     process.env.NODE_ENV = 'production';
 
-    const body = Buffer.from(JSON.stringify({ entry: [] }));
+    const text = bodyText({ entry: [] });
+    const body = Buffer.from(text);
     const res = await request(buildApp())
       .post('/api/webhooks/whatsapp')
       .set('content-type', 'application/json')
       .set('x-hub-signature-256', 'sha256=' + '0'.repeat(64))
-      .send(body);
+      .send(text);
 
     expect(res.status).toBe(403);
   });
@@ -103,11 +121,12 @@ describe('WhatsApp Meta webhook — signature verification (regression)', () => 
   it('rejects when the x-hub-signature-256 header is missing entirely', async () => {
     process.env.META_WEBHOOK_SECRET = SECRET;
 
-    const body = Buffer.from(JSON.stringify({ entry: [] }));
+    const text = bodyText({ entry: [] });
+    const body = Buffer.from(text);
     const res = await request(buildApp())
       .post('/api/webhooks/whatsapp')
       .set('content-type', 'application/json')
-      .send(body);
+      .send(text);
 
     expect(res.status).toBe(403);
   });
@@ -115,13 +134,14 @@ describe('WhatsApp Meta webhook — signature verification (regression)', () => 
   it('rejects when x-hub-signature-256 has a wrong length (must not crash on timingSafeEqual, must not 500)', async () => {
     process.env.META_WEBHOOK_SECRET = SECRET;
 
-    const body = Buffer.from(JSON.stringify({ entry: [] }));
+    const text = bodyText({ entry: [] });
+    const body = Buffer.from(text);
     // A truncated hex digest → provided buffer is shorter than expected.
     const res = await request(buildApp())
       .post('/api/webhooks/whatsapp')
       .set('content-type', 'application/json')
       .set('x-hub-signature-256', 'sha256=deadbeef') // 4 bytes instead of 32
-      .send(body);
+      .send(text);
 
     // Critical: 403 (not 500). A 500 makes Meta retry the delivery forever.
     expect(res.status).toBe(403);
@@ -131,14 +151,15 @@ describe('WhatsApp Meta webhook — signature verification (regression)', () => 
   it('rejects when the HMAC does not match the raw body bytes', async () => {
     process.env.META_WEBHOOK_SECRET = SECRET;
 
-    const body = Buffer.from(JSON.stringify({ entry: [{ changes: [{ value: {} }] }] }));
+    const text = bodyText({ entry: [{ changes: [{ value: {} }] }] });
+    const body = Buffer.from(text);
     // Signature over DIFFERENT bytes than we send.
     const wrongSig = sign(Buffer.from('different bytes'));
     const res = await request(buildApp())
       .post('/api/webhooks/whatsapp')
       .set('content-type', 'application/json')
       .set('x-hub-signature-256', wrongSig)
-      .send(body);
+      .send(text);
 
     expect(res.status).toBe(403);
   });
@@ -150,15 +171,16 @@ describe('WhatsApp Meta webhook — signature verification (regression)', () => 
     // invoking any staff routing. That still exercises: raw body reached the
     // handler as a Buffer, HMAC computed over those exact bytes, verify
     // passed.
-    const body = Buffer.from(JSON.stringify({
+    const text = bodyText({
       object: 'whatsapp_business_account',
       entry: [{ id: '0', changes: [{ value: { messaging_product: 'whatsapp' } }] }],
-    }));
+    });
+    const body = Buffer.from(text);
     const res = await request(buildApp())
       .post('/api/webhooks/whatsapp')
       .set('content-type', 'application/json')
       .set('x-hub-signature-256', sign(body))
-      .send(body);
+      .send(text);
 
     expect(res.status).toBe(200);
   });
