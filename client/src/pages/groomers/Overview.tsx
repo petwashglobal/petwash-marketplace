@@ -105,6 +105,16 @@ export default function GroomersOverview() {
                     Book Now
                   </Button>
                 </Link>
+                {/* The customer's own grooming bookings. Its only real link used
+                    to live in the deleted /groomers/book page, which left the
+                    dashboard unreachable (the quick-action list below builds its
+                    href dynamically, so nothing static pointed at it). */}
+                <Link href="/groomers/customer/dashboard">
+                  <Button size="lg" variant="outline" className="px-8" data-testid="button-my-grooming-bookings">
+                    <Clock className="h-5 w-5 mr-2" />
+                    My Appointments
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>
