@@ -8,14 +8,14 @@ import { t, type Language } from '@/lib/i18n';
 import { logger } from "@/lib/logger";
 import type { WashPackage } from '@shared/schema';
 
-import pinkCardFront from '@assets/IMG_3094_1770832584882.png';
-import greenCardFront from '@assets/IMG_3091_1770832584882.png';
 import blackCardFront from '@assets/IMG_1998_1770750271081.png';
 import goldCardFront from '@assets/IMG_1996_1770750271081.png';
 
+// Only genuine wash-package artwork. The 1- and 3-wash cards used the
+// GIFT-CARD images — the homepage sold a ₪55 single wash under a picture
+// reading "Gift Card Value: 100 Shekel" and a ₪150 three-wash under
+// "Gift Card Value: 250 Shekel" (seen live 2026-09-18). Same fix as /packages.
 const cardImagesByWashCount: Record<number, string> = {
-  1: pinkCardFront,
-  3: greenCardFront,
   5: blackCardFront,
   10: goldCardFront,
 };
@@ -231,7 +231,7 @@ export function WashPackages({ language }: WashPackagesProps) {
             const perWash = perWashText[language] || perWashText.en;
             const isPopular = badge === 'POPULAR';
             const isElite = badge === 'ELITE';
-            const cardImage = cardImagesByWashCount[pkg.washCount] || pinkCardFront;
+            const cardImage = cardImagesByWashCount[pkg.washCount];
             
             return (
               <div
@@ -256,13 +256,25 @@ export function WashPackages({ language }: WashPackagesProps) {
                   )}
 
                   <div className="relative overflow-hidden">
-                    <img 
-                      src={cardImage} 
-                      alt={`⁦PetWash™⁩ ${pkg.name} Package`}
-                      className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                      style={{ display: 'block' }}
-                      loading="lazy"
-                    />
+                    {cardImage ? (
+                      <img 
+                        src={cardImage} 
+                        alt={`⁦PetWash™⁩ ${pkg.name} Package`}
+                        className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                        style={{ display: 'block' }}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div
+                        className="w-full aspect-[1.6/1] flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#3a3a3a] text-white"
+                        data-testid={`home-package-panel-${pkg.washCount}`}
+                      >
+                        <span className="text-2xl sm:text-3xl font-bold">{pkg.washCount}</span>
+                        <span className="text-[9px] sm:text-[10px] tracking-[0.2em] uppercase opacity-80">
+                          {pkg.washCount === 1 ? 'wash' : 'washes'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="px-3 sm:px-4 py-3 sm:py-4">
