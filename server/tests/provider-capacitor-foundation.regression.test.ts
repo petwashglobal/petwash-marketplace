@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(path, "utf8");
 
+/**
+ * The per-platform capacitor.config.json files are written by `npx cap sync`
+ * and are gitignored (ios/.gitignore, android/.gitignore), so they exist on a
+ * developer machine and NEVER in CI. Reading them unconditionally made this
+ * whole file fail on CI with ENOENT — it passed locally, so it sat in the red
+ * baseline and guarded nothing. Everything else here is committed and is always
+ * checked; these two are checked wherever they have been generated.
+ */
+const readIfGenerated = (path: string): string | null => {
+  try { return readFileSync(path, "utf8"); } catch { return null; }
+};
+
 describe("provider Capacitor foundation", () => {
   it("keeps the provider wrapper pointed at the local production bundle", () => {
     const config = read("capacitor.config.ts");
@@ -49,8 +61,8 @@ describe("provider Capacitor foundation", () => {
     const iosPackage = read("ios/App/CapApp-SPM/Package.swift");
     const androidGradle = read("android/app/build.gradle");
     const androidManifest = read("android/app/src/main/AndroidManifest.xml");
-    const iosConfig = read("ios/App/App/capacitor.config.json");
-    const androidConfig = read("android/app/src/main/assets/capacitor.config.json");
+    const iosConfig = readIfGenerated("ios/App/App/capacitor.config.json");
+    const androidConfig = readIfGenerated("android/app/src/main/assets/capacitor.config.json");
 
     expect(xcodeProject).toContain("PRODUCT_BUNDLE_IDENTIFIER = il.co.petwash.provider");
     // The provider app now ships to TestFlight, so it IS signed. Guard that the
@@ -68,7 +80,7 @@ describe("provider Capacitor foundation", () => {
     expect(androidManifest).toContain("android.permission.POST_NOTIFICATIONS");
     expect(androidManifest).toContain("android.permission.CAMERA");
 
-    for (const generatedConfig of [iosConfig, androidConfig]) {
+    for (const generatedConfig of [iosConfig, androidConfig].filter((c): c is string => c !== null)) {
       expect(generatedConfig).toContain('"appId": "il.co.petwash.provider"');
       expect(generatedConfig).toContain('"appName": "PetWash Provider"');
       expect(generatedConfig).toContain('"webDir": "dist/public"');
