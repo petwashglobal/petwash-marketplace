@@ -12,12 +12,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Footprints, Home, Star, Loader2 } from "lucide-react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { streakCardState, withZeroStreaks } from "./streakCardState";
 
-interface StreakSummary {
-  walkBookings:  number;
-  sitBookings:   number;
-  consecutiveSameProvider: { providerId: string; count: number } | null;
-}
+import type { StreakSummary } from "./streakCardState";
 
 interface SummaryData {
   streaks: StreakSummary;
@@ -108,6 +105,7 @@ function StreakRow({
   );
 }
 
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function LoyaltyStreakCard({ data: propData }: Props) {
@@ -120,17 +118,21 @@ export function LoyaltyStreakCard({ data: propData }: Props) {
   });
 
   const data   = propData ?? fetchedData;
-  const streaks = data?.streaks;
+  const state  = streakCardState({ hasUser: !!user, hasData: !!data, isLoading });
 
-  if (!user) return null;
+  if (state === 'hidden') return null;
 
-  if (isLoading || !streaks) {
+  if (state === 'loading') {
     return (
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 flex items-center justify-center h-32">
         <Loader2 className="w-5 h-5 text-gray-200 animate-spin" />
       </div>
     );
   }
+
+  // Settled. An absent streak block means "no completed bookings yet", not
+  // "still loading" — render the honest zeros.
+  const streaks = withZeroStreaks(data?.streaks);
 
   const providerCount = streaks.consecutiveSameProvider?.count ?? 0;
 

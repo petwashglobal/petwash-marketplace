@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 // UUID-named jpeg "logos" were non-official recreations and have been removed.
 const OFFICIAL_LOGO = '/brand/petwash-logo-official.png';
 import { PremiumMemberCard } from '@/components/PremiumMemberCard';
+import { useElementInView, shouldShowStationShortcut } from '@/hooks/useElementInView';
 import { MemberCardBack } from '@/components/MemberCardBack';
 import { PetWashIcon } from '@/components/PetWashIcon';
 
@@ -191,6 +192,11 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
           balanceCents={totalLiquid}
           cardDisplay={walletData?.cardDisplay || `PW • ${pass.serialNumber.slice(-8, -4)} ${pass.serialNumber.slice(-4)}`}
           cardId={walletData?.cardId || `PW-${pass.serialNumber.slice(-8)}`}
+          // Use the server-minted identity QR, never a locally-built one. The
+          // card previously drew its own QR from cardId — the same member
+          // number printed in plain text just below it — so it encoded nothing
+          // that was not already readable off the card. No qrUrl, no QR.
+          qrValue={walletData?.memberCard?.qrUrl}
           petName={walletData?.pet?.petName}
           petType={walletData?.pet?.petType ?? undefined}
         />
@@ -609,8 +615,9 @@ function DigitalCardSection({
         </div>
       </div>
 
-      {/* QR Section */}
-      <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(217, 184, 76,0.2)', borderRadius:'20px', padding:'20px', marginBottom:'16px', boxShadow:'0 4px 20px rgba(0,0,0,0.04)' }}>
+      {/* QR Section — id is observed by the floating station shortcut below, which
+          hides itself while this block is on screen (it used to sit on top of it). */}
+      <div id="k9000-redeem-section" style={{ background:'#FFFFFF', border:'1.5px solid rgba(217, 184, 76,0.2)', borderRadius:'20px', padding:'20px', marginBottom:'16px', boxShadow:'0 4px 20px rgba(0,0,0,0.04)' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
           <div>
             <h3 style={{ fontSize:'0.9rem', fontWeight:700, color:'#1A1A1A', margin:0 }}>
@@ -1159,6 +1166,13 @@ export default function PrestigePassWallet() {
   const [secondsLeft, setSecondsLeft]       = useState(QR_TTL);
   const [isGenerating, setIsGenerating]     = useState(false);
   const [showKioskPass, setShowKioskPass]   = useState(false);
+  // Do not float the station shortcut on top of the redemption QR it opens.
+  const redeemSectionInView = useElementInView('k9000-redeem-section', { enabled: !showKioskPass });
+  const showStationShortcut = shouldShowStationShortcut({
+    redeemSectionInView,
+    overlayOpen: showKioskPass,
+    observerAvailable: typeof window !== 'undefined' && typeof IntersectionObserver !== 'undefined',
+  });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [washEvent, setWashEvent]           = useState<{ bay:string; stationId:string|null; deductedCents:number; newBalanceCents:number; source:string; } | null>(null);
   const [petEditOpen, setPetEditOpen]       = useState(false);
@@ -1354,7 +1368,15 @@ export default function PrestigePassWallet() {
         />
       )}
 
-      {/* ── Sticky "Scan at K9000" FAB ── */}
+      {/* ── Sticky "Scan at K9000" FAB ──
+          Hidden while the inline redemption QR (#k9000-redeem-section) is on
+          screen, and while the kiosk overlay is open. It is position:fixed at
+          bottom:88px and used to float straight over the block it duplicates —
+          the CEO's screenshots caught it covering the low-balance row and the
+          "Scan to identify" heading. shouldShowStationShortcut() fails SAFE:
+          anything it cannot determine resolves to showing the button, because
+          hiding it from someone at a station is the worse error. */}
+      {showStationShortcut && (
       <button
         onClick={() => setShowKioskPass(true)}
         style={{
@@ -1382,6 +1404,7 @@ export default function PrestigePassWallet() {
         <QrCodeIcon size={17} />
         {he ? 'הצג כרטיס — K9000' : 'Show Pass — K9000'}
       </button>
+      )}
 
       <div style={{ background:'#FFFFFF', minHeight:'100dvh', maxWidth:680, margin:'0 auto', paddingBottom:'calc(180px + env(safe-area-inset-bottom, 0px))' }}>
 
