@@ -38,36 +38,7 @@
  *     unchanged in the engine).
  */
 
-const MS_PER_DAY = 86_400_000;
-
-const CANONICAL_FORMAT_LOCALE = 'en-CA'; // produces 'YYYY-MM-DD'
-
-export function countCalendarDays(
-  start: Date,
-  end: Date,
-  timeZone: string = 'Asia/Jerusalem',
-): number {
-  if (!(start instanceof Date) || !(end instanceof Date)) return 0;
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
-  if (end <= start) return 0;
-
-  const fmt = new Intl.DateTimeFormat(CANONICAL_FORMAT_LOCALE, {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-
-  const startYmd = fmt.format(start); // 'YYYY-MM-DD'
-  const endYmd = fmt.format(end);
-
-  const [sy, sm, sd] = startYmd.split('-').map((n) => Number.parseInt(n, 10));
-  const [ey, em, ed] = endYmd.split('-').map((n) => Number.parseInt(n, 10));
-
-  if ([sy, sm, sd, ey, em, ed].some((v) => Number.isNaN(v))) return 0;
-
-  // Compare via UTC-anchored midnights — DST-immune.
-  const startEpoch = Date.UTC(sy, sm - 1, sd);
-  const endEpoch = Date.UTC(ey, em - 1, ed);
-  return Math.round((endEpoch - startEpoch) / MS_PER_DAY);
-}
+// The implementation now lives in shared/calendarDays.ts so the booking screen
+// counts the SAME nights the server charges (2026-09-18). Kept as a re-export:
+// this path is pinned by server/tests/dstOverbilling.regression.test.ts.
+export { countCalendarDays } from '@shared/calendarDays';
