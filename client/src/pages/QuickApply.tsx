@@ -11,6 +11,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
+import { useSEO, pageSEO } from '@/lib/seo';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, Loader2 } from 'lucide-react';
@@ -24,6 +25,7 @@ const SERVICES = [
 ] as const;
 
 export default function QuickApply() {
+  useSEO(pageSEO.quickApply);
   const { language } = useLanguage();
   const isHe = language === 'he' || language === 'ar';
   const [form, setForm] = useState({ fullName: '', phone: '', email: '', city: '', about: '' });
