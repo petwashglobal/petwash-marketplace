@@ -61,9 +61,11 @@ import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import {
   beginServiceCardPayment,
   verifyServiceCardPayment,
+  inspectServiceCardPayment,
   alertPaidButNotFulfilled,
 } from '../lib/serviceBookingCardPayment';
 import { paymentLanguageFor } from '../lib/paymentPageLanguage';
+import { customerMayCancelUnpaid } from '../lib/unpaidCancellation';
 
 const router = Router();
 
@@ -1007,9 +1009,16 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
 
 /**
  * POST /api/walk-my-pet/bookings/:bookingId/cancel — CUSTOMER cancel.
- * MONEY-SAFE: only BEFORE a walker accepts (status pending_provider). Cancels BOTH
- * the customer row and the bridged provider-inbox row. Walk had no customer-cancel
- * route at all. A confirmed booking → contact support. (2026-07-31)
+ * MONEY-SAFE: allowed exactly while NO money has been taken — see
+ * server/lib/unpaidCancellation.ts. Cancels BOTH the customer row and the bridged
+ * provider-inbox row. A paid ('confirmed') walk needs the refund rail → contact
+ * support. (2026-07-31)
+ *
+ * 2026-09-19: 'payment_pending' is now cancellable. Since the walk card rail
+ * shipped, a walker's accept lands the booking there and the customer has paid
+ * NOTHING — 'confirmed' is written only by the verified payment return. Refusing
+ * the cancel told a customer to phone support to get out of a booking they had
+ * never paid for, and left the walker holding a slot nobody wanted.
  */
 router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
@@ -1018,10 +1027,22 @@ router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, as
     const [booking] = await db.select().from(walkBookings).where(eq(walkBookings.bookingId, bookingId)).limit(1);
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
     if (booking.ownerId !== ownerId) return res.status(403).json({ error: 'Access denied' });
-    if (String(booking.status) !== 'pending_provider') {
+    if (!customerMayCancelUnpaid('walk', booking.status)) {
       return res.status(400).json({ error: 'CONFIRMED_BOOKING', message: 'This walk is already accepted. Please contact PetWash support to cancel it.' });
     }
-    await db.update(walkBookings).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(walkBookings.bookingId, bookingId));
+    // Compare-and-set on the status we read: if the customer's payment is
+    // verified in this same moment, that return wins and the cancel refuses,
+    // rather than cancelling a walk that has just been paid for.
+    const cancelled = await db.update(walkBookings)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(and(eq(walkBookings.bookingId, bookingId), eq(walkBookings.status, booking.status)))
+      .returning({ id: walkBookings.id });
+    if (cancelled.length === 0) {
+      return res.status(409).json({
+        error: 'BOOKING_CHANGED',
+        message: 'This walk was just updated — reload and try again.',
+      });
+    }
     await releaseSlotLock(db, bookingId).catch(() => {});
     try {
       await pool.query(
@@ -1360,7 +1381,26 @@ router.get('/walks/:bookingId/sumit-return', async (req, res) => {
     if (!booking) return fail('booking_not_found');
     // Idempotent: a second return for an already-confirmed walk is success.
     if (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') return ok();
-    if (booking.status !== 'payment_pending') return fail(`status_gate:${booking.status}`);
+    if (booking.status !== 'payment_pending') {
+      // The walk is no longer payable — most often because the customer
+      // cancelled while the hosted page was still open. If money DID arrive,
+      // say so loudly rather than redirecting to "not confirmed" and losing it
+      // (2026-09-19). Nothing is claimed here: a live payment must not be bound
+      // to a booking that can no longer be fulfilled.
+      const paid = await inspectServiceCardPayment({
+        kind: 'walk',
+        bookingRef: booking.bookingId,
+        query: req.query as Record<string, unknown>,
+        expectedAmountCents: Math.round(parseFloat(booking.totalCost || '0') * 100),
+      });
+      if (paid.ok) {
+        await alertPaidButNotFulfilled({
+          kind: 'walk', bookingRef: booking.bookingId, transactionId: paid.transactionId,
+          amountCents: paid.amountCents, reason: `paid_after_status_change:${booking.status}`,
+        });
+      }
+      return fail(`status_gate:${booking.status}`);
+    }
 
     const verified = await verifyServiceCardPayment({
       kind: 'walk',

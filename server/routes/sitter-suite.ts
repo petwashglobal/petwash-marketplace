@@ -39,6 +39,7 @@ import { nanoid } from 'nanoid';
 import { nayaxSitterMarketplace } from '../services/NayaxSitterMarketplaceService';
 import { sitterAITriageService } from '../services/SitterAITriageService';
 import { requireLoyaltyMember, enrichWithLoyalty } from '../middleware/loyalty';
+import { customerMayCancelUnpaid } from '../lib/unpaidCancellation';
 import { requireAuth } from '../customAuth';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { withOwnerMedicalFields, filterPetForProvider } from '../lib/petPrivacy';
@@ -1177,11 +1178,20 @@ router.post('/bookings/:bookingId/provider-invoice', requireAuth, async (req, re
 
 /**
  * POST /api/sitter-suite/bookings/:bookingId/cancel — CUSTOMER cancel.
- * MONEY-SAFE: only BEFORE a provider accepts (status pending_provider), when no
- * money has moved. Cancels BOTH the customer row and the bridged provider-inbox row
- * so a cancelled request can't still be accepted. A confirmed/paid booking needs the
- * (manual) refund rail → directed to support rather than risk a wrong refund. Fills
- * the gap: sitter had no customer-cancel route at all. (2026-07-31)
+ * MONEY-SAFE: allowed exactly while NO money has moved. Cancels BOTH the customer
+ * row and the bridged provider-inbox row so a cancelled request can't still be
+ * accepted. A confirmed/paid booking needs the (manual) refund rail → directed to
+ * support rather than risk a wrong refund. Fills the gap: sitter had no
+ * customer-cancel route at all. (2026-07-31)
+ *
+ * 2026-09-19: 'payment_failed' added. acceptSitterBookingCore charges the owner's
+ * stored method on accept; when that charge FAILS the booking lands in
+ * payment_failed — nothing captured, no escrow, and nothing in the product will
+ * ever retry it. The customer was left holding a booking they could not pay for
+ * and could not cancel, and was told to phone support about a charge that never
+ * happened. 'payment_pending' is deliberately NOT here: it is the transient state
+ * around the capture itself, so a row stuck there may or may not have been charged
+ * and only support can tell.
  */
 router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, async (req, res) => {
   try {
@@ -1190,10 +1200,23 @@ router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, as
     const [booking] = await db.select().from(sitterBookings).where(eq(sitterBookings.bookingId, bookingId)).limit(1);
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
     if (booking.ownerId !== ownerId) return res.status(403).json({ error: 'Access denied' });
-    if (String(booking.status) !== 'pending_provider') {
+    // The states in which the customer owes nothing and nothing was taken —
+    // one shared answer, server/lib/unpaidCancellation.ts.
+    if (!customerMayCancelUnpaid('sitter', booking.status)) {
       return res.status(400).json({ error: 'CONFIRMED_BOOKING', message: 'This booking is already accepted. Please contact PetWash support to cancel it.' });
     }
-    await db.update(sitterBookings).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(sitterBookings.bookingId, bookingId));
+    // Compare-and-set on the status we read: a capture landing in this same
+    // moment wins, rather than cancelling a booking that has just been paid.
+    const cancelled = await db.update(sitterBookings)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(and(eq(sitterBookings.bookingId, bookingId), eq(sitterBookings.status, booking.status)))
+      .returning({ id: sitterBookings.id });
+    if (cancelled.length === 0) {
+      return res.status(409).json({
+        error: 'BOOKING_CHANGED',
+        message: 'This booking was just updated — reload and try again.',
+      });
+    }
     // Log the failure — a silently-swallowed releaseSlotLock leaves the slot
     // locked forever, blocking every future booking on that provider/time.
     await releaseSlotLock(db, bookingId).catch((e: any) =>
@@ -1202,8 +1225,12 @@ router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, as
       })
     );
     try {
+      // 'accepted' included (2026-09-19): when the provider accepted and the
+      // capture failed, the mirror is no longer 'pending', and leaving it there
+      // shows the provider a live job for a booking the customer just cancelled.
       await db.execute(sql`UPDATE booking_requests SET status = 'cancelled', updated_at = NOW()
-        WHERE quote_breakdown->'legacyRef'->>'id' = ${bookingId} AND status = 'pending'`);
+        WHERE quote_breakdown->'legacyRef'->>'id' = ${bookingId}
+          AND status IN ('pending', 'accepted')`);
     } catch (e: any) { logger.warn('[Sitter Suite] cancel bridge-sync failed', { error: e?.message }); }
     logger.info('[Sitter Suite] customer cancelled pending booking', { bookingId, ownerId });
     return res.json({ success: true, status: 'cancelled' });

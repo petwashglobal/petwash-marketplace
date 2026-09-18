@@ -54,7 +54,13 @@ describe('the return handler is the only door to confirmed', () => {
   it('verifies with SUMIT before anything else happens', () => {
     expect(ret).toContain('verifyServiceCardPayment(');
     expect(ret.indexOf('verifyServiceCardPayment')).toBeLessThan(ret.indexOf("status: 'confirmed'"));
-    expect(ret).toContain("if (booking.status !== 'payment_pending') return fail(");
+    // The gate itself is unchanged; it grew a body in 2026-09-19 so that a
+    // payment landing for a walk that is no longer payable (the customer
+    // cancelled while the hosted page was open) raises the paid-but-not-
+    // fulfilled alert instead of being redirected away and forgotten.
+    expect(ret).toContain("if (booking.status !== 'payment_pending')");
+    expect(ret).toMatch(/inspectServiceCardPayment\(\{[\s\S]{0,400}alertPaidButNotFulfilled/);
+    expect(ret).toContain('paid_after_status_change');
   });
 
   it('the hold comes before the confirm, and a failed hold refuses', () => {

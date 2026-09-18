@@ -77,7 +77,17 @@ describe('a charged card that could not be fulfilled reaches a human', () => {
     expect(walk).toContain("reason: `escrow_hold_failed: ${escrowErr?.message ?? 'unknown'}`");
     expect(walk).toContain("reason: 'status_changed_during_payment'");
     expect(academy).toContain("reason: 'status_changed_during_payment'");
-    // and only after a verified payment
-    expect(walk.indexOf('verifyServiceCardPayment')).toBeLessThan(walk.indexOf('alertPaidButNotFulfilled'));
+    // and NEVER on an unproven payment: every alert call in the walk rail is
+    // downstream of a server-to-server check with SUMIT — verifyServiceCardPayment
+    // where the payment is claimed, or inspectServiceCardPayment (2026-09-19)
+    // where the booking can no longer be fulfilled and claiming it would bind a
+    // live payment to a dead order.
+    const firstProof = Math.min(
+      ...['verifyServiceCardPayment', 'inspectServiceCardPayment']
+        .map((n) => walk.indexOf(n))
+        .filter((i) => i > -1),
+    );
+    expect(firstProof).toBeLessThan(walk.indexOf('alertPaidButNotFulfilled'));
+    expect(walk).toContain('inspectServiceCardPayment');
   });
 });
