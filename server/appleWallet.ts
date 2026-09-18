@@ -17,6 +17,47 @@ import { db } from './lib/firebase-admin';
 import { logger } from './lib/logger';
 import { generateSignedRedeemToken } from './lib/signedRedeemToken';
 
+/**
+ * ONE SET OF NAMES FOR THE APPLE SIGNING MATERIAL (2026-09-19).
+ *
+ * There are two Apple Wallet generators in this repo and they read DIFFERENT
+ * environment variables for the SAME certificates:
+ *
+ *   server/services/AppleWalletService.ts   APPLE_TEAM_IDENTIFIER
+ *                                           APPLE_WWDR_PEM
+ *                                           APPLE_SIGNER_CERT_PEM
+ *                                           APPLE_SIGNER_KEY_PEM
+ *   this file                               APPLE_TEAM_ID
+ *                                           APPLE_WWDR_CERT
+ *                                           APPLE_SIGNER_CERT
+ *                                           APPLE_SIGNER_KEY
+ *
+ * The *_PEM set is the one that is actually configured — production logs show
+ * /api/pass/apple/:token generating a real pkpass, and admin-create-founder-pass
+ * .yml documents those names as the required secrets. Nothing ever aliased the
+ * two sets.
+ *
+ * So every pass built through THIS file — the BOOKING pass (routes/wallet.ts),
+ * the GIFT CARD pass (routes/gift-cards.ts) and the CEO pass
+ * (routes/ceo-wallet.ts) — asked for certificates under names nobody had set,
+ * decided it was "not configured", and failed. The member/Prestige pass worked
+ * the whole time because it goes through the other file. That is exactly the
+ * reported symptom: one pass installs, another will not.
+ *
+ * Canonical names first, legacy names as a fallback so an environment that set
+ * the old ones keeps working.
+ */
+const APPLE_TEAM_IDENTIFIER =
+  process.env.APPLE_TEAM_IDENTIFIER || process.env.APPLE_TEAM_ID;
+const APPLE_WWDR =
+  process.env.APPLE_WWDR_PEM || process.env.APPLE_WWDR_CERT;
+const APPLE_SIGNER_CERT =
+  process.env.APPLE_SIGNER_CERT_PEM || process.env.APPLE_SIGNER_CERT;
+const APPLE_SIGNER_KEY =
+  process.env.APPLE_SIGNER_KEY_PEM || process.env.APPLE_SIGNER_KEY;
+const APPLE_SIGNER_KEY_PASSPHRASE =
+  process.env.APPLE_SIGNER_KEY_PASSPHRASE || process.env.APPLE_KEY_PASSPHRASE;
+
 interface VIPCardData {
   userId: string;
   userName: string;
@@ -153,7 +194,9 @@ export class AppleWalletService {
     return {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.vip',
-      teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
+      teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
+      // team does not match the signing certificate is rejected by iOS after
+      // download, which looks exactly like "the pass will not open".
       organizationName: '⁦PetWash™⁩',
       description: `Pet Wash ${tierLabel(data.tier)} VIP Card`,
       logoText: '⁦PetWash™⁩',
@@ -252,7 +295,9 @@ export class AppleWalletService {
     return {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
-      teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
+      teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
+      // team does not match the signing certificate is rejected by iOS after
+      // download, which looks exactly like "the pass will not open".
       organizationName: '⁦PetWash™⁩',
       description: 'Pet Wash E-Voucher',
       logoText: '⁦PetWash™⁩',
@@ -337,7 +382,7 @@ export class AppleWalletService {
     try {
       // Check if certificates are configured
       if (!this.hasValidCertificates()) {
-        throw new Error('Apple Wallet certificates not configured. Please set APPLE_WWDR_CERT, APPLE_SIGNER_CERT, and APPLE_SIGNER_KEY environment variables.');
+        throw new Error('Apple Wallet certificates not configured. Set APPLE_TEAM_IDENTIFIER, APPLE_WWDR_PEM, APPLE_SIGNER_CERT_PEM and APPLE_SIGNER_KEY_PEM — the same names server/services/AppleWalletService.ts uses.');
       }
 
       // Generate QR code with Nayax-compatible loyalty data
@@ -371,10 +416,10 @@ export class AppleWalletService {
           'logo@2x.png': qrCodeBuffer
         },
         {
-          wwdr: process.env.APPLE_WWDR_CERT!,
-          signerCert: process.env.APPLE_SIGNER_CERT!,
-          signerKey: process.env.APPLE_SIGNER_KEY!,
-          signerKeyPassphrase: process.env.APPLE_KEY_PASSPHRASE || ''
+          wwdr: APPLE_WWDR!,
+          signerCert: APPLE_SIGNER_CERT!,
+          signerKey: APPLE_SIGNER_KEY!,
+          signerKeyPassphrase: (APPLE_SIGNER_KEY_PASSPHRASE || process.env.APPLE_KEY_PASSPHRASE || '')
         },
         {} // Properties (pass.json already contains all required properties)
       );
@@ -449,10 +494,10 @@ export class AppleWalletService {
           'logo@2x.png': qrCodeBuffer
         },
         {
-          wwdr: process.env.APPLE_WWDR_CERT!,
-          signerCert: process.env.APPLE_SIGNER_CERT!,
-          signerKey: process.env.APPLE_SIGNER_KEY!,
-          signerKeyPassphrase: process.env.APPLE_KEY_PASSPHRASE || ''
+          wwdr: APPLE_WWDR!,
+          signerCert: APPLE_SIGNER_CERT!,
+          signerKey: APPLE_SIGNER_KEY!,
+          signerKeyPassphrase: (APPLE_SIGNER_KEY_PASSPHRASE || process.env.APPLE_KEY_PASSPHRASE || '')
         },
         {} // Properties (pass.json already contains all required properties)
       );
@@ -547,7 +592,9 @@ export class AppleWalletService {
     return {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
-      teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
+      teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
+      // team does not match the signing certificate is rejected by iOS after
+      // download, which looks exactly like "the pass will not open".
       organizationName: '⁦PetWash™⁩',
       description: `PetWash Booking — ${data.serviceLabel}`,
       logoText: '⁦PetWash™⁩',
@@ -630,10 +677,10 @@ export class AppleWalletService {
           'logo@2x.png': qrCodeBuffer,
         },
         {
-          wwdr: process.env.APPLE_WWDR_CERT!,
-          signerCert: process.env.APPLE_SIGNER_CERT!,
-          signerKey: process.env.APPLE_SIGNER_KEY!,
-          signerKeyPassphrase: process.env.APPLE_KEY_PASSPHRASE || '',
+          wwdr: APPLE_WWDR!,
+          signerCert: APPLE_SIGNER_CERT!,
+          signerKey: APPLE_SIGNER_KEY!,
+          signerKeyPassphrase: (APPLE_SIGNER_KEY_PASSPHRASE || process.env.APPLE_KEY_PASSPHRASE || ''),
         },
         {},
       );
@@ -914,7 +961,9 @@ END:VCARD`;
       const passJson = {
         formatVersion: 1,
         passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.businesscard',
-        teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
+        teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
+      // team does not match the signing certificate is rejected by iOS after
+      // download, which looks exactly like "the pass will not open".
         organizationName: data.company,
         description: `${data.name} - Digital Business Card`,
         logoText: '⁦PetWash™⁩',
@@ -1008,10 +1057,10 @@ END:VCARD`;
           'logo@2x.png': qrCodeBuffer
         },
         {
-          wwdr: process.env.APPLE_WWDR_CERT!,
-          signerCert: process.env.APPLE_SIGNER_CERT!,
-          signerKey: process.env.APPLE_SIGNER_KEY!,
-          signerKeyPassphrase: process.env.APPLE_KEY_PASSPHRASE || ''
+          wwdr: APPLE_WWDR!,
+          signerCert: APPLE_SIGNER_CERT!,
+          signerKey: APPLE_SIGNER_KEY!,
+          signerKeyPassphrase: (APPLE_SIGNER_KEY_PASSPHRASE || process.env.APPLE_KEY_PASSPHRASE || '')
         },
         {} // Properties (pass.json already contains all required properties)
       );
@@ -1035,10 +1084,14 @@ END:VCARD`;
    * Check if user has Apple Developer certificates configured
    */
   static hasValidCertificates(): boolean {
+    // The TEAM IDENTIFIER counts. A pass signed correctly but carrying a team
+    // that does not match the certificate downloads and then refuses to open —
+    // indistinguishable, to a customer, from "the pass is broken".
     return !!(
-      process.env.APPLE_WWDR_CERT &&
-      process.env.APPLE_SIGNER_CERT &&
-      process.env.APPLE_SIGNER_KEY
+      APPLE_TEAM_IDENTIFIER &&
+      APPLE_WWDR &&
+      APPLE_SIGNER_CERT &&
+      APPLE_SIGNER_KEY
     );
   }
 }
