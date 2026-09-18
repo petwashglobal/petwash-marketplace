@@ -30,7 +30,10 @@ describe('walk-my-pet escrow fail-closed', () => {
   // walk that was paid but could not be held must NOT read 'confirmed'.
   it('a failed hold in the payment return leaves the walk unconfirmed', () => {
     const ret = SRC.slice(SRC.indexOf("router.get('/walks/:bookingId/sumit-return'"), SRC.indexOf("router.post('/walks/holds'"));
-    expect(ret).toMatch(/PAID but escrow hold failed/);
+    // 2026-09-18: the log line became a critical ALERT — a charged card with no
+    // booking must reach a human, not a log file.
+    expect(ret).toMatch(/alertPaidButNotFulfilled\(\{/);
+    expect(ret).toMatch(/reason: `escrow_hold_failed/);
     expect(ret).toMatch(/return fail\('escrow_hold_failed'\)/);
     // the status flip happens only after the hold, and only from payment_pending
     expect(ret.indexOf("escrow_hold_failed")).toBeLessThan(ret.indexOf("status: 'confirmed'"));

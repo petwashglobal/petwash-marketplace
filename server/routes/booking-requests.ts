@@ -4924,21 +4924,44 @@ router.post('/:requestId/cancel', async (req, res) => {
         }
       });
     } else if (financeState === 'debited' && debitedCents > 0) {
-      setImmediate(async () => {
-        try {
-          const refundResult = await walletService.refundBookingWallet({
-            userId: booking.ownerId, amountCents: debitedCents, bookingId: requestId,
-            divisionCode: getDivisionCode(booking.serviceType),
-            reason: `booking_cancelled_by_${cancelledBy}`, ipAddress: req.ip ?? null,
-          });
-          await db.update(bookingRequests)
-            .set({ walletRefundedCents: debitedCents, walletRefundKey: refundResult.txnId, financeState: 'refunded', refundProcessedAt: new Date(), updatedAt: new Date() })
-            .where(eq(bookingRequests.requestId, requestId));
-          logger.info('[BookingRequests] Wallet refunded on cancel', { requestId, debitedCents, txnId: refundResult.txnId });
-        } catch (e: any) {
-          logger.error('[BookingRequests] Wallet refund failed on cancel', { requestId, error: e.message });
-        }
-      });
+      // Refund the amount the CANCELLATION TIER allows — never the whole debit
+      // (2026-09-18). This branch keyed only on financeState, so a customer
+      // told "no refund applies (customer_under_24h)" was credited back the
+      // full ₪1,000 anyway: the provider got nothing, Pet Wash got nothing,
+      // and recordRefund never ran (it is gated on refundCents > 0), so the
+      // ledger had no row for the money that moved.
+      const walletRefundCents = Math.min(Math.max(0, refundCents), debitedCents);
+      if (walletRefundCents <= 0) {
+        logger.info('[BookingRequests] Cancel with no refund due — wallet debit kept', {
+          requestId, cancellationTier, debitedCents,
+        });
+      } else {
+        setImmediate(async () => {
+          try {
+            const refundResult = await walletService.refundBookingWallet({
+              userId: booking.ownerId, amountCents: walletRefundCents, bookingId: requestId,
+              divisionCode: getDivisionCode(booking.serviceType),
+              reason: `booking_cancelled_by_${cancelledBy}`, ipAddress: req.ip ?? null,
+            });
+            await db.update(bookingRequests)
+              .set({
+                walletRefundedCents: walletRefundCents,
+                walletRefundKey: refundResult.txnId,
+                // Only a FULL refund ends the finance lifecycle; a partial one
+                // leaves the booking debited for the part Pet Wash keeps.
+                financeState: walletRefundCents >= debitedCents ? 'refunded' : 'debited',
+                refundProcessedAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(bookingRequests.requestId, requestId));
+            logger.info('[BookingRequests] Wallet refunded on cancel', {
+              requestId, cancellationTier, walletRefundCents, debitedCents, txnId: refundResult.txnId,
+            });
+          } catch (e: any) {
+            logger.error('[BookingRequests] Wallet refund failed on cancel', { requestId, error: e.message });
+          }
+        });
+      }
     }
 
     // Notify the OTHER party about cancellation via superAppNotifications
