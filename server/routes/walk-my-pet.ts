@@ -1065,21 +1065,13 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
 
     if (action === 'accept') {
       // WALKER ACCEPTED — delegated to acceptWalkBookingCore (Lane C).
-      // The core owns every side effect previously inlined here: atomic
-      // status claim, walkEliteBookingEngine.confirmBooking (escrow),
-      // status flip → 'confirmed' (WHERE-guarded), chat sync, octopus
-      // DRAFT → CONFIRMED (no PAYMENT_CAPTURED — the honest gap),
-      // calendar, GCS backup, customer notification. ONE implementation
-      // shared with BookingResponseDispatcher.
-      //
-      // IMPORTANT: the extracted core's ok payload carries
-      // `paymentRail: 'MISSING'` — walk accept confirms a booking
-      // without capturing any payment (no card charge, no wallet
-      // debit, no SUMIT/ITA document). The dispatcher REFUSES to route
-      // walk accepts because of this. The route handler PRESERVES the
-      // current behaviour for now (i.e. still confirms without payment)
-      // so today's flow is unchanged; a follow-up will land a real
-      // payment rail and then the route can drop the MISSING marker.
+      // The core claims the booking (pending_provider → payment_pending),
+      // syncs the chat, writes the calendar + GCS record and tells the
+      // customer to pay. It confirms NOTHING: the escrow hold and the
+      // 'confirmed' status belong to the verified card payment
+      // (POST /walks/:bookingId/pay → GET /walks/:bookingId/sumit-return).
+      // Before 2026-09-18 accept confirmed the walk with an escrow document
+      // and no money at all.
       const { acceptWalkBookingCore } = await import(
         '../services/booking-response/acceptWalkBookingCore'
       );
@@ -1105,8 +1097,10 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       }
       res.json({
         success: true,
-        status: 'confirmed',
-        message: 'הטיול אושר! הלקוח/ה קיבל/ה הודעה.',
+        status: 'payment_pending',
+        amountDueCents: coreResult.amountDueCents,
+        payUrl: `/walk-my-pet/bookings/${encodeURIComponent(bookingId)}/pay`,
+        message: 'אישרת את הטיול. ההזמנה תאושר סופית לאחר תשלום הלקוח/ה.',
       });
     } else {
       // WALKER DECLINED — delegated to declineWalkBookingCore (Lane C).
@@ -1274,6 +1268,152 @@ router.post('/walks/emergency-request', requireAuth, async (req, res) => {
 });
 
 // =================== SLOT HOLDS (DB-persisted, double-booking prevention) ===================
+
+// ─── CARD PAYMENT FOR A WALK (CEO 2026-09-18: the rail the other bookings use) ──
+// Accepting a walk used to confirm it with an escrow document and no money.
+// Now the walker's accept leaves the booking at payment_pending, the customer
+// pays here, and ONLY the verified return confirms the walk.
+
+// POST /api/walk-my-pet/walks/:bookingId/pay — start the hosted card payment.
+router.post('/walks/:bookingId/pay', requireAuth, async (req, res) => {
+  const { bookingId } = req.params;
+  const userId = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+  try {
+    const [booking] = await db.select().from(walkBookings)
+      .where(eq(walkBookings.bookingId, bookingId)).limit(1);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.ownerId !== userId) {
+      return res.status(403).json({ error: 'Only the owner can pay for this walk' });
+    }
+    if (booking.status !== 'payment_pending') {
+      return res.status(409).json({
+        error: booking.status === 'confirmed'
+          ? 'This walk is already paid and confirmed.'
+          : 'This walk is not awaiting payment.',
+        code: 'WALK_NOT_AWAITING_PAYMENT',
+        status: booking.status,
+      });
+    }
+
+    const amountCents = Math.round(parseFloat(booking.totalCost || '0') * 100);
+    const [owner] = await db.select({ email: users.email, firstName: users.firstName, language: users.language })
+      .from(users).where(eq(users.id, booking.ownerId)).limit(1);
+    const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+
+    const session = await beginServiceCardPayment({
+      kind: 'walk',
+      bookingRef: booking.bookingId,
+      amountCents,
+      description: `PetWash™ Walk My Pet — ${booking.durationMinutes || 30} min`,
+      returnUrl: `${appUrl}/api/walk-my-pet/walks/${encodeURIComponent(booking.bookingId)}/sumit-return`,
+      customerEmail: owner?.email || undefined,
+      customerName: owner?.firstName || undefined,
+      language: paymentLanguageFor(req, owner?.language),
+    });
+
+    if (!session.ok) {
+      // Nothing was charged and the booking is untouched — say so plainly.
+      return res.status(session.code === 'PAYMENT_SESSION_FAILED' ? 502 : 503).json({
+        error: session.message, code: session.code, amountCents,
+      });
+    }
+
+    await db.update(walkBookings)
+      .set({ paymentSessionId: session.sessionId, updatedAt: new Date() })
+      .where(eq(walkBookings.bookingId, booking.bookingId));
+
+    return res.json({ success: true, paymentUrl: session.paymentUrl, amountCents });
+  } catch (error: any) {
+    sendSanitizedError(res, error, 'WALK_PAY_FAILED', { logContext: { op: 'walk-pay', bookingId } });
+  }
+});
+
+// GET /api/walk-my-pet/walks/:bookingId/sumit-return — the ONLY place a walk
+// becomes 'confirmed'. Verify with SUMIT, match the amount to the booking,
+// claim the payment, place the escrow hold, then confirm. Any failure leaves
+// the booking at payment_pending and sends the customer back with payment=failed.
+router.get('/walks/:bookingId/sumit-return', async (req, res) => {
+  const { bookingId } = req.params;
+  const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+  const ok = () => res.redirect(302, `${appUrl}/bookings?payment=success&booking=${encodeURIComponent(bookingId)}`);
+  const fail = (reason: string) => {
+    logger.warn('[WalkPay] return not confirmed', { bookingId, reason });
+    return res.redirect(302, `${appUrl}/bookings?payment=failed&booking=${encodeURIComponent(bookingId)}`);
+  };
+
+  try {
+    const [booking] = await db.select().from(walkBookings)
+      .where(eq(walkBookings.bookingId, bookingId)).limit(1);
+    if (!booking) return fail('booking_not_found');
+    // Idempotent: a second return for an already-confirmed walk is success.
+    if (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') return ok();
+    if (booking.status !== 'payment_pending') return fail(`status_gate:${booking.status}`);
+
+    const verified = await verifyServiceCardPayment({
+      kind: 'walk',
+      bookingRef: booking.bookingId,
+      query: req.query as Record<string, unknown>,
+      expectedAmountCents: Math.round(parseFloat(booking.totalCost || '0') * 100),
+    });
+    if (!verified.ok) return fail(verified.reason);
+
+    // Money is real — now hold it for the walker. FAIL CLOSED: without the
+    // hold the walk stays unconfirmed and ops can see a paid-but-unheld row.
+    try {
+      const { walkEliteBookingEngine } = await import('../services/booking-engines/walk/WalkEliteBookingEngine');
+      await walkEliteBookingEngine.confirmBooking(
+        booking.bookingId,
+        {
+          subtotal: parseFloat(booking.walkerRate || '0'),
+          platformFee: parseFloat(booking.platformFeeOwner || '0') + parseFloat(booking.platformFeeSitter || '0'),
+          providerPayout: parseFloat(booking.walkerPayout || '0'),
+          totalPrice: parseFloat(booking.totalCost || '0'),
+          loyaltyDiscount: 0,
+          currency: booking.currency || 'ILS',
+          breakdown: [],
+          baseRate: parseFloat(booking.walkerRate || '0'),
+        } as any,
+        booking.ownerId,
+        booking.walkerId as unknown as string,
+      );
+    } catch (escrowErr: any) {
+      logger.error('[WalkPay] PAID but escrow hold failed — walk NOT confirmed, needs ops', {
+        bookingId, transactionId: verified.transactionId, error: escrowErr?.message,
+      });
+      return fail('escrow_hold_failed');
+    }
+
+    const updated = await db.update(walkBookings)
+      .set({ status: 'confirmed', paymentSessionId: verified.transactionId, updatedAt: new Date() })
+      .where(and(eq(walkBookings.bookingId, booking.bookingId), eq(walkBookings.status, 'payment_pending')))
+      .returning({ id: walkBookings.id });
+    if (updated.length === 0) return fail('status_changed_during_payment');
+
+    await syncChatToBookingStatus(booking.bookingId, 'confirmed', 'walk_my_pet').catch(() => {});
+
+    try {
+      const [octopusRecord] = await db.select().from(octopusBookings)
+        .where(eq(octopusBookings.idempotencyKey, booking.bookingId)).limit(1);
+      if (octopusRecord) {
+        await db.update(octopusBookings)
+          .set({ status: 'CONFIRMED', updatedAt: new Date() })
+          .where(eq(octopusBookings.id, octopusRecord.id));
+      }
+    } catch (octErr) {
+      logger.warn('[WalkPay] octopus update failed (non-blocking)', { bookingId, err: String(octErr) });
+    }
+
+    logger.info('[WalkPay] walk paid and confirmed', {
+      bookingId, transactionId: verified.transactionId, amountCents: verified.amountCents,
+    });
+    return ok();
+  } catch (error: any) {
+    logger.error('[WalkPay] return handler error', { bookingId, error: error?.message });
+    return fail('unexpected_error');
+  }
+});
 
 router.post('/walks/holds', requireAuth, async (req, res) => {
   try {

@@ -378,6 +378,7 @@ const WalkMyPetOverview = lazy(() => import("@/pages/walk-my-pet/Overview"));
 const WalkMyPet = lazy(() => import("@/pages/walk-my-pet/BrowseWalkers"));
 const WalkerDetail = lazy(() => import("@/pages/walk-my-pet/WalkerDetail"));
 const WalkBookingFlow = lazy(() => import("@/pages/walk-my-pet/BookingFlow"));
+const PayWalk = lazy(() => import("@/pages/walk-my-pet/PayWalk"));
 const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashboard"));
 
 // ⁦PetTrek™⁩ - Advanced Pet Transport
@@ -2050,6 +2051,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* ⁦Walk My Pet™⁩ - Booking Flow */}
+        {/* Pay for a walk the walker accepted — the booking is confirmed only
+            after the payment is verified server-side (2026-09-18). */}
+        <Route path="/walk-my-pet/bookings/:bookingId/pay">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <PayWalk />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+
         <Route path="/walk-my-pet/book/:walkerId">
           {() => (
             <RequireAuth>

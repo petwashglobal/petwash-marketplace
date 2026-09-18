@@ -21,6 +21,11 @@ vi.mock('../services/booking-response/declineWalkBookingCore', () => ({
   declineWalkBookingCore: (...a: any[]) => declineWalkMock(...a),
 }));
 
+const acceptWalkMock = vi.fn();
+vi.mock('../services/booking-response/acceptWalkBookingCore', () => ({
+  acceptWalkBookingCore: (...a: any[]) => acceptWalkMock(...a),
+}));
+
 const acceptSitterMock = vi.fn();
 vi.mock('../services/booking-response/acceptSitterBookingCore', () => ({
   acceptSitterBookingCore: (...a: any[]) => acceptSitterMock(...a),
@@ -177,23 +182,37 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     expect(r.errorCode).toBe('PIPELINE_ERROR');
     expect(r.message).toContain('FORBIDDEN');
   });
-  it('flag ON + walk + accept → PAYMENT_RAIL_MISSING (§24 policy refusal — extracted but no rail)', async () => {
-    // acceptWalkBookingCore.ts EXISTS but its ok payload marks
-    // paymentRail: 'MISSING'. The dispatcher refuses to route here
-    // even flag-on until a real rail lands, so a confirmed walk with
-    // no money captured never leaves through this gate. This test
-    // pins the refusal — a refactor that "wires the extracted core"
-    // without also landing the payment rail would silently confirm
-    // paperless walks in prod.
+  it('flag ON + walk + accept → delegates to acceptWalkBookingCore (the card rail landed)', async () => {
+    // Until 2026-09-18 the dispatcher REFUSED walk accepts
+    // (PAYMENT_RAIL_MISSING) because accept confirmed a walk with no money.
+    // The core now ends at payment_pending and the verified card payment does
+    // the confirming, so routing here can no longer produce a paperless walk.
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    acceptWalkMock.mockResolvedValueOnce({
+      ok: true, status: 'payment_pending', bookingId: 'W-3',
+      paymentRail: 'AWAITING_CUSTOMER_CARD', amountDueCents: 3450,
+    });
     const r = await dispatchAcceptForSource({
       requestId: 'BR-3', providerUid: 'p3',
       quoteBreakdown: { legacyRef: { table: 'walk_bookings', id: 'W-3' } },
       decision: 'accept',
     });
-    expect(r.ok).toBe(false);
-    expect(r.errorCode).toBe('PAYMENT_RAIL_MISSING');
+    expect(r.ok).toBe(true);
+    expect(acceptWalkMock).toHaveBeenCalledWith({ bookingId: 'W-3', providerUid: 'p3' });
     expect(declineWalkMock).not.toHaveBeenCalled();
+  });
+
+  it('flag ON + walk + accept + core refuses → PIPELINE_ERROR, nothing confirmed', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    acceptWalkMock.mockResolvedValueOnce({ ok: false, errorCode: 'ALREADY_CLAIMED', message: 'taken' });
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-3B', providerUid: 'p3b',
+      quoteBreakdown: { legacyRef: { table: 'walk_bookings', id: 'W-3B' } },
+      decision: 'accept',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errorCode).toBe('PIPELINE_ERROR');
+    expect(r.message).toContain('ALREADY_CLAIMED');
   });
 
   it('flag ON + walk + decline → delegates to declineWalkBookingCore with the legacyBookingId', async () => {

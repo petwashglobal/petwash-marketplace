@@ -6,8 +6,11 @@
  *   • Atomic claim: pending_provider → payment_pending in one UPDATE;
  *     loser sees ALREADY_CLAIMED.
  *   • Escrow failure → ESCROW_HOLD_FAILED (never confirms).
- *   • On success: status → 'confirmed', paymentRail marker MUST equal
- *     'MISSING' (the whole point of the extraction is preserving the
+ *   • On success: status → 'payment_pending', paymentRail marker MUST equal
+ *     'AWAITING_CUSTOMER_CARD' (the card rail landed 2026-09-18: accept
+ *     confirms nothing; the verified payment does. Was 'MISSING' — accept
+ *     used to confirm a walk with an escrow document and no money at all.
+ *     The old note read: preserving the
  *     compliance-gap honesty so the dispatcher can refuse).
  *   • Octopus goes DRAFT → CONFIRMED but writes NO PAYMENT_CAPTURED
  *     ledger entry (no money was captured).
@@ -194,69 +197,54 @@ describe('acceptWalkBookingCore — refusal paths', () => {
   });
 });
 
-describe('acceptWalkBookingCore — escrow failure closes the flow', () => {
-  it('confirmBooking throws → ESCROW_HOLD_FAILED, no status flip to confirmed, no calendar/notification', async () => {
+describe('acceptWalkBookingCore — accept places no hold at all', () => {
+  it('never calls the escrow engine: the hold belongs to the verified payment', async () => {
     const row = seed({});
-    confirmBookingMock.mockRejectedValueOnce(new Error('escrow down'));
     const r = await acceptWalkBookingCore({ bookingId: row.bookingId, providerUid: 'walker-uid' });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.errorCode).toBe('ESCROW_HOLD_FAILED');
-    // Row stays in the transient payment_pending state (the atomic claim
-    // flip). Ops sees this rather than a false 'confirmed' row.
+    expect(r.ok).toBe(true);
+    // The escrow hold (and any failure of it) now lives in the /sumit-return
+    // handler, which runs only after SUMIT confirms the charge.
+    expect(confirmBookingMock).not.toHaveBeenCalled();
     expect(row.status).toBe('payment_pending');
-    expect(calendarMock).not.toHaveBeenCalled();
-    expect(dispatchNotificationMock).not.toHaveBeenCalled();
   });
 });
 
-describe('acceptWalkBookingCore — happy path (§24 paymentRail:MISSING honesty)', () => {
-  it('flips status → confirmed and returns paymentRail: MISSING (compliance-gap marker)', async () => {
-    // This is THE load-bearing pin. A future refactor that drops the
-    // MISSING marker without also landing a real payment rail would
-    // unblock the dispatcher into silently confirming paperless walks
-    // in prod. Never remove without shipping the rail.
+describe('acceptWalkBookingCore — happy path (accept ends at payment_pending)', () => {
+  it('claims the booking, asks for payment, and confirms NOTHING', async () => {
+    // THE load-bearing pin. A walk may only read 'confirmed' after a payment
+    // was verified server-side; accept must never do it.
     const row = seed({});
     const r = await acceptWalkBookingCore({ bookingId: row.bookingId, providerUid: 'walker-uid' });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.status).toBe('confirmed');
-      expect(r.paymentRail).toBe('MISSING');
+      expect(r.status).toBe('payment_pending');
+      expect(r.paymentRail).toBe('AWAITING_CUSTOMER_CARD');
+      expect(r.amountDueCents).toBeGreaterThan(0);
       expect(r.bookingId).toBe(row.bookingId);
     }
-    expect(row.status).toBe('confirmed');
-    expect(confirmBookingMock).toHaveBeenCalledTimes(1);
-    expect(syncChatMock).toHaveBeenCalledWith(row.bookingId, 'confirmed', 'walk_my_pet');
+    expect(row.status).toBe('payment_pending');
+    expect(confirmBookingMock).not.toHaveBeenCalled();
+    expect(syncChatMock).toHaveBeenCalledWith(row.bookingId, 'payment_pending', 'walk_my_pet');
   });
 
-  it('octopus record present → CONFIRMED status flip AND NO PAYMENT_CAPTURED ledger entry', async () => {
-    // Money-invariants: a PAYMENT_CAPTURED entry for money that never
-    // moved is a false book entry. This test asserts the honest gap.
+  it('tells the customer what to pay, with the payment link', async () => {
+    const row = seed({});
+    await acceptWalkBookingCore({ bookingId: row.bookingId, providerUid: 'walker-uid' });
+    expect(dispatchNotificationMock).toHaveBeenCalledTimes(1);
+    const sent = dispatchNotificationMock.mock.calls[0][0];
+    expect(sent.ctaUrl).toContain(`/walk-my-pet/bookings/${row.bookingId}/pay`);
+    expect(`${sent.bodyText}`).toMatch(/₪/);
+  });
+
+  it('octopus stays DRAFT and no PAYMENT_CAPTURED is written', async () => {
+    // Money-invariants: neither a CONFIRMED booking nor a capture entry may
+    // exist before the money does.
     seed({});
     state.octopusBookings.push({ id: 77, idempotencyKey: 'WALK-ACC-1', status: 'DRAFT' });
     await acceptWalkBookingCore({ bookingId: 'WALK-ACC-1', providerUid: 'walker-uid' });
     const octo = state.octopusBookings.find((b) => b.id === 77);
-    expect(octo?.status).toBe('CONFIRMED');
+    expect(octo?.status).toBe('DRAFT');
     const paymentCaptured = state.octopusLedger.find((l: any) => l.type === 'PAYMENT_CAPTURED');
-    expect(paymentCaptured, 'walk accept must NOT write PAYMENT_CAPTURED — no payment was captured').toBeUndefined();
-  });
-
-  it('customer notification dispatched with mounted /bookings ctaUrl', async () => {
-    // §23 destination discipline — ctaUrl must point at a mounted route.
-    // /bookings is mounted (App.tsx). The notificationDeepLinks
-    // regression test also covers this at the source level.
-    seed({});
-    await acceptWalkBookingCore({ bookingId: 'WALK-ACC-1', providerUid: 'walker-uid' });
-    expect(dispatchNotificationMock).toHaveBeenCalledTimes(1);
-    const arg = dispatchNotificationMock.mock.calls[0][0];
-    expect(arg.type).toBe('booking_accepted');
-    expect(arg.ctaUrl).toContain('/bookings');
-    expect(arg.channels).toEqual(['inbox', 'sms', 'push']);
-  });
-
-  it('calendar event fires (non-fatal on error)', async () => {
-    seed({});
-    calendarMock.mockRejectedValueOnce(new Error('calendar down'));
-    const r = await acceptWalkBookingCore({ bookingId: 'WALK-ACC-1', providerUid: 'walker-uid' });
-    expect(r.ok).toBe(true);
+    expect(paymentCaptured).toBeUndefined();
   });
 });
