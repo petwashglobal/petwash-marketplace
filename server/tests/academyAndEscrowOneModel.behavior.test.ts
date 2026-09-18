@@ -56,7 +56,9 @@ describe('academy booking + receipt (server)', () => {
 
   it('the receipt fee is the booking\'s own stored share, and the outbox stores the full receipt', () => {
     expect(src).toContain('const feeShare = storedTotal > 0 && storedFee >= 0 ? storedFee / storedTotal : PETWASH_COMMISSION_RATE;');
-    expect(src).toMatch(/kind: 'academy_receipt',\s+sourceKey: `booking:\$\{bookingId\}`,\s+payload: receiptInput,/);
+    // 2026-09-18: one issueAcademyReceipt() helper serves the wallet part and
+    // the card part, each with its own outbox key.
+    expect(src).toMatch(/kind: 'academy_receipt',\s+sourceKey: `booking:\$\{booking\.bookingId\}:\$\{source\}`,\s+payload: receiptInput,/);
     expect(src).toContain('await IsraeliDigitalReceiptService.generateReceipt(receiptInput);');
     // stored share reproduces both models
     expect(Math.round(115 * (15 / 115) * 100) / 100).toBe(15);

@@ -33,6 +33,8 @@ import { eq, and, desc, sql, gte, lte, or, ilike, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { validateProviderRates } from '@shared/providerMinPrices';
 import { nanoid } from 'nanoid';
+import { beginServiceCardPayment, verifyServiceCardPayment } from '../lib/serviceBookingCardPayment';
+import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { requireAdmin as requireAdminMiddleware } from '../adminAuth';
@@ -772,6 +774,201 @@ router.post('/bookings/:id/cancel', async (req, res) => {
  * POST /api/academy/bookings/:id/confirm - Trainer confirms booking → debit wallet hold
  * Trainer-only endpoint – only the assigned trainer may confirm
  */
+/**
+ * The customer's receipt for money ACTUALLY collected on an academy session:
+ * the wallet part at trainer-confirm, and the card part when that payment is
+ * verified (2026-09-18). The fee is the booking's own stored share of what the
+ * customer paid (fee / total), so sessions sold before the one money model keep
+ * the reading they were sold under. Durable: inline first, else a
+ * fiscal_document_outbox row carrying the FULL receipt input.
+ */
+async function issueAcademyReceipt(
+  booking: any,
+  amountIls: number,
+  source: 'wallet' | 'card',
+): Promise<void> {
+  if (!(amountIls > 0)) return;
+  const storedTotal = parseFloat(String(booking.totalAmount ?? '0'));
+  const storedFee = parseFloat(String(booking.platformFee ?? '0'));
+  const feeShare = storedTotal > 0 && storedFee >= 0 ? storedFee / storedTotal : PETWASH_COMMISSION_RATE;
+  const platformFeeAmount = Math.round(amountIls * feeShare * 100) / 100;
+
+  const [cust] = await db
+    .select({ email: users.email, first: users.firstName, last: users.lastName })
+    .from(users).where(eq(users.id, booking.userId)).limit(1);
+  const [trn] = await db
+    .select({ first: users.firstName, last: users.lastName })
+    .from(users).where(eq(users.id, booking.trainerUserId)).limit(1);
+
+  const receiptInput = {
+    platform: 'academy' as const,
+    paymentClass: 'PROVIDER_BOOKING_COMMISSION' as const,
+    bookingId: booking.bookingId,
+    customerEmail: cust?.email || '',
+    customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
+    serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
+    providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
+    providerId: String(booking.trainerId),
+    providerType: 'trainer' as const,
+    serviceDescription: 'Pet Wash Academy training session',
+    serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
+    subtotalAmount: amountIls,
+    platformFeeAmount,
+    totalAmount: amountIls,
+    paymentMethod: source === 'card' ? 'Credit card' : 'PetWash Wallet',
+    providerPayoutAmount: Math.round((amountIls - platformFeeAmount) * 100) / 100,
+    brokerCommissionAmount: platformFeeAmount,
+  };
+
+  const outcome = await runFiscalDocumentAndPersistOnFailure({
+    pool,
+    kind: 'academy_receipt',
+    sourceKey: `booking:${booking.bookingId}:${source}`,
+    payload: receiptInput,
+    runNow: async () => {
+      await IsraeliDigitalReceiptService.generateReceipt(receiptInput);
+    },
+  });
+  if (!outcome.ranInline) {
+    logger.warn('[Academy] Receipt enqueued to outbox for retry', {
+      bookingId: booking.bookingId, source, inlineError: outcome.inlineError,
+    });
+  }
+}
+
+// CARD PAYMENT FOR AN ACADEMY SESSION (CEO 2026-09-18: rail "a").
+// Academy used to collect only the wallet part and leave the rest uncollected
+// forever (paymentStatus 'pending'). The customer now pays the outstanding
+// amount on the same hosted page walks and booking requests use, and only a
+// verified payment marks the session paid.
+
+/** What the customer still owes on a trainer booking, in agorot. */
+function academyOutstandingCents(booking: any): number {
+  const total = Math.round(parseFloat(String(booking.totalAmount ?? '0')) * 100);
+  const fromWallet = Number(booking.walletDebitedCents ?? 0);
+  if (booking.paymentStatus === 'completed') return 0;
+  return Math.max(0, total - Math.max(0, fromWallet));
+}
+
+// POST /api/academy/bookings/:bookingId/pay — open the hosted card page.
+router.post('/bookings/:bookingId/pay', requireAuth, async (req, res) => {
+  const { bookingId } = req.params;
+  const userId = req.user?.uid;
+  if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+  try {
+    const [booking] = await db.select().from(trainerBookings)
+      .where(eq(trainerBookings.bookingId, bookingId)).limit(1);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.userId !== userId) {
+      return res.status(403).json({ error: 'Only the customer can pay for this session' });
+    }
+    if (booking.bookingStatus !== 'confirmed') {
+      return res.status(409).json({
+        error: 'This session is not confirmed yet — the trainer has to accept it first.',
+        code: 'ACADEMY_NOT_CONFIRMED', status: booking.bookingStatus,
+      });
+    }
+    const amountCents = academyOutstandingCents(booking);
+    if (amountCents <= 0) {
+      return res.status(409).json({ error: 'This session is already paid.', code: 'ACADEMY_ALREADY_PAID' });
+    }
+
+    const [customer] = await db.select({ email: users.email, firstName: users.firstName, language: users.language })
+      .from(users).where(eq(users.id, booking.userId)).limit(1);
+    const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+
+    const session = await beginServiceCardPayment({
+      kind: 'academy',
+      bookingRef: booking.bookingId,
+      amountCents,
+      description: `PetWash Academy — ${booking.sessionDuration || 60} min training`,
+      returnUrl: `${appUrl}/api/academy/bookings/${encodeURIComponent(booking.bookingId)}/sumit-return`,
+      customerEmail: customer?.email || undefined,
+      customerName: customer?.firstName || undefined,
+      language: paymentLanguageFor(req, customer?.language),
+    });
+
+    if (!session.ok) {
+      return res.status(session.code === 'PAYMENT_SESSION_FAILED' ? 502 : 503).json({
+        error: session.message, code: session.code, amountCents,
+      });
+    }
+
+    return res.json({ success: true, paymentUrl: session.paymentUrl, amountCents });
+  } catch (error: any) {
+    logger.error('[Academy] pay failed', { bookingId, error: error?.message });
+    return res.status(500).json({ error: 'Could not start the payment. Nothing was charged.' });
+  }
+});
+
+// GET /api/academy/bookings/:bookingId/sumit-return — the only place a session
+// is marked paid. Verify with SUMIT, match the outstanding amount, claim the
+// payment, then mark paid + escrow held. Any failure leaves the row untouched.
+router.get('/bookings/:bookingId/sumit-return', async (req, res) => {
+  const { bookingId } = req.params;
+  const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+  const ok = () => res.redirect(302, `${appUrl}/bookings?payment=success&booking=${encodeURIComponent(bookingId)}`);
+  const fail = (reason: string) => {
+    logger.warn('[Academy] payment return not confirmed', { bookingId, reason });
+    return res.redirect(302, `${appUrl}/bookings?payment=failed&booking=${encodeURIComponent(bookingId)}`);
+  };
+
+  try {
+    const [booking] = await db.select().from(trainerBookings)
+      .where(eq(trainerBookings.bookingId, bookingId)).limit(1);
+    if (!booking) return fail('booking_not_found');
+    if (booking.paymentStatus === 'completed') return ok(); // idempotent second return
+    if (booking.bookingStatus !== 'confirmed') return fail(`status_gate:${booking.bookingStatus}`);
+
+    const outstanding = academyOutstandingCents(booking);
+    if (outstanding <= 0) return ok();
+
+    const verified = await verifyServiceCardPayment({
+      kind: 'academy',
+      bookingRef: booking.bookingId,
+      query: req.query as Record<string, unknown>,
+      expectedAmountCents: outstanding,
+    });
+    if (!verified.ok) return fail(verified.reason);
+
+    const updated = await db.update(trainerBookings)
+      .set({
+        paymentStatus: 'completed',
+        paymentMethod: 'sumit',
+        paymentIntentId: verified.transactionId,
+        escrowStatus: 'held',
+        escrowHeldAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(trainerBookings.bookingId, booking.bookingId),
+        eq(trainerBookings.bookingStatus, 'confirmed'),
+      ))
+      .returning({ id: trainerBookings.id });
+    if (updated.length === 0) return fail('status_changed_during_payment');
+
+    logger.info('[Academy] session paid by card', {
+      bookingId, transactionId: verified.transactionId, amountCents: verified.amountCents,
+    });
+
+    // The receipt covers what was ACTUALLY collected here — the wallet part
+    // got its own at confirm.
+    try {
+      await issueAcademyReceipt(booking, verified.amountCents / 100, 'card');
+    } catch (receiptErr: any) {
+      logger.error('[Academy] card payment receipt failed — needs manual issue', {
+        bookingId, error: receiptErr?.message,
+      });
+    }
+
+    return ok();
+  } catch (error: any) {
+    logger.error('[Academy] payment return error', { bookingId, error: error?.message });
+    return fail('unexpected_error');
+  }
+});
+
 router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
   try {
     const bookingId = req.params.id;
@@ -825,81 +1022,32 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       .where(eq(trainerBookings.bookingId, bookingId))
       .returning();
 
-    logger.info('[Academy] Booking confirmed', { bookingId, trainerId: booking.trainerId });
+    // What is still owed after the wallet part (2026-09-18): Academy has a
+    // card rail now, so a confirmed booking with a balance points the customer
+    // at it instead of sitting unpaid forever.
+    const outstandingCents = academyOutstandingCents({ ...booking, ...walletUpdates });
 
-    // Release-blocker A4 (CEO 2026-09-02): Israeli digital receipt is
-    // NOT best-effort. Try inline; on failure enqueue a durable
-    // fiscal_document_outbox row for the drainer worker. If BOTH fail,
-    // return 5xx so the client can retry the confirm (idempotent by
-    // booking id).
-    {
-      const totalAmount = (booking.walletHoldCents || 0) / 100;
-      if (totalAmount > 0) {
-        try {
-          // The fee on this receipt is the booking's own stored share of what
-          // the customer paid (fee ÷ total): 15/115 for bookings under the one
-          // money model, 15/100 for bookings sold before it. It was always
-          // 15% of the amount paid.
-          const storedTotal = parseFloat(String(booking.totalAmount ?? '0'));
-          const storedFee = parseFloat(String(booking.platformFee ?? '0'));
-          const feeShare = storedTotal > 0 && storedFee >= 0 ? storedFee / storedTotal : PETWASH_COMMISSION_RATE;
-          const platformFeeAmount = Math.round(totalAmount * feeShare * 100) / 100;
-          // Resolve the names BEFORE persisting, so the outbox holds the full
-          // receipt input. It used to store a summary (no customer, no
-          // amounts) and the drainer passed that straight to generateReceipt.
-          const [cust] = await db
-            .select({ email: users.email, first: users.firstName, last: users.lastName })
-            .from(users).where(eq(users.id, booking.userId)).limit(1);
-          const [trn] = await db
-            .select({ first: users.firstName, last: users.lastName })
-            .from(users).where(eq(users.id, booking.trainerUserId)).limit(1);
-          const receiptInput = {
-            platform: 'academy' as const,
-            paymentClass: 'PROVIDER_BOOKING_COMMISSION' as const,
-            bookingId,
-            customerEmail: cust?.email || '',
-            customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
-            serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
-            providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
-            providerId: String(booking.trainerId),
-            providerType: 'trainer' as const,
-            serviceDescription: 'Pet Wash Academy training session',
-            serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
-            subtotalAmount: totalAmount,
-            platformFeeAmount,
-            totalAmount,
-            paymentMethod: 'PetWash Wallet',
-            providerPayoutAmount: Math.round((totalAmount - platformFeeAmount) * 100) / 100,
-            brokerCommissionAmount: platformFeeAmount,
-          };
-          const outcome = await runFiscalDocumentAndPersistOnFailure({
-            pool,
-            kind: 'academy_receipt',
-            sourceKey: `booking:${bookingId}`,
-            payload: receiptInput,
-            runNow: async () => {
-              await IsraeliDigitalReceiptService.generateReceipt(receiptInput);
-            },
+    logger.info('[Academy] Booking confirmed', {
+      bookingId, trainerId: booking.trainerId, outstandingCents,
+    });
+
+    // Release-blocker A4 (CEO 2026-09-02): the Israeli digital receipt is NOT
+    // best-effort. Inline first, else a durable outbox row; if BOTH fail the
+    // confirm returns 5xx so the client can retry (idempotent by booking id).
+    // It covers the WALLET part only — the card part gets its own receipt when
+    // that payment is verified (2026-09-18).
+    if (walletFunded && (booking.walletHoldCents || 0) > 0) {
+      try {
+        await issueAcademyReceipt(booking, (booking.walletHoldCents || 0) / 100, 'wallet');
+      } catch (err) {
+        if (err instanceof FiscalOutboxUnavailableError) {
+          logger.error('[Academy] Receipt both inline AND outbox failed', { bookingId, err: err.message });
+          return res.status(503).json({
+            error: 'fiscal_receipt_unavailable',
+            message: 'Confirm could not persist receipt; please retry.',
           });
-          if (!outcome.ranInline) {
-            logger.warn('[Academy] Receipt enqueued to outbox for retry', {
-              bookingId,
-              inlineError: outcome.inlineError,
-            });
-          }
-        } catch (err) {
-          if (err instanceof FiscalOutboxUnavailableError) {
-            logger.error('[Academy] Receipt both inline AND outbox failed', {
-              bookingId,
-              err: err.message,
-            });
-            return res.status(503).json({
-              error: 'fiscal_receipt_unavailable',
-              message: 'Confirm could not persist receipt; please retry.',
-            });
-          }
-          throw err;
         }
+        throw err;
       }
     }
 
@@ -924,7 +1072,13 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       logger.warn('[Academy] Chat sync on confirm failed (non-blocking)', { bookingId, error: chatErr?.message });
     }
 
-    res.json(confirmed);
+    res.json({
+      ...confirmed,
+      amountDueCents: outstandingCents,
+      ...(outstandingCents > 0
+        ? { payUrl: `/academy/bookings/${encodeURIComponent(bookingId)}/pay` }
+        : {}),
+    });
   } catch (error) {
     logger.error('[Academy] Error confirming booking', error);
     res.status(500).json({ error: 'Failed to confirm booking' });
