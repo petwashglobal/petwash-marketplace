@@ -102,6 +102,35 @@ export type VerifyServiceCardPaymentResult =
   | { ok: true; transactionId: string; amountCents: number }
   | { ok: false; reason: string };
 
+/**
+ * Did money actually arrive for this booking? Steps 2-4 of the rules above
+ * (SUMIT says valid, the reference belongs to THIS booking, the amount
+ * matches) and deliberately NOT step 5: nothing is claimed, so this can be
+ * asked about a booking that can no longer be fulfilled without binding a
+ * live payment to a dead order.
+ *
+ * It exists for one case (2026-09-18): the customer may cancel a booking that
+ * is waiting for their payment, and a payment can land in that same moment.
+ * The return handler must not answer "not confirmed" and walk away from a real
+ * charge - it asks this, and raises the paid-but-not-fulfilled alert so the
+ * money is refunded by hand.
+ */
+export async function inspectServiceCardPayment(
+  input: VerifyServiceCardPaymentInput,
+): Promise<VerifyServiceCardPaymentResult> {
+  const txnId = readSumitPaymentIdFromReturn(input.query);
+  if (!txnId) return { ok: false, reason: 'no_transaction_id' };
+
+  const { verifySumitBookingPayment } = await import('../services/SumitBookingPayment');
+  const verified = await verifySumitBookingPayment(String(txnId), String(input.bookingRef));
+  if (!verified.valid) return { ok: false, reason: verified.reason || 'sumit_not_valid' };
+  if (typeof verified.amountCents !== 'number') return { ok: false, reason: 'amount_missing' };
+  if (Math.abs(verified.amountCents - Math.round(input.expectedAmountCents)) > 1) {
+    return { ok: false, reason: 'amount_mismatch' };
+  }
+  return { ok: true, transactionId: String(txnId), amountCents: verified.amountCents };
+}
+
 export async function verifyServiceCardPayment(
   input: VerifyServiceCardPaymentInput,
 ): Promise<VerifyServiceCardPaymentResult> {
