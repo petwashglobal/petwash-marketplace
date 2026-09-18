@@ -188,6 +188,7 @@ These are not preferences. They are blockers. Violating them blocks the PR.
 - **No random scope creep.** If the user said "fix X," fix only X. Don't refactor adjacent code, don't rename variables for cleanliness, don't add abstractions.
 - **No force push.** Ever. Not to feature branches, definitely not to main.
 - **Always create new commits** rather than amending pushed commits.
+- **Check the filename before you write it.** `ls server/routes/ | grep <name>` (or `git show origin/main:<path> | head -1`) BEFORE `cat > <file>`. This repo has ~200 route files and the obvious name is usually taken. Real case, 2026-09-18: a new 115-line quick-apply router was written to `server/routes/provider-intake.ts`, which already held 670 lines of provider KYC / biometric intake — the redirect deleted it. It was caught at PR time by `providerErrorLeaks.regression.test.ts` and `tests/behavior/silent-success-fix.test.ts`, both source-pinned on that file's log tags. Two lessons: (a) never assume a name is free; (b) a cheap source-pin on a high-value file's log tags or exported names turns "silently replaced" into a failing test. The fix is a new filename and its own route prefix, never a merge of the two.
 
 ### Multi-agent coordination (anti-duplication) — MANDATORY
 This repo is worked by **multiple AI agents** (Claude sessions AND Codex). Two agents independently building the same thing is the failure mode the CEO cares about most. Before writing ANY code or new doc, you MUST:
