@@ -1,115 +1,670 @@
-/**
- * The 60-second provider application (2026-09-18).
- *
- * Production numbers today: 0 providers, 0 applications ever, 0 bookings.
- * Every "join" link led into the three-step onboarding wizard, which asks for
- * a signup, an ID and a selfie before we know the person's name — so nobody
- * finished. This is the short front door: name, phone, city, what you offer.
- * It creates a CRM lead, alerts the team, and invites the applicant to finish
- * verification in the app afterwards.
- *
- * PUBLIC on purpose (a walker is not a user yet) and therefore treated as
- * hostile input: rate limited, Turnstile-checked when configured, validated,
- * and it can never write anything but a lead. NO identity data is accepted —
- * ID, passport, bank and selfie belong to the verified flow.
- */
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { Router, Request } from 'express';
+import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
+import { providerIntakeService } from '../services/ProviderIntakeService';
+import { requireAuth } from '../customAuth';
+import { requireAdmin } from '../middleware/rbac';
 import { db } from '../db';
-import { crmLeads } from '@shared/schema';
+import { providerIntakeQueue, biometricCertificateVerifications } from '@shared/schema';
+import { and, eq, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { paymentLimiter } from '../middleware/rateLimiter';
-import { verifyTurnstileToken } from '../lib/verifyTurnstile';
+import { z } from 'zod';
+import { createHash, randomUUID, randomBytes, createCipheriv } from 'crypto';
+import { sendProviderEnrollmentConfirmation } from '../email/luxury-email-service';
+import { logProviderApplication } from '../services/googleSheetsIntegration';
+
+/** Extends the Express Request with the userId injected by requireAuth middleware. */
+interface AuthenticatedRequest extends Request {
+  userId: string;
+}
 
 const router = Router();
 
-const SERVICES = ['dog_walking', 'pet_sitting', 'grooming', 'training', 'transport'] as const;
-
-const applicationSchema = z.object({
-  fullName: z.string().trim().min(2).max(120),
-  phone: z.string().trim().min(7).max(32),
-  email: z.string().trim().email().max(160),
-  city: z.string().trim().min(1).max(80),
-  services: z.array(z.enum(SERVICES)).min(1).max(SERVICES.length),
-  about: z.string().trim().max(1000).optional(),
-  turnstileToken: z.string().max(4096).optional(),
-});
-
-export type ProviderApplicationInput = z.infer<typeof applicationSchema>;
-
-/** Pure: the lead a submission becomes. Exported for the behaviour test. */
-export function applicationToLead(input: ProviderApplicationInput) {
-  const parts = input.fullName.split(/\s+/);
-  const notes = [
-    `שירותים: ${input.services.join(', ')}`,
-    `עיר: ${input.city}`,
-    input.about ? `על עצמי: ${input.about}` : '',
-  ].filter(Boolean).join('\n');
-  return {
-    firstName: parts[0].slice(0, 80),
-    lastName: (parts.slice(1).join(' ') || '-').slice(0, 80),
-    email: input.email.toLowerCase(),
-    phone: input.phone,
-    leadSource: 'provider_quick_apply',
-    sourceDetails: `60-second form · ${input.city}`,
-    leadStatus: 'new' as const,
-    interestedServices: input.services,
-    notes,
-  };
+// ─── Biometric / KYC base64 encryption (AES-256-GCM) ────────────────────────
+// Encrypts raw base64 image payloads before PostgreSQL write.
+// Format stored: enc:<base64_iv>:<base64_authTag>:<base64_ciphertext>
+// In production, DOCUMENT_ENCRYPTION_KEY must be set — missing key is fatal.
+function encryptBase64Doc(plaintext: string): string {
+  const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+  if (!masterKey || masterKey.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[ProviderIntake] DOCUMENT_ENCRYPTION_KEY is required in production. ' +
+        'Refusing to store plaintext biometric data.'
+      );
+    }
+    logger.warn('[ProviderIntake] DOCUMENT_ENCRYPTION_KEY not set — biometric data stored unencrypted');
+    return plaintext;
+  }
+  const key = createHash('sha256').update(masterKey).digest(); // 32 bytes
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `enc:${iv.toString('base64')}:${authTag.toString('base64')}:${encrypted.toString('base64')}`;
 }
 
-router.post('/apply', paymentLimiter, async (req: Request, res: Response) => {
-  const parsed = applicationSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ ok: false, error: 'Please check the form', details: parsed.error.flatten().fieldErrors });
-  }
-  const input = parsed.data;
+/**
+ * PROVIDER INTAKE QUEUE API
+ * Management-assisted onboarding via Google Forms
+ */
 
-  // Bot check when Turnstile is configured; never blocks when it is not.
-  if (process.env.TURNSTILE_SECRET_KEY) {
-    const verdict = await verifyTurnstileToken(input.turnstileToken ?? '', req.ip);
-    if (!verdict.success) {
-      logger.warn('[ProviderApply] turnstile refused', { ip: req.ip });
-      return res.status(403).json({ ok: false, error: 'Could not verify you are human. Please try again.' });
-    }
-  }
-
-  const lead = applicationToLead(input);
+/**
+ * GET /api/provider-intake
+ * Get all intake queue records (admin only)
+ */
+router.get('/', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const [existing] = await db.select({ id: crmLeads.id }).from(crmLeads).where(eq(crmLeads.email, lead.email)).limit(1);
-    if (existing) {
-      // Saying "you already applied" is honest and stops duplicates; it leaks
-      // nothing a person does not already know about their own address.
-      return res.json({ ok: true, alreadyApplied: true, message: 'You have already applied — we will be in touch.' });
+    const status = req.query.status as string | undefined;
+    
+    let query = db
+      .select()
+      .from(providerIntakeQueue)
+      .orderBy(desc(providerIntakeQueue.createdAt));
+    
+    if (status) {
+      query = query.where(eq(providerIntakeQueue.status, status)) as any;
     }
-    await db.insert(crmLeads).values(lead);
-  } catch (err: any) {
-    if (err?.code === '23505' || /duplicate key/i.test(String(err?.message))) {
-      return res.json({ ok: true, alreadyApplied: true, message: 'You have already applied — we will be in touch.' });
-    }
-    logger.error('[ProviderApply] could not save the application', { error: err?.message });
-    return res.status(500).json({ ok: false, error: 'We could not save your details. Please try again.' });
-  }
-
-  // Tell a human, and thank the applicant. Neither may fail the application.
-  try {
-    const { createOrUpdateAlert } = await import('../services/AlertEngine');
-    await createOrUpdateAlert({
-      dedupeKey: `provider_quick_apply:${lead.email}:`,
-      category: 'provider',
-      severity: 'info',
-      title: 'New provider application',
-      message: `${input.fullName} · ${input.city} · ${input.services.join(', ')} · ${input.phone}`,
-      linkedEntityType: 'crm_lead',
-      linkedEntityId: lead.email,
-      source: 'auto_sweep',
-      metadata: { city: input.city, services: input.services },
+    
+    const records = await query;
+    
+    res.json({
+      success: true,
+      records,
+      total: records.length,
+      statuses: {
+        new: records.filter(r => r.status === 'new').length,
+        reviewing: records.filter(r => r.status === 'reviewing').length,
+        approved: records.filter(r => r.status === 'approved').length,
+        invited: records.filter(r => r.status === 'invited').length,
+        converted: records.filter(r => r.status === 'converted').length,
+        rejected: records.filter(r => r.status === 'rejected').length,
+      }
     });
-  } catch { /* the lead is saved; an alert failure must not lose it */ }
+  } catch (error: any) {
+    logger.error('[Provider Intake] Failed to fetch queue:', error);
+    res.status(500).json({ error: 'Failed to fetch intake queue' });
+  }
+});
 
-  logger.info('[ProviderApply] new applicant', { city: input.city, services: input.services });
-  res.json({ ok: true, message: 'Thank you — we will call you.' });
+/**
+ * GET /api/provider-intake/stats
+ * Get intake queue statistics for management dashboard (admin only)
+ */
+router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const allRecords = await db
+      .select()
+      .from(providerIntakeQueue);
+    
+    const newCount = allRecords.filter(r => r.status === 'new').length;
+    const pendingCount = allRecords.filter(r => r.status === 'pending_review' || r.status === 'interview_scheduled' || r.status === 'reviewing').length;
+    const approvedCount = allRecords.filter(r => r.status === 'approved').length;
+    const totalCount = allRecords.length;
+    
+    res.json({
+      success: true,
+      newCount,
+      pendingCount,
+      approvedCount,
+      totalCount,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error: any) {
+    // EVIL FIX (2026-08-20): the previous body returned `success: true` with
+    // all counters zero on DB failure. The admin dashboard then showed "0
+    // pending providers" during any DB outage or query error — CEO thought
+    // nothing needed approval when in reality dozens were waiting. Silent
+    // dishonesty. Return a real error; the client can render "stats
+    // unavailable — retry" instead of a fake zero.
+    logger.error('[Provider Intake] Stats fetch failed:', error);
+    res.status(503).json({
+      success: false,
+      error: 'STATS_UNAVAILABLE',
+      message: 'Provider intake stats unavailable — refresh in a moment',
+    });
+  }
+});
+
+/**
+ * GET /api/provider-intake/:intakeId
+ * Get single intake record details
+ */
+router.get('/:intakeId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { intakeId } = req.params;
+    
+    const [record] = await db
+      .select()
+      .from(providerIntakeQueue)
+      .where(eq(providerIntakeQueue.intakeId, intakeId))
+      .limit(1);
+    
+    if (!record) {
+      return res.status(404).json({ error: 'Intake record not found' });
+    }
+    
+    res.json({ success: true, record });
+  } catch (error: any) {
+    logger.error('[Provider Intake] Failed to fetch record:', error);
+    res.status(500).json({ error: 'Failed to fetch intake record' });
+  }
+});
+
+/**
+ * POST /api/provider-intake/sync
+ * Sync from Google Sheets (admin only)
+ */
+const syncSchema = z.object({
+  sheetId: z.string().min(1, 'Google Sheet ID is required'),
+  sheetName: z.string().optional().default('Form Responses 1')
+});
+
+router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { sheetId, sheetName } = syncSchema.parse(req.body);
+    
+    logger.info('[Provider Intake] Starting sync from Google Sheet:', { sheetId, sheetName });
+    
+    const result = await providerIntakeService.syncFromGoogleSheet(sheetId, sheetName);
+    
+    res.json({
+      success: true,
+      message: `Synced ${result.newRecords} new records from Google Sheet`,
+      result
+    });
+  } catch (error: any) {
+    logger.error('[Provider Intake] Sync failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to sync from Google Sheet'
+    });
+  }
+});
+
+/**
+ * POST /api/provider-intake/:intakeId/approve
+ * Approve and send invite code
+ */
+const approveSchema = z.object({
+  sendVia: z.enum(['email', 'whatsapp', 'sms']).default('email'),
+  notes: z.string().optional()
+});
+
+router.post('/:intakeId/approve', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { intakeId } = req.params;
+    const adminId = req.user!.uid;
+    const { sendVia, notes } = approveSchema.parse(req.body);
+    
+    // Update notes if provided
+    if (notes) {
+      await db
+        .update(providerIntakeQueue)
+        .set({ reviewNotes: notes, updatedAt: new Date() })
+        .where(eq(providerIntakeQueue.intakeId, intakeId));
+    }
+    
+    const result = await providerIntakeService.approveAndInvite(intakeId, adminId, sendVia);
+
+    const intake = await db.query.providerIntakeQueue.findFirst({
+      where: eq(providerIntakeQueue.intakeId, intakeId),
+    }).catch(() => null);
+
+    res.json({
+      success: true,
+      message: 'Applicant approved and invited',
+      inviteCode: result.inviteCode
+    });
+
+    setImmediate(() => petWashOrchestrator.handleOnboardingApproved({
+      applicationId: intakeId,
+      platform: (intake as any)?.platform || 'PetWash',
+      firstName: (intake as any)?.firstName || '',
+      lastName: (intake as any)?.lastName || '',
+      email: (intake as any)?.email || '',
+      phone: (intake as any)?.phone || '',
+      city: (intake as any)?.city,
+      idNumber: (intake as any)?.idNumber,
+      vatNumber: (intake as any)?.vatNumber,
+      businessName: (intake as any)?.businessName,
+      inviteCode: result.inviteCode,
+      approvedBy: adminId,
+      notes,
+    }).catch(e => logger.warn('[ProviderIntake] Orchestrator hook error', e)));
+  } catch (error: any) {
+    logger.error('[Provider Intake] Approval failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to approve applicant'
+    });
+  }
+});
+
+/**
+ * POST /api/provider-intake/:intakeId/reject
+ * Reject applicant with reason
+ */
+const rejectSchema = z.object({
+  reason: z.string().min(1, 'Rejection reason is required')
+});
+
+router.post('/:intakeId/reject', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { intakeId } = req.params;
+    const adminId = req.user!.uid;
+    const { reason } = rejectSchema.parse(req.body);
+    
+    await providerIntakeService.rejectApplicant(intakeId, adminId, reason);
+    
+    res.json({
+      success: true,
+      message: 'Applicant rejected'
+    });
+  } catch (error: any) {
+    logger.error('[Provider Intake] Rejection failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to reject applicant'
+    });
+  }
+});
+
+/**
+ * PATCH /api/provider-intake/:intakeId
+ * Update intake record (add notes, change status to reviewing)
+ */
+const updateSchema = z.object({
+  status: z.enum(['new', 'reviewing', 'approved', 'rejected', 'invited', 'converted']).optional(),
+  reviewNotes: z.string().optional()
+});
+
+router.patch('/:intakeId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { intakeId } = req.params;
+    const adminId = req.user!.uid;
+    const updates = updateSchema.parse(req.body);
+    
+    await db
+      .update(providerIntakeQueue)
+      .set({
+        ...updates,
+        reviewedBy: adminId,
+        reviewedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(providerIntakeQueue.intakeId, intakeId));
+    
+    res.json({
+      success: true,
+      message: 'Intake record updated'
+    });
+  } catch (error: any) {
+    logger.error('[Provider Intake] Update failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to update intake record'
+    });
+  }
+});
+
+/**
+ * GET /api/provider-intake/form-urls/public
+ * Get Google Form URLs for public display (no auth required)
+ */
+router.get('/form-urls/public', async (req, res) => {
+  res.json({
+    success: true,
+    forms: {
+      walker: providerIntakeService.getGoogleFormUrl('walker'),
+      sitter: providerIntakeService.getGoogleFormUrl('sitter'),
+      driver: providerIntakeService.getGoogleFormUrl('driver'),
+      groomer: providerIntakeService.getGoogleFormUrl('groomer'),
+      trainer: providerIntakeService.getGoogleFormUrl('trainer'),
+      station_operator: providerIntakeService.getGoogleFormUrl('station_operator'),
+      general: providerIntakeService.getGoogleFormUrl('general')
+    }
+  });
+});
+
+/**
+ * POST /api/provider-intake/submit
+ * Public submission endpoint for in-app luxury application form
+ * No auth required - form is public facing
+ */
+const submitApplicationSchema = z.object({
+  firstName: z.string().min(2, 'First name is required'),
+  lastName: z.string().min(2, 'Last name is required'),
+  email: z.string().email('Valid email required'),
+  phoneNumber: z.string().min(9, 'Valid phone number required'),
+  idNumber: z.string().optional(),
+  streetAddress: z.string().optional(),
+  city: z.string().min(2, 'City is required'),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
+  providerType: z.string().min(1, 'Provider type is required'),
+  selectedPlatforms: z.array(z.string()).optional().default([]),
+  intendedPricing: z.record(z.object({
+    baseRate: z.number(),
+    additionalPet: z.number()
+  })).optional().default({}),
+  yearsExperience: z.string().optional(),
+  hasOwnTransport: z.boolean().default(false),
+  hasPetFirstAid: z.boolean().default(false),
+  hasInsurance: z.boolean().default(false),
+  availabilityNotes: z.string().optional(),
+  aboutMe: z.string().min(20, 'Please tell us about yourself'),
+  whyJoinPetWash: z.string().min(20, 'Please tell us why you want to join'),
+  referralSource: z.string().optional(),
+  profilePhotoBase64: z.string().optional(),
+  idDocumentFrontBase64: z.string().optional(),
+  idDocumentBackBase64: z.string().optional(),
+  selfieDocBase64: z.string().optional(),
+  drivingLicenseBase64: z.string().optional(),
+  firebaseUid: z.string().optional(),
+  agreeToTerms: z.boolean().refine(val => val === true, 'You must agree to the terms'),
+  agreeToPrivacy: z.boolean().refine(val => val === true, 'You must agree to the privacy policy'),
+  agreeToContractorStatus: z.boolean().refine(val => val === true, 'You must acknowledge independent contractor status'),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+  captchaToken: z.string().optional(),
+});
+
+router.post('/submit', requireAuth, async (req, res) => {
+  try {
+    const data = submitApplicationSchema.parse(req.body);
+
+    // Always use the server-verified UID from the auth token — never trust the request body.
+    // requireAuth middleware sets req.userId from the decoded Firebase ID token.
+    const authenticatedUid = (req as AuthenticatedRequest).userId;
+    
+    const intakeId = `INTAKE-${Date.now()}-${randomUUID().replace(/-/g, '').substring(0, 6).toUpperCase()}`;
+    
+    // AUTO-APPROVAL: Applications are automatically accepted when users 
+    // meet requirements. They proceed to biometric verification next.
+    const [record] = await db
+      .insert(providerIntakeQueue)
+      .values({
+        intakeId,
+        email: data.email.toLowerCase(),
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phoneNumber: data.phoneNumber,
+        providerType: data.providerType,
+        selectedPlatforms: data.selectedPlatforms || [],
+        intendedPricing: data.intendedPricing || {},
+        city: data.city,
+        country: 'IL',
+        latitude: data.latitude != null ? String(data.latitude) : null,
+        longitude: data.longitude != null ? String(data.longitude) : null,
+        yearsExperience: data.yearsExperience ? parseInt(data.yearsExperience.split('-')[0]) || 0 : 0,
+        hasOwnTransport: data.hasOwnTransport,
+        hasPetFirstAid: data.hasPetFirstAid,
+        hasInsurance: data.hasInsurance,
+        availabilityNotes: data.availabilityNotes || null,
+        aboutMe: data.aboutMe,
+        whyJoinPetWash: data.whyJoinPetWash,
+        referralSource: data.referralSource || null,
+        profilePhotoUrl: data.profilePhotoBase64 || null,
+        status: 'accepted',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      })
+      .returning();
+    
+    const contentHash = createHash('sha256').update(JSON.stringify({
+      intakeId,
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phoneNumber: data.phoneNumber,
+      providerType: data.providerType,
+      selectedPlatforms: data.selectedPlatforms,
+      city: data.city,
+      submittedAt: new Date().toISOString()
+    })).digest('hex');
+    
+    logger.info('[Provider Intake] Application accepted:', { 
+      intakeId, 
+      email: data.email, 
+      providerType: data.providerType,
+      selectedPlatforms: data.selectedPlatforms,
+      platformCount: data.selectedPlatforms?.length || 0,
+      contentHash: contentHash.substring(0, 16) + '...'
+    });
+
+    try {
+      const { geminiPlatformMonitor } = await import('../services/GeminiPlatformSecurityMonitor');
+      geminiPlatformMonitor.recordRegistration('provider');
+    } catch {}
+
+    // Create biometric verification record if documents were uploaded.
+    // Always use authenticatedUid — the server-verified UID — not the request body.
+    let biometricRecordCreated = false;
+    const hasDocuments = data.idDocumentFrontBase64 && data.selfieDocBase64;
+    if (hasDocuments) {
+      try {
+        await db.insert(biometricCertificateVerifications).values({
+          userId: authenticatedUid,
+          documentType: 'national_id',
+          documentCountry: 'IL',
+          documentNumber: data.idNumber || undefined,
+          documentFrontUrl: encryptBase64Doc(data.idDocumentFrontBase64!),
+          documentBackUrl: data.idDocumentBackBase64 ? encryptBase64Doc(data.idDocumentBackBase64) : undefined,
+          selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64!),
+          biometricMatchStatus: 'pending',
+          verificationStatus: 'pending',
+          verificationMethod: 'automatic',
+          ipAddress: req.ip || undefined,
+          userAgent: req.headers['user-agent'] || undefined,
+        });
+        biometricRecordCreated = true;
+        logger.info('[Provider Intake] Biometric verification record created (encrypted)', { intakeId, uid: authenticatedUid });
+
+        // Also store driving license as a separate record if provided
+        if (data.drivingLicenseBase64) {
+          await db.insert(biometricCertificateVerifications).values({
+            userId: authenticatedUid,
+            documentType: 'drivers_license',
+            documentCountry: 'IL',
+            documentFrontUrl: encryptBase64Doc(data.drivingLicenseBase64),
+            selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64!),
+            biometricMatchStatus: 'pending',
+            verificationStatus: 'pending',
+            verificationMethod: 'automatic',
+            ipAddress: req.ip || undefined,
+            userAgent: req.headers['user-agent'] || undefined,
+          });
+          logger.info('[Provider Intake] Driving license record created', { intakeId });
+        }
+      } catch (biometricError) {
+        logger.error('[Provider Intake] Failed to create biometric record (non-blocking):', { biometricError, intakeId });
+      }
+    }
+
+    
+    try {
+      const language = (req.headers['accept-language']?.includes('he') ? 'he' : 'en') as 'he' | 'en';
+      await sendProviderEnrollmentConfirmation(
+        data.email.toLowerCase(),
+        data.firstName,
+        data.lastName,
+        data.selectedPlatforms || [data.providerType],
+        record.id,
+        language
+      );
+      logger.info('[Provider Intake] Confirmation email sent', { email: data.email, intakeId });
+    } catch (emailError) {
+      logger.error('[Provider Intake] Failed to send confirmation email (non-blocking)', { emailError, intakeId });
+    }
+    
+    try {
+      await logProviderApplication({
+        applicationId: intakeId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phoneNumber,
+        idNumber: data.idNumber || '',
+        providerType: data.providerType,
+        selectedPlatforms: (data.selectedPlatforms || []).join(', '),
+        city: data.city,
+        country: 'Israel',
+        languages: '',
+        yearsOfExperience: data.yearsExperience || '',
+        availability: data.availabilityNotes || '',
+        hasVehicle: data.hasOwnTransport ? 'Yes' : 'No',
+        selfiePhotoUrl: '',
+        governmentIdUrl: '',
+        biometricStatus: 'pending',
+        biometricScore: '0',
+        applicationStatus: 'Accepted - Pending Verification',
+      });
+      logger.info('[Provider Intake] Logged to Google Sheets', { intakeId });
+    } catch (sheetsError) {
+      logger.error('[Provider Intake] Failed to log to Google Sheets (non-blocking)', { sheetsError, intakeId });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Application accepted! Please complete identity verification to start.',
+      intakeId,
+      status: 'accepted',
+      contentHash: contentHash.substring(0, 16),
+      biometricRecordCreated,
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      logger.warn('[Provider Intake] Validation failed on submit:', {
+        fields: error.errors.map((e: any) => ({ path: e.path.join('.'), message: e.message }))
+      });
+      return res.status(400).json({ 
+        error: 'Validation failed',
+        details: error.errors 
+      });
+    }
+    logger.error('[Provider Intake] Submit failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit application'
+    });
+  }
+});
+
+/**
+ * POST /api/provider-intake/submit-documents
+ * Submit identity documents after application is accepted
+ * Called from success screen when user uploads their documents post-submission
+ */
+const submitDocumentsSchema = z.object({
+  intakeId: z.string().optional(),
+  // firebaseUid is accepted from legacy clients for backward compatibility but is ignored
+  // by the server — the authenticated UID from the Firebase token is always used instead.
+  firebaseUid: z.string().optional(),
+  idDocumentFrontBase64: z.string().min(1, 'ID document front is required'),
+  idDocumentBackBase64: z.string().optional(),
+  selfieDocBase64: z.string().min(1, 'Selfie is required'),
+  drivingLicenseBase64: z.string().optional(),
+});
+
+router.post('/submit-documents', requireAuth, async (req, res) => {
+  try {
+    const data = submitDocumentsSchema.parse(req.body);
+
+    // Always use the server-verified UID — never the client-supplied firebaseUid.
+    const authenticatedUid = (req as AuthenticatedRequest).userId;
+
+    // Create national ID biometric record
+    await db.insert(biometricCertificateVerifications).values({
+      userId: authenticatedUid,
+      documentType: 'national_id',
+      documentCountry: 'IL',
+      documentFrontUrl: encryptBase64Doc(data.idDocumentFrontBase64),
+      documentBackUrl: data.idDocumentBackBase64 ? encryptBase64Doc(data.idDocumentBackBase64) : undefined,
+      selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64),
+      biometricMatchStatus: 'pending',
+      verificationStatus: 'pending',
+      verificationMethod: 'automatic',
+      ipAddress: req.ip || undefined,
+      userAgent: req.headers['user-agent'] || undefined,
+    });
+
+    // Create driving license record if provided
+    if (data.drivingLicenseBase64) {
+      await db.insert(biometricCertificateVerifications).values({
+        userId: authenticatedUid,
+        documentType: 'drivers_license',
+        documentCountry: 'IL',
+        documentFrontUrl: encryptBase64Doc(data.drivingLicenseBase64),
+        selfiePhotoUrl: encryptBase64Doc(data.selfieDocBase64),
+        biometricMatchStatus: 'pending',
+        verificationStatus: 'pending',
+        verificationMethod: 'automatic',
+        ipAddress: req.ip || undefined,
+        userAgent: req.headers['user-agent'] || undefined,
+      });
+    }
+
+    // Update intake status to 'reviewing' if intakeId provided.
+    //
+    // SECURITY 2026-09-05 (cross-user write IDOR): this UPDATE used to be
+    // scoped by the CLIENT-SUPPLIED `intakeId` alone, with no ownership
+    // predicate — so any authenticated user could flip ANY applicant's
+    // intake row to 'reviewing' just by posting someone else's intakeId.
+    // The id is not a secret either: it is handed back to the submitter
+    // (`intakeId` in the /submit response) and is only
+    // `INTAKE-<Date.now()>-<6 hex>`, i.e. guessable in bulk.
+    // Everything else in this handler already used the server-verified
+    // uid (and deliberately ignores body.firebaseUid); this one write was
+    // missed.
+    //
+    // provider_intake_queue has no user_id column — the only ownership
+    // link is the applicant's email (written lower-cased at /submit), so
+    // that is the predicate. A row that is not the caller's simply does
+    // not match: 0 rows updated, and we say so rather than reporting a
+    // success the server did not perform.
+    if (data.intakeId) {
+      const callerEmail = ((req as any).user?.email || '').trim().toLowerCase();
+      if (!callerEmail) {
+        logger.warn('[Provider Intake] status update skipped — no verified email on the session', {
+          intakeId: data.intakeId, uid: authenticatedUid,
+        });
+      } else {
+        const updated = await db
+          .update(providerIntakeQueue)
+          .set({ status: 'reviewing', updatedAt: new Date() })
+          .where(and(
+            eq(providerIntakeQueue.intakeId, data.intakeId),
+            eq(providerIntakeQueue.email, callerEmail),
+          ))
+          .returning({ id: providerIntakeQueue.id });
+
+        if (updated.length === 0) {
+          // Either the id does not exist or it belongs to somebody else.
+          // Do not distinguish the two — that would make the endpoint an
+          // existence oracle for other people's applications.
+          logger.warn('[Provider Intake] status update denied — intake row is not the callers', {
+            intakeId: data.intakeId, uid: authenticatedUid,
+          });
+          return res.status(403).json({
+            error: 'This application does not belong to your account.',
+            errorCode: 'INTAKE_NOT_OWNED',
+          });
+        }
+      }
+    }
+
+    logger.info('[Provider Intake] Documents submitted post-application', {
+      intakeId: data.intakeId,
+      uid: authenticatedUid,
+      hasDrivingLicense: !!data.drivingLicenseBase64,
+    });
+
+    res.json({
+      success: true,
+      message: 'Documents submitted for verification',
+    });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: 'Validation failed', details: error.errors });
+    }
+    logger.error('[Provider Intake] Document submission failed:', error);
+    res.status(500).json({ error: 'Failed to submit documents' });
+  }
 });
 
 export default router;

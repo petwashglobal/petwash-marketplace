@@ -35,7 +35,7 @@ export default function QuickApply() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      const r = await apiRequest('POST', '/api/provider-intake/apply', { ...form, services });
+      const r = await apiRequest('POST', '/api/provider-apply/apply', { ...form, services });
       return r.json();
     },
     onSuccess: (body: any) => {

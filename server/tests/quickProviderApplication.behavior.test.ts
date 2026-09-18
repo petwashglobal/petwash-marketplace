@@ -25,22 +25,22 @@ vi.mock('../middleware/rateLimiter', () => ({ paymentLimiter: (_q: any, _s: any,
 vi.mock('../lib/verifyTurnstile', () => ({ verifyTurnstileToken: async () => ({ success: h.turnstileOk }) }));
 vi.mock('../services/AlertEngine', () => ({ createOrUpdateAlert: async (a: any) => { h.alerts.push(a); } }));
 
-import router, { applicationToLead } from '../routes/provider-intake';
+import router, { applicationToLead } from '../routes/provider-quick-apply';
 
 const app = express();
 app.use(express.json());
-app.use('/api/provider-intake', router);
+app.use('/api/provider-apply', router);
 
 const good = {
   fullName: 'דנה כהן לוי', phone: '050-1234567', email: 'Dana@Example.com',
   city: 'חיפה', services: ['dog_walking', 'pet_sitting'], about: 'גידלתי כלבים 10 שנים',
 };
 
-describe('POST /api/provider-intake/apply', () => {
+describe('POST /api/provider-apply/apply', () => {
   beforeEach(() => { h.existing = []; h.inserted = []; h.alerts = []; h.turnstileOk = true; delete process.env.TURNSTILE_SECRET_KEY; });
 
   it('saves a lead and tells a human', async () => {
-    const res = await request(app).post('/api/provider-intake/apply').send(good);
+    const res = await request(app).post('/api/provider-apply/apply').send(good);
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
     expect(h.inserted).toHaveLength(1);
@@ -55,7 +55,7 @@ describe('POST /api/provider-intake/apply', () => {
 
   it('applying twice does not create a second lead', async () => {
     h.existing = ['dana@example.com'];
-    const res = await request(app).post('/api/provider-intake/apply').send(good);
+    const res = await request(app).post('/api/provider-apply/apply').send(good);
     expect(res.body).toMatchObject({ ok: true, alreadyApplied: true });
     expect(h.inserted).toHaveLength(0);
   });
@@ -68,14 +68,14 @@ describe('POST /api/provider-intake/apply', () => {
       { ...good, fullName: '' },
       { ...good, services: ['hacking'] },
     ]) {
-      const res = await request(app).post('/api/provider-intake/apply').send(bad);
+      const res = await request(app).post('/api/provider-apply/apply').send(bad);
       expect(res.status, JSON.stringify(bad)).toBe(400);
     }
     expect(h.inserted).toHaveLength(0);
   });
 
   it('extra fields — including identity data — are never stored', async () => {
-    await request(app).post('/api/provider-intake/apply').send({
+    await request(app).post('/api/provider-apply/apply').send({
       ...good, idNumber: '123456789', passport: 'X1234567', iban: 'IL00', leadStatus: 'converted', leadSource: 'spoofed',
     });
     const saved = JSON.stringify(h.inserted[0]);
@@ -89,7 +89,7 @@ describe('POST /api/provider-intake/apply', () => {
   it('when Turnstile is configured, a bot is refused and nothing is saved', async () => {
     process.env.TURNSTILE_SECRET_KEY = 'x';
     h.turnstileOk = false;
-    const res = await request(app).post('/api/provider-intake/apply').send(good);
+    const res = await request(app).post('/api/provider-apply/apply').send(good);
     expect(res.status).toBe(403);
     expect(h.inserted).toHaveLength(0);
   });
