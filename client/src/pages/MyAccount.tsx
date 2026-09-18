@@ -2591,7 +2591,7 @@ export default function MyAccount() {
                                 longitude: place.lng ?? editedProfile.longitude,
                               });
                             }}
-                            placeholder={isHebrew ? '🔍  חפש כתובת ב-Google...' : '🔍  Search address with Google...'}
+                            placeholder={isHebrew ? '🔍  הקלד/י כתובת — או בחר/י מהכתובות השמורות' : '🔍  Type an address — or pick a saved one'}
                             country={['il']}
                             showExtraFields={false}
                           />
@@ -3162,7 +3162,7 @@ export default function MyAccount() {
                         longitude: place.lng ?? prev?.longitude,
                       }));
                     }}
-                    placeholder={isHebrew ? '🔍  חפש כתובת ב-Google...' : '🔍  Search address with Google...'}
+                    placeholder={isHebrew ? '🔍  הקלד/י כתובת — או בחר/י מהכתובות השמורות' : '🔍  Type an address — or pick a saved one'}
                     country={['il']}
                     showExtraFields={false}
                   />
