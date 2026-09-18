@@ -6,6 +6,20 @@ interface PremiumMemberCardProps {
   balanceCents: number;
   cardDisplay: string;
   cardId: string;
+  /**
+   * The SERVER-MINTED identity QR payload (walletData.memberCard.qrUrl).
+   *
+   * This card used to mint its own QR from `cardId` — i.e. from the plain
+   * member number, which is printed in readable text a few pixels below it and
+   * appears in every screenshot of the card. Anyone who could see the number
+   * could regenerate that QR, so it identified nothing; it was a third,
+   * unsigned QR competing with the two real ones on the same page (the signed
+   * 45-second redemption token and the server-minted identity QR).
+   *
+   * When this is absent NO QR is drawn. A missing QR is an obvious, honest
+   * failure; a forgeable one looks exactly like a working credential.
+   */
+  qrValue?: string | null;
   petName?: string | null;
   petType?: string | null;
 }
@@ -55,7 +69,7 @@ function PetWashLogo() {
   );
 }
 
-export function PremiumMemberCard({ ownerName, balanceCents, cardDisplay, cardId, petName, petType }: PremiumMemberCardProps) {
+export function PremiumMemberCard({ ownerName, balanceCents, cardDisplay, cardId, qrValue, petName, petType }: PremiumMemberCardProps) {
   const balanceILS = (balanceCents / 100).toLocaleString('he-IL', { maximumFractionDigits: 0 });
   const petIconKey = PET_ICON[petType ?? 'dog'] ?? 'brand_paw';
 
@@ -110,9 +124,11 @@ export function PremiumMemberCard({ ownerName, balanceCents, cardDisplay, cardId
               ₪{balanceILS}
             </div>
           </div>
-          <div style={{ background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: '6px', padding: '5px', display: 'inline-flex' }}>
-            <QRCodeSVG value={cardId} size={72} bgColor="#FFFFFF" fgColor="#1A1A1A" level="M" />
-          </div>
+          {qrValue ? (
+            <div style={{ background: '#FFFFFF', border: '1px solid #E0E0E0', borderRadius: '6px', padding: '5px', display: 'inline-flex' }}>
+              <QRCodeSVG value={qrValue} size={72} bgColor="#FFFFFF" fgColor="#1A1A1A" level="M" />
+            </div>
+          ) : null}
         </div>
 
         {/* Row 4 — Card number */}

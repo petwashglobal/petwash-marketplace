@@ -169,7 +169,7 @@ Before you stage and commit, verify scope discipline.
 - If you added errors, fix them before commit.
 - If you removed errors that aren't related to your scope, ask whether to keep the cleanup or revert it.
 - Re-run vitest. Compare. Same rule.
-- If you touched `scripts/ci/pins_red_baseline.txt` or any test that spawns a script: run the file **as the push-to-main job sees it**, not only as your PR sees it — `GITHUB_REF=refs/heads/main NODE_ENV=test npx vitest run <file>`. A PR run and a main run differ in environment (GITHUB_REF, gcloud on PATH). A test green on the PR and red on main turns the Money & Auth Safety Gate red on every merge after yours, and no PR check can show it. This is the mechanism behind "the deploy is always red with a new item each time" (2026-09-17: helmet pin, i18n pin; 2026-09-18: turnstile pin, 18 red pushes).
+- If you touched `scripts/ci/pins_red_baseline.txt` or any test that spawns a script: the test must set every environment variable the script reads (`GITHUB_REF`, `NODE_ENV`, `PATH`) instead of inheriting the runner's. Verify with `GITHUB_REF=refs/heads/main NODE_ENV=test npx vitest run <file>`. 2026-09-18: a pin that inherited `GITHUB_REF` was green on its PR and red on the next 18 pushes to main. The Money & Auth Safety Gate is PR-only since that day (it could block nothing post-merge and doubled the CI bill), so a non-hermetic test now fails the PR instead of main — still fix the test, never the baseline.
 
 ### 3. Did you respect protected systems?
 - Even if your scope didn't intend to touch a protected system, did the diff actually touch one? Search the diff for changes in protected paths.

@@ -1,0 +1,134 @@
+name: 📨 Diagnose — chat/support delivery (sends ONE real test message)
+
+# ────────────────────────────────────────────────────────────
+# "Does a message from PetWash support actually reach a person?"
+#
+# Sends one real message through the production notification path to the
+# email + phone you type in, and reports per channel (in-app inbox, email,
+# SMS, push) whether it was delivered — using the dispatcher's own error
+# strings when it was not. Nothing is mocked. One email and, if you ask for
+# it, one SMS are sent. Same secrets and code as the live service.
+#
+# Operator path:
+#   Actions tab → this workflow → "Run workflow"
+#     target_email : the person's PetWash account email (for the in-app inbox)
+#     target_phone : +E.164, only needed when channels include sms
+#     channels     : inbox,email (default) — add sms and/or push to test those
+#   Wait ~2 minutes → read the Summary → check the inbox / phone.
+#
+# Secrets read from GCP Secret Manager (values never printed):
+#   GOOGLE_SERVICE_ACCOUNT_JSON (Firebase Admin), SENDGRID_API_KEY,
+#   SENDGRID_FROM_EMAIL, DATABASE_URL; TWILIO_* are optional (SMS is skipped
+#   with a clear message if they are absent).
+# ────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_email:
+        description: 'Recipient email (a PetWash account for the in-app inbox channel)'
+        required: true
+        type: string
+      target_phone:
+        description: 'Recipient phone in E.164, e.g. +61419773360 (only used when channels include sms)'
+        required: false
+        default: ''
+        type: string
+      channels:
+        description: 'Comma-separated: inbox,email,sms,push'
+        required: true
+        default: 'inbox,email'
+        type: string
+      locale:
+        description: 'Message language'
+        required: true
+        default: 'en'
+        type: choice
+        options:
+          - 'en'
+          - 'he'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnose-chat-delivery
+  cancel-in-progress: false
+
+jobs:
+  send-test-message:
+    name: Send one real support message and report delivery
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_ID: signinpetwash
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Load production secrets from Secret Manager (values masked)
+        run: |
+          set -e
+          REQUIRED=("GOOGLE_SERVICE_ACCOUNT_JSON" "SENDGRID_API_KEY" "SENDGRID_FROM_EMAIL" "DATABASE_URL")
+          OPTIONAL=("TWILIO_ACCOUNT_SID" "TWILIO_AUTH_TOKEN" "TWILIO_PHONE_NUMBER" "TWILIO_MESSAGING_SERVICE_SID" "TWILIO_PHONE_NUMBER_IL" "TWILIO_PHONE_NUMBER_US" "COOKIE_SECRET" "APP_SESSION_SECRET")
+          MISSING=()
+          for s in "${REQUIRED[@]}"; do
+            if ! gcloud secrets describe "$s" --project="$PROJECT_ID" --quiet &>/dev/null; then MISSING+=("$s"); fi
+          done
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets in GCP Secret Manager: ${MISSING[*]}"
+            exit 1
+          fi
+          load() {
+            local name="$1" env_name="$2"
+            local VAL
+            VAL=$(gcloud secrets versions access latest --secret="$name" --project="$PROJECT_ID")
+            echo "::add-mask::$VAL"
+            {
+              echo "$env_name<<__SECRET_EOF__"
+              echo "$VAL"
+              echo "__SECRET_EOF__"
+            } >> "$GITHUB_ENV"
+          }
+          for s in "${REQUIRED[@]}"; do load "$s" "$s"; done
+          # Firebase Admin reads GOOGLE_APPLICATION_CREDENTIALS_JSON (server/lib/firebase-admin.ts),
+          # exactly as the deployed service maps it from GOOGLE_SERVICE_ACCOUNT_JSON.
+          load "GOOGLE_SERVICE_ACCOUNT_JSON" "GOOGLE_APPLICATION_CREDENTIALS_JSON"
+          for s in "${OPTIONAL[@]}"; do
+            if gcloud secrets describe "$s" --project="$PROJECT_ID" --quiet &>/dev/null; then
+              load "$s" "$s"
+              echo "  $s = ✅ loaded"
+            else
+              echo "  $s = ⚠️ not in Secret Manager (SMS is skipped if Twilio is incomplete)"
+            fi
+          done
+
+      - name: Send the test message and report per channel
+        env:
+          TARGET_EMAIL: ${{ inputs.target_email }}
+          TARGET_PHONE: ${{ inputs.target_phone }}
+          CHANNELS: ${{ inputs.channels }}
+          LOCALE: ${{ inputs.locale }}
+          FIREBASE_PROJECT_ID: signinpetwash
+          BASE_URL: https://petwash.co.il
+          NODE_OPTIONS: --max-old-space-size=2048
+        run: npx tsx scripts/admin/send-test-support-message.ts
