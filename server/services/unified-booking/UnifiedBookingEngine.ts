@@ -20,6 +20,7 @@ import { db } from '../../db';
 import { bookings, type InsertBooking } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger';
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 import { transactionStampService } from './TransactionStampService';
 import { eventLogService } from './EventLogService';
 import { BookingConfirmationEmailService } from '../BookingConfirmationEmailService';
@@ -148,20 +149,39 @@ export class UnifiedBookingEngine {
   async quote(params: QuoteParams): Promise<UnifiedBooking> {
     const { booking, price, breakdown, loyaltyDiscount, promoCode } = params;
     
-    const vat = calculateVAT(price);
-    const net = Math.round((price - vat) * 100) / 100;
-    const platformFee = Math.round(price * 0.15 * 100) / 100;
-    const providerPayout = Math.round((price - platformFee) * 100) / 100;
+    // ONE MONEY MODEL (CEO 2026-09-14/17, shared/marketplaceMoney.ts).
+    //
+    // This engine is DARK — server/routes/unified-booking.ts 503s the whole
+    // router unless UNIFIED_BOOKING_ENABLED=true — and it still carried the
+    // model the CEO REPLACED: `price * 0.15` taken OUT of the price, provider
+    // paid the remaining 85%. Every live path moved to fee-ON-TOP with the
+    // provider keeping their full rate (#2523–#2549). Leaving the abandoned
+    // arithmetic here means whoever flips that flag ships it: a ₪1,000 job
+    // would pay the provider ₪850.
+    //
+    // A second hardcode went with it: `promoDiscount: price * 0.1` invented a
+    // 10% discount for ANY promo code, whatever the code was actually worth,
+    // and wrote that invented number into the price snapshot. A discount this
+    // engine cannot evaluate is 0 until a real promo engine supplies it.
+    //
+    // `price` is the PROVIDER'S RATE. The customer total is the rate plus the
+    // fee, which is what splitMarketplaceJob returns.
+    const split = splitMarketplaceJob(Math.round(price * 100));
+    const gross = split.customerTotalCents / 100;
+    const platformFee = split.serviceFeeCents / 100;
+    const providerPayout = split.providerPayoutCents / 100;
+    const vat = split.serviceFeeVatCents / 100;   // Pet Wash owes VAT on its FEE only
+    const net = Math.round((gross - vat) * 100) / 100;
 
     booking.priceSnapshot = {
-      gross: price,
+      gross,
       vat,
       net,
       currency: 'ILS',
       vatRate: ISRAEL_VAT_RATE,
       breakdown: breakdown || { base: price },
       loyaltyDiscount: loyaltyDiscount || 0,
-      promoDiscount: promoCode ? price * 0.1 : 0,
+      promoDiscount: 0,
       platformFee,
       providerPayout
     };
