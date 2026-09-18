@@ -1,6 +1,9 @@
 # Draft email to SUMIT support — marketplace split clearing
 
 **Status: DRAFT FOR THE CEO TO READ AND SEND. Not sent by anyone else.**
+**Revised 2026-09-19** after reading the OpenAPI spec — two questions were
+already answered there and are now sharpened into confirmations instead.
+See sumit-upay-marketplace-integration-2026-09-19.md.
 To: support@sumit.co.il
 Subject suggestion: פט וואש בע"מ (ח.פ. 517145033) — סליקת Marketplace לספקים עצמאיים
 
@@ -33,12 +36,12 @@ centre has been left out deliberately — a long email gets a short answer.
 מול UPAY — פותר את זה, כך שכל ספק הוא בעל מסוף בזכות עצמו ואנחנו לא
 סולקים עבורו? זו השאלה החשובה ביותר עבורנו.
 
-**2. J5 בלבד?**
-במדריך כתוב לגבי /billing/payments/multivendorcharge/: "ניתן לבצע רק
-תפיסת מסגרת אשראי (J5)".
-האם זה אומר שאי אפשר לבצע חיוב רגיל (J4) בפיצול, אלא רק תפיסת מסגרת?
-אם כן — כיצד מבוצע החיוב בפועל לאחר התפיסה, ובאיזה ממשק? יש לזה השפעה
-ישירה על תהליך ההזמנה שלנו.
+**2. סתירה בין המדריך למפרט ה-API.**
+במדריך "סליקה ל-Marketplace" כתוב: "ניתן לבצע רק תפיסת מסגרת אשראי (J5)".
+במפרט ה-API (swagger) כתוב תחת AutoCapture: "Leave empty for True (Auto
+capture)" — כלומר J4 הוא ברירת המחדל.
+נבקש אישור שהמפרט הוא הנכון ושניתן לבצע חיוב מלא (J4) ב-multivendorcharge.
+אם המדריך נכון — נשמח שיעודכן.
 
 **3. הצטרפות הספקים ל-UPAY.**
 לפי /billing/generalbilling/openupayterminal/ נדרשים פרטי בנק של הספק.
@@ -48,8 +51,10 @@ centre has been left out deliberately — a long email gets a short answer.
 
 **4. עמלות סליקה.**
 - מהי עמלת הסליקה שחלה עלינו כיום (החוזה שלנו), כולל עמלה קבועה לעסקה
-  אם קיימת?
-- איזו עמלה תחול על מסופי הספקים במבנה Marketplace?
+  אם קיימת? (במפרט ה-API ראינו שברירת המחדל למסוף חדש היא תוכנית
+  OFFICEGUYNEW10 — 1.5%. נבקש לדעת מה חל עלינו בפועל.)
+- מהן ארבע התוכניות (OFFICEGUYNEW10 / UPAYTRANSACTION /
+  OFFICEGUYNEWMONTHLY10 / OFFICEGUYMONTHLYNEW10) ובמה הן נבדלות?
 - היכן ניתן לראות את העמלה בפועל לכל עסקה? בדוחות מודול סליקת האשראי לא
   מצאנו עמודת עמלה, ורואי החשבון שלנו צריכים את העלות המדויקת.
 
