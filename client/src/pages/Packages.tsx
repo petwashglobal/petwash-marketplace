@@ -11,8 +11,6 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import type { WashPackage } from '@shared/schema';
 
-import pinkCardFront from '@assets/IMG_3094_1770832584882.png';
-import greenCardFront from '@assets/IMG_3091_1770832584882.png';
 import blackCardFront from '@assets/IMG_1998_1770750271081.png';
 import goldCardFront from '@assets/IMG_1996_1770750271081.png';
 import { useSEO, pageSEO } from '@/lib/seo';
@@ -67,9 +65,12 @@ const PACKAGES_FAQ: SeoFaqItem[] = [
 // Card artwork keyed by wash count — mirrors client/src/components/WashPackages.tsx
 // so a shared visual identity carries between the homepage widget and /packages.
 // Unknown wash counts (admin-added tiers) fall back to the pink card.
+// Only genuine wash-package artwork belongs here. The 1- and 3-wash cards used
+// the GIFT-CARD images (the same files EGift renders), so a ₪150 three-wash
+// package was sold with a picture reading "Gift Card Value: 250 Shekel"
+// (seen live 2026-09-18). A wash count with no artwork of its own gets a plain
+// branded panel instead of someone else's card.
 const cardImagesByWashCount: Record<number, string> = {
-  1: pinkCardFront,
-  3: greenCardFront,
   5: blackCardFront,
   10: goldCardFront,
 };
@@ -81,7 +82,9 @@ const tierLabels: Record<Tier, Record<string, string>> = {
   CLASSIC: { en: 'Essentials', he: 'בסיסי' },
   POPULAR: { en: 'Most Popular', he: 'הכי פופולרי' },
   PREMIUM: { en: 'Premium', he: 'פרימיום' },
-  ELITE: { en: 'Maison Collection', he: 'קולקציית מזון' },
+  // 'Maison' is the brand name — it was machine-translated to מזון ("food"),
+  // so a ₪400 wash package read "Food Collection" in Hebrew (2026-09-18).
+  ELITE: { en: 'Maison Collection', he: 'קולקציית Maison' },
 };
 
 // Feature bullets are derived from washCount buckets, not from the DB row. The
@@ -294,7 +297,7 @@ export default function Packages() {
     const index = packages?.findIndex(p => p.id === selectedPackage.id) ?? 0;
     const tier = tierForIndex(index, index === (packages?.length ?? 0) - 1 && (packages?.length ?? 0) >= 4);
     const tierLabel = tierLabels[tier][lang] ?? tierLabels[tier].en;
-    const cardImage = cardImagesByWashCount[selectedPackage.washCount] ?? pinkCardFront;
+    const cardImage = cardImagesByWashCount[selectedPackage.washCount];
     const features = featuresForPackage(selectedPackage, discountPct);
 
     return (
@@ -383,15 +386,27 @@ export default function Packages() {
                   <p className="text-[10px] tracking-[0.25em] uppercase text-[#0a0a0a] font-medium mb-3 text-center">
                     {tierLabel} · ⁦PetWash™⁩
                   </p>
-                  <img
-                    src={cardImage}
-                    alt={`⁦PetWash™⁩ ${isHe ? selectedPackage.nameHe : selectedPackage.name} Wash Package`}
-                    className="w-full h-auto rounded-lg shadow-xl"
-                    style={{
-                      filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
-                      display: 'block',
-                    }}
-                  />
+                  {cardImage ? (
+                    <img
+                      src={cardImage}
+                      alt={`⁦PetWash™⁩ ${isHe ? selectedPackage.nameHe : selectedPackage.name} Wash Package`}
+                      className="w-full h-auto rounded-lg shadow-xl"
+                      style={{
+                        filter: 'drop-shadow(0 12px 28px rgba(0,0,0,0.15))',
+                        display: 'block',
+                      }}
+                    />
+                  ) : (
+                    <div
+                      className="w-full aspect-[1.6/1] rounded-lg shadow-xl flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#3a3a3a] text-white"
+                      data-testid={`package-detail-panel-${selectedPackage.washCount}`}
+                    >
+                      <span className="text-4xl font-bold">{selectedPackage.washCount}</span>
+                      <span className="text-[11px] tracking-[0.2em] uppercase opacity-80">
+                        {isHe ? (selectedPackage.washCount === 1 ? 'שטיפה' : 'שטיפות') : selectedPackage.washCount === 1 ? 'wash' : 'washes'}
+                      </span>
+                    </div>
+                  )}
                   <div className="text-center mt-5">
                     <p className="text-3xl sm:text-4xl font-light text-[#1a1a1a] mb-1"
                       style={{ fontFamily: "'Playfair Display', 'Didot', Georgia, serif", letterSpacing: '-0.04em' }}>
@@ -488,14 +503,20 @@ export default function Packages() {
                 const selected = selectedPackageId === pkg.id;
                 const tierLabel = tierLabels[tier][lang] ?? tierLabels[tier].en;
                 const pricePerWash = Math.max(1, Math.round(price / Math.max(1, pkg.washCount)));
-                const cardImage = cardImagesByWashCount[pkg.washCount] ?? pinkCardFront;
+                const cardImage = cardImagesByWashCount[pkg.washCount];
                 const features = featuresForPackage(pkg, discountPct);
 
                 return (
-                  <Button
+                  // A plain button, not <Button> (2026-09-18). The shadcn
+                  // Button keeps its own h-10 px-4 box while the card renders
+                  // far beyond it, so the tap targets did not match what is
+                  // drawn: aiming at ESSENTIALS ₪55 opened PREMIUM ₪220, and
+                  // the ₪150 card was intercepted by the ₪400 one. The hit
+                  // area is now exactly the card.
+                  <button
                     key={pkg.id}
                     type="button"
-                    className="group text-start transition-all duration-300"
+                    className="group block w-full h-auto p-0 m-0 text-start bg-transparent border-0 transition-all duration-300"
                     onClick={() => setSelectedPackageId(pkg.id)}
                     data-testid={`package-card-${tier.toLowerCase()}`}
                   >
@@ -524,15 +545,27 @@ export default function Packages() {
                       )}
 
                       <div className="relative overflow-hidden bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea]">
-                        <img
-                          src={cardImage}
-                          alt={`⁦PetWash™⁩ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
-                          className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
-                          style={{
-                            display: 'block',
-                          }}
-                          loading="lazy"
-                        />
+                        {cardImage ? (
+                          <img
+                            src={cardImage}
+                            alt={`⁦PetWash™⁩ ${isHe ? pkg.nameHe : pkg.name} Wash Package`}
+                            className="w-full h-auto transition-transform duration-500 group-hover:scale-[1.03] group-hover:-translate-y-1"
+                            style={{
+                              display: 'block',
+                            }}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div
+                            className="w-full aspect-[1.6/1] flex flex-col items-center justify-center bg-gradient-to-br from-[#1a1a1a] to-[#3a3a3a] text-white"
+                            data-testid={`package-panel-${pkg.washCount}`}
+                          >
+                            <span className="text-2xl sm:text-3xl font-bold">{pkg.washCount}</span>
+                            <span className="text-[9px] sm:text-[10px] tracking-[0.2em] uppercase opacity-80">
+                              {isHe ? (pkg.washCount === 1 ? 'שטיפה' : 'שטיפות') : pkg.washCount === 1 ? 'wash' : 'washes'}
+                            </span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="px-3 sm:px-5 py-3 sm:py-5">
@@ -585,7 +618,7 @@ export default function Packages() {
                         </div>
                       </div>
                     </div>
-                  </Button>
+                  </button>
                 );
               })}
             </div>
