@@ -63,6 +63,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { humanizeAuthError } from '@/auth/client';
+import { classifyPasswordFailure, shouldOfferOneTimeCode, passwordFailureMessageKey } from './signinRecovery';
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider,
   isNativePlatform, signInWithGoogleNative, signInWithAppleNative } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -406,8 +407,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // this screen before loginWithPassword has minted the server session itself.
   // Set BEFORE signInWithEmailAndPassword (which fires onAuthStateChanged).
   const mfaLoginInFlight = useRef(false);
-  // LOGIN (existing users) defaults to the EMAIL + password view (CEO 2026-08-08);
-  // "Sign in with your mobile number instead" switches to the phone field. Signup
+  // LOGIN (existing users) defaults to the EMAIL + password view (CEO 2026-08-08).
+  // The mobile option is a first-class sl-soc button ABOVE that form (2026-09-19)
+  // — it used to be a grey underlined link stacked below the password with three
+  // others, and the CEO reported mobile login as missing because of it. Signup
   // keeps the mobile-first method choice.
   const [method, setMethod] = useState<'mobile' | 'email'>(isLoginPath ? 'email' : 'mobile');
   // ROVER-STYLE method-first (CEO 2026-07-24 'no sense, make it clear'): the
@@ -1558,8 +1561,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           } catch (ce: any) {
             // Enumeration-safe: an existing account whose password didn't match
             // gets the SAME generic message as a wrong password — never confirm
-            // whether an email is registered.
-            if (ce?.code === 'auth/email-already-in-use') { fail(L('אימייל או סיסמה שגויים', 'Email or password is incorrect.')); return; }
+            // whether an email is registered. That constraint stays.
+            //
+            // But the WORDING was nonsense on this screen (2026-09-19, CEO:
+            // "new vs exist also not smart"): someone creating an account was
+            // told their password was "incorrect", when nothing of theirs was
+            // being checked. It reads as a bug in the form, so people retype the
+            // same details and fail again. Name the real next step instead —
+            // phrased as a possibility, so it confirms nothing either way, and
+            // deliberately WITHOUT auto-switching to the login screen, because
+            // switching only-when-the-email-exists would itself be the oracle
+            // this message exists to avoid.
+            if (ce?.code === 'auth/email-already-in-use') {
+              fail(L(
+                'לא הצלחנו ליצור חשבון עם הפרטים האלה. אם כבר יש לך חשבון, התחבר/י במקום — או בקש/י קוד חד-פעמי.',
+                "We couldn't create an account with those details. If you already have one, sign in instead — or ask for a one-time code.",
+              ));
+              return;
+            }
             if (ce?.code === 'auth/weak-password') { fail(L('סיסמה חלשה מדי (6 תווים לפחות)', 'Password too weak (min 6 characters).')); return; }
             throw ce;
           }
@@ -1759,10 +1778,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       await finishAndRoute();
     } catch (e: any) {
       mfaLoginInFlight.current = false;
+      // An account created with Google or Apple has NO password, so a password
+      // sign-in on it can only ever fail — Firebase answers invalid-credential,
+      // exactly as it does for a genuinely wrong password. The old copy told
+      // that person "no account yet? create one", which is false twice over and
+      // pointed them at making a SECOND account for an email that already had
+      // one. Name both possibilities, and — worth more than any wording — flip
+      // the primary button to the one-time code, which works whether or not the
+      // account has a password. See client/src/pages/signinRecovery.ts.
       const code = e?.code || '';
-      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-        fail(L('אימייל או סיסמה שגויים. אין עדיין חשבון? הצטרפו, או התחברו עם קוד חד-פעמי.', 'Wrong email or password. No account yet? Create one, or use a one-time code.'));
-      } else if (code === 'auth/too-many-requests') {
+      const kind = classifyPasswordFailure(code);
+      if (shouldOfferOneTimeCode(kind)) setUsePassword(false);
+      const key = passwordFailureMessageKey(kind);
+      if (key === 'passwordOrSocial') {
+        fail(L(
+          'לא הצלחנו להיכנס עם הסיסמה הזו. אם נרשמת עם Google או Apple, לחשבון אין סיסמה — התחבר/י עם הכפתור למעלה. אחרת, שלחנו לך קוד חד-פעמי לאימייל בלחיצה אחת.',
+          "That password did not sign you in. If you joined with Google or Apple, your account has no password — use the button above. Otherwise, get a one-time code by email in one tap.",
+        ));
+      } else if (key === 'rateLimited') {
         fail(L('יותר מדי ניסיונות — נסו שוב בעוד רגע', 'Too many attempts — please try again shortly'));
       } else {
         fail(humanizeAuthError(code, he ? 'he' : 'en'));
@@ -2295,6 +2328,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               )}
               {authMode === 'login' && method !== 'mobile' && (
                 <>
+                  {/* Mobile sign-in is a FIRST-CLASS method on login, not a footnote.
+                      It used to be one of four identical grey underlined links stacked
+                      below the password field — the CEO could not find it and reported
+                      mobile login as missing (2026-09-19), even though the whole flow
+                      had been built in August. Same sl-soc treatment as Apple/Google,
+                      above the form, matching how JOIN presents its four methods. */}
+                  <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
+                    onClick={() => { emitCtaEvent('AUTH_PHONE_OTP'); setMethod('mobile'); setUsePassword(false); setSent(false); setInlineError(null); }}
+                    data-action-id="AUTH_PHONE_OTP"
+                    data-testid="button-login-with-mobile">
+                    <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{L('התחבר/י עם מספר נייד', 'Sign in with your mobile number')}</span>
+                  </button>
                   <div className="sl-field">
                     <label className="sl-label" htmlFor="sl-login-email">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
@@ -2386,12 +2431,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       ? (L('התחבר/י עם קוד חד-פעמי במקום', 'Sign in with a one-time code instead'))
                       : (L('התחבר/י עם סיסמה במקום', 'Sign in with a password instead'))}
                   </button>
-                  {/* Let a phone-only member sign in with their number (2026-08-08). */}
-                  <button type="button" className="sl-switchLink" disabled={busy}
-                    onClick={() => { setMethod('mobile'); setUsePassword(false); setSent(false); setInlineError(null); }}
-                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {L('התחבר/י עם מספר נייד במקום', 'Sign in with your mobile number instead')}
-                  </button>
+                  {/* The mobile option now sits ABOVE the form as a first-class button. */}
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('join'); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
                     {L('חדש כאן? צור/צרי חשבון', 'New here? Create an account')}
