@@ -48,6 +48,7 @@ import { getLegalDocument } from '@shared/lib/legalDocumentRegistry';
 import { consentGateEnabled } from '../middleware/requireConsent';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
+import { bookingRequestIdParam } from '../lib/bookingRequestIdResolver';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 
 // Enterprise service integrations
@@ -164,6 +165,34 @@ function buildEventPayload(booking: any): BookingEventPayload {
 }
 
 const router = Router();
+
+// Bridged sitter/walk/academy bookings reach these routes under their LEGACY
+// id (SIT-…, WLK-…, TRN-…) — see server/lib/bookingRequestIdResolver.ts for
+// what that broke. Resolving it here fixes every :requestId route at once.
+router.param('requestId', bookingRequestIdParam({
+  isCanonicalId: async (requestId) => {
+    const rows = await db
+      .select({ requestId: bookingRequests.requestId })
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+    return rows.length > 0;
+  },
+  findCanonicalForLegacyId: async (legacyId, userId) => {
+    const legacy: any = await db.execute(sql`
+      SELECT request_id FROM booking_requests
+      WHERE quote_breakdown->'legacyRef'->>'id' = ${legacyId}
+        AND (owner_id = ${userId} OR provider_id = ${userId})
+      LIMIT 1`);
+    const rows = legacy?.rows ?? (Array.isArray(legacy) ? legacy : []);
+    return rows?.[0]?.request_id ?? null;
+  },
+  onResolved: (legacyId, requestId) =>
+    logger.info('[BookingRequests] legacy booking id resolved to canonical', { legacyId, requestId }),
+  onError: (legacyId, error: any) =>
+    logger.warn('[BookingRequests] legacy id resolution failed', { requestId: legacyId, error: error?.message }),
+}));
+
 
 // HIGH-4 (save-integrity audit 2026-08-24): dozens of fire-and-forget
 // audit / event / notification writes in this file were `.catch(() => {})`.
