@@ -218,6 +218,24 @@ export class BackgroundJobProcessor {
         }
       }
     });
+    // PROVIDER FORM INTAKE (2026-09-18) — a Google Form the team can edit
+    // without a release; its responses become CRM leads here. No-op until
+    // GOOGLE_PROVIDER_FORM_SPREADSHEET_ID is set. Identity columns are ignored
+    // by the service on purpose (they belong in the encrypted flow).
+    cron.schedule('*/10 * * * *', async () => {
+      if (!process.env.GOOGLE_PROVIDER_FORM_SPREADSHEET_ID) return;
+      if (await this.acquireLock('providerFormIntake')) {
+        try {
+          const { syncProviderFormResponses } = await import('./services/providerFormIntake');
+          const r = await syncProviderFormResponses();
+          if (r.created > 0) logger.info('[ProviderIntake] new applicants', r);
+        } catch (e: any) {
+          logger.error('[ProviderIntake] cron failed', { error: e?.message });
+        } finally {
+          this.releaseLock('providerFormIntake');
+        }
+      }
+    });
     // SUMIT UNCLAIMED-PAYMENT WATCH (2026-09-17) — card payments are live; a
     // customer who pays and closes the tab before SUMIT's redirect leaves money
     // with no order. Every 15 min: valid SUMIT payments with no

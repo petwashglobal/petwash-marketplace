@@ -186,4 +186,37 @@ router.post('/stations', requireSuperAdmin, async (req: Request, res: Response) 
   }
 });
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider intake from the Google Form (2026-09-18) — run the sync by hand and
+// see how the columns were understood, so the team can edit the Form freely.
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/provider-intake/sync', requireSuperAdmin, async (_req: Request, res: Response) => {
+  const { syncProviderFormResponses } = await import('../services/providerFormIntake');
+  const result = await syncProviderFormResponses();
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+router.get('/provider-intake/columns', requireSuperAdmin, async (_req: Request, res: Response) => {
+  const id = process.env.GOOGLE_PROVIDER_FORM_SPREADSHEET_ID;
+  if (!id) return res.status(400).json({ ok: false, error: 'GOOGLE_PROVIDER_FORM_SPREADSHEET_ID is not set' });
+  try {
+    const { readSheetValues } = await import('../services/googleSheetsIntegration');
+    const { smartMapHeaders } = await import('../services/providerFormIntake');
+    const tab = process.env.GOOGLE_PROVIDER_FORM_SHEET_TAB || 'Form Responses 1';
+    const rows = await readSheetValues(id, `${tab}!A1:Z1`);
+    const headers = (rows[0] ?? []).map((h) => String(h));
+    const { map, ignoredIdentity, unmapped } = smartMapHeaders(headers);
+    res.json({
+      ok: true,
+      understood: headers.map((h, i) => ({ column: h, field: map[i] ?? null })),
+      ignoredIdentity,
+      unmapped,
+      note: 'Identity columns are ignored on purpose — ID, passport, selfie and bank details stay in the encrypted flow.',
+    });
+  } catch (err: any) {
+    res.status(502).json({ ok: false, error: 'Could not read the form sheet', reason: err?.message });
+  }
+});
+
 export default router;

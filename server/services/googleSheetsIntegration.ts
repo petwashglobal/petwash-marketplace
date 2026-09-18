@@ -775,6 +775,19 @@ async function appendFormSubmissionDirect(
  * Features: Durable DB-backed retry queue with exponential backoff
  * Ensures 100% persistence for legal compliance (survives process restarts)
  */
+/**
+ * READ a range from a spreadsheet (2026-09-18). The write path has existed for
+ * a year; provider intake needs the other direction — a Google Form's response
+ * sheet read back in. Returns rows as arrays of strings, [] when the sheet is
+ * empty. Throws with the API's reason so the caller can report it.
+ */
+export async function readSheetValues(spreadsheetId: string, range: string): Promise<string[][]> {
+  const sheets = await getUncachableGoogleSheetsClient();
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range });
+  const values = (res.data.values ?? []) as unknown[][];
+  return values.map((row) => row.map((cell) => (cell == null ? '' : String(cell))));
+}
+
 export async function appendFormSubmission(
   sheetName: string,
   data: Record<string, any>,
