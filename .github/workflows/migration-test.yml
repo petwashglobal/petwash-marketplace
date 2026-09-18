@@ -25,6 +25,27 @@ permissions:
   contents: read
 
 jobs:
+  # ── Can migrations/ rebuild the database at all? ────────────────────────────
+  # The job below asks "does this PR's migration apply to PROD's shape?". This
+  # one asks the question nobody had asked: "if we had nothing but migrations/,
+  # would we get the database shared/schema*.ts describes?" On 2026-09-18 the
+  # answer was no — 318 of 712 tables and 148 failing statements, because prod
+  # had been built by out-of-band `drizzle-kit push` and the files had drifted
+  # into fiction. Runs in-process on PGlite: no service container, no network.
+  rebuild-from-migrations:
+    name: migrations/ alone rebuilds shared/schema*.ts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Rebuild from migrations/ and diff against shared/schema*.ts
+        run: npm run test:migrations
+
   prod-baseline:
     name: New migrations vs prod baseline
     runs-on: ubuntu-latest
@@ -112,8 +133,19 @@ jobs:
         if: steps.newmig.outputs.new != ''
         run: |
           set -e
+          # Files listed in migrations/.manual-migrations.txt are recorded as
+          # bootstrapped and NEVER executed by scripts/apply-pending-migrations.ts,
+          # so replaying them against the prod baseline tests something that will
+          # not happen. Worse, they are allowlisted precisely BECAUSE they cannot
+          # apply cleanly — running them here would fail the PR for the one reason
+          # the allowlist already accepts.
           echo "${{ steps.newmig.outputs.new }}" | while read -r f; do
             [ -z "$f" ] && continue
+            base=$(basename "$f")
+            if grep -vE '^\s*(#|$)' migrations/.manual-migrations.txt | tr -d ' ' | grep -qx "$base"; then
+              echo "⊘ skipping $base — declared manual in migrations/.manual-migrations.txt"
+              continue
+            fi
             echo "── applying $f (ON_ERROR_STOP=1) ──"
             docker run --rm --network=host -e PGPASSWORD=postgres -v "$PWD:/repo" postgres:18 \
               psql -h localhost -U postgres -d petwash_baseline -v ON_ERROR_STOP=1 -f "/repo/$f"

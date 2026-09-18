@@ -31,3 +31,17 @@
 # log a NOTICE instead of failing the deploy. Ops must dedupe by hand
 # and then flip 0126's guards to strict on the next deploy window.
 0124_concurrency_p0_uniques_2026_08_24.sql
+
+# 0166_rebuild_catchup_declared_uniques.sql — SKIP (added 2026-09-18).
+# The 20 UNIQUE indexes shared/schema*.ts declares that are absent from BOTH
+# the migration series AND production (checked against the committed prod
+# schema dump, 2026-07-03). Creating them is a real integrity change on live
+# money tables (ledger_v2_*, refund_transactions, settlements,
+# contractor_earnings), not a catch-up no-op, and CREATE UNIQUE INDEX fails
+# with 23505 if any of those tables already holds duplicates — the same trap
+# that made 0124 block every deploy on 2026-08-24. The file is committed so a
+# database rebuilt from migrations/ alone still matches shared/schema*.ts (the
+# PGlite rebuild gate applies every file directly, on empty tables). To clear
+# it: Actions > "Declared-Unique Duplicate Scan (prod, read-only)" > Run
+# workflow; if it is green, delete this line and the next deploy applies it.
+0166_rebuild_catchup_declared_uniques.sql

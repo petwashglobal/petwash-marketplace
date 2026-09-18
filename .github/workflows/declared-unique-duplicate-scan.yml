@@ -1,0 +1,81 @@
+name: Declared-Unique Duplicate Scan (prod, read-only)
+
+# Answers the one question standing between
+# migrations/0166_rebuild_catchup_declared_uniques.sql and production.
+#
+# 0166 holds the 20 UNIQUE indexes that shared/schema*.ts declares but that are
+# absent from BOTH the migration series AND prod — several of them the
+# idempotency guarantees on money tables (ledger_v2_entries.entry_id,
+# ledger_v2_transactions.idempotency_key, refund_transactions.refund_id and
+# .idempotency_key, settlements(partner, period), contractor_earnings). Right
+# now nothing in the database stops those being written twice.
+#
+# They are NOT applied automatically, because CREATE UNIQUE INDEX fails with
+# 23505 if the table already holds duplicates — and that failure blocks every
+# deploy, which is exactly what 0124 did on 2026-08-24. So 0166 sits in
+# migrations/.manual-migrations.txt until someone checks.
+#
+# This job is that check. READ-ONLY: it issues nothing but SELECT ... GROUP BY
+# ... HAVING count(*) > 1, prints counts rather than row contents (no emails or
+# member ids reach the log), and cannot mutate prod. It fetches DATABASE_URL
+# from Secret Manager and masks it, the same way the schema-snapshot job does —
+# nobody handles the connection string by hand.
+#
+# GREEN  → every table is clean. Delete 0166's line from
+#          migrations/.manual-migrations.txt and the next deploy creates the
+#          indexes.
+# RED    → the log names each table and how many duplicated keys it holds.
+#          Those rows are real double-writes; decide what to do with them
+#          before letting the constraint land.
+#
+# Usage: Actions ▸ "Declared-Unique Duplicate Scan (prod, read-only)" ▸ Run workflow.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: declared-unique-duplicate-scan
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  scan:
+    name: Do the declared-unique tables hold duplicates?
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: signinpetwash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch DATABASE_URL from Secret Manager (masked)
+        run: |
+          set -e
+          if ! gcloud secrets describe "DATABASE_URL" --project="$PROJECT_ID" --quiet &>/dev/null; then
+            echo "::error::DATABASE_URL secret missing from Secret Manager."
+            exit 1
+          fi
+          DB_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
+      - name: Scan for duplicates (read-only)
+        run: node scripts/scan-declared-unique-duplicates.mjs
