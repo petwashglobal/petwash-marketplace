@@ -510,9 +510,9 @@ export default function Packages() {
                   // A plain button, not <Button> (2026-09-18). The shadcn
                   // Button keeps its own h-10 px-4 box while the card renders
                   // far beyond it, so the tap targets did not match what is
-                  // drawn: aiming at ESSENTIALS ₪55 opened PREMIUM ₪220, and
-                  // the ₪150 card was intercepted by the ₪400 one. The hit
-                  // area is now exactly the card.
+                  // drawn: aiming at the cheapest card opened the premium one,
+                  // and the "best value" card was intercepted by the top tier.
+                  // The hit area is now exactly the card.
                   <button
                     key={pkg.id}
                     type="button"
