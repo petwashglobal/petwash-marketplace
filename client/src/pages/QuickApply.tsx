@@ -125,7 +125,7 @@ export default function QuickApply() {
         <label className="block mb-5">
           <span className="block text-sm mb-1">{t.about}</span>
           <textarea
-            className="w-full border rounded-md p-2 text-sm"
+            className="w-full border rounded-md p-2 text-base"
             rows={3}
             value={form.about}
             onChange={(e) => setForm({ ...form, about: e.target.value })}
