@@ -67,3 +67,23 @@ describe('the typecheck gate refuses this class outright', () => {
     expect(idx).toBeLessThan(baselineCmp); // checked before the baseline can forgive it
   });
 });
+
+describe('client screens call only what they have', () => {
+  it('the provider task inbox uses the canonical status label, not a map that was deleted', () => {
+    const src = R('client/src/pages/ProviderTaskInbox.tsx');
+    // #1882 moved every screen onto @shared/lib/bookingStatusLabels and deleted
+    // the page-local maps; this page kept rendering STATUS_LABEL[...] and threw
+    // ReferenceError while drawing a provider's own task list.
+    expect(src).toMatch(/import \{ bookingStatusLabel \} from '@shared\/lib\/bookingStatusLabels'/);
+    expect(src).toMatch(/const \{ language \} = useLanguage\(\)/);
+    expect(src).toMatch(/bookingStatusLabel\(b\.status, language\)/);
+    expect(src).not.toMatch(/STATUS_LABEL\[/);
+  });
+
+  it('the trainer profile imports the fee split it prices with', () => {
+    const src = R('client/src/pages/academy/TrainerProfile.tsx');
+    expect(src).toMatch(/import \{ splitMarketplaceJob \} from '@shared\/marketplaceMoney'/);
+    const importAt = src.indexOf("from '@shared/marketplaceMoney'");
+    expect(importAt).toBeLessThan(src.indexOf('splitMarketplaceJob(Math.round'));
+  });
+});
