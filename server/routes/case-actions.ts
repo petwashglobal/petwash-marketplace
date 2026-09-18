@@ -594,7 +594,9 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
       const escrows: any[] = typeof escrowSvc.getEscrowsByBooking === 'function'
         ? await escrowSvc.getEscrowsByBooking(bookingId)
         : [];
-      const held = (escrows || []).filter((e) => e && e.status === 'held');
+      // 'disputed' included (2026-09-19): filing the dispute is what moved the
+      // escrow out of 'held', so closing it skipped the very money it froze.
+      const held = (escrows || []).filter((e) => e && (e.status === 'held' || e.status === 'disputed'));
       if (held.length === 0) {
         escrowOutcome = 'no_action';
       } else if (refundCodes.has(reasonCode)) {
@@ -604,7 +606,13 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
         escrowOutcome = 'refunded';
       } else if (releaseCodes.has(reasonCode)) {
         for (const e of held) {
-          await escrowSvc.releaseEscrowPayment(e.id, ctx.uid ?? 'system', `Dispute closure: ${reasonCode}`);
+          await escrowSvc.releaseEscrowPayment(
+            e.id,
+            ctx.uid ?? 'system',
+            // A closure decided in the provider's favour is the one thing
+            // allowed to release money that is under dispute.
+            { resolvingDispute: true },
+          );
         }
         escrowOutcome = 'released';
       } else {

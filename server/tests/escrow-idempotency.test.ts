@@ -104,7 +104,14 @@ describe('Issue #153 PR-C — EscrowService idempotency + TOCTOU close', () => {
     )?.[0] ?? SRC.split('async releaseEscrowPayment')[1]?.split('async refundEscrowPayment')[0] ?? '';
     expect(releaseBlock).toMatch(/this\.db\.runTransaction\(/);
     expect(releaseBlock).toMatch(/tx\.get\(escrowRef\)/);
-    expect(releaseBlock).toMatch(/e\.status\s*!==\s*["']held["']/);
+    // The guard became an expression in 2026-09-19 so that closing a dispute in
+    // the provider's favour can release money the dispute had frozen. Same
+    // TOCTOU close, same transaction: what is pinned is that ONLY 'held' —
+    // or an explicit dispute resolution — may release, and that the check
+    // still lives inside the tx.
+    expect(releaseBlock).toMatch(/e\.status\s*===\s*["']held["']/);
+    expect(releaseBlock).toMatch(/e\.status\s*===\s*["']disputed["']\s*&&\s*opts\?\.resolvingDispute\s*===\s*true/);
+    expect(releaseBlock).toMatch(/if\s*\(!releasable\)/);
     expect(releaseBlock).toMatch(/tx\.update\(escrowRef\,\s*\{[\s\S]{0,200}status:\s*["']released["']/);
   });
 
