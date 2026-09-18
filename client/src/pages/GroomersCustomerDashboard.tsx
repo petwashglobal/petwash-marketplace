@@ -276,7 +276,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
               <XCircle className="w-3.5 h-3.5 mr-1.5" />Cancel
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={() => setLocation('/groomers/book')}>
+          <Button size="sm" variant="ghost" onClick={() => setLocation('/groomers/explore')}>
             <RefreshCcw className="w-3.5 h-3.5 mr-1.5" />Rebook
           </Button>
         </div>
@@ -318,7 +318,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
               <h1 className="text-3xl font-bold text-white">{isHebrew ? 'היסטוריית הטיפוח שלי' : 'My Grooming History'}</h1>
               <p className="text-[#D4AF37] mt-1">Track appointments, photos & spending</p>
             </div>
-            <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" onClick={() => setLocation('/groomers/book')}>
+            <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" onClick={() => setLocation('/groomers/explore')}>
               <Scissors className="w-4 h-4 mr-2" />Book Session
             </Button>
           </div>
@@ -395,7 +395,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
                     <Scissors className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                     <p className="luxury-heading-sm text-gray-500">No upcoming appointments</p>
                     <p className="luxury-text-small text-gray-400 mt-1 mb-6">Book a grooming session for your pet</p>
-                    <Button className="luxury-btn-primary" onClick={() => setLocation('/groomers/book')}>
+                    <Button className="luxury-btn-primary" onClick={() => setLocation('/groomers/explore')}>
                       <Scissors className="w-4 h-4 mr-2" />Book Now
                     </Button>
                   </div>

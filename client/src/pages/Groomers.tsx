@@ -232,7 +232,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
                               </>
                             )}
                           </div>
-                          <Button className="luxury-btn-primary" size="sm" onClick={() => setLocation(`/groomers/book`)}>
+                          <Button className="luxury-btn-primary" size="sm" onClick={() => setLocation('/groomers/explore')}>
                             Book<ChevronRight className="w-3.5 h-3.5 ml-1" />
                           </Button>
                         </div>
