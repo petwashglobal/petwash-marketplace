@@ -98,6 +98,25 @@ afterAll(() => {
  * simply had not been captured. Merging the streams keeps the assertions about
  * what an operator actually sees.
  */
+/**
+ * The three variables the gate reads to decide "is this a production release".
+ *
+ * They are STRIPPED from the inherited environment, so the only ones the gate
+ * sees are the ones a test passes explicitly. 2026-09-18: this file left the
+ * red baseline because it was green on a PR — and then failed on all 18
+ * pushes to main that followed. The Actions runner sets GITHUB_REF to
+ * refs/heads/main on a push-to-main run, the gate treats that as production,
+ * and the "non-production" test inherited it. Green on every PR, red on
+ * every merge, and nothing in the PR could have shown it.
+ */
+const PRODUCTION_SIGNALS = ['TURNSTILE_INVARIANT_ENV', 'NODE_ENV', 'GITHUB_REF'] as const;
+
+function hermeticEnv(): Record<string, string | undefined> {
+  const base: Record<string, string | undefined> = { ...process.env };
+  for (const k of PRODUCTION_SIGNALS) delete base[k];
+  return base;
+}
+
 function run(env: Record<string, string>, dist = goodDist): { code: number; out: string } {
   const cmd = `${JSON.stringify(process.execPath)} ${JSON.stringify(SCRIPT)} --dist ${JSON.stringify(dist)} 2>&1`;
   try {
@@ -105,7 +124,7 @@ function run(env: Record<string, string>, dist = goodDist): { code: number; out:
       encoding: 'utf8',
       // PATH is pinned to a gcloud-free one BEFORE the caller's env, so a test
       // only talks to gcloud when it deliberately puts one on the PATH.
-      env: { ...process.env, PATH: noGcloudPath, ...env },
+      env: { ...hermeticEnv(), PATH: noGcloudPath, ...env },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     return { code: 0, out };
@@ -189,6 +208,14 @@ describe('FAIL CLOSED when the gate cannot evaluate', () => {
     const r = run({ PATH: noGcloudPath });
     expect(r.code).toBe(0);
     expect(r.out).toContain('Non-production release');
+  });
+
+  it('a push-to-main run counts as production even when nobody set TURNSTILE_INVARIANT_ENV', () => {
+    // The deploy workflow relies on this inference; it is also the signal the
+    // previous test must NOT inherit from the runner (see PRODUCTION_SIGNALS).
+    const r = run({ GITHUB_REF: 'refs/heads/main' });
+    expect(r.code).toBe(1);
+    expect(r.out).not.toContain('Non-production release');
   });
 });
 
