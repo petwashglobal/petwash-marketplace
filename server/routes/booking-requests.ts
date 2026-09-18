@@ -354,6 +354,9 @@ router.post('/', async (req, res) => {
     const serviceFeePercent = 15;
     
     totalDays = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    // Whole hours booked, minimum one — used by the hourly (walker / trainer)
+    // rate branch below.
+    const totalHours = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60)));
     
     if (fq && fq.success && typeof fq.totals?.totalCents === 'number') {
       // ── Safety checks before trusting the client-supplied quote ──────────────
@@ -471,7 +474,12 @@ router.post('/', async (req, res) => {
       if (dailyRateCents > 0) {
         subtotalCents = dailyRateCents * totalDays * data.petCount;
       } else if (hourlyRateCents > 0) {
-        subtotalCents = hourlyRateCents * data.petCount;
+        // Bill the hours actually booked (2026-09-18). This charged ONE hour
+        // whatever the window was: BookingContact sends a 3-hour walk, and an
+        // ₪80/h walker was billed ₪80 for ₪240 of service — the walker was paid
+        // for one hour too (providerPayoutCents = subtotalCents). Rounded up to
+        // the next whole hour, minimum one, the way the hourly engines do.
+        subtotalCents = hourlyRateCents * totalHours * data.petCount;
       } else {
         // No published rate — refuse to invent a price (§17a: the number the
         // customer commits to must be the provider's real one).
@@ -685,7 +693,7 @@ router.post('/', async (req, res) => {
           dailyRateCents: dailyRateCents || null,
           hourlyRateCents: hourlyRateCents || null,
           totalDays,
-          totalHours: null,
+          totalHours: hourlyRateCents > 0 ? String(totalHours) : null,
           subtotalCents,
           serviceFeePercent: serviceFeePercent.toString(),
           serviceFeeCents,
