@@ -93,12 +93,35 @@ describe('KNOWN GAPS — pinned until fixed (flip the assertion when wired)', ()
     expect(src('server/routes/academy.ts')).toMatch(/generateReceipt/);
   });
 
-  it('Walk accept issues NO receipt at all — its path has no payment rail (2026-07-30)', () => {
-    // The old pin tracked the undefined-txn receipt; the whole receipt call was
-    // removed because NO money is collected on walk accept (moveToEscrow only
-    // writes a Firestore doc) — a tax document there was a false ITA filing.
-    // Restore a receipt pin only when a verified payment rail lands here.
-    expect(src('server/routes/walk-my-pet.ts')).not.toMatch(/generateReceipt\(/);
+  // FLIPPED 2026-09-18 (#2595 wired the card rail). This used to assert that a
+  // walk issues NO receipt: money was never collected on accept — moveToEscrow
+  // only wrote a Firestore doc — so a tax document there was a false ITA
+  // filing. The pin said "restore a receipt pin only when a verified payment
+  // rail lands here." It has landed, so the assertion flips.
+  //
+  // What matters now is WHERE. The receipt belongs at COMPLETION, after the
+  // money is real — never at accept, which is the original bug.
+  it('a walk issues its customer receipt at COMPLETION, never at accept', () => {
+    const wmp = src('server/routes/walk-my-pet.ts');
+    expect(wmp).toMatch(/generateReceipt\(/);
+
+    const completeAt = wmp.indexOf("router.post('/walks/:bookingId/complete'");
+    const receiptAt = wmp.indexOf('IsraeliDigitalReceiptService.generateReceipt(');
+    expect(completeAt).toBeGreaterThan(-1);
+    expect(receiptAt).toBeGreaterThan(completeAt);
+
+    // The accept handler must still issue nothing.
+    const acceptAt = wmp.indexOf("router.post('/walks/:bookingId/accept'");
+    if (acceptAt > -1) {
+      const acceptBlock = wmp.slice(acceptAt, completeAt > acceptAt ? completeAt : acceptAt + 4000);
+      expect(acceptBlock).not.toMatch(/generateReceipt\(/);
+    }
+
+    // And a SUMIT hiccup must never eat the document: it goes through the
+    // durable outbox, and a failure to complete the booking is not acceptable
+    // either, so the receipt is non-blocking.
+    expect(wmp).toMatch(/runFiscalDocumentAndPersistOnFailure/);
+    expect(wmp).toMatch(/sourceKey: `walk:\$\{bookingId\}`/);
   });
 
   it('Sitter receipt resolves the real customer email (gap fixed)', () => {

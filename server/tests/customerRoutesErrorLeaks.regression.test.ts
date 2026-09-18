@@ -80,8 +80,6 @@ describe('Discriminator codes present per file', () => {
       "'NOTIF_TEMPLATE_DELETE_500'",
       "'NOTIF_LOGS_400'",
       "'NOTIF_STATS_500'",
-      "'NOTIF_MARK_DELIVERED_400'",
-      "'NOTIF_MARK_FAILED_400'",
       "'NOTIF_UNREAD_500'",
       "'NOTIF_USER_LIST_500'",
       "'NOTIF_MARK_READ_500'",
@@ -113,6 +111,26 @@ describe('Discriminator codes present per file', () => {
   });
 });
 
+// 2026-09-18: four entries removed from the lists above — the NOTIF_MARK_*
+// codes and the "marking as delivered/failed" log tags. They belonged to
+// POST /api/notifications/webhook/delivered and /failed, DELETED 2026-08-21.
+// Those endpoints ran under no auth and verified no signature, so any caller
+// on the internet could POST {"logId": n} over a small integer id space and
+// flip a notification_logs row to 'delivered' (hiding a real SMS/email failure
+// from monitoring) or 'failed' (poisoning the delivery audit). Nothing ever
+// called them — real delivery status arrives at the signed /api/webhooks/*
+// handlers. This pin was asking for the forgery vector back; the case below
+// keeps it out instead.
+
+describe('the unauthenticated delivery-status endpoints stay DELETED', () => {
+  it('no notifications-scoped webhook route accepts a status flip', () => {
+    const src = R('routes/notifications.ts');
+    expect(src).not.toMatch(/router\.post\(\s*["'`]\/webhook\/(delivered|failed)/);
+    // The removal is documented in place so nobody re-adds it as a "missing" route.
+    expect(src).toMatch(/REMOVED 2026-08-21/);
+  });
+});
+
 describe('logger tags survive (internal trace intact)', () => {
   it('notifications.ts keeps all [Notifications] Error * tags', () => {
     const src = R('routes/notifications.ts');
@@ -125,8 +143,6 @@ describe('logger tags survive (internal trace intact)', () => {
       '[Notifications] Error deleting template',
       '[Notifications] Error fetching logs',
       '[Notifications] Error fetching stats',
-      '[Notifications] Error marking as delivered',
-      '[Notifications] Error marking as failed',
       '[Notifications] Error fetching unread count',
       '[Notifications] Error fetching user notifications',
       '[Notifications] Error marking as read',

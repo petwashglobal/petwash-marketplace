@@ -87,9 +87,20 @@ describe('Issue #153 PR-WALK-1 — server endpoint hardening', () => {
 
   it('canonical /walks/mine filters walks by walkBookings.ownerId = userId from token', () => {
     const block = routeBlock("router.get('/walks/mine'");
-    expect(block).toMatch(
-      /\.where\(\s*eq\(\s*walkBookings\.ownerId,\s*userId\s*\)\s*\)/,
-    );
+    // 2026-09-18: this demanded the ownership filter INLINE in .where(). The
+    // route was hardened after that: `?status=` used to be applied with a
+    // SECOND .where(), and Drizzle's .where() OVERWRITES rather than ANDs — so
+    // any request with ?status= dropped the ownership scope entirely and
+    // returned every user's walks (cross-tenant IDOR, 2026-08-11). The fix
+    // builds ONE combined scope, which the old regex cannot see.
+    expect(block).toMatch(/eq\(walkBookings\.ownerId,\s*userId\)/);
+    // The ownership term must be in BOTH branches — with and without ?status=.
+    expect(block).toMatch(/and\(eq\(walkBookings\.ownerId,\s*userId\),\s*eq\(walkBookings\.status/);
+    // ONE .where() on THIS query — a second one silently replaces the first,
+    // which is exactly how the ownership scope was lost.
+    const chain = block.slice(block.indexOf('.from(walkBookings)'), block.indexOf('.orderBy('));
+    expect(chain.match(/\.where\(/g)?.length).toBe(1);
+    expect(chain).toContain('.where(scope)');
     // Same response shape as the legacy route (clients depend on it).
     expect(block).toMatch(/res\.json\(\s*\{\s*success:\s*true,\s*bookings\s*\}\s*\)/);
   });

@@ -17,59 +17,49 @@ import { resolve } from 'path';
 
 const R = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 
+/**
+ * 2026-09-18 — RETARGETED, same as the booking handlers: the inline
+ * `claimIdempotencyKey` helper (a racey SELECT-then-INSERT that wrote
+ * 'idempotency-marker' rows into notification_logs) was replaced by the ONE
+ * canonical atomic helper, server/lib/eventNotificationIdempotency.ts. These
+ * four cases demanded the racey version back.
+ *
+ * It matters more here than for a booking notice: provider.approved is the
+ * message that tells someone they may start working, and provider.rejected is
+ * the one that tells them they may not. Sending either twice, or dropping one
+ * permanently because a claim was marked "sent" before it was, is the visible
+ * failure.
+ */
 describe('provider.approved / provider.rejected handlers are idempotent', () => {
-  it('claimIdempotencyKey helper is defined', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    expect(src).toContain('async function claimIdempotencyKey');
-    expect(src).toMatch(/notificationLogs\.idempotencyKey/);
-    expect(src).toContain("templateKey: 'idempotency-marker'");
+  const SRC = R('services/events/NotificationEventHandlers.ts');
+  const IDEM = R('lib/eventNotificationIdempotency.ts');
+
+  it('handlers use the ONE canonical atomic claim, not a helper of their own', () => {
+    expect(SRC).toMatch(/import\s*\{\s*dispatchOnce\s*\}\s*from\s*['"][^'"]*eventNotificationIdempotency['"]/);
+    expect(SRC).not.toContain('async function claimIdempotencyKey');
+    expect(IDEM).toMatch(/ON CONFLICT\s*\(\s*key\s*\)\s*DO NOTHING/i);
   });
 
-  it('helper fails OPEN on DB errors', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    const helperIdx = src.indexOf('async function claimIdempotencyKey');
-    const helper = src.slice(helperIdx, helperIdx + 1500);
-    expect(helper).toMatch(/Idempotency claim failed/);
-    expect(helper).toMatch(/return true;\s*\}\s*\}/);
+  it('a failed send releases the claim — an approval is never lost to a marker', () => {
+    expect(IDEM).toMatch(/finalizeEventNotification\(key,\s*false\)/);
   });
 
-  it('provider.approved handler claims BEFORE sendNotification', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    const sub = src.indexOf("eventBus.subscribe('provider.approved'");
-    expect(sub).toBeGreaterThan(-1);
-    const window = src.slice(sub, sub + 3000);
-    expect(window).toContain('const idempotencyKey = `provider_approved:${event.data.providerId}:${event.userId}`');
-    const claimPos = window.indexOf('claimIdempotencyKey');
-    const sendPos = window.indexOf('NotificationService.sendNotification');
-    expect(claimPos).toBeGreaterThan(-1);
-    expect(sendPos).toBeGreaterThan(-1);
-    expect(claimPos).toBeLessThan(sendPos);
-    expect(window).toContain('provider_approved already dispatched — skipping');
-  });
-
-  it('provider.rejected handler claims BEFORE sendNotification', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    const sub = src.indexOf("eventBus.subscribe('provider.rejected'");
-    expect(sub).toBeGreaterThan(-1);
-    const window = src.slice(sub, sub + 3000);
-    expect(window).toContain('const idempotencyKey = `provider_rejected:${event.data.providerId}:${event.userId}`');
-    const claimPos = window.indexOf('claimIdempotencyKey');
-    const sendPos = window.indexOf('NotificationService.sendNotification');
-    expect(claimPos).toBeLessThan(sendPos);
-    expect(window).toContain('provider_rejected already dispatched — skipping');
-  });
-
-  it('provider handler surface unchanged (channels + reason field intact)', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    const approvedIdx = src.indexOf("eventBus.subscribe('provider.approved'");
-    const approvedWindow = src.slice(approvedIdx, approvedIdx + 3000);
-    expect(approvedWindow).toContain("channelsOverride: ['email', 'push']");
-    expect(approvedWindow).toContain("templateKey: 'provider_approved'");
-
-    const rejectedIdx = src.indexOf("eventBus.subscribe('provider.rejected'");
-    const rejectedWindow = src.slice(rejectedIdx, rejectedIdx + 3000);
-    expect(rejectedWindow).toContain("channelsOverride: ['email', 'push']");
-    expect(rejectedWindow).toContain("templateKey: 'provider_rejected'");
-    expect(rejectedWindow).toContain('reason:');
-  });
+  for (const [event, key] of [
+    ['provider.approved', 'notif:provider_approved:'],
+    ['provider.rejected', 'notif:provider_rejected:'],
+  ] as const) {
+    it(`${event} claims a per-provider key and SENDS INSIDE the claim`, () => {
+      const at = SRC.indexOf(`eventBus.subscribe('${event}'`);
+      expect(at).toBeGreaterThan(-1);
+      const window = SRC.slice(at, at + 3000);
+      expect(window).toContain(key);
+      expect(window).toContain('${event.data.providerId}:${event.userId}`');
+      const claimPos = window.indexOf('dispatchOnce');
+      const sendPos = window.indexOf('NotificationService.sendNotification');
+      expect(claimPos).toBeGreaterThan(-1);
+      expect(sendPos).toBeGreaterThan(-1);
+      expect(claimPos).toBeLessThan(sendPos);
+      expect(window).toMatch(/skipped by idempotency/);
+    });
+  }
 });
