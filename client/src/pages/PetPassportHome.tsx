@@ -10,9 +10,16 @@
  *   page bg   #FAFAF7   hero card  #063B22 (dark green)   gold  #D6B56D
  *   title     #121212   green text/link  #063B22          tile border #ECE6D8
  *
- * Hebrew-first RTL; numbers/emails/phones stay LTR. Sharp on every device: the
- * app renders as a centered phone-width column so it looks right small or big.
- * Data is REAL — pets come from GET /api/pets; empty/missing renders honestly.
+ * Hebrew-first RTL; numbers/emails/phones stay LTR. Data is REAL — pets come from
+ * GET /api/pets; empty/missing renders honestly.
+ *
+ * FULL-SCREEN ON EVERY DEVICE (CEO 2026-09-18): the screen used to render as a
+ * fixed 440px phone column on every device, so on an iPad or a desktop it was a
+ * narrow strip in a sea of marble. Phones keep the mockup's single column and
+ * bottom nav; from `md` up the same content becomes a two-column layout (hero +
+ * records on the left, pets + quick actions on the right), the nav moves into
+ * the header, and the hero photo, type and radii scale up. Same tokens, same
+ * copy, same destinations — nothing is redrawn, only laid out.
  */
 import { useMemo } from 'react';
 import { useLocation } from 'wouter';
@@ -50,10 +57,6 @@ const SPECIES_EN: Record<string, string> = {
   dog: 'Dog', cat: 'Cat', bird: 'Bird', rabbit: 'Rabbit', guinea_pig: 'Guinea Pig',
   hamster: 'Hamster', reptile: 'Reptile', fish: 'Fish', snake: 'Snake', other: 'Other',
 };
-const SPECIES_EMOJI: Record<string, string> = {
-  dog: '🐕', cat: '🐈', bird: '🦜', rabbit: '🐇', guinea_pig: '🐹',
-  hamster: '🐹', reptile: '🦎', fish: '🐠', snake: '🐍', other: '🐾',
-};
 
 /** "3 yrs 8 mo" / "3 שנים 8 חודשים" from an ISO birthdate. Empty if unknown. */
 function ageText(birthdate: string | null | undefined, isHe: boolean): string {
@@ -83,9 +86,12 @@ function genderText(g: string | null | undefined, isHe: boolean): string {
   return '';
 }
 
-/** Circle pet avatar — real photo when present, else a soft species emoji chip. */
-function PetAvatar({ pet, size, ring }: { pet: Pet; size: number; ring?: boolean }) {
-  const ringCls = ring ? 'ring-2' : '';
+/**
+ * Circle pet avatar — the real photo when present, else a soft paw chip in the
+ * passport's own icon set (no emoji on a luxury surface). `size` is the phone
+ * size; `className` lets the hero grow on wider screens (`md:!h-… md:!w-…`).
+ */
+function PetAvatar({ pet, size, ring, className = '' }: { pet: Pet; size: number; ring?: boolean; className?: string }) {
   const style = ring ? { boxShadow: `0 0 0 2px ${GOLD}` } : undefined;
   if (pet.photoUrl) {
     return (
@@ -94,21 +100,33 @@ function PetAvatar({ pet, size, ring }: { pet: Pet; size: number; ring?: boolean
         alt={pet.name}
         width={size}
         height={size}
-        className={`rounded-full object-cover ${ringCls}`}
+        className={`shrink-0 rounded-full object-cover ${className}`}
         style={{ width: size, height: size, ...style }}
         loading="lazy"
+        decoding="async"
       />
     );
   }
   return (
     <div
-      className={`rounded-full flex items-center justify-center bg-[#EEF3EC] ${ringCls}`}
-      style={{ width: size, height: size, fontSize: size * 0.42, ...style }}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-[#EEF3EC] ${className}`}
+      style={{ width: size, height: size, ...style }}
       aria-label={pet.name}
     >
-      <span>{SPECIES_EMOJI[pet.species] ?? '🐾'}</span>
+      <PawPrint style={{ color: GREEN, width: size * 0.42, height: size * 0.42 }} />
     </div>
   );
+}
+
+/** The five passport destinations — one list feeds the phone bottom nav and the desktop header nav. */
+function useNavItems(tr: (he: string, en: string) => string, navigate: (to: string) => void, goToPetDocuments: () => void) {
+  return [
+    { key: 'home',   icon: <Home />,      label: tr('דף הבית', 'Home'),       onClick: () => navigate('/pet-parent/home') },
+    { key: 'pets',   icon: <PawPrint />,  label: tr('חיות מחמד', 'Pets'),     onClick: () => navigate('/pet-passport'), active: true },
+    { key: 'health', icon: <Heart />,     label: tr('בריאות', 'Health'),      onClick: () => navigate('/pets') },
+    { key: 'docs',   icon: <FileText />,  label: tr('מסמכים', 'Documents'),   onClick: goToPetDocuments },
+    { key: 'alerts', icon: <Bell />,      label: tr('התראות', 'Alerts'),      onClick: () => navigate('/notifications') },
+  ];
 }
 
 export default function PetPassportHome() {
@@ -153,13 +171,29 @@ export default function PetPassportHome() {
   // pets yet can add one first instead of hitting a 404/denied screen.
   const goToPetDocuments = () => navigate(hero ? `/pets/${hero.id}/documents` : '/pets');
 
-  return (
-    <div dir={isHe ? 'rtl' : 'ltr'} className="min-h-screen w-full bg-[#FAFAF7]">
-      <div className="mx-auto w-full max-w-[440px] px-5 pb-28 pt-5">
+  const navItems = useNavItems(tr, navigate, goToPetDocuments);
 
-        {/* ── Header: logo (left) + owner avatar (right), fixed orientation ── */}
-        <div dir="ltr" className="flex items-center justify-between">
+  return (
+    <div dir={isHe ? 'rtl' : 'ltr'} className="min-h-[100dvh] w-full bg-[#FAFAF7]">
+      <div className="mx-auto w-full max-w-[440px] px-5 pb-28 pt-5 md:max-w-[1120px] md:px-10 md:pb-16 md:pt-8 lg:px-14">
+
+        {/* ── Header: logo (left) + owner avatar (right), fixed orientation.
+             From md up the five passport destinations sit in the middle. ── */}
+        <div dir="ltr" className="flex items-center justify-between gap-6">
           <PetWashLogo size={34} priority />
+          <nav dir={isHe ? 'rtl' : 'ltr'} className="hidden md:flex items-center gap-1 rounded-full border border-[#ECE6D8] bg-white px-2 py-1" aria-label={tr('ניווט דרכון', 'Passport navigation')}>
+            {navItems.map((n) => (
+              <button
+                key={n.key}
+                onClick={n.onClick}
+                className="flex items-center gap-2 rounded-full px-4 py-2 text-[14px] transition-colors hover:bg-[#F3F1EA]"
+                style={{ color: n.active ? '#FFFFFF' : GREEN, backgroundColor: n.active ? GREEN : 'transparent', fontWeight: n.active ? 700 : 600 }}
+              >
+                <span className="flex items-center justify-center [&_svg]:h-[18px] [&_svg]:w-[18px]">{n.icon}</span>
+                <span>{n.label}</span>
+              </button>
+            ))}
+          </nav>
           <button
             onClick={() => navigate('/my-account')}
             className="h-10 w-10 rounded-full overflow-hidden border border-[#E4E4DC] bg-white shrink-0"
@@ -175,20 +209,27 @@ export default function PetPassportHome() {
           </button>
         </div>
 
+        <div className="md:mt-2 md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] md:items-start md:gap-8 lg:gap-10">
+        <div className="min-w-0">
+
         {/* ── Hero pet card ── */}
-        <div dir="ltr" className="relative mt-4 flex items-center gap-4 rounded-[22px] p-5 shadow-lg" style={{ backgroundColor: GREEN }}>
+        <div
+          dir="ltr"
+          className="relative mt-4 flex items-center gap-4 rounded-[22px] p-5 shadow-lg md:mt-6 md:gap-6 md:rounded-[28px] md:p-8"
+          style={{ backgroundColor: GREEN, backgroundImage: `linear-gradient(135deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,0.18) 100%)` }}
+        >
           {hero ? (
             <>
               {/* Photo on the LEFT (matches the CEO mockup), text right-aligned for Hebrew */}
-              <PetAvatar pet={hero} size={104} ring />
+              <PetAvatar pet={hero} size={104} ring className="md:!h-[140px] md:!w-[140px]" />
               <div className="min-w-0 flex-1" style={{ textAlign: isHe ? 'right' : 'left' }}>
-                <div className="truncate text-[30px] font-extrabold leading-tight" style={{ color: GOLD }}>
+                <div className="truncate text-[30px] font-extrabold leading-tight md:text-[42px]" style={{ color: GOLD }}>
                   {hero.name}
                 </div>
-                <div className="mt-1 truncate text-[15px] text-white/95">
+                <div className="mt-1 truncate text-[15px] text-white/95 md:text-[18px]">
                   {hero.breed || speciesLabel(hero.species)}
                 </div>
-                <div className="mt-0.5 text-[15px] text-white/80" dir={isHe ? 'rtl' : 'ltr'}>
+                <div className="mt-0.5 text-[15px] text-white/80 md:text-[17px]" dir={isHe ? 'rtl' : 'ltr'}>
                   {[ageText(hero.birthday ?? hero.birthdate, isHe), genderText(hero.gender, isHe)].filter(Boolean).join(' • ')}
                 </div>
               </div>
@@ -227,6 +268,9 @@ export default function PetPassportHome() {
           <Tile icon={<Syringe />} label={tr('חיסונים', 'Vaccines')} onClick={() => navigate('/pets')} />
         </div>
 
+        </div>{/* /left column */}
+        <div className="min-w-0">
+
         {/* ── My Pets carousel ── */}
         <div className="mt-6 flex items-center justify-between">
           <div className="text-[22px] font-extrabold" style={{ color: '#121212' }}>
@@ -237,7 +281,7 @@ export default function PetPassportHome() {
           </button>
         </div>
 
-        <div className="mt-3 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mt-3 flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden md:flex-wrap md:gap-5 md:overflow-visible">
           {isLoading && pets.length === 0 && (
             [0, 1, 2].map((i) => (
               <div key={i} className="w-[92px] shrink-0 text-center">
@@ -264,14 +308,14 @@ export default function PetPassportHome() {
         </div>
 
         {/* ── Quick actions ── */}
-        <div className="mt-6 rounded-[22px] border border-[#ECE6D8] bg-white p-4">
+        <div className="mt-6 rounded-[22px] border border-[#ECE6D8] bg-white p-4 md:rounded-[28px] md:p-6">
           <div className="text-[22px] font-extrabold" style={{ color: '#121212' }}>
             {tr('פעולות מהירות', 'Quick actions')}
           </div>
           {/* 2026-08-27 wire-only sweep: Clinics was a dead notReady() toast →
               dropped until the locator ships. All 4 remaining actions route to
               real screens. */}
-          <div className="mt-3 grid grid-cols-4 gap-2">
+          <div className="mt-3 grid grid-cols-4 gap-2 md:mt-5 md:gap-4">
             {/* 2026-08-18 COMPETITIVE (WhatIDog gap): Reminders and Vet are REAL —
                 /pets renders per-pet PetHealthPanel with vaccine-reminder,
                 deworming, and vet-visit event flows over /api/pets/:id/health-events. */}
@@ -281,18 +325,19 @@ export default function PetPassportHome() {
             <Quick icon={<MoreHorizontal />} label={tr('עוד', 'More')} onClick={() => navigate('/pets')} />
           </div>
         </div>
+
+        </div>{/* /right column */}
+        </div>{/* /md grid */}
       </div>
 
-      {/* ── Bottom nav (within the phone column) ── */}
+      {/* ── Bottom nav — phones only; from md the same items live in the header ── */}
       <nav
         dir={isHe ? 'rtl' : 'ltr'}
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[440px] items-center justify-around border-t border-[#ECE6D8] bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2"
+        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[440px] items-center justify-around border-t border-[#ECE6D8] bg-white px-2 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden"
       >
-        <NavItem icon={<Home />} label={tr('דף הבית', 'Home')} onClick={() => navigate('/prestige/home')} />
-        <NavItem icon={<PawPrint />} label={tr('חיות מחמד', 'Pets')} active onClick={() => navigate('/pet-passport')} />
-        <NavItem icon={<Heart />} label={tr('בריאות', 'Health')} onClick={() => navigate('/pets')} />
-        <NavItem icon={<FileText />} label={tr('מסמכים', 'Documents')} onClick={goToPetDocuments} />
-        <NavItem icon={<Bell />} label={tr('התראות', 'Alerts')} onClick={() => navigate('/notifications')} />
+        {navItems.map((n) => (
+          <NavItem key={n.key} icon={n.icon} label={n.label} active={n.active} onClick={n.onClick} />
+        ))}
       </nav>
     </div>
   );
@@ -302,19 +347,19 @@ function Tile({ icon, label, onClick }: { icon: React.ReactNode; label: string; 
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-center gap-2 rounded-2xl border border-[#ECE6D8] bg-white px-2 py-4 transition-transform active:scale-[0.97]"
+      className="flex flex-col items-center gap-2 rounded-2xl border border-[#ECE6D8] bg-white px-2 py-4 transition-transform active:scale-[0.97] md:gap-3 md:rounded-[22px] md:py-6 md:hover:shadow-md"
     >
-      <span className="flex h-7 w-7 items-center justify-center [&_svg]:h-7 [&_svg]:w-7" style={{ color: GREEN }}>{icon}</span>
-      <span className="text-center text-[13px] font-bold leading-tight" style={{ color: GREEN }}>{label}</span>
+      <span className="flex h-7 w-7 items-center justify-center [&_svg]:h-7 [&_svg]:w-7 md:h-9 md:w-9 md:[&_svg]:h-9 md:[&_svg]:w-9" style={{ color: GREEN }}>{icon}</span>
+      <span className="text-center text-[13px] font-bold leading-tight md:text-[15px]" style={{ color: GREEN }}>{label}</span>
     </button>
   );
 }
 
 function Quick({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick?: () => void }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-1.5 transition-transform active:scale-95">
-      <span className="flex h-7 w-7 items-center justify-center [&_svg]:h-6 [&_svg]:w-6" style={{ color: GREEN }}>{icon}</span>
-      <span className="text-center text-[11px] font-semibold leading-tight text-[#333]">{label}</span>
+    <button onClick={onClick} className="flex flex-col items-center gap-1.5 rounded-2xl py-2 transition-transform active:scale-95 md:hover:bg-[#F7F5EE]">
+      <span className="flex h-7 w-7 items-center justify-center [&_svg]:h-6 [&_svg]:w-6 md:h-9 md:w-9 md:[&_svg]:h-8 md:[&_svg]:w-8" style={{ color: GREEN }}>{icon}</span>
+      <span className="text-center text-[11px] font-semibold leading-tight text-[#333] md:text-[13px]">{label}</span>
     </button>
   );
 }
