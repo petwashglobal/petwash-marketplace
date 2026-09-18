@@ -49,14 +49,22 @@ ALTER TABLE "pets"
 
 -- Step 3: map any existing values to the closest safe label.
 -- Original values are preserved in temperament_archived for audit purposes.
+--
+-- 2026-09-18: lower("temperament") became lower("temperament"::text). Once
+-- 0002_b creates "pets" with its final shape, "temperament" is already the
+-- pet_temperament enum by the time this file replays, and lower(enum) raises
+-- 42883 ("function lower(pet_temperament) does not exist") — the drift error
+-- that made apply-pending-migrations.ts stop dead at 0018 on 2026-07-02. The
+-- ::text cast is correct for BOTH shapes, so the conversion still does exactly
+-- what it always did on a free-text column and is a harmless no-op afterwards.
 UPDATE "pets" SET "temperament_new" = CASE
-  WHEN lower("temperament") IN ('calm', 'gentle', 'friendly', 'relaxed', 'docile') THEN 'calm'::pet_temperament
-  WHEN lower("temperament") IN ('nervous', 'anxious', 'shy', 'fearful', 'timid') THEN 'nervous'::pet_temperament
-  WHEN lower("temperament") IN ('high energy', 'high_energy', 'energetic', 'active', 'excitable') THEN 'high_energy'::pet_temperament
-  WHEN lower("temperament") IN ('aggressive', 'reactive', 'unpredictable', 'dominant',
+  WHEN lower("temperament"::text) IN ('calm', 'gentle', 'friendly', 'relaxed', 'docile') THEN 'calm'::pet_temperament
+  WHEN lower("temperament"::text) IN ('nervous', 'anxious', 'shy', 'fearful', 'timid') THEN 'nervous'::pet_temperament
+  WHEN lower("temperament"::text) IN ('high energy', 'high_energy', 'energetic', 'active', 'excitable') THEN 'high_energy'::pet_temperament
+  WHEN lower("temperament"::text) IN ('aggressive', 'reactive', 'unpredictable', 'dominant',
                                   'needs careful handling', 'needs_careful_handling') THEN 'needs_careful_handling'::pet_temperament
   -- Values that suggest a higher risk level map to staff_assistance_recommended
-  WHEN lower("temperament") IN ('dangerous', 'staff assistance', 'staff_assistance_recommended',
+  WHEN lower("temperament"::text) IN ('dangerous', 'staff assistance', 'staff_assistance_recommended',
                                   'staff assistance recommended') THEN 'staff_assistance_recommended'::pet_temperament
   ELSE NULL  -- unmapped values become NULL (safe default); original is kept in temperament_archived
 END

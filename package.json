@@ -34,7 +34,8 @@
     "pass:images:prepare": "bash scripts/pass/prepare-luxury-pass-images.sh --apply",
     "prebuild": "npm run preflight",
     "preflight": "tsx scripts/petwash-preflight.ts && tsx scripts/guards/retired-email-address-scanner.ts",
-    "prerender": "node scripts/prerender.mjs"
+    "prerender": "node scripts/prerender.mjs",
+    "test:migrations": "vitest run server/tests/migrationsRebuildSchema.regression.test.ts"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^8.3.0",
@@ -194,6 +195,7 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.4.0",
+    "@electric-sql/pglite": "0.3.14",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",

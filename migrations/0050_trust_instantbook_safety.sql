@@ -36,6 +36,14 @@ CREATE TABLE IF NOT EXISTS provider_background_checks (
   notes         TEXT,                                 -- non-PII operational note only
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- 2026-09-18: provider_background_checks.provider_id is declared in
+-- shared/schema.ts but no migration ever added it, so the index below could
+-- never be created -- it failed with 42703 (undefined_column) on every replay
+-- since this file shipped. Adding the column here, immediately before the
+-- index that needs it, makes the file self-consistent. No-op on production,
+-- which already has the column.
+ALTER TABLE provider_background_checks ADD COLUMN IF NOT EXISTS provider_id varchar;
+
 CREATE INDEX IF NOT EXISTS idx_bgcheck_provider ON provider_background_checks (provider_id, status);
 
 -- 2) Meet & greet — a real scheduled object (was only a status string).

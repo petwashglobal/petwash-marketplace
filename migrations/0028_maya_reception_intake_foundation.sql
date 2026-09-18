@@ -33,7 +33,13 @@
 --
 -- Rollback (commented at bottom): drop the maya_* tables.
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- 2026-09-18: this file used to run CREATE EXTENSION IF NOT EXISTS pgcrypto.
+-- The only thing it ever needed from pgcrypto is gen_random_uuid(), which has
+-- been part of core Postgres since 13 (prod is Neon 18), so the extension is
+-- dead weight -- and it is the one statement in the whole series that a
+-- rebuild environment without contrib modules cannot run. Removing it makes
+-- the migration series portable; prod already has the extension installed and
+-- is unaffected either way.
 
 -- ============================================================================
 -- maya_conversations — one row per visitor/admin session with Maya

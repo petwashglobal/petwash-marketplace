@@ -206,6 +206,43 @@ This repo is worked by **multiple AI agents** (Claude sessions AND Codex). Two a
 - **No schema migrations** unless separately approved. Adding a column counts. Renaming a column counts.
 - **No package.json or lockfile changes** without explicit approval.
 
+#### If a migration IS approved — how to write one (2026-09-18)
+
+`migrations/` used to be fiction. Replaying every file into an empty Postgres
+produced 318 of the 712 tables `shared/schema*.ts` declares, with 148 failing
+statements — `booking_requests`, behind every marketplace booking, had no
+`CREATE TABLE` anywhere. Prod had been built by out-of-band `drizzle-kit push`,
+so the files had stopped describing the database and nothing ever rebuilt from
+them to notice. It is fixed and now gated. Keep it fixed:
+
+- **Run `npm run test:migrations` before you push** (~15s, PGlite, no network).
+  It rebuilds the whole database from `migrations/` alone and asserts zero
+  failing statements plus every table and column in `shared/schema*.ts`. The
+  same job runs at PR time. **Add a table or column to `shared/schema*.ts`
+  without a migration that creates it and your PR goes red.**
+- **Every statement must be idempotent.** `CREATE TABLE IF NOT EXISTS`,
+  `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`.
+  `CREATE TYPE` and `ADD CONSTRAINT` have no `IF NOT EXISTS` — wrap them:
+  `DO $$ BEGIN <stmt>; EXCEPTION WHEN duplicate_object THEN NULL; END $$;`
+  This is not style. The prod-baseline gate replays your file through `psql`
+  with `ON_ERROR_STOP=1`, where a duplicate is fatal. `DO` blocks are safe:
+  `apply-pending-migrations.ts` only leaves its transactional path for
+  `CONCURRENTLY` / `VACUUM` / `REINDEX` / `ALTER SYSTEM` /
+  `CREATE|DROP DATABASE|TABLESPACE`, so anything else is sent as one query and
+  its non-dollar-quote-aware splitter never parses your file.
+- **Never run `drizzle-kit generate` into `migrations/`.** Its output carries no
+  `IF NOT EXISTS` and would fail against every object prod already has.
+- **Adding columns to a table that `0002_b` already creates?** They MUST go in
+  as `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. `0002_b` creates 437 tables at
+  slot 0002 from the drizzle schema, so a later `CREATE TABLE` naming extra
+  columns silently no-ops and those columns vanish from a rebuild — and the
+  gate will not catch it, because it checks the schema's columns exist, not the
+  reverse. (0163's `station_registry` extras are the worked example: bays,
+  hours_he, access_he, access_en survive precisely because they are ALTERs.)
+- The catch-up sits at slot `0002_a`/`0002_b` on purpose: a table created at the
+  end of the series cannot un-fail the statements that referenced it 150 files
+  earlier. Do not renumber it.
+
 ### Money & runtime systems (sacred)
 - **No wallet/finance behavior change** unless separately approved. Adding audit logging is fine; changing release/refund/payout/balance math is NOT.
 - **No K9000/Nayax runtime change** unless separately approved. You can add visibility (read-only dashboards). You cannot change polling, terminal IDs, payment flow, or hardware commands.
