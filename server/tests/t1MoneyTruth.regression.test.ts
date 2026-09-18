@@ -70,7 +70,15 @@ describe('T1 — money truth invariants', () => {
   it('cancel does not forge refundProcessedAt; only the executing wallet refund stamps it', () => {
     const src = R('server/routes/booking-requests.ts');
     expect(src).not.toMatch(/refundProcessedAt: refundCents > 0/);
-    expect(src).toMatch(/walletRefundKey: refundResult\.txnId, financeState: 'refunded', refundProcessedAt: new Date\(\)/);
+    // 2026-09-18: the cancel refund became tier-aware and multi-line. The
+    // invariant is unchanged — the stamp lives inside the block that runs
+    // AFTER refundBookingWallet resolved, next to the real txn id.
+    const stamped = src.slice(src.indexOf('const refundResult = await walletService.refundBookingWallet'), src.indexOf('Wallet refunded on cancel'));
+    expect(stamped).toMatch(/walletRefundKey: refundResult\.txnId/);
+    expect(stamped).toMatch(/refundProcessedAt: new Date\(\)/);
+    // and never on the path where nothing was refunded
+    const nothingDue = src.slice(src.indexOf('if (walletRefundCents <= 0) {'), src.indexOf('} else {', src.indexOf('if (walletRefundCents <= 0) {')));
+    expect(nothingDue).not.toMatch(/refundProcessedAt/);
   });
 
   it('escrow refund notice does not claim money already moved', () => {
