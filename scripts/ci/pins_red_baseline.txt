@@ -2,11 +2,13 @@
 # One per line, "path  # reason". Remove a line once its file is green. NEVER add a file
 # to this list to get a PR through — fix the test or the code.
 #
-# BEFORE REMOVING A LINE: run the file the way the push-to-main job sees it, not
-# only the way your PR sees it. The two runs differ in environment (the runner
-# sets GITHUB_REF=refs/heads/main on main, refs/pull/N/merge on a PR; gcloud is
-# on the PATH; NODE_ENV=test). 2026-09-18: a file removed here because it was
-# green on its PR then failed 18 consecutive pushes to main. Check with:
+# BEFORE REMOVING A LINE: make sure the file is green for the RUNNER, not only
+# for your laptop, and that it does not depend on the runner's environment
+# (GITHUB_REF, gcloud on the PATH, NODE_ENV=test). A test that spawns a script
+# must set every variable that script reads. 2026-09-18: a file removed here was
+# green on its PR and then failed 18 consecutive pushes to main because it
+# inherited GITHUB_REF from the runner; the gate is PR-only since that day, but
+# the deploy workflow's own steps still run on main with that environment. Check:
 #   GITHUB_REF=refs/heads/main NODE_ENV=test npx vitest run <file>
 
 client/src/__tests__/CustomerBookings.aggregator.regression.test.ts  # red on main at gate landing
