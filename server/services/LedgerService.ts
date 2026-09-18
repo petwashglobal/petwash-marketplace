@@ -293,6 +293,12 @@ async function realPostMovement(input: {
   const totals = assertBalanced(input.legs);
 
   // Fast-path idempotency: has this movement already been recorded?
+  //
+  // ADVISORY ONLY (2026-09-18). This SELECT runs OUTSIDE the transaction, so a
+  // concurrent caller can pass it, block on the account locks below, and wake
+  // up still believing the key is unseen. The AUTHORITATIVE check is repeated
+  // inside the transaction after those locks — see below. Keep this one purely
+  // as a cheap exit for the common replay, never as the guard.
   const pre: any = await (db as any).execute(
     sql`SELECT transaction_id FROM ledger_v2_transactions WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
   );
@@ -304,8 +310,9 @@ async function realPostMovement(input: {
   const transactionId = `LT-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
   const uniqueAccounts = Array.from(new Set(input.legs.map((l) => l.accountId))).sort();
 
+  let existingTransactionId: string | null = null;
   try {
-    await (db as any).transaction(async (tx: typeof db) => {
+    existingTransactionId = await (db as any).transaction(async (tx: typeof db): Promise<string | null> => {
       // Ensure + lock each involved account (sorted order → no deadlock) and read its chain head.
       const lastHashByAccount: Record<string, string> = {};
       for (const accountId of uniqueAccounts) {
@@ -323,6 +330,28 @@ async function realPostMovement(input: {
         lastHashByAccount[accountId] = lastRow?.entry_hash ?? 'genesis';
       }
 
+      // AUTHORITATIVE IDEMPOTENCY — inside the transaction, AFTER the account
+      // locks (2026-09-18).
+      //
+      // The pre-check above happens before this transaction opens. Two
+      // deliveries of the same movement both pass it, then queue on the same
+      // account rows (the same movement always touches the same accounts). The
+      // loser eventually gets the lock — and used to insert a SECOND envelope,
+      // because it had already decided the key was unseen.
+      //
+      // The line below used to say "UNIQUE(idempotency_key) is the double-post
+      // kill". That index is DECLARED in shared/schema.ts and is NOT PRESENT IN
+      // PRODUCTION (staged in migrations/0166, deliberately unapplied), so the
+      // second insert SUCCEEDS and the catch never fires: two transactions for
+      // one business event, in the table that is meant to be the money
+      // authority. Re-reading here, under the locks, makes the loser see the
+      // winner's committed row — with or without the constraint.
+      const underLock: any = await (tx as any).execute(
+        sql`SELECT transaction_id FROM ledger_v2_transactions WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
+      );
+      const underLockRows: any[] = underLock?.rows ?? underLock ?? [];
+      if (underLockRows.length > 0) return String(underLockRows[0].transaction_id);
+
       const plan = planMovement({
         eventType: input.eventType,
         idempotencyKey: input.idempotencyKey,
@@ -332,7 +361,9 @@ async function realPostMovement(input: {
         entryIdSeed: (i) => `LE-${transactionId.slice(3)}-${i}`,
       });
 
-      // The balanced transaction envelope. UNIQUE(idempotency_key) is the double-post kill.
+      // The balanced transaction envelope. The double-post kill is the
+      // re-check under the account locks above — NOT UNIQUE(idempotency_key),
+      // which production does not have.
       await (tx as any).insert(ledgerTransactions).values({
         transactionId: plan.transactionId,
         idempotencyKey: plan.idempotencyKey,
@@ -361,8 +392,12 @@ async function realPostMovement(input: {
           entryHash: e.entryHash,
         })),
       );
+      return null;
     });
   } catch (err: any) {
+    // Belt-and-braces for the day UNIQUE(idempotency_key) exists again. It
+    // cannot fire on current production — the index is absent — so it is a
+    // fallback, not the guard.
     // A concurrent delivery may have inserted the same idempotency_key first → unique
     // violation. Re-read and report the winning transaction as an idempotent replay.
     const post: any = await (db as any).execute(
@@ -373,6 +408,10 @@ async function realPostMovement(input: {
       return { transactionId: String(postRows[0].transaction_id), idempotent: true, totalCents: totals.totalDebits };
     }
     throw err;
+  }
+
+  if (existingTransactionId) {
+    return { transactionId: existingTransactionId, idempotent: true, totalCents: totals.totalDebits };
   }
 
   return { transactionId, idempotent: false, totalCents: totals.totalDebits };
@@ -502,14 +541,45 @@ async function realOpenPending(input: {
     paymentRef: input.paymentRef ?? null,
     metadata: { pendingId },
   });
+  // CHECK AND INSERT UNDER ONE LOCK (2026-09-18).
+  //
+  // This had no transaction and no lock at all: a bare pre-check SELECT, then
+  // an insert, wrapped in `catch {}` whose comment read "Concurrent open won
+  // the UNIQUE(idempotency_key)". Nothing else stood between two concurrent
+  // opens — and that index is DECLARED in shared/schema.ts but NOT PRESENT IN
+  // PRODUCTION (staged in migrations/0166, deliberately unapplied), so the
+  // second insert SUCCEEDS and the catch never fires. Two open holds for one
+  // business event.
+  //
+  // postMovement above is now idempotent under its own account locks, so both
+  // callers get the SAME transactionId; the lock here keeps them from writing
+  // two pending rows for it. Keyed on the idempotency key, so unrelated holds
+  // never wait on each other.
+  let wonRace: { pendingId: string; transactionId: string } | null = null;
   try {
-    await (db as any).insert(ledgerPendingTransfers).values({
-      pendingId, kind: input.kind, fromAccountId: input.fromAccountId, toAccountId: input.toAccountId,
-      amountCents: input.amountCents, status: 'open', bookingId: input.bookingId ?? null,
-      paymentRef: input.paymentRef ?? null, idempotencyKey: input.idempotencyKey, openEntryTxn: mv.transactionId,
+    wonRace = await (db as any).transaction(async (tx: typeof db) => {
+      await (tx as any).execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${`ledger_pending:${input.idempotencyKey}`}))`,
+      );
+      const underLock: any = await (tx as any).execute(
+        sql`SELECT pending_id, open_entry_txn FROM ledger_v2_pending_transfers WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
+      );
+      const underLockRows: any[] = underLock?.rows ?? underLock ?? [];
+      if (underLockRows.length > 0) {
+        return {
+          pendingId: String(underLockRows[0].pending_id),
+          transactionId: String(underLockRows[0].open_entry_txn ?? ''),
+        };
+      }
+      await (tx as any).insert(ledgerPendingTransfers).values({
+        pendingId, kind: input.kind, fromAccountId: input.fromAccountId, toAccountId: input.toAccountId,
+        amountCents: input.amountCents, status: 'open', bookingId: input.bookingId ?? null,
+        paymentRef: input.paymentRef ?? null, idempotencyKey: input.idempotencyKey, openEntryTxn: mv.transactionId,
+      });
+      return null;
     });
   } catch {
-    // Concurrent open won the UNIQUE(idempotency_key) → return the existing pending.
+    // Belt-and-braces for the day the UNIQUE index exists again.
     const post: any = await (db as any).execute(
       sql`SELECT pending_id, open_entry_txn FROM ledger_v2_pending_transfers WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
     );
@@ -517,6 +587,7 @@ async function realOpenPending(input: {
     if (postRows.length > 0) return { pendingId: String(postRows[0].pending_id), transactionId: String(postRows[0].open_entry_txn ?? ''), idempotent: true };
     throw new Error('openPending: pending row insert failed and no existing row found');
   }
+  if (wonRace) return { pendingId: wonRace.pendingId, transactionId: wonRace.transactionId, idempotent: true };
   return { pendingId, transactionId: mv.transactionId, idempotent: mv.idempotent };
 }
 
