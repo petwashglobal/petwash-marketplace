@@ -20,6 +20,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 const R = (rel: string) =>
   fs.readFileSync(path.resolve(__dirname, '..', 'routes', rel), 'utf8');
@@ -68,22 +70,44 @@ describe('booking safety wire — persistence → bridge → walker inbox (CEO �
 
   describe('walker inbox reads the safety block back out', () => {
     const src = R('walk-my-pet.ts');
-    it('/walker/requests exposes petSafety in the JSON response', () => {
-      // Isolate the /walker/requests block so a match in /walker/active
-      // can't accidentally satisfy this assertion.
+    // 2026-09-18: these demanded the stored block be handed to the walker
+    // RAW — `petSafety: (r.petDetails as any)?.safety ?? null`. It is now
+    // re-projected through projectStoredSafetyForProvider against the owner's
+    // CURRENT consent, so medical fields (allergies, medication notes, vet
+    // name and phone) disappear from the response if the owner withdrew
+    // consent after the booking was made. The snapshot is a point-in-time
+    // copy; consent is not. The pins were asserting the leak.
+    it('/walker/requests exposes petSafety, re-checked against CURRENT consent', () => {
       const requestsBlock = src.slice(
         src.indexOf("router.get('/walker/requests'"),
         src.indexOf("router.get('/walker/active'"),
       );
-      expect(requestsBlock).toMatch(/petSafety:\s*\(r\.petDetails as any\)\?\.safety\s*\?\?\s*null/);
+      expect(requestsBlock).toMatch(/projectStoredSafetyForProvider\(stored, canonicalPet\)/);
+      expect(requestsBlock).toMatch(/\n\s*petSafety,/);
+      // Never the raw stored block.
+      expect(requestsBlock).not.toMatch(/petSafety:\s*\([a-z]+\.petDetails as any\)\?\.safety/);
     });
-    it('/walker/active exposes petSafety in the JSON response', () => {
+    it('/walker/active exposes petSafety, re-checked against CURRENT consent', () => {
       const activeStart = src.indexOf("router.get('/walker/active'");
       const activeEnd   = src.indexOf("router.get('/walker/completed'", activeStart);
       expect(activeStart).toBeGreaterThan(0);
       expect(activeEnd).toBeGreaterThan(activeStart);
       const activeBlock = src.slice(activeStart, activeEnd);
-      expect(activeBlock).toMatch(/petSafety:\s*\(active\.petDetails as any\)\?\.safety\s*\?\?\s*null/);
+      // Imported under a local alias here (projActive), so match the import
+      // rather than the call name.
+      expect(activeBlock).toMatch(/projectStoredSafetyForProvider: projActive/);
+      expect(activeBlock).toMatch(/projActive\(\(active\.petDetails as any\)\?\.safety \?\? null, activeCanonicalPet\)/);
+      expect(activeBlock).toMatch(/petSafety:\s*activePetSafety/);
+      expect(activeBlock).not.toMatch(/petSafety:\s*\([a-z]+\.petDetails as any\)\?\.safety/);
+    });
+    it('the projector strips every medical field when consent is gone', () => {
+      const priv = readFileSync(resolve(__dirname, '..', 'lib', 'petPrivacy.ts'), 'utf8');
+      const fn = priv.slice(priv.indexOf('export function projectStoredSafetyForProvider'));
+      expect(fn).toMatch(/providerHasMedicalConsent\(canonicalPetOrNull\)/);
+      for (const field of ['allergies', 'medicationNotes', 'vetName', 'vetPhone']) {
+        expect(fn).toContain(`delete s.${field};`);
+      }
+      expect(fn).toMatch(/s\.medicalConsented = false/);
     });
   });
 });
