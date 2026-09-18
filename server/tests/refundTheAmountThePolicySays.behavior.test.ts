@@ -70,7 +70,12 @@ vi.mock('../services/AlertEngine', () => ({
 
 vi.mock('../services/payoutGate', () => ({ checkPayoutGates: async () => ({ ok: true }) }));
 
-const load = async () => (await import('../services/EscrowService')).default;
+// Imported ONCE (2026-09-19). Re-importing EscrowService per test pulls a big
+// graph and, run alongside the rest of the suite, exceeded vitest's 5s budget —
+// failures that looked like assertion failures and were not. The service holds
+// no state between calls; the mocked document is the state.
+const svc = (await import('../services/EscrowService')).default;
+const load = async () => svc;
 
 beforeEach(() => {
   stored = {};
@@ -78,7 +83,6 @@ beforeEach(() => {
   notifications.length = 0;
   auditRows.length = 0;
   alerts.length = 0;
-  vi.resetModules();
 });
 
 describe('a partial refund refunds the partial amount', () => {

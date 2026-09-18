@@ -656,7 +656,13 @@ class BookingLifecycleService {
     await db.update(escrowHoldings)
       .set({
         status: 'refunded',
-        refundProcessedAt: now,
+        // NOT stamped (2026-09-19). This method moves no money: there is no
+        // automated card-refund rail, so writing refundProcessedAt = now
+        // recorded a refund that had been PROCESSED when nothing had left the
+        // account. The card path in booking-requests.ts already leaves it null
+        // for exactly this reason; the wallet paths, which really do move
+        // money, are the only places that stamp it.
+        refundProcessedAt: null,
         refundAmountCents: escrow.grossAmountCents,
         refundReason: reason ?? 'Booking cancelled',
         updatedAt: now,
@@ -668,8 +674,42 @@ class BookingLifecycleService {
       refundAmountCents: escrow.grossAmountCents,
       fromStatus: escrow.status,
       reason: reason ?? 'Booking cancelled',
+      cardMoneyMoved: false,
     });
-    logger.info('[BookingLifecycle] Escrow refunded on terminal transition', {
+
+    // …and tell a human, because otherwise nobody ever would. Marking the row
+    // 'refunded' was the ONLY thing that happened here: the customer's card was
+    // never credited and no queue, cron or screen listed the debt. The
+    // Firestore escrow rail has raised this alert since 2026-09-17; the SQL
+    // rail was silent. Deduped per escrow, and never allowed to break a cancel.
+    try {
+      const { createOrUpdateAlert } = await import('./AlertEngine');
+      const amountIls = (escrow.grossAmountCents ?? 0) / 100;
+      await createOrUpdateAlert({
+        dedupeKey: `marketplace_escrow_card_refund:${escrow.escrowId}`,
+        category: 'payment',
+        severity: 'warning',
+        title: 'Card refund to do by hand',
+        message: `Booking ${bookingId} · escrow ${escrow.escrowId} · refund ₪${amountIls.toFixed(2)}. `
+          + `Reason: ${reason ?? 'Booking cancelled'}. No card money moved — refund exactly this amount `
+          + `with the card provider, then close this alert.`,
+        linkedEntityType: 'booking',
+        linkedEntityId: String(bookingId),
+        source: 'booking_lifecycle',
+        metadata: {
+          escrowId: escrow.escrowId,
+          refundAmountCents: escrow.grossAmountCents,
+          fromStatus: escrow.status,
+          actorUserId: actorUserId ?? 'system',
+        },
+      });
+    } catch (alertErr: any) {
+      logger.error('[BookingLifecycle] escrow marked refunded but the admin alert FAILED — card refund must be done by hand', {
+        bookingId, escrowId: escrow.escrowId, error: alertErr?.message,
+      });
+    }
+
+    logger.info('[BookingLifecycle] Escrow marked refunded on terminal transition (card refund pending by hand)', {
       bookingId, fromStatus: escrow.status, refundAmountCents: escrow.grossAmountCents,
     });
   }
