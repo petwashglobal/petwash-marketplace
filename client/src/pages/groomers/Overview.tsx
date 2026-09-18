@@ -10,8 +10,6 @@ import {
   Search, 
   Calendar, 
   Clock, 
-  Heart, 
-  DollarSign,
   HelpCircle,
   Sparkles,
   ArrowRight,
@@ -49,25 +47,16 @@ export default function GroomersOverview() {
       link: "/groomers/customer/dashboard",
       color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
-    {
-      icon: <Heart className="h-8 w-8 text-rose-600" />,
-      title: "Favourite Groomers",
-      description: "Save your trusted groomers",
-      link: "/groomers/favorites",
-      color: "bg-rose-50 dark:bg-rose-950"
-    },
-    {
-      icon: <DollarSign className="h-8 w-8 text-emerald-600" />,
-      title: "Pricing & Add-ons",
-      description: "View services and pricing",
-      link: "/groomers/pricing",
-      color: "bg-emerald-50 dark:bg-emerald-950"
-    },
+    // The favourites, pricing and help destinations were never built: the
+    // parametric groomer-detail route caught them, so every one of those tiles
+    // landed the customer on "מטפח לא נמצא" with a 404 behind it (seen live
+    // 2026-09-18). A tile that cannot work is worse than no tile; Help now
+    // points at the support page, which does exist.
     {
       icon: <HelpCircle className="h-8 w-8 text-[#B8932F]" />,
       title: "Help & Support",
       description: "Get assistance with grooming services",
-      link: "/groomers/help",
+      link: "/contact",
       color: "bg-white dark:bg-[#B8932F]"
     }
   ];
