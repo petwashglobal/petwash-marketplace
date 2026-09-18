@@ -131,6 +131,23 @@ router.get('/catalog', (_req: Request, res: Response) => {
   res.json({ ok: true, currency: 'ILS', vatIncluded: true, products });
 });
 
+// GET /api/payments/sumit/my-wash-discount — the member's own K9000 wash
+// discount, so the checkout screens can SHOW what /begin will charge
+// (2026-09-18: a Prestige Basic member saw ₪450 on the button and was charged
+// ₪427.50 — in their favour, but the page never said so and the receipt did
+// not match). Read-only, own user only; the charge still resolves it itself.
+router.get('/my-wash-discount', validateFirebaseToken, async (req: Request, res: Response) => {
+  const uid = req.firebaseUser?.uid;
+  if (!uid) return res.status(401).json({ error: 'Authentication required' });
+  try {
+    const resolved = await resolveWashDiscount(uid);
+    res.json({ ok: true, percent: resolved.percent, source: resolved.source });
+  } catch (err: any) {
+    logger.warn('[SumitPay] wash discount lookup failed', { uid, err: err?.message });
+    res.json({ ok: true, percent: 0, source: 'none' });
+  }
+});
+
 // POST /api/payments/sumit/begin
 router.post('/begin', validateFirebaseToken, async (req: Request, res: Response) => {
   const uid = req.firebaseUser?.uid;
