@@ -33,7 +33,7 @@ export const SUMIT_ORDER_REF_PREFIX = 'PW-REF ';
 import { logger } from '../lib/logger';
 import { parseSumitPaymentId } from '../lib/sumitPaymentId';
 export { parseSumitPaymentId };
-import { israeliFiscalDate } from '@shared/israel-compliance-config';
+import { israeliFiscalDate, ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { sumitPageLanguage } from '../lib/paymentPageLanguage';
 
 /**
@@ -636,6 +636,43 @@ export class SumitClient {
     if (!isWired()) {
       return { wired: false, idempotencyKey: input.idempotencyKey, reason: 'SumitClient not wired' };
     }
+    // ── the credit must state the VAT WE computed, or none at all ───────────
+    //
+    // `vatAmount` used to be an accepted-and-ignored argument: the body always
+    // shipped one VAT-bearing line with VATIncluded:true, so SUMIT derived the
+    // VAT itself as 18/118 of the credited gross — whatever the caller had
+    // worked out. For a booking that is the same number and nothing was wrong.
+    // For a document that carried NO VAT it is not: a wallet top-up / eGift
+    // purchase is issued as Type:'Receipt', payment-only, zero VAT, because the
+    // tax event is at redemption (CPA order #5, verified live on doc #30000).
+    // Crediting ₪500 of that would have produced a credit invoice reclaiming
+    // ₪76.27 of VAT that was never charged or paid — VAT understated to the
+    // ITA, in our favour, in a document with our company's name on it.
+    //
+    // No path reaches that today (both credit callers are booking-scoped, and
+    // bookings carry VAT), so this is a guard, not a repair. It FAILS CLOSED:
+    // it issues nothing, and the caller's contract (issueOnceAtSumit) turns a
+    // result with no document id into a throw, which queues the fiscal outbox
+    // and raises the missing-document alert for a person. Issuing a wrong
+    // fiscal document is worse than issuing none and saying so.
+    const impliedVat = Math.round(input.totalAmount * (ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE)) * 100) / 100;
+    if (Math.abs(impliedVat - input.vatAmount) > 0.02) {
+      logger.error('[SumitClient] createCreditDocument REFUSED — VAT mismatch', {
+        idempotencyKey: input.idempotencyKey,
+        totalAmount: input.totalAmount,
+        callerVat: input.vatAmount,
+        sumitWouldDerive: impliedVat,
+        ...input.context,
+      });
+      return {
+        wired: true,
+        idempotencyKey: input.idempotencyKey,
+        reason: `CREDIT_VAT_MISMATCH: caller says VAT ${input.vatAmount} on a credit of `
+          + `${input.totalAmount}, a VAT-inclusive line would state ${impliedVat}. Refusing to `
+          + 'issue a credit that misstates VAT — a person must issue the right document type.',
+      };
+    }
+
     const originalId = input.originalSumitDocumentId != null ? Number(input.originalSumitDocumentId) : undefined;
     const body: Record<string, unknown> = {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
