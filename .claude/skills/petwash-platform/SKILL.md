@@ -411,6 +411,46 @@ Always capture **before** numbers for `tsc --noEmit` error count and `vitest` pa
 
 ---
 
+### Concurrency tests: pglite CANNOT fail one (2026-09-18)
+
+`@electric-sql/pglite` runs a **single connection**. `Promise.all` of two
+service calls executes **sequentially**, so a behavioural race test against it
+passes whether or not the code is safe.
+
+This was proved, not assumed. A refund cap was "protected" by a
+`pg_advisory_xact_lock` taken in a transaction that only ran the SUM — released
+before the comparison and before the insert, so it guarded nothing. Two
+`Promise.allSettled` tests written to catch exactly that passed. The lock was
+then **deleted** and they *still* passed.
+
+So:
+
+- **Never** claim a concurrency guarantee on the strength of a pglite test.
+- Pin the guarantee **structurally on the source** instead: one transaction;
+  the lock is the first statement inside it; the read, the check and the write
+  all come after it. Assert the ORDER of those indexes. Removing the lock then
+  fails the test — verify that it does.
+- Always mutation-check a concurrency pin: break the guarantee on purpose and
+  confirm the test goes red. A test that cannot fail is worse than no test,
+  because it is read as proof.
+
+pglite remains right for schema, SQL semantics and money arithmetic — the
+migration rebuild gate uses it correctly, because it asserts structure rather
+than concurrency.
+
+### Do not lean on a UNIQUE index that production does not have
+
+20 UNIQUE indexes declared in `shared/schema*.ts` are **absent from production**
+(staged in `migrations/0166`, deliberately unapplied — `CREATE UNIQUE INDEX`
+fails with 23505 on pre-existing duplicates and blocks every deploy). Among them
+`refund_transactions.idempotency_key`, `ledger_v2_transactions.idempotency_key`
+and `ledger_v2_pending_transfers.idempotency_key`.
+
+If code catches 23505, or assumes an idempotency key can only be inserted once,
+**that guarantee does not exist right now**. Write the duplicate check in code,
+inside the same lock as the insert, and keep the 23505 catch only as
+belt-and-braces for the day the index lands.
+
 ## 6. Design rules
 
 PetWash is a premium brand. Every UI surface must look it.
