@@ -654,7 +654,30 @@ router.get('/wallet', async (req: Request, res: Response) => {
     const cardId      = memberIdentity?.memberId ?? `PW-${raw8}`;
     const cardDisplay = memberIdentity?.cardNumberDisplay ?? `PW • ${raw8.slice(0, 4)} ${raw8.slice(4, 8)}`;
 
-    const displayName = (session?.user?.displayName as string | undefined) || (passData.firstName as string | undefined) || undefined;
+    // Name resolution used to be session.displayName || passData.firstName, and
+    // both are commonly empty for a Google signup whose profile was written to
+    // Postgres rather than onto the Firebase session. The client then fell back
+    // to the raw Firebase UID and printed "vdiboz7IrU" on the CEO's card
+    // (2026-09-19, live iPhone). The same response already carries the real
+    // name on memberCard, so the data was never missing -- only this lookup was
+    // too shallow. Widen it to the same sources resolveContact() uses, and only
+    // pay for the query when the cheap sources came back empty.
+    let displayName =
+      (session?.user?.displayName as string | undefined)
+      || ((req as any).firebaseUser?.claims?.name as string | undefined)
+      || (passData.firstName as string | undefined)
+      || undefined;
+    if (!displayName) {
+      try {
+        const r = await pool.query(
+          'SELECT first_name, last_name FROM users WHERE id = $1 LIMIT 1',
+          [userId],
+        );
+        const row = r.rows?.[0];
+        const joined = [row?.first_name, row?.last_name].filter(Boolean).join(' ').trim();
+        displayName = joined || undefined;
+      } catch { /* leave undefined — the client shows a neutral label, never a UID */ }
+    }
 
     // Persist cardId + userId to Firestore so /staff/lookup can find this user by card scan
     if (!passData.cardId || passData.cardId !== cardId) {

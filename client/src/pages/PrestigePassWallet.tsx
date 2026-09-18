@@ -187,7 +187,12 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
       {/* Premium card */}
       <div style={{ padding: '0 20px 24px' }}>
         <PremiumMemberCard
-          ownerName={walletData?.displayName || pass.userId.slice(0, 10)}
+          // NEVER fall back to pass.userId: it is the raw Firebase UID, and
+          // slice(0,10) put "vdiboz7IrU" on the CEO's card where his name
+          // belongs (2026-09-19, live iPhone). An internal identifier must
+          // never be rendered as a person's name -- PremiumMemberCard already
+          // shows a neutral 'Member' when this is undefined.
+          ownerName={walletData?.displayName || undefined}
           balanceCents={totalLiquid}
           cardDisplay={walletData?.cardDisplay || `PW • ${pass.serialNumber.slice(-8, -4)} ${pass.serialNumber.slice(-4)}`}
           cardId={walletData?.cardId || `PW-${pass.serialNumber.slice(-8)}`}
@@ -940,7 +945,9 @@ function PrestigeKioskPass({
   onClose: () => void;
 }) {
   const { pass, balances } = wallet;
-  const name = walletData?.displayName || pass.userId.slice(0, 10);
+  // Same rule as the card above: a missing name shows a neutral label, never
+  // the raw Firebase UID.
+  const name = walletData?.displayName || (he ? 'חבר' : 'Member');
   const tierLabel = he ? pass.tierDisplay.he : pass.tierDisplay.en;
 
   // Attempt to keep screen bright while pass is open
