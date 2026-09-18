@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
-import { isSuperAdminVerified } from '../middleware/rbac';
+import { isSuperAdminVerified, requireAdmin } from '../middleware/rbac';
 import { getUserCapabilities } from '../lib/userCapabilities';
 import { hasProviderCapability } from '../../shared/lib/userCapabilities';
 import { logger } from '../lib/logger';
@@ -78,6 +78,34 @@ async function requireProviderOrAdmin(req: any, res: any, next: any) {
   }
 }
 
+/**
+ * BACK-OFFICE EVENT ENDPOINTS: verified super-admin only (2026-09-18).
+ *
+ * `validateFirebaseToken` on the router stopped anonymous callers, but a
+ * *signed-in customer* could still POST these — and every one of them writes
+ * something the business later reads as fact:
+ *   /kyc-submit, /kyb-submit        → a compliance record + Drive folder for
+ *                                     any userId, with any ID number, marked
+ *                                     'auto_approved' if the caller says so
+ *   /onboarding-approved            → a provider "approved" row + welcome email
+ *   /esign-complete                 → a signed-agreement record + signer email
+ *   /contract-generated             → a contract record + party email
+ *   /booking-confirmed, /calendar/booking → calendar events + branded email to
+ *                                     any address the caller supplies
+ *
+ * None of them has a legitimate client caller. The real flows call the
+ * orchestrator SERVICE in-process (kyc.ts, kyc2026.ts, esign.ts, contracts.ts,
+ * provider-intake.ts, bookings.ts all do `petWashOrchestrator.handleX(...)`),
+ * so this HTTP surface is a duplicate that only an outsider had a reason to
+ * call.
+ * The only client caller in the product is provider-os POSJobs → /job-complete,
+ * which keeps its own provider-or-admin gate.
+ *
+ * This only REMOVES access that should never have existed; no payload, email
+ * template, Sheets column or document mapping changes here.
+ */
+const requireOrchestratorAdmin = requireAdmin;
+
 // ─────────────────────────────────────────────
 // POST /api/orchestrator/job-complete
 // Mark a booking as completed → חשבונית מס + קבלה + Drive + Sheets
@@ -131,7 +159,7 @@ const calendarBookingSchema = z.object({
   estimatedPriceILS: z.number().optional(),
 });
 
-router.post('/calendar/booking', async (req, res) => {
+router.post('/calendar/booking', requireOrchestratorAdmin, async (req, res) => {
   try {
     const data = calendarBookingSchema.parse(req.body);
     const result = await petWashOrchestrator.handleBookingSubmission(data);
@@ -158,7 +186,10 @@ const statementSchema = z.object({
   type: z.enum(['customer', 'provider']),
 });
 
-router.post('/generate-statement', validateFirebaseToken, async (req: any, res) => {
+// A statement carries amounts and VAT for a named recipient and lands in the
+// E-Statements sheet — the same class as /job-complete, so the same gate
+// (2026-09-18: it used to accept ANY signed-in user).
+router.post('/generate-statement', requireProviderOrAdmin, async (req: any, res) => {
   try {
     const data = statementSchema.parse(req.body);
     const statementId = `STMT-${Date.now().toString(36).toUpperCase()}`;
@@ -199,7 +230,7 @@ const kycSubmitSchema = z.object({
   notes: z.string().optional(),
 });
 
-router.post('/kyc-submit', async (req, res) => {
+router.post('/kyc-submit', requireOrchestratorAdmin, async (req, res) => {
   try {
     const data = kycSubmitSchema.parse(req.body);
     setImmediate(() => petWashOrchestrator.handleKYCSubmission(data).catch(err =>
@@ -230,7 +261,7 @@ const kybSubmitSchema = z.object({
   notes: z.string().optional(),
 });
 
-router.post('/kyb-submit', async (req, res) => {
+router.post('/kyb-submit', requireOrchestratorAdmin, async (req, res) => {
   try {
     const data = kybSubmitSchema.parse(req.body);
     setImmediate(() => petWashOrchestrator.handleKYBSubmission(data).catch(err =>
@@ -265,7 +296,7 @@ const bookingConfirmedSchema = z.object({
   amountILS: z.number().optional(),
 });
 
-router.post('/booking-confirmed', async (req, res) => {
+router.post('/booking-confirmed', requireOrchestratorAdmin, async (req, res) => {
   try {
     const data = bookingConfirmedSchema.parse(req.body);
     setImmediate(() => petWashOrchestrator.handleBookingConfirmed(data).catch(err =>
@@ -293,7 +324,7 @@ const esignCompleteSchema = z.object({
   completedAt: z.string().default(() => new Date().toISOString()),
 });
 
-router.post('/esign-complete', async (req, res) => {
+router.post('/esign-complete', requireOrchestratorAdmin, async (req, res) => {
   try {
     const data = esignCompleteSchema.parse(req.body);
     setImmediate(() => petWashOrchestrator.handleEsignComplete(data).catch(err =>
@@ -326,7 +357,7 @@ const onboardingApprovedSchema = z.object({
   notes: z.string().optional(),
 });
 
-router.post('/onboarding-approved', async (req, res) => {
+router.post('/onboarding-approved', requireOrchestratorAdmin, async (req, res) => {
   try {
     const data = onboardingApprovedSchema.parse(req.body);
     setImmediate(() => petWashOrchestrator.handleOnboardingApproved(data).catch(err =>
@@ -357,7 +388,7 @@ const contractGeneratedSchema = z.object({
   content: z.string().optional(),
 });
 
-router.post('/contract-generated', async (req, res) => {
+router.post('/contract-generated', requireOrchestratorAdmin, async (req, res) => {
   try {
     const data = contractGeneratedSchema.parse(req.body);
     setImmediate(() => petWashOrchestrator.handleContractGenerated(data).catch(err =>
