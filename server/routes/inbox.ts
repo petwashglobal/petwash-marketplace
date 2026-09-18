@@ -7,6 +7,8 @@ import sanitizeHtml from 'sanitize-html';
 import { logger } from '../lib/logger';
 import { pool } from '../db';
 import { nanoid } from 'nanoid';
+import { auth as firebaseAuth } from '../lib/firebase-admin';
+import { dispatchNotification, type NotificationChannel } from '../lib/notificationDispatcher';
 
 const router = Router();
 
@@ -292,6 +294,9 @@ router.post('/admin/send-user', validateFirebaseToken, isAdmin, async (req, res)
       ctaUrl: z.string().optional(),
       priority: z.number().optional(),
       meta: z.any().optional(),
+      // SUPPORT-REACHES-INBOX (2026-09-18): which channels carry this message.
+      // Default is inbox + email. 'sms' and 'push' are opt-in per send.
+      channels: z.array(z.enum(['inbox', 'email', 'sms', 'push'])).min(1).optional(),
     });
     
     const validation = schema.safeParse(req.body);
@@ -306,29 +311,53 @@ router.post('/admin/send-user', validateFirebaseToken, isAdmin, async (req, res)
     
     // Sanitize HTML
     const cleanHtml = sanitizeHtml(data.bodyHtml, sanitizeConfig);
-    
-    const messageRef = firestore.collection(FIRESTORE_PATHS.USER_INBOX(data.uid)).doc();
-    await messageRef.set({
+
+    // SUPPORT-REACHES-INBOX (2026-09-18): this route wrote ONE Firestore document
+    // and stopped. A support message from PetWash to a customer therefore reached
+    // them only if they happened to open the in-app inbox — no email, no SMS, no
+    // push, nothing they would notice. It now goes through the unified dispatcher
+    // (the same path bookings, receipts and promos use): the same Firestore inbox
+    // document is written first and stays authoritative, then email is sent to the
+    // user's verified address, and SMS/push when the admin asks for them. The
+    // Firebase account is the source of the address so a user whose users-row
+    // is missing an email still gets the mail.
+    const channels: NotificationChannel[] = data.channels ?? ['inbox', 'email'];
+    const account = await firebaseAuth.getUser(data.uid).catch(() => null);
+    const result = await dispatchNotification({
+      uid: data.uid,
+      email: account?.email || undefined,
+      phone: account?.phoneNumber || undefined,
+      locale: data.locale,
+      type: data.type,
       title: data.title,
       bodyHtml: cleanHtml,
-      type: data.type,
       ctaText: data.ctaText,
       ctaUrl: data.ctaUrl,
-      locale: data.locale,
       priority: data.priority || 0,
-      createdAt: new Date(),
-      readAt: null,
-      attachments: [],
       meta: data.meta || {},
+      channels,
     });
     
     logger.info('Admin sent inbox message', {
       admin: req.firebaseUser!.email,
       targetUid: data.uid,
-      messageId: messageRef.id,
+      messageId: result.inboxId,
+      channels,
+      emailSent: result.emailSent,
+      smsSent: result.smsSent,
+      pushSent: result.pushSent,
+      errors: result.errors,
     });
     
-    res.json({ success: true, messageId: messageRef.id });
+    res.json({
+      success: true,
+      messageId: result.inboxId,
+      channels,
+      emailSent: result.emailSent,
+      smsSent: result.smsSent,
+      pushSent: result.pushSent ?? false,
+      errors: result.errors,
+    });
   } catch (error) {
     logger.error('Error sending admin message', error);
     res.status(500).json({ error: 'Failed to send message' });

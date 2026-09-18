@@ -48,6 +48,7 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import crypto from 'crypto';
 import { EmailService } from '../emailService';
+import { escapeHtml } from '../lib/htmlEscape';
 
 const router = Router();
 
@@ -438,8 +439,8 @@ router.post('/send', async (req, res) => {
         subject: '📬 New Message in Your ⁦PetWash™⁩ Inbox',
         html: `
           <h2>You have a new message</h2>
-          <p><strong>From:</strong> ${sender.email || '⁦PetWash™⁩ Team'}</p>
-          <p><strong>Subject:</strong> ${values.subject}</p>
+          <p><strong>From:</strong> ${escapeHtml(sender.email || '⁦PetWash™⁩ Team')}</p>
+          <p><strong>Subject:</strong> ${escapeHtml(values.subject)}</p>
           <p><em>Log in to your ⁦PetWash™⁩ account to read and reply.</em></p>
         `,
       }).catch((err) =>

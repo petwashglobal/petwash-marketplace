@@ -8,7 +8,6 @@ server/email/luxury-email-service.ts
 server/israeliTaxReport.ts
 server/lib/guarded-sendgrid.ts
 server/lib/notificationDispatcher.ts
-server/routes/booking-chat.ts
 server/routes/ceo-wallet.ts
 server/routes/provider-onboarding.ts
 server/routes/wallet.ts
