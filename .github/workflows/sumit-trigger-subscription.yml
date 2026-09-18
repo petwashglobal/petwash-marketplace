@@ -1,0 +1,89 @@
+name: SUMIT trigger subscription (push payments to PetWash)
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "subscribe or unsubscribe"
+        required: true
+        default: "subscribe"
+        type: choice
+        options: [subscribe, unsubscribe]
+      confirm:
+        description: "Type SUBSCRIBE or UNSUBSCRIBE to confirm"
+        required: true
+      folder:
+        description: "SUMIT folder id (1421721659 = תשלומים דיגיטליים)"
+        required: false
+        default: "1421721659"
+      view:
+        description: "SUMIT view id (1421723041 = the payments view)"
+        required: false
+        default: "1421723041"
+permissions:
+  contents: read
+# WHAT THIS DOES
+#   Tells SUMIT to POST to https://petwash.co.il/api/sumit/trigger/<token> when a
+#   payment row is created (/triggers/triggers/subscribe/ — the Make/Zapier
+#   mechanism). <token> is derived from SUMIT_WEBHOOK_SECRET, so it is never
+#   written down here; the receiver trusts nothing in SUMIT's body and only
+#   re-reads SUMIT with our own key.
+# WHAT IT DOES NOT DO
+#   No charge, no refund, no document. Reversible: run it again with
+#   action=unsubscribe.
+jobs:
+  subscription:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SERVICE: petwash-api
+      REGION: me-west1
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: Subscribe / unsubscribe the SUMIT trigger
+        env:
+          ACTION:  ${{ github.event.inputs.action }}
+          CONFIRM: ${{ github.event.inputs.confirm }}
+          FOLDER:  ${{ github.event.inputs.folder }}
+          VIEW:    ${{ github.event.inputs.view }}
+        run: |
+          set -uo pipefail
+          WANT="$(echo "$ACTION" | tr '[:lower:]' '[:upper:]')"
+          if [ "$CONFIRM" != "$WANT" ]; then
+            echo "Refused: type $WANT in the confirm box. Nothing sent."; exit 1
+          fi
+          ENVJSON="$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>/dev/null | jq -c '(.spec.template.spec.containers[0].env // [])')"
+          KEY_SECRET="$(echo "$ENVJSON" | jq -r '.[] | select(.name=="SUMIT_API_KEY")       | .valueFrom.secretKeyRef.name // empty')"
+          CO_SECRET="$(echo "$ENVJSON"  | jq -r '.[] | select(.name=="SUMIT_COMPANY_ID")    | .valueFrom.secretKeyRef.name // empty')"
+          CO_PLAIN="$(echo "$ENVJSON"   | jq -r '.[] | select(.name=="SUMIT_COMPANY_ID")    | .value // empty')"
+          HOOK_SECRET="$(echo "$ENVJSON"| jq -r '.[] | select(.name=="SUMIT_WEBHOOK_SECRET")| .valueFrom.secretKeyRef.name // empty')"
+          [ -n "$KEY_SECRET" ] && [ -n "$HOOK_SECRET" ] || { echo "SUMIT secrets are not wired on $SERVICE — nothing sent."; exit 1; }
+          APIKEY="$(gcloud secrets versions access latest --secret="$KEY_SECRET" 2>/dev/null)"
+          WSEC="$(gcloud secrets versions access latest --secret="$HOOK_SECRET" 2>/dev/null)"
+          if [ -n "$CO_SECRET" ]; then COMPANY="$(gcloud secrets versions access latest --secret="$CO_SECRET" 2>/dev/null)"; else COMPANY="$CO_PLAIN"; fi
+          [ -n "${APIKEY:-}" ] && [ -n "${WSEC:-}" ] && [ -n "${COMPANY:-}" ] || { echo "Could not resolve SUMIT creds — nothing sent."; exit 1; }
+          echo "::add-mask::$APIKEY"; echo "::add-mask::$WSEC"
+          # Same derivation as server/lib/sumitTriggerToken.ts (HMAC-SHA256, first 32 hex).
+          TOKEN="$(printf '%s' 'sumit-trigger-path-v1' | openssl dgst -sha256 -hmac "$WSEC" -hex | awk '{print $NF}' | cut -c1-32)"
+          echo "::add-mask::$TOKEN"
+          URL="https://petwash.co.il/api/sumit/trigger/$TOKEN"
+          echo "Endpoint check (expects 404 for a wrong token):"
+          curl -s -o /dev/null -w "  wrong token → %{http_code}\n" -X POST "https://petwash.co.il/api/sumit/trigger/$(echo "$TOKEN" | tr 'a-f0-9' '0')" -H 'Content-Type: application/json' -d '{}'
+          if [ "$WANT" = "SUBSCRIBE" ]; then
+            BODY="$(jq -n --arg co "$COMPANY" --arg k "$APIKEY" --arg u "$URL" --argjson f "$FOLDER" --argjson v "$VIEW" \
+              '{Credentials:{CompanyID:($co|tonumber? // $co), APIKey:$k}, URL:$u, Folder:($f|tostring), View:$v, TriggerType:"Create"}')"
+            EP=subscribe
+          else
+            BODY="$(jq -n --arg co "$COMPANY" --arg k "$APIKEY" --arg u "$URL" \
+              '{Credentials:{CompanyID:($co|tonumber? // $co), APIKey:$k}, URL:$u}')"
+            EP=unsubscribe
+          fi
+          echo "POST /triggers/triggers/$EP/  (folder ${FOLDER:-} view ${VIEW:-}, URL masked)"
+          RESP="$(curl -sS --max-time 30 -H 'Content-Type: application/json' -d "$BODY" "https://api.sumit.co.il/triggers/triggers/$EP/")"
+          echo "$RESP" | jq '{Status, UserErrorMessage, TechnicalErrorDetails}'
+          [ "$(echo "$RESP" | jq -r '.Status')" = "0" ] || { echo "SUMIT refused — nothing is subscribed."; exit 1; }
+          echo "✅ $EP OK. SUMIT will POST new payments to our trigger URL; the receiver re-reads SUMIT and alerts on money with no order."
