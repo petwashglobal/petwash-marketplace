@@ -1754,6 +1754,36 @@ export default function ProviderOnboarding() {
                   </div>
                 </div>
 
+                {/* Date of birth — REQUIRED for a sitter (2026-09-18). The form
+                    had no field at all, only the 18+ checkbox, and it prefilled
+                    `dob` from the user record. sitter_profiles.date_of_birth is
+                    NOT NULL, so an applicant without one on their record was
+                    approved and then silently skipped by the profile seed
+                    ("no_date_of_birth_on_application"): approved as a sitter,
+                    no sitter profile, no screen able to create one, invisible
+                    for good. */}
+                {providerTypes.includes('sitter') && (
+                  <div className="mt-4">
+                    <Label htmlFor="provider-dob">
+                      {isHebrew ? 'תאריך לידה' : 'Date of birth'}
+                    </Label>
+                    <Input
+                      id="provider-dob"
+                      type="date"
+                      value={dob}
+                      max={new Date().toISOString().slice(0, 10)}
+                      onChange={(e) => { setDob(e.target.value); scheduleDraftSave(); }}
+                      className="w-full h-12 bg-white !text-gray-900 border border-gray-200 rounded-xl"
+                      data-testid="input-provider-dob"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      {isHebrew
+                        ? 'נדרש לאימות גיל עבור שמרטפות — בלעדיו לא ניתן לפתוח פרופיל שמרטף/ית.'
+                        : 'Required for pet-sitting age verification — without it a sitter profile cannot be created.'}
+                    </p>
+                  </div>
+                )}
+
                 {/* Step 1 live-missing checklist — CEO 2026-08-24: "all steps
                     become provider" was blocked by a silent disabled Next button. */}
                 {(() => {
@@ -1767,6 +1797,7 @@ export default function ProviderOnboarding() {
                   if (!ageConfirmed18Plus)                         missing.push(isHebrew ? 'אישור גיל 18+' : '18+ age confirmation');
                   if (!city)                                       missing.push(isHebrew ? 'עיר מגורים' : 'City');
                   if (providerTypes.length === 0)                  missing.push(isHebrew ? 'לפחות תפקיד ספק אחד' : 'At least one provider role');
+                  if (providerTypes.includes('sitter') && !dob)    missing.push(isHebrew ? 'תאריך לידה (נדרש לשמרטפות)' : 'Date of birth (required for pet sitting)');
                   if (missing.length === 0) return null;
                   return (
                     <div className="my-3 p-3 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-900/20">
@@ -1787,7 +1818,7 @@ export default function ProviderOnboarding() {
                   <Button
                     onClick={() => setStep(2)}
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
-                    disabled={!firstName || !lastName || !phoneNumber || !phoneVerified || !idNumber || israeliIdInvalid || !ageConfirmed18Plus || !city || providerTypes.length === 0}
+                    disabled={!firstName || !lastName || !phoneNumber || !phoneVerified || !idNumber || israeliIdInvalid || !ageConfirmed18Plus || !city || providerTypes.length === 0 || (providerTypes.includes('sitter') && !dob)}
                     data-testid="button-next-step2"
                   >
                     {t.next}
