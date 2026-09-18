@@ -81,6 +81,22 @@ const DYNAMIC_SAMPLES = {
   "/services/:service/:city": "/services/dog-walking/tel-aviv",
 };
 
+/**
+ * Routes that are CORRECTLY blank when opened cold, so a blank page is not a
+ * finding. Firebase's own action handler renders nothing without a valid
+ * ?oobCode (password reset / email verification arrive with one); the first
+ * production sweep reported both as white screens.
+ */
+const EXPECTED_BLANK = new Set(["/__/auth/action", "/auth/action"]);
+
+/**
+ * The Suspense fallback label (App.tsx PAGE_LOADER_COPY). A page still showing
+ * this when the clock runs out did not render slowly — its lazy chunk never
+ * arrived, which for a visitor is a spinner that never stops. Naming that
+ * exactly beats reporting "almost no content": it says WHICH failure it is.
+ */
+const LOADER_COPY = /^(טוען\.\.\.|Loading\.\.\.|جاري التحميل\.\.\.|Загрузка\.\.\.|Chargement\.\.\.|Cargando\.\.\.)$/;
+
 /** The error-boundary fallback, from client/src/lib/crashCardCopy.ts. */
 const CRASH_COPY = /Something went wrong|משהו השתבש|A new version is available|זמינה גרסה חדשה|encountered an unexpected error|אירעה שגיאה/i;
 
@@ -91,7 +107,7 @@ function collectRoutes() {
   for (const m of src.matchAll(/<Route\s+path="([^"]+)"/g)) found.add(m[1]);
 
   const routes = [];
-  const skipped = { auth: 0, dynamic: 0, splat: 0 };
+  const skipped = { auth: 0, dynamic: 0, splat: 0, expectedBlank: 0 };
   for (const raw of found) {
     if (raw.includes("*")) { skipped.splat++; continue; }
     const isDynamic = raw.includes(":");
@@ -105,6 +121,7 @@ function collectRoutes() {
     if (AUTH_PREFIXES.some((p) => raw === p || raw.startsWith(p + "/") || raw.startsWith(p))) {
       skipped.auth++; continue;
     }
+    if (EXPECTED_BLANK.has(raw)) { skipped.expectedBlank++; continue; }
     routes.push({ pattern: raw, url: raw });
   }
   routes.sort((a, b) => a.url.localeCompare(b.url));
@@ -114,7 +131,21 @@ function collectRoutes() {
 async function checkRoute(browser, route) {
   const page = await browser.newPage({ locale: "he-IL", viewport: { width: 390, height: 844 } });
   const pageErrors = [];
+  // EVIDENCE. The first production sweep reported /loyalty and /support as
+  // "almost no content (7 chars)" and that was the whole story — no way to tell
+  // a 404'd chunk from a slow one without opening a browser by hand. The
+  // uptime probe already learned this lesson (#2524 era); collect the same
+  // proof here, quietly, and print it only for a route that actually failed.
+  const failedRequests = [];
+  const consoleErrors = [];
   page.on("pageerror", (e) => pageErrors.push(String(e?.message || e).slice(0, 160)));
+  page.on("console", (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 160)); });
+  page.on("requestfailed", (r) => failedRequests.push(`${r.url().slice(-80)} (${r.failure()?.errorText})`));
+  page.on("response", (r) => {
+    if (r.status() >= 400 && /\/assets\/|\.js|\.css/.test(r.url())) {
+      failedRequests.push(`${r.url().slice(-80)} HTTP ${r.status()}`);
+    }
+  });
 
   const problems = [];
   let title = "";
@@ -144,6 +175,11 @@ async function checkRoute(browser, route) {
 
     if (CRASH_COPY.test(body)) problems.push("ERROR BOUNDARY (render crash)");
     else if (rootChildren === 0) problems.push("#root empty (white screen)");
+    else if (LOADER_COPY.test(body.trim())) {
+      // Still the Suspense fallback when the clock ran out: the lazy chunk
+      // never arrived. For a visitor this is a spinner that never stops.
+      problems.push(`STUCK ON LOADING SPINNER after ${RENDER_TIMEOUT}ms (lazy chunk never arrived)`);
+    }
     else if (chars < 40) problems.push(`almost no content (${chars} chars)`);
 
     if (pageErrors.length) problems.push(`pageerror: ${pageErrors[0]}`);
@@ -153,7 +189,27 @@ async function checkRoute(browser, route) {
   } finally {
     await page.close().catch(() => {});
   }
-  return { ...route, ok: problems.length === 0, problems, title, chars };
+  const evidence = problems.length
+    ? {
+        failedRequests: failedRequests.slice(0, 4),
+        consoleErrors: consoleErrors.slice(0, 4),
+      }
+    : null;
+  return { ...route, ok: problems.length === 0, problems, title, chars, evidence };
+}
+
+/**
+ * One retry before calling a route broken. A chunk fetch that loses a race
+ * with a deploy, or a cold CDN edge, is not a broken page — and an alert
+ * nobody trusts is worse than no alert (#2526). A genuinely broken route
+ * fails both times.
+ */
+async function checkRouteWithRetry(browser, route) {
+  const first = await checkRoute(browser, route);
+  if (first.ok) return first;
+  await new Promise((r) => setTimeout(r, 2000));
+  const second = await checkRoute(browser, route);
+  return second.ok ? { ...second, flaky: true } : second;
 }
 
 async function main() {
@@ -161,7 +217,7 @@ async function main() {
   if (!AS_JSON) {
     console.log(`[route-sweep] ${BASE} @ ${new Date().toISOString()}`);
     console.log(`[route-sweep] ${routes.length} public routes to check ` +
-      `(skipped: ${skipped.auth} auth-gated, ${skipped.dynamic} dynamic, ${skipped.splat} catch-all)\n`);
+      `(skipped: ${skipped.auth} auth-gated, ${skipped.dynamic} dynamic, ${skipped.splat} catch-all, ${skipped.expectedBlank} expected-blank)\n`);
   }
 
   // SWEEP_CHROMIUM_PATH: run against a Chromium that is already on the machine
@@ -177,7 +233,7 @@ async function main() {
     const queue = [...routes];
     const workers = Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => {
       for (let job = queue.shift(); job; job = queue.shift()) {
-        const r = await checkRoute(browser, job);
+        const r = await checkRouteWithRetry(browser, job);
         results.push(r);
         if (!AS_JSON) {
           process.stdout.write(r.ok ? "." : "\n  ✗ " + r.url + " — " + r.problems.join("; ") + "\n");
@@ -196,9 +252,18 @@ async function main() {
     console.log(JSON.stringify({ base: BASE, checked: results.length, broken: broken.length, skipped, routes: results }, null, 2));
   } else {
     console.log(`\n\n[route-sweep] ${results.length - broken.length}/${results.length} rendered`);
+    const flaky = results.filter((r) => r.flaky);
+    if (flaky.length) {
+      console.log(`${flaky.length} recovered on retry (not reported): ${flaky.map((f) => f.url).join(", ")}`);
+    }
     if (broken.length) {
       console.log(`\n${broken.length} BROKEN:`);
-      for (const b of broken) console.log(`  ${b.url}\n      ${b.problems.join("\n      ")}`);
+      for (const b of broken) {
+        console.log(`  ${b.url}\n      ${b.problems.join("\n      ")}`);
+        const ev = b.evidence;
+        if (ev?.failedRequests?.length) console.log(`      failed requests: ${ev.failedRequests.join(" | ")}`);
+        if (ev?.consoleErrors?.length) console.log(`      console: ${ev.consoleErrors.join(" | ")}`);
+      }
       console.log("\nA route listed here served the error fallback, a blank page, or threw while rendering.");
     } else {
       console.log("Every public route rendered.");
