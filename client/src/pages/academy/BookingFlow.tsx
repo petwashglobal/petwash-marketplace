@@ -437,7 +437,7 @@ export default function AcademyBookingFlow() {
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
                 <Shield className="h-3 w-3 inline mr-1 text-[#D4AF37]" />
-                זיכויי הארנק יישמרו עם אישור המאמן/ת וייגבו לאחר סיום השיעור. יתרת הסכום אינה נגבית באתר בשלב זה.
+                זיכויי הארנק יישמרו עם אישור המאמן/ת, ואת היתרה משלמים בכרטיס אשראי בדף מאובטח של חברת הסליקה.
               </div>
             </div>
 
@@ -486,11 +486,10 @@ export default function AcademyBookingFlow() {
               className="mb-4"
             />
 
-            {/* What is ACTUALLY collected (2026-09-18). Academy has no online
-                card rail: the server holds the wallet credit and marks the
-                booking paymentStatus 'pending' for the rest, while this screen
-                said "you will be charged once the trainer approves". Say the
-                truth instead of implying a full charge. */}
+            {/* What is actually collected (2026-09-18). Academy has a card rail
+                now: the wallet part is taken when the trainer confirms, and the
+                rest is paid on the clearing company's page — the session is
+                marked paid only after that payment is verified. */}
             <div
               className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900 leading-relaxed"
               data-testid="academy-what-is-collected"
@@ -498,10 +497,10 @@ export default function AcademyBookingFlow() {
               {appliedCredits && appliedCredits.totalCreditsAppliedCents > 0 ? (
                 <>
                   מתוך ₪{pricing.totalCharged.toFixed(2)}: ₪{(appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)} ייגבו מהארנק שלך לאחר אישור המאמן/ת.
-                  {' '}היתרה (₪{Math.max(0, pricing.totalCharged - appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}) אינה נגבית באתר בשלב זה — ההזמנה תישאר מסומנת "ממתין לתשלום".
+                  {' '}את היתרה (₪{Math.max(0, pricing.totalCharged - appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}) תשלם/י בכרטיס אשראי בדף מאובטח, ואז ההזמנה מסומנת כשולמה.
                 </>
               ) : (
-                <>תשלום מקוון עדיין לא זמין באקדמיה: ₪{pricing.totalCharged.toFixed(2)} אינם נגבים באתר בשלב זה — ההזמנה תישאר מסומנת "ממתין לתשלום" עד להסדרת התשלום.</>
+                <>לא מחויבים עכשיו. לאחר אישור המאמן/ת תקבל/י קישור לתשלום מאובטח בכרטיס אשראי (₪{pricing.totalCharged.toFixed(2)}).</>
               )}
             </div>
 
@@ -579,7 +578,7 @@ export default function AcademyBookingFlow() {
               </div>
               <h2 className="luxury-heading-lg mb-3">בקשת ההזמנה נשלחה — ממתין לאישור המאמן/ת</h2>
               <p className="luxury-text-body max-w-md mx-auto mb-2">
-                המאמן/ת יקבל/תקבל את פרטי ההזמנה כעת. זיכויי ארנק (אם נוצלו) ייגבו רק לאחר אישור המאמן/ת; יתרת הסכום אינה נגבית באתר בשלב זה.
+                המאמן/ת יקבל/תקבל את פרטי ההזמנה כעת. לאחר האישור: זיכויי ארנק (אם נוצלו) ייגבו, ואת היתרה תשלם/י בכרטיס אשראי בדף מאובטח.
               </p>
               <p className="luxury-text-body max-w-md mx-auto mb-2 text-slate-500">
                 מספר הזמנה: <strong className="text-slate-800">{bookingId || "בבדיקה"}</strong>
