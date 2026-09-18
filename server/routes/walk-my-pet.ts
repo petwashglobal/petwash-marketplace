@@ -828,7 +828,10 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
         startDateIso: (isNaN(startAt.getTime()) ? new Date() : startAt).toISOString(),
         endDateIso: (isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt).toISOString(),
         petCount: 1,
-        subtotalCents: Math.round(pricing.baseRate * 100),
+        // The walk's price, not the hourly RATE (2026-09-18): pricing.baseRate
+        // is ₪/hour, so a 30-minute ₪60/h walk stored ₪60 against a ₪34.50
+        // total — and every walker earnings figure read this column.
+        subtotalCents: Math.round(pricing.subtotal * 100),
         serviceFeeCents: Math.round(pricing.platformFee * 100),
         totalCents: Math.round(pricing.totalPrice * 100),
         providerPayoutCents: Math.round(pricing.providerPayout * 100),
@@ -859,7 +862,7 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
               startDate: isNaN(startAt.getTime()) ? new Date() : startAt,
               endDate: isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt,
               petCount: 1,
-              subtotalCents: Math.round(pricing.baseRate * 100),
+              subtotalCents: Math.round(pricing.subtotal * 100),
               serviceFeeCents: Math.round(pricing.platformFee * 100),
               totalCents: Math.round(pricing.totalPrice * 100),
               providerPayoutCents: Math.round(pricing.providerPayout * 100),
@@ -2550,7 +2553,7 @@ router.get('/walker/requests', requireAuth, async (req, res) => {
         pickupAddress: (r.petDetails as any)?.address || '',
         dropoffAddress: (r.petDetails as any)?.address || '',
         status: 'scheduled',
-        earnings: (r.subtotalCents || 0) / 100,
+        earnings: (r.providerPayoutCents ?? r.subtotalCents ?? 0) / 100,
         currency: r.currency || 'ILS',
         specialInstructions: r.ownerMessage || null,
         // Safety subset always present; medical fields present only if
@@ -2614,7 +2617,7 @@ router.get('/walker/active', requireAuth, async (req, res) => {
       pickupAddress: (active.petDetails as any)?.address || '',
       dropoffAddress: (active.petDetails as any)?.address || '',
       status: active.status === 'in_progress' ? 'in_progress' : 'scheduled',
-      earnings: (active.subtotalCents || 0) / 100,
+      earnings: (active.providerPayoutCents ?? active.subtotalCents ?? 0) / 100,
       currency: active.currency || 'ILS',
       specialInstructions: active.ownerMessage || null,
       // Safety subset always; medical only if owner's CURRENT consent
@@ -2695,13 +2698,15 @@ router.get('/walker/earnings', requireAuth, async (req, res) => {
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const totalCents = allCompleted.reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+    // What the walker is OWED (the Pet Wash fee sits on top of it, so never totalCents).
+    const earned = (r: any) => r.providerPayoutCents ?? r.subtotalCents ?? 0;
+    const totalCents = allCompleted.reduce((sum, r) => sum + earned(r), 0);
     const weeklyCents = allCompleted
       .filter(r => r.serviceCompletedAt && new Date(r.serviceCompletedAt) >= startOfWeek)
-      .reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+      .reduce((sum, r) => sum + earned(r), 0);
     const monthlyCents = allCompleted
       .filter(r => r.serviceCompletedAt && new Date(r.serviceCompletedAt) >= startOfMonth)
-      .reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+      .reduce((sum, r) => sum + earned(r), 0);
 
     const pending = await db.select()
       .from(bookingRequests)
@@ -2711,7 +2716,7 @@ router.get('/walker/earnings', requireAuth, async (req, res) => {
         sql`${bookingRequests.status} IN ('accepted', 'in_progress')`
       ));
 
-    const pendingCents = pending.reduce((sum, r) => sum + (r.subtotalCents || 0), 0);
+    const pendingCents = pending.reduce((sum, r) => sum + earned(r), 0);
 
     res.json({
       total: totalCents / 100,
