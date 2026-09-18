@@ -1553,6 +1553,8 @@ router.patch('/:requestId', async (req, res) => {
 router.post('/:requestId/respond', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    // Explicit 401 (2026-09-18) — see the note on /reprice.
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
     const data = providerBookingResponseSchema.parse({ ...req.body, requestId });
     
@@ -2159,6 +2161,8 @@ router.post('/:requestId/respond', async (req, res) => {
 router.post('/:requestId/meet-greet', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    // Explicit 401 (2026-09-18) — see the note on /reprice.
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
     const { action, date, location, notes, type } = req.body;
 
@@ -2436,7 +2440,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
 router.post('/:requestId/pay', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
-    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
     // The body's paymentMethod/transactionId are not trusted: the server picks the
     // rail (BOOKING_CARD_RAIL) and the processor reports the transaction.
@@ -3045,7 +3049,7 @@ router.get('/:requestId/sumit-return', async (req, res) => {
 router.post('/:requestId/start', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
-    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
 
     const [booking] = await db.select()
@@ -3156,7 +3160,7 @@ router.post('/:requestId/start', async (req, res) => {
 router.post('/:requestId/provider-invoice', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
-    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const invoiceNumber = String(req.body?.invoiceNumber ?? '').trim();
     if (!/^[A-Za-z0-9][A-Za-z0-9\-\/ ]{0,63}$/.test(invoiceNumber)) {
       return res.status(400).json({ error: 'INVALID_INVOICE_NUMBER' });
@@ -3186,7 +3190,7 @@ router.post('/:requestId/provider-invoice', async (req, res) => {
 router.post('/:requestId/complete', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
-    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
 
     // Ownership check first — providerId is set at accept-time and doesn't
@@ -3502,7 +3506,7 @@ const confirmCompletionInputSchema = z.object({
 async function handleConfirmCompletion(req: any, res: any): Promise<void> {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
-    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
     // Validate customer-supplied input (2026-08-18 hardening): rating must
     // be 1–5 integer or absent; review capped at 2000 chars. Zero-rating
@@ -4647,6 +4651,8 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
 router.post('/:requestId/cancel', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    // Explicit 401 (2026-09-18) — see the note on /reprice.
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
     // Validate and sanitize the optional reason to prevent HTML/log injection
     const rawReason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 500) : null;
@@ -5045,6 +5051,8 @@ router.post('/:requestId/cancel', async (req, res) => {
 router.post('/:requestId/photo-update', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    // Explicit 401 (2026-09-18) — see the note on /reprice.
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
     const { photoUrl, caption } = req.body;
     
