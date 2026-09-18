@@ -111,6 +111,8 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Fault & Maintenance Intel', labelHe: 'תקלות ותחזוקה חכמה', path: '/admin/fault-intel', icon: Activity, roles: ['admin', 'ceo'], hint: 'Fault cost + predictive maintenance', hintHe: 'עלות תקלות ותחזוקה מנבאת' },
       { label: 'Logistics', labelHe: 'לוגיסטיקה', path: '/admin/logistics', icon: Package, roles: ['admin', 'ceo'], hint: 'Fulfilment & shipping', hintHe: 'מימוש הזמנות ומשלוחים' },
       { label: 'Stations', labelHe: 'עמדות', path: '/admin/stations', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Facilities', hintHe: 'מתקנים' },
+      // The list CUSTOMERS see (station_registry). Adding a city here needs no release.
+      { label: 'Public Stations', labelHe: 'עמדות באתר (ללקוחות)', path: '/admin/public-stations', icon: MapPin, roles: ['admin', 'ceo'], hint: 'What customers see on the map', hintHe: 'מה שהלקוחות רואים במפה' },
       { label: 'Station Registry', labelHe: 'מרשם עמדות', path: '/admin/station-registry', icon: Building2, roles: ['admin', 'ceo'], hint: 'Licensing & taxes', hintHe: 'רישוי ומיסוי' },
       { label: 'Marketplace Intelligence', labelHe: 'מודיעין שוק', path: '/admin/marketplace-intelligence', icon: BarChart3, roles: ['admin', 'ceo'], hint: 'Provider ranking & insights', hintHe: 'דירוג ספקים ותובנות' },
       // Control Tower (2026-06-20): per-service provider approval ladder UI.
