@@ -4,7 +4,6 @@
 
 client/src/__tests__/CustomerBookings.aggregator.regression.test.ts  # red on main at gate landing
 client/src/__tests__/appFlavorSandbox.regression.test.ts  # red on main at gate landing
-client/src/__tests__/becomeProvider.regression.test.ts  # red on main at gate landing
 client/src/__tests__/hookOrderCrashHunt.regression.test.ts  # red on main at gate landing
 client/src/__tests__/prestigeHome.regression.test.ts  # red on main at gate landing
 client/src/__tests__/provider-availability-persists.test.ts  # red on main at gate landing
@@ -16,8 +15,6 @@ client/src/pages/AddPetPassport.species-tiles.regression.test.ts  # red on main 
 client/src/pages/BookingConfirmation.confirm-end.regression.test.ts  # red on main at gate landing
 client/src/pages/BookingConfirmation.rating-clamp.regression.test.ts  # red on main at gate landing
 client/src/pages/Pets.sharedQueryKeyShape.regression.test.ts  # red on main at gate landing
-client/src/pages/ProviderJobDetail.confirmed-badge.regression.test.ts  # red on main at gate landing
-client/src/pages/ProviderJobDetail.status-labels.regression.test.ts  # red on main at gate landing
 client/src/pages/ProviderOnboarding.regression.test.ts  # red on main at gate landing
 server/tests/adminOctopus.regression.test.ts  # red on main at gate landing
 server/tests/aiUserBudgetWiring.regression.test.ts  # red on main at gate landing
