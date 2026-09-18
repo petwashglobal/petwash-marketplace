@@ -799,14 +799,12 @@ export default function WalkBookingFlow() {
               <div className="mt-2 luxury-text-small opacity-70">
                 המוליך/ה מקבל/ת את מלוא המחיר ומוציא/ה לך חשבונית עליו. ⁦Pet Wash™⁩‎ מוציאה חשבונית על דמי השירות בלבד.
               </div>
-              {/* TRUTH (2026-09-18): accepting a walk moves no money —
-                  acceptWalkBookingCore writes the escrow document and returns
-                  paymentRail: 'MISSING'. No card charge, no wallet debit. The
-                  old line promised a wallet hold on acceptance and a charge
-                  after the walk; neither happens. */}
+              {/* The card rail landed 2026-09-18: the walker accepts, the
+                  customer pays on the clearing company's secure page, and only
+                  the verified payment confirms the walk and holds the money. */}
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80" data-testid="walk-payment-truth">
                 <Shield className="h-3 w-3 inline mr-1 text-[#D4AF37]" />
-                בשלב זה לא מתבצע חיוב באתר ולא נשמר כסף בנאמנות — התשלום מתואם ישירות מול המוליך/ה.
+                לא מחויבים עכשיו. לאחר שהמטייל/ת יאשר/תאשר תקבל/י קישור לתשלום מאובטח — ההזמנה מאושרת רק לאחר התשלום.
               </div>
             </div>
 
@@ -931,14 +929,11 @@ export default function WalkBookingFlow() {
                 אמצעי תשלום
               </div>
               
-              {/* No saved-card block and no escrow promise for walks: the
-                  accept path charges nothing and holds nothing (2026-09-18).
-                  Restore both only when a real rail runs before the confirm. */}
               <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-xl flex gap-3">
                 <Shield className="h-5 w-5 text-[#D4AF37] flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-black leading-relaxed">
                   <span className="font-semibold block mb-1">איך משלמים</span>
-                  תשלום מקוון עדיין לא זמין להליכות: הכרטיס שלך לא מחויב, ולא נשמר כסף בנאמנות. התשלום מתואם ישירות מול המוליך/ה בסיום ההליכה.
+                  שולחים בקשה — לא מחויבים. לאחר אישור המטייל/ת משלמים בכרטיס אשראי בדף מאובטח של חברת הסליקה (פרטי הכרטיס לא נשמרים אצלנו), וההזמנה מאושרת מיד עם אישור התשלום.
                 </div>
               </div>
             </section>

@@ -143,19 +143,22 @@ export async function dispatchAcceptForSource(input: DispatchInput): Promise<Dis
         }
         return { ok: true, source: res.source, legacyBookingId: res.legacyBookingId };
       }
-      // Accept path — CEO §24 policy refusal. acceptWalkBookingCore IS
-      // extracted (see acceptWalkBookingCore.ts) but its own return
-      // payload carries `paymentRail: 'MISSING'` because the current
-      // rail invokes NO payment (escrow doc only, no card capture, no
-      // wallet debit, no SUMIT/ITA document). The dispatcher must
-      // therefore refuse — a confirmed walk with no money held is a
-      // known compliance gap the extraction preserved 1:1 so a
-      // refactor cannot hide it. When a real payment rail lands, drop
-      // the MISSING marker from the core and switch this branch to
-      // delegate the way SITTER_SUITE now does.
-      return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
-        errorCode: 'PAYMENT_RAIL_MISSING',
-        message: 'Walk accept path has no verified payment rail today (escrow doc only). Dispatcher refuses until wired.' };
+      // Accept path — delegates now that the walk has a real card rail
+      // (2026-09-18). The core ends at payment_pending and confirms nothing:
+      // the customer pays on the SUMIT hosted page, and the verified return
+      // places the escrow hold and flips the booking to 'confirmed'. The old
+      // refusal existed because accept confirmed a walk with no money at all.
+      const { acceptWalkBookingCore } = await import('./acceptWalkBookingCore');
+      const walkCore = await acceptWalkBookingCore({
+        bookingId: res.legacyBookingId,
+        providerUid: input.providerUid,
+      });
+      if (!walkCore.ok) {
+        return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
+          errorCode: 'PIPELINE_ERROR',
+          message: `acceptWalkBookingCore ${walkCore.errorCode}: ${walkCore.message}` };
+      }
+      return { ok: true, source: res.source, legacyBookingId: res.legacyBookingId };
     }
     case 'ACADEMY':
       // §10: Academy is non-symmetric today — solo /confirm verb, no

@@ -25,13 +25,22 @@ import { resolve } from 'path';
 const SRC = readFileSync(resolve(__dirname, '..', 'routes', 'walk-my-pet.ts'), 'utf8');
 
 describe('walk-my-pet escrow fail-closed', () => {
-  it('walker-accept returns 502 with ESCROW_HOLD_FAILED — never 200 + receipt', () => {
-    // The invariant: an escrow failure returns the stable code and
-    // never reaches the confirmation success path. The refactored
-    // coreResult pattern (post 2026-08-28) is what we pin now.
-    expect(SRC).toMatch(/coreResult\.errorCode === 'ESCROW_HOLD_FAILED'/);
-    expect(SRC).toMatch(/return res\.status\(502\)/);
-    expect(SRC).toMatch(/code:\s*['"]ESCROW_HOLD_FAILED['"]/);
+  // 2026-09-18: the hold moved to the verified card payment. Accept places no
+  // hold at all, so the fail-closed invariant now lives in /sumit-return: a
+  // walk that was paid but could not be held must NOT read 'confirmed'.
+  it('a failed hold in the payment return leaves the walk unconfirmed', () => {
+    const ret = SRC.slice(SRC.indexOf("router.get('/walks/:bookingId/sumit-return'"), SRC.indexOf("router.post('/walks/holds'"));
+    expect(ret).toMatch(/PAID but escrow hold failed/);
+    expect(ret).toMatch(/return fail\('escrow_hold_failed'\)/);
+    // the status flip happens only after the hold, and only from payment_pending
+    expect(ret.indexOf("escrow_hold_failed")).toBeLessThan(ret.indexOf("status: 'confirmed'"));
+    expect(ret).toMatch(/eq\(walkBookings\.status, 'payment_pending'\)/);
+  });
+
+  it('the walk is confirmed only after the payment is verified', () => {
+    const ret = SRC.slice(SRC.indexOf("router.get('/walks/:bookingId/sumit-return'"), SRC.indexOf("router.post('/walks/holds'"));
+    expect(ret.indexOf('verifyServiceCardPayment')).toBeLessThan(ret.indexOf("status: 'confirmed'"));
+    expect(ret).toMatch(/if \(!verified\.ok\) return fail\(verified\.reason\)/);
   });
 
   it('does not console.error-and-continue on escrow failure', () => {
