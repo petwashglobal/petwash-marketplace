@@ -125,7 +125,10 @@ describe('Issue #153 PR-TAX-3 — Escrow forensic audit emission', () => {
 
     const refund = methodBody('refundEscrowPayment');
     expect(refund).toMatch(/reason/);
-    expect(refund).toMatch(/prevStatus:\s*["']held["']/);
+    // 2026-09-19: refund can now start from 'held' OR 'disputed' (closing a
+    // dispute in the customer's favour), so the row records the status it
+    // actually came from instead of a literal 'held' that could be a lie.
+    expect(refund).toMatch(/prevStatus:\s*escrow\.status/);
 
     const dispute = methodBody('disputeEscrowPayment');
     expect(dispute).toMatch(/disputeReason/);

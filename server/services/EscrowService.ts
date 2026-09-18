@@ -202,10 +202,19 @@ class EscrowService {
     return result.escrow;
   }
 
+  /**
+   * `resolvingDispute` (2026-09-19) is the ONLY way a 'disputed' escrow may be
+   * released. A dispute froze the money with no exit — release and refund both
+   * demanded 'held' — so a filed dispute meant nobody could ever be paid and
+   * nobody could ever be refunded. Deciding it in the provider's favour is this
+   * call, and it must be deliberate: without the flag a disputed escrow is
+   * still refused, so no cron, sweep or ordinary release path can quietly pay
+   * out money that is under dispute.
+   */
   async releaseEscrowPayment(
     escrowId: string,
     releasedBy: string,
-    opts?: { bypassGate?: boolean; enforceGate?: boolean },
+    opts?: { bypassGate?: boolean; enforceGate?: boolean; resolvingDispute?: boolean },
   ): Promise<void> {
     // CEO RULE (2026-09-13): no timer, cron or "system" actor releases provider
     // money. Callers pass a human uid (customer confirming, admin approving).
@@ -283,7 +292,9 @@ class EscrowService {
         throw new Error("Escrow payment not found");
       }
       const e = escrowDoc.data() as EscrowPayment;
-      if (e.status !== "held") {
+      const releasable = e.status === "held"
+        || (e.status === "disputed" && opts?.resolvingDispute === true);
+      if (!releasable) {
         throw new Error(`Cannot release escrow with status: ${e.status}`);
       }
       tx.update(escrowRef, {
@@ -416,7 +427,13 @@ class EscrowService {
         throw new Error("Escrow payment not found");
       }
       const e = escrowDoc.data() as EscrowPayment;
-      if (e.status !== "held") {
+      // 'disputed' is refundable (2026-09-19). A dispute FROZE the money and
+      // nothing could thaw it: refund demanded 'held', release demanded
+      // 'held', and the dispute-closure path skipped any escrow that was not
+      // 'held' — so filing a dispute put the customer's money beyond the reach
+      // of every rail in the product, permanently. Deciding the dispute in the
+      // customer's favour is exactly this call.
+      if (e.status !== "held" && e.status !== "disputed") {
         throw new Error(`Cannot refund escrow with status: ${e.status}`);
       }
       tx.update(escrowRef, {
@@ -459,7 +476,7 @@ class EscrowService {
         currency: escrow.currency,
         nayaxTransactionId: escrow.nayaxTransactionId,
         reason,
-        prevStatus: "held",
+        prevStatus: escrow.status,
       },
     });
 

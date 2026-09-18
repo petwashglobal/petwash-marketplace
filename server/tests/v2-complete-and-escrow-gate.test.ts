@@ -55,7 +55,9 @@ describe('V2 self-complete goes to the dual-approval gate (#1)', () => {
 
 describe('Escrow time-based release forces the payout gate (#2a)', () => {
   it('releaseEscrowPayment accepts an enforceGate opt', () => {
-    expect(ESCROW).toMatch(/opts\?:\s*\{\s*bypassGate\?:\s*boolean;\s*enforceGate\?:\s*boolean\s*\}/);
+    // resolvingDispute joined the bag in 2026-09-19; both original opts remain.
+    expect(ESCROW).toMatch(/opts\?:\s*\{\s*bypassGate\?:\s*boolean;\s*enforceGate\?:\s*boolean;/);
+    expect(ESCROW).toMatch(/resolvingDispute\?:\s*boolean/);
   });
 
   it('enforce is forced when enforceGate is true; env default is FAIL-CLOSED (only "false" opts back into shadow)', () => {
