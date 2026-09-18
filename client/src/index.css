@@ -4708,3 +4708,30 @@ body[data-pw-page="signup"] #petwash-signup-page main.sl-panel {
     padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * COOKIE BANNER — reserve its room instead of covering the product
+ * (2026-09-18).
+ *
+ * Measured live on a 375×812 phone, first visit to /packages: the consent
+ * panel occupied y=420…806 — 48% of the screen — and sat ON TOP of 17
+ * tappable things, including the ₪150, ₪220 and ₪400 package cards and every
+ * item of the bottom nav. A first-time visitor could not buy the product they
+ * came for until they answered the banner.
+ *
+ * The panel publishes its measured height as --pw-cookie-banner-h while it is
+ * open (client/src/components/CookieConsent.tsx). Reserving that height on the
+ * root scroll container means everything it covers can be scrolled clear of
+ * it: the choice stays on screen, and nothing is out of reach while it is
+ * still open. The notice itself is unchanged — this is reach, not copy.
+ *
+ * Desktop is untouched: there the panel is a small card in the corner and the
+ * nav is hidden, so nothing is covered.
+ * ─────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  body[data-cookie-consent-active="true"] {
+    padding-bottom: calc(
+      56px + var(--pw-cookie-banner-h, 0px) + 2rem + env(safe-area-inset-bottom, 0px)
+    );
+  }
+}

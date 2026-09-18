@@ -36,6 +36,10 @@ const COOKIE_SRC = fs.readFileSync(
   path.resolve(__dirname, '..', 'components', 'CookieConsent.tsx'),
   'utf8',
 );
+const INDEX_CSS = fs.readFileSync(
+  path.resolve(__dirname, '..', 'index.css'),
+  'utf8',
+);
 const FLOAT_CSS = fs.readFileSync(
   path.resolve(__dirname, '..', 'styles', 'floating-stack.css'),
   'utf8',
@@ -49,14 +53,36 @@ describe('CookieConsent — Issue #166 mobile layout regression pin', () => {
     expect(COOKIE_SRC).not.toMatch(/cookie-consent-banner[\s\S]{0,300}\bz-40\b/);
   });
 
-  it('outer container uses bottom-4 (no longer collides with WhatsApp at bottom 88)', () => {
-    expect(COOKIE_SRC).toMatch(/cookie-consent-banner[\s\S]{0,200}bottom-4/);
+  it('outer container sits above the mobile bottom nav, not on top of it', () => {
+    // 2026-09-18: `bottom-4` put the panel ON the MobileBottomNav — measured
+    // live on a 375x812 phone, the whole bar (Home, PawFinder, …) was
+    // untappable for a first-time visitor. The offset now adds the same
+    // --pw-bottom-nav-offset the floating buttons use (56px on mobile, 0 from
+    // 768px up), so the bar stays reachable while the choice is open.
+    expect(COOKIE_SRC).toMatch(/bottom:\s*['"]calc\(1rem \+ var\(--pw-bottom-nav-offset/);
     // bottom-20 was the cause of the WhatsApp overlap — must not return.
     expect(COOKIE_SRC).not.toMatch(/cookie-consent-banner[\s\S]{0,200}bottom-20/);
   });
 
-  it('outer container adds env(safe-area-inset-bottom) padding for iPhone home indicator', () => {
-    expect(COOKIE_SRC).toMatch(/paddingBottom:\s*['"]env\(safe-area-inset-bottom/);
+  it('the page reserves the panel’s real height so nothing stays out of reach', () => {
+    // The panel measured 386px on a 375x812 phone and covered 17 tappable
+    // things, including the ₪150 / ₪220 / ₪400 package cards. It now publishes
+    // its measured height and index.css reserves it on the root scroller.
+    expect(COOKIE_SRC).toMatch(/--pw-cookie-banner-h/);
+    expect(COOKIE_SRC).toMatch(/ResizeObserver/);
+    expect(INDEX_CSS).toMatch(
+      /body\[data-cookie-consent-active=['"]true['"]\][\s\S]{0,300}var\(--pw-cookie-banner-h/,
+    );
+  });
+
+  it('the choices are outside the scrolling notice, so they can never scroll away', () => {
+    expect(COOKIE_SRC).toMatch(/flex flex-col gap-2 flex-shrink-0/);
+  });
+
+  it('outer container still honours env(safe-area-inset-bottom) for the iPhone home indicator', () => {
+    // It moved from paddingBottom into the bottom offset when the panel was
+    // lifted above the bottom nav (2026-09-18) — same guarantee.
+    expect(COOKIE_SRC).toMatch(/bottom:\s*['"]calc\([^'"]*env\(safe-area-inset-bottom/);
   });
 
   it('inner panel has max-height anchored to 100dvh (not 100vh) and overflow-y auto', () => {
