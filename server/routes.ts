@@ -149,6 +149,7 @@ import payoutReconciliationRoutes from "./routes/finance/payout-reconciliation";
 import israelComplianceRoutes from "./routes/finance/israel-compliance";
 import treasurySettingsRoutes from "./routes/finance/treasury-settings";
 import adminEscrowReconciliationRoutes, { startEscrowDriftMonitor } from "./routes/admin-escrow-reconciliation";
+import adminEgiftRescueRoutes from "./routes/admin-egift-rescue";
 import { startDailyReconciliationJob, runReconciliationNow } from "./services/DailyReconciliationJob";
 import { startAsyncJobWorker } from "./services/AsyncJobWorker";
 import { startSettlementReconciliationJob } from "./services/SettlementReconciliationJob";
@@ -12683,6 +12684,10 @@ self.addEventListener('notificationclick', (event) => {
   // role checks inside admin-escrow-reconciliation.ts are kept (they allow
   // 'finance' role on read endpoints, which is intentional business logic).
   app.use('/api/admin/escrow', validateFirebaseToken, adminLimiter, adminEscrowReconciliationRoutes);
+  // Rescue for gift cards created unusable before #2633 (status 'PENDING', a
+  // state nothing accepted). GET surveys read-only; POST needs
+  // { confirm: 'REPAIR' } and only ever touches PENDING rows.
+  app.use('/api/admin/egift-rescue', validateFirebaseToken, requireAdmin, adminLimiter, adminEgiftRescueRoutes);
   
   // Thank you email route (management use)
   app.use('/api', adminLimiter, thankYouRoutes);
