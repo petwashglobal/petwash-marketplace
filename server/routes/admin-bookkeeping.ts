@@ -14,7 +14,8 @@ import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { requireSuperAdmin } from '../middleware/gates';
 import { logger } from '../lib/logger';
-import { STATION_REGISTRY, buildMachineIndex, stationMapLinks } from '../lib/stationRegistry';
+import { buildMachineIndex, stationMapLinks, loadStations, invalidateStationCache } from '../lib/stationRegistry';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -54,13 +55,15 @@ router.get('/bookkeeping', requireSuperAdmin, async (req: Request, res: Response
     logger.warn('[Bookkeeping] bay ledger query failed', { err: err?.message });
   }
 
-  const idx = buildMachineIndex();
+  // Stations come from the DB now (migration 0163); the code array is the fallback.
+  const stationList = await loadStations();
+  const idx = buildMachineIndex(stationList);
   // Any machine that reported events but isn't in the registry yet (e.g. the
   // Green Kfar Saba bays once they go live) — surface it so nothing is lost.
   const known = new Set([...idx.keys()]);
   const orphanMachines = Object.keys(byMachine).filter((m) => !known.has(m));
 
-  const stations = STATION_REGISTRY.map((s) => {
+  const stations = stationList.map((s) => {
     const bays = s.bays.map((b) => {
       const f = byMachine[b.machineId] || { grossCents: 0, netCents: 0, vatCents: 0, washes: 0, lastAt: null };
       return { ...b, ...f };
@@ -94,6 +97,93 @@ router.get('/bookkeeping', requireSuperAdmin, async (req: Request, res: Response
     // HR / staff module SHIPPED (migration 0102 + /api/admin/staff).
     staff: { built: true, note: 'ניהול הצוות זמין במסך «צוות ו־HR».', href: '/admin/staff' },
   });
+});
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stations — add or edit WITHOUT a deploy (2026-09-18).
+// The list used to be a two-row array in server/lib/stationRegistry.ts, so a
+// new city meant a code change. Now it is the station_registry table, and this
+// is the door: super-admin only, every field validated, bays keyed by the Nayax
+// machine id that bay income joins on.
+// ─────────────────────────────────────────────────────────────────────────────
+const bayInput = z.object({
+  machineId: z.string().trim().min(1).max(32),
+  terminalId: z.string().trim().max(32).optional(),
+  label: z.string().trim().max(64).default(''),
+});
+const stationInput = z.object({
+  code: z.string().trim().regex(/^[A-Z0-9-]{4,32}$/, 'code like PWS-IL-TLV-001'),
+  nameHe: z.string().trim().min(1).max(120),
+  nameEn: z.string().trim().min(1).max(120),
+  address: z.string().trim().min(1).max(240),
+  city: z.string().trim().min(1).max(80),
+  postalCode: z.string().trim().max(16).optional(),
+  lat: z.number().gte(-90).lte(90),
+  lng: z.number().gte(-180).lte(180),
+  hoursHe: z.string().trim().max(120).default(''),
+  accessHe: z.string().trim().max(500).optional(),
+  accessEn: z.string().trim().max(500).optional(),
+  open: z.boolean().default(true),
+  bays: z.array(bayInput).max(8).default([]),
+});
+
+router.get('/stations', requireSuperAdmin, async (_req: Request, res: Response) => {
+  const stations = await loadStations({ force: true });
+  res.json({ ok: true, stations, source: 'station_registry (falls back to the built-in list)' });
+});
+
+router.post('/stations', requireSuperAdmin, async (req: Request, res: Response) => {
+  const parsed = stationInput.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: 'Invalid station', details: parsed.error.flatten() });
+  }
+  const s = parsed.data;
+  // A machine id may belong to ONE station — bay income joins on it, so a
+  // duplicate would split or double-count a bay's money.
+  let clashRow: { station_id?: string } | undefined;
+  if (s.bays.length > 0) {
+    // ANY overlap, not an exact set match.
+    const ids = sql.join(s.bays.map((b) => sql`${b.machineId}`), sql`, `);
+    const clash = await db.execute(sql`
+      SELECT station_id FROM station_registry
+      WHERE station_id <> ${s.code}
+        AND EXISTS (
+          SELECT 1 FROM jsonb_array_elements(COALESCE(bays, '[]'::jsonb)) AS b
+          WHERE b->>'machineId' IN (${ids})
+        )
+      LIMIT 1
+    `);
+    clashRow = ((clash as any)?.rows ?? [])[0];
+  }
+  if (clashRow) {
+    return res.status(409).json({ ok: false, error: `A bay machine id already belongs to ${clashRow.station_id}`, code: 'MACHINE_ID_TAKEN' });
+  }
+  try {
+    await db.execute(sql`
+      INSERT INTO station_registry (
+        station_id, station_name, station_name_he, address, city, country, postal_code,
+        coordinates, ownership_type, operating_status, is_active, bays, hours_he, access_he, access_en, updated_at
+      ) VALUES (
+        ${s.code}, ${s.nameEn}, ${s.nameHe}, ${s.address}, ${s.city}, 'IL', ${s.postalCode ?? null},
+        ${JSON.stringify({ lat: s.lat, lng: s.lng })}::jsonb, 'corporate', ${s.open ? 'active' : 'inactive'}, ${s.open},
+        ${JSON.stringify(s.bays)}::jsonb, ${s.hoursHe}, ${s.accessHe ?? null}, ${s.accessEn ?? null}, NOW()
+      )
+      ON CONFLICT (station_id) DO UPDATE SET
+        station_name = EXCLUDED.station_name, station_name_he = EXCLUDED.station_name_he,
+        address = EXCLUDED.address, city = EXCLUDED.city, postal_code = EXCLUDED.postal_code,
+        coordinates = EXCLUDED.coordinates, operating_status = EXCLUDED.operating_status,
+        is_active = EXCLUDED.is_active, bays = EXCLUDED.bays, hours_he = EXCLUDED.hours_he,
+        access_he = EXCLUDED.access_he, access_en = EXCLUDED.access_en, updated_at = NOW()
+    `);
+    invalidateStationCache();
+    const stations = await loadStations({ force: true });
+    logger.info('[Stations] saved', { code: s.code, city: s.city, bays: s.bays.length, actor: (req as any).user?.uid ?? null });
+    res.json({ ok: true, saved: s.code, stations });
+  } catch (err: any) {
+    logger.error('[Stations] save failed', { code: s.code, error: err?.message });
+    res.status(500).json({ ok: false, error: 'Could not save the station.' });
+  }
 });
 
 export default router;
