@@ -217,7 +217,13 @@ class EgiftFinancialService {
           id: invoiceId,
           bookingId: `EGIFT-${input.egiftId}`,
           docNumber: `PW-EGIFT-${Date.now().toString(36).toUpperCase()}`,
-          allocationNumber: input.egiftId,
+          // NOT an allocation number. This column is octopus_invoices
+          // .allocation_number — a מספר הקצאה, issued only by the Israeli
+          // Tax Authority. Writing the eGift's internal id here (until
+          // 2026-09-18) left an internal identifier sitting in a column
+          // whose name says 'government tax number', waiting for the next
+          // report to print it as one. Left null: we have not obtained one.
+          allocationNumber: null,
         });
       });
       schedulePassSync(input.userId, 'egift_purchase');
@@ -449,7 +455,13 @@ class EgiftFinancialService {
             id: receiptId,
             bookingId,
             docNumber: `PW-KIOSK-${Date.now().toString(36).toUpperCase()}`,
-            allocationNumber: input.egiftId,
+            // NOT an allocation number. This column is octopus_invoices
+          // .allocation_number — a מספר הקצאה, issued only by the Israeli
+          // Tax Authority. Writing the eGift's internal id here (until
+          // 2026-09-18) left an internal identifier sitting in a column
+          // whose name says 'government tax number', waiting for the next
+          // report to print it as one. Left null: we have not obtained one.
+          allocationNumber: null,
           });
         }
 

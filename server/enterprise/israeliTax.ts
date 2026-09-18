@@ -238,24 +238,33 @@ export async function generateTaxInvoice(
     };
     
     if (!SUPPLIER_API_KEY) {
-      logger.warn('[IsraeliTax] RASA_SUPPLIER_API_KEY not configured - simulation mode');
-      logger.warn('[IsraeliTax] 📖 See ITA_API_REGISTRATION_GUIDE.md to set up new ITA OAuth2 API');
-      
-      const mockAllocationNumber = `MOCK-${Date.now()}`;
-      
+      // FAIL CLOSED (2026-09-18). This branch used to MINT a number —
+      // `MOCK-${Date.now()}` — write it onto the invoice as
+      // rasaAllocationNumber, stamp the invoice 'APPROVED_SIMULATION', and
+      // answer HTTP 200 { success: true }. RASA_SUPPLIER_API_KEY is not bound
+      // in production, so the fabricating branch WAS the live branch.
+      //
+      // A מספר הקצאה is issued by the Israeli Tax Authority and by nobody
+      // else. Inventing one and calling the result a success is the worst
+      // possible default on a tax control: the caller is told the invoice is
+      // approved, and a made-up government number sits in the invoice record
+      // waiting for the next report to print it.
+      //
+      // Nothing is approved when the ITA was never asked. Issue nothing, mark
+      // nothing, and say so.
+      logger.error('[IsraeliTax] RASA_SUPPLIER_API_KEY not configured — REFUSING to issue a tax invoice. No allocation number is invented.', {
+        invoiceId: data.invoiceId,
+      });
       await firestoreDb.collection('invoices').doc(data.invoiceId).update({
-        rasaAllocationNumber: mockAllocationNumber,
-        status: 'APPROVED_SIMULATION',
-        submittedVia: 'SIMULATION',
+        status: 'BLOCKED_NO_ITA_CREDENTIAL',
+        submittedVia: null,
+        rasaAllocationNumber: null,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       });
-      
-      res.status(200).json({
-        success: true,
-        allocationNumber: mockAllocationNumber,
-        simulation: true,
-        submissionMethod: 'SIMULATION',
-        note: 'Configure ITA_CLIENT_ID and ITA_CLIENT_SECRET for real submissions'
+      res.status(503).json({
+        success: false,
+        error: 'ITA_NOT_CONFIGURED',
+        message: 'No allocation number can be obtained: the Israeli Tax Authority credential is not configured. No invoice was approved and no number was generated.',
       });
       return;
     }
