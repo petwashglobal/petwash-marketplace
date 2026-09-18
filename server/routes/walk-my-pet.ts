@@ -53,6 +53,17 @@ import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { dispatchNotifications, buildBookingCancelledSms } from '../services/PetWashNotificationEngine';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
+// The walk card rail (2026-09-18). These were USED by the pay and
+// payment-return routes and never imported, so every call to
+// POST /walks/:bookingId/pay threw ReferenceError before it could open the
+// hosted page: a walker's accept sent the customer to a payment that could
+// not start, and the walk sat at payment_pending forever.
+import {
+  beginServiceCardPayment,
+  verifyServiceCardPayment,
+  alertPaidButNotFulfilled,
+} from '../lib/serviceBookingCardPayment';
+import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 
 const router = Router();
 
