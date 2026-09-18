@@ -286,6 +286,17 @@ export default function AdminStations() {
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* This screen is the OPERATIONS list (Firestore). The stations a
+                  CUSTOMER sees live in station_registry — different list, its
+                  own screen. Without this link that screen has no door. */}
+              <Button
+                className="luxury-btn-ghost"
+                onClick={() => setLocation('/admin/public-stations')}
+                data-testid="link-public-stations"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                {isHe ? 'עמדות באתר (ללקוחות)' : 'Public stations (customers)'}
+              </Button>
               <Button className="luxury-btn-ghost" onClick={() => setLocation('/admin/dashboard')}>
                 <Shield className="w-4 h-4 mr-2" />
                 Back to Dashboard
