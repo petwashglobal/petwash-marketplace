@@ -829,6 +829,11 @@ const AUTH_CSRF_EXEMPT = new Set([
   // strips pw.csrf, so every anonymous search was 403 and /marketplace showed
   // "No providers found … Failed" (live 2026-09-17).
   '/api/marketplace/search',
+  // Same shape, same breakage (live 2026-09-18): the Search button on
+  // /marketplace/search POSTs here, and every signed-out visitor got
+  // 403 EBADCSRFTOKEN with "Search failed. Check your connection" on screen —
+  // blaming their connection for our cookie. Read-only query, writes nothing.
+  '/api/booking-search',
 ]);
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
