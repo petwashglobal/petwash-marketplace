@@ -29,18 +29,35 @@ const S = (rel: string) =>
 describe('booking routes accept + persist petSafetySnapshot (CEO §12)', () => {
   describe('walk-my-pet /walks/book', () => {
     const src = R('walk-my-pet.ts');
-    it('destructures petSafetySnapshot off req.body', () => {
-      expect(src).toMatch(/petSafetySnapshot,?\s*\n\s*\}\s*=\s*req\.body/);
+    // 2026-09-18: these demanded the raw body value be destructured as
+    // `petSafetySnapshot` and then type-coerced. The route was hardened past
+    // that: the client's value is bound to clientSafetySnapshot — named so
+    // nobody mistakes it for authority — and the snapshot that gets STORED is
+    // built by the server from the owner's actual pet row
+    // (buildServerSafetySnapshot), with a non-medical projection as the only
+    // fallback for a cross-user or unknown petId. The pins were asserting the
+    // weaker "trust the client, just check its type" shape.
+    it('the client value is bound as clientSafetySnapshot — never treated as authority', () => {
+      expect(src).toMatch(/petSafetySnapshot:\s*clientSafetySnapshot/);
+      expect(src).not.toMatch(/petSafetySnapshot:\s*petSafetySnapshot/);
     });
-    it('coerces to a safe object shape (no arrays / no primitives)', () => {
-      expect(src).toMatch(/safeSnapshot/);
-      expect(src).toMatch(/typeof petSafetySnapshot === 'object' && !Array\.isArray/);
+    it('what gets stored is built by the SERVER from the pet row', () => {
+      expect(src).toMatch(/buildServerSafetySnapshot\(/);
+      // The fallback for a cross-user / unknown petId is non-medical only.
+      expect(src).toMatch(/safeSnapshot = \{/);
+      expect(src).toMatch(/aggressionWarning:\s*typeof c\.aggressionWarning === 'string'/);
+      // No medical field may be copied straight off the client's object.
+      const proj = src.slice(src.indexOf('safeSnapshot = {'), src.indexOf('safeSnapshot = {') + 900);
+      for (const medical of ['allergies', 'medications', 'vetContact', 'vetPhone']) {
+        expect(proj).not.toContain(`c.${medical}`);
+      }
     });
     it('writes the snapshot into the walk_bookings insert', () => {
       expect(src).toMatch(/petSafetySnapshot:\s*safeSnapshot/);
     });
     it('the persistence lives BEFORE the transaction insert (not on a fallthrough branch)', () => {
-      const idxDestructure = src.indexOf('petSafetySnapshot,');
+      // Anchor on the renamed binding — `petSafetySnapshot,` no longer exists.
+      const idxDestructure = src.indexOf('petSafetySnapshot: clientSafetySnapshot');
       const idxWrite = src.indexOf('petSafetySnapshot: safeSnapshot');
       const idxInsert = src.indexOf('tx.insert(walkBookings)');
       expect(idxDestructure).toBeGreaterThan(0);
@@ -53,12 +70,13 @@ describe('booking routes accept + persist petSafetySnapshot (CEO §12)', () => {
 
   describe('sitter-suite /bookings', () => {
     const src = R('sitter-suite.ts');
-    it('destructures petSafetySnapshot off req.body', () => {
-      expect(src).toMatch(/petSafetySnapshot,?\s*\n\s*\}\s*=\s*req\.body/);
+    it('the client value is bound as clientSafetySnapshot — never treated as authority', () => {
+      expect(src).toMatch(/petSafetySnapshot:\s*clientSafetySnapshot/);
     });
-    it('coerces to a safe object shape', () => {
-      expect(src).toMatch(/safeSnapshot/);
-      expect(src).toMatch(/typeof petSafetySnapshot === 'object' && !Array\.isArray/);
+    it('what gets stored is built by the SERVER from the canonical pet', () => {
+      expect(src).toMatch(/buildServerSafetySnapshot\(canonicalPet, clientSafetySnapshot/);
+      // No canonical pet resolved → store nothing rather than the client's word.
+      expect(src).toMatch(/safeSnapshot = null/);
     });
     it('writes the snapshot into the sitter_bookings insert', () => {
       expect(src).toMatch(/petSafetySnapshot:\s*safeSnapshot/);

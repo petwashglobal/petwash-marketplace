@@ -133,19 +133,16 @@ describe('PR-PET-1 — pin: /api/pets duplicate mount + client defensive parsing
     expect(getMatches.length).toBe(0);
   });
 
-  it('13. client/src/pages/GroomersBook.tsx still defensively unwraps the pets response', () => {
-    const path = 'client/src/pages/GroomersBook.tsx';
-    const src = read(path);
-    // The defensive parse is the smoking gun that the prior programmer KNEW two
-    // response shapes existed. Now vestigial (server returns one shape after the
-    // dead-handler removal) but harmless — accepts `.pets || d || []` OR the
-    // nullish `?.pets ?? d ?? []` form the file currently uses.
-    expect(src).toMatch(/\.pets\s*(\|\||\?\?)\s*d\s*(\|\||\?\?)\s*\[\]/);
+  it('13. a booking screen still defensively unwraps the pets response', () => {
+    // Was pinned on GroomersBook.tsx, deleted 2026-09-18 (its POST 400'd on
+    // every submit). The same defensive parse lives in the sitter screen.
+    const src = read('client/src/pages/sitter-suite/BookingFlow.tsx');
+    // Same smoking gun, its own spelling: array-or-{pets} branch at the consumer.
+    expect(src).toMatch(/Array\.isArray\(petsData\) \? petsData : \(petsData\?\.pets \|\| \[\]\)/);
   });
 
   it('14. at least 3 client files defensively branch on response shape', () => {
     const candidates = [
-      'client/src/pages/GroomersBook.tsx',
       'client/src/pages/MyAccount.tsx',
       'client/src/pages/walk-my-pet/BookingFlow.tsx',
       'client/src/pages/sitter-suite/BookingFlow.tsx',

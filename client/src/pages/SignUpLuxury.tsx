@@ -414,7 +414,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // manual form is HIDDEN until the user chooses phone or email. Social is a
   // one-tap path that never shows a phone/email field. 'choose' = show the two
   // chooser buttons only.
-  const [contactMode, setContactMode] = useState<'choose' | 'phone' | 'email'>('choose');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

@@ -30,42 +30,38 @@ import { resolve } from 'path';
 
 const R = (p: string) => readFileSync(resolve(__dirname, '..', '..', p), 'utf8');
 
-describe('AdminLoginV2 forgot-password button has in-flight guard', () => {
+/**
+ * 2026-09-18 — RETARGETED. These five pinned a first-click-wins guard on the
+ * admin Forgot-password button. The button is gone, and so is the entire
+ * email+password form it belonged to: admin sign-in is Google-only under the
+ * MASTER AUTH contract, so an operator's leaked or re-used password can no
+ * longer walk into an admin session, and the SUPER_ADMIN_EMAILS +
+ * email_verified gate on /api/auth/session is the sole authorization boundary.
+ *
+ * Guarding a double-click on a control that must not exist is the weaker
+ * promise. These now pin the removal itself — a password door re-appearing on
+ * the admin login is the regression that matters.
+ */
+describe('admin sign-in has NO password door to double-click', () => {
   const SRC = R('client/src/pages/admin/AdminLoginV2.tsx');
 
-  it('declares an isSendingReset state', () => {
-    expect(SRC).toMatch(/const \[isSendingReset, setIsSendingReset\]\s*=\s*useState\(false\)/);
+  it('there is no password field and no password submit', () => {
+    expect(SRC).not.toMatch(/type=["']password["']/);
+    expect(SRC).not.toMatch(/signInWithEmailAndPassword/);
+    expect(SRC).not.toMatch(/handleStandardLogin\s*=/);
   });
 
-  it('the Forgot password button is disabled while sending', () => {
-    // The forgot-password Button carries disabled={isSendingReset}.
-    expect(SRC).toMatch(/disabled=\{isSendingReset\}/);
+  it('there is no forgot-password / reset-email path on this screen', () => {
+    expect(SRC).not.toMatch(/sendPasswordResetEmail/);
+    expect(SRC).not.toMatch(/isSendingReset/);
   });
 
-  it('onClick returns early if already sending', () => {
-    // Guard the second click even if the button re-enters onClick before the
-    // disabled prop propagates through React's render cycle.
-    expect(SRC).toMatch(/if \(isSendingReset\) return;/);
+  it('the removal is documented in place, so nobody re-adds it as missing', () => {
+    expect(SRC).toMatch(/retired email\+password/);
   });
 
-  it('setIsSendingReset(true) fires BEFORE the Firebase call and false in finally', () => {
-    const start = SRC.indexOf("Task 20 — first-click-wins guard");
-    expect(start).toBeGreaterThan(-1);
-    const region = SRC.slice(start, start + 2500);
-    const trueSet = region.indexOf('setIsSendingReset(true)');
-    const fbCall = region.indexOf('sendPasswordResetEmail(fbAuth, email)');
-    const finallySet = region.indexOf('setIsSendingReset(false)');
-    expect(trueSet).toBeGreaterThan(-1);
-    expect(fbCall).toBeGreaterThan(-1);
-    expect(finallySet).toBeGreaterThan(-1);
-    expect(trueSet).toBeLessThan(fbCall);
-    expect(finallySet).toBeGreaterThan(fbCall);
-    // The finally reset must be inside a `finally {` block, not a stray call.
-    expect(region).toMatch(/finally\s*\{\s*setIsSendingReset\(false\);\s*\}/);
-  });
-
-  it('button label reflects the sending state (user feedback)', () => {
-    expect(SRC).toMatch(/\{isSendingReset \? 'Sending…' : 'Forgot password\?'\}/);
+  it('Google is the sign-in path that remains', () => {
+    expect(SRC).toMatch(/signInWithPopup|GoogleAuthProvider|Continue with Google/);
   });
 });
 

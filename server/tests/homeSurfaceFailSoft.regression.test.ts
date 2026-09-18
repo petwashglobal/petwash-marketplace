@@ -43,19 +43,16 @@ function read(rel: string): string {
 interface HomeSurface {
   label: string;
   file: string;
-  minQueryCount: number;
 }
 
 const HOMES: readonly HomeSurface[] = [
   {
     label: 'Pet-Parent (Prestige) home',
     file: 'client/src/pages/PrestigeHome.tsx',
-    minQueryCount: 4, // me, pets, qr, hist
   },
   {
     label: 'Provider home',
     file: 'client/src/pages/ProviderHome.tsx',
-    minQueryCount: 5, // profile, stats, earnings, upcoming, counts
   },
 ];
 
@@ -64,9 +61,15 @@ describe('Home-surface fail-soft contract', () => {
     describe(home.label, () => {
       const src = read(home.file);
 
-      it('has the expected count of useQuery calls (baseline)', () => {
+      // 2026-09-18: this asserted an exact-ish COUNT of useQuery calls, so
+      // REMOVING a query failed the pin. Prestige home lost one on purpose:
+      // the QR query minted a signed token AND wrote a prestige_qr_tokens doc
+      // to Firestore every 110 seconds, forever, for accounts with nothing to
+      // redeem. Deleting it was a cost fix, and the count pin called it a
+      // regression. A floor of 1 still catches "someone deleted the data".
+      it('still fetches something (a home that queries nothing is a blank page)', () => {
         const useQueryCount = (src.match(/useQuery\(/g) ?? []).length;
-        expect(useQueryCount).toBeGreaterThanOrEqual(home.minQueryCount);
+        expect(useQueryCount).toBeGreaterThanOrEqual(1);
       });
 
       it('EVERY useQuery has a fail-soft branch — either try/catch or .catch()', () => {
@@ -74,7 +77,9 @@ describe('Home-surface fail-soft contract', () => {
         // We do this by matching each `queryFn:` block up to its closing brace
         // and asserting either `try {` + `catch` is inside OR `.catch(` is inside.
         const queryFnBlocks = src.match(/queryFn:\s*(?:async\s*)?\([^)]*\)\s*=>\s*(?:\{[^}]*(?:\{[^}]*\}[^}]*)*\}|[^,\n]+)/g) ?? [];
-        expect(queryFnBlocks.length).toBeGreaterThanOrEqual(home.minQueryCount);
+        // Every useQuery must have a queryFn this can actually inspect —
+        // otherwise the fail-soft loop below silently checks nothing.
+        expect(queryFnBlocks.length).toBe((src.match(/useQuery\(/g) ?? []).length);
         for (const block of queryFnBlocks) {
           const hasTryCatch = /try\s*\{[\s\S]*catch\s*\{/.test(block);
           const hasCatchChain = /\.catch\(/.test(block);

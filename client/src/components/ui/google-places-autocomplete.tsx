@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MapPin, Loader2 } from 'lucide-react';
 import { getApiUrl } from '@/lib/apiConfig';
+import { useQuery } from '@tanstack/react-query';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 // PR-LOCATION-GUARD-PLACES-1: client-side echo of the server
 // gate. When the flag is OFF we skip the network call entirely
 // and let the user type freely. The server is the authoritative
@@ -56,6 +58,9 @@ export interface PlaceDetails {
   lng?: number;
   placeId?: string;
 }
+
+import { matchSavedAddresses, type SavedAddressRow } from '@/lib/savedAddressMatch';
+export { matchSavedAddresses, type SavedAddressRow };
 
 interface AutocompletePrediction {
   placeId: string;
@@ -113,6 +118,22 @@ export function GooglePlacesAutocomplete({
   types,
   darkMode = false,
 }: GooglePlacesAutocompleteProps) {
+  const { user } = useFirebaseAuth();
+  // The customer's OWN saved addresses. They cost nothing to show (one cached
+  // read, shared by every screen through this query key) and nothing to pick —
+  // no suggest call, no geocode, no paid lookup. 2026-09-18: they used to be
+  // visible only inside AddressPicker, so profile, shop and half the booking
+  // screens made the customer retype an address they had already given us.
+  const { data: savedAddresses = [] } = useQuery<SavedAddressRow[]>({
+    queryKey: ['/api/user/addresses'],
+    enabled: !!user?.uid,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+  });
+  // Read inside the typing handler without making it depend on the list.
+  const savedAddressesRef = useRef<SavedAddressRow[]>([]);
+  useEffect(() => { savedAddressesRef.current = savedAddresses; }, [savedAddresses]);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [predictions, setPredictions] = useState<AutocompletePrediction[]>([]);
@@ -328,6 +349,37 @@ export function GooglePlacesAutocomplete({
     selectingRef.current = false;
   }, [onChange, onPlaceSelected]);
 
+  /** Pick one of the customer's saved addresses. Zero requests, zero cost. */
+  const selectSaved = useCallback((row: SavedAddressRow) => {
+    const details: PlaceDetails = {
+      formattedAddress: row.address,
+      street: row.street || undefined,
+      streetNumber: row.streetNumber || undefined,
+      apartment: row.apartment || undefined,
+      floor: row.floor || undefined,
+      entrance: row.entrance || undefined,
+      notes: row.notes || undefined,
+      city: row.city || undefined,
+      postalCode: row.postalCode || undefined,
+      lat: row.lat != null ? Number(row.lat) : undefined,
+      lng: row.lng != null ? Number(row.lng) : undefined,
+      placeId: `saved:${row.id}`,
+    };
+    setSelectedPlace(details);
+    setBuildingNumber(row.streetNumber || '');
+    setApartment(row.apartment || '');
+    setFloor(row.floor || '');
+    setEntrance(row.entrance || '');
+    setAccessNotes(row.notes || '');
+    setPostalCodeState(row.postalCode || '');
+    setCityState(row.city || '');
+    setPredictions([]);
+    setShowDropdown(false);
+    onChange(details.formattedAddress, details);
+    onPlaceSelected?.(details);
+    selectingRef.current = false;
+  }, [onChange, onPlaceSelected]);
+
   /**
    * Reveal the detail boxes for an address the customer typed themselves.
    *
@@ -375,13 +427,19 @@ export function GooglePlacesAutocomplete({
       setShowManualHint(false);
     }
 
+    if (matchSavedAddresses(savedAddressesRef.current, val).length > 0) {
+      // Instant: the customer's own addresses need no request.
+      setShowDropdown(true);
+      updateDropdownPosition();
+    }
+
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
     debounceRef.current = setTimeout(() => {
       fetchPredictions(val);
     }, 300);
-  }, [onChange, fetchPredictions]);
+  }, [onChange, fetchPredictions, updateDropdownPosition]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (!showDropdown || predictions.length === 0) return;
@@ -474,10 +532,13 @@ export function GooglePlacesAutocomplete({
   //      empty results hid the dropdown entirely and the user thought the
   //      address field was broken ("appears for a second then disappears").
   //   3. Loading → spinner is on the input itself, no dropdown card needed.
+  // Saved addresses that match what is typed so far — computed locally, so they
+  // are on screen before any suggest request is even sent.
+  const savedMatches = matchSavedAddresses(savedAddresses, value || '');
   const inputLong = (value || '').trim().length >= 3;
-  const showEmptyState = showDropdown && predictions.length === 0 && inputLong && !isLoading;
+  const showEmptyState = showDropdown && predictions.length === 0 && savedMatches.length === 0 && inputLong && !isLoading;
   const dropdownPortal = (
-    (showDropdown && predictions.length > 0 && dropdownRect) ||
+    (showDropdown && (predictions.length > 0 || savedMatches.length > 0) && dropdownRect) ||
     (showEmptyState && dropdownRect)
   )
     ? createPortal(
@@ -494,6 +555,34 @@ export function GooglePlacesAutocomplete({
             className="bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
             style={{ WebkitOverflowScrolling: 'touch', maxHeight: '260px', overflowY: 'auto' }}
           >
+            {savedMatches.length > 0 && (
+              <div data-testid="saved-address-suggestions">
+                {savedMatches.map((row) => (
+                  <button
+                    key={`saved-${row.id}`}
+                    type="button"
+                    dir="auto"
+                    data-testid={`saved-address-${row.id}`}
+                    className="w-full text-start px-4 py-3 flex items-start gap-3 border-b border-gray-50 bg-amber-50/40 active:bg-[#D4AF37]"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      selectingRef.current = true;
+                      selectSaved(row);
+                    }}
+                    style={{ minHeight: '52px', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', cursor: 'pointer' }}
+                  >
+                    <MapPin className="h-4 w-4 text-[#B8932F] mt-0.5 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">{row.address}</div>
+                      <div className="text-[11px] text-[#B8932F]">
+                        {row.customLabel || (row.label === 'home' ? 'בית' : row.label === 'work' ? 'עבודה' : 'כתובת שמורה')}
+                        {row.isDefault ? ' · ברירת מחדל' : ''}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
             {predictions.length > 0 ? (
               predictions.map((pred, idx) => (
                 <button
@@ -594,7 +683,9 @@ export function GooglePlacesAutocomplete({
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => {
-            if (predictions.length > 0) {
+            // Saved addresses are already in memory — show them the moment the
+            // field is touched, before anything is typed.
+            if (predictions.length > 0 || savedMatches.length > 0) {
               setShowDropdown(true);
               updateDropdownPosition();
             }

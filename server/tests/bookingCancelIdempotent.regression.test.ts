@@ -17,45 +17,46 @@ import { resolve } from 'path';
 
 const R = (p: string) => readFileSync(resolve(__dirname, '..', p), 'utf8');
 
+/**
+ * 2026-09-18 — RETARGETED, same reason as bookingCompleteIdempotent: the
+ * inline `claimIdempotencyKey` helper (a racey SELECT-then-INSERT that wrote
+ * 'idempotency-marker' rows into notification_logs) was replaced by the ONE
+ * canonical atomic helper, server/lib/eventNotificationIdempotency.ts. These
+ * three cases demanded the racey version and so failed the improvement.
+ */
 describe('booking.cancelled notification handler is idempotent', () => {
-  it('booking.cancelled handler claims idempotency BEFORE sendNotification', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    const sub = src.indexOf("eventBus.subscribe('booking.cancelled'");
+  const SRC = R('services/events/NotificationEventHandlers.ts');
+  const sub = SRC.indexOf("eventBus.subscribe('booking.cancelled'");
+  const window = SRC.slice(sub, sub + 3000);
+
+  it('claims a per-booking, per-user key and SENDS INSIDE the claim', () => {
     expect(sub).toBeGreaterThan(-1);
-    // Slice from the subscribe callback to its closing }, 5); marker.
-    const window = src.slice(sub, sub + 3000);
-    // Canonical key format from eventMatrix.
-    expect(window).toContain('const idempotencyKey = `booking_cancelled:${event.data.bookingId}:${event.userId}`');
-    expect(window).toContain('claimIdempotencyKey(idempotencyKey)');
-    // The claim() call comes BEFORE sendNotification.
-    const claimPos = window.indexOf('claimIdempotencyKey');
+    expect(window).toContain('notif:booking_cancelled:');
+    expect(window).toContain('${event.data.bookingId}:${event.userId}`');
+    const claimPos = window.indexOf('dispatchOnce');
     const sendPos = window.indexOf('NotificationService.sendNotification');
     expect(claimPos).toBeGreaterThan(-1);
     expect(sendPos).toBeGreaterThan(-1);
     expect(claimPos).toBeLessThan(sendPos);
-    // Skip path when the key is already claimed.
-    expect(window).toContain('already dispatched — skipping');
+    expect(window).toMatch(/skipped by idempotency/);
   });
 
-  it('claimIdempotencyKey writes an atomic marker to notification_logs', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    // Marker row uses distinct channel/template so it never masquerades
-    // as a real send in dashboards.
-    expect(src).toContain("templateKey: 'idempotency-marker'");
-    expect(src).toContain("channel: 'idempotency-marker'");
-    expect(src).toContain("eventType: 'idempotency-marker'");
-    // Read-then-insert against notification_logs.idempotencyKey.
-    expect(src).toMatch(/notificationLogs\.idempotencyKey/);
+  it('the claim is atomic and leaves no fake row in notification_logs', () => {
+    const IDEM = R('lib/eventNotificationIdempotency.ts');
+    expect(IDEM).toMatch(/ON CONFLICT\s*\(\s*key\s*\)\s*DO NOTHING/i);
+    // The old marker rows masqueraded as sends in dashboards. They are gone,
+    // and the claim now lives in idempotency_keys, not notification_logs.
+    expect(SRC).not.toContain("templateKey: 'idempotency-marker'");
+    expect(IDEM).toMatch(/idempotency_keys/);
   });
 
-  it('claim helper fails OPEN on DB errors (rather than dropping a cancel notice)', () => {
-    const src = R('services/events/NotificationEventHandlers.ts');
-    const helperIdx = src.indexOf('async function claimIdempotencyKey');
-    expect(helperIdx).toBeGreaterThan(-1);
-    const helper = src.slice(helperIdx, helperIdx + 1500);
-    // On error: warn + return true (proceed with send).
-    expect(helper).toMatch(/Idempotency claim failed/);
-    expect(helper).toMatch(/return true;\s*\}\s*\}/);
+  it('fails OPEN on DB errors rather than dropping a cancellation notice', () => {
+    const IDEM = R('lib/eventNotificationIdempotency.ts');
+    // A cancel notice the customer never gets is worse than a rare duplicate.
+    expect(IDEM).toMatch(/'DB_ERROR'/);
+    expect(IDEM).toMatch(/fail-open/i);
+    // …but money must never inherit that policy.
+    expect(IDEM).toMatch(/Money-side callers MUST NOT reuse this fail-open/);
   });
 });
 
