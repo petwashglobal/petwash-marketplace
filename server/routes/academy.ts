@@ -33,7 +33,7 @@ import { eq, and, desc, sql, gte, lte, or, ilike, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { validateProviderRates } from '@shared/providerMinPrices';
 import { nanoid } from 'nanoid';
-import { beginServiceCardPayment, verifyServiceCardPayment } from '../lib/serviceBookingCardPayment';
+import { beginServiceCardPayment, verifyServiceCardPayment, alertPaidButNotFulfilled } from '../lib/serviceBookingCardPayment';
 import { paymentLanguageFor } from '../lib/paymentPageLanguage';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
@@ -946,7 +946,13 @@ router.get('/bookings/:bookingId/sumit-return', async (req, res) => {
         eq(trainerBookings.bookingStatus, 'confirmed'),
       ))
       .returning({ id: trainerBookings.id });
-    if (updated.length === 0) return fail('status_changed_during_payment');
+    if (updated.length === 0) {
+      await alertPaidButNotFulfilled({
+        kind: 'academy', bookingRef: booking.bookingId, transactionId: verified.transactionId,
+        amountCents: verified.amountCents, reason: 'status_changed_during_payment',
+      });
+      return fail('status_changed_during_payment');
+    }
 
     logger.info('[Academy] session paid by card', {
       bookingId, transactionId: verified.transactionId, amountCents: verified.amountCents,

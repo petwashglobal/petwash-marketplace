@@ -1379,8 +1379,9 @@ router.get('/walks/:bookingId/sumit-return', async (req, res) => {
         booking.walkerId as unknown as string,
       );
     } catch (escrowErr: any) {
-      logger.error('[WalkPay] PAID but escrow hold failed — walk NOT confirmed, needs ops', {
-        bookingId, transactionId: verified.transactionId, error: escrowErr?.message,
+      await alertPaidButNotFulfilled({
+        kind: 'walk', bookingRef: booking.bookingId, transactionId: verified.transactionId,
+        amountCents: verified.amountCents, reason: `escrow_hold_failed: ${escrowErr?.message ?? 'unknown'}`,
       });
       return fail('escrow_hold_failed');
     }
@@ -1389,7 +1390,13 @@ router.get('/walks/:bookingId/sumit-return', async (req, res) => {
       .set({ status: 'confirmed', paymentSessionId: verified.transactionId, updatedAt: new Date() })
       .where(and(eq(walkBookings.bookingId, booking.bookingId), eq(walkBookings.status, 'payment_pending')))
       .returning({ id: walkBookings.id });
-    if (updated.length === 0) return fail('status_changed_during_payment');
+    if (updated.length === 0) {
+      await alertPaidButNotFulfilled({
+        kind: 'walk', bookingRef: booking.bookingId, transactionId: verified.transactionId,
+        amountCents: verified.amountCents, reason: 'status_changed_during_payment',
+      });
+      return fail('status_changed_during_payment');
+    }
 
     await syncChatToBookingStatus(booking.bookingId, 'confirmed', 'walk_my_pet').catch(() => {});
 

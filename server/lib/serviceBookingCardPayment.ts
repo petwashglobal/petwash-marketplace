@@ -131,3 +131,42 @@ export async function verifyServiceCardPayment(
   });
   return { ok: true, transactionId: String(txnId), amountCents: verified.amountCents };
 }
+
+/**
+ * The card WAS charged and the booking could not be fulfilled (the escrow hold
+ * failed, or the booking changed underneath the payment). The customer is out
+ * of pocket with nothing to show, so this must reach a human — a log line is
+ * not enough. There is no automatic card-refund rail: a person refunds it in
+ * the clearing back office. Never throws; the caller is already on a failure
+ * path. (2026-09-18)
+ */
+export async function alertPaidButNotFulfilled(input: {
+  kind: ServiceBookingKind;
+  bookingRef: string;
+  transactionId: string;
+  amountCents: number;
+  reason: string;
+}): Promise<void> {
+  logger.error('[ServiceCardPayment] PAID BUT NOT FULFILLED — customer charged, booking not confirmed', input);
+  try {
+    const { createOrUpdateAlert } = await import('../services/AlertEngine');
+    await createOrUpdateAlert({
+      dedupeKey: `paid_not_fulfilled:${input.kind}:${input.bookingRef}`,
+      category: 'payment',
+      severity: 'critical',
+      title: `Card charged but the ${input.kind} booking was not confirmed`,
+      message:
+        `${input.kind} ${input.bookingRef}: SUMIT payment ${input.transactionId} for ` +
+        `₪${(input.amountCents / 100).toFixed(2)} verified and claimed, then fulfilment failed ` +
+        `(${input.reason}). The customer HAS been charged and has no confirmed booking. ` +
+        `Refund it in the clearing back office or fulfil the booking by hand.`,
+      linkedEntityType: 'booking',
+      linkedEntityId: input.bookingRef,
+      source: 'service_card_payment',
+    });
+  } catch (alertErr: any) {
+    logger.error('[ServiceCardPayment] could not raise the paid-but-not-fulfilled alert', {
+      ...input, alertError: alertErr?.message,
+    });
+  }
+}
