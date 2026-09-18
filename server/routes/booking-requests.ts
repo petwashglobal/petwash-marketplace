@@ -4537,15 +4537,25 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
       setImmediate(async () => {
         try {
           const escrows = await EscrowService.getEscrowsByBooking(requestId);
+          // A provider emergency cancel is always a FULL customer refund, so
+          // the amount passed equals the hold — but pass it explicitly, so the
+          // customer's message and the admin's card instruction come from the
+          // same number the booking row recorded (2026-09-18).
+          let refundBudgetCents = refundCents;
           for (const escrow of escrows) {
-            if (escrow.status === 'held') {
-              await EscrowService.refundEscrowPayment(
-                escrow.id,
-                `Provider emergency cancel. Reason: ${rawReason}. Full refund: ₪${(refundCents / 100).toFixed(2)}.`,
-                userId,
-              );
-              logger.info('[BookingRequests] Firestore escrow refunded on emergency cancel', { requestId, escrowId: escrow.id });
-            }
+            if (escrow.status !== 'held' || refundBudgetCents <= 0) continue;
+            const escrowCents = Math.round(Number(escrow.amount || 0) * 100);
+            const thisRefundCents = Math.min(refundBudgetCents, escrowCents);
+            await EscrowService.refundEscrowPayment(
+              escrow.id,
+              `Provider emergency cancel. Reason: ${rawReason}. Full refund: ₪${(thisRefundCents / 100).toFixed(2)}.`,
+              userId,
+              thisRefundCents,
+            );
+            refundBudgetCents -= thisRefundCents;
+            logger.info('[BookingRequests] Firestore escrow refunded on emergency cancel', {
+              requestId, escrowId: escrow.id, refundCents: thisRefundCents,
+            });
           }
         } catch (escrowRefundErr: any) {
           logger.warn('[BookingRequests] Firestore escrow refund failed on emergency cancel (non-blocking)', {
@@ -4897,15 +4907,27 @@ router.post('/:requestId/cancel', async (req, res) => {
       setImmediate(async () => {
         try {
           const escrows = await EscrowService.getEscrowsByBooking(requestId);
+          // The cancellation TIER decides how much comes back — a late cancel
+          // is not a full refund. Until 2026-09-18 that number was computed,
+          // written to the booking row, and then dropped here: the escrow
+          // refund knew only the held amount, so the customer was promised
+          // 100% and the admin was told to put 100% back on the card. Spend
+          // the policy amount across the held escrows, never more than held.
+          let refundBudgetCents = refundCents;
           for (const escrow of escrows) {
-            if (escrow.status === 'held') {
-              await EscrowService.refundEscrowPayment(
-                escrow.id,
-                `Booking cancelled by ${cancelledBy}. Tier: ${cancellationTier}. Refund: ₪${(refundCents / 100).toFixed(2)}.`,
-                userId,
-              );
-              logger.info('[BookingRequests] Firestore escrow refunded on cancel', { requestId, escrowId: escrow.id, refundCents });
-            }
+            if (escrow.status !== 'held' || refundBudgetCents <= 0) continue;
+            const escrowCents = Math.round(Number(escrow.amount || 0) * 100);
+            const thisRefundCents = Math.min(refundBudgetCents, escrowCents);
+            await EscrowService.refundEscrowPayment(
+              escrow.id,
+              `Booking cancelled by ${cancelledBy}. Tier: ${cancellationTier}. Refund: ₪${(thisRefundCents / 100).toFixed(2)}.`,
+              userId,
+              thisRefundCents,
+            );
+            refundBudgetCents -= thisRefundCents;
+            logger.info('[BookingRequests] Firestore escrow refunded on cancel', {
+              requestId, escrowId: escrow.id, refundCents: thisRefundCents, heldCents: escrowCents,
+            });
           }
         } catch (escrowRefundErr: any) {
           // Non-blocking: Firestore drift surfaced in admin reconciliation as a warn.

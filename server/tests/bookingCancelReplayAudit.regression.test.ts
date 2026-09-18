@@ -69,9 +69,21 @@ describe('cancel endpoint invokes idempotent-by-key wallet operations', () => {
     expect(region).toMatch(/walletService\.releaseBookingHold\(/);
   });
 
-  it('Firestore escrow refund is gated on escrow.status === held (skips already-refunded escrows)', () => {
-    expect(region).toMatch(/if \(escrow\.status === 'held'\)/);
+  it('Firestore escrow refund skips a non-held escrow (already refunded / released)', () => {
+    // 2026-09-18: the loop became a guard clause when the refund learned the
+    // POLICY amount. Same invariant, stronger: a non-held escrow is skipped,
+    // and so is one that arrives after the policy budget is spent.
+    expect(region).toMatch(/if \(escrow\.status !== 'held' \|\| refundBudgetCents <= 0\) continue;/);
     expect(region).toMatch(/EscrowService\.refundEscrowPayment\(/);
+  });
+
+  it('the escrow refund is given the cancellation-policy amount, not the hold', () => {
+    // The tier decides how much comes back. Passing nothing meant the customer
+    // was promised, and the admin instructed to pay, the whole held amount.
+    expect(region).toMatch(/let refundBudgetCents = refundCents;/);
+    expect(region).toMatch(/Math\.min\(refundBudgetCents, escrowCents\)/);
+    expect(region).toMatch(/thisRefundCents,\s*\n\s*\);/);
+    expect(region).toMatch(/refundBudgetCents -= thisRefundCents;/);
   });
 });
 

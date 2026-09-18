@@ -373,8 +373,38 @@ class EscrowService {
     console.log(`[Escrow] Payment released: ${escrowId} - Provider payout: ₪${providerPayout}, Commission: ₪${((escrow.platformCommissionCents || 0) / 100).toFixed(2)}`);
   }
 
-  async refundEscrowPayment(escrowId: string, reason: string, refundedBy: string): Promise<void> {
+  /**
+   * Mark a held escrow refunded.
+   *
+   * `refundAmountCents` (2026-09-18) is what the CANCELLATION POLICY says the
+   * customer gets back. Without it this method only ever knew the full held
+   * amount, so a late cancel that entitled the customer to 50% still told them
+   * "your refund of ₪<FULL>" and told the admin to put the FULL amount back on
+   * the card. The policy number was computed by the caller, written into the
+   * booking row, and then thrown away here.
+   *
+   * Omitted (admin refund, dispute closure — no policy number exists there) it
+   * still means the whole held amount. Out-of-range values are clamped to the
+   * held amount, never above it.
+   */
+  async refundEscrowPayment(
+    escrowId: string,
+    reason: string,
+    refundedBy: string,
+    refundAmountCents?: number,
+  ): Promise<void> {
     const escrowRef = this.db.collection("escrow_payments").doc(escrowId);
+
+    // The held amount in agorot, and what of it is being returned. A caller
+    // that passes nothing means "all of it"; anything outside [0, held] is
+    // clamped, so a bad number can never instruct a refund larger than the
+    // money actually held.
+    const heldCents = (e: EscrowPayment) => Math.round(Number(e.amount || 0) * 100);
+    const refundedCentsFor = (e: EscrowPayment) => {
+      const held = heldCents(e);
+      if (refundAmountCents == null || !Number.isFinite(refundAmountCents)) return held;
+      return Math.max(0, Math.min(held, Math.round(refundAmountCents)));
+    };
 
     // Issue #153 PR-C — same atomicity guarantee as releaseEscrowPayment.
     // Two concurrent refund calls (e.g. customer cancels twice through a
@@ -394,6 +424,10 @@ class EscrowService {
         refundedAt: new Date(),
         refundReason: reason,
         refundedBy,
+        // What the customer actually gets back, and whether that is all of it.
+        // Reconciliation reads this, not `amount`.
+        refundedAmountCents: refundedCentsFor(e),
+        partialRefund: refundedCentsFor(e) < heldCents(e),
       });
       return e;
     });
@@ -402,6 +436,11 @@ class EscrowService {
     // BEFORE notifications. Money math NOT changed; this is observability
     // only. The legal credit-note (חשבונית זיכוי) wiring remains in the
     // CEO + CPA approval queue.
+    const heldTotalCents = heldCents(escrow);
+    const refundCents = refundedCentsFor(escrow);
+    const refundIls = refundCents / 100;
+    const isPartial = refundCents < heldTotalCents;
+
     await logAuditEvent({
       actorUserId: refundedBy,
       actionType: "ESCROW_REFUNDED",
@@ -412,6 +451,11 @@ class EscrowService {
         customerId: escrow.customerId,
         providerId: escrow.providerId,
         amount: escrow.amount,
+        // The held amount and the refunded amount are different numbers on a
+        // policy cancellation — record both, never just the hold.
+        heldAmountCents: heldTotalCents,
+        refundedAmountCents: refundCents,
+        partialRefund: isPartial,
         currency: escrow.currency,
         nayaxTransactionId: escrow.nayaxTransactionId,
         reason,
@@ -428,13 +472,19 @@ class EscrowService {
         dedupeKey: `escrow_card_refund:${escrowId}`,
         category: "payment",
         severity: "warning",
-        title: "Card refund to do by hand",
-        message: `Escrow ${escrowId} · booking ${escrow.bookingId} · ₪${Number(escrow.amount || 0).toFixed(2)} was marked refunded (${reason}). `
-          + `No card money moved — refund it with the card provider, then close this alert.`,
+        title: isPartial ? "Card refund to do by hand — PARTIAL" : "Card refund to do by hand",
+        // The number here is what someone will type into the card provider, so
+        // it must be the POLICY amount, not the hold (2026-09-18).
+        message: `Escrow ${escrowId} · booking ${escrow.bookingId} · refund ₪${refundIls.toFixed(2)}`
+          + (isPartial ? ` of ₪${(heldTotalCents / 100).toFixed(2)} held (partial — cancellation policy)` : '')
+          + `. Reason: ${reason}. No card money moved — refund exactly this amount with the card provider, then close this alert.`,
         linkedEntityType: "escrow",
         linkedEntityId: escrowId,
         source: "auto_sweep",
-        metadata: { bookingId: escrow.bookingId, customerId: escrow.customerId, refundedBy },
+        metadata: {
+          bookingId: escrow.bookingId, customerId: escrow.customerId, refundedBy,
+          refundAmountCents: refundCents, heldAmountCents: heldTotalCents, partialRefund: isPartial,
+        },
       });
     } catch (alertErr: any) {
       console.error("[Escrow] marked refunded but the admin alert failed — card refund must be done by hand", { escrowId, error: alertErr?.message });
@@ -448,7 +498,10 @@ class EscrowService {
       // rail exists yet). Telling the customer the money "has been refunded"
       // was a false statement; say it is being processed instead.
       title: "Refund In Process 💳",
-      message: `Your refund of ₪${escrow.amount.toFixed(2)} is being processed. Card refunds can take a few business days to appear.`,
+      // Promise the POLICY amount (2026-09-18). Quoting the held amount on a
+      // partial cancellation promised the customer money the policy does not
+      // give them, and support had to take it back by hand.
+      message: `Your refund of ₪${refundIls.toFixed(2)} is being processed. Card refunds can take a few business days to appear.`,
       priority: "high",
       channel: "all",
       data: { escrowId, bookingId: escrow.bookingId, reason },
@@ -464,7 +517,11 @@ class EscrowService {
       data: { escrowId, bookingId: escrow.bookingId, reason },
     });
 
-    console.log(`[Escrow] Payment refunded: ${escrowId} - Reason: ${reason}`);
+    console.log(
+      `[Escrow] Payment refunded: ${escrowId} - ₪${refundIls.toFixed(2)}`
+      + (isPartial ? ` of ₪${(heldTotalCents / 100).toFixed(2)} held (partial)` : '')
+      + ` - Reason: ${reason}`,
+    );
   }
 
   async disputeEscrowPayment(escrowId: string, disputeReason: string, disputedBy: string): Promise<void> {

@@ -897,10 +897,22 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
     const cancelledBy: "customer" | "provider" | "admin" = admin ? "admin" : isProvider ? "provider" : "customer";
     try {
       const escrows = await EscrowService.getEscrowsByBooking(bookingId);
+      // netRefundCents is what the cancellation policy actually returns. It was
+      // computed right above and then not passed, so the escrow refund fell
+      // back to the whole hold: the customer was told they get everything back
+      // and the admin was told to refund everything (2026-09-18).
+      let refundBudgetCents = netRefundCents;
       for (const escrow of escrows) {
-        if (escrow.status === "held") {
-          await EscrowService.refundEscrowPayment(escrow.id, reason || "cancellation", userId);
-        }
+        if (escrow.status !== "held" || refundBudgetCents <= 0) continue;
+        const escrowCents = Math.round(Number(escrow.amount || 0) * 100);
+        const thisRefundCents = Math.min(refundBudgetCents, escrowCents);
+        await EscrowService.refundEscrowPayment(
+          escrow.id,
+          reason || "cancellation",
+          userId,
+          thisRefundCents,
+        );
+        refundBudgetCents -= thisRefundCents;
       }
     } catch (escrowErr: any) {
       // Processor refund failed — do NOT advance the booking to "cancelled".
