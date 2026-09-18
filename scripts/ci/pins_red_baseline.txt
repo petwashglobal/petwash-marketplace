@@ -24,7 +24,6 @@ server/tests/bookingSafetyBridgeExposure.regression.test.ts  # red on main at ga
 server/tests/botCheckHealthTruth.regression.test.ts  # red on main at gate landing
 server/tests/bug-hunt-fixes-2026-07-09.test.ts  # red on main at gate landing
 server/tests/canonicalMemberHome.regression.test.ts  # red on main at gate landing
-server/tests/claimsSync.regression.test.ts  # red on main at gate landing
 server/tests/email-blackout-visibility.test.ts  # red on main at gate landing
 server/tests/healthBuildSha.regression.test.ts  # red on main at gate landing
 server/tests/homeSurfaceFailSoft.regression.test.ts  # red on main at gate landing

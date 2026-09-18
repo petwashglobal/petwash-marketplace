@@ -40,36 +40,45 @@ const helper = readFileSync(resolve(ROOT, 'server/lib/sendForceTokenRefresh.ts')
 
 // ── A. CLAIM-WRITE GAP CLOSED (Lane B-B P0 #2) ────────────────────────────
 
-describe('PR-CLAIMS-SYNC — accountType added to provider claim write', () => {
-  it('1. setCustomUserClaims now writes BOTH role and accountType for the provider escalation', () => {
-    // Anchor on the audited block in postLoginDecider provider-active path.
-    const idx = postLogin.indexOf("'[PostLogin] ✅ Firebase claims synced to role=provider");
+/**
+ * 2026-09-18 — RETARGETED. These read server/routes/post-login.ts for a
+ * provider-escalation block that writes Firebase claims on every login. The
+ * write MOVED to where it belongs — server/routes/provider-applications.ts, at
+ * APPROVAL — and got stronger on the way: the claim set is now additive (CEO
+ * §1/§28), so approving a provider no longer clobbers the customer identity the
+ * same person already has. It preserves an existing non-public role and an
+ * existing non-pet_parent accountType, appends 'provider' to roles[], and
+ * carries the per-service approval map.
+ *
+ * The pins were anchored on a log line that no longer exists, so they failed
+ * regardless of whether the guarantee held. They now assert it where it lives.
+ */
+const providerApps = readFileSync(resolve(ROOT, 'server/routes/provider-applications.ts'), 'utf8');
+
+describe('PR-CLAIMS-SYNC — approving a provider writes role AND accountType', () => {
+  const idx = providerApps.indexOf("Firebase claims set for approved provider");
+  const block = providerApps.slice(Math.max(0, idx - 2000), idx);
+
+  it('1. the approval claim write carries BOTH role and accountType', () => {
     expect(idx).toBeGreaterThan(0);
-    const block = postLogin.slice(Math.max(0, idx - 1500), idx + 500);
-    // Both keys present in the same setCustomUserClaims call
-    expect(block).toMatch(/setCustomUserClaims\(\s*userId\s*,\s*\{[\s\S]*?role:\s*['"]provider['"][\s\S]*?accountType:\s*['"]provider['"]/);
-    // …and the existingClaims spread is preserved (no contract widening)
+    expect(block).toMatch(/setCustomUserClaims\(application\.userId,\s*\{[\s\S]*?role:\s*preservedRole[\s\S]*?accountType:\s*preservedAccountType/);
+    // Existing claims are spread, never replaced — no contract widening.
     expect(block).toMatch(/\.{3}existingClaims/);
   });
 
-  it('2. The change-detection guard now re-fires when accountType differs (not only role)', () => {
-    // Before PR-CLAIMS-SYNC, the guard was `existingClaims.role !== "provider"`.
-    // After: it must ALSO check accountType so a user with role='provider'
-    // but accountType='customer' still gets the second field synced on
-    // the next post-login.
-    const idx = postLogin.indexOf("'[PostLogin] ✅ Firebase claims synced to role=provider");
-    const block = postLogin.slice(Math.max(0, idx - 1500), idx);
-    expect(block).toMatch(/existingClaims\.role\s*!==\s*['"]provider['"]/);
-    expect(block).toMatch(/existingClaims\.accountType\s*!==\s*['"]provider['"]/);
+  it('2. it is ADDITIVE — a provider who is also a customer keeps that identity', () => {
+    // The bug this shape prevents: approving someone as a provider used to
+    // overwrite role/accountType outright, so the same person lost the customer
+    // surface they were already using.
+    expect(block).toMatch(/existingClaims\.role\s*&&\s*existingClaims\.role\s*!==\s*'public'/);
+    expect(block).toMatch(/existingClaims\.accountType\s*&&\s*existingClaims\.accountType\s*!==\s*'pet_parent'/);
+    expect(block).toMatch(/nextRoles\s*=\s*Array\.from\(new Set\(\[\.\.\.priorRoles,\s*'provider'\]\)\)/);
   });
 
-  it('3. claimsWritten flag gates the follow-up notification — never fires on a no-op or failure', () => {
-    expect(postLogin).toMatch(/let\s+claimsWritten\s*=\s*false/);
-    const idx = postLogin.indexOf('let claimsWritten');
-    expect(idx).toBeGreaterThan(0);
-    const block = postLogin.slice(idx, idx + 1500);
-    expect(block).toMatch(/claimsWritten\s*=\s*true/);
-    expect(block).toMatch(/if\s*\(\s*claimsWritten\s*\)/);
+  it('3. a claims failure is non-fatal — approval still stands in Postgres', () => {
+    const after = providerApps.slice(idx, idx + 600);
+    expect(after).toMatch(/catch\s*\(claimsErr\)/);
+    expect(after).toMatch(/Could not set Firebase claims \(non-fatal\)/);
   });
 });
 
@@ -118,12 +127,22 @@ describe('PR-CLAIMS-SYNC — force_token_refresh notification', () => {
 // ── C. WIRING — POST-LOGIN PROVIDER PROMOTION + APPROVE-ACCESS ────────────
 
 describe('PR-CLAIMS-SYNC — wiring at the two server-side claim writers', () => {
-  it('10. post-login provider-active escalation invokes the helper after claims-written', () => {
-    const idx = postLogin.indexOf("'[PostLogin] ✅ Firebase claims synced to role=provider");
-    const block = postLogin.slice(idx, idx + 2000);
-    expect(block).toMatch(/sendForceTokenRefreshNotification/);
-    expect(block).toMatch(/reason:\s*['"]provider_approved['"]/);
+  it('10. an approved provider is told to refresh, so the new claims take effect at once', () => {
+    // Without this the provider's token still says 'customer' until Firebase
+    // refreshes it on its own — they tap in and see the customer surface.
+    // NOTE: provider-applications.ts hand-rolls the insert instead of calling
+    // sendForceTokenRefreshNotification, which exists for exactly this and
+    // already carries the HE/EN copy for 'provider_approved'. Same behaviour,
+    // two copies. Pinned as-is rather than refactored inside a live approval
+    // path; worth collapsing into the helper when that path is next touched.
+    const idx = providerApps.indexOf("type: 'provider_approved'");
+    expect(idx).toBeGreaterThan(0);
+    const block = providerApps.slice(Math.max(0, idx - 400), idx + 900);
+    expect(block).toMatch(/actionType:\s*['"]force_token_refresh['"]/);
     expect(block).toMatch(/actionUrl:\s*['"]\/provider\/dashboard['"]/);
+    expect(block).toMatch(/channels:\s*\[\s*['"]in_app['"]\s*\]/);
+    // Bilingual, chosen from the applicant's own language.
+    expect(block).toMatch(/preferredLanguage === 'he'/);
   });
 
   it('11. approveAccess (staff approval) invokes the helper after claims-written', () => {
@@ -143,9 +162,9 @@ describe('PR-CLAIMS-SYNC — wiring at the two server-side claim writers', () =>
     // Both call sites must wrap the helper invocation in try/catch and
     // log a warn but NEVER rethrow — mirrors the existing
     // provider-applications.ts:1338-1340 pattern.
-    const providerIdx = postLogin.indexOf("reason: 'provider_approved'");
-    const providerBlock = postLogin.slice(Math.max(0, providerIdx - 500), providerIdx + 800);
-    expect(providerBlock).toMatch(/try\s*\{[\s\S]*?sendForceTokenRefreshNotification/);
+    const providerIdx = providerApps.indexOf("type: 'provider_approved'");
+    const providerBlock = providerApps.slice(Math.max(0, providerIdx - 700), providerIdx + 1200);
+    expect(providerBlock).toMatch(/try\s*\{[\s\S]*?db\.insert\(notifTable\)/);
     expect(providerBlock).toMatch(/catch[\s\S]*?logger\.warn/);
 
     const staffIdx = postLogin.indexOf("reason: 'staff_approved'");
