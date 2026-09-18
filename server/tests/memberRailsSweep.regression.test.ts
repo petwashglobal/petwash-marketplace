@@ -16,7 +16,8 @@ const R = (p: string) => readFileSync(resolve(__dirname, '..', '..', p), 'utf8')
 
 describe('A. shared cache keys are normalised at the consumer', () => {
   it('every /api/pets consumer that maps or counts uses petsList()', () => {
-    for (const f of ['client/src/pages/PetCarePlanner.tsx', 'client/src/pages/MarketplaceBookingFlow.tsx', 'client/src/pages/GroomersBook.tsx']) {
+    // GroomersBook.tsx was deleted 2026-09-18 (dead-end booking page).
+    for (const f of ['client/src/pages/PetCarePlanner.tsx', 'client/src/pages/MarketplaceBookingFlow.tsx']) {
       const s = R(f);
       expect(s, f).toContain("import { petsList } from '@/lib/apiShapes';");
       expect(s, f).toMatch(/select: \(d: unknown\) => petsList/);

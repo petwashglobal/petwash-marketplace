@@ -462,7 +462,7 @@ export const navigationTree: MenuItem[] = [
             id: 'search-groomers',
             label: 'Search Groomers',
             labelHe: 'חפש מטפחים',
-            path: '/groomers',
+            path: '/groomers/explore',
           },
           {
             id: 'grooming-services',
@@ -493,9 +493,9 @@ export const navigationTree: MenuItem[] = [
         children: [
           {
             id: 'book-grooming',
-            label: 'Book Grooming Session',
-            labelHe: 'הזמן מפגש טיפוח',
-            path: '/groomers/book',
+            label: 'Find a Groomer',
+            labelHe: 'מצא/י מטפח/ת',
+            path: '/groomers/explore',
           },
           {
             id: 'grooming-packages',

@@ -387,7 +387,6 @@ const PetTrek = lazy(() => import("@/pages/pettrek/BrowseDrivers"));
 const GroomersOverview = lazy(() => import("@/pages/groomers/Overview"));
 const Groomers = lazy(() => import("@/pages/Groomers"));
 const GroomerDetail = lazy(() => import("@/pages/groomers/GroomerDetail"));
-const GroomersBook = lazy(() => import("@/pages/GroomersBook"));
 const GroomersCustomerDashboard = lazy(() => import("@/pages/GroomersCustomerDashboard"));
 
 // Shared Pet Services Foundation - Cross-Platform Community Services
@@ -2372,15 +2371,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         
         {/* Grooming Marketplace - Specific routes BEFORE general routes */}
         {/* Grooming Marketplace - Book Grooming Session */}
-        <Route path="/groomers/book">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <GroomersBook language={language} />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+        {/* /groomers/book was a dead end (2026-09-18): it listed hardcoded
+            prices (₪120 / ₪180 …) that belong to no groomer, then POSTed
+            service types the server enum does not accept and without a
+            providerId — every submit 400'd. Booking grooming starts by
+            choosing a groomer; their page routes into the server-quoted
+            flow (/booking/new/grooming/:providerId). */}
+        <Route path="/groomers/book">{() => <Redirect to="/groomers/explore" />}</Route>
         
         {/* Grooming Marketplace - Customer Dashboard */}
         <Route path="/groomers/customer/dashboard">

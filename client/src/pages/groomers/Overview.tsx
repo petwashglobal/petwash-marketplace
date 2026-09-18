@@ -39,7 +39,7 @@ export default function GroomersOverview() {
       icon: <Calendar className="h-8 w-8 text-[#B8932F]" />,
       title: "Book Appointment",
       description: "Schedule grooming services",
-      link: "/groomers/book",
+      link: "/groomers/explore",
       color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
@@ -99,7 +99,7 @@ export default function GroomersOverview() {
                     Find a Groomer
                   </Button>
                 </Link>
-                <Link href="/groomers/book">
+                <Link href="/groomers/explore">
                   <Button size="lg" className="luxury-btn-secondary px-8" data-testid="button-book-grooming">
                     <Calendar className="h-5 w-5 mr-2" />
                     Book Now
