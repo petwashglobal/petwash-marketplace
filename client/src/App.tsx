@@ -265,6 +265,8 @@ const AccountFinancials = lazy(() => import("@/pages/AccountFinancials"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 // The list customers see (station_registry) — /admin/stations is Firestore ops.
 const AdminPublicStations = lazy(() => import("@/pages/AdminPublicStations"));
+// The 60-second provider application (the wizard asks for an ID before a name).
+const QuickApply = lazy(() => import("@/pages/QuickApply"));
 const AdminFaultIntel = lazy(() => import("@/pages/AdminFaultIntel"));
 const AdminReconfirmation = lazy(() => import("@/pages/AdminReconfirmation"));
 const AdminStaffAcademy = lazy(() => import("@/pages/AdminStaffAcademy"));
@@ -1988,6 +1990,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             generic 400 errors. Inbound links (social, banner CTAs, business
             cards) keep working; canonical surface handles all roles via
             multi-select provider type. */}
+        {/* Short front door for providers: six fields, no signup, no ID.
+            The full wizard stays at /become-provider for anyone ready. */}
+        <Route path="/apply">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <QuickApply />
+            </Suspense>
+          )}
+        </Route>
         <Route path="/join/walker">
           {() => <Redirect to="/provider-onboarding?role=walker" />}
         </Route>
