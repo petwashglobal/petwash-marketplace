@@ -46,7 +46,6 @@ server/tests/t4t5Tail.regression.test.ts  # red on main at gate landing
 server/tests/termsCanonPage.regression.test.ts  # red on main at gate landing
 server/tests/waldStationPhoto.regression.test.ts  # red on main at gate landing
 server/tests/wash-pack-bleed-stop.test.ts  # red on main at gate landing
-server/tests/whatsappWebhookSignature.regression.test.ts  # red on main at gate landing
 tests/notification-inbox-sweep.regression.test.ts  # red on main at gate landing
 tests/providerProtectionDeclarations.test.ts  # red on main at gate landing
 tests/regression/loyalty-points-unique-idempotency.regression.test.ts  # red on main at gate landing
