@@ -877,6 +877,10 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // that re-reads SUMIT with our own key. Same class as the provider
     // resubmit-token skip below.
     if (/^\/api\/sumit\/trigger\/[A-Za-z0-9]+$/.test(req.path)) return true;
+    // The public 60-second provider application (2026-09-18): an applicant has
+    // no session and no CSRF token, the route is rate limited + Turnstile-checked
+    // and can only create a CRM lead. Same class as the other public POSTs above.
+    if (req.path === '/api/provider-apply/apply') return true;
     // Provider document RESUBMIT (2026-09-13): the credential is the single-use,
     // expiring secure token in the path, claimed atomically by the handler
     // (server/routes/provider-onboarding.ts POST /resubmit/:token). A cross-site

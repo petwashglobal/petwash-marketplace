@@ -26,6 +26,14 @@ export const defaultSEO: SEOConfig = {
 
 // Page-specific SEO configurations
 export const pageSEO: Record<string, SEOConfig> = {
+  // The 60-second provider application. This link is meant to be pasted into
+  // WhatsApp groups, so the preview has to sell the ask in one line (2026-09-18).
+  quickApply: {
+    title: 'להצטרף כנותן שירות ב-⁦PetWash™⁩ | Join PetWash as a provider',
+    description: 'מטיילים, פט־סיטרים, מאלפים ומטפחים — השאירו פרטים בדקה ונחזור אליכם. אימות מסמכים רק אחרי שנדבר. Dog walkers, pet sitters, trainers and groomers — leave your details in a minute and we will call you.',
+    keywords: 'עבודה עם כלבים, מטייל כלבים, פט סיטר, אילוף כלבים, טיפוח כלבים, dog walker jobs israel, pet sitter israel',
+    ogType: 'website',
+  },
   home: {
     title: '⁦PetWash™⁩ — Premium Self-Service Dog Wash | שטיפת כלבים בשירות עצמי',
     description: 'Premium self-service dog wash at K9000 stations — easy, safe, clean. Book online and earn loyalty rewards. שטיפת כלבים בשירות עצמי בתחנות K9000 — קל, בטוח ונקי. הזמנה אונליין וצבירת נקודות נאמנות.',

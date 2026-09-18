@@ -117,6 +117,7 @@ import fiscalPassportRoutes from "./routes/fiscal-passport";
 import providerEarningsTruthRoutes from "./routes/provider-earnings-truth";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
+import providerIntakeRoutes from "./routes/provider-intake";
 import adminStaffRoutes from "./routes/admin-staff";
 import googleServicesRoutes from "./routes/google-services";
 import geocodeRoutes from "./routes/geocode";
@@ -347,7 +348,7 @@ import completeRegistrationRoutes from "./routes/complete-registration";
 import verificationRoutes from "./routes/verification";
 import smsStatusRoutes from "./routes/sms-status";
 import providerApplicationsRoutes from "./routes/provider-applications";
-import providerIntakeRoutes from "./routes/provider-intake";
+import providerQuickApplyRoutes from "./routes/provider-quick-apply";
 import pushNotificationsRoutes from "./routes/push-notifications";
 import recaptchaRoutes from "./routes/recaptcha";
 import { verifyCaptchaToken } from "./lib/verifyCaptcha";
@@ -11345,6 +11346,11 @@ self.addEventListener('notificationclick', (event) => {
   // Mounted at /api/sumit so the full path is POST /api/sumit/webhook.
   // No-op until SUMIT_WEBHOOK_SECRET is provisioned (returns 401 without it).
   app.use('/api/sumit', sumitWebhookRoutes);
+  // The 60-second provider application — PUBLIC (an applicant has no account
+  // yet). Rate limited + Turnstile inside the route; it can only write a lead.
+  // Its OWN prefix: /api/provider-intake is the KYC/biometric queue router,
+  // which is auth-gated and blocked during a registration incident.
+  app.use('/api/provider-apply', providerQuickApplyRoutes);
   app.use('/api/provider', providerMyInvoicesRoutes);
   app.use('/api/accountant', accountantRoutes);
 

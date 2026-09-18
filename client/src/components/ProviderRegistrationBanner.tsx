@@ -194,6 +194,18 @@ export default function ProviderRegistrationBanner({
                 {t("providerBanner.applyNow")}
                 <ArrowRight className={`w-5 h-5 ${isRTL ? "mr-3 rotate-180" : "ml-3"}`} />
               </Button>
+
+              {/* The full wizard asks for a signup, an ID and a selfie before it
+                  asks a name — nobody finished it (0 applications ever, checked
+                  live 2026-09-18). This is the one-minute door. */}
+              <button
+                type="button"
+                onClick={() => { setProviderSignupIntent(); setLocation('/apply'); }}
+                className="block mt-4 text-sm underline text-gray-700 hover:text-gray-900"
+                data-testid="link-quick-apply"
+              >
+                {isRTL ? 'אין זמן עכשיו? השאירו פרטים בדקה ונחזור אליכם' : 'Short on time? Leave your details in a minute and we will call you'}
+              </button>
             </div>
 
             <div className={`${isRTL ? "lg:order-1" : ""}`}>
