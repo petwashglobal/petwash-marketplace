@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useNetworkGuard } from "@/hooks/useNetworkGuard";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake, CreditCard, Lock, MessageSquare } from "lucide-react";
+import { ChevronLeft, Shield, PawPrint, Clock, Check, Users, Handshake, CreditCard, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
@@ -11,7 +11,7 @@ import { useLanguage } from "@/lib/languageStore";
 import { apiRequest } from "@/lib/queryClient";
 import { splitMarketplaceJob } from "@shared/marketplaceMoney";
 import { walkPeakSurcharge } from "@shared/walkPeakHours";
-import { getActivePaymentMethod, PAYMENTS_CONFIG } from "@/lib/paymentConfig";
+import { getActivePaymentMethod } from "@/lib/paymentConfig";
 import { WeatherConsentDialog, useWeatherConsent } from "@/components/weather/WeatherConsentDialog";
 import { OwnerInstructionsForm, useOwnerInstructions } from "@/components/booking/OwnerInstructionsForm";
 import { CreditWalletCard } from "@/components/wallet/CreditWalletCard";
@@ -799,9 +799,14 @@ export default function WalkBookingFlow() {
               <div className="mt-2 luxury-text-small opacity-70">
                 המוליך/ה מקבל/ת את מלוא המחיר ומוציא/ה לך חשבונית עליו. ⁦Pet Wash™⁩‎ מוציאה חשבונית על דמי השירות בלבד.
               </div>
-              <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
+              {/* TRUTH (2026-09-18): accepting a walk moves no money —
+                  acceptWalkBookingCore writes the escrow document and returns
+                  paymentRail: 'MISSING'. No card charge, no wallet debit. The
+                  old line promised a wallet hold on acceptance and a charge
+                  after the walk; neither happens. */}
+              <div className="mt-4 luxury-text-small leading-relaxed opacity-80" data-testid="walk-payment-truth">
                 <Shield className="h-3 w-3 inline mr-1 text-[#D4AF37]" />
-                הסכום ייושמר מהארנק שלך עם אישור המוליך/ה, ויחויב לאחר סיום ההליכה.
+                בשלב זה לא מתבצע חיוב באתר ולא נשמר כסף בנאמנות — התשלום מתואם ישירות מול המוליך/ה.
               </div>
             </div>
 
@@ -926,24 +931,14 @@ export default function WalkBookingFlow() {
                 אמצעי תשלום
               </div>
               
-              {PAYMENTS_CONFIG.enableCreditCard && !PAYMENTS_CONFIG.enableNayax && (
-                <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 mb-4">
-                  <div className="h-10 w-10 rounded-full bg-[#D4AF37]/15 flex items-center justify-center">
-                    <CreditCard className="h-5 w-5 text-[#D4AF37]" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900">כרטיס אשראי שמור</div>
-                    <div className="text-xs text-slate-500">החיוב יתבצע רק לאחר סיום השירות</div>
-                  </div>
-                  <Lock className="h-4 w-4 text-slate-300 ml-auto" />
-                </div>
-              )}
-
+              {/* No saved-card block and no escrow promise for walks: the
+                  accept path charges nothing and holds nothing (2026-09-18).
+                  Restore both only when a real rail runs before the confirm. */}
               <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-xl flex gap-3">
                 <Shield className="h-5 w-5 text-[#D4AF37] flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-black leading-relaxed">
-                  <span className="font-semibold block mb-1">הגנת ⁦PetWash™⁩</span>
-                  {PAYMENTS_CONFIG.escrowMessage.he} הכרטיס שלך לא יחויב כעת.
+                  <span className="font-semibold block mb-1">איך משלמים</span>
+                  תשלום מקוון עדיין לא זמין להליכות: הכרטיס שלך לא מחויב, ולא נשמר כסף בנאמנות. התשלום מתואם ישירות מול המוליך/ה בסיום ההליכה.
                 </div>
               </div>
             </section>
