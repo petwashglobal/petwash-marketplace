@@ -55,8 +55,9 @@ function grepFilesRelToRoot(pattern: string, ext = '**/*.ts'): string[] {
 const RAW_SEND_ALLOWLIST = [
   // The helper itself is where sgMail.send() is expected to be called.
   'lib/guarded-sendgrid.ts',
-  // Spend-guard bookkeeping module (single indirection).
-  'services/EmailSpendGuard.ts',
+  // NOT services/EmailSpendGuard.ts — it counts sends, it does not make them.
+  // It was only ever on this list because the old grep matched the two
+  // comments that say "call BEFORE / AFTER every sgMail.send()".
   // Historic direct callers — migration tracked in
   // pr-email-3-monitoring-alerts.test.ts "Out of scope" comment.
   'email/luxury-email-service.ts',
@@ -71,14 +72,22 @@ const RAW_SEND_ALLOWLIST = [
   'routes/provider-onboarding.ts',
   'routes/wallet.ts',
   'services/GoogleMessagingService.ts',
-  'services/KYC2026/KYCSecurityAlerts.ts',
-  'services/SmsAbuseDetector.ts',
+  // KYC2026/KYCSecurityAlerts.ts and SmsAbuseDetector.ts were BOTH migrated to
+  // sendGuardedEmail and are deliberately gone from this list (2026-09-18).
+  // SmsAbuseDetector's raw path never worked at all: it called
+  // sgMail.setApiKey() on an identifier it never imported, so every abuse
+  // alert threw ReferenceError instead of sending.
   'services/gcsBackupService.ts',
 ].sort();
 
 describe('SendGrid inventory — direct sgMail.send callers are locked to a known set', () => {
   it('the actual set of raw sgMail.send() callers has not drifted', () => {
-    const actual = grepFilesRelToRoot('sgMail\\.send\\(');
+    // `^[^/*]*` — the text must not be preceded on its line by a comment
+    // marker. WITHOUT it this pin read prose as code: notificationDispatcher
+    // was migrated OFF the raw call and left a comment SAYING so, and the pin
+    // reported the file as a live guard bypass. A regression pin that fires on
+    // its own documentation trains people to ignore it (2026-09-18).
+    const actual = grepFilesRelToRoot('^[^/*]*sgMail\\.send\\(');
     expect(actual).toEqual(RAW_SEND_ALLOWLIST);
   });
 });
