@@ -23,16 +23,25 @@
  * hats in one place.
  */
 import { useLocation } from 'wouter';
+import { useState } from 'react';
 import { PawPrint, Briefcase, ShieldCheck, ChevronRight } from 'lucide-react';
 import { useWhoami, type DashboardType } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
+import { apiRequest } from '@/lib/queryClient';
+import { DASHBOARDS } from '@/lib/roleDashboards';
 
 // Which real route each workspace opens, plus how it presents. Note the
 // `member` KEY is preserved because that is what /whoami.dashboardsAllowed
 // still emits today; only the visible label / icon change from
 // "Member + Crown" (Prestige framing) to "Pet Parent + PawPrint".
 const WORKSPACES: Record<DashboardType, { route: string; en: string; he: string; sub_en: string; sub_he: string; icon: any; tone: string }> = {
-  member:   { route: '/prestige/home',   en: 'Pet Parent', he: 'הורה לחיה', sub_en: 'Book, wash, wallet & rewards', sub_he: 'הזמנות, שטיפה, ארנק והטבות', icon: PawPrint,    tone: '#0e7a54' },
+  // 2026-09-19: this routed to /prestige/home — contradicting the docblock
+  // directly above it, which says Prestige is NOT a workspace but a membership
+  // badge inside the Pet Parent home. Lane A (#2190) made /pet-parent/home the
+  // one customer workspace and the post-login decider has sent people there
+  // since; only this tile still pushed them into the Prestige surface. Comment
+  // and code now agree.
+  member:   { route: '/pet-parent/home', en: 'Pet Parent', he: 'הורה לחיה', sub_en: 'Book, wash, wallet & rewards', sub_he: 'הזמנות, שטיפה, ארנק והטבות', icon: PawPrint,    tone: '#0e7a54' },
   provider: { route: '/provider-os',     en: 'Provider',   he: 'ספק',       sub_en: 'Jobs, calendar & earnings',    sub_he: 'עבודות, יומן והכנסות',        icon: Briefcase,   tone: '#0e7a54' },
   staff:    { route: '/admin/dashboard', en: 'Admin',      he: 'ניהול',     sub_en: 'Operations console',           sub_he: 'קונסולת תפעול',               icon: ShieldCheck, tone: '#334155' },
   admin:    { route: '/admin/dashboard', en: 'Admin',      he: 'ניהול',     sub_en: 'Operations console',           sub_he: 'קונסולת תפעול',               icon: ShieldCheck, tone: '#334155' },
@@ -45,6 +54,36 @@ export function ExperienceSwitcher() {
   const { dashboardsAllowed, isAuthenticated } = useWhoami();
   const { language } = useLanguage();
   const he = language === 'he';
+  const [saving, setSaving] = useState<DashboardType | null>(null);
+
+  /**
+   * Remember the choice, then go.
+   *
+   * POST /api/me/active-role has existed since the 2026-09-01 auth rebuild —
+   * capability-verified, audited, fixed allowlist — and NOTHING called it. This
+   * control was "pure navigation", so the workspace a person picked was
+   * forgotten the moment the session ended and every sign-in dropped them back
+   * on the decider's default.
+   *
+   * It is a PREFERENCE, never authority: the server recomputes capabilities on
+   * every request and RoleProtectedRoute still gates the destination. So a
+   * failed save must not block the move — we navigate regardless, and the only
+   * consequence is that the choice is not remembered.
+   *
+   * The endpoint names the customer role 'customer'; whoami calls the same
+   * dashboard 'member'. DASHBOARDS is the one place that knows both.
+   */
+  const switchTo = async (workspace: DashboardType, route: string) => {
+    setSaving(workspace);
+    try {
+      await apiRequest('POST', '/api/me/active-role', { role: DASHBOARDS[workspace].role });
+    } catch {
+      /* preference not saved — the destination is gated server-side anyway */
+    } finally {
+      setSaving(null);
+      navigate(route);
+    }
+  };
 
   if (!isAuthenticated) return null;
 
@@ -76,7 +115,8 @@ export function ExperienceSwitcher() {
           return (
             <button
               key={w}
-              onClick={() => navigate(cfg.route)}
+              onClick={() => { void switchTo(w, cfg.route); }}
+              disabled={saving !== null}
               className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${active ? 'border-gray-300 bg-gray-50' : 'border-gray-100 hover:border-gray-200'}`}
               data-testid={`experience-switcher-${w}`}
             >
