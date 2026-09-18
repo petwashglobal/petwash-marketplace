@@ -15,6 +15,8 @@
  * prove anything about.
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 // vi.mock is hoisted above every top-level binding, so the factory must build
 // its own instances rather than close over consts declared here.
@@ -136,5 +138,48 @@ describe('the cap is on the TOTAL refunded, not on one call', () => {
     expect(two.refundId).toBe(one.refundId);
     const rows = await pg.query<{ n: string }>('SELECT COUNT(*)::text AS n FROM refund_transactions');
     expect(Number(rows.rows[0].n)).toBe(1);
+  });
+});
+
+describe('the lock spans the CHECK and the INSERT — asserted on the SOURCE', () => {
+  /**
+   * HONESTY NOTE. pglite runs a SINGLE connection, so `Promise.all` of two
+   * requestRefund calls is executed sequentially: a behavioural "race" test
+   * here passes whether or not the advisory lock exists. I wrote two and then
+   * removed the lock to check — they still passed. A test that cannot fail is
+   * worse than no test, so the concurrency guarantee is pinned STRUCTURALLY on
+   * the source instead, where breaking it does fail.
+   */
+  const src = readFileSync(resolve(__dirname, '..', 'services', 'RefundService.ts'), 'utf8');
+  const fn = src.slice(src.indexOf('export async function requestRefund'));
+
+  it('there is exactly ONE transaction, and the lock is the first thing in it', () => {
+    expect((fn.match(/db\.transaction\(/g) ?? []).length).toBe(1);
+    const tx = fn.indexOf('db.transaction(');
+    const lock = fn.indexOf('pg_advisory_xact_lock', tx);
+    expect(lock).toBeGreaterThan(tx);
+  });
+
+  it('the duplicate check, the SUM and the INSERT all sit INSIDE that lock', () => {
+    // pg_advisory_xact_lock is TRANSACTION scoped. The first version of this
+    // fix locked a transaction that only ran the SUM, so the lock was released
+    // before the comparison and long before the insert — two callers both read
+    // the same total, both passed, both inserted.
+    const lock = fn.indexOf('pg_advisory_xact_lock');
+    const dupeCheck = fn.indexOf('refundTransactions.idempotencyKey, idempotencyKey', lock);
+    const sum = fn.indexOf('COALESCE(SUM(', lock);
+    const insert = fn.indexOf('tx.insert(refundTransactions)', lock);
+    for (const [name, at] of [['duplicate check', dupeCheck], ['sum', sum], ['insert', insert]] as const) {
+      expect(at, `${name} must come after the lock`).toBeGreaterThan(lock);
+    }
+  });
+
+  it('the duplicate check is done in CODE — prod has no UNIQUE index to lean on', () => {
+    // refund_transactions.idempotency_key is declared UNIQUE in shared/schema.ts
+    // and is NOT present in production (one of 20 declared uniques missing;
+    // staged in migrations/0166, deliberately unapplied). Catching 23505 is
+    // therefore not a guard, only a fallback.
+    expect(fn).toMatch(/kind: "duplicate"/);
+    expect(fn).toMatch(/NOT PRESENT IN\s*\n\s*\*\s*PRODUCTION/);
   });
 });
