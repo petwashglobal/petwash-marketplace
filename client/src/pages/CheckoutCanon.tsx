@@ -102,6 +102,18 @@ export default function CheckoutCanon() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // The member's own wash discount, so the page shows what /begin charges
+  // (2026-09-18). Wash SKUs only — the server applies it to those alone.
+  const { data: washDiscount } = useQuery({
+    queryKey: ['sumit-my-wash-discount', user?.uid ?? 'anon'],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/payments/sumit/my-wash-discount');
+      return (await res.json()) as { ok: boolean; percent: number; source: string };
+    },
+  });
+
   const products = catalog?.products ?? [];
   const [selectedSku, setSelectedSku] = useState<string>('');
   useEffect(() => {
@@ -151,7 +163,16 @@ export default function CheckoutCanon() {
   };
 
   // ── Totals (VAT-inclusive; net = total / 1.18) ──
-  const totalCents = coupon ? coupon.amountAfterCents : (product?.amountCents ?? 0);
+  // The member wash discount comes off first — that is the order /begin uses.
+  const isWashSku = !!product && product.surface === 'kiosk'
+    && (product.sku === 'SINGLE_WASH' || (product.washCount ?? 0) > 0);
+  const memberPercent = isWashSku ? Math.max(0, Math.min(10, washDiscount?.percent ?? 0)) : 0;
+  const memberDiscountCents = memberPercent > 0
+    ? Math.round(((product?.amountCents ?? 0) * memberPercent) / 100)
+    : 0;
+  const totalCents = coupon
+    ? coupon.amountAfterCents
+    : Math.max(0, (product?.amountCents ?? 0) - memberDiscountCents);
   const netCents = Math.round(totalCents / 1.18);
   const vatCents = totalCents - netCents;
 
@@ -374,6 +395,12 @@ export default function CheckoutCanon() {
                 <div className="flex justify-between text-emerald-700">
                   <span>קופון {coupon.code}</span>
                   <span>-{ils(coupon.discountCents)}</span>
+                </div>
+              )}
+              {!coupon && memberDiscountCents > 0 && (
+                <div className="flex justify-between text-emerald-700" data-testid="member-wash-discount">
+                  <span>הנחת חבר ({memberPercent}%)</span>
+                  <span>-{ils(memberDiscountCents)}</span>
                 </div>
               )}
               <div className="flex justify-between text-xs text-neutral-500">

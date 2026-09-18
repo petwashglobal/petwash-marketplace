@@ -162,6 +162,16 @@ export default function Packages() {
   }>({
     queryKey: ['/api/payments/sumit/catalog'],
   });
+  // The member's own wash discount — the server takes it off at checkout, so
+  // the page must say so (2026-09-18: a Prestige Basic member saw ₪450 and was
+  // charged ₪427.50 with nothing on the page about it).
+  const { data: washDiscount } = useQuery<{ ok: boolean; percent: number; source: string }>({
+    queryKey: ['/api/payments/sumit/my-wash-discount', user?.uid ?? 'anon'],
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+  const memberPercent = Math.max(0, Math.min(10, washDiscount?.percent ?? 0));
+
   const isLoading = dbLoading || catalogLoading;
   const packages: WashPackage[] | undefined = catalog
     ? catalog.products
@@ -451,6 +461,17 @@ export default function Packages() {
                 {isHe ? 'שטיפות בודדות זמינות תמיד בעמדה, ללא חבילה. ' : 'Single washes are always available at the bay, no package needed. '}
                 {isHe ? STANDARD_WASH_PRICE_LINE.he : STANDARD_WASH_PRICE_LINE.en}
               </p>
+            </div>
+          )}
+
+          {!isLoading && !isError && packages && packages.length > 0 && memberPercent > 0 && (
+            <div
+              className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[13px] text-emerald-900"
+              data-testid="member-wash-discount-note"
+            >
+              {isHe
+                ? `כחבר/ה מועדון, בתשלום יורדים עוד ${memberPercent}% מהמחירים המוצגים כאן.`
+                : `As a club member, a further ${memberPercent}% comes off these prices at payment.`}
             </div>
           )}
 
