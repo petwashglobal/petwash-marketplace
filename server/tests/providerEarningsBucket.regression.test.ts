@@ -63,9 +63,21 @@ describe('providerEarnings — bucket logic invariants (§17-18)', () => {
   });
 
   it('composer never mutates rows — read-only', () => {
-    for (const verb of ['INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'ALTER TABLE', 'DROP TABLE']) {
-      expect(SRC).not.toMatch(new RegExp(verb, 'i'));
-    }
+    // 2026-09-18: this matched the bare word case-insensitively, so the column
+    // `updated_at` inside a SELECT read as an UPDATE statement and the pin
+    // failed a read-only file for being read-only. Match a write STATEMENT —
+    // the verb followed by what a write actually needs next.
+    const WRITE_STATEMENTS = [
+      /\bINSERT\s+INTO\b/i,
+      /\bUPDATE\s+[a-z_."]+\s+SET\b/i,
+      /\bDELETE\s+FROM\b/i,
+      /\bTRUNCATE\s+(TABLE\s+)?[a-z_."]+/i,
+      /\bALTER\s+TABLE\b/i,
+      /\bDROP\s+TABLE\b/i,
+    ];
+    for (const re of WRITE_STATEMENTS) expect(SRC).not.toMatch(re);
+    // And no Drizzle writer, which raw-SQL greps would never have caught.
+    expect(SRC).not.toMatch(/\bdb\s*\.\s*(insert|update|delete)\s*\(/);
   });
 
   it('paid-out timestamp preference order: CE.paid_out_at → payout_date → service_completed_at', () => {

@@ -21,9 +21,6 @@ server/tests/aiUserBudgetWiring.regression.test.ts  # red on main at gate landin
 server/tests/backup-report-honesty-2026-07-08.test.ts  # red on main at gate landing
 server/tests/booking-complete-email-sms.test.ts  # red on main at gate landing
 server/tests/booking-requests-401-sweep.regression.test.ts  # red on main at gate landing
-server/tests/bookingCancelIdempotent.regression.test.ts  # red on main at gate landing
-server/tests/bookingCompleteIdempotent.regression.test.ts  # red on main at gate landing
-server/tests/bookingCompleteReplayAudit.regression.test.ts  # red on main at gate landing
 server/tests/bookingPetSafetySnapshot.regression.test.ts  # red on main at gate landing
 server/tests/bookingSafetyBridgeExposure.regression.test.ts  # red on main at gate landing
 server/tests/botCheckHealthTruth.regression.test.ts  # red on main at gate landing
@@ -48,7 +45,6 @@ server/tests/provider-applications-admin-role-shape.test.ts  # red on main at ga
 server/tests/providerAppIdempotent.regression.test.ts  # red on main at gate landing
 server/tests/providerApplicationSectionStatus.regression.test.ts  # red on main at gate landing
 server/tests/providerApproveMultiService.regression.test.ts  # red on main at gate landing
-server/tests/providerEarningsBucket.regression.test.ts  # red on main at gate landing
 server/tests/providerJourneyOwnershipAndPrivacy.regression.test.ts  # red on main at gate landing
 server/tests/routeContractClientDefects.regression.test.ts  # red on main at gate landing
 server/tests/sendgridWebhookAsyncJobs.regression.test.ts  # red on main at gate landing
@@ -60,7 +56,6 @@ server/tests/signupSmartRouting.regression.test.ts  # red on main at gate landin
 server/tests/t4t5Tail.regression.test.ts  # red on main at gate landing
 server/tests/termsCanonPage.regression.test.ts  # red on main at gate landing
 server/tests/waldStationPhoto.regression.test.ts  # red on main at gate landing
-server/tests/walk-my-pet-walks-mine.test.ts  # red on main at gate landing
 server/tests/wash-pack-bleed-stop.test.ts  # red on main at gate landing
 server/tests/whatsappWebhookSignature.regression.test.ts  # red on main at gate landing
 tests/notification-inbox-sweep.regression.test.ts  # red on main at gate landing

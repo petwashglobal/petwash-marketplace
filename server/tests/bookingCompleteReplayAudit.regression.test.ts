@@ -48,9 +48,18 @@ describe('POST /:requestId/complete (provider) — state-machine gate', () => {
 
   it('handler registered', () => expect(start).toBeGreaterThan(-1));
 
-  it("requires booking.status === 'in_progress'", () => {
-    expect(region).toMatch(/if \(booking\.status !== 'in_progress'\)/);
-    expect(region).toMatch(/return res\.status\(400\)/);
+  // 2026-09-18: this demanded the check-then-act form
+  // `if (booking.status !== 'in_progress') return 400`. That was replaced by a
+  // CAS: the UPDATE itself is gated on status='in_progress', so two concurrent
+  // taps cannot both pass the check and both fire the side effects. The gate is
+  // STRONGER, and the pin was failing the improvement. It now pins the CAS.
+  it("only an in_progress booking can be marked complete — enforced by the WRITE, not a prior read", () => {
+    expect(region).toMatch(/eq\(bookingRequests\.status,\s*'in_progress'\)/);
+    // Losing the race to the same intent is success, not an error.
+    expect(region).toMatch(/alreadyMarked: true/);
+    // Any other status is refused.
+    expect(region).toMatch(/return res\.status\(409\)/);
+    expect(region).toMatch(/Cannot mark complete for booking with status/);
   });
 
   it("only provider may mark complete", () => {
@@ -77,7 +86,13 @@ describe('POST /:requestId/confirm (customer) — money-side idempotency', () =>
   });
 
   it('refuses payout when payment was never held (PAYOUT SAFETY)', () => {
-    expect(region).toMatch(/if \(!booking\.paymentHeldAt\)/);
+    // 2026-09-18: the condition gained `&& !walletPaid`. A booking paid
+    // entirely from wallet credit has no paymentHeldAt (only the card rail's
+    // /sumit-return writes it), so the original form 409'd those forever — a
+    // committed wallet debit IS a held payment. The pin now allows that clause
+    // and asserts the money fact instead: SOME payment must be proven.
+    expect(region).toMatch(/const walletPaid = Number\(\(booking as any\)\.walletDebitedCents\) > 0/);
+    expect(region).toMatch(/if \(!booking\.paymentHeldAt && !walletPaid\)/);
     expect(region).toMatch(/'NO_PAYMENT_HELD'/);
     expect(region).toMatch(/return res\.status\(409\)/);
   });
