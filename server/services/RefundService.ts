@@ -102,6 +102,7 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
   // caller omitted chargedCents (some legacy paths still do), we cannot
   // enforce here — log at warn so the missing context is visible in Cloud Run
   // and the ops "no cap" surface stays discoverable.
+  let capApplies = false;
   if (typeof input.chargedCents === "number" && input.chargedCents > 0) {
     if (refundCents > input.chargedCents) {
       logger.error("[RefundService] REJECTED over-refund attempt: refundCents > chargedCents", {
@@ -123,35 +124,7 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
     // a second refund raised while the first is still awaiting its rail slips
     // through.
     //
-    // Serialised per source with a transaction-scoped advisory lock, because
-    // the sum-then-insert is otherwise a read-modify-write: two concurrent
-    // callers under READ COMMITTED cannot see each other's uncommitted row and
-    // would both pass. The lock is keyed on the source, so refunds for
-    // different bookings never wait on each other.
-    const lockKey = `refund:${sourceType}:${sourceId}`;
-    const alreadyOut = await db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
-      const [agg] = await tx
-        .select({ total: sql<string>`COALESCE(SUM(${refundTransactions.refundCents}), 0)` })
-        .from(refundTransactions)
-        .where(and(
-          eq(refundTransactions.sourceType, sourceType),
-          eq(refundTransactions.sourceId, sourceId),
-          ne(refundTransactions.status, "failed"),
-        ));
-      return Number(agg?.total ?? 0);
-    });
-
-    if (alreadyOut + refundCents > input.chargedCents) {
-      logger.error("[RefundService] REJECTED over-refund attempt: refunds already out + this one exceed the charge", {
-        sourceType, sourceId, userId,
-        refundCents, alreadyRefundedCents: alreadyOut, chargedCents: input.chargedCents,
-        initiatedBy: input.initiatedBy,
-      });
-      throw new Error(
-        `REFUND_EXCEEDS_CHARGE: already refunded ${alreadyOut} + this ${refundCents} > charged ${input.chargedCents}`,
-      );
-    }
+    capApplies = true;
   } else {
     logger.warn("[RefundService] refund proceeding without chargedCents context — over-refund guard cannot enforce a cap on this call", {
       sourceType, sourceId, userId, refundCents, initiatedBy: input.initiatedBy,
@@ -160,25 +133,85 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
 
   const refundId = makeRefundId(idempotencyKey);
 
-  // Insert the pending obligation. The UNIQUE(idempotency_key) makes this the
-  // race guard: a concurrent caller that lost the insert re-reads and returns.
+  /**
+   * ONE LOCKED TRANSACTION: duplicate check, cumulative cap, and the insert.
+   *
+   * Two things forced this shape (2026-09-18):
+   *
+   * 1. My first version of the cumulative cap took a `pg_advisory_xact_lock`
+   *    inside a transaction that only ran the SUM. The lock is TRANSACTION
+   *    scoped, so it was released the moment that closure returned — before
+   *    the cap comparison and long before the insert. Two concurrent callers
+   *    with different keys both read the same total, both passed, both
+   *    inserted. The lock has to span the read AND the write or it guards
+   *    nothing.
+   *
+   * 2. The insert used to lean on UNIQUE(idempotency_key) as its race guard.
+   *    That index is DECLARED in shared/schema.ts and is NOT PRESENT IN
+   *    PRODUCTION (one of 20 declared uniques missing; staged in
+   *    migrations/0166 but deliberately unapplied). So the database will
+   *    happily accept the same idempotency key twice, and the catch-23505
+   *    fallback below never fires. The duplicate check is therefore done in
+   *    code, inside the lock, and the fallback is kept only as belt-and-braces
+   *    for the day the constraint lands.
+   *
+   * The lock is keyed on the SOURCE, which is also what the SUM is scoped to,
+   * so refunds for different bookings never wait on each other. Idempotency
+   * keys are derived per source at every call site, so a duplicate key is
+   * always inside the same lock as its own source.
+   */
+  const lockKey = `refund:${sourceType}:${sourceId}`;
+  type ClaimOutcome =
+    | { kind: "inserted" }
+    | { kind: "duplicate"; row: typeof refundTransactions.$inferSelect }
+    | { kind: "over_refund"; alreadyOut: number };
+
+  let claim: ClaimOutcome;
   try {
-    await db.insert(refundTransactions).values({
-      refundId,
-      idempotencyKey,
-      sourceType,
-      sourceId,
-      userId,
-      instrument,
-      chargedCents: input.chargedCents ?? null,
-      feeCents: input.feeCents ?? 0,
-      refundCents,
-      currency: input.currency ?? "ILS",
-      status: "pending",
-      reason: input.reason ?? null,
-      initiatedBy: input.initiatedBy ?? null,
+    claim = await db.transaction(async (tx): Promise<ClaimOutcome> => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`);
+
+      const [dupe] = await tx
+        .select()
+        .from(refundTransactions)
+        .where(eq(refundTransactions.idempotencyKey, idempotencyKey))
+        .limit(1);
+      if (dupe) return { kind: "duplicate", row: dupe };
+
+      if (capApplies) {
+        const [agg] = await tx
+          .select({ total: sql<string>`COALESCE(SUM(${refundTransactions.refundCents}), 0)` })
+          .from(refundTransactions)
+          .where(and(
+            eq(refundTransactions.sourceType, sourceType),
+            eq(refundTransactions.sourceId, sourceId),
+            ne(refundTransactions.status, "failed"),
+          ));
+        const alreadyOut = Number(agg?.total ?? 0);
+        if (alreadyOut + refundCents > (input.chargedCents as number)) {
+          return { kind: "over_refund", alreadyOut };
+        }
+      }
+
+      await tx.insert(refundTransactions).values({
+        refundId,
+        idempotencyKey,
+        sourceType,
+        sourceId,
+        userId,
+        instrument,
+        chargedCents: input.chargedCents ?? null,
+        feeCents: input.feeCents ?? 0,
+        refundCents,
+        currency: input.currency ?? "ILS",
+        status: "pending",
+        reason: input.reason ?? null,
+        initiatedBy: input.initiatedBy ?? null,
+      });
+      return { kind: "inserted" };
     });
   } catch (err: any) {
+    // Belt-and-braces for the day UNIQUE(idempotency_key) exists again.
     const [row] = await db
       .select()
       .from(refundTransactions)
@@ -195,6 +228,27 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
     }
     logger.error("[RefundService] insert failed", { error: err?.message, idempotencyKey });
     throw err;
+  }
+
+  if (claim.kind === "over_refund") {
+    logger.error("[RefundService] REJECTED over-refund attempt: refunds already out + this one exceed the charge", {
+      sourceType, sourceId, userId,
+      refundCents, alreadyRefundedCents: claim.alreadyOut, chargedCents: input.chargedCents,
+      initiatedBy: input.initiatedBy,
+    });
+    throw new Error(
+      `REFUND_EXCEEDS_CHARGE: already refunded ${claim.alreadyOut} + this ${refundCents} > charged ${input.chargedCents}`,
+    );
+  }
+
+  if (claim.kind === "duplicate") {
+    return {
+      refundId: claim.row.refundId,
+      status: claim.row.status as RefundResult["status"],
+      executed: claim.row.status === "succeeded",
+      railRef: claim.row.railRef ?? undefined,
+      idempotent: true,
+    };
   }
 
   // Card / non-executable instrument → tracked pending obligation + alert.
