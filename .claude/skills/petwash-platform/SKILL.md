@@ -438,18 +438,12 @@ pglite remains right for schema, SQL semantics and money arithmetic — the
 migration rebuild gate uses it correctly, because it asserts structure rather
 than concurrency.
 
-### Do not lean on a UNIQUE index that production does not have
+### Money-code idempotency — see the money skill
 
-20 UNIQUE indexes declared in `shared/schema*.ts` are **absent from production**
-(staged in `migrations/0166`, deliberately unapplied — `CREATE UNIQUE INDEX`
-fails with 23505 on pre-existing duplicates and blocks every deploy). Among them
-`refund_transactions.idempotency_key`, `ledger_v2_transactions.idempotency_key`
-and `ledger_v2_pending_transfers.idempotency_key`.
-
-If code catches 23505, or assumes an idempotency key can only be inserted once,
-**that guarantee does not exist right now**. Write the duplicate check in code,
-inside the same lock as the insert, and keep the 23505 catch only as
-belt-and-braces for the day the index lands.
+Do NOT rely on a `UNIQUE` index to reject a duplicate in money code: 20 declared
+uniques are absent from production. The full list, the reasoning and the correct
+pattern live in **petwash-money-booking-invariants §4** — one copy, because a
+fact about production drifts the moment it is written down twice.
 
 ## 6. Design rules
 
