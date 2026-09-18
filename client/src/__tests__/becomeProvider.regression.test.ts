@@ -57,66 +57,63 @@ const SIGNIN_SRC = fs.readFileSync(
   'utf8',
 );
 
-describe('Issue #153 PR-BPV-1 — App.tsx /become-provider straight-through', () => {
-  it('defines BecomeProviderRedirect helper that calls useFirebaseAuth', () => {
-    expect(APP_SRC).toMatch(/function\s+BecomeProviderRedirect\s*\(\s*\)\s*\{/);
-    // Helper must consume auth state — the whole point of the PR.
-    const helper =
-      APP_SRC.match(
-        /function\s+BecomeProviderRedirect\s*\([\s\S]*?^\}/m,
-      )?.[0] ?? '';
-    expect(helper.length).toBeGreaterThan(0);
-    expect(helper).toMatch(/useFirebaseAuth\(\)/);
-    expect(helper).toMatch(/const\s*\{\s*user\s*,\s*loading\s*\}\s*=\s*useFirebaseAuth\(\)/);
-  });
+/**
+ * 2026-09-18 — RETARGETED. This block pinned a `BecomeProviderRedirect`
+ * helper declared inline in App.tsx. #1882-era work replaced it with
+ * BecomeProviderResume, a STRONGER router: it still branches on auth state,
+ * and then reads /api/provider-applications/my so a signed-in applicant lands
+ * on their real state (pending / approved / rejected / draft) instead of being
+ * shown the intake wizard again.
+ *
+ * The pin kept looking for the deleted helper, so all five cases failed and the
+ * file went to the red baseline. The guarantees below are the same ones
+ * PR-BPV-1 was defending — no /sign-in flash for a signed-in user, the
+ * canonical ?redirect= shape, and the six-type whitelist — asserted against the
+ * component that actually serves the route.
+ */
+const RESUME_SRC = fs.readFileSync(
+  path.resolve(__dirname, '..', 'pages', 'BecomeProviderResume.tsx'),
+  'utf8',
+);
 
-  it('helper branches on auth state: loading → null, user → direct, anon → /sign-in', () => {
-    const helper =
-      APP_SRC.match(
-        /function\s+BecomeProviderRedirect\s*\([\s\S]*?^\}/m,
-      )?.[0] ?? '';
-    // loading short-circuit
-    expect(helper).toMatch(/if\s*\(\s*loading\s*\)\s*return\s+null\s*;/);
-    // signed-in direct
-    expect(helper).toMatch(/if\s*\(\s*user\s*\)\s*return\s+<Redirect\s+to=\{redirectTarget\}\s*\/>/);
-    // anon fallback retains canonical ?redirect= shape
-    expect(helper).toMatch(
-      /return\s+<Redirect\s+to=\{`\/sign-in\?redirect=\$\{encodeURIComponent\(redirectTarget\)\}`\}\s*\/>/,
-    );
-  });
-
-  it('/become-provider route renders <BecomeProviderRedirect /> (no inline Redirect)', () => {
-    // The route handler must dispatch into the helper. The pre-fix shape
-    // (inline Redirect to /sign-in for ALL visitors) must be gone.
-    expect(APP_SRC).toMatch(
-      /<Route\s+path="\/become-provider">[\s\S]{0,2500}<BecomeProviderRedirect\s*\/>[\s\S]{0,200}<\/Route>/,
-    );
-    // Reject the prior shape: a bare `return <Redirect to={\`/sign-in\?redirect=…\`} />`
-    // INSIDE the /become-provider route closure. That's the line PR-BPV-1
-    // replaces.
+describe('Issue #153 PR-BPV-1 — /become-provider resolves without a /sign-in flash', () => {
+  it('the route renders BecomeProviderResume, never an inline Redirect', () => {
     const becomeBlock =
       APP_SRC.match(/<Route\s+path="\/become-provider">[\s\S]{0,2500}<\/Route>/)?.[0] ?? '';
-    expect(becomeBlock).not.toMatch(
-      /return\s+<Redirect\s+to=\{`\/sign-in\?redirect=/,
-    );
+    expect(becomeBlock.length).toBeGreaterThan(0);
+    expect(becomeBlock).toMatch(/<BecomeProviderResume\s*\/>/);
+    // The pre-fix shape: every visitor, signed in or not, bounced to /sign-in.
+    expect(becomeBlock).not.toMatch(/return\s+<Redirect\s+to=\{`\/sign-in\?redirect=/);
   });
 
-  it('preserves ?type= query whitelist and redirectTarget shape', () => {
-    const helper =
-      APP_SRC.match(
-        /function\s+BecomeProviderRedirect\s*\([\s\S]*?^\}/m,
-      )?.[0] ?? '';
-    // The 6 whitelisted provider types must remain in the allowed set.
-    expect(helper).toMatch(/"walker"/);
-    expect(helper).toMatch(/"sitter"/);
-    expect(helper).toMatch(/"driver"/);
-    expect(helper).toMatch(/"trainer"/);
-    expect(helper).toMatch(/"station_operator"/);
-    expect(helper).toMatch(/"pet_trek"/);
-    // The redirectTarget must encode the whitelisted type when present.
-    expect(helper).toMatch(
-      /redirectTarget\s*=\s*safeType[\s\S]{0,200}\/provider-onboarding\?type=\$\{encodeURIComponent\(safeType\)\}/,
-    );
+  it('consumes auth state and renders NOTHING while it is still loading', () => {
+    // The loading short-circuit is what removes the /sign-in chrome flash on
+    // iPhone Safari — the CEO-reported "appears for a second then disappears".
+    expect(RESUME_SRC).toMatch(/const\s*\{\s*user\s*,\s*loading\s*\}\s*=\s*useFirebaseAuth\(\)/);
+    expect(RESUME_SRC).toMatch(/if\s*\(\s*loading\s*\)\s*return\s*;/);
+  });
+
+  it('an anonymous visitor goes to /sign-in in the canonical ?redirect= shape, back through THIS route', () => {
+    // Back to /become-provider, not straight to /provider-onboarding: the
+    // resume decision has to run again once the user is authenticated.
+    expect(RESUME_SRC).toMatch(/if\s*\(\s*!user\s*\)\s*\{/);
+    expect(RESUME_SRC).toMatch(/`\/become-provider\$\{providerType \? `\?type=\$\{encodeURIComponent\(providerType\)\}` : ''\}`/);
+    expect(RESUME_SRC).toMatch(/`\/sign-in\?redirect=\$\{encodeURIComponent\(back\)\}`/);
+  });
+
+  it('preserves the six-type whitelist and the ?type= passthrough', () => {
+    for (const t of ['walker', 'sitter', 'driver', 'trainer', 'station_operator', 'pet_trek']) {
+      expect(RESUME_SRC).toContain(`'${t}'`);
+    }
+    // An unlisted ?type= is dropped, never echoed into the next URL.
+    expect(RESUME_SRC).toMatch(/PROVIDER_TYPE_WHITELIST\.has\(raw\)/);
+    expect(RESUME_SRC).toMatch(/\/provider-onboarding\?type=\$\{encodeURIComponent\(type\)\}/);
+  });
+
+  it('a signed-in applicant is routed by their SERVER state, not shown the wizard again', () => {
+    // The whole reason the helper was replaced.
+    expect(RESUME_SRC).toMatch(/\/api\/provider-applications\/my/);
+    expect(RESUME_SRC).toMatch(/resumeTargetFromApplication/);
   });
 });
 
@@ -139,8 +136,10 @@ describe('Issue #153 PR-BPV-1 — consolidated /signin page honors ?redirect= wi
     // The early return is what makes the old dual-effect race impossible.
     const userGuard = SIGNIN_SRC.indexOf('if (!user) return;');
     expect(userGuard).toBeGreaterThan(0);
-    const effectBody = SIGNIN_SRC.slice(userGuard, userGuard + 400);
-    expect(effectBody).toMatch(/if\s*\(\s*safeRedirect\s*\)\s*\{\s*navigate\(\s*safeRedirect\s*\)\s*;\s*return\s*;\s*\}/);
+    // ORDER, not a fixed-size text window. The old form sliced 400 characters
+    // after the guard and broke the moment a comment was added between them —
+    // a pin failing on prose while the guarantee held (2026-09-18).
+    expect(SIGNIN_SRC).toMatch(/if\s*\(\s*safeRedirect\s*\)\s*\{\s*navigate\(\s*safeRedirect\s*\)\s*;\s*return\s*;\s*\}/);
     // The async post-login resolve must appear AFTER the safeRedirect short-circuit.
     const asyncResolve = SIGNIN_SRC.indexOf('resolvePostLogin', userGuard);
     const safeRedirectReturn = SIGNIN_SRC.indexOf('navigate(safeRedirect)', userGuard);
