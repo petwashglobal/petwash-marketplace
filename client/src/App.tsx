@@ -263,6 +263,8 @@ const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
 const AccountFinancials = lazy(() => import("@/pages/AccountFinancials"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
+// The list customers see (station_registry) — /admin/stations is Firestore ops.
+const AdminPublicStations = lazy(() => import("@/pages/AdminPublicStations"));
 const AdminFaultIntel = lazy(() => import("@/pages/AdminFaultIntel"));
 const AdminReconfirmation = lazy(() => import("@/pages/AdminReconfirmation"));
 const AdminStaffAcademy = lazy(() => import("@/pages/AdminStaffAcademy"));
@@ -3880,6 +3882,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminStations />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        {/* The customer-facing station list (station_registry). Adding a city
+            here needs no deploy — see server/lib/stationRegistry.ts. */}
+        <Route path="/admin/public-stations">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminPublicStations />
+              </Suspense>
             </AdminRouteGuard>
           )}
         </Route>
