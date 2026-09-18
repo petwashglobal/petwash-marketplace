@@ -20,7 +20,6 @@ server/tests/adminOctopus.regression.test.ts  # red on main at gate landing
 server/tests/aiUserBudgetWiring.regression.test.ts  # red on main at gate landing
 server/tests/backup-report-honesty-2026-07-08.test.ts  # red on main at gate landing
 server/tests/booking-complete-email-sms.test.ts  # red on main at gate landing
-server/tests/bookingPetSafetySnapshot.regression.test.ts  # red on main at gate landing
 server/tests/bookingSafetyBridgeExposure.regression.test.ts  # red on main at gate landing
 server/tests/botCheckHealthTruth.regression.test.ts  # red on main at gate landing
 server/tests/bug-hunt-fixes-2026-07-09.test.ts  # red on main at gate landing
@@ -40,7 +39,6 @@ server/tests/petOnboardingA11y.regression.test.ts  # red on main at gate landing
 server/tests/petOnboardingShell.regression.test.ts  # red on main at gate landing
 server/tests/petPhotoOnboarding.regression.test.ts  # red on main at gate landing
 server/tests/provider-applications-admin-role-shape.test.ts  # red on main at gate landing
-server/tests/providerAppIdempotent.regression.test.ts  # red on main at gate landing
 server/tests/providerApplicationSectionStatus.regression.test.ts  # red on main at gate landing
 server/tests/providerApproveMultiService.regression.test.ts  # red on main at gate landing
 server/tests/providerJourneyOwnershipAndPrivacy.regression.test.ts  # red on main at gate landing
