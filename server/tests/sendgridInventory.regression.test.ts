@@ -67,7 +67,6 @@ const RAW_SEND_ALLOWLIST = [
   // — a direct call from the shared notification dispatcher bypasses the
   // circuit breaker and the per-recipient limiter for every promo / receipt
   // / system-alert send in the app.
-  'routes/booking-chat.ts',
   'routes/ceo-wallet.ts',
   'routes/provider-onboarding.ts',
   'routes/wallet.ts',
@@ -78,6 +77,9 @@ const RAW_SEND_ALLOWLIST = [
   // sgMail.setApiKey() on an identifier it never imported, so every abuse
   // alert threw ReferenceError instead of sending.
   'services/gcsBackupService.ts',
+  // routes/booking-chat.ts migrated to sendGuardedEmail on 2026-09-18 (the
+  // offline chat-email fallback now sends from SENDGRID_FROM_EMAIL through the
+  // spend guard). Do not add it back.
 ].sort();
 
 describe('SendGrid inventory — direct sgMail.send callers are locked to a known set', () => {

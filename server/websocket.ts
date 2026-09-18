@@ -566,6 +566,28 @@ export function isUserConnected(uid: string): boolean {
   return false;
 }
 
+/**
+ * Is this user, right now, on an open socket that subscribed to THIS booking
+ * conversation? This is the exact audience broadcastBookingChatMessage delivers
+ * to, so a sender-side "skip push/email, they are live" decision must ask this
+ * — not isUserConnected(), which is true for a user parked on any other screen.
+ */
+export function isUserSubscribedToBookingChat(uid: string, conversationId: string): boolean {
+  const key = String(conversationId);
+  let live = false;
+  clients.forEach((client) => {
+    if (
+      !live &&
+      client.userId === uid &&
+      client.ws.readyState === WebSocket.OPEN &&
+      client.bookingChatSubscriptions.has(key)
+    ) {
+      live = true;
+    }
+  });
+  return live;
+}
+
 export function broadcastBookingChatMessage(conversationId: string, message: any, participantUids: string[]) {
   clients.forEach(client => {
     if (
