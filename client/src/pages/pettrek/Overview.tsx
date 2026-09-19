@@ -145,11 +145,14 @@ export default function PetTrekOverview() {
     }
   ];
 
+  // 2026-09-19: two badges here were invented — a star rating and a user
+  // count. PetTrek has no completed trips and no ratings at all. Same class as
+  // PR-FAKE (2026-06-13), which stripped the made-up trust stats out of
+  // TrustBar.tsx. The two badges left are verification claims describing a
+  // real policy, not numbers.
   const trustBadges = [
     { icon: <Award />, text: t('pettrek.fullyInsured') },
     { icon: <CheckCircle />, text: t('pettrek.professionalDrivers') },
-    { icon: <Star />, text: "4.9★" },
-    { icon: <Users />, text: "50k+" }
   ];
 
   return (
