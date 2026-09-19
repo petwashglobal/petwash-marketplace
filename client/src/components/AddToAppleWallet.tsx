@@ -18,7 +18,7 @@
  *     server/tests/pkpassServedInline.regression.test.ts).
  *   • an <a> carries the session cookie the endpoint needs.
  */
-import { useLanguage } from '@/hooks/useLanguage';
+import { useLanguage } from '@/lib/languageStore';
 
 interface AddToAppleWalletProps {
   /** Defaults to the member pass. Booking/gift passes pass their own path. */
