@@ -1,4 +1,4 @@
-import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { PETWASH_LOGO_ON_LIGHT } from './logo-base64';
 
 interface CustomerWelcomeEmailData {
   firstName: string;
@@ -35,7 +35,7 @@ export function generateCustomerWelcomeEmail(data: CustomerWelcomeEmailData): { 
       
       <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #334155 100%); padding: 56px 40px; text-align: center; position: relative;">
         <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #dcc07a, #c9a96e);"></div>
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash\u2122" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
+        <img src="${PETWASH_LOGO_ON_LIGHT}" alt="Pet Wash\u2122" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
         <h1 style="color: #ffffff; font-size: 28px; font-weight: 400; letter-spacing: 1.5px; margin: 0; font-family: 'Georgia', serif; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
           ${isHebrew ? '\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05DE\u05E9\u05E4\u05D7\u05D4' : 'Welcome to the Family'}
         </h1>

@@ -1,4 +1,4 @@
-import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { PETWASH_LOGO_ON_LIGHT } from './logo-base64';
 
 interface EGiftActivationParams {
   recipientName: string;
@@ -100,7 +100,7 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
 
       <!-- Logo -->
       <div class="fi d1" style="padding:36px 40px 16px;text-align:center;background:white;">
-        <img src="${PETWASH_LOGO_BASE64}" alt="PetWash™" style="max-width:130px;height:auto;" />
+        <img src="${PETWASH_LOGO_ON_LIGHT}" alt="PetWash™" style="max-width:130px;height:auto;" />
         <div style="margin-top:14px;font-size:9px;letter-spacing:6px;text-transform:uppercase;color:#bbb;">
           ${tierName}
         </div>
