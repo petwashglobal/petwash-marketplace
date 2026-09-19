@@ -7677,13 +7677,13 @@ self.addEventListener('notificationclick', (event) => {
         amount: parseFloat(amount),
         currency: 'ILS',
         recipientEmail: recipientEmail || 'test@example.com',
-        purchaserUid: req.adminUser.id,
+        purchaserUid: (req.adminUser?.id ?? req.firebaseUser?.uid ?? 'unknown-admin'),
         expirationDays
       });
       
       logger.info('Admin: Test voucher generated', { 
         voucherId: result.voucherId, 
-        admin: req.adminUser.email 
+        admin: (req.adminUser?.email ?? req.firebaseUser?.email ?? 'unknown-admin') 
       });
       
       res.json(result);
@@ -7745,7 +7745,7 @@ self.addEventListener('notificationclick', (event) => {
       
       logger.info('Admin: Vouchers exported to CSV', { 
         count: vouchers.length,
-        admin: req.adminUser.email 
+        admin: (req.adminUser?.email ?? req.firebaseUser?.email ?? 'unknown-admin') 
       });
     } catch (error) {
       logger.error('Admin: Error exporting vouchers', error);
@@ -7773,7 +7773,7 @@ self.addEventListener('notificationclick', (event) => {
       logger.info('Admin: Voucher voided', { 
         voucherId, 
         reason, 
-        admin: req.adminUser.email 
+        admin: (req.adminUser?.email ?? req.firebaseUser?.email ?? 'unknown-admin') 
       });
       
       res.json({ success: true, message: 'Voucher cancelled successfully' });
