@@ -70,8 +70,16 @@ jobs:
           H="${HOURS:-24}"
           SINCE="$(date -u -d "-${H} hours" +%Y-%m-%dT%H:%M:%SZ)"
           echo "== every log line containing '${NEEDLE}' since ${SINCE} (ALL severities) =="
+          # The filter MUST run server-side. The first version read the NEWEST
+          # 2000 entries and grepped them locally, so on a chatty service the
+          # window silently collapsed to the last few minutes — and an empty
+          # result then looked like "this never happened in 7 days", which is a
+          # far worse answer than no answer. Cloud Logging's own substring test
+          # does the matching now, so the limit applies to MATCHING lines only.
+          NEEDLE_ESC="$(printf '%s' "${NEEDLE}" | tr -d '"')"
           gcloud logging read \
-            "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"petwash-api\" AND timestamp>=\"${SINCE}\"" \
-            --limit 2000 --project signinpetwash \
+            "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"petwash-api\" AND timestamp>=\"${SINCE}\" AND (jsonPayload.message:\"${NEEDLE_ESC}\" OR textPayload:\"${NEEDLE_ESC}\")" \
+            --limit 200 --project signinpetwash --order asc \
             --format='value(timestamp,severity,jsonPayload.message,textPayload)' 2>/dev/null \
-            | grep -i -- "${NEEDLE}" | head -80 || echo "(no line matched '${NEEDLE}')"
+            | head -120 || true
+          echo "-- end of matches (oldest first; empty here means it truly never appeared in the window) --"
