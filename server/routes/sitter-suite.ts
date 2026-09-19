@@ -1751,6 +1751,66 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
       throw err;
     }
     
+    // CUSTOMER RECEIPT (2026-09-19). Sitter Suite recorded the provider
+    // settlement, ran the payout and wrote the VAT ledger — all of which are
+    // OUR books — but never issued the customer anything. Walk My Pet and
+    // Academy both call generateReceipt on completion; this path never did, so
+    // a pet-sitting customer paid and received no document at all.
+    // IsraeliDigitalReceiptService's own note: "Israeli law requires digital
+    // receipt to be sent to customer". Mirrors the Walk My Pet block exactly,
+    // including the outbox fallback, and can never fail the completion.
+    try {
+      const [sitCustomer] = await db
+        .select({ email: users.email, first: users.firstName, last: users.lastName })
+        .from(users).where(eq(users.id, String(booking.ownerId))).limit(1);
+      const [sitProvider] = sitter?.userId
+        ? await db.select({ first: users.firstName, last: users.lastName })
+            .from(users).where(eq(users.id, String(sitter.userId))).limit(1)
+        : [undefined];
+
+      const sitterFeeIls = (booking.platformServiceFeeCents ?? 0) / 100;
+      const sitterReceiptInput = {
+        platform: 'sitter-suite' as const,
+        paymentClass: 'PROVIDER_BOOKING_COMMISSION' as const,
+        bookingId: booking.bookingId,
+        customerEmail: sitCustomer?.email || '',
+        customerName: [sitCustomer?.first, sitCustomer?.last].filter(Boolean).join(' '),
+        providerName: [sitProvider?.first, sitProvider?.last].filter(Boolean).join(' ')
+          || sitter?.displayName || `Sitter ${booking.sitterId}`,
+        providerId: String(booking.sitterId),
+        providerType: 'sitter' as const,
+        serviceDescription: 'Pet Wash pet sitting stay',
+        serviceDescriptionHe: 'אירוח ושמרטפות לחיית מחמד — פט וואש',
+        subtotalAmount: customerPaidILS,
+        platformFeeAmount: sitterFeeIls,
+        totalAmount: customerPaidILS,
+        paymentMethod: 'Credit card',
+        providerPayoutAmount: settlementResult.settlement?.netPaymentToProvider ?? grossPayoutILS,
+        brokerCommissionAmount: sitterFeeIls,
+      };
+
+      const sitReceiptOutcome = await runFiscalDocumentAndPersistOnFailure({
+        pool,
+        kind: 'digital_receipt',
+        sourceKey: `sitter:${booking.bookingId}`,
+        payload: sitterReceiptInput,
+        runNow: async () => {
+          await IsraeliDigitalReceiptService.generateReceipt(sitterReceiptInput);
+        },
+      });
+      if (!sitReceiptOutcome.ranInline) {
+        logger.warn('[Sitter Suite] customer receipt enqueued to outbox for retry', {
+          bookingId: booking.bookingId, inlineError: sitReceiptOutcome.inlineError,
+        });
+      }
+    } catch (receiptErr: any) {
+      // Never fail a real completion for the document — the outbox drainer and
+      // ops alerting own the retry.
+      logger.error('[Sitter Suite] customer receipt failed inline AND outbox — needs manual issue', {
+        bookingId: booking.bookingId, error: receiptErr?.message,
+      });
+    }
+
     logger.info('[Sitter Suite] ✅ Booking completed - Israeli law 2026 compliant', {
       bookingId: booking.bookingId,
       grossPayoutILS,
