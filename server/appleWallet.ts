@@ -55,6 +55,35 @@ const APPLE_SIGNER_CERT =
   process.env.APPLE_SIGNER_CERT_PEM || process.env.APPLE_SIGNER_CERT;
 const APPLE_SIGNER_KEY =
   process.env.APPLE_SIGNER_KEY_PEM || process.env.APPLE_SIGNER_KEY;
+/**
+ * THE PASS TYPE MUST MATCH THE SIGNING CERTIFICATE (2026-09-19).
+ *
+ * A .pkpass declares a `passTypeIdentifier`, and Apple requires it to be the
+ * SAME Pass Type ID the signing certificate was issued for. There is exactly
+ * ONE signer certificate configured here (APPLE_SIGNER_CERT_PEM), so there is
+ * exactly one pass type we can legitimately declare.
+ *
+ * This file declared three different ones, under a different env name again:
+ *
+ *   services/AppleWalletService.ts  APPLE_PASS_TYPE_IDENTIFIER
+ *                                   default pass.il.petwash.prestige   ← works
+ *   this file                       APPLE_PASS_TYPE_ID
+ *                                   default pass.com.petwash.vip
+ *                                   default pass.com.petwash.voucher
+ *
+ * A pass signed with the prestige certificate but declaring
+ * pass.com.petwash.voucher DOWNLOADS and then refuses to install — the same
+ * silent, unexplained failure as the wrong team identifier. So fixing the
+ * certificate env names in #2638 was necessary but not sufficient: the booking
+ * and gift-card passes would have built and still not opened.
+ *
+ * One name, one default, matching the certificate that exists.
+ */
+const APPLE_PASS_TYPE_IDENTIFIER =
+  process.env.APPLE_PASS_TYPE_IDENTIFIER
+  || process.env.APPLE_PASS_TYPE_ID
+  || 'pass.il.petwash.prestige';
+
 const APPLE_SIGNER_KEY_PASSPHRASE =
   process.env.APPLE_SIGNER_KEY_PASSPHRASE || process.env.APPLE_KEY_PASSPHRASE;
 
@@ -193,7 +222,7 @@ export class AppleWalletService {
     
     return {
       formatVersion: 1,
-      passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.vip',
+      passTypeIdentifier: APPLE_PASS_TYPE_IDENTIFIER,
       teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
       // team does not match the signing certificate is rejected by iOS after
       // download, which looks exactly like "the pass will not open".
@@ -294,7 +323,7 @@ export class AppleWalletService {
     const authToken = this.generateAuthToken(data.userId);
     return {
       formatVersion: 1,
-      passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
+      passTypeIdentifier: APPLE_PASS_TYPE_IDENTIFIER,
       teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
       // team does not match the signing certificate is rejected by iOS after
       // download, which looks exactly like "the pass will not open".
@@ -591,7 +620,7 @@ export class AppleWalletService {
 
     return {
       formatVersion: 1,
-      passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
+      passTypeIdentifier: APPLE_PASS_TYPE_IDENTIFIER,
       teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
       // team does not match the signing certificate is rejected by iOS after
       // download, which looks exactly like "the pass will not open".
@@ -833,7 +862,7 @@ export class AppleWalletService {
       const APPLE_APNS_KEY    = process.env.APPLE_APNS_KEY;
       const APPLE_APNS_KEY_ID = process.env.APPLE_APNS_KEY_ID;
       const APPLE_TEAM_ID     = process.env.APPLE_TEAM_ID;
-      const APPLE_PASS_TOPIC  = process.env.APPLE_PASS_TYPE_ID;
+      const APPLE_PASS_TOPIC  = APPLE_PASS_TYPE_IDENTIFIER;
       const apnsConfigured =
         !!APPLE_APNS_KEY && !!APPLE_APNS_KEY_ID && !!APPLE_TEAM_ID && !!APPLE_PASS_TOPIC;
 
@@ -845,7 +874,7 @@ export class AppleWalletService {
             !APPLE_APNS_KEY    ? 'APPLE_APNS_KEY'    : null,
             !APPLE_APNS_KEY_ID ? 'APPLE_APNS_KEY_ID' : null,
             !APPLE_TEAM_ID     ? 'APPLE_TEAM_ID'     : null,
-            !APPLE_PASS_TOPIC  ? 'APPLE_PASS_TYPE_ID' : null,
+            !APPLE_PASS_TOPIC  ? 'APPLE_PASS_TYPE_IDENTIFIER' : null,
           ].filter(Boolean),
         });
         return {
@@ -960,7 +989,7 @@ END:VCARD`;
       // Create pass.json for business card - luxury black design
       const passJson = {
         formatVersion: 1,
-        passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.businesscard',
+        passTypeIdentifier: APPLE_PASS_TYPE_IDENTIFIER,
         teamIdentifier: APPLE_TEAM_IDENTIFIER!,  // no placeholder fallback — a pass whose
       // team does not match the signing certificate is rejected by iOS after
       // download, which looks exactly like "the pass will not open".
