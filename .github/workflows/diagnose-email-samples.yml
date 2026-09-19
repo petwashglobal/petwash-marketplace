@@ -1,0 +1,141 @@
+name: 📧 Diagnose — sample customer emails (sends REAL emails with FAKE data)
+
+# ────────────────────────────────────────────────────────────
+# "What does a customer actually receive?"
+#
+# Renders the production email templates — pet-sitter booking, Walk My Pet,
+# Academy, shop order, eGift, wallet credit, payment letter — with clearly
+# fake sample data and sends each one to the address you name, through the
+# same SendGrid path the live service uses. No booking, order, voucher or
+# charge is created; nothing touches the database. Every subject is prefixed
+# [SAMPLE] so it can never be mistaken for a real receipt.
+#
+# Operator path:
+#   Actions tab → this workflow → "Run workflow" → target_email
+#   or push ops/diagnose/email-samples.json on a diag/email-samples/** branch
+#   (the Claude GitHub App cannot call workflow_dispatch: 403). Delete the
+#   branch after the run — it holds an email address.
+# ────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: ['diag/email-samples/**']
+    paths: ['ops/diagnose/email-samples.json']
+  workflow_dispatch:
+    inputs:
+      target_email:
+        description: 'Where to send the samples'
+        required: true
+        type: string
+      locale:
+        description: 'Template language'
+        required: true
+        default: 'he'
+        type: choice
+        options:
+          - 'he'
+          - 'en'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: diagnose-email-samples
+  cancel-in-progress: false
+
+jobs:
+  send-samples:
+    name: Render every customer email with sample data and send it
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_ID: signinpetwash
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Load production secrets from Secret Manager (values masked)
+        run: |
+          set -e
+          REQUIRED=("SENDGRID_API_KEY" "SENDGRID_FROM_EMAIL")
+          OPTIONAL=("GOOGLE_SERVICE_ACCOUNT_JSON" "DATABASE_URL")
+          MISSING=()
+          for s in "${REQUIRED[@]}"; do
+            if ! gcloud secrets describe "$s" --project="$PROJECT_ID" --quiet &>/dev/null; then MISSING+=("$s"); fi
+          done
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets in GCP Secret Manager: ${MISSING[*]}"
+            exit 1
+          fi
+          load() {
+            local name="$1" env_name="$2"
+            local VAL
+            VAL=$(gcloud secrets versions access latest --secret="$name" --project="$PROJECT_ID")
+            echo "::add-mask::$VAL"
+            {
+              echo "$env_name<<__SECRET_EOF__"
+              echo "$VAL"
+              echo "__SECRET_EOF__"
+            } >> "$GITHUB_ENV"
+          }
+          for s in "${REQUIRED[@]}"; do load "$s" "$s"; done
+          for s in "${OPTIONAL[@]}"; do
+            if gcloud secrets describe "$s" --project="$PROJECT_ID" --quiet &>/dev/null; then
+              if [ "$s" = "GOOGLE_SERVICE_ACCOUNT_JSON" ]; then load "$s" "GOOGLE_APPLICATION_CREDENTIALS_JSON"; else load "$s" "$s"; fi
+              echo "  $s = ✅ loaded"
+            else
+              echo "  $s = ⚠️ not in Secret Manager (templates that need it fall back to sample values)"
+            fi
+          done
+
+      - name: Resolve the request (form inputs, or the committed request file on a diag branch)
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "push" ]; then
+            F=ops/diagnose/email-samples.json
+            test -f "$F" || { echo "::error::$F missing on this diag branch"; exit 1; }
+            TARGET_EMAIL=$(jq -r '.target_email // empty' "$F")
+            LOCALE=$(jq -r '.locale // "he"' "$F")
+            SOURCE="$F (push to ${{ github.ref_name }})"
+          else
+            TARGET_EMAIL='${{ inputs.target_email }}'
+            LOCALE='${{ inputs.locale }}'
+            SOURCE="the Run-workflow form"
+          fi
+          if [ -n "$TARGET_EMAIL" ]; then echo "::add-mask::$TARGET_EMAIL"; fi
+          {
+            echo "TARGET_EMAIL=$TARGET_EMAIL"
+            echo "LOCALE=$LOCALE"
+          } >> "$GITHUB_ENV"
+          echo "Request taken from $SOURCE — locale=$LOCALE (recipient masked)"
+
+      - name: Render and send every sample
+        env:
+          NODE_ENV: production
+          FIREBASE_PROJECT_ID: signinpetwash
+          BASE_URL: https://petwash.co.il
+          APP_URL: https://petwash.co.il
+          NODE_OPTIONS: --max-old-space-size=2048
+          # One recipient receives every sample in one minute; the per-recipient
+          # spam guard (5 per 5 min) would otherwise block the sixth. This job only.
+          EMAIL_GUARD_PER_RECIPIENT_LIMIT: '50'
+        run: npx tsx scripts/admin/send-sample-emails.ts
