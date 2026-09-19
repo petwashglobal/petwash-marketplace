@@ -1368,6 +1368,11 @@ jobs:
           #   .replit at the repo root.
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
           VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
+          # 2026-09-19: turns on the CEO's cut-out luxury icons. PetIcon falls
+          # back to the registry emoji per-icon on a 404, so every key with no
+          # artwork yet keeps working exactly as it does today — the flag is safe
+          # to hold on while the set is completed one file at a time.
+          VITE_PET_ICONS_ENABLED: 'true'
 
       # Post-release 2026-09-03 (backlog P1): dist-manifest verifier —
       # catches the specific class of stale-chunk 404 that killed /signin
@@ -2896,6 +2901,11 @@ jobs:
           # commit. A diff gate below keeps them in step.
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
           VITE_FIREBASE_APPCHECK_SITE_KEY: ${{ secrets.VITE_FIREBASE_APPCHECK_SITE_KEY }}
+          # 2026-09-19: turns on the CEO's cut-out luxury icons. PetIcon falls
+          # back to the registry emoji per-icon on a 404, so every key with no
+          # artwork yet keeps working exactly as it does today — the flag is safe
+          # to hold on while the set is completed one file at a time.
+          VITE_PET_ICONS_ENABLED: 'true'
           VITE_GOOGLE_PLACES_LIVE: 'true'
           # THE ROLLOUT SWITCH FOR THE SHARED VERIFICATION EXPERIENCE.
           #
