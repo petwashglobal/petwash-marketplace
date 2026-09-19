@@ -181,7 +181,7 @@ export interface ReceiptGenerationParams {
    * The customer's account id (CEO 2026-09-19: "transaction id user id").
    * Display + support tracing only — printed on the receipt so a customer
    * question can be tied to an account without a database lookup. Never a
-   * DB column, exactly like serviceAddress below.
+   * DB column, exactly like the display-only address field further down.
    */
   customerId?: string;
   providerName?: string;
