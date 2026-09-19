@@ -177,6 +177,13 @@ export interface ReceiptGenerationParams {
   customerEmail: string;
   customerName?: string;
   customerPhone?: string;
+  /**
+   * The customer's account id (CEO 2026-09-19: "transaction id user id").
+   * Display + support tracing only — printed on the receipt so a customer
+   * question can be tied to an account without a database lookup. Never a
+   * DB column, exactly like serviceAddress below.
+   */
+  customerId?: string;
   providerName?: string;
   providerId?: string;
   providerType?: string;
@@ -823,6 +830,7 @@ export class IsraeliDigitalReceiptService {
       // it in-memory here. (2026-07-29 hotfix: was `params.serviceAddress` inside
       // sendReceiptEmail, an out-of-scope ref that threw and skipped the email.)
       (receipt as any).serviceAddress = params.serviceAddress ?? null;
+      (receipt as any).customerReference = params.customerId ?? null;
 
       let emailSent = false;
       try {
@@ -1169,6 +1177,7 @@ export class IsraeliDigitalReceiptService {
         <p style="margin:0;font-size:12px;color:#999;">אמצעי תשלום: ${receipt.paymentMethod}</p>
         ${receipt.bookingId ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר הזמנה: ${String(receipt.bookingId).replace(/^(shop:|sumit:)/, '')}</p>` : ''}
         ${receipt.nayaxTransactionId ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר עסקה: ${receipt.nayaxTransactionId}</p>` : ''}
+        ${receipt.customerReference ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר לקוח: ${receipt.customerReference}</p>` : ''}
       </td>
     </tr>
 
