@@ -1,20 +1,26 @@
 /**
- * UpayProvider — UPay (יופיי פיננסים בע״מ, upay.co.il) online card clearing.
+ * UpayProvider — a DIRECT UPay (יופיי פיננסים בע״מ, upay.co.il) client that is
+ * NOT PetWash's payment rail and is not on any money path.
  *
- * UPay is PetWash's online payment rail. Its integration is a REDIRECT/hosted-page
- * model: the merchant builds an encrypted `msg` payload and sends the customer to
- *   https://app.upay.co.il/API6/clientsecure/redirectpage.php?msg=<encrypted>
- * UPay renders the payment page, charges the card, issues the legal
- * חשבונית מס/קבלה (when "issue invoice" is enabled on the page), and POSTs an
- * IPN (Instant Payment Notification) back to confirm the transaction.
+ * READ THIS FIRST (2026-09-19 audit). PetWash clears cards through SUMIT's
+ * hosted page (server/routes/payments-sumit.ts, SumitBookingPayment.ts,
+ * egift-guest.ts); UPay is the clearing licence attached to the SUMIT account
+ * and is reached only through api.sumit.co.il. Every live purchase row is
+ * stamped `acquirer: 'upay_via_sumit'`. UPay issues no developer API key and
+ * no integration credential of its own (docs/finance/sumit-upay-wiring-
+ * readiness-2026-06-11.md §0, docs/SUMIT_CAPABILITIES_AUDIT.md) — so the
+ * "API6 spec still to arrive" this file used to wait for is not coming, and
+ * `UPAY_API_KEY` in Secret Manager is consumed by nothing but this health
+ * report.
  *
- * STATE (2026-06-15): the API key is provisioned and wired into the runtime
- * (UPAY_API_KEY, from GCP Secret Manager → Cloud Run). What is NOT yet available
- * is UPay's API6 integration spec — the exact `msg` parameter names and the
- * encryption scheme used to sign the payload with the key. Until that spec is in
- * hand, charge creation FAILS CLOSED (never a fake success — Rule H). Everything
- * else (config detection, endpoint, reachability, health) is live so activation
- * is a small, well-scoped fill-in, not a from-scratch build.
+ * What remains here is a contingency stub for a standby direct rail
+ * (docs/TRANZILA_DEPRECATION_AUDIT.md, Scenario A): config detection,
+ * endpoint constants, reachability and the admin health route
+ * (GET /api/admin/upay/health). Charge creation FAILS CLOSED and must stay
+ * that way (Rule H: never a fake success). Do not "finish" this file; if a
+ * direct rail is ever wanted, that is a design decision with SUMIT and UPay
+ * first (marketplace split clearing: sumit-upay-marketplace-integration-
+ * 2026-09-19.md), not a fill-in.
  */
 
 import { logger } from '../../lib/logger';

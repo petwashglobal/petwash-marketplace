@@ -110,6 +110,7 @@ describe('PR-CI-PAYMENT-MODE — mock mode short-circuits all secret requirement
       'NAYAX_ENABLED=true but NAYAX_WEBHOOK_SECRET is missing or a placeholder — refusing to operate live',
       'SUMIT_ENABLED=true but SUMIT_API_KEY is missing — refusing to operate live',
       'SUMIT_ENABLED=true but SUMIT_WEBHOOK_SECRET is missing — refusing to operate live',
+      'SUMIT_ENABLED=true but SUMIT_COMPANY_ID is missing — refusing to operate live',
     ]);
   });
 
@@ -177,15 +178,36 @@ describe('PR-CI-PAYMENT-MODE — production fail-closed when secrets missing', (
     expect(r.errors).toEqual([]);
   });
 
-  it('10. prod + SUMIT_ENABLED=true + missing both secrets → 2 errors', () => {
+  it('10. prod + SUMIT_ENABLED=true + missing all three secrets → 3 errors', () => {
     const r = validateProductionPaymentSecrets({
       NODE_ENV: 'production',
       PAYMENT_PROVIDER_MODE: 'live',
       SUMIT_ENABLED: 'true',
     });
-    expect(r.errors.length).toBe(2);
+    expect(r.errors.length).toBe(3);
     expect(r.errors.join(' ')).toMatch(/SUMIT_API_KEY/);
     expect(r.errors.join(' ')).toMatch(/SUMIT_WEBHOOK_SECRET/);
+    expect(r.errors.join(' ')).toMatch(/SUMIT_COMPANY_ID/);
+  });
+
+  it('10b. prod + SUMIT_ENABLED=true + key and webhook secret but NO company id → refuses (isWired() would silently no-op every tax document)', () => {
+    const r = validateProductionPaymentSecrets({
+      NODE_ENV: 'production',
+      PAYMENT_PROVIDER_MODE: 'live',
+      SUMIT_ENABLED: 'true',
+      SUMIT_API_KEY: 'k',
+      SUMIT_WEBHOOK_SECRET: 's',
+    });
+    expect(r.errors).toEqual(['SUMIT_ENABLED=true but SUMIT_COMPANY_ID is missing — refusing to operate live']);
+    const ok = validateProductionPaymentSecrets({
+      NODE_ENV: 'production',
+      PAYMENT_PROVIDER_MODE: 'live',
+      SUMIT_ENABLED: 'true',
+      SUMIT_API_KEY: 'k',
+      SUMIT_WEBHOOK_SECRET: 's',
+      SUMIT_COMPANY_ID: '1455151432',
+    });
+    expect(ok.errors).toEqual([]);
   });
 
   it('11. development env never errors on missing secrets (degrades at call-time)', () => {
