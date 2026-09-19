@@ -48,8 +48,10 @@ describe('BookingConfirmation — PR-CUSTOMER-CONFIRM-END-1 gate pin', () => {
   });
 
   it('confirm mutation still POSTs to /api/booking-requests/:id/confirm', () => {
+    // apiRequest takes (url, { method }) since the fetch-options signature;
+    // the pin follows the call, not the old argument order (2026-09-19).
     expect(SRC).toMatch(
-      /apiRequest\(\s*['"`]POST['"`]\s*,\s*`\/api\/booking-requests\/\$\{requestId\}\/confirm`/,
+      /apiRequest\(\s*`\/api\/booking-requests\/\$\{requestId\}\/confirm`\s*,\s*\{\s*method:\s*['"`]POST['"`]/,
     );
   });
 

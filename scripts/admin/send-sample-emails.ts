@@ -21,6 +21,7 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 type Locale = 'he' | 'en';
 type Sample = { key: string; label: string; subject: string; html: string };
@@ -50,7 +51,7 @@ function people(locale: Locale) {
   };
 }
 
-async function buildSamples(locale: Locale, targetEmail: string): Promise<Sample[]> {
+export async function buildSamples(locale: Locale, targetEmail: string): Promise<Sample[]> {
   const he = locale === 'he';
   const p = people(locale);
   const now = new Date();
@@ -252,8 +253,15 @@ async function main() {
   process.exit(failed ? 1 : 0);
 }
 
-main().catch((err) => {
-  console.error(`::error::${err?.message || err}`);
-  if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `## 📧 Sample customer emails\n\n❌ ${err?.message || err}\n`, { flag: 'a' });
-  process.exit(1);
-});
+// Run only when invoked directly (npx tsx scripts/admin/send-sample-emails.ts);
+// the test suite imports buildSamples without sending anything.
+const invokedDirectly = (() => {
+  try { return process.argv[1] ? pathToFileURL(process.argv[1]).href === import.meta.url : false; } catch { return false; }
+})();
+if (invokedDirectly) {
+  main().catch((err) => {
+    console.error(`::error::${err?.message || err}`);
+    if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `## 📧 Sample customer emails\n\n❌ ${err?.message || err}\n`, { flag: 'a' });
+    process.exit(1);
+  });
+}

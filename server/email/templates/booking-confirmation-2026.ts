@@ -41,6 +41,24 @@ export type BookingService =
                                                       dashboardUrl: string;
                                                       }
 
+                                                      /**
+                                                       * "(4320 min)" is what a three-night sitting used to print (2026-09-19
+                                                       * sample run). Minutes under an hour stay minutes; hours and days read
+                                                       * as hours and days.
+                                                       */
+                                                      export function formatDuration(minutes: number, isHe: boolean): string {
+                                                        const m = Math.max(0, Math.round(minutes));
+                                                        if (m < 60) return isHe ? `${m} דק׳` : `${m} min`;
+                                                        if (m < 24 * 60) {
+                                                          const h = Math.floor(m / 60), r = m % 60;
+                                                          const hours = isHe ? `${h} שע׳` : `${h} h`;
+                                                          return r ? `${hours} ${isHe ? `${r} דק׳` : `${r} min`}` : hours;
+                                                        }
+                                                        const d = Math.floor(m / (24 * 60)), rh = Math.floor((m % (24 * 60)) / 60);
+                                                        const days = isHe ? (d === 1 ? 'יום' : `${d} ימים`) : (d === 1 ? '1 day' : `${d} days`);
+                                                        return rh ? `${days} ${isHe ? `${rh} שע׳` : `${rh} h`}` : days;
+                                                      }
+
                                                       const SERVICE_ICONS: Record<BookingService, string> = {
                                                         k9000_wash:  '🛁',
                                                           grooming:    '✂️',
@@ -54,7 +72,9 @@ export type BookingService =
                                                                     k9000_wash:  '#1a7a4a',
                                                                       grooming:    '#C9A96E',
                                                                         dog_walking: '#2563eb',
-                                                                          pet_sitting: '#7c3aed',
+                                                                          // Brand rule at the top of this file: NO PURPLE. Was a violet band (seen on
+                                                                          // the 2026-09-19 sample run). Warm dark gold, same family as the CTA button.
+                                                                          pet_sitting: '#8a6a1f',
                                                                             pettrek:     '#dc2626',
                                                                               plush_lab:   '#0891b2',
                                                                               };
@@ -171,7 +191,7 @@ export type BookingService =
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       </tr>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 <tr>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             <td style="padding:10px 0;border-bottom:1px solid #f0ece0;color:#888;font-size:13px;text-align:${align};">${t.time}</td>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td style="padding:10px 0;border-bottom:1px solid #f0ece0;color:#1a1a1a;font-size:14px;font-weight:600;text-align:${align};">${p.timeFormatted}${p.durationMinutes ? ` <span style="color:#888;font-size:12px;">(${p.durationMinutes} min)</span>` : ''}</td>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <td style="padding:10px 0;border-bottom:1px solid #f0ece0;color:#1a1a1a;font-size:14px;font-weight:600;text-align:${align};">${p.timeFormatted}${p.durationMinutes ? ` <span style="color:#888;font-size:12px;">(${formatDuration(p.durationMinutes, isHe)})</span>` : ''}</td>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   </tr>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             <tr>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         <td style="padding:10px 0;border-bottom:1px solid #f0ece0;color:#888;font-size:13px;text-align:${align};">${t.pet}</td>
