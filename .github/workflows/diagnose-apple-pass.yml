@@ -1,0 +1,94 @@
+name: Diagnose Apple Wallet pass (read-only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+# WHY: the CEO can download the .pkpass on his iPhone and iOS REFUSES to install
+# it, while other passes on the same phone work. That is not a delivery problem —
+# it is the pass being rejected, which for PassKit means one of:
+#   1. the signing certificate's Pass Type ID != the passTypeIdentifier in pass.json
+#   2. the certificate's Team ID != teamIdentifier in pass.json
+#   3. the certificate (or the Apple WWDR intermediate) has EXPIRED
+#   4. the WWDR intermediate is the old G4 where a newer one is required
+#
+# This prints ONLY certificate metadata — subject, issuer, validity dates, and the
+# UID/OU fields that carry the Pass Type ID and Team ID. It never prints a key,
+# never prints a certificate body, and writes nothing.
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: Compare the certificate against what the pass declares
+        run: |
+          set -uo pipefail
+          SERVICE=petwash-api; REGION=me-west1
+
+          echo "== what the service is configured with (names only) =="
+          ENVJSON="$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>/dev/null \
+            | jq -c '(.spec.template.spec.containers[0].env // [])')"
+          echo "$ENVJSON" | jq -r '.[] | select(.name|test("APPLE"))
+            | "\(.name) => \(if .value then "value set" else "secret:" + (.valueFrom.secretKeyRef.name // "?") end)"'
+
+          PASS_TYPE="$(echo "$ENVJSON" | jq -r '.[] | select(.name=="APPLE_WALLET_PASS_TYPE_ID") | .value // empty')"
+          TEAM="$(echo "$ENVJSON"      | jq -r '.[] | select(.name=="APPLE_WALLET_TEAM_ID")      | .value // empty')"
+          CERT_SECRET="$(echo "$ENVJSON" | jq -r '.[] | select(.name=="APPLE_WALLET_CERT")      | .valueFrom.secretKeyRef.name // empty')"
+          WWDR_SECRET="$(echo "$ENVJSON" | jq -r '.[] | select(.name=="APPLE_WALLET_WWDR_CERT") | .valueFrom.secretKeyRef.name // empty')"
+
+          echo
+          echo "== what pass.json declares (from the repo) =="
+          echo "passTypeIdentifier: $(jq -r .passTypeIdentifier wallet/apple-model.pass/pass.json)"
+
+          echo
+          echo "== the SIGNING certificate =="
+          if [ -z "$CERT_SECRET" ]; then echo "APPLE_WALLET_CERT is not a secretRef — cannot inspect"; else
+            gcloud secrets versions access latest --secret="$CERT_SECRET" 2>/dev/null > /tmp/signer.pem || true
+            if ! head -1 /tmp/signer.pem | grep -q "BEGIN"; then
+              echo "!! the stored value is not PEM — first bytes look like: $(head -c 24 /tmp/signer.pem | tr -d '\n' | sed 's/[^[:print:]]/./g')"
+              echo "   (a .p12 stored raw, or base64 without decoding, will fail to sign)"
+            fi
+            openssl x509 -in /tmp/signer.pem -noout -subject -issuer -dates 2>/dev/null \
+              || echo "!! openssl could not parse it as an X.509 certificate"
+            echo "-- expiry check --"
+            if openssl x509 -in /tmp/signer.pem -noout -checkend 0 >/dev/null 2>&1; then
+              echo "   signing cert: VALID (not expired)"
+              openssl x509 -in /tmp/signer.pem -noout -checkend 2592000 >/dev/null 2>&1 \
+                || echo "   WARNING: expires within 30 days"
+            else
+              echo "   !! signing cert: EXPIRED — iOS refuses any pass signed with it"
+            fi
+            CERT_UID="$(openssl x509 -in /tmp/signer.pem -noout -subject 2>/dev/null | tr ',/' '\n\n' | grep -i 'UID=' | head -1 | cut -d= -f2- | xargs || true)"
+            CERT_OU="$(openssl x509 -in /tmp/signer.pem -noout -subject 2>/dev/null | tr ',/' '\n\n' | grep -i 'OU=' | head -1 | cut -d= -f2- | xargs || true)"
+            echo
+            echo "== THE COMPARISON THAT DECIDES IT =="
+            echo "   pass.json passTypeIdentifier : $(jq -r .passTypeIdentifier wallet/apple-model.pass/pass.json)"
+            echo "   env APPLE_WALLET_PASS_TYPE_ID: ${PASS_TYPE:-<unset>}"
+            echo "   certificate UID (its Pass ID): ${CERT_UID:-<none found>}"
+            echo "   env APPLE_WALLET_TEAM_ID     : ${TEAM:-<unset>}"
+            echo "   certificate OU (its Team ID) : ${CERT_OU:-<none found>}"
+            echo
+            if [ -n "$CERT_UID" ] && [ -n "$PASS_TYPE" ] && [ "$CERT_UID" != "$PASS_TYPE" ]; then
+              echo "   >>> MISMATCH: the certificate is for '$CERT_UID' but the pass says '$PASS_TYPE'."
+              echo "       iOS rejects a pass whose type id does not match its signing certificate."
+            fi
+            if [ -n "$CERT_OU" ] && [ -n "$TEAM" ] && [ "$CERT_OU" != "$TEAM" ]; then
+              echo "   >>> MISMATCH: certificate team '$CERT_OU' vs configured team '$TEAM'."
+            fi
+          fi
+
+          echo
+          echo "== the Apple WWDR intermediate =="
+          if [ -z "$WWDR_SECRET" ]; then echo "APPLE_WALLET_WWDR_CERT is not a secretRef"; else
+            gcloud secrets versions access latest --secret="$WWDR_SECRET" 2>/dev/null > /tmp/wwdr.pem || true
+            openssl x509 -in /tmp/wwdr.pem -noout -subject -dates 2>/dev/null \
+              || echo "!! WWDR value is not a parseable X.509 certificate"
+            openssl x509 -in /tmp/wwdr.pem -noout -checkend 0 >/dev/null 2>&1 \
+              && echo "   WWDR: VALID" || echo "   !! WWDR: EXPIRED — every pass signed against it is rejected"
+          fi
+          rm -f /tmp/signer.pem /tmp/wwdr.pem
