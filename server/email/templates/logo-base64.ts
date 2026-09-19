@@ -4,8 +4,10 @@
  * THERE ARE TWO LOGOS AND THE BACKGROUND DECIDES WHICH ONE (CEO, 2026-09-19:
  * "we have two logo black and white against background").
  *
- *   petwash-logo-black-bg.png  — WHITE logo, RGBA with real transparency,
- *                                600x240, 31KB. For DARK headers.
+ *   petwash-logo-on-dark.png   — WHITE logo, GENUINELY transparent, 600x240,
+ *                                16KB. For DARK headers. (Derived from
+ *                                petwash-logo-black-bg.png, whose own
+ *                                background is an OPAQUE black matte.)
  *   petwash-logo-white-bg.png  — BLACK logo on solid white, 631x223, 98KB.
  *                                For WHITE / light sections.
  *
