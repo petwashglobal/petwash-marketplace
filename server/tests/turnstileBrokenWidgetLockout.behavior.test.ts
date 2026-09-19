@@ -27,28 +27,43 @@ describe('a broken bot-check widget must not lock every human out', () => {
     expect(shouldBypass()).toBe(false);
   });
 
-  it('a few token-less attempts are not enough evidence', () => {
-    for (let i = 0; i < 9; i++) recordAttempt('missing');
+  it('a couple of token-less attempts are not enough evidence', () => {
+    for (let i = 0; i < 4; i++) recordAttempt('missing');
     expect(shouldBypass()).toBe(false);
   });
 
-  it('a full window where NOBODY could mint a token opens the breaker', () => {
-    for (let i = 0; i < 10; i++) recordAttempt('missing');
+  it('a widget that has NEVER minted a token opens the breaker after a handful of misses', () => {
+    for (let i = 0; i < 5; i++) recordAttempt('missing');
     expect(shouldBypass()).toBe(true);
     expect(isDegraded()).toBe(true);
   });
 
+  it('works at this site\'s real traffic — no per-hour quota to reach', () => {
+    // Production sees roughly ONE signup a week. An earlier draft of the
+    // breaker required 10 attempts inside a 15-minute window, which this site
+    // can never reach: it would have stayed shut forever and unblocked nobody.
+    // Five attempts spread across days must still open it.
+    for (let i = 0; i < 5; i++) recordAttempt('missing'); // days apart, in effect
+    expect(shouldBypass()).toBe(true);
+  });
+
+  it('once the widget HAS worked, it demands far stronger evidence', () => {
+    recordAttempt('pass'); // the widget is known good in this process
+    for (let i = 0; i < 24; i++) recordAttempt('missing');
+    expect(shouldBypass()).toBe(false); // 24 misses is not enough after a pass
+    recordAttempt('missing');
+    expect(shouldBypass()).toBe(true);  // 25 is
+  });
+
   it('it never opens while real users are passing the check', () => {
-    for (let i = 0; i < 40; i++) recordAttempt('missing');
+    for (let i = 0; i < 4; i++) recordAttempt('missing');
     recordAttempt('pass'); // one human got through — the widget works
-    __resetBreakerForTests();
-    for (let i = 0; i < 20; i++) recordAttempt('missing');
-    recordAttempt('pass');
+    for (let i = 0; i < 4; i++) recordAttempt('missing');
     expect(shouldBypass()).toBe(false);
   });
 
   it('the first valid token closes it again with no deploy', () => {
-    for (let i = 0; i < 10; i++) recordAttempt('missing');
+    for (let i = 0; i < 5; i++) recordAttempt('missing');
     expect(shouldBypass()).toBe(true);
     recordAttempt('pass');
     expect(isDegraded()).toBe(false);

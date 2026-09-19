@@ -22,10 +22,9 @@
  *   as completely as a missing env, and nothing detected it.
  *
  * WHAT IT DOES
- *   It watches the outcome of every guarded attempt. If a whole window goes by
- *   with enough attempts and NOT ONE valid token, the only consistent
- *   explanation is that our own widget cannot mint tokens — real traffic always
- *   produces some passes. The breaker then OPENS: guarded requests are allowed
+ *   It watches the outcome of every guarded attempt. If enough attempts in a row
+ *   produce NOT ONE valid token, the only consistent explanation is that our own
+ *   widget cannot mint tokens — real traffic always produces some passes. The breaker then OPENS: guarded requests are allowed
  *   through, tagged `turnstileDegraded`, and an alert is raised. The bot floor
  *   is not removed — the auth and OTP rate limiters on those mounts still
  *   apply, and every degraded request is marked for audit.
@@ -44,18 +43,27 @@
  */
 import { logger } from './logger';
 
-const WINDOW_MS = 15 * 60 * 1000;
-/** Below this many attempts a window says nothing — a quiet hour is not an outage. */
-const MIN_ATTEMPTS = 10;
+/**
+ * NO TIME WINDOW. An earlier draft of this file tripped on "10 attempts inside
+ * 15 minutes with no pass". On this site that threshold can never be reached —
+ * production sees roughly one signup a week — so the breaker would have stayed
+ * shut forever and nobody would have been unblocked. What matters is not how
+ * many attempts arrive per hour, it is whether ANY of them can mint a token.
+ *
+ * So we count consecutive token-less attempts SINCE THE LAST VALID TOKEN, at
+ * whatever pace they arrive, and we treat a process that has never seen a
+ * single valid token differently from one that has.
+ */
 
-interface Window {
-  startedAt: number;
-  attempts: number;
-  passes: number;
-  missingToken: number;
-}
+/** The widget has never worked here — a handful of misses is already proof. */
+const COLD_MISSES = 5;
+/** It worked before, so demand much stronger evidence before opening. */
+const WARM_MISSES = 25;
+/** Re-alert at most this often while open. */
+const ALERT_EVERY_MS = 15 * 60 * 1000;
 
-let win: Window = { startedAt: Date.now(), attempts: 0, passes: 0, missingToken: 0 };
+let everPassed = false;
+let missesSinceLastPass = 0;
 let openedAt: number | null = null;
 let lastAlertAt = 0;
 
@@ -63,26 +71,20 @@ export function breakerEnabled(): boolean {
   return (process.env.TURNSTILE_BREAKER || '').toLowerCase() !== 'off';
 }
 
-function rollIfStale(now: number): void {
-  if (now - win.startedAt >= WINDOW_MS) {
-    win = { startedAt: now, attempts: 0, passes: 0, missingToken: 0 };
-  }
-}
-
 /** Record one guarded attempt. `outcome` is what the guard actually observed. */
-export function recordAttempt(outcome: 'pass' | 'missing' | 'invalid', now: number = Date.now()): void {
-  rollIfStale(now);
-  win.attempts += 1;
+export function recordAttempt(outcome: 'pass' | 'missing' | 'invalid'): void {
   if (outcome === 'pass') {
-    win.passes += 1;
-    // A single real pass proves the widget works. Close immediately.
+    everPassed = true;
+    missesSinceLastPass = 0;
     if (openedAt !== null) {
       logger.info('[TurnstileBreaker] a valid token arrived — closing, bot check enforced again');
       openedAt = null;
     }
     return;
   }
-  if (outcome === 'missing') win.missingToken += 1;
+  // A forged-but-invalid token is a bot, not a broken widget: a broken widget
+  // produces NOTHING. Only empty tokens count towards opening.
+  if (outcome === 'missing') missesSinceLastPass += 1;
 }
 
 /**
@@ -91,16 +93,9 @@ export function recordAttempt(outcome: 'pass' | 'missing' | 'invalid', now: numb
  */
 export function shouldBypass(now: number = Date.now()): boolean {
   if (!breakerEnabled()) return false;
-  rollIfStale(now);
   if (openedAt !== null) return true;
-
-  const noOneEverPasses = win.passes === 0;
-  const enoughEvidence = win.attempts >= MIN_ATTEMPTS;
-  // A broken widget produces EMPTY tokens (the client posts ''), not forged
-  // ones. Requiring that signature keeps a token-forging bot from opening it.
-  const looksLikeOurWidget = win.missingToken >= MIN_ATTEMPTS;
-
-  if (noOneEverPasses && enoughEvidence && looksLikeOurWidget) {
+  const needed = everPassed ? WARM_MISSES : COLD_MISSES;
+  if (missesSinceLastPass >= needed) {
     openedAt = now;
     return true;
   }
@@ -114,14 +109,15 @@ export function isDegraded(): boolean {
 
 export function shouldAlertNow(now: number = Date.now()): boolean {
   if (openedAt === null) return false;
-  if (now - lastAlertAt < WINDOW_MS) return false;
+  if (now - lastAlertAt < ALERT_EVERY_MS) return false;
   lastAlertAt = now;
   return true;
 }
 
 /** Test seam only. */
 export function __resetBreakerForTests(): void {
-  win = { startedAt: Date.now(), attempts: 0, passes: 0, missingToken: 0 };
+  everPassed = false;
+  missesSinceLastPass = 0;
   openedAt = null;
   lastAlertAt = 0;
 }
