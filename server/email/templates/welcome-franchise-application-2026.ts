@@ -1,4 +1,4 @@
-import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { PETWASH_LOGO_ON_LIGHT } from './logo-base64';
 
 interface FranchiseApplicationEmailData {
   firstName: string;
@@ -37,7 +37,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
       
       <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #7c3aed 100%); padding: 56px 40px; text-align: center; position: relative;">
         <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #c084fc, #c9a96e);"></div>
-        <img src="${PETWASH_LOGO_BASE64}" alt="⁦PetWash™⁩" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
+        <img src="${PETWASH_LOGO_ON_LIGHT}" alt="⁦PetWash™⁩" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
         <h1 style="color: #ffffff; font-size: 28px; font-weight: 400; letter-spacing: 1.5px; margin: 0; font-family: 'Georgia', serif; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
           ${isHebrew ? 'בקשת זכיינות התקבלה' : 'Franchise Application Received'}
         </h1>

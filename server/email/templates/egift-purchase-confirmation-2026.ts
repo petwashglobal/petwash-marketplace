@@ -1,4 +1,4 @@
-import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { PETWASH_LOGO_ON_LIGHT } from './logo-base64';
 
 export type SeasonalTheme = 'black_friday' | 'valentines' | 'christmas' | 'hannukah' | 'purim' | 'general';
 
@@ -235,7 +235,7 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
 
       <!-- Logo -->
       <div class="fi d1" style="padding:32px 40px 12px;text-align:center;background:white;">
-        <img src="${PETWASH_LOGO_BASE64}" alt="PetWash™" style="max-width:120px;height:auto;" />
+        <img src="${PETWASH_LOGO_ON_LIGHT}" alt="PetWash™" style="max-width:120px;height:auto;" />
         <div style="margin-top:10px;font-size:8px;letter-spacing:5px;text-transform:uppercase;color:#bbb;">
           ${isHe ? 'אישור רכישה יוקרתי' : 'Luxury Purchase Confirmation'}
         </div>
