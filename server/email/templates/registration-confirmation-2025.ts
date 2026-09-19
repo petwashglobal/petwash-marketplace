@@ -21,24 +21,24 @@ const BRAND_COLORS = {
 const baseStyles = `
   body { font-family: 'Helvetica Neue', Arial, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
   .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-  .header { background: linear-gradient(135deg, ${BRAND_COLORS.primary}, ${BRAND_COLORS.secondary}); padding: 40px 30px; text-align: center; }
+  .header { background: ${BRAND_COLORS.primary}; background: linear-gradient(135deg, ${BRAND_COLORS.primary}, ${BRAND_COLORS.secondary}); padding: 40px 30px; text-align: center; }
   .logo { max-width: 180px; height: auto; margin-bottom: 20px; }
   .header h1 { color: white; margin: 0; font-size: 28px; font-weight: 600; }
   .content { padding: 40px 30px; }
   .content h2 { color: ${BRAND_COLORS.dark}; margin: 0 0 20px; font-size: 24px; }
   .content p { color: #4B5563; line-height: 1.6; margin: 0 0 16px; }
-  .highlight-box { background: linear-gradient(135deg, #F3E8FF, #FCE7F3); border-radius: 12px; padding: 24px; margin: 24px 0; }
+  .highlight-box { background:#F3E8FF;background:linear-gradient(135deg, #F3E8FF, #FCE7F3); border-radius: 12px; padding: 24px; margin: 24px 0; }
   .highlight-box h3 { color: ${BRAND_COLORS.primary}; margin: 0 0 12px; font-size: 18px; }
   .details-list { list-style: none; padding: 0; margin: 0; }
   .details-list li { padding: 8px 0; border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; }
   .details-list li:last-child { border-bottom: none; }
   .details-list .label { color: #6B7280; }
   .details-list .value { color: ${BRAND_COLORS.dark}; font-weight: 500; }
-  .cta-button { display: inline-block; background: linear-gradient(135deg, ${BRAND_COLORS.primary}, ${BRAND_COLORS.secondary}); color: white; text-decoration: none; padding: 16px 32px; border-radius: 30px; font-weight: 600; margin: 24px 0; }
+  .cta-button { display: inline-block; background: ${BRAND_COLORS.primary}; background: linear-gradient(135deg, ${BRAND_COLORS.primary}, ${BRAND_COLORS.secondary}); color: white; text-decoration: none; padding: 16px 32px; border-radius: 30px; font-weight: 600; margin: 24px 0; }
   .footer { background: ${BRAND_COLORS.dark}; color: #9CA3AF; padding: 30px; text-align: center; font-size: 14px; }
   .footer a { color: ${BRAND_COLORS.secondary}; text-decoration: none; }
   .tier-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; }
-  .tier-bronze { background: linear-gradient(135deg, #92400E, #D97706); color: white; }
+  .tier-bronze { background:#92400E;background:linear-gradient(135deg, #92400E, #D97706); color: white; }
   .services-grid { display: grid; gap: 12px; margin: 16px 0; }
   .service-item { background: #F3F4F6; padding: 12px 16px; border-radius: 8px; display: flex; align-items: center; gap: 10px; }
   .service-icon { font-size: 20px; }
@@ -146,7 +146,7 @@ export function generateNewUserConfirmationEmail(params: NewUserEmailParams): { 
     <div class="footer">
       <p>${isHebrew ? 'תודה שבחרת ב-⁦PetWash™⁩' : 'Thank you for choosing ⁦PetWash™⁩'}</p>
       <div style="margin:20px 0 14px;">
-        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
+        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:#f09433;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
         <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
         <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
         <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
@@ -200,7 +200,7 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
 </head>
 <body>
   <div class="container">
-    <div class="header" style="background: linear-gradient(135deg, #F59E0B, #EF4444);">
+    <div class="header" style="background:#F59E0B;background:linear-gradient(135deg, #F59E0B, #EF4444);">
       <img src="${PETWASH_LOGO_BASE64}" alt="⁦PetWash™⁩" class="logo" />
       <h1>${isHebrew ? 'מועדון הנאמנות' : 'Loyalty Club'}</h1>
     </div>
@@ -213,7 +213,7 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
         : 'Welcome to ⁦PetWash™⁩\'s exclusive 7-Star Loyalty Club.'
       }</p>
       
-      <div class="highlight-box" style="background: linear-gradient(135deg, #FEF3C7, #FDE68A); text-align: center;">
+      <div class="highlight-box" style="background:#FEF3C7;background:linear-gradient(135deg, #FEF3C7, #FDE68A); text-align: center;">
         <h3 style="color: #92400E;">${isHebrew ? '🏆 הדרגה שלך' : '🏆 Your Tier'}</h3>
         <span class="tier-badge tier-bronze">${isHebrew ? tierLabel.he : tierLabel.en}</span>
         <p style="margin-top: 16px; color: #92400E;">
@@ -249,7 +249,7 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
       }</p>
       
       <center>
-        <a href="https://petwash.co.il/loyalty/dashboard" class="cta-button" style="background: linear-gradient(135deg, #F59E0B, #EF4444);">
+        <a href="https://petwash.co.il/loyalty/dashboard" class="cta-button" style="background:#F59E0B;background:linear-gradient(135deg, #F59E0B, #EF4444);">
           ${isHebrew ? '📊 צפה בלוח הבקרה שלך' : '📊 View Your Dashboard'}
         </a>
       </center>
@@ -258,7 +258,7 @@ export function generateLoyaltyEnrollmentEmail(params: LoyaltyEnrollmentEmailPar
     <div class="footer">
       <p>${isHebrew ? 'תודה שבחרת ב-⁦PetWash™⁩' : 'Thank you for choosing ⁦PetWash™⁩'}</p>
       <div style="margin:20px 0 14px;">
-        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
+        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:#f09433;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
         <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
         <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
         <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>
@@ -310,7 +310,7 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
 </head>
 <body>
   <div class="container">
-    <div class="header" style="background: linear-gradient(135deg, #10B981, #059669);">
+    <div class="header" style="background:#10B981;background:linear-gradient(135deg, #10B981, #059669);">
       <img src="${PETWASH_LOGO_BASE64}" alt="⁦PetWash™⁩" class="logo" />
       <h1>${isHebrew ? 'הבקשה התקבלה!' : 'Application Received!'}</h1>
     </div>
@@ -323,7 +323,7 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
         : 'Thank you for applying to join the ⁦PetWash™⁩ provider team. We\'ve received your application and will review it shortly.'
       }</p>
       
-      <div class="highlight-box" style="background: linear-gradient(135deg, #D1FAE5, #A7F3D0);">
+      <div class="highlight-box" style="background:#D1FAE5;background:linear-gradient(135deg, #D1FAE5, #A7F3D0);">
         <h3 style="color: #065F46;">${isHebrew ? '📋 פרטי הבקשה' : '📋 Application Details'}</h3>
         <ul class="details-list">
           <li>
@@ -362,7 +362,7 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
       }</p>
       
       <center>
-        <a href="https://petwash.co.il/provider-application/status" class="cta-button" style="background: linear-gradient(135deg, #10B981, #059669);">
+        <a href="https://petwash.co.il/provider-application/status" class="cta-button" style="background:#10B981;background:linear-gradient(135deg, #10B981, #059669);">
           ${isHebrew ? '📊 עקוב אחר הבקשה' : '📊 Track Your Application'}
         </a>
       </center>
@@ -371,7 +371,7 @@ export function generateProviderEnrollmentEmail(params: ProviderEnrollmentEmailP
     <div class="footer">
       <p>${isHebrew ? 'תודה שבחרת להצטרף לצוות ⁦PetWash™⁩' : 'Thank you for joining the ⁦PetWash™⁩ team'}</p>
       <div style="margin:20px 0 14px;">
-        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
+        <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:#f09433;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">📷 Instagram</a>
         <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">f Facebook</a>
         <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;border:1px solid #444;">♪ TikTok</a>
         <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:bold;margin:0 4px 6px;">💬 WhatsApp</a>

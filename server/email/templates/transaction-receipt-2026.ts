@@ -182,7 +182,7 @@ ${preheader}&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nbsp;&#8203;&nb
         </table>
         <!-- Social Media Buttons -->
         <p style="margin:20px 0 10px;text-align:center;">
-          <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">📷 Instagram</a>
+          <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;background:#f09433;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">📷 Instagram</a>
           <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;background:#1877F2;color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">f Facebook</a>
           <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;background:#010101;color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;border:1px solid #333;">♪ TikTok</a>
           <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:bold;font-family:Arial,sans-serif;margin:0 3px;">💬 WhatsApp</a>

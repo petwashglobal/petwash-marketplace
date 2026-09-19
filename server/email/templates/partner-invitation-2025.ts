@@ -24,14 +24,14 @@ export function generatePartnerInvitation(data: PartnerInvitationData): { subjec
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>⁦PetWash™⁩ - Partner Invitation</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background:#667eea;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh;">
   
   <!-- Main Container -->
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="max-width: 680px; margin: 40px auto; background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
     
     <!-- Header with Gradient -->
     <tr>
-      <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); padding: 50px 40px; text-align: center;">
+      <td style="background:#667eea;background:linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%); padding: 50px 40px; text-align: center;">
         <div style="font-size: 60px; margin-bottom: 20px;">🐾</div>
         <h1 style="margin: 0; color: white; font-size: 42px; font-weight: 900; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">
           PET WASH™
@@ -66,7 +66,7 @@ export function generatePartnerInvitation(data: PartnerInvitationData): { subjec
     <!-- Presentation Highlights -->
     <tr>
       <td style="padding: 0 40px 30px 40px;">
-        <div style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 16px; padding: 30px; margin-bottom: 30px;">
+        <div style="background:#f5f7fa;background:linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 16px; padding: 30px; margin-bottom: 30px;">
           <h3 style="margin: 0 0 20px 0; color: #1a1a1a; font-size: 22px; font-weight: 700;">
             📊 What's Inside the Presentation:
           </h3>
@@ -115,7 +115,7 @@ export function generatePartnerInvitation(data: PartnerInvitationData): { subjec
     <!-- CTA Button -->
     <tr>
       <td style="padding: 0 40px 40px 40px; text-align: center;">
-        <a href="${presentationUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 18px 50px; border-radius: 50px; font-size: 18px; font-weight: 700; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); transition: all 0.3s ease;">
+        <a href="${presentationUrl}" style="display: inline-block; background:#667eea;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 18px 50px; border-radius: 50px; font-size: 18px; font-weight: 700; box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4); transition: all 0.3s ease;">
           🚀 VIEW INVESTOR PRESENTATION
         </a>
         <p style="margin: 20px 0 0 0; color: #666; font-size: 14px;">
@@ -143,7 +143,7 @@ export function generatePartnerInvitation(data: PartnerInvitationData): { subjec
 
     <!-- Footer -->
     <tr>
-      <td style="background: linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%); padding: 40px; text-align: center;">
+      <td style="background:#1a1a1a;background:linear-gradient(135deg, #1a1a1a 0%, #2d3748 100%); padding: 40px; text-align: center;">
         <p style="margin: 0 0 15px 0; color: white; font-size: 20px; font-weight: 700;">
           Pet Wash Ltd (פט וואש בע"מ)
         </p>

@@ -1201,7 +1201,7 @@ export class IsraeliDigitalReceiptService {
               <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:10px;padding:10px 16px;">
+                    <td style="background:#f09433;background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:10px;padding:10px 16px;">
                       <span style="color:#ffffff;font-size:13px;font-weight:bold;font-family:Arial,sans-serif;letter-spacing:0.3px;">📷 Instagram</span>
                     </td>
                   </tr>

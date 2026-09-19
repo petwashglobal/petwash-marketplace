@@ -315,7 +315,7 @@ export function generateLuxuryWelcomeEmail(data: LuxuryWelcomeEmailData): { subj
             <td class="card" style="background:#ffffff; border:1px solid #e9e9ee; border-radius:18px; overflow:hidden;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
-                  <td class="line" style="background:linear-gradient(90deg, #c9a96e, #e8d5a3, #dcc07a, #c9a96e); height:4px; line-height:4px; font-size:0;">&nbsp;</td>
+                  <td class="line" style="background:#c9a96e;background:linear-gradient(90deg, #c9a96e, #e8d5a3, #dcc07a, #c9a96e); height:4px; line-height:4px; font-size:0;">&nbsp;</td>
                 </tr>
               </table>
 

@@ -222,7 +222,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 
   <!-- ═══ GOLD TOP BAND ═══ -->
   <tr>
-    <td style="background:linear-gradient(90deg,
+    <td style="background:#ffffff;background:linear-gradient(90deg,
                #ffffff 0%,
                #e8d48a 10%,
                #D4AF37 25%,
@@ -243,7 +243,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
             <div style="font-size:10px;letter-spacing:3px;color:#aaaaaa;text-transform:uppercase;">${isHe ? 'כרטיס חבר Prestige' : 'PRESTIGE MEMBERSHIP'}</div>
           </td>
           <td align="${isHe ? 'left' : 'right'}">
-            <div style="display:inline-block;background:linear-gradient(135deg,#000000 0%,#1a1100 60%,#0d0d0d 100%);
+            <div style="display:inline-block;background:#000000;background:linear-gradient(135deg,#000000 0%,#1a1100 60%,#0d0d0d 100%);
                         border-radius:8px;padding:8px 16px;text-align:center;
                         box-shadow:0 2px 8px rgba(0,0,0,.18);">
               <div style="font-size:9px;letter-spacing:3px;color:rgba(${cfg.accentRgb},.7);text-transform:uppercase;margin-bottom:3px;">${isHe ? cfg.labelHe : cfg.label}</div>
@@ -438,7 +438,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
         }
       </div>
       <div style="background:#f0f0f0;border-radius:6px;height:5px;overflow:hidden;">
-        <div style="background:linear-gradient(90deg,#C6A35B,#D4AF37);width:${progressPct}%;height:5px;border-radius:6px;"></div>
+        <div style="background:#C6A35B;background:linear-gradient(90deg,#C6A35B,#D4AF37);width:${progressPct}%;height:5px;border-radius:6px;"></div>
       </div>
       ${p.nextTierPointsNeeded ? `
       <div style="font-size:11px;color:#bbb;margin-top:6px;text-align:${isHe ? 'left' : 'right'};">
@@ -521,7 +521,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
     <td style="padding:0 40px 36px;" align="center">
       <a href="${appUrl}/prestige-pass" target="_blank"
          style="display:inline-block;
-                background:linear-gradient(135deg,#C6A35B 0%,#F0D060 40%,#E7C978 60%,#B8941F 100%);
+                background:#C6A35B;background:linear-gradient(135deg,#C6A35B 0%,#F0D060 40%,#E7C978 60%,#B8941F 100%);
                 color:#0a0800;font-size:12px;font-weight:800;text-decoration:none;
                 padding:17px 52px;border-radius:40px;text-align:center;
                 letter-spacing:4px;text-transform:uppercase;
@@ -533,7 +533,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
 
   <!-- ═══ GOLD BOTTOM BAND ═══ -->
   <tr>
-    <td style="background:linear-gradient(90deg,
+    <td style="background:#ffffff;background:linear-gradient(90deg,
                #ffffff 0%,
                #e8d48a 10%,
                #D4AF37 25%,

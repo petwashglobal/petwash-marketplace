@@ -40,7 +40,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
 
   const servicesHtml = (data.serviceTypes || [data.providerType]).map(type => {
     const label = PROVIDER_TYPE_LABELS[type] || { en: type, he: type };
-    return `<div style="display: inline-block; background: linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #F1DA83; border-radius: 2px; padding: 10px 20px; margin: 4px; font-size: 13px; color: #8A6A1B; font-weight: 500; letter-spacing: 0.3px;">${isHebrew ? label.he : label.en}</div>`;
+    return `<div style="display: inline-block; background:#f0fdfa;background:linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #F1DA83; border-radius: 2px; padding: 10px 20px; margin: 4px; font-size: 13px; color: #8A6A1B; font-weight: 500; letter-spacing: 0.3px;">${isHebrew ? label.he : label.en}</div>`;
   }).join('');
 
   const html = `<!DOCTYPE html>
@@ -54,8 +54,8 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
   <div style="max-width: 640px; margin: 0 auto; padding: 32px 16px;">
     <div style="background: #ffffff; border-radius: 2px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
       
-      <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #8A6A1B 100%); padding: 56px 40px; text-align: center; position: relative;">
-        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #D4AF37, #F1DA83, #D4AF37, #B8902F);"></div>
+      <div style="background:#0f172a;background:linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #8A6A1B 100%); padding: 56px 40px; text-align: center; position: relative;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background:#D4AF37;background:linear-gradient(90deg, #D4AF37, #F1DA83, #D4AF37, #B8902F);"></div>
         <img src="${PETWASH_LOGO_ON_LIGHT}" alt="Pet Wash\u2122" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
         <h1 style="color: #ffffff; font-size: 28px; font-weight: 400; letter-spacing: 1.5px; margin: 0; font-family: 'Georgia', serif; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
           ${isHebrew ? '\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05E6\u05D5\u05D5\u05EA' : 'Welcome to the Team'}
@@ -68,7 +68,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
         </div>
       </div>
       
-      <div style="height: 2px; background: linear-gradient(90deg, #8A6A1B, #D4AF37, #D4AF37, #F1DA83, #D4AF37, #D4AF37, #8A6A1B);"></div>
+      <div style="height: 2px; background:#8A6A1B;background:linear-gradient(90deg, #8A6A1B, #D4AF37, #D4AF37, #F1DA83, #D4AF37, #D4AF37, #8A6A1B);"></div>
       
       <div style="padding: 52px 44px;">
         <h2 style="font-size: 22px; color: #0f172a; margin: 0 0 28px; font-weight: 400; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif;">
@@ -76,8 +76,8 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
         </h2>
         
         ${data.autoApproved ? `
-        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background: linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #F1DA83;">
-          <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #8A6A1B, #B8902F); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background:#f0fdfa;background:linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #F1DA83;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background:#8A6A1B;background:linear-gradient(135deg, #8A6A1B, #B8902F); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
             <span style="color: #ffffff; font-size: 20px; font-weight: bold; line-height: 40px;">\u2713</span>
           </div>
           <h3 style="margin: 0 0 6px; font-size: 18px; color: #8A6A1B; font-family: 'Georgia', serif; font-weight: 400;">
@@ -88,8 +88,8 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
           </p>
         </div>
         ` : `
-        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a;">
-          <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #d97706, #f59e0b); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background:#fffbeb;background:linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fde68a;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background:#d97706;background:linear-gradient(135deg, #d97706, #f59e0b); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
             <span style="color: #ffffff; font-size: 18px; font-weight: bold; line-height: 40px;">\u2026</span>
           </div>
           <h3 style="margin: 0 0 6px; font-size: 18px; color: #b45309; font-family: 'Georgia', serif; font-weight: 400;">
@@ -107,7 +107,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
             : 'Thank you for joining the Pet Wash\u2122 provider team. As a professional service provider, you\'ll get access to a dedicated dashboard with all the tools you need to manage your business.'}
         </p>
         
-        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 28px; margin: 32px 0;">
+        <div style="background:#f8fafc;background:linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 28px; margin: 32px 0;">
           <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #8A6A1B; margin: 0 0 20px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'};">
             ${isHebrew ? '\u05E4\u05E8\u05D8\u05D9 \u05D4\u05D1\u05E7\u05E9\u05D4' : 'Application Details'}
           </h3>
@@ -154,7 +154,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
         </div>
         ` : ''}
         
-        <div style="background: linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #F1DA83; border-radius: 2px; padding: 32px; margin: 36px 0;">
+        <div style="background:#f0fdfa;background:linear-gradient(135deg, #f0fdfa, #ccfbf1); border: 1px solid #F1DA83; border-radius: 2px; padding: 32px; margin: 36px 0;">
           <h3 style="font-size: 16px; color: #0f172a; margin: 0 0 20px; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif; font-weight: 400;">
             ${isHebrew ? '\u05DC\u05D5\u05D7 \u05D4\u05D1\u05E7\u05E8\u05D4 \u05D4\u05DE\u05E7\u05E6\u05D5\u05E2\u05D9 \u05E9\u05DC\u05DA' : 'Your Professional Dashboard'}
           </h3>
@@ -191,7 +191,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
           </table>
         </div>
         
-        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-${isHebrew ? 'right' : 'left'}: 3px solid #8A6A1B; border-radius: 2px; padding: 20px 24px; margin: 28px 0;">
+        <div style="background:#f8fafc;background:linear-gradient(135deg, #f8fafc, #f1f5f9); border-${isHebrew ? 'right' : 'left'}: 3px solid #8A6A1B; border-radius: 2px; padding: 20px 24px; margin: 28px 0;">
           <strong style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 6px;">
             ${isHebrew ? 'איך מחושב התשלום:' : 'How you get paid:'}
           </strong>
@@ -210,7 +210,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="width: 36px; vertical-align: top; padding: 8px 0;">
-                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #0f172a, #1e293b); color: #F1DA83; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">1</div>
+                <div style="width: 32px; height: 32px; border-radius: 2px; background:#0f172a;background:linear-gradient(135deg, #0f172a, #1e293b); color: #F1DA83; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">1</div>
               </td>
               <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
                 <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D0\u05D9\u05DE\u05D5\u05EA \u05DE\u05E1\u05DE\u05DB\u05D9\u05DD' : 'Document Verification'}</h4>
@@ -219,7 +219,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
             </tr>
             <tr>
               <td style="width: 36px; vertical-align: top; padding: 8px 0;">
-                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #0f172a, #1e293b); color: #F1DA83; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">2</div>
+                <div style="width: 32px; height: 32px; border-radius: 2px; background:#0f172a;background:linear-gradient(135deg, #0f172a, #1e293b); color: #F1DA83; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">2</div>
               </td>
               <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
                 <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D0\u05D9\u05E9\u05D5\u05E8 \u05D7\u05E9\u05D1\u05D5\u05DF' : 'Account Approval'}</h4>
@@ -228,7 +228,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
             </tr>
             <tr>
               <td style="width: 36px; vertical-align: top; padding: 8px 0;">
-                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #0f172a, #1e293b); color: #F1DA83; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">3</div>
+                <div style="width: 32px; height: 32px; border-radius: 2px; background:#0f172a;background:linear-gradient(135deg, #0f172a, #1e293b); color: #F1DA83; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">3</div>
               </td>
               <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
                 <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? '\u05D4\u05EA\u05D7\u05DC \u05DC\u05E2\u05D1\u05D5\u05D3' : 'Start Working'}</h4>
@@ -240,7 +240,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
         ` : ''}
         
         <div style="text-align: center; margin: 40px 0;">
-          <a href="https://petwash.co.il/provider-os" style="display: inline-block; background: linear-gradient(135deg, #F1DA83, #D4AF37 55%, #B8902F); color: #1a1a1a; text-decoration: none; padding: 16px 44px; border-radius: 2px; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Georgia', serif;">
+          <a href="https://petwash.co.il/provider-os" style="display: inline-block; background:#F1DA83;background:linear-gradient(135deg, #F1DA83, #D4AF37 55%, #B8902F); color: #1a1a1a; text-decoration: none; padding: 16px 44px; border-radius: 2px; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Georgia', serif;">
             ${isHebrew ? '\u05DC\u05D5\u05D7 \u05D4\u05D1\u05E7\u05E8\u05D4 \u05E9\u05DC\u05D9' : 'My Dashboard'}
           </a>
         </div>
@@ -252,7 +252,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
         </p>
       </div>
       
-      <div style="background: linear-gradient(160deg, #0f172a, #1e293b); padding: 36px 44px; text-align: center;">
+      <div style="background:#0f172a;background:linear-gradient(160deg, #0f172a, #1e293b); padding: 36px 44px; text-align: center;">
         <p style="margin: 0;">
           <a href="https://petwash.co.il" style="color: #D4AF37; text-decoration: none; font-size: 13px; letter-spacing: 0.5px;">petwash.co.il</a>
           <span style="color: rgba(255,255,255,0.2); margin: 0 8px;">\u2502</span>
