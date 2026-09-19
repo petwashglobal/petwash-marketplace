@@ -46,7 +46,27 @@ import { logger } from './logger';
 export type GuardedSendResult =
   | { ok: true; service: string }
   | { ok: false; reason: 'circuit_open'; detail: string; service: string }
-  | { ok: false; reason: 'send_failed'; service: string };
+  | { ok: false; reason: 'send_failed'; service: string; detail?: string };
+
+/**
+ * SendGrid's OWN validation strings from a failed send, for the log and the
+ * caller — e.g. "from.email: The from email does not contain a valid address".
+ * These name the malformed field; they never contain the API key or a
+ * recipient. Anything that looks like a key is still redacted defensively.
+ * Empty when the error carries no SendGrid body (network error, mock).
+ */
+export function sendGridErrorDetail(err: unknown): string {
+  const body = (err as { response?: { body?: { errors?: unknown } } })?.response?.body;
+  const errors = Array.isArray(body?.errors) ? body!.errors : [];
+  const parts: string[] = [];
+  for (const e of errors as Array<{ message?: unknown; field?: unknown }>) {
+    const msg = typeof e?.message === 'string' ? e.message : '';
+    if (!msg) continue;
+    const field = typeof e?.field === 'string' && e.field ? `${e.field}: ` : '';
+    parts.push(`${field}${msg}`);
+  }
+  return parts.join(' | ').replace(/SG\.[A-Za-z0-9_.-]+/g, 'SG.[redacted]').slice(0, 300);
+}
 
 export interface GuardedSendParams {
   /**
@@ -104,15 +124,22 @@ export async function sendGuardedEmail(
     // Defensive logging: never leak API key, message body, or full recipient.
     const errorCode = (err as { code?: number | string })?.code;
     const errorName = (err as { name?: string })?.name;
+    // 2026-09-19: the SendGrid validation strings (field + message) are the
+    // one thing that turns "400" into a cause. They are not headers and not
+    // the body of the mail; keys are still redacted defensively.
+    const detail = sendGridErrorDetail(err);
     logger.error('[guarded-sendgrid] sgMail.send failed', {
       service,
       recipientDomain: recipientDomain(recipient),
       errorCode,
       errorName,
-      // Intentionally do NOT include err.response or err.message — they
-      // can echo headers including the API key on auth failures.
+      ...(detail ? { sendgridErrors: detail } : {}),
+      // Intentionally do NOT include err.response headers or err.message — they
+      // can echo the API key on auth failures.
     });
-    return { ok: false, reason: 'send_failed', service };
+    return detail
+      ? { ok: false, reason: 'send_failed', service, detail }
+      : { ok: false, reason: 'send_failed', service };
   }
 
   // 3. Post-send guard accounting.

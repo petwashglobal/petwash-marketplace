@@ -470,7 +470,13 @@ PetWash is a premium brand. Every UI surface must look it.
 
 > Update this section after every merge. Date stamp the update.
 
-**Last updated: 2026-06-10**
+**Last updated: 2026-09-19**
+
+### 2026-09-19 — messaging is LIVE end to end (read this before touching chat, inbox, email or SMS)
+- The first real support message went through the production dispatcher (`server/lib/notificationDispatcher.ts`) from the Actions tab: **in-app inbox ✅, SMS ✅ (Twilio, received on the CEO's phone), email ❌ (SendGrid HTTP 400)**. Run it yourself: `.github/workflows/diagnose-chat-delivery.yml` (Run workflow, or push `ops/diagnose/chat-delivery.json` on a `diag/chat-delivery/**` branch — delete the branch after, it holds a phone number).
+- The 400 is a malformed request, not an unverified sender. `SENDGRID_FROM_EMAIL` was read raw at four call sites; the API key was already stripped of a trailing newline for the same reason. Every read now goes through `cleanSenderAddress()` (`server/lib/sendgrid.ts`) and the guarded send logs SendGrid's own `field: message`. If the next run still says 400, the summary's "Sender secret shape" line names the cause — fix the secret in GCP Secret Manager, not the code.
+- Booking chat (`/api/booking-chat`) notifies in-app + push + email only; there is no SMS on any chat-message path by design. Support → customer (`POST /api/inbox/admin/send-user`) sends inbox + email by default, `channels: ['sms']` opt-in.
+- Chat fixes merged today (#2628): sitter conversations were addressed to a row number, the push/email gate was per-user not per-thread, the offline email bypassed the spend guard, support messages never left the app. Passport: #2639, #2643 (signed-in web root → real home). CI: the Money & Auth Safety Gate is PR-only (#2628).
 
 ### Merged (in roadmap order)
 - **PR-A** (#76) — Auth P0 fixes

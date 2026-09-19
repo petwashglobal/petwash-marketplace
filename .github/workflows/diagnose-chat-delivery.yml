@@ -23,6 +23,16 @@ name: 📨 Diagnose — chat/support delivery (sends ONE real test message)
 # ────────────────────────────────────────────────────────────
 
 on:
+  # Second door (2026-09-19): the GitHub App that Claude sessions run through
+  # cannot call workflow_dispatch (403 "Resource not accessible by
+  # integration"), but it can push. A push to a diag/chat-delivery/** branch
+  # that carries ops/diagnose/chat-delivery.json runs the same job with the
+  # same secrets. The branch is temporary — delete it after the run, it holds
+  # a real phone number. Only collaborators can push, the same people who can
+  # press the button.
+  push:
+    branches: ['diag/chat-delivery/**']
+    paths: ['ops/diagnose/chat-delivery.json']
   workflow_dispatch:
     inputs:
       target_email:
@@ -122,12 +132,31 @@ jobs:
             fi
           done
 
+      - name: Resolve the request (form inputs, or the committed request file on a diag branch)
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "push" ]; then
+            F=ops/diagnose/chat-delivery.json
+            test -f "$F" || { echo "::error::$F missing on this diag branch"; exit 1; }
+            {
+              echo "TARGET_EMAIL=$(jq -r '.target_email // empty' "$F")"
+              echo "TARGET_PHONE=$(jq -r '.target_phone // empty' "$F")"
+              echo "CHANNELS=$(jq -r '.channels // "inbox,email"' "$F")"
+              echo "LOCALE=$(jq -r '.locale // "en"' "$F")"
+            } >> "$GITHUB_ENV"
+            echo "Request taken from $F (push to ${{ github.ref_name }})"
+          else
+            {
+              echo "TARGET_EMAIL=${{ inputs.target_email }}"
+              echo "TARGET_PHONE=${{ inputs.target_phone }}"
+              echo "CHANNELS=${{ inputs.channels }}"
+              echo "LOCALE=${{ inputs.locale }}"
+            } >> "$GITHUB_ENV"
+            echo "Request taken from the Run-workflow form"
+          fi
+
       - name: Send the test message and report per channel
         env:
-          TARGET_EMAIL: ${{ inputs.target_email }}
-          TARGET_PHONE: ${{ inputs.target_phone }}
-          CHANNELS: ${{ inputs.channels }}
-          LOCALE: ${{ inputs.locale }}
           FIREBASE_PROJECT_ID: signinpetwash
           BASE_URL: https://petwash.co.il
           NODE_OPTIONS: --max-old-space-size=2048

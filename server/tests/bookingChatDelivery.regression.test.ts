@@ -101,8 +101,10 @@ describe('booking-chat — offline email fallback is guarded and sent from the v
     expect(cascade).not.toMatch(/sgMail\s*\.\s*send\s*\(/);
   });
 
-  it('uses SENDGRID_FROM_EMAIL rather than a hardcoded from address', () => {
-    expect(cascade).toMatch(/from:\s*\{\s*email:\s*process\.env\.SENDGRID_FROM_EMAIL/);
+  it('uses SENDGRID_FROM_EMAIL (sanitised) rather than a hardcoded from address', () => {
+    // 2026-09-19: the secret is read through cleanSenderAddress() — a trailing
+    // newline in the secret was a guaranteed SendGrid 400.
+    expect(cascade).toMatch(/from:\s*\{\s*email:\s*cleanSenderAddress\(process\.env\.SENDGRID_FROM_EMAIL/);
   });
 
   it('skips loudly when SendGrid is not configured instead of throwing into a warn', () => {

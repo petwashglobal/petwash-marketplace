@@ -9,6 +9,7 @@
  * Gate: DAILY_CLOSE_REMINDER_ENABLED=true
  */
 
+import { cleanSenderAddress } from '../lib/sendgrid';
 import cron from 'node-cron';
 import sgMail from '@sendgrid/mail';
 import { db } from '../db';
@@ -146,7 +147,7 @@ ${allClear
     service: 'cron:daily-close-reminder',
     msg: {
       to:      FINANCE_ALERT_EMAIL,
-      from:    process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',
+      from:    cleanSenderAddress(process.env.SENDGRID_FROM_EMAIL, 'finance@petwash.co.il'),
       subject,
       html,
     },
@@ -449,7 +450,7 @@ async function sendExecutiveDigestJob(): Promise<void> {
         service: 'cron:weekly-finance-exec-digest',
         msg: {
           to: recipients,
-          from: process.env.SENDGRID_FROM_EMAIL ?? 'finance@petwash.co.il',
+          from: cleanSenderAddress(process.env.SENDGRID_FROM_EMAIL, 'finance@petwash.co.il'),
           subject: `[PetWash Finance] Executive Weekly Digest — ${fromDate} to ${toDate}`,
           html: `<h2>PetWash Finance — Executive Weekly Digest</h2><p>Week: <strong>${fromDate}</strong> to <strong>${toDate}</strong></p><p>Log in to the Admin Wallet Dashboard → Executive tab to view the full KPI snapshot.</p>`,
         },

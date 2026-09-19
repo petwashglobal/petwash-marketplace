@@ -54,5 +54,56 @@ export function isSendGridConfigured(): boolean {
   return initialized;
 }
 
+/**
+ * The address SendGrid is told the mail is FROM.
+ *
+ * 2026-09-19 live delivery test: inbox and SMS delivered, email came back
+ * HTTP 400 from SendGrid. A 400 is "the request is malformed", not "sender
+ * unverified" (that is 403). The API key above is already stripped of
+ * whitespace and control characters because a secret once arrived with a
+ * trailing newline; SENDGRID_FROM_EMAIL was read raw at four call sites and
+ * never cleaned. A from address of "noreply@petwash.co.il\n" is a 400 on
+ * every send, for every email the dispatcher sends.
+ *
+ * Accepts a bare address or "Display Name <address>"; returns the bare
+ * address. Anything that is not an address falls back to the caller's
+ * default, so a broken secret degrades to the code default instead of a
+ * guaranteed 400.
+ */
+export function cleanSenderAddress(raw: string | null | undefined, fallback: string): string {
+  const s = (raw ?? '').replace(/[\x00-\x1F\x7F]/g, '').trim();
+  if (!s) return fallback;
+  const m = s.match(/<([^<>]+)>/);
+  const addr = (m ? m[1] : s).trim();
+  return /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(addr) ? addr : fallback;
+}
+
+/**
+ * A PII-safe description of a sender secret for diagnostics: its shape, never
+ * its local part. Prints in the delivery-test workflow so a bad secret names
+ * itself without anyone reading the value.
+ */
+export function describeSenderAddress(raw: string | null | undefined): {
+  present: boolean;
+  length: number;
+  trailingWhitespace: boolean;
+  controlChars: boolean;
+  angleBrackets: boolean;
+  looksLikeEmail: boolean;
+  domain: string | null;
+} {
+  const v = raw ?? '';
+  const cleaned = cleanSenderAddress(v, '');
+  return {
+    present: v.length > 0,
+    length: v.length,
+    trailingWhitespace: v !== v.trimEnd(),
+    controlChars: /[\x00-\x1F\x7F]/.test(v),
+    angleBrackets: /<[^<>]+>/.test(v),
+    looksLikeEmail: cleaned !== '',
+    domain: cleaned ? cleaned.split('@')[1] : null,
+  };
+}
+
 export { sgMail };
 export default sgMail;
