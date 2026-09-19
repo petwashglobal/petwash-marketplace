@@ -96,3 +96,42 @@ describe('the passes that were dead go through the fixed generator', () => {
     });
   }
 });
+
+describe('the pass TYPE matches the one certificate we have', () => {
+  /**
+   * A .pkpass declares a passTypeIdentifier and Apple requires it to be the
+   * SAME Pass Type ID the signing certificate was issued for. There is exactly
+   * ONE signer certificate configured (APPLE_SIGNER_CERT_PEM), so exactly one
+   * pass type can legitimately be declared.
+   *
+   * appleWallet.ts declared FOUR different ones — vip, voucher, businesscard —
+   * under yet another env name (APPLE_PASS_TYPE_ID vs the working service's
+   * APPLE_PASS_TYPE_IDENTIFIER). A pass signed with the prestige certificate
+   * but declaring pass.com.petwash.voucher downloads and then refuses to
+   * install: the same silent failure as a wrong team identifier.
+   *
+   * So fixing the certificate env names was necessary but NOT sufficient — the
+   * booking and gift-card passes would have built and still not opened.
+   */
+  it('every pass declares the same identifier, from one constant', () => {
+    const declarations = [...legacy.matchAll(/passTypeIdentifier:\s*([^,\n]+)/g)].map((m) => m[1].trim());
+    expect(declarations.length).toBeGreaterThan(2);
+    for (const d of declarations) expect(d).toBe('APPLE_PASS_TYPE_IDENTIFIER');
+  });
+
+  it('no per-pass hardcoded pass type survives', () => {
+    for (const stale of ['pass.com.petwash.vip', 'pass.com.petwash.voucher', 'pass.com.petwash.businesscard']) {
+      expect(legacy, `${stale} would be rejected by the prestige certificate`).not.toContain(stale);
+    }
+  });
+
+  it('it defaults to the same value the WORKING generator uses', () => {
+    expect(legacy).toContain("'pass.il.petwash.prestige'");
+    expect(modern).toContain("'pass.il.petwash.prestige'");
+  });
+
+  it('and reads the same env name, with the legacy one as fallback', () => {
+    expect(legacy).toMatch(/process\.env\.APPLE_PASS_TYPE_IDENTIFIER\s*\n?\s*\|\|\s*process\.env\.APPLE_PASS_TYPE_ID/);
+    expect(modern).toContain('APPLE_PASS_TYPE_IDENTIFIER');
+  });
+});
