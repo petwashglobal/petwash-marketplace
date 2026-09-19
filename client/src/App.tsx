@@ -52,6 +52,7 @@ import { isImmersiveRoute } from "@/lib/immersive-routes";
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
 import Home from "@/pages/Home";
+import SignedInRoot from "@/components/SignedInRoot";
 
 // Initialize Sentry once — after all static imports are resolved
 initClientSentry();
@@ -1005,10 +1006,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       // component; the URL now honors the CEO product model.
       return <Redirect to={user ? '/pet-parent/home' : '/signup'} />;
     }
-    // Web browser — marketing Landing for signed-out, Home for signed-in (unchanged).
+    // Web browser — marketing Landing for signed-out. Signed-in (CEO 2026-09-19):
+    // go where the post-login decider says (/pet-parent/home for a member,
+    // /provider-os, /admin/dashboard, or a gating screen), exactly as after
+    // sign-in and as the native app already does. Until now a signed-in web
+    // visitor at "/" or the Home tab got the marketing Landing — a page with no
+    // navigation — and their real home, with the Pet Passport, wallet and
+    // bookings, was reachable only through Account → workspace switcher.
+    // If the decider cannot answer, SignedInRoot renders the old Home/Landing.
     if (loading) return <PageLoader />;
     return user ? (
-      <Home language={language} onLanguageChange={handleLanguageChange} />
+      <SignedInRoot
+        loader={<PageLoader />}
+        fallback={<Home language={language} onLanguageChange={handleLanguageChange} />}
+      />
     ) : (
       <Landing language={language} onLanguageChange={handleLanguageChange} />
     );
