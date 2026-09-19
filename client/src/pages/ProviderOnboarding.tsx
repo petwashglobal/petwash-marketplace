@@ -1070,7 +1070,7 @@ export default function ProviderOnboarding() {
         // rendered on a customer surface.
         const FRIENDLY: Record<string, { he: string; en: string }> = {
           PHONE_NOT_VERIFIED: {
-            he: 'נדרש לאמת את מספר הטלפון שלך לפני שליחת הבקשה. עברו לאזור החשבון → אבטחה כדי לאמת.',
+            he: 'נדרש לאמת את מספר הטלפון שלך לפני שליחת הבקשה. עברו לאזור החשבון ← אבטחה כדי לאמת.',
             en: 'Please verify your mobile number before submitting. Head to Account → Security to verify.',
           },
           VERIFY_LOOKUP_FAILED: {

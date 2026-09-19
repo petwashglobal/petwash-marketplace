@@ -167,21 +167,21 @@ export function BiometricConsentDialog({
           'נתוני Face ID/Touch ID מעובדים על ידי Secure Enclave של Apple',
           'התבניות הביומטריות שלך לעולם לא עוזבות את המכשיר',
           '⁦PetWash™⁩ עומדת במדיניות השימוש בנתונים ביומטריים של Apple',
-          'ניתן לבטל גישה בכל עת בהגדרות → Face ID וקוד גישה'
+          'ניתן לבטל גישה בכל עת בהגדרות ← Face ID וקוד גישה'
         ],
         googleCompliance: '🤖 דרישות Google/Android',
         googleItems: [
           'אימות ביומטרי משתמש ב-Android BiometricPrompt API',
           'הנתונים מעובדים על ידי מודול האבטחה החומרתי של המכשיר',
           '⁦PetWash™⁩ עומדת במדיניות ביומטריה של Google Play',
-          'ניתן לנהל הרשאות בהגדרות → אבטחה → ביומטריה'
+          'ניתן לנהל הרשאות בהגדרות ← אבטחה ← ביומטריה'
         ],
         microsoftCompliance: '🪟 דרישות Microsoft',
         microsoftItems: [
           'Windows Hello משתמש ב-TPM (Trusted Platform Module)',
           'נתונים ביומטריים מבודדים ממערכת ההפעלה',
           '⁦PetWash™⁩ עומדת במדיניות פלטפורמת הזהות של Microsoft',
-          'ניהול בהגדרות → חשבונות → אפשרויות כניסה'
+          'ניהול בהגדרות ← חשבונות ← אפשרויות כניסה'
         ],
         consent1: 'אני מסכים להשתמש באימות הביומטרי של המכשיר (Face ID/Touch ID/Windows Hello) לכניסה מאובטחת ל-⁦PetWash™⁩',
         consent2: 'אני מבין שהנתונים הביומטריים שלי מעובדים מקומית במכשיר ו-⁦PetWash™⁩ לעולם לא מקבלת או מאחסנת מידע רגיש זה',

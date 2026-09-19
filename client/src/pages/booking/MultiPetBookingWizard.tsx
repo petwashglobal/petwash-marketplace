@@ -1382,7 +1382,7 @@ function ConfirmStep({
           {isSubmitting ? (
             <><Loader2 className="w-4 h-4 animate-spin mr-2" />שולח בקשת הזמנה...</>
           ) : (
-            "שלח בקשת הזמנה ←"
+            "שליחת בקשת הזמנה"
         )}
       </Button>
 

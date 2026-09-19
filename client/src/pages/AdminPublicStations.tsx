@@ -62,7 +62,7 @@ export default function AdminPublicStations() {
     sub: isHe
       ? 'הרשימה הזו מגיעה ממסד הנתונים. הוספת עמדה כאן מופיעה מיד במפה, בחשבונאות ובכרטיסי הארנק — בלי גרסה חדשה.'
       : 'This list comes from the database. A station added here appears at once on the map, in bookkeeping and on wallet passes — no deploy.',
-    ops: isHe ? 'מסך התפעול (Firestore) →' : 'Operations screen (Firestore) →',
+    ops: isHe ? 'מסך התפעול (Firestore)' : 'Operations screen (Firestore) →',
     add: isHe ? 'הוספת עמדה' : 'Add a station',
     edit: isHe ? 'עריכה' : 'Edit',
     code: isHe ? 'קוד עמדה (PWS-IL-XXX-001)' : 'Station code (PWS-IL-XXX-001)',

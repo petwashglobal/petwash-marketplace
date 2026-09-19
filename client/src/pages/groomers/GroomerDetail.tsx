@@ -154,7 +154,7 @@ export default function GroomerDetail() {
               onClick={() => navigate(`/booking/new/grooming/${groomer.userId}`)}
               className="bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a] shrink-0 text-xs px-4"
             >
-              {isHebrew ? "הזמן ←" : "Book →"}
+              {isHebrew ? "הזמנה" : "Book →"}
             </Button>
           </div>
         </div>

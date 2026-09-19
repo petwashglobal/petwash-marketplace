@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { getApiUrl } from '@/lib/apiConfig';
+import { useLanguage } from '@/lib/languageStore';
 
 interface Message {
   id: string;
@@ -36,6 +37,55 @@ function getStoredConsent(): { acceptedAt: string; consentVersion: string; sessi
   }
 }
 
+/**
+ * Widget copy by chat language (2026-09-19 Hebrew/RTL audit, backlog item 2).
+ * The widget used to open in Hebrew for everyone, with right-to-left hard-wired
+ * on the consent screen and the input, and Hebrew aria-labels — even on the
+ * English site. It now opens in the site language (Hebrew stays Hebrew) and
+ * the in-widget toggle still lets a customer switch mid-conversation; the
+ * chrome, direction and the bot's fallback lines follow the toggle.
+ */
+const WIDGET_COPY = {
+  he: {
+    welcome: '👋 שלום! אני קנזו, העוזר החכם של ⁦PetWash™⁩. איך אוכל לעזור לך היום?',
+    title: 'קנזו - העוזר החכם',
+    speaking: 'מדבר...',
+    ready: 'מוכן לעזור',
+    close: 'סגור צ׳אט',
+    consentTitle: 'לפני שנתחיל 🐾',
+    consentBody1: 'שיחות עם קנזו עוברות עיבוד על-ידי',
+    consentBody2: '. ייתכן שמידע זה יישמר עד',
+    consentDays: '90 יום',
+    consentBody3: 'לצורכי אבטחה ושיפור השירות בלבד — לא מועבר לצדדים שלישיים.',
+    consentNoPii: 'אל תשתפו פרטים אישיים מזהים (שם, מספר ת״ז, פרטי כרטיס אשראי).',
+    consentAccept: 'הבנתי, בואו נתחיל',
+    inputPlaceholder: 'כתבו הודעה...',
+    inputLabel: 'הודעה',
+    send: 'שליחת הודעה',
+    didNotUnderstand: 'מצטער, לא הבנתי. נסו שוב.',
+    technicalIssue: 'מצטערים, יש תקלה טכנית. נסו שוב בעוד רגע.',
+  },
+  en: {
+    welcome: "👋 Hi! I'm Kenzo, the PetWash™‎ assistant. How can I help you today?",
+    title: 'Kenzo - smart assistant',
+    speaking: 'Typing...',
+    ready: 'Ready to help',
+    close: 'Close chat',
+    consentTitle: 'Before we start 🐾',
+    consentBody1: 'Conversations with Kenzo are processed by',
+    consentBody2: '. This data may be kept for up to',
+    consentDays: '90 days',
+    consentBody3: 'for security and service improvement only — never shared with third parties.',
+    consentNoPii: 'Please do not share identifying personal details (name, ID number, card details).',
+    consentAccept: 'Got it, let\'s start',
+    inputPlaceholder: 'Type a message...',
+    inputLabel: 'Message',
+    send: 'Send message',
+    didNotUnderstand: "Sorry, I didn't get that. Please try again.",
+    technicalIssue: "Sorry, we're having a technical issue. Please try again in a moment.",
+  },
+} as const;
+
 export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetProps = {}) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
 
@@ -48,7 +98,10 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
   const [userInput, setUserInput] = useState('');
   const [sessionId, setSessionId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [language, setLanguage] = useState<'he' | 'en'>('he');
+  const { language: siteLanguage } = useLanguage();
+  const [language, setLanguage] = useState<'he' | 'en'>(siteLanguage === 'he' ? 'he' : 'en');
+  const copy = WIDGET_COPY[language];
+  const dir = language === 'he' ? 'rtl' : 'ltr';
   const [consentGiven, setConsentGiven] = useState<boolean>(() => !!getStoredConsent());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -57,10 +110,12 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
     setSessionId(`session-${nanoid(16)}`);
     setMessages([{
       id: 'welcome',
-      text: '👋 שלום! אני קנזו, העוזר החכם של ⁦PetWash™⁩. איך אוכל לעזור לך היום?',
+      text: WIDGET_COPY[siteLanguage === 'he' ? 'he' : 'en'].welcome,
       sender: 'bot',
       timestamp: new Date(),
     }]);
+    // The welcome line is written once, in the language the widget opened in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -119,14 +174,14 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
       const data = await response.json();
       setMessages(prev => [...prev, {
         id: nanoid(),
-        text: data.response || data.reply || 'מצטער, לא הבנתי. אנא נסה שוב.',
+        text: data.response || data.reply || copy.didNotUnderstand,
         sender: 'bot',
         timestamp: new Date(),
       }]);
     } catch {
       setMessages(prev => [...prev, {
         id: nanoid(),
-        text: 'מצטערים, אנחנו חווים בעיה טכנית. נסה שוב בעוד רגע.',
+        text: copy.technicalIssue,
         sender: 'bot',
         timestamp: new Date(),
       }]);
@@ -181,7 +236,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
         {/* ── Header ─────────────────────────────────────────────── */}
         <div
           className="flex items-center justify-between gap-3 px-4 py-3 flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg, #1a47b8 0%, #7c3aed 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #0D0D14 0%, #2a2410 100%)' }}
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative h-10 w-10 flex-shrink-0 rounded-full bg-white/20 flex items-center justify-center overflow-hidden ring-2 ring-white/30">
@@ -193,17 +248,17 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
               {isLoading && <div className="absolute inset-0 bg-[#D4AF37]/30 animate-pulse" />}
             </div>
             <div className="min-w-0">
-              <h3 className="text-white font-semibold text-sm leading-tight truncate">קנזו - העוזר החכם</h3>
+              <h3 className="text-white font-semibold text-sm leading-tight truncate">{copy.title}</h3>
               <p className="text-white/75 text-xs flex items-center gap-1">
                 <span className={`inline-block w-1.5 h-1.5 rounded-full ${isLoading ? 'bg-yellow-300 animate-pulse' : 'bg-green-300'}`} />
-                {isLoading ? 'מדבר...' : 'מוכן לעזור'}
+                {isLoading ? copy.speaking : copy.ready}
               </p>
             </div>
           </div>
           <button
             onClick={() => setIsOpen(false)}
             className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-colors"
-            aria-label="סגור צ'אט"
+            aria-label={copy.close}
             data-testid="chat-close-button"
           >
             <X className="h-5 w-5" />
@@ -215,7 +270,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
           <div
             className="flex flex-col items-center justify-center gap-4 p-5 text-center flex-1 overflow-y-auto"
             style={{ background: '#12121F' }}
-            dir="rtl"
+            dir={dir}
           >
             <div className="rounded-full bg-[#B8932F]/20 p-3">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-[#D4AF37]">
@@ -225,23 +280,23 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
               </svg>
             </div>
             <div>
-              <h4 className="text-white font-semibold text-base mb-2">לפני שנתחיל 🐾</h4>
+              <h4 className="text-white font-semibold text-base mb-2">{copy.consentTitle}</h4>
               <p className="text-white/70 text-sm leading-relaxed">
-                שיחות עם קנזו עוברות עיבוד על-ידי{' '}
-                <span className="text-white/90">Google Gemini AI</span>. ייתכן שמידע זה יישמר עד{' '}
-                <span className="text-white/90">90 יום</span>{' '}
-                לצורכי אבטחה ושיפור השירות בלבד — לא מועבר לצדדים שלישיים.
+                {copy.consentBody1}{' '}
+                <span className="text-white/90" dir="ltr">Google Gemini AI</span>{copy.consentBody2}{' '}
+                <span className="text-white/90">{copy.consentDays}</span>{' '}
+                {copy.consentBody3}
               </p>
               <p className="text-white/40 text-xs mt-2">
-                אל תשתף פרטים אישיים מזהים (שם, מספר ת"ז, פרטי כרטיס אשראי).
+                {copy.consentNoPii}
               </p>
             </div>
             <button
               onClick={handleConsentAccept}
               className="w-full max-w-xs rounded-xl font-medium py-3 text-sm text-white transition-opacity hover:opacity-90 active:opacity-80"
-              style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}
+              style={{ background: 'linear-gradient(135deg, #B8932F, #D4AF37)' }}
             >
-              הבנתי, בואו נתחיל
+              {copy.consentAccept}
             </button>
           </div>
         )}
@@ -260,7 +315,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                     className="max-w-[78%] rounded-2xl px-3.5 py-2.5"
                     style={{
                       background: msg.sender === 'user'
-                        ? 'linear-gradient(135deg, #4F46E5, #7C3AED)'
+                        ? 'linear-gradient(135deg, #B8932F, #D4AF37)'
                         : 'rgba(255,255,255,0.08)',
                       border: msg.sender === 'user' ? 'none' : '1px solid rgba(255,255,255,0.12)',
                       color: msg.sender === 'user' ? '#fff' : 'rgba(255,255,255,0.92)',
@@ -309,7 +364,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="הקלד/י הודעה..."
+                placeholder={copy.inputPlaceholder}
                 disabled={isLoading}
                 className="flex-1 text-sm border"
                 style={{
@@ -319,15 +374,15 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                   height: '40px',
                 }}
                 data-testid="chat-input"
-                aria-label="הקלד הודעה"
-                dir="rtl"
+                aria-label={copy.inputLabel}
+                dir={dir}
               />
               <button
                 type="submit"
                 disabled={isLoading || !userInput.trim()}
                 className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg text-white transition-opacity disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}
-                aria-label="שלח הודעה"
+                style={{ background: 'linear-gradient(135deg, #B8932F, #D4AF37)' }}
+                aria-label={copy.send}
                 data-testid="chat-send-button"
               >
                 <Send className="h-4 w-4" />
@@ -343,9 +398,9 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                   onClick={() => setLanguage(lang)}
                   className="text-xs px-4 py-1 rounded-full transition-colors"
                   style={{
-                    background: language === lang ? '#4F46E5' : 'rgba(255,255,255,0.08)',
+                    background: language === lang ? '#B8932F' : 'rgba(255,255,255,0.08)',
                     color: language === lang ? '#fff' : 'rgba(255,255,255,0.5)',
-                    border: `1px solid ${language === lang ? '#4F46E5' : 'rgba(255,255,255,0.15)'}`,
+                    border: `1px solid ${language === lang ? '#B8932F' : 'rgba(255,255,255,0.15)'}`,
                   }}
                   data-testid={`lang-toggle-${lang}`}
                 >

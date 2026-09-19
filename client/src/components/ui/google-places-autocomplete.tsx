@@ -6,6 +6,7 @@ import { MapPin, Loader2 } from 'lucide-react';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useQuery } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useLanguage } from '@/lib/languageStore';
 // PR-LOCATION-GUARD-PLACES-1: client-side echo of the server
 // gate. When the flag is OFF we skip the network call entirely
 // and let the user type freely. The server is the authoritative
@@ -20,6 +21,78 @@ function generateSessionToken(): string {
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
   });
 }
+
+/**
+ * Copy for the address form, keyed by site language (2026-09-19 Hebrew/RTL
+ * audit, backlog item 2). Until now every label, placeholder and hint here was
+ * Hebrew-only and every free-text box was forced right-to-left, so an English,
+ * Russian or French customer booking a sitter got a Hebrew address form with
+ * their cursor on the wrong side. Hebrew stays exactly as it was; everything
+ * else gets English. Direction follows the site (`dir` from the language
+ * store), except the numeric boxes, which are always LTR.
+ */
+const ADDRESS_COPY = {
+  he: {
+    building: 'מספר בניין / בית',
+    buildingPh: 'לדוג׳ 18',
+    apartment: 'דירה / יחידה',
+    apartmentPh: 'דירה 3',
+    floor: 'קומה',
+    floorPh: 'לדוג׳ 3 / קרקע',
+    entrance: 'כניסה',
+    entrancePh: 'לדוג׳ א׳ / B',
+    city: 'עיר',
+    cityPh: 'לדוג׳ כפר סבא',
+    postal: 'מיקוד',
+    postalPh: 'לדוג׳ 6291302',
+    notes: 'הערות גישה (לנותן השירות)',
+    notesPh: 'קוד שער, לצלצל בפעמון, כלב בחצר, להשאיר ליד הדלת...',
+    home: 'בית',
+    work: 'עבודה',
+    savedAddress: 'כתובת שמורה',
+    isDefault: ' · ברירת מחדל',
+    noMatches: 'לא נמצאו תוצאות עבור הכתובת. אפשר להזין ידנית.',
+    enterManually: 'הזן כתובת ידנית',
+    noneOfThese: 'לא מוצאים את הכתובת? המשיכו עם מה שהקלדתם',
+    suggestionsUnavailable: 'הצעות כתובת אינן זמינות כעת. ניתן להקליד את הכתובת ידנית.',
+    typeHint: 'הקלידו רחוב, מספר ועיר לקבלת הצעות',
+    service503: 'חיפוש כתובות אינו זמין כעת. ניתן להקליד את הכתובת ידנית.',
+    service403: 'שירות חיפוש הכתובות חסום מהדפדפן הנוכחי. ניתן להקליד ידנית או לרענן את העמוד.',
+    unitEntrance: 'כניסה',
+    unitFloor: 'קומה',
+    unitApartment: 'דירה',
+  },
+  en: {
+    building: 'Building / house number',
+    buildingPh: 'e.g. 18',
+    apartment: 'Apartment / unit',
+    apartmentPh: 'Apt 3',
+    floor: 'Floor',
+    floorPh: 'e.g. 3 / ground',
+    entrance: 'Entrance',
+    entrancePh: 'e.g. A / B',
+    city: 'City',
+    cityPh: 'e.g. Kfar Saba',
+    postal: 'Postal code',
+    postalPh: 'e.g. 6291302',
+    notes: 'Access notes (for the provider)',
+    notesPh: 'Gate code, ring the bell, dog in the yard, leave by the door...',
+    home: 'Home',
+    work: 'Work',
+    savedAddress: 'Saved address',
+    isDefault: ' · default',
+    noMatches: 'No matches for this address. You can enter it manually.',
+    enterManually: 'Enter address manually',
+    noneOfThese: "Can't find your address? Continue with what you typed",
+    suggestionsUnavailable: 'Address suggestions are unavailable right now. You can type the address manually.',
+    typeHint: 'Type street, number and city for suggestions',
+    service503: 'Address search is unavailable right now. You can type the address manually.',
+    service403: 'Address search is blocked from this browser. Type the address manually or refresh the page.',
+    unitEntrance: 'Entrance',
+    unitFloor: 'Floor',
+    unitApartment: 'Apt',
+  },
+} as const;
 
 interface GooglePlacesAutocompleteProps {
   value: string;
@@ -119,6 +192,8 @@ export function GooglePlacesAutocomplete({
   darkMode = false,
 }: GooglePlacesAutocompleteProps) {
   const { user } = useFirebaseAuth();
+  const { language, dir } = useLanguage();
+  const copy = ADDRESS_COPY[language === 'he' ? 'he' : 'en'];
   // The customer's OWN saved addresses. They cost nothing to show (one cached
   // read, shared by every screen through this query key) and nothing to pick —
   // no suggest call, no geocode, no paid lookup. 2026-09-18: they used to be
@@ -267,14 +342,10 @@ export function GooglePlacesAutocomplete({
         // user-visible message; intermittent failures still rely on the
         // existing MAX_CONSECUTIVE_FAILURES → manual-hint fallback.
         if (response.status === 503) {
-          setServiceErrorMessage(
-            'חיפוש כתובות אינו זמין כעת. ניתן להקליד את הכתובת ידנית.',
-          );
+          setServiceErrorMessage(copy.service503);
           setShowManualHint(true);
         } else if (response.status === 403) {
-          setServiceErrorMessage(
-            'שירות חיפוש הכתובות חסום מהדפדפן הנוכחי. ניתן להקליד ידנית או לרענן את העמוד.',
-          );
+          setServiceErrorMessage(copy.service403);
           setShowManualHint(true);
         } else {
           consecutiveFailures.current++;
@@ -313,7 +384,7 @@ export function GooglePlacesAutocomplete({
     } finally {
       setIsLoading(false);
     }
-  }, [country, types, updateDropdownPosition]);
+  }, [country, types, updateDropdownPosition, copy]);
 
   const selectPrediction = useCallback(async (prediction: AutocompletePrediction) => {
     setShowDropdown(false);
@@ -498,15 +569,15 @@ export function GooglePlacesAutocomplete({
       ? `${base.street}${parts.streetNumber ? ' ' + parts.streetNumber : ''}${cityForText ? ', ' + cityForText : ''}`
       : base.formattedAddress;
     const unit = [
-      parts.entrance && `כניסה ${parts.entrance}`,
-      parts.floor && `קומה ${parts.floor}`,
-      parts.apartment && `דירה ${parts.apartment}`,
+      parts.entrance && `${copy.unitEntrance} ${parts.entrance}`,
+      parts.floor && `${copy.unitFloor} ${parts.floor}`,
+      parts.apartment && `${copy.unitApartment} ${parts.apartment}`,
     ].filter(Boolean).join(', ');
     if (unit) fullAddr = `${fullAddr} (${unit})`;
     updated.formattedAddress = fullAddr;
     onChange(fullAddr, updated);
     onPlaceSelected?.(updated);
-  }, [onChange, onPlaceSelected, buildingNumber, apartment, floor, entrance, city, postalCode, accessNotes]);
+  }, [onChange, onPlaceSelected, buildingNumber, apartment, floor, entrance, city, postalCode, accessNotes, copy]);
 
   /** Every box goes through here, so a new box cannot forget to emit. */
   const patchPart = useCallback((key: keyof AddressParts, setter: (v: string) => void) =>
@@ -575,8 +646,8 @@ export function GooglePlacesAutocomplete({
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-gray-900 truncate">{row.address}</div>
                       <div className="text-[11px] text-[#B8932F]">
-                        {row.customLabel || (row.label === 'home' ? 'בית' : row.label === 'work' ? 'עבודה' : 'כתובת שמורה')}
-                        {row.isDefault ? ' · ברירת מחדל' : ''}
+                        {row.customLabel || (row.label === 'home' ? copy.home : row.label === 'work' ? copy.work : copy.savedAddress)}
+                        {row.isDefault ? copy.isDefault : ''}
                       </div>
                     </div>
                   </button>
@@ -621,8 +692,7 @@ export function GooglePlacesAutocomplete({
             ) : (
               <div className="px-4 py-4 text-center">
                 <div className="text-sm text-gray-600 mb-3">
-                  לא נמצאו תוצאות עבור הכתובת. אפשר להזין ידנית.
-                  <span className="block text-xs text-gray-400 mt-1 [direction:ltr]">No matches — enter the address manually below.</span>
+                  {copy.noMatches}
                 </div>
                 <button
                   type="button"
@@ -633,7 +703,7 @@ export function GooglePlacesAutocomplete({
                   }}
                 >
                   <MapPin className="h-4 w-4" />
-                  הזן כתובת ידנית · Enter manually
+                  {copy.enterManually}
                 </button>
               </div>
             )}
@@ -652,10 +722,7 @@ export function GooglePlacesAutocomplete({
                 }}
                 data-testid="places-use-typed-address"
               >
-                לא מוצאים את הכתובת? המשיכו עם מה שהקלדתם
-                <span className="block text-[10px] font-normal text-gray-400 [direction:ltr]">
-                  None of these? Continue with what you typed
-                </span>
+                {copy.noneOfThese}
               </button>
             )}
           </div>
@@ -734,14 +801,14 @@ export function GooglePlacesAutocomplete({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-                מספר בניין / בית
+                {copy.building}
               </Label>
               <Input
                 type="text"
                 inputMode="numeric"
                 value={buildingNumber}
                 onChange={handleBuildingNumberChange}
-                placeholder="לדוג׳ 18"
+                placeholder={copy.buildingPh}
                 className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
@@ -750,17 +817,17 @@ export function GooglePlacesAutocomplete({
             </div>
             <div>
               <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-                {apartmentLabel || 'דירה / יחידה'}
+                {apartmentLabel || copy.apartment}
               </Label>
               <Input
                 type="text"
                 value={apartment}
                 onChange={handleApartmentChange}
-                placeholder={apartmentPlaceholder || 'דירה 3'}
+                placeholder={apartmentPlaceholder || copy.apartmentPh}
                 className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
-                dir="rtl"
+                dir={dir}
               />
             </div>
           </div>
@@ -768,32 +835,32 @@ export function GooglePlacesAutocomplete({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-                קומה
+                {copy.floor}
               </Label>
               <Input
                 type="text"
                 value={floor}
                 onChange={handleFloorChange}
-                placeholder="לדוג׳ 3 / קרקע"
+                placeholder={copy.floorPh}
                 className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
-                dir="rtl"
+                dir={dir}
               />
             </div>
             <div>
               <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-                כניסה
+                {copy.entrance}
               </Label>
               <Input
                 type="text"
                 value={entrance}
                 onChange={handleEntranceChange}
-                placeholder="לדוג׳ א׳ / B"
+                placeholder={copy.entrancePh}
                 className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
-                dir="rtl"
+                dir={dir}
               />
             </div>
           </div>
@@ -806,30 +873,30 @@ export function GooglePlacesAutocomplete({
           <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-              עיר
+              {copy.city}
             </Label>
             <Input
               type="text"
               value={city}
               onChange={handleCityChange}
-              placeholder="לדוג׳ כפר סבא"
+              placeholder={copy.cityPh}
               className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
               style={{ fontSize: '16px' }}
               autoComplete="off"
-              dir="rtl"
+              dir={dir}
               data-testid="input-address-city"
             />
           </div>
           <div>
             <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-              {postalCodeLabel || 'מיקוד'}
+              {postalCodeLabel || copy.postal}
             </Label>
             <Input
               type="text"
               inputMode="numeric"
               value={postalCode}
               onChange={handlePostalCodeChange}
-              placeholder={postalCodePlaceholder || 'לדוג׳ 6291302'}
+              placeholder={postalCodePlaceholder || copy.postalPh}
               className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
               style={{ fontSize: '16px' }}
               autoComplete="off"
@@ -841,16 +908,16 @@ export function GooglePlacesAutocomplete({
           {/* Access notes — what the sitter/walker/courier needs to reach you */}
           <div>
             <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
-              הערות גישה (לנותן השירות)
+              {copy.notes}
             </Label>
             <textarea
               value={accessNotes}
               onChange={handleNotesChange}
               rows={2}
-              placeholder="קוד שער, לצלצל בפעמון, כלב בחצר, להשאיר ליד הדלת..."
+              placeholder={copy.notesPh}
               className="w-full px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] touch-manipulation bg-white"
               style={{ fontSize: '16px' }}
-              dir="rtl"
+              dir={dir}
             />
           </div>
         </div>
@@ -862,14 +929,14 @@ export function GooglePlacesAutocomplete({
         </p>
       ) : showManualHint && value.length >= 3 ? (
         <p className="text-xs text-amber-600 mt-1">
-          הצעות כתובת אינן זמינות כעת. ניתן להקליד את הכתובת ידנית.
+          {copy.suggestionsUnavailable}
         </p>
       ) : !selectedPlace ? (
         <p className="text-[10px] text-gray-400 mt-0.5">
           {/* Google was removed from the address path entirely in #1575/#1578 —
               suggestions come from OpenStreetMap and our own baked-in Israeli
               street registry. Promising Google was simply untrue. */}
-          הקלידו רחוב, מספר ועיר לקבלת הצעות
+          {copy.typeHint}
         </p>
       ) : null}
 
