@@ -140,13 +140,13 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
 
           <div style="position:relative;padding:28px 24px;">
             <!-- Card Top -->
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-              <div style="text-align:left;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:20px;"><tr>
+              <td align="left" style="vertical-align:middle;">
                 <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.35);">PetWash™</div>
                 <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:${tier.accent};">E-Gift</div>
-              </div>
-              <div style="font-size:22px;color:${tier.accent};animation:float 3s ease-in-out infinite;">${tier.icon}</div>
-            </div>
+              </td>
+              <td align="right" style="vertical-align:middle;font-size:22px;color:${tier.accent};">${tier.icon}</td>
+            </tr></table>
 
             <!-- Value Display -->
             <div style="text-align:center;margin-bottom:20px;">

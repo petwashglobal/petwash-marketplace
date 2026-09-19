@@ -350,12 +350,12 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
       <!-- Blockchain Security -->
       <div class="fi d5" style="padding:24px 40px;background:white;">
         <div style="border:1px solid #f0ede8;border-radius:6px;padding:18px;background:#fffbeb;">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <span style="font-size:16px;">🔐</span>
-            <span style="font-size:11px;font-weight:600;color:#92400e;letter-spacing:0.5px;">
+          <table cellpadding="0" cellspacing="0" border="0" style="margin-bottom:10px;"><tr>
+            <td style="vertical-align:middle;font-size:16px;padding-left:8px;">🔐</td>
+            <td style="vertical-align:middle;font-size:11px;font-weight:600;color:#92400e;letter-spacing:0.5px;">
               ${isHe ? 'אבטחת בלוקצ\'יין' : 'Blockchain Security'}
-            </span>
-          </div>
+            </td>
+          </tr></table>
           <p style="font-size:10px;color:#92400e;margin:0 0 8px;line-height:1.5;">
             ${isHe
               ? 'עסקה זו מאובטחת בגיבוב קריפטוגרפי בסגנון בלוקצ\'יין — בלתי ניתנת לשינוי ועמידה בפני זיוף.'
@@ -401,7 +401,7 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
         </p>
 
         <!-- Wallet buttons row -->
-        <div style="display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+        <div style="text-align:center;margin-bottom:20px;">
 
           ${appleWalletUrl ? `
           <!-- Apple Wallet button — official badge style -->

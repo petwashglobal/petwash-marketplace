@@ -166,13 +166,13 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
           <!-- Card Content -->
           <div style="position:relative;padding:28px 24px 24px;">
             <!-- Card Header -->
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-              <div style="text-align:left;">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:24px;"><tr>
+              <td align="left" style="vertical-align:middle;">
                 <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);">PetWash™</div>
                 <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:${t.accentColor};">Privilege</div>
-              </div>
-              <div style="font-size:24px;color:${t.accentColor};animation:float 3s ease-in-out infinite;">${t.icon}</div>
-            </div>
+              </td>
+              <td align="right" style="vertical-align:middle;font-size:24px;color:${t.accentColor};">${t.icon}</td>
+            </tr></table>
 
             <!-- Tier Badge -->
             <div style="text-align:center;margin-bottom:20px;">
@@ -191,16 +191,16 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
             </div>
 
             <!-- Card Footer -->
-            <div style="display:flex;justify-content:space-between;align-items:flex-end;">
-              <div>
+            <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td align="left" style="vertical-align:bottom;">
                 <div style="font-size:7px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:2px;">Member Since</div>
                 <div style="font-size:10px;color:rgba(255,255,255,0.5);letter-spacing:0.5px;">${joinDate}</div>
-              </div>
-              <div style="text-align:right;">
+              </td>
+              <td align="right" style="vertical-align:bottom;text-align:right;">
                 <div style="font-size:7px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:2px;">ID</div>
                 <div style="font-size:9px;color:rgba(255,255,255,0.5);font-family:'Courier New',monospace;letter-spacing:1px;">${membershipId}</div>
-              </div>
-            </div>
+              </td>
+            </tr></table>
           </div>
         </div>
 
