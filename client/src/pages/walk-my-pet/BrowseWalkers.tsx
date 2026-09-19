@@ -164,12 +164,20 @@ export default function BrowseWalkers() {
         try {
           const { latitude, longitude } = position.coords;
           try {
-            const params = new URLSearchParams({ lat: latitude.toString(), lng: longitude.toString(), language: mapsLang });
-            const res = await fetch(`/api/google/reverse-geocode?${params}`, { credentials: 'include' });
+            // 2026-09-19: this called /api/google/reverse-geocode, which is the PAID
+            // Google Places proxy. That proxy is deliberately OFF in every
+            // environment (cost guard after the ~$1000 Google bill), so it
+            // answered 503 and this block did nothing: the visitor granted the
+            // location permission and the page stayed unlocated. The free
+            // OpenStreetMap route below is live and returns { city,
+            // formattedAddress, street, lat, lng }.
+            const params = new URLSearchParams({ lat: latitude.toString(), lng: longitude.toString(), lang: mapsLang });
+            const res = await fetch(`/api/geocode/reverse?${params}`, { credentials: 'include' });
             if (res.ok) {
               const data = await res.json();
-              if (data.name) {
-                setSearchParams({ location: data.name, lat: latitude, lng: longitude, petType: undefined, startDate: undefined, endDate: undefined, service: undefined } as SearchParams);
+              const placeName = data.city || data.formattedAddress;
+              if (placeName) {
+                setSearchParams({ location: placeName, lat: latitude, lng: longitude, petType: undefined, startDate: undefined, endDate: undefined, service: undefined } as SearchParams);
               }
             }
           } catch {}
