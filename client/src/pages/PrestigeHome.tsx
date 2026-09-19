@@ -242,7 +242,9 @@ export default function PrestigeHome() {
     { label: 'Buy Package',   labelHe: 'רכישת חבילה',    icon: CreditCard,    to: '/packages' },
     { label: 'Wallet Top Up', labelHe: 'טעינת ארנק',     icon: WalletIcon,    to: '/my-wallet',       actionId: 'WALLET_TOP_UP',       testId: 'petparent-home-wallet-top-up' },
     { label: 'Academy',       labelHe: 'Academy',       icon: GraduationCap, to: '/academy',         actionId: 'BOOK_ACADEMY_ENTRY',  testId: 'petparent-home-book-academy' },
-    { label: 'My Pets',       labelHe: 'החיות שלי',     icon: PawPrint,      to: '/pet-passport',    actionId: 'PET_ADD',             testId: 'petparent-home-pets' },
+    // 2026-09-18: labelled by its product name so a member recognises the door.
+    // "My Pets" read as a plain pet list; the tile opens the Pet Passport.
+    { label: 'Pet Passport',  labelHe: 'Pet Passport',  icon: PawPrint,      to: '/pet-passport',    actionId: 'PET_ADD',             testId: 'petparent-home-pets' },
     { label: 'PetTrek',       labelHe: 'PetTrek',       icon: Mountain,      to: '#', soon: true },
   ];
 

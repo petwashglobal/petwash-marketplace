@@ -39,6 +39,20 @@ describe('the Pet Passport screen is reachable by a real member', () => {
     ).toBe(true);
   });
 
+  // 2026-09-18 (CEO: "why not in my dashboard or profile?"): the tile is
+  // labelled by its product name, and the profile's quick actions carry a
+  // door too — the per-pet link inside the "pets" tab was one tap deep and
+  // pointed at the per-pet detail, never the passport home.
+  it('the member home tile is called "Pet Passport", not "My Pets"', () => {
+    const home = read('pages/PrestigeHome.tsx');
+    expect(home).toMatch(/label:\s*'Pet Passport',\s*labelHe:\s*'Pet Passport',[^\n]*to:\s*'\/pet-passport'/);
+  });
+
+  it('the profile (MyAccount) quick actions link to /pet-passport', () => {
+    const account = read('pages/MyAccount.tsx');
+    expect(account).toMatch(/label:\s*'Pet Passport',\s*href:\s*'\/pet-passport'/);
+  });
+
   it('the route still exists and renders PetPassportHome', () => {
     const app = read('App.tsx');
     expect(app).toMatch(/path="\/pet-passport"/);

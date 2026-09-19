@@ -43,8 +43,11 @@ describe('PetPassportHome.tsx CTA wiring — every visible tile lands on a real 
     expect(SRC).toMatch(/const goToPetDocuments = \(\) => navigate\(hero \? `\/pets\/\$\{hero\.id\}\/documents` : '\/pets'\);/);
   });
 
-  it('bottom-nav "Documents" item also uses goToPetDocuments (not the admin /documents console)', () => {
-    expect(SRC).toMatch(/label=\{tr\('מסמכים', 'Documents'\)\}\s*onClick=\{goToPetDocuments\}/);
+  it('nav "Documents" item (phone bottom nav + desktop header nav share one list) also uses goToPetDocuments (not the admin /documents console)', () => {
+    // 2026-09-18: the five nav destinations moved into useNavItems() so the
+    // phone bottom nav and the md+ header nav cannot drift apart.
+    expect(SRC).toMatch(/label:\s*tr\('מסמכים', 'Documents'\),\s*onClick:\s*goToPetDocuments/);
+    expect(SRC).not.toMatch(/label:\s*tr\('מסמכים', 'Documents'\),\s*onClick:\s*\(\) => navigate\(['"]\/documents['"]\)/);
   });
 
   it('Shop quick-action navigates to /shop (real store)', () => {

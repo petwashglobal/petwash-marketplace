@@ -77,6 +77,7 @@ import {
   Receipt,
   Tag,
   Users,
+  PawPrint,
 } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import {
@@ -2080,6 +2081,11 @@ export default function MyAccount() {
           {/* ── Quick Action Buttons — Luxury Noir ── */}
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[
+              // PET-PASSPORT-DOOR (2026-09-18): the CEO's canonical Pet Passport
+              // (/pet-passport) had no entry on the profile — the only per-pet
+              // link sat inside the "pets" tab, one tap deep, and pointed at the
+              // per-pet detail, never the passport home. First tile, by name.
+              { icon: PawPrint,     label: 'Pet Passport',                              href: '/pet-passport',     emoji: '🐾' },
               { icon: Wallet,       label: isHebrew ? 'הארנק שלי' : 'My Wallet',       href: '/my-wallet',        emoji: '💳' },
               { icon: QrCode,       label: isHebrew ? 'מימוש בתחנה' : 'Redeem',        href: '/wallet/redeem',    emoji: '📍' },
               { icon: Award,        label: isHebrew ? 'נאמנות' : 'Loyalty',            href: '/loyalty/dashboard', emoji: '🏆' },
