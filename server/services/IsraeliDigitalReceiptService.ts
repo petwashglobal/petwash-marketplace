@@ -1069,6 +1069,17 @@ export class IsraeliDigitalReceiptService {
    * Send digital receipt via email (SendGrid)
    * Israeli law requires digital receipt to be sent to customer
    */
+  /**
+   * LOGO: the transparent white-wordmark asset on the black header. This block
+   * used to draw the brand as a TYPED HEADING rather than the logo file, while
+   * every other email used the real asset. The brand rule is the real file,
+   * never a typed or redrawn substitute. petwash-logo-black-bg.png is NOT the
+   * right file either: it is RGBA but its background is an opaque black matte,
+   * so it renders as a box on any header that is not exactly #000000.
+   *
+   * Explanatory notes stay HERE, never inside the template literal — HTML
+   * comments written in there are shipped inside the customer's document.
+   */
   static async sendReceiptEmail(receipt: any): Promise<boolean> {
     if (!isSendGridConfigured()) {
       logger.info('[Digital Receipt] SendGrid not configured - receipt email queued', {
@@ -1095,28 +1106,20 @@ export class IsraeliDigitalReceiptService {
 </head>
 <body style="margin:0;padding:0;background-color:#f8f9fa;font-family:Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#ffffff;">
-    <!-- Header -->
-    <tr>
+<tr>
       <td style="background:#000000;padding:30px 40px;text-align:center;">
-        <!-- 2026-09-19: this drew the brand as TEXT while every other PetWash email
-       uses the real asset. Brand rule: the real logo file, never a redrawn or
-       typed substitute. Dark header, so the white-wordmark asset. -->
-  <img src="https://petwash.co.il/brand/petwash-logo-black-bg.png" alt="⁦PetWash™⁩" width="150"
+<img src="https://petwash.co.il/brand/petwash-logo-on-dark.png" alt="⁦PetWash™⁩" width="150"
        style="display:block;margin:0 auto;width:150px;height:auto;border:0;" />
         <p style="color:#999999;margin:8px 0 0;font-size:12px;letter-spacing:1px;">${COMPANY_NAME_HE} | ח.פ ${COMPANY_TAX_ID}</p>
       </td>
     </tr>
-
-    <!-- Receipt Title -->
-    <tr>
+<tr>
       <td style="padding:30px 40px 10px;text-align:center;">
         <h2 style="margin:0;font-size:22px;color:#000000;">אישור תשלום</h2>
         <p style="margin:5px 0;color:#666666;font-size:14px;">Payment confirmation</p>
       </td>
     </tr>
-
-    <!-- Receipt Number & Date -->
-    <tr>
+<tr>
       <td style="padding:10px 40px;">
         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e0e0;border-radius:8px;">
           <tr>
@@ -1132,18 +1135,14 @@ export class IsraeliDigitalReceiptService {
         </table>
       </td>
     </tr>
-
-    <!-- Customer Details -->
-    <tr>
+<tr>
       <td style="padding:15px 40px;">
         <p style="margin:0;font-size:12px;color:#999;">לכבוד:</p>
         <p style="margin:4px 0;font-weight:bold;color:#000;">${receipt.customerName || receipt.customerEmail}</p>
         ${receipt.serviceAddress ? `<p style="margin:2px 0 0;font-size:12px;color:#555;">${receipt.serviceAddress}</p>` : ''}
       </td>
     </tr>
-
-    <!-- Service Description -->
-    <tr>
+<tr>
       <td style="padding:10px 40px;">
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
           <tr style="background:#f8f8f8;">
@@ -1162,10 +1161,7 @@ export class IsraeliDigitalReceiptService {
         </table>
       </td>
     </tr>
-
-    <!-- Total (the VAT breakdown lives on the official SUMIT document only —
-         this email is a payment confirmation, 2026-09-17) -->
-    <tr>
+<tr>
       <td style="padding:10px 40px;">
         <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
           <tr style="border-top:2px solid #000;">
@@ -1175,9 +1171,7 @@ export class IsraeliDigitalReceiptService {
         </table>
       </td>
     </tr>
-
-    <!-- Payment Method -->
-    <tr>
+<tr>
       <td style="padding:15px 40px;">
         <p style="margin:0;font-size:12px;color:#999;">אמצעי תשלום: ${paymentMethodHe(receipt.paymentMethod)}</p>
         ${receipt.bookingId ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר הזמנה: ${String(receipt.bookingId).replace(/^(shop:|sumit:)/, '')}</p>` : ''}
@@ -1185,9 +1179,7 @@ export class IsraeliDigitalReceiptService {
         ${receipt.customerReference ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר לקוח: ${receipt.customerReference}</p>` : ''}
       </td>
     </tr>
-
-    <!-- Legal Footer -->
-    <tr>
+<tr>
       <td style="padding:20px 40px;border-top:1px solid #e0e0e0;">
         <p style="margin:0;font-size:11px;color:#999;text-align:center;">
           זהו אישור תשלום ואינו מסמך מס. מסמך המס הרשמי נשלח אליך בנפרד.
@@ -1200,15 +1192,12 @@ export class IsraeliDigitalReceiptService {
         </p>
       </td>
     </tr>
-
-    <!-- Social Media Buttons -->
-    <tr>
+<tr>
       <td style="padding:28px 40px 20px;text-align:center;background:#fafafa;border-top:1px solid #f0f0f0;">
         <p style="margin:0 0 16px;font-size:12px;color:#888;letter-spacing:0.5px;">עקבו אחרינו / Follow us</p>
         <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
           <tr>
-            <!-- Instagram -->
-            <td style="padding:0 6px;">
+<td style="padding:0 6px;">
               <a href="https://www.instagram.com/petwashltd" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0">
                   <tr>
@@ -1219,8 +1208,7 @@ export class IsraeliDigitalReceiptService {
                 </table>
               </a>
             </td>
-            <!-- Facebook -->
-            <td style="padding:0 6px;">
+<td style="padding:0 6px;">
               <a href="https://www.facebook.com/petwashltd" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0">
                   <tr>
@@ -1231,8 +1219,7 @@ export class IsraeliDigitalReceiptService {
                 </table>
               </a>
             </td>
-            <!-- TikTok -->
-            <td style="padding:0 6px;">
+<td style="padding:0 6px;">
               <a href="https://www.tiktok.com/@petwashltd" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0">
                   <tr>
@@ -1243,8 +1230,7 @@ export class IsraeliDigitalReceiptService {
                 </table>
               </a>
             </td>
-            <!-- WhatsApp -->
-            <td style="padding:0 6px;">
+<td style="padding:0 6px;">
               <a href="${SUPPORT_WHATSAPP_URL}" target="_blank" style="display:inline-block;text-decoration:none;">
                 <table cellpadding="0" cellspacing="0">
                   <tr>
@@ -1259,9 +1245,7 @@ export class IsraeliDigitalReceiptService {
         </table>
       </td>
     </tr>
-
-    <!-- Privacy / Links bar -->
-    <tr>
+<tr>
       <td style="padding:14px 40px;text-align:center;background:#fafafa;">
         <a href="https://petwash.co.il/privacy" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Privacy Policy / פרטיות</a>
         <span style="color:#ddd;font-size:11px;">|</span>
@@ -1270,9 +1254,7 @@ export class IsraeliDigitalReceiptService {
         <a href="https://petwash.co.il/terms" style="color:#999;font-size:11px;text-decoration:none;margin:0 10px;font-family:Arial,sans-serif;">Terms / תנאי שימוש</a>
       </td>
     </tr>
-
-    <!-- Footer -->
-    <tr>
+<tr>
       <td style="background:#000000;padding:20px 40px;text-align:center;">
         <p style="margin:0;color:#ffffff;font-size:12px;font-family:Arial,sans-serif;">⁦PetWash™⁩ | ${COMPANY_NAME_HE}</p>
         <p style="margin:6px 0 0;color:#666666;font-size:11px;font-family:Arial,sans-serif;">

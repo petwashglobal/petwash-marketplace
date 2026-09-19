@@ -4,8 +4,10 @@
  * THERE ARE TWO LOGOS AND THE BACKGROUND DECIDES WHICH ONE (CEO, 2026-09-19:
  * "we have two logo black and white against background").
  *
- *   petwash-logo-black-bg.png  — WHITE logo, RGBA with real transparency,
- *                                600x240, 31KB. For DARK headers.
+ *   petwash-logo-on-dark.png   — WHITE logo, GENUINELY transparent, 600x240,
+ *                                16KB. For DARK headers. (Derived from
+ *                                petwash-logo-black-bg.png, whose own
+ *                                background is an OPAQUE black matte.)
  *   petwash-logo-white-bg.png  — BLACK logo on solid white, 631x223, 98KB.
  *                                For WHITE / light sections.
  *
@@ -18,8 +20,19 @@
  * It was also 870KB of logo in an email that is otherwise ~7KB.
  */
 
-/** Use on a dark header (#0a0a0a, dark gradients). White wordmark, transparent. */
-export const PETWASH_LOGO_ON_DARK = 'https://petwash.co.il/brand/petwash-logo-black-bg.png';
+/**
+ * Use on a dark header. White wordmark, GENUINELY transparent.
+ *
+ * 2026-09-19: petwash-logo-black-bg.png is RGBA but its background is an
+ * OPAQUE BLACK matte (alpha 255, rgb 0,0,0) — verified by decoding the first
+ * scanline. On any header that is not exactly #000000 it reads as a black
+ * rectangle pasted on the design, which is the "box" the CEO kept pointing at
+ * after the white one was removed. petwash-logo-on-dark.png derives its alpha
+ * from the wordmark's own luminance, so the matte is fully transparent, the
+ * glyph is fully opaque, and the antialiased edge keeps its partial alpha
+ * instead of looking cut out. 31KB -> 16KB as a side effect.
+ */
+export const PETWASH_LOGO_ON_DARK = 'https://petwash.co.il/brand/petwash-logo-on-dark.png';
 
 /** Use on a white or light section. Black wordmark. */
 export const PETWASH_LOGO_ON_LIGHT = 'https://petwash.co.il/brand/petwash-logo-white-bg.png';

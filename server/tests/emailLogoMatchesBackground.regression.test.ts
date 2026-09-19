@@ -27,7 +27,7 @@ describe('email logo matches the background it sits on', () => {
     const src = fs.readFileSync(path.join(TEMPLATES, 'logo-base64.ts'), 'utf8');
     expect(src).toContain('PETWASH_LOGO_ON_DARK');
     expect(src).toContain('PETWASH_LOGO_ON_LIGHT');
-    expect(src).toContain('petwash-logo-black-bg.png');
+    expect(src).toContain('petwash-logo-on-dark.png');
     expect(src).toContain('petwash-logo-white-bg.png');
   });
 
@@ -47,12 +47,16 @@ describe('email logo matches the background it sits on', () => {
     const src = fs.readFileSync(
       path.join(ROOT, 'server', 'services', 'IsraeliDigitalReceiptService.ts'), 'utf8',
     );
-    expect(src).toContain('brand/petwash-logo-black-bg.png');
+    // 2026-09-19 (later the same day): black-bg carries an OPAQUE matte, so it
+    // showed as a black box on the header. The receipt now uses the genuinely
+    // transparent asset, like every other template.
+    expect(src).toContain('brand/petwash-logo-on-dark.png');
+    expect(src).not.toContain('brand/petwash-logo-black-bg.png');
     expect(src).not.toMatch(/<h1[^>]*>⁦?PetWash™?⁩?<\/h1>/);
   });
 
   it('the dark-header asset is small enough to belong in an email', () => {
-    const p = path.join(ROOT, 'client', 'public', 'brand', 'petwash-logo-black-bg.png');
+    const p = path.join(ROOT, 'client', 'public', 'brand', 'petwash-logo-on-dark.png');
     expect(fs.statSync(p).size).toBeLessThan(120 * 1024);
   });
 });
