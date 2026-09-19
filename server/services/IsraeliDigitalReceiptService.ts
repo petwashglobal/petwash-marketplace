@@ -1089,7 +1089,11 @@ export class IsraeliDigitalReceiptService {
     <!-- Header -->
     <tr>
       <td style="background:#000000;padding:30px 40px;text-align:center;">
-        <h1 style="color:#ffffff;margin:0;font-size:24px;letter-spacing:2px;">⁦PetWash™⁩</h1>
+        <!-- 2026-09-19: this drew the brand as TEXT while every other PetWash email
+       uses the real asset. Brand rule: the real logo file, never a redrawn or
+       typed substitute. Dark header, so the white-wordmark asset. -->
+  <img src="https://petwash.co.il/brand/petwash-logo-black-bg.png" alt="⁦PetWash™⁩" width="150"
+       style="display:block;margin:0 auto;width:150px;height:auto;border:0;" />
         <p style="color:#999999;margin:8px 0 0;font-size:12px;letter-spacing:1px;">${COMPANY_NAME_HE} | ח.פ ${COMPANY_TAX_ID}</p>
       </td>
     </tr>
