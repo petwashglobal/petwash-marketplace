@@ -37,6 +37,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { verifyTurnstileToken } from './verifyTurnstile';
 import { logger } from './logger';
+import { recordAttempt, shouldBypass, shouldAlertNow } from './turnstileBreaker';
 
 export interface TurnstileGuardOptions {
   /** Cloudflare `action` telemetry label — pick a unique short slug per endpoint. */
@@ -69,6 +70,30 @@ export function isTurnstileConfigured(): boolean {
  * A VITE_* value is baked into the bundle, so adding it to Cloud Run after the
  * client is built changes nothing — the client must be REBUILT.
  */
+
+/**
+ * Raise ONE visible alert when the breaker opens, so this never again sits
+ * undetected. The alert must never break the request it describes.
+ */
+async function raiseDegradedAlert(action: string): Promise<void> {
+  try {
+    const { createOrUpdateAlert } = await import('../services/AlertEngine');
+    await createOrUpdateAlert({
+      dedupeKey: 'turnstile_site_key_rejected',
+      severity: 'critical',
+      title: 'Bot check is broken — signup and contact were refusing everyone',
+      body:
+        'No valid Turnstile token has been seen for a full window. Cloudflare is almost certainly rejecting the production site key for this domain (error 600010). ' +
+        'Fix: Cloudflare dashboard -> Turnstile -> the PetWash widget -> Domains -> add petwash.co.il and www.petwash.co.il. ' +
+        'Until then real users are being let through and tagged, and the auth/OTP rate limiters still apply. ' +
+        'Last seen on: ' + action,
+      linkedEntityType: 'system',
+      linkedEntityId: 'turnstile',
+    } as any);
+  } catch (err: any) {
+    logger.warn('[TurnstileGuard] could not raise the degraded alert', { error: err?.message });
+  }
+}
 
 export function turnstileGuard(opts: TurnstileGuardOptions) {
   const tokenField = opts.tokenField ?? 'turnstileToken';
@@ -106,6 +131,25 @@ export function turnstileGuard(opts: TurnstileGuardOptions) {
     const rawToken = (req.body ?? {})[tokenField];
     const token = typeof rawToken === 'string' ? rawToken.trim() : '';
     if (!token) {
+      recordAttempt('missing');
+      // 2026-09-19: Cloudflare answered error 600010 for our production site
+      // key (the key does not allow petwash.co.il), so no browser could mint a
+      // token and this 400 refused EVERY human on signup, OTP and contact.
+      // The breaker opens only when a whole window of attempts produced not one
+      // valid token — the signature of our own widget being broken, never of a
+      // single caller. See lib/turnstileBreaker.ts.
+      if (shouldBypass()) {
+        if (shouldAlertNow()) {
+          logger.error('[TurnstileGuard] DEGRADED — no valid Turnstile token has been seen at all. The site key is almost certainly rejected for this domain (Cloudflare 600010). Letting real users through, tagged, while the rate limiters still apply.', {
+            action: opts.action,
+          });
+          void raiseDegradedAlert(opts.action);
+        }
+        (req as any).turnstileVerified = false;
+        (req as any).turnstileDegraded = true;
+        (req as any).turnstileAction = opts.action;
+        return next();
+      }
       logger.warn('[TurnstileGuard] Token missing on protected surface', { action: opts.action });
       return res.status(400).json({
         ok: false,
@@ -116,6 +160,7 @@ export function turnstileGuard(opts: TurnstileGuardOptions) {
 
     const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
     const result = await verifyTurnstileToken(token, callerIp);
+    recordAttempt(result.valid ? 'pass' : 'invalid');
     if (!result.valid) {
       logger.warn('[TurnstileGuard] Token rejected', {
         action: opts.action,

@@ -19,6 +19,7 @@ import { egiftGuestOrders } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { sumitClient } from '../services/SumitClient';
 import { issueVoucher } from '../services/unifiedVoucherService';
+import { checkTurnstileWithBreaker } from '../lib/turnstileBreaker';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { paymentLimiter } from '../middleware/rateLimiter';
 import { EGIFT_EXEMPTION_CAP_ILS } from '../lib/egift-denominations';
@@ -69,9 +70,17 @@ router.post('/guest/start', paymentLimiter, auditLogMiddleware('EGIFT_ISSUE'), a
   // Block a real failed challenge, but soft-pass when Turnstile isn't configured
   // (reason 'not_configured') so a config gap can't lock out legitimate buyers.
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
-  const ts: any = await verifyTurnstileToken(d.turnstileToken || '', ip).catch(() => ({ valid: false, reason: 'error' }));
-  const botOk = ts?.valid === true || ts?.reason === 'not_configured';
-  if (!botOk) return res.status(403).json({ error: 'Bot check failed — please retry.', errorCode: 'BOT_CHECK' });
+  // 2026-09-19: Cloudflare answers 600010 for our production site key, so the
+  // browser cannot mint a token at all and posts an empty string — this line
+  // then refused EVERY buyer with 403 BOT_CHECK on a live money page.
+  // Confirmed against production. The breaker only lets a token-less request
+  // through once a whole window has produced no valid token anywhere, which is
+  // the signature of our own widget being broken. See lib/turnstileBreaker.ts.
+  const bot = await checkTurnstileWithBreaker(d.turnstileToken || '', ip, verifyTurnstileToken as any);
+  if (!bot.ok) return res.status(403).json({ error: 'Bot check failed — please retry.', errorCode: 'BOT_CHECK' });
+  if (bot.degraded) {
+    logger.error('[eGift] bot check DEGRADED — the Turnstile site key is almost certainly rejected for this domain (Cloudflare 600010). Taking the purchase and tagging it.', { ip });
+  }
 
   // Server-owned price bounds.
   const amountIls = Math.round(d.amountIls * 100) / 100;
