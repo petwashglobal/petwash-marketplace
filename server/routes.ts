@@ -255,6 +255,7 @@ import adminIdentitySoftMergeRoutes from "./routes/admin-identity-soft-merge";
 // single mutable users.role scalar. See shared/lib/userCapabilities.ts §4-7.
 import { getUserCapabilities } from "./lib/userCapabilities";
 import { rolesFromCapabilities } from "@shared/lib/userCapabilities";
+import { applyMarketingConsent } from '@shared/marketingConsentSync';
 import serviceSessionRoutes from "./routes/service-sessions";
 // Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
 import adminPaymentsControlRoutes from "./routes/admin-payments-control";
@@ -1846,9 +1847,21 @@ self.addEventListener('notificationclick', (event) => {
         // trail unusable.
         if (_syncResult?.isNewUser && (req.body as any)?.acceptedMarketing !== undefined) {
           try {
+            // 2026-09-19: writing marketingConsent alone changed nothing.
+            // emailService reads communicationPreferences.email.marketing and
+            // only falls back to marketingConsent when that column is absent —
+            // which never happens, it has a non-null default. So a customer who
+            // ticked "send me offers" here was still blocked from every
+            // marketing email. Set both, so the consent and the flag the mailer
+            // actually reads cannot drift apart.
+            const _existingPrefs = await storage.getUser(decoded.uid).catch(() => null);
             await authService.updateUser(decoded.uid, {
               marketingConsent: acceptedMarketing,
-            });
+              communicationPreferences: applyMarketingConsent(
+                (_existingPrefs as any)?.communicationPreferences ?? null,
+                acceptedMarketing,
+              ),
+            } as any);
             logger.info('[Session] Marketing preference recorded', {
               uid: decoded.uid,
               marketingConsent: acceptedMarketing,

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { users, purchases } from '@shared/schema';
+import { applyMarketingConsent } from '@shared/marketingConsentSync';
 import { eq, desc } from 'drizzle-orm';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
@@ -403,7 +404,20 @@ router.patch('/profile', async (req, res) => {
     if (carPlate2 !== undefined) updateData.carPlate2 = carPlate2;
     if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;
     if (emergencyContactPhone !== undefined) updateData.emergencyContactPhone = emergencyContactPhone;
-    if (marketingConsent !== undefined) updateData.marketingConsent = marketingConsent;
+    if (marketingConsent !== undefined) {
+      updateData.marketingConsent = marketingConsent;
+      // 2026-09-19: marketingConsent alone decides NOTHING. emailService reads
+      // communicationPreferences.email.marketing and only falls back to
+      // marketingConsent when communicationPreferences is absent — which never
+      // happens, because that column has a non-null default. So the checkbox was
+      // decorative: a customer could opt IN and still never receive an offer.
+      // Move the flag the mailer actually reads, on every channel, leaving
+      // transactional and reminder traffic untouched.
+      updateData.communicationPreferences = applyMarketingConsent(
+        (existingUser as any)?.communicationPreferences ?? null,
+        marketingConsent,
+      );
+    }
     // twoFactorEnabled is refused above and never reaches an UPDATE from here.
     // See SECURITY_FIELDS_REQUIRING_CANONICAL_FLOW.
 
