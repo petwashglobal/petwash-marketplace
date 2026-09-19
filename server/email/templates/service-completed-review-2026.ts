@@ -122,17 +122,14 @@ export function buildServiceCompletedEmail(p: ServiceCompletedParams): string {
                                                                                                     <!-- PROVIDER CARD -->
                                                                                                       <tr>
                                                                                                           <td style="padding:28px 40px 0;">
-                                                                                                                <div style="background:#f8f6f0;border:1px solid #e8e4d8;padding:20px;text-align:${align};display:flex;align-items:center;gap:16px;">
-                                                                                                                        ${p.providerAvatar ? `<img src="${p.providerAvatar}" width="56" height="56"
-                                                                                                                                  style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #C9A96E;" />` : ''}
-                                                                                                                                          <div>
-                                                                                                                                                    <p style="margin:0;font-size:11px;color:#C9A96E;font-weight:700;letter-spacing:2px;text-transform:uppercase;">
-                                                                                                                                                                ${t.provider}
-                                                                                                                                                                          </p>
-                                                                                                                                                                                    <p style="margin:4px 0 0;font-size:16px;font-weight:600;color:#1a1a1a;">${p.providerName}</p>
-                                                                                                                                                                                              <p style="margin:2px 0 0;font-size:13px;color:#888;">${p.serviceLabel} &bull; ${p.petName}</p>
-                                                                                                                                                                                                      </div>
-                                                                                                                                                                                                            </div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8f6f0;border:1px solid #e8e4d8;"><tr>
+${p.providerAvatar ? `<td width="76" style="padding:20px 0 20px 20px;vertical-align:middle;"><img src="${p.providerAvatar}" width="56" height="56" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #C9A96E;display:block;" /></td>` : ''}
+<td style="padding:20px;vertical-align:middle;text-align:${align};">
+<p style="margin:0;font-size:11px;color:#C9A96E;font-weight:700;letter-spacing:2px;text-transform:uppercase;">${t.provider}</p>
+<p style="margin:4px 0 0;font-size:16px;font-weight:600;color:#1a1a1a;">${p.providerName}</p>
+<p style="margin:2px 0 0;font-size:13px;color:#888;">${p.serviceLabel} &bull; ${p.petName}</p>
+</td>
+</tr></table>
                                                                                                                                                                                                                 </td>
                                                                                                                                                                                                                   </tr>
                                                                                                                                                                                                                   
