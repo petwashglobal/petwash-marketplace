@@ -380,6 +380,72 @@ function getWeatherCondition(code: number): { condition: string; description: st
 }
 
 /**
+ * Helper: the Google-Weather twin of getWeatherRecommendation (2026-09-19).
+ *
+ * This function was CALLED at the top of the Google path and never existed, so
+ * every Google-Weather lookup threw ReferenceError and the route answered 500 —
+ * /api/weather/planner and /api/weather/7-day-planner were dead on the live
+ * site. Same advice ladder as getWeatherRecommendation, but reading the string
+ * condition Google returns instead of an Open-Meteo numeric code, plus the two
+ * extra signals Google gives us (wind, UV).
+ */
+function generatePetWashRecommendation(
+  temperature: number,
+  condition: string,
+  humidity?: number,
+  windSpeed?: number,
+  uvIndex?: number,
+): { message: string; priority: string; actionAdvice: string } {
+  const c = String(condition || '').toLowerCase();
+  const wet = /rain|snow|storm|thunder|sleet|hail|drizzle|shower/.test(c);
+
+  if (wet) {
+    return {
+      message: 'Not recommended - wet weather. Consider indoor drying or reschedule.',
+      priority: 'low',
+      actionAdvice: 'Reschedule for better weather or use heated indoor drying.',
+    };
+  }
+  if (typeof windSpeed === 'number' && windSpeed > 40) {
+    return {
+      message: 'Very windy - drying is uncomfortable for the dog.',
+      priority: 'low',
+      actionAdvice: 'Wait for calmer wind, or dry indoors.',
+    };
+  }
+  if (temperature < 10) {
+    return {
+      message: 'Cool weather - ensure warm water and indoor drying.',
+      priority: 'medium',
+      actionAdvice: 'Use warm water and heated dryer. Keep pet warm after wash.',
+    };
+  }
+  if (temperature > 32) {
+    return {
+      message: 'Hot day - wash early or late and keep your dog out of direct sun.',
+      priority: 'medium',
+      actionAdvice: typeof uvIndex === 'number' && uvIndex >= 8
+        ? 'UV is very high — prefer early morning or evening, and shade while drying.'
+        : 'Drying is fast, but avoid the midday sun.',
+    };
+  }
+  if (temperature >= 18 && temperature <= 28 && /clear|sun|partly/.test(c)) {
+    return {
+      message: 'Perfect weather for pet washing! Optimal temperature and clear skies.',
+      priority: 'high',
+      actionAdvice: typeof humidity === 'number' && humidity > 80
+        ? 'Ideal temperature; humidity is high, so allow extra drying time.'
+        : 'Ideal conditions for washing and natural drying.',
+    };
+  }
+  return {
+    message: 'Good conditions for pet washing.',
+    priority: 'medium',
+    actionAdvice: 'Suitable for washing. Monitor weather during session.',
+  };
+}
+
+/**
  * Helper: Generate pet wash recommendation based on weather
  */
 function getWeatherRecommendation(

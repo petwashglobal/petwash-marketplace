@@ -25,6 +25,8 @@ import {
   AlertCircle,
   TrendingUp,
 } from "lucide-react";
+import { bookingStatusLabel } from '@shared/lib/bookingStatusLabels';
+import { useLanguage } from '@/lib/languageStore';
 
 interface TaskBooking {
   id: string;
@@ -101,6 +103,7 @@ function PayoutBadge({ status }: { status: string | null }) {
 export default function ProviderTaskInbox() {
   const { user } = useFirebaseAuth();
   const { toast } = useToast();
+  const { language } = useLanguage();
   const [, navigate] = useLocation();
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -274,16 +277,18 @@ export default function ProviderTaskInbox() {
                       <p className="font-semibold text-gray-900 dark:text-black text-sm">
                         {b.serviceType || "Service Request"}
                       </p>
-                      {/* 2026-08-18: STATUS_LABEL map already declared in this
-                          file but never rendered — provider couldn't tell
-                          state at a glance. Render as chip so pending vs
-                          in_progress vs completed is visible. */}
-                      {STATUS_LABEL[b.status] && (
+                      {/* The status chip. It referenced a page-local
+                          STATUS_LABEL map that #1882 deleted when every screen
+                          moved to the canonical helper — so this page threw
+                          ReferenceError while rendering a provider's own task
+                          list (fixed 2026-09-19). Same labels the customer
+                          sees, in the provider's language. */}
+                      {b.status && (
                         <span
                           data-testid={`task-inbox-status-${b.id}`}
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200"
                         >
-                          {STATUS_LABEL[b.status]}
+                          {bookingStatusLabel(b.status, language)}
                         </span>
                       )}
                     </div>

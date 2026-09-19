@@ -1405,7 +1405,10 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
         await loginOrLink({
           provider: 'phone',
           providerAccountId: user.uid,
-          email: email || null,
+          // `email` was never in scope here — the ReferenceError was swallowed
+          // by the catch below, so with ff.returning_user.identity_unified.enabled
+          // ON (it is, in prod) this probe recorded NOTHING on every phone login.
+          email: typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() || null : null,
           emailVerified: false, // phone-session does not verify email
           displayName: null,
         });

@@ -16,6 +16,7 @@ import { Layout } from "@/components/Layout";
 import { useLanguage } from "@/lib/languageStore";
 import { GlassCard } from "@/components/LuxuryWidgets";
 import { NavigationButton } from "@/components/NavigationButton";
+import { splitMarketplaceJob } from '@shared/marketplaceMoney';
 
 interface Trainer {
   id: number;

@@ -18,7 +18,7 @@
 import { createHash, randomBytes } from 'crypto';
 import { sql } from 'drizzle-orm';
 import { db } from '../db';
-import { ledgerAccounts, ledgerEntries, ledgerTransactions } from '@shared/schema-ledger-v2';
+import { ledgerAccounts, ledgerEntries, ledgerTransactions, ledgerPendingTransfers } from '@shared/schema-ledger-v2';
 import { logger } from '../lib/logger';
 
 /** One leg of a double-entry movement. Amount is always POSITIVE; the sign is the direction. */
