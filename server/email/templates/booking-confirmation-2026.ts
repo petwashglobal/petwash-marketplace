@@ -73,7 +73,7 @@ export type BookingService =
                                                                                                         ? (isProvider ? `⁦PetWash™⁩ — הזמנה חדשה 🐾 ${p.bookingRef}` : `אישור הזמנה ⁦PetWash™⁩ — ${p.bookingRef}`)
                                                                                                               : (isProvider ? `New Booking Alert — ${p.bookingRef}` : `Booking Confirmed — ${p.bookingRef}`),
                                                                                                                   headline: isHe
-                                                                                                                        ? (isProvider ? 'הזמנה חדשה!' : 'הזמנתך אושררה!')
+                                                                                                                        ? (isProvider ? 'הזמנה חדשה!' : 'הזמנתך אושרה!')
                                                                                                                               : (isProvider ? 'New Booking Received!' : 'Your Booking is Confirmed!'),
                                                                                                                                   sub: isHe
                                                                                                                                         ? `פרטי הזמנה #${p.bookingRef}`
