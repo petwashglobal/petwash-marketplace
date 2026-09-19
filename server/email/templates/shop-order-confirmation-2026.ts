@@ -46,6 +46,21 @@ const PAYMENT_LABELS: Record<string, { he: string; en: string }> = {
   credit_card: { he: 'כרטיס אשראי',   en: 'Credit card' },
 };
 
+/**
+ * The route passes DeliveryRouter's estimatedDate verbatim — an ISO string.
+ * Customers were reading "2026-09-22T07:29:30.816Z" (seen on the 2026-09-19
+ * sample run). A parseable date is shown as a date; anything else unchanged.
+ */
+export function formatEstimatedDelivery(raw: string | undefined, isHe: boolean): string {
+  const s = String(raw ?? '').trim();
+  if (!s) return '';
+  const t = Date.parse(s);
+  if (!Number.isFinite(t)) return s;
+  return new Intl.DateTimeFormat(isHe ? 'he-IL' : 'en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Jerusalem',
+  }).format(new Date(t));
+}
+
 export interface ShopOrderConfirmationParams {
   orderId: string;
   customerName: string;
@@ -265,7 +280,7 @@ export function shopOrderConfirmation(p: ShopOrderConfirmationParams): string {
           </td>
         </tr>
         ${p.estimatedDelivery ? `<tr><td colspan="2" style="padding:12px 16px;direction:rtl">
-          <span style="font-size:13px;color:${SUCCESS_GRN};font-weight:600">📅 ${isHe ? 'תאריך אספקה משוער' : 'Estimated delivery'}: ${p.estimatedDelivery}</span>
+          <span style="font-size:13px;color:${SUCCESS_GRN};font-weight:600">📅 ${isHe ? 'תאריך אספקה משוער' : 'Estimated delivery'}: ${formatEstimatedDelivery(p.estimatedDelivery, isHe)}</span>
         </td></tr>` : ''}
       </table>
       ${addrBlock}

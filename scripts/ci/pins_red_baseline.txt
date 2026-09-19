@@ -21,8 +21,6 @@ client/src/__tests__/signupSmsFallback.regression.test.ts  # red on main at gate
 client/src/__tests__/whoamiInvalidation.regression.test.ts  # red on main at gate landing
 client/src/lib/accountButton.test.ts  # red on main at gate landing
 client/src/pages/AddPetPassport.species-tiles.regression.test.ts  # red on main at gate landing
-client/src/pages/BookingConfirmation.confirm-end.regression.test.ts  # red on main at gate landing
-client/src/pages/BookingConfirmation.rating-clamp.regression.test.ts  # red on main at gate landing
 client/src/pages/Pets.sharedQueryKeyShape.regression.test.ts  # red on main at gate landing
 client/src/pages/ProviderOnboarding.regression.test.ts  # red on main at gate landing
 server/tests/adminOctopus.regression.test.ts  # red on main at gate landing
