@@ -470,6 +470,7 @@ import { IsraeliTaxService } from "@shared/israeliTax";
 import multer from 'multer';
 import crypto from 'crypto';
 import { apiLimiter, paymentLimiter, adminLimiter, uploadLimiter, webauthnLimiter, authLimiter, sessionLimiter, kycLimiter, bookingLimiter, dispatchLimiter, otpLimiter, aiChatLimiter, aiChatHourlyLimiter } from './middleware/rateLimiter';
+import { otpLimiterExceptReadOnly } from './middleware/otpLimiterExceptReadOnly';
 import { aiUserBudget, AI_BUDGET_DEFAULT_AUTH, AI_BUDGET_DEFAULT_ANON } from './middleware/aiUserBudget';
 import { incrementAIRequest, startAIMetricsFlusher } from './middleware/aiSecurity';
 import { loginRateLimitMiddleware, recordFailedLogin, clearLoginAttempts } from './middleware/loginRateLimiter';
@@ -2099,7 +2100,17 @@ self.addEventListener('notificationclick', (event) => {
     // lock out legitimate customer signups for the rest of the day.
     // otpLimiter is purpose-built — 5 req per 5-min window per IP — and
     // runs after authLimiter so both gates apply (defense in depth).
-    app.use('/api/auth/sms', authLimiter, otpLimiter, authSmsRoutes);
+    // 2026-09-19: otpLimiter is 5 requests per 5 minutes per IP, and it was
+    // applied to the WHOLE mount — including GET /status, a read-only config
+    // check that sends no SMS and costs nothing. SignUpLuxury calls it on
+    // every page load, so simply opening the signup page burned one of the
+    // five, and a few loads (or several people behind one carrier NAT, which
+    // is normal on Israeli mobile) exhausted the budget before anyone typed a
+    // phone number. POST /start then answered 429 as well. Production logs for
+    // the 24h to 2026-09-19 show 245 rejections on /status alone.
+    // The spend-nothing GET keeps authLimiter (10/min) and is exempt from the
+    // OTP budget; every SMS-sending route is untouched.
+    app.use('/api/auth/sms', authLimiter, otpLimiterExceptReadOnly, authSmsRoutes);
     logger.info('[routes] Mounted /api/auth/sms (canonical SMS auth wrapper, hardened)');
   } catch (mountErr) {
     logger.error('[routes] Failed to mount /api/auth/sms — feature degraded, server continues', mountErr);
