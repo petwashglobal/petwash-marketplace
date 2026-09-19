@@ -2326,6 +2326,7 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
           paymentClass: 'PROVIDER_BOOKING_COMMISSION' as const,
           bookingId,
           customerEmail: walkCustomer?.email || '',
+          customerId: String(booking.ownerId),
           customerName: [walkCustomer?.first, walkCustomer?.last].filter(Boolean).join(' '),
           providerName: [walkProvider?.first, walkProvider?.last].filter(Boolean).join(' ') || `Walker ${booking.walkerId}`,
           providerId: String(booking.walkerId),

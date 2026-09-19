@@ -805,6 +805,7 @@ async function issueAcademyReceipt(
     paymentClass: 'PROVIDER_BOOKING_COMMISSION' as const,
     bookingId: booking.bookingId,
     customerEmail: cust?.email || '',
+    customerId: String(booking.userId),
     customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
     serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
     providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
