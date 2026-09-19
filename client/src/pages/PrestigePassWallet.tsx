@@ -591,6 +591,12 @@ function DigitalCardSection({
   petEditOpen, setPetEditOpen, petForm, setPetForm, savingPet, setSavingPet, queryClient,
 }: any) {
   const { pass, balances } = wallet;
+  // Fail OPEN on purpose: only an explicit `false` from the server hides a
+  // wallet button. An older server (or a cached response) simply omits
+  // walletProviders, and in that case we keep today's behaviour rather than
+  // telling a member "בקרוב" about a rail that may be working fine.
+  const appleWalletReady  = walletData?.walletProviders?.apple  !== false;
+  const googleWalletReady = walletData?.walletProviders?.google !== false;
   const totalLiquid = balances.cashWalletCents + balances.egiftBalanceCents + balances.promoBalanceCents + balances.referralBalanceCents;
   const K9000_MIN_CENTS  = 3900;
   const K9000_FULL_CENTS = 7900;
@@ -924,14 +930,35 @@ function DigitalCardSection({
             : 'Receive your PetWash Privilege in Apple Wallet and Google Wallet. Auto-updates automatically.'}
         </p>
         <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-          <button onClick={() => walletDownloadMutation.mutate('apple')} disabled={walletDownloadMutation.isPending}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#000', color:'#fff', padding:'13px', borderRadius:'12px', border:'none', cursor: walletDownloadMutation.isPending ? 'wait' : 'pointer', fontWeight:700, fontSize:'0.9rem' }}>
-            <span>🍎</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
-          </button>
-          <button onClick={() => walletDownloadMutation.mutate('google')} disabled={walletDownloadMutation.isPending}
-            style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#4285F4', color:'#fff', padding:'13px', borderRadius:'12px', border:'none', cursor: walletDownloadMutation.isPending ? 'wait' : 'pointer', fontWeight:700, fontSize:'0.9rem' }}>
-            <span>🔵</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet')}
-          </button>
+          {/* A wallet button is only offered when that rail can actually serve a
+              pass. The server answers 503 on /api/pass/apple/:token when the
+              PassKit certificates are not installed, so an always-live button
+              handed the member a dead tap and no reason (CEO, live iPhone
+              2026-09-19). /api/pass/:token's own fallback page has always said
+              "בקרוב" in that state; this says the same thing rather than
+              promising what the server cannot deliver. */}
+          {appleWalletReady ? (
+            <button onClick={() => walletDownloadMutation.mutate('apple')} disabled={walletDownloadMutation.isPending}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#000', color:'#fff', padding:'13px', borderRadius:'12px', border:'none', cursor: walletDownloadMutation.isPending ? 'wait' : 'pointer', fontWeight:700, fontSize:'0.9rem' }}>
+              <span>🍎</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
+            </button>
+          ) : (
+            <div data-testid="apple-wallet-coming-soon"
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#F5F5F5', color:'#BBBBBB', padding:'13px', borderRadius:'12px', fontWeight:700, fontSize:'0.9rem', cursor:'not-allowed' }}>
+              <span>🍎</span> {he ? 'Apple Wallet — בקרוב' : 'Apple Wallet — Coming Soon'}
+            </div>
+          )}
+          {googleWalletReady ? (
+            <button onClick={() => walletDownloadMutation.mutate('google')} disabled={walletDownloadMutation.isPending}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#4285F4', color:'#fff', padding:'13px', borderRadius:'12px', border:'none', cursor: walletDownloadMutation.isPending ? 'wait' : 'pointer', fontWeight:700, fontSize:'0.9rem' }}>
+              <span>🔵</span> {walletDownloadMutation.isPending ? (he ? 'מכין קישור...' : 'Preparing link…') : (he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet')}
+            </button>
+          ) : (
+            <div data-testid="google-wallet-coming-soon"
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#F5F5F5', color:'#BBBBBB', padding:'13px', borderRadius:'12px', fontWeight:700, fontSize:'0.9rem', cursor:'not-allowed' }}>
+              <span>🔵</span> {he ? 'Google Wallet — בקרוב' : 'Google Wallet — Coming Soon'}
+            </div>
+          )}
           <button onClick={() => resendEmailMutation.mutate()} disabled={resendEmailMutation.isPending}
             style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', background:'#FFFFFF', border:'1.5px solid rgba(217, 184, 76,0.3)', color:'#B8860B', padding:'12px', borderRadius:'12px', cursor:'pointer', fontWeight:600, fontSize:'0.85rem' }}>
             <Clock size={15} />

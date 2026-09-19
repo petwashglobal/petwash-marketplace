@@ -699,6 +699,20 @@ router.get('/wallet', async (req: Request, res: Response) => {
       displayName,
       cardId,
       cardDisplay,
+      // WHICH WALLET RAILS ACTUALLY WORK. Booleans only — never a cert, a key
+      // or an env name. The page used to render a live "Add to Apple Wallet"
+      // button whether or not the PassKit certificates were installed; tapping
+      // it reached /api/pass/apple/:token, which answers 503 when they are
+      // not, so the member got a dead button and no reason (CEO, live iPhone
+      // 2026-09-19: "apple wallet pass cannot be download... did all codes").
+      // /api/pass/:token's own fallback page has always told the truth here —
+      // it renders "Apple Wallet — בקרוב" when unconfigured. This lets the
+      // wallet page say the same thing instead of promising something the
+      // server cannot deliver.
+      walletProviders: {
+        apple:  isAppleWalletConfigured(),
+        google: isGoogleWalletConfigured(),
+      },
       // Identity-only card data for the "Scan to identify" block (no value).
       memberCard: memberIdentity ? {
         memberId:     memberIdentity.memberId,
