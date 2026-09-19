@@ -14,6 +14,7 @@
  */
 
 import { Router, type Request, type Response } from "express";
+import { callerIsAdmin } from '../lib/callerRole';
 import { z } from "zod";
 import { db } from "../db";
 import { unifiedVouchers, unifiedVoucherLedger } from "../../shared/schema";
@@ -62,7 +63,9 @@ function validate<T>(schema: z.ZodSchema<T>) {
 }
 
 function isAdmin(req: Request) {
-  return req.user?.role === "admin" || req.user?.role === "super_admin";
+  // 2026-09-19: was read off the request user object — a field nothing ever assigns, so this
+  // denied every authenticated caller including the super admin. See lib/callerRole.ts.
+  return callerIsAdmin(req);
 }
 
 // ─────────────────────────────────────────────

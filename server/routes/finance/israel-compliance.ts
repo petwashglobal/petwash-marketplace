@@ -12,6 +12,7 @@
  */
 
 import { Router } from 'express';
+import { callerRole } from '../../lib/callerRole';
 import { IsraelComplianceEngine } from '../../services/IsraelComplianceEngine';
 import { timingSafeAdminSecretMatch } from '../../middleware/adminAuth';
 import { logger } from '../../lib/logger';
@@ -21,7 +22,9 @@ const router = Router();
 
 function isAdmin(req: any): boolean {
   if (timingSafeAdminSecretMatch(req)) return true;
-  const role = req.user?.role ?? req.user?.customClaims?.role;
+  // 2026-09-19: was read off the request user object — a field nothing ever assigns, so this
+  // denied every authenticated caller including the super admin. See lib/callerRole.ts.
+  const role = callerRole(req);
   return ['super_admin', 'finance'].includes(role);
 }
 

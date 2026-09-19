@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { callerRole } from '../lib/callerRole';
 import { randomInt, randomBytes } from 'crypto';
 import { db, pool } from '../db';
 import {
@@ -2577,9 +2578,14 @@ router.get('/users/:userId/walks', requireAuth, async (req: any, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
     const { userId } = req.params;
-    const callerRole: string = req.user?.role || req.userRole?.role?.name || '';
+    // 2026-09-19: was read off the request user object / userRole — neither is
+    // ever populated on this mount (no token middleware writes a role, and
+    // loadUserRole is not in this chain), so the support/management bypass
+    // documented just above was permanently dead. callerRole reads the verified
+    // Firebase claim, and still falls back to the legacy shapes.
+    const callerRoleValue: string = callerRole(req) || req.userRole?.role?.name || '';
     const isAdmin = ['super_admin', 'management', 'staff', 'admin'].includes(
-      String(callerRole).toLowerCase(),
+      String(callerRoleValue).toLowerCase(),
     );
     if (callerUid !== userId && !isAdmin) {
       console.warn('[Walk My Pet] BOLA blocked on legacy /users/:userId/walks', {

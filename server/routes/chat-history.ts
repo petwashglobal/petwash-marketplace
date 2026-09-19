@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { callerIsAdmin } from '../lib/callerRole';
 import { z } from 'zod';
 import { db } from '../db';
 import { logger } from '../lib/logger';
@@ -44,7 +45,7 @@ function requireAdmin(req: AuthenticatedRequest, res: Response, next: NextFuncti
     return res.status(401).json({ success: false, error: 'Authentication required' });
   }
   
-  if (req.user.role !== 'admin' && req.user.role !== 'super_admin') {
+  if (!callerIsAdmin(req)) {
     return res.status(403).json({ success: false, error: 'Admin access required' });
   }
   
@@ -56,7 +57,7 @@ function canAccessConversation(req: AuthenticatedRequest, conversation: ChatConv
   if (!req.user) return false;
   
   // Admins can access any conversation
-  if (req.user.role === 'admin' || req.user.role === 'super_admin') {
+  if (callerIsAdmin(req)) {
     return true;
   }
   
@@ -66,6 +67,12 @@ function canAccessConversation(req: AuthenticatedRequest, conversation: ChatConv
   }
   
   // Franchise managers can access conversations for their franchise
+  // KNOWN GAP (2026-09-19): req.user.franchiseId is declared on the local
+  // AuthenticatedRequest but NOTHING assigns it — no middleware in this mount's
+  // chain writes a franchise onto the request. So this comparison is always
+  // false and franchise-scoped access never grants. The admin bypass above now
+  // works, which is what unblocked the reported 403s; wiring a real franchise
+  // claim is a separate change and is deliberately NOT faked here.
   if (req.user.franchiseId && conversation.franchiseId === req.user.franchiseId) {
     return true;
   }
@@ -133,7 +140,7 @@ router.get('/conversations/franchise/:franchiseId', requireAuth, async (req: Aut
     const franchiseId = parseInt(req.params.franchiseId);
     
     // Authorization check
-    if (req.user!.role !== 'admin' && req.user!.role !== 'super_admin') {
+    if (!callerIsAdmin(req)) {
       if (req.user!.franchiseId !== franchiseId) {
         return res.status(403).json({ 
           success: false, 
