@@ -97,6 +97,17 @@ const EXPECTED_BLANK = new Set(["/__/auth/action", "/auth/action"]);
  */
 const LOADER_COPY = /^(טוען\.\.\.|Loading\.\.\.|جاري التحميل\.\.\.|Загрузка\.\.\.|Chargement\.\.\.|Cargando\.\.\.)$/;
 
+/**
+ * The BOOT self-heal panel (main.tsx renderBootFallback). It appears only after
+ * the top-level boot threw BEFORE React mounted AND the one cache-bust reload
+ * also failed — i.e. a real white screen the error boundary never saw, because
+ * the boundary lives inside the tree that never rendered. main.tsx already
+ * POSTs it to /api/errors/log; a sweep that calls it "almost no content
+ * (67 chars)" is describing the most serious failure it can find in the
+ * weakest possible terms.
+ */
+const BOOT_FALLBACK_COPY = /מעדכנים לגרסה האחרונה|Updating to the latest version/i;
+
 /** The error-boundary fallback, from client/src/lib/crashCardCopy.ts. */
 const CRASH_COPY = /Something went wrong|משהו השתבש|A new version is available|זמינה גרסה חדשה|encountered an unexpected error|אירעה שגיאה/i;
 
@@ -173,7 +184,13 @@ async function checkRoute(browser, route) {
     title = await page.title().catch(() => "");
     const rootChildren = await page.evaluate(() => document.getElementById("root")?.childElementCount ?? 0);
 
-    if (CRASH_COPY.test(body)) problems.push("ERROR BOUNDARY (render crash)");
+    if (BOOT_FALLBACK_COPY.test(body)) {
+      // Checked FIRST: boot never mounting is strictly worse than a component
+      // crashing inside a mounted tree, and its panel is short enough that the
+      // low-content branch would otherwise swallow it.
+      problems.push("BOOT SELF-HEAL PANEL — the app never mounted (white screen; cache-bust reload also failed)");
+    }
+    else if (CRASH_COPY.test(body)) problems.push("ERROR BOUNDARY (render crash)");
     else if (rootChildren === 0) problems.push("#root empty (white screen)");
     else if (LOADER_COPY.test(body.trim())) {
       // Still the Suspense fallback when the clock ran out: the lazy chunk
