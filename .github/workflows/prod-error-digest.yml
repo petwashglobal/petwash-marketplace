@@ -1,0 +1,58 @@
+name: Production error digest (read-only)
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: "How many hours back to read"
+        required: false
+        default: "24"
+      min_severity:
+        description: "ERROR or WARNING"
+        required: false
+        default: "ERROR"
+permissions:
+  contents: read
+# READ-ONLY. Reads Cloud Logging for the petwash-api service and prints the
+# distinct error messages with a count each, most frequent first. It writes
+# nothing, deploys nothing and touches no customer data beyond the log text
+# the service itself already wrote. Purpose: stop guessing which code paths
+# are failing in production and read what is actually thrown.
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: Read and group
+        env:
+          HOURS: ${{ github.event.inputs.hours }}
+          SEV: ${{ github.event.inputs.min_severity }}
+        run: |
+          set -uo pipefail
+          H="${HOURS:-24}"; SEV="${SEV:-ERROR}"
+          SINCE="$(date -u -d "-${H} hours" +%Y-%m-%dT%H:%M:%SZ)"
+          echo "== petwash-api ${SEV}+ since ${SINCE} =="
+          gcloud logging read \
+            "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"petwash-api\" AND severity>=${SEV} AND timestamp>=\"${SINCE}\"" \
+            --limit 1000 --project signinpetwash \
+            --format='value(jsonPayload.message,jsonPayload.error,textPayload,httpRequest.requestUrl,httpRequest.status)' \
+            > raw.txt 2>/dev/null || true
+          echo "raw lines: $(wc -l < raw.txt)"
+          echo
+          echo "== GROUPED (ids/numbers masked, most frequent first) =="
+          # mask ids, uuids, timestamps and long numbers so the same fault groups
+          sed -E 's/[0-9a-fA-F-]{16,}/<id>/g; s/[0-9]{4,}/<n>/g; s/[0-9]{2}:[0-9]{2}:[0-9]{2}/<time>/g' raw.txt \
+            | sed -E 's/\s+/ /g' | grep -v '^ *$' \
+            | sort | uniq -c | sort -rn | head -60
+          echo
+          echo "== 5xx REQUEST URLS (what the customer was doing) =="
+          gcloud logging read \
+            "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"petwash-api\" AND httpRequest.status>=500 AND timestamp>=\"${SINCE}\"" \
+            --limit 500 --project signinpetwash \
+            --format='value(httpRequest.status,httpRequest.requestMethod,httpRequest.requestUrl)' 2>/dev/null \
+            | sed -E 's/\?.*$//; s/[0-9a-fA-F-]{16,}/<id>/g' | sort | uniq -c | sort -rn | head -40
