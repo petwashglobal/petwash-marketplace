@@ -88,7 +88,7 @@ export function generateWorkflowNotification(data: WorkflowNotificationData): { 
                 
                 <tr>
                     <td style="padding:25px 30px;text-align:center;">
-                        ${data.logoUrl ? `<img src="${data.logoUrl}" alt="⁦PetWash™⁩" width="150" style="height:auto;border:0; max-width: 150px;"/>` : '<div style="font-size: 32px; font-weight: 700; background: linear-gradient(135deg, #7C3AED, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🐾 ⁦PetWash™⁩</div>'}
+                        ${data.logoUrl ? `<img src="${data.logoUrl}" alt="⁦PetWash™⁩" width="150" style="height:auto;border:0; max-width: 150px;"/>` : '<div style="font-size: 32px; font-weight: 700; background:#7C3AED;background:linear-gradient(135deg, #7C3AED, #3B82F6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">🐾 ⁦PetWash™⁩</div>'}
                     </td>
                 </tr>
 

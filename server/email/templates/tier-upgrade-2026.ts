@@ -141,7 +141,7 @@ export function buildTierUpgradeEmail(p: TierUpgradeParams): string {
 
                     <!-- CELEBRATION HEADER -->
                       <tr>
-                          <td style="background:linear-gradient(160deg,#0a0a0a 0%,#111 50%,#0a0a0a 100%);
+                          <td style="background:#0a0a0a;background:linear-gradient(160deg,#0a0a0a 0%,#111 50%,#0a0a0a 100%);
                                 padding:48px 40px 36px;text-align:center;
                                       box-shadow:inset 0 0 60px ${tc.glowColor};">
                                             <img src="${PETWASH_LOGO_BASE64}" alt="${BRAND_NAME}" width="120"

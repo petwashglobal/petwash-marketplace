@@ -30,7 +30,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
     
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+      background:#0F172A;background:linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
       padding: 40px 20px;
     }
     
@@ -44,7 +44,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
     }
     
     .header {
-      background: linear-gradient(135deg, #7C3AED 0%, #6366F1 50%, #3B82F6 100%);
+      background:#7C3AED;background:linear-gradient(135deg, #7C3AED 0%, #6366F1 50%, #3B82F6 100%);
       padding: 60px 40px;
       text-align: center;
       position: relative;
@@ -98,7 +98,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
       font-weight: 700;
       color: #0F172A;
       margin-bottom: 30px;
-      background: linear-gradient(135deg, #7C3AED, #3B82F6);
+      background:#7C3AED;background:linear-gradient(135deg, #7C3AED, #3B82F6);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -117,7 +117,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
     }
     
     .highlight-box {
-      background: linear-gradient(135deg, #F0F9FF 0%, #EEF2FF 100%);
+      background:#F0F9FF;background:linear-gradient(135deg, #F0F9FF 0%, #EEF2FF 100%);
       border-left: 4px solid #7C3AED;
       padding: 30px;
       border-radius: 16px;
@@ -179,7 +179,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
     
     .cta-button {
       display: inline-block;
-      background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
+      background:#7C3AED;background:linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
       color: #FFFFFF;
       padding: 20px 50px;
       text-decoration: none;
@@ -198,7 +198,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
     }
     
     .personal-note {
-      background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+      background:#FEF3C7;background:linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
       border-left: 4px solid #F59E0B;
       padding: 30px;
       border-radius: 16px;
@@ -367,7 +367,7 @@ export function generateBackendTeamInvitation(data: BackendInvitationData): { su
       </div>
       
       <!-- Vision -->
-      <div class="highlight-box" style="background: linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); border-left-color: #10B981;">
+      <div class="highlight-box" style="background:#ECFDF5;background:linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%); border-left-color: #10B981;">
         <h3 style="color: #10B981;">🌟 Our 2025-2026 Vision</h3>
         <p>
           We're building the <strong>world's most advanced pet care platform</strong>. AI-powered personalization, 

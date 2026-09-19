@@ -35,8 +35,8 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
   <div style="max-width: 640px; margin: 0 auto; padding: 32px 16px;">
     <div style="background: #ffffff; border-radius: 2px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
       
-      <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #7c3aed 100%); padding: 56px 40px; text-align: center; position: relative;">
-        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #c084fc, #c9a96e);"></div>
+      <div style="background:#0f172a;background:linear-gradient(160deg, #0f172a 0%, #1e293b 40%, #7c3aed 100%); padding: 56px 40px; text-align: center; position: relative;">
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background:#c9a96e;background:linear-gradient(90deg, #c9a96e, #e8d5a3, #c084fc, #c9a96e);"></div>
         <img src="${PETWASH_LOGO_ON_LIGHT}" alt="⁦PetWash™⁩" style="max-width: 150px; height: auto; margin-bottom: 24px;" />
         <h1 style="color: #ffffff; font-size: 28px; font-weight: 400; letter-spacing: 1.5px; margin: 0; font-family: 'Georgia', serif; text-shadow: 0 2px 8px rgba(0,0,0,0.15);">
           ${isHebrew ? 'בקשת זכיינות התקבלה' : 'Franchise Application Received'}
@@ -49,15 +49,15 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
         </div>
       </div>
       
-      <div style="height: 2px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #c084fc, #e8d5a3, #c9a96e);"></div>
+      <div style="height: 2px; background:#c9a96e;background:linear-gradient(90deg, #c9a96e, #e8d5a3, #c084fc, #e8d5a3, #c9a96e);"></div>
       
       <div style="padding: 52px 44px;">
         <h2 style="font-size: 22px; color: #0f172a; margin: 0 0 28px; font-weight: 400; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif;">
           ${isHebrew ? `שלום ${data.firstName},` : `Dear ${data.firstName},`}
         </h2>
         
-        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff;">
-          <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #7c3aed, #a855f7); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; padding: 24px; margin: 28px 0; border-radius: 2px; background:#faf5ff;background:linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background:#7c3aed;background:linear-gradient(135deg, #7c3aed, #a855f7); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center;">
             <span style="color: #ffffff; font-size: 20px; font-weight: bold; line-height: 40px;">✓</span>
           </div>
           <h3 style="margin: 0 0 6px; font-size: 18px; color: #7c3aed; font-family: 'Georgia', serif; font-weight: 400;">
@@ -74,7 +74,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
             : 'Thank you for your interest in the ⁦PetWash™⁩ Global Franchise Program. We value the opportunity to partner with you and expand our global network.'}
         </p>
         
-        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 28px; margin: 32px 0;">
+        <div style="background:#f8fafc;background:linear-gradient(135deg, #f8fafc, #f1f5f9); border: 1px solid #e2e8f0; border-radius: 2px; padding: 28px; margin: 32px 0;">
           <h3 style="font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #7c3aed; margin: 0 0 20px; font-weight: 600; text-align: ${isHebrew ? 'right' : 'left'};">
             ${isHebrew ? 'פרטי הבקשה' : 'Application Details'}
           </h3>
@@ -120,7 +120,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
           </div>
         </div>
         
-        <div style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff; border-radius: 2px; padding: 32px; margin: 36px 0;">
+        <div style="background:#faf5ff;background:linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff; border-radius: 2px; padding: 32px; margin: 36px 0;">
           <h3 style="font-size: 16px; color: #0f172a; margin: 0 0 20px; text-align: ${isHebrew ? 'right' : 'left'}; font-family: 'Georgia', serif; font-weight: 400;">
             ${isHebrew ? 'מה כולל תוכנית הזכיינות' : 'What the Franchise Program Includes'}
           </h3>
@@ -155,7 +155,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <td style="width: 36px; vertical-align: top; padding: 8px 0;">
-                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #ffffff; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">1</div>
+                <div style="width: 32px; height: 32px; border-radius: 2px; background:#7c3aed;background:linear-gradient(135deg, #7c3aed, #a855f7); color: #ffffff; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">1</div>
               </td>
               <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
                 <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? 'סקירת הבקשה' : 'Application Review'}</h4>
@@ -164,7 +164,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
             </tr>
             <tr>
               <td style="width: 36px; vertical-align: top; padding: 8px 0;">
-                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #ffffff; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">2</div>
+                <div style="width: 32px; height: 32px; border-radius: 2px; background:#7c3aed;background:linear-gradient(135deg, #7c3aed, #a855f7); color: #ffffff; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">2</div>
               </td>
               <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
                 <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? 'שיחת היכרות' : 'Discovery Call'}</h4>
@@ -173,7 +173,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
             </tr>
             <tr>
               <td style="width: 36px; vertical-align: top; padding: 8px 0;">
-                <div style="width: 32px; height: 32px; border-radius: 2px; background: linear-gradient(135deg, #7c3aed, #a855f7); color: #ffffff; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">3</div>
+                <div style="width: 32px; height: 32px; border-radius: 2px; background:#7c3aed;background:linear-gradient(135deg, #7c3aed, #a855f7); color: #ffffff; display: inline-block; text-align: center; line-height: 32px; font-size: 14px; font-weight: 600;">3</div>
               </td>
               <td style="padding: 8px 0 8px ${isHebrew ? '0' : '12px'}; padding-${isHebrew ? 'right' : 'left'}: 12px; vertical-align: top;">
                 <h4 style="font-size: 14px; color: #0f172a; margin: 4px 0; text-align: ${isHebrew ? 'right' : 'left'};">${isHebrew ? 'הסכם זכיינות' : 'Franchise Agreement'}</h4>
@@ -183,7 +183,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
           </table>
         </div>
         
-        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); border-${isHebrew ? 'right' : 'left'}: 3px solid #7c3aed; border-radius: 2px; padding: 20px 24px; margin: 28px 0;">
+        <div style="background:#f8fafc;background:linear-gradient(135deg, #f8fafc, #f1f5f9); border-${isHebrew ? 'right' : 'left'}: 3px solid #7c3aed; border-radius: 2px; padding: 20px 24px; margin: 28px 0;">
           <strong style="font-size: 14px; color: #0f172a; display: block; margin-bottom: 6px;">
             ${isHebrew ? 'שאלות?' : 'Questions?'}
           </strong>
@@ -201,7 +201,7 @@ export function generateFranchiseApplicationEmail(data: FranchiseApplicationEmai
         </p>
       </div>
       
-      <div style="background: linear-gradient(160deg, #0f172a, #1e293b); padding: 36px 44px; text-align: center;">
+      <div style="background:#0f172a;background:linear-gradient(160deg, #0f172a, #1e293b); padding: 36px 44px; text-align: center;">
         <p style="margin: 0;">
           <a href="https://petwash.co.il" style="color: #c4b5fd; text-decoration: none; font-size: 13px; letter-spacing: 0.5px;">petwash.co.il</a>
           <span style="color: rgba(255,255,255,0.2); margin: 0 8px;">│</span>

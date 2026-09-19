@@ -86,7 +86,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
         }
         
         .header {
-            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 50%, #F59E0B 100%);
+            background:#7C3AED;background:linear-gradient(135deg, #7C3AED 0%, #EC4899 50%, #F59E0B 100%);
             background-size: 200% 200%;
             padding: 80px 40px;
             text-align: center;
@@ -123,7 +123,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
             font-family: Georgia, 'Times New Roman', serif;
             font-size: 52px;
             font-weight: 700;
-            background: linear-gradient(135deg, #7C3AED, #EC4899);
+            background:#7C3AED;background:linear-gradient(135deg, #7C3AED, #EC4899);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 20px;
@@ -145,7 +145,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
         }
         
         .event-card {
-            background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
+            background:#F8F9FA;background:linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
             padding: 40px;
             border-radius: 20px;
             border: 2px solid #E2E8F0;
@@ -187,7 +187,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
         }
         
         .feature {
-            background: linear-gradient(135deg, #FAFAFA 0%, #FFFFFF 100%);
+            background:#FAFAFA;background:linear-gradient(135deg, #FAFAFA 0%, #FFFFFF 100%);
             padding: 25px;
             border-radius: 15px;
             border-${lang === 'he' ? 'right' : 'left'}: 4px solid #7C3AED;
@@ -243,7 +243,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
         
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            background:#7C3AED;background:linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
             color: #FFFFFF;
             text-decoration: none;
             padding: 22px 60px;

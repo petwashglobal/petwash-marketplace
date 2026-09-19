@@ -79,7 +79,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         
         /* Animated Gradient Header */
         .header {
-            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 50%, #F59E0B 100%);
+            background:#7C3AED;background:linear-gradient(135deg, #7C3AED 0%, #EC4899 50%, #F59E0B 100%);
             background-size: 200% 200%;
             padding: 80px 40px;
             text-align: center;
@@ -144,7 +144,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
             font-family: Georgia, 'Times New Roman', serif;
             font-size: 48px;
             font-weight: 700;
-            background: linear-gradient(135deg, #7C3AED, #EC4899);
+            background:#7C3AED;background:linear-gradient(135deg, #7C3AED, #EC4899);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -187,7 +187,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         }
         
         .feature-item {
-            background: linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
+            background:#F8F9FA;background:linear-gradient(135deg, #F8F9FA 0%, #FFFFFF 100%);
             padding: 25px;
             border-radius: 15px;
             border-left: 4px solid #7C3AED;
@@ -216,7 +216,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         
         /* Quote Section */
         .quote-section {
-            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            background:#7C3AED;background:linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
             padding: 50px 40px;
             border-radius: 20px;
             margin: 50px 0;
@@ -253,7 +253,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         
         .cta-button {
             display: inline-block;
-            background: linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
+            background:#7C3AED;background:linear-gradient(135deg, #7C3AED 0%, #EC4899 100%);
             color: #FFFFFF;
             text-decoration: none;
             padding: 20px 50px;
@@ -271,7 +271,7 @@ export function generateLuxuryLaunchEmail(data: LuxuryLaunchData): { subject: st
         
         .date-card {
             display: inline-block;
-            background: linear-gradient(135deg, #1E293B 0%, #334155 100%);
+            background:#1E293B;background:linear-gradient(135deg, #1E293B 0%, #334155 100%);
             color: #FFFFFF;
             padding: 30px 60px;
             border-radius: 20px;
