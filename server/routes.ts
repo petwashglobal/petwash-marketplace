@@ -13124,7 +13124,13 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/disputes', apiLimiter, disputesRoutes);
   app.use('/api/grooming-feedback', apiLimiter, groomingFeedbackRoutes);
   app.use('/api/analytics', adminLimiter, analyticsRoutes);
-  app.use('/api/devices', adminLimiter, devicesRoutes);
+  // 2026-09-19: this router had NO token middleware here and none inside, while
+  // every user handler reads `req.firebaseUser!.uid`. `req.firebaseUser` is only
+  // ever set by validateFirebaseToken/optionalFirebaseToken, so all 7 handlers
+  // threw TypeError and answered 500 — for signed-in users too. The whole
+  // Connected Devices screen was dead in production. The client always sent a
+  // Bearer token; the server just never read it.
+  app.use('/api/devices', validateFirebaseToken, adminLimiter, devicesRoutes);
   
   // Enterprise Management
   app.use('/api/enterprise/finance', adminLimiter, enterpriseFinanceRoutes);
@@ -13155,7 +13161,10 @@ self.addEventListener('notificationclick', (event) => {
   
   // Customer & Social Features — social-circle.ts handles /api/social (registered above)
   app.use('/api/messages', validateFirebaseToken, apiLimiter, messagesRoutes);
-  app.use('/api/concierge', apiLimiter, conciergeRoutes);
+  // 2026-09-19: same defect as /api/devices — /request, /alerts and /onboarding
+  // all read `req.firebaseUser!.uid` with nothing to populate it, so each one
+  // returned 500 to every caller.
+  app.use('/api/concierge', validateFirebaseToken, apiLimiter, conciergeRoutes);
   
   // Global Services
   app.use('/api/global-forms', apiLimiter, globalFormsRoutes);
