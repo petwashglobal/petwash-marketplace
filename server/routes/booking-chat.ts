@@ -34,7 +34,7 @@ import {
 } from '../websocket';
 import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
 import { auth as firebaseAuth, storage as firebaseStorage } from '../lib/firebase-admin';
-import { isSendGridConfigured } from '../lib/sendgrid';
+import { isSendGridConfigured, cleanSenderAddress } from '../lib/sendgrid';
 import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 import { scanChatRisk } from '../services/chatRiskScanner';
 import { sendPushToUser } from '../lib/fcm-push';
@@ -899,7 +899,7 @@ router.post('/:bookingId/send', async (req, res) => {
                 service: 'booking-chat-offline',
                 msg: {
                   to: recipient.email,
-                  from: { email: process.env.SENDGRID_FROM_EMAIL || 'noreply@petwash.co.il', name: 'PetWash™' },
+                  from: { email: cleanSenderAddress(process.env.SENDGRID_FROM_EMAIL, 'noreply@petwash.co.il'), name: 'PetWash™' },
                   subject: 'New message about your booking',
                   text: `You have a new message about booking ${bookingId}. Log in to reply.`,
                   html: `<p>You have a new message about booking <strong>${bookingId}</strong>.</p><p><a href="https://petwash.co.il/booking-chat/${bookingId}">Log in to reply</a>.</p>`,

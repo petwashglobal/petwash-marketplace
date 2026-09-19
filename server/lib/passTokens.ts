@@ -19,6 +19,7 @@
  * Timing-safe comparison on verify. Token version bumped to invalidate outstanding tokens on revoke.
  */
 
+import { cleanSenderAddress } from './sendgrid';
 import crypto from 'crypto';
 import { logger } from './logger';
 
@@ -207,7 +208,7 @@ export function buildSendGridMemberPassData(record: MemberPassRecord) {
   return {
     to:   record.ownerEmail,
     from: {
-      email: process.env.SENDGRID_FROM_EMAIL || 'support@petwash.co.il',
+      email: cleanSenderAddress(process.env.SENDGRID_FROM_EMAIL, 'support@petwash.co.il'),
       name:  process.env.SENDGRID_FROM_NAME  || 'PetWash',
     },
     templateId: process.env.SENDGRID_TEMPLATE_ID_MEMBER_PASS || '',

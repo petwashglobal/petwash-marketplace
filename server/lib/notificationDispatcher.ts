@@ -15,7 +15,7 @@ import { db as firestoreDb } from './firebase-admin';
 import { FIRESTORE_PATHS } from '../../shared/firestore-schema';
 import { logger } from './logger';
 import { COMPANY_TAX_ID } from '@shared/finance-identity';
-import { isSendGridConfigured } from './sendgrid';
+import { isSendGridConfigured, cleanSenderAddress } from './sendgrid';
 import { sendGuardedEmail } from './guarded-sendgrid';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildUnsubscribeUrl } from './unsubToken';
@@ -60,7 +60,9 @@ if (!EMAIL_SENDING_ENABLED) {
     '(server still boots; inbox + SMS unaffected). Set SENDGRID_FROM_EMAIL to re-enable email.'
   );
 }
-const FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL ?? 'noreply@petwash.co.il';
+// cleanSenderAddress: a secret with a trailing newline or "Name <addr>" was a
+// guaranteed SendGrid 400 on every email this dispatcher sent (2026-09-19).
+const FROM_EMAIL = cleanSenderAddress(process.env.SENDGRID_FROM_EMAIL, 'noreply@petwash.co.il');
 const FROM_NAME  = 'PetWash™';
 
 /**
@@ -263,9 +265,10 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
           // PII-safe log: never write the full email address.
           logger.info('[NotificationDispatcher] Email sent', { uid, type });
         } else {
-          errors.push(`Email guarded-send ${guarded.reason}`);
+          const why = 'detail' in guarded && guarded.detail ? ` — ${guarded.detail}` : '';
+          errors.push(`Email guarded-send ${guarded.reason}${why}`);
           logger.warn('[NotificationDispatcher] Email guarded-send failed', {
-            uid, type, reason: guarded.reason,
+            uid, type, reason: guarded.reason, ...(why ? { detail: guarded.detail } : {}),
           });
         }
       }

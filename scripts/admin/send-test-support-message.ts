@@ -56,6 +56,13 @@ async function main() {
 
   const { auth } = await import('../../server/lib/firebase-admin');
   const { dispatchNotification } = await import('../../server/lib/notificationDispatcher');
+  const { describeSenderAddress } = await import('../../server/lib/sendgrid');
+
+  // 2026-09-19: the first live run got HTTP 400 from SendGrid with no cause in
+  // the log. Print the SHAPE of the sender secret (never its value) so a
+  // trailing newline or a "Name <addr>" secret names itself here.
+  const senderShape = describeSenderAddress(process.env.SENDGRID_FROM_EMAIL);
+  console.log(`SENDGRID_FROM_EMAIL shape: ${JSON.stringify(senderShape)}`);
 
   // The in-app inbox needs a real account; email/SMS do not.
   let uid: string;
@@ -115,6 +122,7 @@ async function main() {
     lines.push('', '**Dispatcher errors (verbatim):**', '');
     for (const e of result.errors) lines.push(`- ${e}`);
   }
+  lines.push('', `Sender secret shape (value never printed): \`${JSON.stringify(senderShape)}\``);
   lines.push('', failed
     ? '❌ At least one requested channel did not deliver. The error strings above are the dispatcher\'s own — fix the named secret or provider, then re-run.'
     : '✅ Every requested channel delivered. Check the inbox / phone now; the in-app copy is under Messages → Inbox at https://petwash.co.il/inbox.');

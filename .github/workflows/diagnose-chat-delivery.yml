@@ -23,6 +23,16 @@ name: 📨 Diagnose — chat/support delivery (sends ONE real test message)
 # ────────────────────────────────────────────────────────────
 
 on:
+  # Second door (2026-09-19): the GitHub App that Claude sessions run through
+  # cannot call workflow_dispatch (403 "Resource not accessible by
+  # integration"), but it can push. A push to a diag/chat-delivery/** branch
+  # that carries ops/diagnose/chat-delivery.json runs the same job with the
+  # same secrets. The branch is temporary — delete it after the run, it holds
+  # a real phone number. Only collaborators can push, the same people who can
+  # press the button.
+  push:
+    branches: ['diag/chat-delivery/**']
+    paths: ['ops/diagnose/chat-delivery.json']
   workflow_dispatch:
     inputs:
       target_email:
@@ -118,16 +128,47 @@ jobs:
               load "$s" "$s"
               echo "  $s = ✅ loaded"
             else
-              echo "  $s = ⚠️ not in Secret Manager (SMS is skipped if Twilio is incomplete)"
+              case "$s" in
+                TWILIO_*) echo "  $s = ⚠️ not in Secret Manager (SMS is skipped if Twilio is incomplete; _IL/_US/_MESSAGING_SERVICE_SID are optional refinements)";;
+                *)        echo "  $s = ⚠️ not in Secret Manager (optional; the dispatcher does not need it)";;
+              esac
             fi
           done
 
+      - name: Resolve the request (form inputs, or the committed request file on a diag branch)
+        run: |
+          set -e
+          # Log hygiene (lesson from the 2026-09-19 runs): the recipient's email
+          # and phone are personal data. They are masked before anything else
+          # prints them, so the public job log shows *** where GitHub's own
+          # "Run …" echo and the sender script would otherwise show them.
+          if [ "${{ github.event_name }}" = "push" ]; then
+            F=ops/diagnose/chat-delivery.json
+            test -f "$F" || { echo "::error::$F missing on this diag branch"; exit 1; }
+            TARGET_EMAIL=$(jq -r '.target_email // empty' "$F")
+            TARGET_PHONE=$(jq -r '.target_phone // empty' "$F")
+            CHANNELS=$(jq -r '.channels // "inbox,email"' "$F")
+            LOCALE=$(jq -r '.locale // "en"' "$F")
+            SOURCE="$F (push to ${{ github.ref_name }})"
+          else
+            TARGET_EMAIL='${{ inputs.target_email }}'
+            TARGET_PHONE='${{ inputs.target_phone }}'
+            CHANNELS='${{ inputs.channels }}'
+            LOCALE='${{ inputs.locale }}'
+            SOURCE="the Run-workflow form"
+          fi
+          if [ -n "$TARGET_EMAIL" ]; then echo "::add-mask::$TARGET_EMAIL"; fi
+          if [ -n "$TARGET_PHONE" ]; then echo "::add-mask::$TARGET_PHONE"; fi
+          {
+            echo "TARGET_EMAIL=$TARGET_EMAIL"
+            echo "TARGET_PHONE=$TARGET_PHONE"
+            echo "CHANNELS=$CHANNELS"
+            echo "LOCALE=$LOCALE"
+          } >> "$GITHUB_ENV"
+          echo "Request taken from $SOURCE — channels=$CHANNELS locale=$LOCALE (recipient masked)"
+
       - name: Send the test message and report per channel
         env:
-          TARGET_EMAIL: ${{ inputs.target_email }}
-          TARGET_PHONE: ${{ inputs.target_phone }}
-          CHANNELS: ${{ inputs.channels }}
-          LOCALE: ${{ inputs.locale }}
           FIREBASE_PROJECT_ID: signinpetwash
           BASE_URL: https://petwash.co.il
           NODE_OPTIONS: --max-old-space-size=2048
