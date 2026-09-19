@@ -3,6 +3,7 @@ import {
   recordAttempt,
   shouldBypass,
   isDegraded,
+  checkTurnstileWithBreaker,
   __resetBreakerForTests,
 } from '../lib/turnstileBreaker';
 
@@ -63,5 +64,51 @@ describe('a broken bot-check widget must not lock every human out', () => {
     process.env.TURNSTILE_BREAKER = 'off';
     for (let i = 0; i < 40; i++) recordAttempt('missing');
     expect(shouldBypass()).toBe(false);
+  });
+});
+
+/**
+ * The guest gift-card purchase calls verifyTurnstileToken directly instead of
+ * going through turnstileGuard, so it needed the same protection. Confirmed
+ * against production on 2026-09-19:
+ *   POST /api/egift/guest/start with turnstileToken:"" -> 403 BOT_CHECK
+ * i.e. the one thing a customer can buy today without a provider refused
+ * every buyer.
+ */
+describe('the guest gift-card purchase survives a broken widget too', () => {
+  beforeEach(() => {
+    __resetBreakerForTests();
+    delete process.env.TURNSTILE_BREAKER;
+  });
+
+  const alwaysInvalid = async () => ({ valid: false, reason: 'invalid-input-response' });
+  const alwaysValid = async () => ({ valid: true });
+
+  it('refuses a token-less buyer while the widget is believed healthy', async () => {
+    const r = await checkTurnstileWithBreaker('', '1.2.3.4', alwaysInvalid);
+    expect(r.ok).toBe(false);
+    expect(r.degraded).toBe(false);
+  });
+
+  it('takes the purchase, flagged, once the widget is proven broken', async () => {
+    for (let i = 0; i < 10; i++) recordAttempt('missing');
+    const r = await checkTurnstileWithBreaker('', '1.2.3.4', alwaysInvalid);
+    expect(r.ok).toBe(true);
+    expect(r.degraded).toBe(true);
+  });
+
+  it('a real token still wins outright and closes the breaker', async () => {
+    for (let i = 0; i < 10; i++) recordAttempt('missing');
+    expect(isDegraded()).toBe(false); // not evaluated yet
+    const r = await checkTurnstileWithBreaker('a-real-token', '1.2.3.4', alwaysValid);
+    expect(r.ok).toBe(true);
+    expect(r.degraded).toBe(false);
+    expect(isDegraded()).toBe(false);
+  });
+
+  it("keeps 'not_configured' meaning the server half is absent", async () => {
+    const r = await checkTurnstileWithBreaker('tok', '1.2.3.4', async () => ({ valid: false, reason: 'not_configured' }));
+    expect(r.ok).toBe(true);
+    expect(r.degraded).toBe(false);
   });
 });

@@ -125,3 +125,32 @@ export function __resetBreakerForTests(): void {
   openedAt = null;
   lastAlertAt = 0;
 }
+
+/**
+ * For surfaces that call verifyTurnstileToken directly instead of going
+ * through turnstileGuard — the guest gift-card purchase is the important one,
+ * because it is a live money path and it refused every caller on 2026-09-19
+ * with 403 BOT_CHECK for exactly the same reason.
+ *
+ * Returns whether the request may proceed, and whether it did so only because
+ * the breaker is open (so the caller can tag it for audit).
+ */
+export async function checkTurnstileWithBreaker(
+  token: string,
+  ip: string | undefined,
+  verify: (t: string, ip?: string) => Promise<{ valid: boolean; reason?: string }>,
+): Promise<{ ok: boolean; degraded: boolean; reason?: string }> {
+  const trimmed = (token || '').trim();
+  if (!trimmed) {
+    recordAttempt('missing');
+    if (shouldBypass()) return { ok: true, degraded: true, reason: 'widget_unavailable' };
+    return { ok: false, degraded: false, reason: 'missing' };
+  }
+  const result = await verify(trimmed, ip).catch(() => ({ valid: false, reason: 'error' }));
+  recordAttempt(result.valid ? 'pass' : 'invalid');
+  // 'not_configured' keeps its existing meaning: the server half is absent.
+  if (result.valid || result.reason === 'not_configured') {
+    return { ok: true, degraded: false, reason: result.reason };
+  }
+  return { ok: false, degraded: false, reason: result.reason };
+}
