@@ -229,7 +229,10 @@ import {
 } from "@shared/schema-chat";
 import crypto from "crypto";
 import { db } from "./db";
-import { eq, desc, and, or, lt, gte, lte, like, sql, asc, isNull } from "drizzle-orm";
+// `inArray` was USED here (getCommunicationLogs) and never imported, so that
+// query threw ReferenceError the moment a CRM communication existed — the
+// early `return []` on an empty result hid it from every empty-fixture test.
+import { eq, desc, and, or, lt, gte, lte, like, sql, asc, isNull, inArray } from "drizzle-orm";
 import { NotFoundError } from "./errors";
 import { phoneLookupHash } from "./lib/phoneHmac";
 

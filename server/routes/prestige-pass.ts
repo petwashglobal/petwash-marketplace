@@ -12685,10 +12685,10 @@ router.post('/admin/wallet/replay/approvals/:id/approve', async (req: Request, r
     await db.execute(sql`
       INSERT INTO finance_audit_log (actor_uid, action, entity_type, entity_id, new_value)
       VALUES (${adminUid}, 'replay_execute_approved', 'finance_replay_approval', ${id},
-              ${JSON.stringify({ executeRunId, dryRunId: dryRun.id, signature })}::jsonb)
+              ${JSON.stringify({ executeRunId: execRunId, dryRunId: dryRun.id, signature })}::jsonb)
     `);
 
-    return res.json({ ok: true, executeRunId, report: (reportRaw?.rows ?? reportRaw)?.[0], signature });
+    return res.json({ ok: true, executeRunId: execRunId, report: (reportRaw?.rows ?? reportRaw)?.[0], signature });
   } catch (err: any) {
     logger.error('[ReplayApproval][Approve] error', { error: err.message });
     return res.status(500).json({ error: 'Failed to approve replay', detail: err.message });

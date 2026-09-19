@@ -92,6 +92,32 @@ describe('the Pet Passport screen is reachable by a real member', () => {
     ).toBeGreaterThan(0);
   });
 
+  // 2026-09-19 (CEO: "passport pet where is it?"). The 2026-09-18 round gave
+  // the Pet Parent home and the profile a door, but the DEFAULT dashboard —
+  // App.tsx renders <Dashboard /> unless VITE_DASHBOARD_V2_ENABLED is set, so
+  // it is the screen most members actually land on — still sent its "My Pets"
+  // tile to /pets, the plain management list. Two doors out of three is how
+  // the screen went dark the first time.
+  it('the default dashboard\'s My Pets tile opens the passport, not the list', () => {
+    const dashboard = read('pages/Dashboard.tsx');
+    expect(dashboard).toMatch(/key: 'myPets',[^\n]*href: '\/pet-passport'/);
+  });
+
+  it('its "Add" card opens the add flow it promises', () => {
+    // It was labelled Add / הוסף and opened /pets, a list with an Add button
+    // somewhere on it.
+    const dashboard = read('pages/Dashboard.tsx');
+    expect(dashboard).toMatch(/href="\/pet-passport\/add"/);
+  });
+
+  it('tapping ONE pet opens that pet\'s passport card', () => {
+    // The thumbnails all pointed at the generic list, so tapping a specific
+    // pet lost which pet you tapped. /pets/:petId/passport is the detail card
+    // both PetPassportHome and /pets already link to.
+    const dashboard = read('pages/Dashboard.tsx');
+    expect(dashboard).toMatch(/href=\{`\/pets\/\$\{pet\.id\}\/passport`\}/);
+  });
+
   it('/pets is NOT orphaned by the change — the passport still links back to it', () => {
     // The per-pet PetHealthPanel that owns vaccine / deworming / vet-visit
     // events lives on /pets, so the passport's Vaccines, Reminders, Vet, More
