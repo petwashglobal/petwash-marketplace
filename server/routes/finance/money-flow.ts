@@ -15,6 +15,7 @@
  */
 
 import { Router } from 'express';
+import { callerRole } from '../../lib/callerRole';
 import { z } from 'zod';
 import { db } from '../../db';
 import { sql } from 'drizzle-orm';
@@ -224,7 +225,7 @@ router.get('/money-flow-summary', requireRole('admin', 'management', 'staff'), a
     // ── Audit trail ────────────────────────────────────────────────────────────
     await logAuditEvent({
       actorUserId: req.user?.uid || req.userId || 'unknown',
-      actorRole: req.user?.role || 'admin',
+      actorRole: callerRole(req) || 'admin',
       actionType: 'FINANCE_MONEY_FLOW_SUMMARY_READ',
       targetType: 'money_flow_summary',
       ip: req.ip,
@@ -273,7 +274,7 @@ router.get('/transaction-types', requireRole('admin', 'management', 'staff'), as
 
     await logAuditEvent({
       actorUserId: req.user?.uid || req.userId || 'unknown',
-      actorRole: req.user?.role || 'admin',
+      actorRole: callerRole(req) || 'admin',
       actionType: 'FINANCE_TRANSACTION_TYPES_READ',
       targetType: 'transaction_records',
       ip: req.ip,

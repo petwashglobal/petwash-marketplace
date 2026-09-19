@@ -9,6 +9,7 @@
  */
 
 import { Router } from 'express';
+import { callerRole } from '../../lib/callerRole';
 import { z } from 'zod';
 import { requireAuth } from '../../customAuth';
 import { processManualAdjustment } from '../../services/TransactionEngine';
@@ -32,7 +33,9 @@ const adjustmentSchema = z.object({
 router.post('/', requireAuth, async (req, res) => {
   try {
     // Role check — super_admin or finance role only
-    const role = (req.user as any)?.role ?? (req.user as any)?.customClaims?.role;
+    // 2026-09-19: was read off the request user object — a field nothing ever assigns, so this
+    // denied every authenticated caller including the super admin.
+    const role = callerRole(req);
     const isAdminSecret = timingSafeAdminSecretMatch(req);
     const isAuthorizedRole = ['super_admin', 'finance'].includes(role);
 
