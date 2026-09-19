@@ -83,7 +83,8 @@ async function buildSamples(locale: Locale, targetEmail: string): Promise<Sample
         petName: p.pet, petBreed: p.breed,
         dateFormatted, timeFormatted: '10:00',
         locationName: he ? 'בית הסיטר, רמת גן' : "Sitter's home, Ramat Gan",
-        durationMinutes: 3 * 24 * 60,
+        // No durationMinutes: the template prints it as "(N min)", which for a
+        // three-night stay reads "(4320 min)". The service label carries the length.
         priceFormatted: '₪540.00', vatFormatted: he ? 'כולל מע״מ' : 'VAT incl.',
         loyaltyPointsEarned: 54, cancellationDeadline: deadline,
         dashboardUrl: `${BASE}/pet-parent/home`,
