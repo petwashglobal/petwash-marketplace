@@ -93,6 +93,13 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     groupHe: 'אנשים',
     items: [
       { label: 'CRM', labelHe: 'לקוחות', path: '/admin/crm', icon: Users, roles: ['admin', 'ceo'], hint: 'Customers & leads', hintHe: 'לקוחות ולידים' },
+      // 2026-09-19: this is where every provider application from /apply and from
+      // the Google Form lands. It was in NO menu — the CRM dashboard above only
+      // lets you act on a lead whose numeric id you already know, so new supply
+      // arrived into a screen nobody could reach.
+      { label: 'Leads & Applications', labelHe: 'לידים ופניות', path: '/crm/leads', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Every provider application & lead', hintHe: 'כל פניות נותני השירות והלידים' },
+      { label: 'Communications', labelHe: 'תקשורת', path: '/crm/communications', icon: MessageSquare, roles: ['admin', 'ceo'], hint: 'Customer messages & campaigns', hintHe: 'הודעות ללקוחות וקמפיינים' },
+      { label: 'Team Inbox', labelHe: 'תיבת הצוות', path: '/team/inbox', icon: MessageSquare, roles: ['admin', 'ceo'], hint: 'Shared team inbox', hintHe: 'תיבת דואר משותפת לצוות' },
       { label: 'HR', labelHe: 'משאבי אנוש', path: '/admin/hr', icon: Briefcase, roles: ['admin', 'ceo'], hint: 'Hiring, payroll, docs', hintHe: 'גיוס, שכר ומסמכים' },
       { label: 'Recruitment', labelHe: 'גיוס', path: '/admin/recruitment', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Job postings & applicants', hintHe: 'משרות ומועמדים' },
       { label: 'Performance Reviews', labelHe: 'הערכות עובדים', path: '/admin/performance-reviews', icon: Star, roles: ['admin', 'ceo'], hint: 'Employee reviews', hintHe: 'הערכות ביצועים לעובדים' },
@@ -108,6 +115,11 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     groupHe: 'תפעול',
     items: [
       { label: 'Operations', labelHe: 'תפעול', path: '/admin/operations', icon: Activity, roles: ['admin', 'ceo'], hint: 'Station ops & bay scheduling', hintHe: 'תפעול עמדות ושיבוץ תאים' },
+      // 2026-09-19: admin-guarded screens that live outside the /admin prefix, so
+      // the menu-coverage guard never saw them and nobody put them in the menu.
+      { label: 'Today on the Ground', labelHe: 'היום בשטח', path: '/ops/today', icon: Activity, roles: ['admin', 'ceo'], hint: "Today's jobs across every station", hintHe: 'משימות היום בכל העמדות' },
+      { label: 'Mobile Ops Hub', labelHe: 'מרכז תפעול נייד', path: '/mobile-ops', icon: Wrench, roles: ['admin', 'ceo'], hint: 'Phone-first console for field staff', hintHe: 'קונסולת שטח לנייד' },
+      { label: 'Documents', labelHe: 'מסמכים', path: '/documents', icon: FileText, roles: ['admin', 'ceo'], hint: 'Company document library', hintHe: 'ספריית מסמכי החברה' },
       { label: 'Fault & Maintenance Intel', labelHe: 'תקלות ותחזוקה חכמה', path: '/admin/fault-intel', icon: Activity, roles: ['admin', 'ceo'], hint: 'Fault cost + predictive maintenance', hintHe: 'עלות תקלות ותחזוקה מנבאת' },
       { label: 'Logistics', labelHe: 'לוגיסטיקה', path: '/admin/logistics', icon: Package, roles: ['admin', 'ceo'], hint: 'Fulfilment & shipping', hintHe: 'מימוש הזמנות ומשלוחים' },
       { label: 'Stations', labelHe: 'עמדות', path: '/admin/stations', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Facilities', hintHe: 'מתקנים' },

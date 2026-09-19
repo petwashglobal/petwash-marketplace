@@ -45,3 +45,10 @@
 /admin/compensation         # opened from a provider's page
 /admin/staff-onboarding     # opened from Staff
 /admin/dashboard            # legacy overview, kept for old bookmarks
+
+# 2026-09-19: duplicate URL aliases for screens already in the menu.
+# /mobile-ops is the menu entry; these are alternate paths kept for old links.
+/mobile/ops
+/m
+/mobile/stations
+/ops

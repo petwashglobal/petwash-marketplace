@@ -40,6 +40,26 @@ describe('the back-office menu covers every admin screen', () => {
     expect(dead).toEqual([]);
   });
 
+  /**
+   * 2026-09-19: the scan above only looked at routes whose path starts with
+   * /admin. Ten admin-guarded screens live outside that prefix — /crm/leads
+   * (where EVERY provider application from /apply and the Google Form lands),
+   * /crm/communications, /team/inbox, /ops/today, /documents and the mobile
+   * hubs. None of them were in the menu, and this guard could not see them.
+   * An admin screen is defined by its guard, not by its URL prefix.
+   */
+  it('every admin-guarded screen outside /admin is in the menu or explicitly excluded', () => {
+    const app = R('client/src/App.tsx');
+    const guarded = Array.from(app.matchAll(/<Route path="([^"]+)">([\s\S]*?)<\/Route>/g))
+      .filter(([, path, body]) => body.includes('AdminRouteGuard') && !path.startsWith('/admin') && !path.includes(':'))
+      .map(([, path]) => path);
+
+    expect(guarded.length).toBeGreaterThan(0); // the scan itself works
+
+    const missing = guarded.filter((r) => !nav.includes(r) && !allowed.includes(r));
+    expect(missing, `admin screens nobody can find: ${missing.join(', ')}`).toEqual([]);
+  });
+
   it('the two free member services are reachable from the menu', () => {
     expect(nav).toContain('/admin/adoption');
     expect(nav).toContain('/admin/paw-finder');
