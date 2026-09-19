@@ -72,6 +72,10 @@ export default function QuickApply() {
     send: isHe ? 'שליחה' : 'Send',
     sending: isHe ? 'שולח…' : 'Sending…',
     thanks: isHe ? 'תודה! נחזור אליכם בקרוב.' : 'Thank you! We will be in touch soon.',
+    nextStep: isHe
+      ? 'רוצים להתחיל לקבל הזמנות מהר יותר? השלימו עכשיו את הטופס המלא — זה מה שהופך אתכם לזמינים להזמנה.'
+      : 'Want bookings sooner? Finish the full application now — that is what makes you bookable.',
+    continueNow: isHe ? 'להשלמת הטופס המלא' : 'Complete the full application',
     already: isHe ? 'כבר קיבלנו את הפרטים שלכם — נחזור אליכם.' : 'We already have your details — we will be in touch.',
     full: isHe ? 'רוצים למלא את הטופס המלא עכשיו?' : 'Prefer the full application now?',
     pick: isHe ? 'בחרו לפחות שירות אחד' : 'Pick at least one service',
@@ -83,7 +87,21 @@ export default function QuickApply() {
         <div className="text-center max-w-md">
           <CheckCircle2 className="w-14 h-14 mx-auto text-green-500 mb-4" />
           <h1 className="text-2xl font-semibold mb-2">{done.alreadyApplied ? t.already : t.thanks}</h1>
-          <Link href="/" className="underline text-sm text-gray-600">{isHe ? 'לדף הבית' : 'Home'}</Link>
+          {/* The 6 fields above make a CRM lead, not a bookable provider — only the
+              full application does that. This screen used to offer nothing but
+              "Home", so the warmest moment in the whole funnel (they just chose to
+              apply) sent them away. Lead with the next step. */}
+          <p className="text-sm text-gray-600 mb-5">{t.nextStep}</p>
+          <Link
+            href="/become-provider"
+            className="inline-block w-full rounded-xl bg-black text-white py-3 font-medium mb-3"
+            data-testid="link-quick-apply-continue"
+          >
+            {t.continueNow}
+          </Link>
+          <div>
+            <Link href="/" className="underline text-sm text-gray-600">{isHe ? 'לדף הבית' : 'Home'}</Link>
+          </div>
         </div>
       </div>
     );

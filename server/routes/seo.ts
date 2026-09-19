@@ -145,6 +145,13 @@ router.get('/sitemap.xml', async (req, res) => {
     { url: '/trust', changefreq: 'monthly', priority: '0.7' },
     { url: '/trust-safety', changefreq: 'monthly', priority: '0.6' },
     { url: '/shop', changefreq: 'weekly', priority: '0.6' },
+    // 2026-09-19: the supply side of the marketplace was missing from the sitemap
+    // entirely. /become-provider and /apply are how sitters, walkers, groomers and
+    // trainers find us — with 0 providers on the platform these are the two most
+    // valuable URLs we have, and Google was never told they exist. Ranked above
+    // /careers, which was listed.
+    { url: '/become-provider', changefreq: 'weekly', priority: '0.9' },
+    { url: '/apply', changefreq: 'weekly', priority: '0.8' },
     { url: '/careers', changefreq: 'monthly', priority: '0.5' },
     { url: '/privacy', changefreq: 'monthly', priority: '0.4' },
     { url: '/terms', changefreq: 'monthly', priority: '0.4' },
