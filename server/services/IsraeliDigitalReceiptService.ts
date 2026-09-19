@@ -30,6 +30,7 @@ import {
   FiscalOutboxUnavailableError,
 } from './fiscalDocumentOutbox';
 import { digitalReceipts, providerCommissions, withholdingRemittanceLedger, octopusLedger } from '@shared/schema';
+import { paymentMethodHe } from '@shared/fiscalHebrew';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { getSumitDocumentMapping, type PetWashPaymentClass } from './sumitDocumentMapping';
@@ -1170,7 +1171,7 @@ export class IsraeliDigitalReceiptService {
     <!-- Payment Method -->
     <tr>
       <td style="padding:15px 40px;">
-        <p style="margin:0;font-size:12px;color:#999;">אמצעי תשלום: ${receipt.paymentMethod}</p>
+        <p style="margin:0;font-size:12px;color:#999;">אמצעי תשלום: ${paymentMethodHe(receipt.paymentMethod)}</p>
         ${receipt.bookingId ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר הזמנה: ${String(receipt.bookingId).replace(/^(shop:|sumit:)/, '')}</p>` : ''}
         ${receipt.nayaxTransactionId ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר עסקה: ${receipt.nayaxTransactionId}</p>` : ''}
       </td>

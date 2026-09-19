@@ -15,6 +15,7 @@
  */
 
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
+import { paymentMethodHe } from '@shared/fiscalHebrew';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { COMPANY_TAX_ID, ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
@@ -90,7 +91,13 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
   const customerAddress = p.customerAddress ? escapeHtml(p.customerAddress) : '';
   const customerTaxId = p.customerTaxId ? escapeHtml(p.customerTaxId) : '';
   const orderId = escapeHtml(p.orderId);
-  const paymentMethod = p.paymentMethod ? escapeHtml(p.paymentMethod) : '';
+  // 2026-09-19: the Hebrew invoice printed whatever each call site passed —
+  // 'Credit card', 'PetWash Wallet', even the raw enum 'credit_card' — under a
+  // Hebrew label. Normalise at the document, so every current and future call
+  // site lands correct. English invoices keep the caller's wording.
+  const paymentMethod = p.paymentMethod
+    ? escapeHtml(isHe ? paymentMethodHe(p.paymentMethod) : p.paymentMethod)
+    : '';
   const invoiceTypeLabel = {
     tax_invoice: { he: 'חשבונית מס', en: 'Tax Invoice' },
     receipt:     { he: 'קבלה', en: 'Receipt' },
