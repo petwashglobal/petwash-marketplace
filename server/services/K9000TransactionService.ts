@@ -51,13 +51,21 @@ let storage: Storage | null = null;
 let bucketName: string | null = null;
 
 try {
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-    storage = new Storage();
-    bucketName = process.env.GCS_BACKUP_BUCKET || 'petwash-transactions-backup';
-    logger.info('[K9000] Google Cloud Storage initialized for transaction backup');
-  } else {
-    logger.warn('[K9000] GCS credentials not found - backups disabled');
-  }
+// 2026-09-19: this was gated on GOOGLE_APPLICATION_CREDENTIALS or
+// FIREBASE_SERVICE_ACCOUNT_KEY being set. Cloud Run sets NEITHER — it attaches
+// a service account and the client picks it up through Application Default
+// Credentials. So in production the gate was always false and the feature
+// switched itself off, which the boot log states plainly:
+//   [K9000] GCS credentials not found - backups disabled
+// (observed in the live logs on 2026-09-19). The rest of this codebase already
+// calls `new Storage()` with no arguments and relies on ADC — see
+// lib/adoptionPhotoStore.ts, lib/pawFinderPhotoStore.ts, routes/messaging.ts.
+// Constructing the client is cheap and lazy; if the runtime service account
+// turns out to lack permission, the upload call site already catches and logs
+// it, and the primary record is unaffected.
+  storage = new Storage();
+  bucketName = process.env.GCS_BACKUP_BUCKET || 'petwash-transactions-backup';
+  logger.info('[K9000] Google Cloud Storage initialized for transaction backup (ADC)');
 } catch (error) {
   logger.error('[K9000] Failed to initialize Google Cloud Storage', error);
 }

@@ -25,12 +25,20 @@ let gcsStorage: Storage | null = null;
 const GCS_STAMPS_BUCKET = process.env.GCS_STAMPS_BUCKET || process.env.GCS_BACKUP_BUCKET || 'petwash-legal-stamps';
 
 try {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    gcsStorage = new Storage();
-    logger.info('[ImmutableStamp] GCS initialized for stamp backup');
-  } else {
-    logger.warn('[ImmutableStamp] GCS credentials not found — stamps will be DB-only');
-  }
+// 2026-09-19: this was gated on GOOGLE_APPLICATION_CREDENTIALS or
+// FIREBASE_SERVICE_ACCOUNT_KEY being set. Cloud Run sets NEITHER — it attaches
+// a service account and the client picks it up through Application Default
+// Credentials. So in production the gate was always false and the feature
+// switched itself off, which the boot log states plainly:
+//   [ImmutableStamp] GCS credentials not found — stamps will be DB-only
+// (observed in the live logs on 2026-09-19). The rest of this codebase already
+// calls `new Storage()` with no arguments and relies on ADC — see
+// lib/adoptionPhotoStore.ts, lib/pawFinderPhotoStore.ts, routes/messaging.ts.
+// Constructing the client is cheap and lazy; if the runtime service account
+// turns out to lack permission, the upload call site already catches and logs
+// it, and the primary record is unaffected.
+  gcsStorage = new Storage();
+  logger.info('[ImmutableStamp] GCS initialized for stamp backup (ADC)');
 } catch (err) {
   logger.error('[ImmutableStamp] GCS init failed', err);
 }
