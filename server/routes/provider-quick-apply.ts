@@ -66,16 +66,38 @@ router.post('/apply', paymentLimiter, async (req: Request, res: Response) => {
   }
   const input = parsed.data;
 
-  // Bot check when Turnstile is configured; never blocks when it is not.
+  // BOT CHECK (2026-09-19, corrected twice — both mistakes were mine).
+  //
+  // 1. verifyTurnstileToken returns { valid, reason }, NOT { success }. Reading
+  //    the wrong field made `!verdict.success` true for every caller, so the
+  //    live form answered 403 to every real applicant. The unit test mocked my
+  //    wrong shape and passed — a test that encodes the bug proves nothing.
+  // 2. A token can be IMPOSSIBLE to obtain through no fault of the applicant:
+  //    on petwash.co.il the widget currently returns Cloudflare error 600010
+  //    (site key does not allow this domain). Refusing then means the form
+  //    takes nobody at all. This endpoint moves no money and creates only a
+  //    lead, so a missing token lets the application through, tagged for
+  //    review; a token that is PRESENT and fails verification is a real bot
+  //    signal and is refused. The rate limiter guards volume either way.
+  let botCheck: 'passed' | 'unavailable' = 'passed';
   if (process.env.TURNSTILE_SECRET_KEY) {
-    const verdict = await verifyTurnstileToken(input.turnstileToken ?? '', req.ip);
-    if (!verdict.success) {
-      logger.warn('[ProviderApply] turnstile refused', { ip: req.ip });
-      return res.status(403).json({ ok: false, error: 'Could not verify you are human. Please try again.' });
+    const token = (input.turnstileToken ?? '').trim();
+    if (!token) {
+      botCheck = 'unavailable';
+      logger.warn('[ProviderApply] no bot-check token — accepting and flagging', { ip: req.ip });
+    } else {
+      const verdict = await verifyTurnstileToken(token, req.ip);
+      if (!verdict.valid) {
+        logger.warn('[ProviderApply] turnstile refused', { ip: req.ip, reason: verdict.reason });
+        return res.status(403).json({ ok: false, error: 'Could not verify you are human. Please try again.' });
+      }
     }
   }
 
   const lead = applicationToLead(input);
+  if (botCheck === 'unavailable') {
+    lead.sourceDetails = `${lead.sourceDetails} · bot-check unavailable`;
+  }
   try {
     const [existing] = await db.select({ id: crmLeads.id }).from(crmLeads).where(eq(crmLeads.email, lead.email)).limit(1);
     if (existing) {
