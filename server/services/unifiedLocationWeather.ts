@@ -54,7 +54,27 @@ export async function geocodeLocation(locationQuery: string): Promise<LocationCo
   const { freeGeocode, preferFreeGeocode } = await import('./../lib/freeGeocode');
   if (preferFreeGeocode()) {
     const f = await freeGeocode(locationQuery);
-    if (f) return { lat: f.lat, lng: f.lng, city: f.city, country: f.country } as LocationCoordinates;
+    if (f) {
+      // 2026-09-19: this returned { lat, lng } while LocationCoordinates declares
+      // { latitude, longitude } — and the `as LocationCoordinates` cast told the
+      // compiler otherwise. Every caller reads geocoded.latitude, so since the
+      // free-geocode switch (CEO 2026-08-01, "maps no need, free Israel") they
+      // all read undefined and built
+      //   open-meteo?latitude=undefined&longitude=undefined
+      // which Open-Meteo rejects. That is why /api/weather/planner answered 500,
+      // /7-day-planner 503 and /wash-recommendation 404 in production. The paid
+      // path and geocodeLocationFallback always returned the right names, so the
+      // fault only appeared once free became the default. No cast — let the
+      // compiler check the shape.
+      const coords: LocationCoordinates = {
+        latitude: f.lat,
+        longitude: f.lng,
+        city: f.city ?? '',
+        country: f.country ?? '',
+        formattedAddress: f.formattedAddress ?? locationQuery,
+      };
+      return coords;
+    }
     return await geocodeLocationFallback(locationQuery);
   }
   if (!GOOGLE_MAPS_API_KEY) {
