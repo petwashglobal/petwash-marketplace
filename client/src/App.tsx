@@ -1,6 +1,7 @@
 import "./lib/i18next-init"; // Initialize react-i18next before any component imports
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
+import { recordSurfaceForPath } from "./lib/lastSurface";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthRouteErrorBoundary } from "@/components/AuthRouteErrorBoundary";
@@ -4436,6 +4437,13 @@ function App() {
   // so strings shown in the English fallback switch to the chosen language.
   useSyncExternalStore(subscribeLanguagePacks, getLanguagePackVersion, getLanguagePackVersion);
   const [location] = useLocation();
+  // CEO 2026-09-19: remember which surface (admin / provider / member) the user
+  // is actually working in, so the next sign-in lands them there instead of
+  // always on /admin/dashboard. Landing preference only — it changes no claim
+  // and no permission. See lib/lastSurface.ts.
+  useEffect(() => {
+    recordSurfaceForPath(location);
+  }, [location]);
   // Default to Hebrew ('he') for Israeli market - PRIMARY language
   const [currentLanguage, setCurrentLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('petwash_lang') as Language;

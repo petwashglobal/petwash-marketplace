@@ -56,6 +56,7 @@
 
 import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
+import { intentFromLastSurface } from '@/lib/lastSurface';
 
 export interface PostLoginRequestBody {
   intent?: string;
@@ -146,7 +147,22 @@ function isCacheableBody(body: PostLoginRequestBody | undefined): boolean {
 export async function resolvePostLogin(
   opts: ResolvePostLoginOptions = {},
 ): Promise<PostLoginResult> {
-  const { body, idToken } = opts;
+  // CEO 2026-09-19: "when i log in it take me to admin always". The server
+  // routes a super_admin by `intent` and falls back to /admin/dashboard when
+  // there is none — and an ordinary sign-in never sent one. Fall back to the
+  // surface the user was last working in, so login lands them where they left
+  // off. An explicit intent from the caller (a signup flow, an invite link)
+  // still wins; this only fills the gap where there was nothing at all.
+  const rawBody = opts.body;
+  const body: PostLoginRequestBody | undefined =
+    rawBody?.intent
+      ? rawBody
+      : (() => {
+          const remembered = intentFromLastSurface();
+          if (!remembered) return rawBody;
+          return { ...(rawBody ?? {}), intent: remembered };
+        })();
+  const { idToken } = opts;
   const key = buildKey(body, idToken);
 
   if (isCacheableBody(body)) {
