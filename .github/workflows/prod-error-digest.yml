@@ -10,6 +10,10 @@ on:
         description: "ERROR or WARNING"
         required: false
         default: "ERROR"
+      contains:
+        description: "Optional: also search ALL severities for this text (e.g. a job name). Read-only."
+        required: false
+        default: ""
 permissions:
   contents: read
 # READ-ONLY. Reads Cloud Logging for the petwash-api service and prints the
@@ -56,3 +60,18 @@ jobs:
             --limit 500 --project signinpetwash \
             --format='value(httpRequest.status,httpRequest.requestMethod,httpRequest.requestUrl)' 2>/dev/null \
             | sed -E 's/\?.*$//; s/[0-9a-fA-F-]{16,}/<id>/g' | sort | uniq -c | sort -rn | head -40
+      - name: Free-text search across all severities
+        if: ${{ github.event.inputs.contains != '' }}
+        env:
+          HOURS: ${{ github.event.inputs.hours }}
+          NEEDLE: ${{ github.event.inputs.contains }}
+        run: |
+          set -uo pipefail
+          H="${HOURS:-24}"
+          SINCE="$(date -u -d "-${H} hours" +%Y-%m-%dT%H:%M:%SZ)"
+          echo "== every log line containing '${NEEDLE}' since ${SINCE} (ALL severities) =="
+          gcloud logging read \
+            "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"petwash-api\" AND timestamp>=\"${SINCE}\"" \
+            --limit 2000 --project signinpetwash \
+            --format='value(timestamp,severity,jsonPayload.message,textPayload)' 2>/dev/null \
+            | grep -i -- "${NEEDLE}" | head -80 || echo "(no line matched '${NEEDLE}')"
