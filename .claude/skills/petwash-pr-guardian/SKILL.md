@@ -178,6 +178,7 @@ Before you stage and commit, verify scope discipline.
 ### 4. Are there secrets in the diff?
 - Scan for: `API_KEY`, `SECRET`, `TOKEN`, `PASSWORD`, `PRIVATE_KEY`, `BEGIN RSA`, hardcoded production URLs, hardcoded admin emails.
 - If anything looks like a secret, STOP. Do not commit.
+- Workflows: any step that receives a person's email or phone (inputs, a committed request file) must `::add-mask::` them before anything echoes them — job logs are readable by everyone with repo access. Lesson from the 2026-09-19 delivery runs (platform skill §7).
 
 ### 5. Are there debug statements?
 - `console.log` from your debugging session.

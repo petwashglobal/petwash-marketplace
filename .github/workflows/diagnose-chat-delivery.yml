@@ -128,32 +128,44 @@ jobs:
               load "$s" "$s"
               echo "  $s = ✅ loaded"
             else
-              echo "  $s = ⚠️ not in Secret Manager (SMS is skipped if Twilio is incomplete)"
+              case "$s" in
+                TWILIO_*) echo "  $s = ⚠️ not in Secret Manager (SMS is skipped if Twilio is incomplete; _IL/_US/_MESSAGING_SERVICE_SID are optional refinements)";;
+                *)        echo "  $s = ⚠️ not in Secret Manager (optional; the dispatcher does not need it)";;
+              esac
             fi
           done
 
       - name: Resolve the request (form inputs, or the committed request file on a diag branch)
         run: |
           set -e
+          # Log hygiene (lesson from the 2026-09-19 runs): the recipient's email
+          # and phone are personal data. They are masked before anything else
+          # prints them, so the public job log shows *** where GitHub's own
+          # "Run …" echo and the sender script would otherwise show them.
           if [ "${{ github.event_name }}" = "push" ]; then
             F=ops/diagnose/chat-delivery.json
             test -f "$F" || { echo "::error::$F missing on this diag branch"; exit 1; }
-            {
-              echo "TARGET_EMAIL=$(jq -r '.target_email // empty' "$F")"
-              echo "TARGET_PHONE=$(jq -r '.target_phone // empty' "$F")"
-              echo "CHANNELS=$(jq -r '.channels // "inbox,email"' "$F")"
-              echo "LOCALE=$(jq -r '.locale // "en"' "$F")"
-            } >> "$GITHUB_ENV"
-            echo "Request taken from $F (push to ${{ github.ref_name }})"
+            TARGET_EMAIL=$(jq -r '.target_email // empty' "$F")
+            TARGET_PHONE=$(jq -r '.target_phone // empty' "$F")
+            CHANNELS=$(jq -r '.channels // "inbox,email"' "$F")
+            LOCALE=$(jq -r '.locale // "en"' "$F")
+            SOURCE="$F (push to ${{ github.ref_name }})"
           else
-            {
-              echo "TARGET_EMAIL=${{ inputs.target_email }}"
-              echo "TARGET_PHONE=${{ inputs.target_phone }}"
-              echo "CHANNELS=${{ inputs.channels }}"
-              echo "LOCALE=${{ inputs.locale }}"
-            } >> "$GITHUB_ENV"
-            echo "Request taken from the Run-workflow form"
+            TARGET_EMAIL='${{ inputs.target_email }}'
+            TARGET_PHONE='${{ inputs.target_phone }}'
+            CHANNELS='${{ inputs.channels }}'
+            LOCALE='${{ inputs.locale }}'
+            SOURCE="the Run-workflow form"
           fi
+          if [ -n "$TARGET_EMAIL" ]; then echo "::add-mask::$TARGET_EMAIL"; fi
+          if [ -n "$TARGET_PHONE" ]; then echo "::add-mask::$TARGET_PHONE"; fi
+          {
+            echo "TARGET_EMAIL=$TARGET_EMAIL"
+            echo "TARGET_PHONE=$TARGET_PHONE"
+            echo "CHANNELS=$CHANNELS"
+            echo "LOCALE=$LOCALE"
+          } >> "$GITHUB_ENV"
+          echo "Request taken from $SOURCE — channels=$CHANNELS locale=$LOCALE (recipient masked)"
 
       - name: Send the test message and report per channel
         env:
