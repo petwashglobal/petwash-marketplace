@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
+import { AddToAppleWallet } from '@/components/AddToAppleWallet';
 import { useLanguage } from '@/lib/languageStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
@@ -225,6 +226,15 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
             {balances.loyaltyPoints.toLocaleString()}
           </div>
         </div>
+      </div>
+
+      {/* CEO 2026-09-19: "why i cannot have apple button add to wallet like
+          others". The server could always build a signed pass — production
+          logs show generateAppleWalletPass completing — but nothing in the app
+          ever called /api/prestige-pass/apple-wallet, so there was no button
+          to press. */}
+      <div style={{ marginTop: '18px', display: 'flex', justifyContent: 'center' }}>
+        <AddToAppleWallet />
       </div>
     </div>
   );
