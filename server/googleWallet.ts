@@ -9,6 +9,7 @@
  * Docs: https://developers.google.com/wallet
  */
 
+import jwt from 'jsonwebtoken';
 import { logger } from './lib/logger';
 import { tierLabel } from './lib/memberTier';
 import { db } from './lib/firebase-admin';
@@ -66,15 +67,79 @@ interface GoogleWalletBusinessCardData {
   photoUrl?: string;
 }
 
+/**
+ * SIGN THE SAVE-TO-WALLET JWT. Google does NOT sign it for you.
+ *
+ * Three call sites in this file used to end with:
+ *
+ *     // Create unsigned JWT (Google Wallet will sign it)
+ *     return signSaveToWalletJwt(claims);
+ *
+ * That comment is wrong, and the blob it returns is not a JWT. Google's own
+ * documentation (developers.google.com/wallet/generic/web, checked 2026-09-19)
+ * lists as a prerequisite: "Sign your JWT with your Google Cloud service
+ * account key", and the link is https://pay.google.com/gp/v/save/<signed_jwt>.
+ * An unsigned base64 payload is rejected, so Android never worked — separately
+ * from the credentials never having been configured at all.
+ *
+ * The service account JSON goes in GOOGLE_WALLET_SERVICE_ACCOUNT (the whole
+ * file contents). client_email and private_key are read from it, so the two
+ * can never disagree; GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL stays supported as
+ * an override for environments that already set it.
+ */
+function serviceAccount(): { clientEmail: string; privateKey: string } | null {
+  const raw = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT;
+  if (!raw) return null;
+  try {
+    // Accept either the raw JSON or a base64 copy of it — a multi-line private
+    // key pasted into a secret manager is commonly base64'd to survive.
+    const text = raw.trim().startsWith('{')
+      ? raw
+      : Buffer.from(raw, 'base64').toString('utf8');
+    const json = JSON.parse(text);
+    const clientEmail = process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL || json.client_email;
+    const privateKey = String(json.private_key || '').replace(/\\n/g, '\n');
+    if (!clientEmail || !privateKey) return null;
+    return { clientEmail, privateKey };
+  } catch {
+    return null;
+  }
+}
+
+/** Google truncates a save link past ~1800 chars and the save silently fails. */
+const SAFE_JWT_LENGTH = 1800;
+
+function signSaveToWalletJwt(claims: Record<string, unknown>): string {
+  const sa = serviceAccount();
+  if (!sa) {
+    throw new Error(
+      'Google Wallet is not configured: set GOOGLE_WALLET_ISSUER_ID and GOOGLE_WALLET_SERVICE_ACCOUNT (the service-account JSON).',
+    );
+  }
+  const token = jwt.sign(
+    { ...claims, iss: sa.clientEmail },
+    sa.privateKey,
+    { algorithm: 'RS256' },
+  );
+  if (token.length > SAFE_JWT_LENGTH) {
+    // Not thrown: a slightly long pass may still save. Loud, because the
+    // failure mode is a button that does nothing with no error anywhere.
+    logger.warn('[GoogleWallet] save JWT exceeds Google\'s safe length — browsers may truncate the link and the save will silently fail', {
+      length: token.length, safeLength: SAFE_JWT_LENGTH,
+    });
+  }
+  return token;
+}
+
 export class GoogleWalletService {
   /**
    * Check if Google Wallet credentials are configured
    */
   static hasValidCredentials(): boolean {
-    return !!(
-      process.env.GOOGLE_WALLET_ISSUER_ID &&
-      process.env.GOOGLE_WALLET_SERVICE_ACCOUNT
-    );
+    // serviceAccount() must PARSE — a present-but-malformed secret used to
+    // report "configured" and then fail at signing time, which is the hardest
+    // kind of outage to read.
+    return !!(process.env.GOOGLE_WALLET_ISSUER_ID && serviceAccount());
   }
 
   /**
@@ -203,7 +268,6 @@ export class GoogleWalletService {
         }
       };
 
-      // Create unsigned JWT (Google Wallet will sign it)
       const claims = {
         iss: process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL,
         aud: 'google',
@@ -226,12 +290,16 @@ export class GoogleWalletService {
         createdAt: new Date()
       });
 
-      // Return unsigned JWT for client-side Google Wallet button
-      return Buffer.from(JSON.stringify(claims)).toString('base64url');
+      return signSaveToWalletJwt(claims);
 
     } catch (error) {
-      logger.error('[Google Wallet] Error generating VIP card JWT:', error);
-      throw new Error('Failed to generate Google Wallet VIP card');
+      // Keep the CAUSE. The bare rethrow discarded it, so a configuration
+      // mistake and a Firestore outage produced the identical, unactionable
+      // message — and that is the whole reason this path went unexamined.
+      logger.error('[Google Wallet] Error generating VIP card JWT', {
+        err: (error as Error)?.message,
+      });
+      throw new Error(`Failed to generate Google Wallet VIP card: ${(error as Error)?.message ?? 'unknown'}`);
     }
   }
 
@@ -349,7 +417,7 @@ export class GoogleWalletService {
         createdAt: new Date()
       });
 
-      return Buffer.from(JSON.stringify(claims)).toString('base64url');
+      return signSaveToWalletJwt(claims);
 
     } catch (error) {
       logger.error('[Google Wallet] Error generating voucher JWT:', error);
@@ -465,7 +533,7 @@ END:VCARD`;
 
       logger.info('[Google Wallet] Business card JWT generated', { name: data.name });
 
-      return Buffer.from(JSON.stringify(claims)).toString('base64url');
+      return signSaveToWalletJwt(claims);
 
     } catch (error) {
       logger.error('[Google Wallet] Error generating business card JWT:', error);
@@ -607,7 +675,7 @@ END:VCARD`;
         userId: data.userId,
       });
 
-      return Buffer.from(JSON.stringify(claims)).toString('base64url');
+      return signSaveToWalletJwt(claims);
     } catch (error) {
       logger.error('[Google Wallet] Error generating booking pass JWT:', error);
       throw new Error('Failed to generate Google Wallet booking pass');
