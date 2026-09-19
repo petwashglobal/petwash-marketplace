@@ -158,6 +158,16 @@ export function validateProductionPaymentSecrets(
         'SUMIT_ENABLED=true but SUMIT_WEBHOOK_SECRET is missing — refusing to operate live',
       );
     }
+    // SumitClient.isWired() needs the company id as much as the key (2026-09-19
+    // audit). Without it every fiscal document call answers { wired:false } and
+    // SumitReceiptService treats that as an expected silent no-op — a deploy
+    // that dropped this one secret would issue no Israeli tax documents and
+    // report healthy. Refuse at boot instead.
+    if (!env.SUMIT_COMPANY_ID) {
+      errors.push(
+        'SUMIT_ENABLED=true but SUMIT_COMPANY_ID is missing — refusing to operate live',
+      );
+    }
   }
 
   // Step 3: deprecation warnings (do not affect errors).
