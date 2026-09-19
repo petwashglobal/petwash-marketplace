@@ -260,7 +260,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-500">{isHebrew ? 'טלפון הווטרינר' : 'Vet phone'}</Label>
-              <Input type="tel" value={form.vetPhone} onChange={e => set('vetPhone', e.target.value)} placeholder="050-000-0000" className="text-sm" />
+              <Input type="tel" dir="ltr" value={form.vetPhone} onChange={e => set('vetPhone', e.target.value)} placeholder="050-000-0000" className="text-sm" />
             </div>
           </div>
         )}
@@ -305,7 +305,7 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-500">{isHebrew ? 'טלפון לחירום' : 'Emergency phone'}</Label>
-              <Input type="tel" value={form.emergencyContactPhone} onChange={e => set('emergencyContactPhone', e.target.value)} placeholder="050-000-0000" className="text-sm" />
+              <Input type="tel" dir="ltr" value={form.emergencyContactPhone} onChange={e => set('emergencyContactPhone', e.target.value)} placeholder="050-000-0000" className="text-sm" />
             </div>
           </div>
         )}

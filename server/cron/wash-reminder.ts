@@ -244,7 +244,7 @@ export async function runWashReminderCron(): Promise<WashReminderResult> {
               .slice(0, 10)}`,
             push: {
               userId: row.user_id,
-              title: `🐾 הגיע הזמן לרחצה ל${petName}`,
+              title: `🐾 הגיע הזמן לרחצה ל-⁦${petName}⁩`,
               body: `${petName} לא התרחץ כבר ${days} ימים. לקביעת תור ב-PetWash.`,
               data: { type: 'wash_reminder', petId: String(row.pet_id) },
             },

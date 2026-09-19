@@ -42,7 +42,7 @@ export function buildConfirmEndOfStayEmail(p: ConfirmEndOfStayParams): string {
     ? {
         preheader: `${p.providerName} דיווח שהשירות עבור ${p.petName || 'חיית המחמד שלך'} הושלם — נשמח שתאשר/י`,
         headline: `ההזמנה שלך עם ${p.providerName} הסתיימה — נכון?`,
-        lead: `כדי לסיים את ההזמנה, אנא אשר/י את סיום השירות. אישור זה ישחרר את התשלום ל${p.providerName}.`,
+        lead: `כדי לסיים את ההזמנה, אנא אשר/י את סיום השירות. אישור זה ישחרר את התשלום ל-⁦${p.providerName}⁩.`,
         ctaLabel: 'אשר/י סיום שירות',
         whatNextTitle: 'מה קורה עכשיו?',
         step1: `לחץ/י על "אשר/י סיום שירות" למטה.`,

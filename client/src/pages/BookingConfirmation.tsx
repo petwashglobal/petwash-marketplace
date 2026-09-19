@@ -1992,7 +1992,7 @@ export default function BookingConfirmation() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       <Mail className="w-4 h-4 inline mr-1" /> {t.emailLabel}
                     </label>
-                    <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t.emailPlaceholder} />
+                    <Input type="email" dir="ltr" value={email} onChange={e => setEmail(e.target.value)} placeholder={t.emailPlaceholder} />
                   </div>
                 </div>
                 <Button

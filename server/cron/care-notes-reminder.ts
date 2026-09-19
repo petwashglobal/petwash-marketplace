@@ -100,9 +100,9 @@ async function run6hBucket(result: CareNotesReminderResult): Promise<void> {
   for (const row of incomplete) {
     try {
       const isHe = (row.language ?? 'he') !== 'en';
-      const title = isHe ? `תזכורת: פרטי טיפול ל${row.pet_name}` : `Reminder: care details for ${row.pet_name}`;
+      const title = isHe ? `תזכורת: פרטי טיפול ל-⁦${row.pet_name}⁩` : `Reminder: care details for ${row.pet_name}`;
       const body = isHe
-        ? `ההזמנה שלך אושרה. נא להשלים פרטי טיפול ל${row.pet_name} לפני התחלת השירות.`
+        ? `ההזמנה שלך אושרה. נא להשלים פרטי טיפול ל-⁦${row.pet_name}⁩ לפני התחלת השירות.`
         : `Your booking is confirmed. Please complete care details for ${row.pet_name} before the service starts.`;
 
       await dispatchNotifications({
@@ -159,7 +159,7 @@ async function run24hBucket(result: CareNotesReminderResult): Promise<void> {
         const emailHtml = `<!DOCTYPE html><html lang="${lang}" dir="${lang === 'he' ? 'rtl' : 'ltr'}"><body style="font-family:Arial;padding:24px;color:#111;background:#fff;">
 <h2 style="margin-bottom:16px;">PetWash™</h2>
 <p>${lang === 'he'
-    ? `ההזמנה שלך מתחילה בפחות מ-24 שעות. נא להשלים את פרטי הטיפול ל${row.pet_name} כדי שהספק יהיה מוכן.`
+    ? `ההזמנה שלך מתחילה בפחות מ-24 שעות. נא להשלים את פרטי הטיפול ל-⁦${row.pet_name}⁩ כדי שהספק יהיה מוכן.`
     : `Your booking starts in under 24 hours. Please complete ${row.pet_name}'s care details so the provider is ready.`}</p>
 <p style="margin-top:20px;"><a href="https://petwash.co.il/my-account" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">${lang === 'he' ? 'השלמת פרטי טיפול' : 'Complete care notes'}</a></p>
 <p style="margin-top:24px;font-size:12px;color:#888;">PetWash Ltd — support@petwash.co.il</p>
@@ -175,7 +175,7 @@ async function run24hBucket(result: CareNotesReminderResult): Promise<void> {
           sms: { to: row.phone, text: rendered.body },
           email: row.email ? {
             to: row.email,
-            subject: lang === 'he' ? `תזכורת: פרטי טיפול ל${row.pet_name} — 24 שעות לתחילת ההזמנה` : `Reminder: care details for ${row.pet_name} — booking starts in 24h`,
+            subject: lang === 'he' ? `תזכורת: פרטי טיפול ל-⁦${row.pet_name}⁩ — 24 שעות לתחילת ההזמנה` : `Reminder: care details for ${row.pet_name} — booking starts in 24h`,
             html: emailHtml,
           } : undefined,
         });

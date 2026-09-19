@@ -2139,7 +2139,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         <label className="sl-label" htmlFor="sl-signup-email">{t.emailLabel}</label>
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
-                          <input id="sl-signup-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                          <input id="sl-signup-email" className="sl-input sl-input--icon" type="email" dir="ltr" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                             value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{L('נאמת גם את האימייל — חשבון חדש מאמת נייד + אימייל.', "We'll verify your email too — a new account confirms mobile + email.")}</div>
@@ -2183,7 +2183,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         <label className="sl-label" htmlFor="sl-join-email">{t.emailLabel}</label>
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
-                          <input id="sl-join-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                          <input id="sl-join-email" className="sl-input sl-input--icon" type="email" dir="ltr" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                             value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); if (emailConflictInfo) setEmailConflictInfo(null); }} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{L('כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.', 'Any email — Gmail, Outlook, Yahoo, Walla or business.')}</div>
@@ -2299,7 +2299,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <label className="sl-label" htmlFor="sl-login-email">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
                       <FaEnvelope className="sl-inputIcon" aria-hidden />
-                      <input id="sl-login-email" className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                      <input id="sl-login-email" className="sl-input sl-input--icon" type="email" dir="ltr" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                         value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                     </div>
                   </div>
