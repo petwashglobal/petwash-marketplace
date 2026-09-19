@@ -808,22 +808,27 @@ export default function BrowseSitters() {
               </p>
             </div>
             
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {/* 2026-09-19: this grid claimed "4.9 Average Rating", "10K+ Bookings
+                Completed" and "24/7 Support" to every visitor. The platform has
+                zero sitters and zero completed bookings — all three numbers were
+                invented. Same class as PR-FAKE (2026-06-13), which stripped
+                "10,000+ Bookings" and the other made-up trust stats out of
+                TrustBar.tsx; this page was missed.
+                Replaced with what is actually true: the verification policy every
+                sitter must pass before they can be booked. No number goes back on
+                this page until it is read from real data. */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="text-4xl font-bold text-[#D4AF37] mb-2">4.9</div>
-                <div className="text-sm text-gray-600">{isHebrew ? 'דירוג ממוצע' : 'Average Rating'}</div>
+                <div className="text-lg font-semibold text-[#D4AF37] mb-2">{isHebrew ? 'זהות מאומתת' : 'Identity verified'}</div>
+                <div className="text-sm text-gray-600">{isHebrew ? 'כל שמרטף עובר אימות זהות לפני שניתן להזמין אותו' : 'Every sitter passes identity verification before they can be booked'}</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-[#D4AF37] mb-2">10K+</div>
-                <div className="text-sm text-gray-600">{isHebrew ? 'הזמנות הושלמו' : 'Bookings Completed'}</div>
+                <div className="text-lg font-semibold text-[#D4AF37] mb-2">{isHebrew ? 'מסמכים והמלצות' : 'Documents & references'}</div>
+                <div className="text-sm text-gray-600">{isHebrew ? 'מסמכים והמלצות עוברים בדיקה' : 'Documents and references are checked'}</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-[#D4AF37] mb-2">100%</div>
-                <div className="text-sm text-gray-600">{isHebrew ? 'שמרטפים מאומתים' : 'Verified Sitters'}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-[#D4AF37] mb-2">24/7</div>
-                <div className="text-sm text-gray-600">{isHebrew ? 'תמיכה זמינה' : 'Support Available'}</div>
+                <div className="text-lg font-semibold text-[#D4AF37] mb-2">{isHebrew ? 'עדכוני תמונות' : 'Photo updates'}</div>
+                <div className="text-sm text-gray-600">{isHebrew ? 'קבלו תמונות של חיית המחמד שלכם במהלך השהות' : 'Get photos of your pet during the stay'}</div>
               </div>
             </div>
           </div>
