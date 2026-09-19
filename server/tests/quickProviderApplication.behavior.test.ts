@@ -24,7 +24,9 @@ vi.mock('../db', () => ({
 vi.mock('drizzle-orm', () => ({ eq: (_c: any, v: any) => { h.lastEmail = v; return {}; } }));
 vi.mock('@shared/schema', () => ({ crmLeads: { email: 'email', id: 'id' } }));
 vi.mock('../middleware/rateLimiter', () => ({ paymentLimiter: (_q: any, _s: any, n: any) => n() }));
-vi.mock('../lib/verifyTurnstile', () => ({ verifyTurnstileToken: async () => ({ success: h.turnstileOk }) }));
+// The real helper returns { valid, reason } — mocking { success } is what let
+// the always-403 bug through review and CI (2026-09-19).
+vi.mock('../lib/verifyTurnstile', () => ({ verifyTurnstileToken: async () => ({ valid: h.turnstileOk, reason: h.turnstileOk ? undefined : 'failed' }) }));
 vi.mock('../services/AlertEngine', () => ({ createOrUpdateAlert: async (a: any) => { h.alerts.push(a); } }));
 
 import router, { applicationToLead } from '../routes/provider-quick-apply';
@@ -88,12 +90,32 @@ describe('POST /api/provider-apply/apply', () => {
     expect(h.inserted[0].leadSource).toBe('provider_quick_apply');
   });
 
-  it('when Turnstile is configured, a bot is refused and nothing is saved', async () => {
+  it('a PRESENT token that fails verification is refused and nothing is saved', async () => {
+    process.env.TURNSTILE_SECRET_KEY = 'x';
+    h.turnstileOk = false;
+    const res = await request(app).post('/api/provider-apply/apply').send({ ...good, turnstileToken: 'looks-real' });
+    expect(res.status).toBe(403);
+    expect(h.inserted).toHaveLength(0);
+  });
+
+  it('a VALID token is accepted — the route reads verdict.valid, not verdict.success', async () => {
+    // Reading the wrong field made every real applicant a 403 on the live site.
+    process.env.TURNSTILE_SECRET_KEY = 'x';
+    h.turnstileOk = true;
+    const res = await request(app).post('/api/provider-apply/apply').send({ ...good, turnstileToken: 'good-token' });
+    expect(res.status).toBe(200);
+    expect(h.inserted).toHaveLength(1);
+  });
+
+  it('no token at all (the widget could not run) still takes the application, flagged', async () => {
+    // Cloudflare answers 600010 on petwash.co.il today — the applicant cannot
+    // produce a token however hard they try. A lead form must not lose them.
     process.env.TURNSTILE_SECRET_KEY = 'x';
     h.turnstileOk = false;
     const res = await request(app).post('/api/provider-apply/apply').send(good);
-    expect(res.status).toBe(403);
-    expect(h.inserted).toHaveLength(0);
+    expect(res.status).toBe(200);
+    expect(h.inserted).toHaveLength(1);
+    expect(h.inserted[0].sourceDetails).toContain('bot-check unavailable');
   });
 
   it('a one-word name still works (lastName is not required by a human)', () => {
