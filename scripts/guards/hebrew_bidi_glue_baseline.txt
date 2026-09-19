@@ -1,0 +1,26 @@
+# hebrew_bidi_glue.py baseline — path<TAB>count of known offenders. Shrink it, never grow it.
+client/src/lib/i18n.ts	10
+client/src/lib/smartGreeting.ts	1
+client/src/lib/verification/purposeCopy.ts	1
+client/src/pages/AccountActivation.tsx	2
+client/src/pages/BookingContact.tsx	1
+client/src/pages/Contact.tsx	1
+client/src/pages/InventoryManagement.tsx	1
+client/src/pages/MyAccount.tsx	1
+client/src/pages/PawFinder.tsx	1
+client/src/pages/ServiceLandingPage.tsx	5
+client/src/pages/ShopStore.tsx	3
+client/src/pages/StationPage.tsx	2
+client/src/pages/forms/CustomerOnboardingForm.tsx	2
+client/src/pages/forms/HRApplicationForm.tsx	1
+client/src/pages/forms/RefundForm.tsx	1
+client/src/pages/forms/ReviewForm.tsx	1
+client/src/pages/forms/SalesLeadForm.tsx	1
+client/src/pages/internal/InternalOnboard.tsx	1
+server/email/templates/egift-purchase-confirmation-2026.ts	2
+server/email/templates/payment-confirmation-2026.ts	1
+server/emailService.ts	1
+server/routes/nayax-webhooks.ts	3
+server/routes/paw-finder.ts	1
+server/services/AlertEngine.ts	1
+server/services/maya/petwashKnowledge.ts	2

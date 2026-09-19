@@ -189,6 +189,8 @@ If ANY of these is no, the UX is not ready.
 
 Hebrew + Arabic both need correct RTL. Do not treat RTL as a translation problem — it's a layout problem.
 
+> **2026-09-19:** the Hebrew *copy* rules (register, terminology canon, what actually breaks under bidi, the audit backlog) live in the dedicated skill **`petwash-hebrew-rtl`**. Read it together with this section before touching any Hebrew string. Two CI guards enforce the bidi rules: `scripts/guards/trademark_bidi_anchored.py` (client strict, server baselined) and `scripts/guards/hebrew_bidi_glue.py`.
+
 ### 5.1 RTL rules
 
 - **`dir="rtl"`** on the document root when `language === 'he'` or `'ar'`. Set this from the language provider, never per-component.

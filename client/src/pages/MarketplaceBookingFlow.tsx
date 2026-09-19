@@ -530,7 +530,7 @@ export default function MarketplaceBookingFlow() {
               className="mb-4"
               data-testid="button-back-provider"
             >
-              <ChevronLeft className="w-4 h-4 mr-2" />
+              <ChevronLeft className="w-4 h-4 me-2 rtl:rotate-180" />
               {isHebrew ? 'חזור לפרופיל' : 'Back to Profile'}
             </Button>
             
@@ -625,7 +625,7 @@ export default function MarketplaceBookingFlow() {
                     data-testid="button-next-step"
                   >
                     {isHebrew ? 'הבא' : 'Next'}
-                    <ChevronRight className="w-4 h-4 ml-2" />
+                    <ChevronRight className="w-4 h-4 ms-2 rtl:rotate-180" />
                   </Button>
                 </div>
               )}
@@ -675,7 +675,7 @@ export default function MarketplaceBookingFlow() {
                       className="flex-1"
                       data-testid="button-prev-step"
                     >
-                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      <ChevronLeft className="w-4 h-4 me-2 rtl:rotate-180" />
                       {isHebrew ? 'אחורה' : 'Back'}
                     </Button>
                     <Button
@@ -685,7 +685,7 @@ export default function MarketplaceBookingFlow() {
                       data-testid="button-next-step"
                     >
                       {isHebrew ? 'הבא' : 'Next'}
-                      <ChevronRight className="w-4 h-4 ml-2" />
+                      <ChevronRight className="w-4 h-4 ms-2 rtl:rotate-180" />
                     </Button>
                   </div>
                 </div>
@@ -804,7 +804,7 @@ export default function MarketplaceBookingFlow() {
                       className="flex-1"
                       data-testid="button-prev-step"
                     >
-                      <ChevronLeft className="w-4 h-4 mr-2" />
+                      <ChevronLeft className="w-4 h-4 me-2 rtl:rotate-180" />
                       {isHebrew ? 'אחורה' : 'Back'}
                     </Button>
                     <Button
@@ -814,7 +814,7 @@ export default function MarketplaceBookingFlow() {
                       data-testid="button-next-step"
                     >
                       {isHebrew ? 'הבא' : 'Next'}
-                      <ChevronRight className="w-4 h-4 ml-2" />
+                      <ChevronRight className="w-4 h-4 ms-2 rtl:rotate-180" />
                     </Button>
                   </div>
                 </div>
@@ -1005,7 +1005,7 @@ export default function MarketplaceBookingFlow() {
                         data-testid="button-prev-step"
                         disabled={isSubmitting || checkoutMutation.isPending}
                       >
-                        <ChevronLeft className="w-4 h-4 mr-2" />
+                        <ChevronLeft className="w-4 h-4 me-2 rtl:rotate-180" />
                         {isHebrew ? 'אחורה' : 'Back'}
                       </Button>
                       <Button

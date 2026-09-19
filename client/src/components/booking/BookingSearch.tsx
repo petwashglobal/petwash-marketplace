@@ -307,13 +307,13 @@ export default function BookingSearch() {
               </Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <MapPin className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     data-testid="input-location"
                     placeholder={isHebrew ? 'הזן עיר או אזור' : 'City or area'}
                     value={filters.city}
                     onChange={(e) => setFilters(prev => ({ ...prev, city: e.target.value }))}
-                    className="pl-10"
+                    className="ps-10"
                   />
                 </div>
                 <Button
@@ -342,7 +342,7 @@ export default function BookingSearch() {
                 {isHebrew ? 'תאריך התחלה (אופציונלי)' : 'Start Date (optional)'}
               </Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Calendar className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   data-testid="input-start-date"
                   type="date"
@@ -356,7 +356,7 @@ export default function BookingSearch() {
                       endDate: prev.endDate && prev.endDate < v ? v : prev.endDate,
                     }));
                   }}
-                  className="pl-10"
+                  className="ps-10"
                 />
               </div>
             </div>
@@ -367,14 +367,14 @@ export default function BookingSearch() {
                 {isHebrew ? 'תאריך סיום (אופציונלי)' : 'End Date (optional)'}
               </Label>
               <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Calendar className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   data-testid="input-end-date"
                   type="date"
                   value={filters.endDate}
                   min={filters.startDate || todayLocalIso()}
                   onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="pl-10"
+                  className="ps-10"
                 />
               </div>
             </div>

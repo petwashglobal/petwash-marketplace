@@ -41,7 +41,7 @@ export function buildServiceCompletedEmail(p: ServiceCompletedParams): string {
 
   const t = {
         preheader: isHe
-          ? `תודה ${p.firstName}! ${p.serviceLabel} ל${p.petName} הושלם. השאירו ביקורת`
+          ? `תודה ${p.firstName}! ${p.serviceLabel} ל-⁦${p.petName}⁩ הושלם. השאירו ביקורת`
                 : `Thank you ${p.firstName}! ${p.serviceLabel} for ${p.petName} is complete. Leave a review`,
         headline: isHe ? `${p.serviceLabel} הושלם! 🎉` : `${p.serviceLabel} Complete! 🎉`,
         sub: isHe
@@ -59,7 +59,7 @@ export function buildServiceCompletedEmail(p: ServiceCompletedParams): string {
         loyaltyTier: isHe ? `רמה: ${p.loyaltyTier}` : `Tier: ${p.loyaltyTier}`,
         reviewTitle: isHe ? 'איך היה?' : 'How was it?',
         reviewSub: isHe
-          ? `הביקורת שלכם עוזרת ל${p.providerName} ולספקים שלנו לצמוח`
+          ? `הביקורת שלכם עוזרת ל-⁦${p.providerName}⁩ ולספקים שלנו לצמוח`
                 : `Your review helps ${p.providerName} and our providers grow`,
         stars: ['⭐', '⭐⭐', '⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐⭐⭐'],
         reviewBtn: isHe ? 'כתבו ביקורת' : 'Leave a Review',
