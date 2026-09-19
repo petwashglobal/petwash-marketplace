@@ -58,51 +58,51 @@ const TYPE_CONFIG: Record<string, {
   // ── Status-change types — written by booking-requests.ts on accept/decline/cancel ──
   booking_accepted: {
     label: "Accepted", labelHe: "אושרה", color: "#10B981", Icon: CheckCircle,
-    actionLabel: "Chat now", actionLabelHe: "שוחח עכשיו",
-    hint: "💬 Chat with your provider now →", hintHe: "💬 שוחח עם הספק עכשיו →",
+    actionLabel: "Chat now", actionLabelHe: "לשיחה",
+    hint: "💬 Chat with your provider now →", hintHe: "💬 נותן השירות מחכה לכם בצ׳אט",
   },
   booking_declined: {
     label: "Declined", labelHe: "נדחתה", color: "#EF4444", Icon: AlertCircle,
-    actionLabel: "Find another", actionLabelHe: "חפש ספק אחר",
-    hint: "🔍 Find another provider →", hintHe: "🔍 חפש ספק אחר →",
+    actionLabel: "Find another", actionLabelHe: "נותן שירות אחר",
+    hint: "🔍 Find another provider →", hintHe: "🔍 חיפוש נותן שירות אחר",
   },
   booking_cancelled: {
     label: "Cancelled", labelHe: "בוטלה", color: "#F97316", Icon: AlertCircle,
-    actionLabel: "View", actionLabelHe: "צפה",
-    hint: "🔍 Find similar providers →", hintHe: "🔍 מצא ספקים דומים →",
+    actionLabel: "View", actionLabelHe: "צפייה",
+    hint: "🔍 Find similar providers →", hintHe: "🔍 נותני שירות דומים זמינים",
   },
   // ── Chat messages — written by booking-chat.ts on new message ──
   booking_chat_message: {
     label: "Message", labelHe: "הודעה", color: "#3B82F6", Icon: MessageCircle,
-    actionLabel: "Reply", actionLabelHe: "השב",
-    hint: "↩ Reply to message →", hintHe: "↩ השב להודעה →",
+    actionLabel: "Reply", actionLabelHe: "תשובה",
+    hint: "↩ Reply to message →", hintHe: "💬 תשובה להודעה",
   },
   // ── Reviews — written by review submission flow ──
   review_received: {
     label: "New Review", labelHe: "ביקורת חדשה", color: "#8B5CF6", Icon: Star,
-    actionLabel: "View", actionLabelHe: "צפה",
-    hint: "⭐ View your new review →", hintHe: "⭐ צפה בביקורת החדשה →",
+    actionLabel: "View", actionLabelHe: "צפייה",
+    hint: "⭐ View your new review →", hintHe: "⭐ הביקורת החדשה שלכם",
   },
   // ── Smart rebook reminders — written by rebook-scheduler.ts ──
   rebook_reminder_post_completion: {
-    label: "Book again?", labelHe: "הזמן שוב?", color: "#0a0a0a", Icon: RefreshCw,
-    actionLabel: "Book again", actionLabelHe: "הזמן שוב",
-    hint: "🐾 One tap to rebook →", hintHe: "🐾 לחיצה אחת להזמנה חוזרת →",
+    label: "Book again?", labelHe: "להזמין שוב?", color: "#0a0a0a", Icon: RefreshCw,
+    actionLabel: "Book again", actionLabelHe: "הזמנה חוזרת",
+    hint: "🐾 One tap to rebook →", hintHe: "🐾 לחיצה אחת להזמנה חוזרת",
   },
   rebook_reminder_weekly_rebook: {
     label: "Weekly reminder", labelHe: "תזכורת שבועית", color: "#0a0a0a", Icon: RefreshCw,
-    actionLabel: "Book now", actionLabelHe: "הזמן עכשיו",
-    hint: "📅 Keep the routine going →", hintHe: "📅 שמרו על השגרה →",
+    actionLabel: "Book now", actionLabelHe: "להזמנה",
+    hint: "📅 Keep the routine going →", hintHe: "📅 שמרו על השגרה",
   },
   rebook_reminder_cancelled_recovery: {
-    label: "Find a provider", labelHe: "מצא ספק", color: "#3B82F6", Icon: Search,
-    actionLabel: "Browse providers", actionLabelHe: "עיין בספקים",
-    hint: "🔍 Similar providers are available →", hintHe: "🔍 ספקים דומים זמינים עכשיו →",
+    label: "Find a provider", labelHe: "חיפוש נותן שירות", color: "#3B82F6", Icon: Search,
+    actionLabel: "Browse providers", actionLabelHe: "לכל נותני השירות",
+    hint: "🔍 Similar providers are available →", hintHe: "🔍 נותני שירות דומים זמינים עכשיו",
   },
   rebook_reminder_declined_recovery: {
-    label: "Try another provider", labelHe: "נסה ספק אחר", color: "#3B82F6", Icon: Search,
-    actionLabel: "Find provider", actionLabelHe: "מצא ספק",
-    hint: "🔍 Other great providers ready →", hintHe: "🔍 ספקים מעולים נוספים מחכים →",
+    label: "Try another provider", labelHe: "נותן שירות אחר", color: "#3B82F6", Icon: Search,
+    actionLabel: "Find provider", actionLabelHe: "חיפוש נותן שירות",
+    hint: "🔍 Other great providers ready →", hintHe: "🔍 נותני שירות מעולים נוספים מחכים",
   },
 };
 
@@ -433,7 +433,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
                     {isUnread && group.unreadCount === 1 && (
                       <div className="w-2 h-2 rounded-full bg-[#D4AF37]" />
                     )}
-                    {group.bookingId && <ChevronRight className="w-3.5 h-3.5 text-gray-300" />}
+                    {group.bookingId && <ChevronRight className="w-3.5 h-3.5 text-gray-300 rtl:rotate-180" />}
                   </div>
 
                   {/* Action button — shown for any notification with a destination */}

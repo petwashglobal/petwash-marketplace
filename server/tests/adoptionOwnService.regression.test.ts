@@ -87,7 +87,8 @@ describe('Adopt a Pet has its own product surface', () => {
     expect(maison).toContain("'Every soul deserves a home.'");
     // Superseded by the CEO's canonical Adopt a Pet mockup (2026-09-13).
     expect(maison).toContain('A free members-only adoption platform.');
-    expect(maison).toContain("'List a pet for adoption ←'");
+    // Forward affordance points forward: → in English (the Hebrew label carries no arrow — petwash-hebrew-rtl §layout).
+    expect(maison).toContain("'List a pet for adoption →'");
   });
 
   it('routes exist, specific before :id', () => {

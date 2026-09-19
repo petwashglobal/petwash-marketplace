@@ -1628,7 +1628,7 @@ export default function PawFinder({ language, initialPostId }: PawFinderProps) {
                         title={L('כך ייראה הדיווח שלכם ב-PawFinder', 'This is what a PawFinder alert looks like')}
                         subtitle={L('אלה דוגמאות בלבד — לא חיות אמיתיות.', 'Three examples for illustration — no real pets are missing here.')}
                         cards={pawFinderExamples(isHe)}
-                        cta={{ href: '/paw-finder?tab=report', label: isHe ? 'דיווח על חיה ←' : 'Report a pet ←' }}
+                        cta={{ href: '/paw-finder?tab=report', label: isHe ? 'דיווח על חיה ←' : 'Report a pet →' }}
                         note={L('הדוגמאות נעלמות ברגע שמתפרסם דיווח אמיתי אחד.', 'The examples disappear the moment one real notice is published.')}
                       />
                     </div>

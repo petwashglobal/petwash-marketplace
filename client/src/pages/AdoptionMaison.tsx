@@ -322,7 +322,7 @@ export default function AdoptionMaison() {
               )}
               <Link href="/adoption/new">
                 <button className="rounded-full px-5 py-2 text-sm font-medium text-white" style={{ background: GOLD_INK }} data-testid="button-list-for-adoption">
-                  {isHe ? 'פרסמו חיה לאימוץ ←' : 'List a pet for adoption ←'}
+                  {isHe ? 'פרסמו חיה לאימוץ ←' : 'List a pet for adoption →'}
                 </button>
               </Link>
             </div>
@@ -405,7 +405,7 @@ export default function AdoptionMaison() {
                           title={L('כך תיראה המודעה שלכם ב-PetWash', 'This is what an adoption listing looks like')}
                           subtitle={L('אלה דוגמאות בלבד — לא חיות אמיתיות שמחכות לאימוץ.', 'Three examples for illustration — no real pets are waiting here.')}
                           cards={adoptionExamples(isHe)}
-                          cta={{ href: '/adoption/new', label: isHe ? 'פרסמו חיה לאימוץ ←' : 'List a pet for adoption ←' }}
+                          cta={{ href: '/adoption/new', label: isHe ? 'פרסמו חיה לאימוץ ←' : 'List a pet for adoption →' }}
                           note={L('הדוגמאות נעלמות ברגע שמתפרסמת מודעה אמיתית אחת.', 'The examples disappear the moment one real listing is published.')}
                         />
                       )}

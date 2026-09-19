@@ -572,7 +572,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
       <div style={{ marginTop:'10px', padding:'10px 14px', background:'rgba(217, 184, 76,0.05)', borderRadius:'10px', border:'1px solid rgba(217, 184, 76,0.15)' }}>
         <p style={{ margin:0, fontSize:'0.7rem', color:'#7A7068', lineHeight:1.5 }}>
           <strong style={{ color:'#B8860B' }}>{he ? 'סדר מימוש: ' : 'Redemption order: '}</strong>
-          {he ? 'קרדיט מבצע → eGift → חבילה → ארנק → כרטיס' : 'Promo → eGift → Package → Wallet → Card'}
+          {he ? 'קרדיט מבצע ← eGift ← חבילה ← ארנק ← כרטיס' : 'Promo → eGift → Package → Wallet → Card'}
         </p>
       </div>
     </div>
@@ -830,7 +830,7 @@ function DigitalCardSection({
                 }
               </div>
               <button onClick={() => navigate(svc.path)} style={{ flexShrink:0, padding:'8px 14px', borderRadius:'100px', border:`1.5px solid ${canBook ? 'rgba(34,197,94,0.4)' : partial ? 'rgba(245,158,11,0.4)' : 'rgba(217, 184, 76,0.3)'}`, background: canBook ? 'rgba(34,197,94,0.08)' : partial ? 'rgba(245,158,11,0.06)' : 'rgba(217, 184, 76,0.05)', color: canBook ? '#16a34a' : partial ? '#d97706' : '#B8860B', fontSize:'0.75rem', fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
-                {canBook ? (he ? 'הזמן' : 'Book') : partial ? (he ? 'הזמן →' : 'Book →') : (he ? 'טעינה' : 'Top Up')}
+                {canBook ? (he ? 'הזמנה' : 'Book') : partial ? (he ? 'הזמנה' : 'Book →') : (he ? 'טעינה' : 'Top Up')}
               </button>
             </div>
           );

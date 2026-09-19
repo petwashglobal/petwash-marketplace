@@ -312,11 +312,11 @@ export default function AdminRetention() {
               <div className="flex flex-wrap gap-3 text-xs">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-green-700">
                   <ThumbsUp className="h-3.5 w-3.5" />
-                  {tx("4-5★ → Google review", "4-5★ → ביקורת גוגל")}
+                  {tx("4-5★ → Google review", "4-5★ ← ביקורת גוגל")}
                 </span>
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-red-700">
                   <ThumbsDown className="h-3.5 w-3.5" />
-                  {tx("1-3★ → Support ticket", "1-3★ → פניית תמיכה")}
+                  {tx("1-3★ → Support ticket", "1-3★ ← פניית תמיכה")}
                 </span>
               </div>
             </div>

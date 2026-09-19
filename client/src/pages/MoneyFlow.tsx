@@ -278,14 +278,14 @@ function DirectSaleFlowDiagram() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 bg-white rounded-lg p-3 border border-blue-200">
               <p className="font-semibold text-xs text-blue-700 mb-1">שלב 1 — רכישה</p>
-              <p className="text-xs text-gray-600">לקוח משלם → רשום כהתחייבות (liability)</p>
+              <p className="text-xs text-gray-600">לקוח משלם ← רשום כהתחייבות (liability)</p>
               <p className="text-xs text-gray-600">יתרת ארנק נוצרת בחשבון הלקוח</p>
             </div>
             <ArrowRight className="w-4 h-4 text-blue-300 self-center hidden md:block" />
             <div className="flex-1 bg-white rounded-lg p-3 border border-blue-200">
               <p className="font-semibold text-xs text-blue-700 mb-1">שלב 2 — מימוש</p>
-              <p className="text-xs text-gray-600">אם שירות עם ספק → הופך ל-Flow A (marketplace)</p>
-              <p className="text-xs text-gray-600">אם שירות PetWash™‎ → נשאר Flow B (direct sale)</p>
+              <p className="text-xs text-gray-600">אם שירות עם נותן שירות ← הופך ל-Flow A (marketplace)</p>
+              <p className="text-xs text-gray-600">אם שירות PetWash™‎ ← נשאר Flow B (direct sale)</p>
             </div>
           </div>
         </CardContent>
@@ -604,13 +604,13 @@ export default function MoneyFlow({ language }: MoneyFlowProps) {
                     <p className="font-medium text-xs text-gray-500 uppercase">Flow A — מרקטפלייס</p>
                     <p className="text-gray-700">מע״מ מחושב על <strong>עמלת הפלטפורמה בלבד</strong> (15%).</p>
                     <code className="block text-xs bg-white p-2 rounded">מע״מ = עמלה × 18%</code>
-                    <p className="text-xs text-gray-500">דוגמה: עמלה ₪15 → מע״מ ₪2.70</p>
+                    <p className="text-xs text-gray-500">דוגמה: עמלה ₪15 ← מע״מ ₪2.70</p>
                   </div>
                   <div className="space-y-2">
                     <p className="font-medium text-xs text-gray-500 uppercase">Flow B — מכירה ישירה</p>
                     <p className="text-gray-700">מע״מ מחושב על <strong>כל מחיר המכירה</strong>.</p>
                     <code className="block text-xs bg-white p-2 rounded">מע״מ = (מחיר ÷ 1.18) × 18%</code>
-                    <p className="text-xs text-gray-500">דוגמה: גיפט קארד ₪118 → מע״מ ₪18</p>
+                    <p className="text-xs text-gray-500">דוגמה: תו שי ₪118 ← מע״מ ₪18</p>
                   </div>
                 </CardContent>
               </Card>

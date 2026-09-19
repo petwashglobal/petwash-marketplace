@@ -53,7 +53,7 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
       backend: true,
       frontend: true,
       notes: '7 tiers (Member → Black Reserve), Apple Wallet integration, points system',
-      notesHe: '7 רמות (חבר → Black Reserve), אפל וולט, מערכת נקודות',
+      notesHe: '7 רמות (חבר ← Black Reserve), Apple Wallet, מערכת נקודות',
     },
     {
       name: 'Firebase Authentication',
