@@ -74,7 +74,21 @@ export function useWhoami() {
     retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
-    refetchInterval: 5 * 60 * 1000,
+    // 2026-09-19: this was an unconditional 5-minute poll, so EVERY open tab
+    // asked "who am I" forever — including a visitor who is not signed in and
+    // never signs in during that visit. Production logs for the preceding 24h:
+    // /api/session/whoami 401 x654, the single most frequent line in the whole
+    // service. Each one is a Cloud Run invocation that also keeps the instance
+    // from scaling to zero, which is what the min-instances=0 cost cut
+    // (CEO, 2026-08-01) was for.
+    //
+    // The poll exists to catch a role escalation (customer -> provider,
+    // customer -> admin) on a signed-in session. A signed-OUT session cannot
+    // change role without a login, and AuthProvider already invalidates this
+    // query on every auth-state change — so polling while signed out can never
+    // learn anything. Poll only once we know there is somebody to poll about.
+    refetchInterval: (query) =>
+      query.state.data?.authenticated === true ? 5 * 60 * 1000 : false,
   });
 
   return {
