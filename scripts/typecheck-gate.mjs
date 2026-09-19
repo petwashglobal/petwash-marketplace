@@ -35,7 +35,7 @@ try {
 const count = (out.match(/error TS\d+/g) ?? []).length;
 console.log(`[typecheck-gate] ${count} type errors (baseline ${baseline})`);
 
-// ── TS2304 "Cannot find name" is ZERO-TOLERANCE, baseline or not (2026-09-19) ──
+// ── "Cannot find name" is ZERO-TOLERANCE, baseline or not (2026-09-19) ──
 // Every other type error is a wrong type on code that still runs. TS2304 means
 // the identifier does not exist: the line throws ReferenceError the first time
 // a real request reaches it, while esbuild builds happily and tests that never
@@ -48,11 +48,27 @@ console.log(`[typecheck-gate] ${count} type errors (baseline ${baseline})`);
 //   unifiedLocationWeather.ts — the Google weather path 500'd; the helper it
 //                           called was never written
 // A baseline may forgive a backlog; it may not forgive code that cannot run.
-const cannotFind = (out.match(/.*error TS2304.*/g) ?? []);
+//
+// TS2552 IS THE SAME DEFECT (added 2026-09-19). It is the identical error with
+// a spelling suggestion attached — "Cannot find name 'x'. Did you mean 'y'?" —
+// and TypeScript picks it over TS2304 whenever a similar name is in scope,
+// which is the COMMON case: a typo, or a hook declared in the neighbouring
+// component. Matching only TS2304 let five of them through a gate written to
+// stop exactly this:
+//   MyAccount.tsx x5      setLocation() declared inside WalletActionButton, a
+//                         different component. "Consent Center", "Notification
+//                         Preferences" and the per-pet Passport / Care /
+//                         Documents buttons threw on tap and did nothing.
+//   storage.ts:2002       `inArray` used, never imported from drizzle-orm.
+//   prestige-pass.ts x2   `executeRunId` where the variable is `execRunId`, in
+//                         the finance replay APPROVE path — AFTER the report
+//                         row was inserted, so an admin got a 500 and a
+//                         half-written audit trail.
+const cannotFind = (out.match(/.*error TS(?:2304|2552).*/g) ?? []);
 if (cannotFind.length > 0) {
   console.error(
     `\n❌ ${cannotFind.length} "Cannot find name" error(s) — that code throws ReferenceError at runtime.\n` +
-    `   This class is never baselined. Import it, define it, or delete the call.\n\n` +
+    `   This class is never baselined. Import it, define it, or fix the spelling.\n\n` +
     cannotFind.slice(0, 40).join('\n') + '\n',
   );
   process.exit(1);

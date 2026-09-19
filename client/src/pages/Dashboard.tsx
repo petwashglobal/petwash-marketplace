@@ -946,7 +946,13 @@ export default function Dashboard() {
                 { key: 'academy', label: tx('academy', language), href: '/academy', Icon: GraduationCap },
                 { key: 'shop', label: tx('shop', language), href: '/shop', Icon: ShoppingBag },
                 { key: 'sendGift', label: tx('sendGift', language), href: '/gift-cards', Icon: Gift },
-                { key: 'myPets', label: tx('myPets', language), href: '/pets', Icon: PawPrint },
+                // PET PASSPORT DOOR (2026-09-19). This tile sent the member to
+                // /pets — the plain management list — while the Pet Passport
+                // (PetPassportHome, the CEO's canonical multi-pet screen) was
+                // reachable from exactly two places in the whole app. The
+                // Pet Parent home was pointed here on 2026-09-10; the default
+                // dashboard, which is the one most members land on, was not.
+                { key: 'myPets', label: tx('myPets', language), href: '/pet-passport', Icon: PawPrint },
                 { key: 'loyalty', label: tx('viewLoyalty', language), href: '/loyalty/benefits', Icon: BadgeCheck },
               ].map((tile) => (
                 <button
@@ -1258,7 +1264,7 @@ export default function Dashboard() {
               </p>
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {activityData.pets.map((pet) => (
-                  <Link key={pet.id} href="/pets">
+                  <Link key={pet.id} href={`/pets/${pet.id}/passport`}>
                     <div
                       className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90 }}
@@ -1277,7 +1283,9 @@ export default function Dashboard() {
                     </div>
                   </Link>
                 ))}
-                <Link href="/pets">
+                {/* Said "Add" and opened the pet LIST; /pet-passport/add is the
+                    actual add flow the label promises. */}
+                <Link href="/pet-passport/add">
                   <div
                     className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity flex flex-col items-center justify-center"
                     style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90, height: 120 }}

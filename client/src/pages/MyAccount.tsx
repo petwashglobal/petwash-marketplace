@@ -6,6 +6,7 @@ import { SPECIES_VALUES, SPECIES_LABELS, normalizeLegacySpecies, type PetSpecies
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { buildProfileUpdatePayload } from '@/lib/profileUpdatePayload';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
@@ -680,6 +681,18 @@ export default function MyAccount() {
     onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: sendErrorText(err, 'sms'), variant: 'destructive' }),
   });
 
+  /**
+   * FIVE DEAD BUTTONS (2026-09-19). This component calls setLocation() in five
+   * places — the notifications tab's "Consent Center" and "Notification
+   * Preferences" rows, and the per-pet Passport / Care / Documents buttons —
+   * but never declared it. The only `const [, setLocation] = useLocation()` in
+   * this file sits inside WalletActionButton, a different component, so every
+   * one of those taps threw `ReferenceError: setLocation is not defined` and
+   * did nothing. tsc has been reporting it as TS2552 the whole time, unheard in
+   * the repo's error baseline; the bundler does not resolve names, so the build
+   * stayed green and the buttons shipped.
+   */
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('profile');
   const [inboxFilter, setInboxFilter] = useState<'all'|'receipt'|'promo'|'voucher'|'system'>('all');
   const [inboxExpanded, setInboxExpanded] = useState<Record<string, boolean>>({});
@@ -1820,7 +1833,16 @@ export default function MyAccount() {
       parts.push(editedProfile.country);
     }
     const combinedAddress = parts.length > 0 ? parts.join(', ') : editedProfile.address;
-    updateProfileMutation.mutate({ ...editedProfile, address: combinedAddress });
+    // Narrow to the fields PATCH /api/user/profile actually owns. This used to
+    // be `{ ...editedProfile }` — the whole GET read-back, echoed back — which
+    // carried `email` and `twoFactorEnabled` with it. The endpoint refuses both
+    // outright (security state changes through a verified flow, never here), so
+    // EVERY save from this screen came back 400 "Two-step login cannot be
+    // changed from the profile endpoint", whatever the member had edited.
+    // See client/src/lib/profileUpdatePayload.ts.
+    updateProfileMutation.mutate(
+      buildProfileUpdatePayload({ ...editedProfile, address: combinedAddress }),
+    );
   };
 
   return (

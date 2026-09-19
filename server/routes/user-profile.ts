@@ -17,6 +17,17 @@ const notificationPreferencesSchema = z.object({
   reminderEnabled: z.boolean().optional(),
   birthdayOffersEnabled: z.boolean().optional(),
   loyaltyUpdatesEnabled: z.boolean().optional(),
+  /**
+   * The seasonal three (2026-09-19). MyAccount's notifications tab has offered
+   * these toggles for months, but they were missing here — and a plain z.object
+   * STRIPS what it does not declare. So flipping "Black Friday" off sent the
+   * key, zod removed it, Firestore never saw it, the toast said saved, and the
+   * switch was back on after a reload. A preference screen that cannot refuse
+   * marketing is worse than one that doesn't offer to.
+   */
+  worldDogDayEnabled: z.boolean().optional(),
+  blackFridayEnabled: z.boolean().optional(),
+  petBirthdayPushEnabled: z.boolean().optional(),
 }).optional();
 
 const profileUpdateSchema = z.object({
@@ -175,6 +186,12 @@ router.get('/profile', async (req, res) => {
       reminderEnabled: true,
       birthdayOffersEnabled: true,
       loyaltyUpdatesEnabled: true,
+      // Absent from the defaults, these three were also missing from the GET,
+      // so the switches fell back to the client's `?? true` and could never
+      // render as off even once they were stored.
+      worldDogDayEnabled: true,
+      blackFridayEnabled: true,
+      petBirthdayPushEnabled: true,
     };
 
     let storedNotificationPrefs = {};
